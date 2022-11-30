@@ -63,14 +63,14 @@ macro_rules! fmt_test_inner {
 }
 
 fmt_test!(  annotated_struct
-"struct Annotated {
+"pub struct Annotated {
     #[storage(write)]
     foo: u32,
     #[storage(read)]
     bar: String,
 }",
             intermediate_whitespace
-"struct Annotated{
+"pub struct Annotated{
                 #[   storage(write  )]\n
                 foo    : u32,
                 #[   storage(read  )   ]
