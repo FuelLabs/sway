@@ -6,6 +6,7 @@ use crate::{
     declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
     error::*,
     language::{parsed, ty::*},
+    transform::AttributeKind,
     type_system::*,
     types::DeterministicallyAborts,
 };
@@ -175,6 +176,32 @@ impl TyAstNode {
                         parsed::TreeType::Script | parsed::TreeType::Predicate
                     );
                 ok(is_main, warnings, errors)
+            }
+            _ => ok(false, warnings, errors),
+        }
+    }
+
+    /// Check to see if this node is a function declaration of a function annotated as test.
+    pub(crate) fn is_test_function(&self) -> CompileResult<bool> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        match &self {
+            TyAstNode {
+                span,
+                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                ..
+            } => {
+                let TyFunctionDeclaration { attributes, .. } = check!(
+                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                ok(
+                    attributes.contains_key(&AttributeKind::Test),
+                    warnings,
+                    errors,
+                )
             }
             _ => ok(false, warnings, errors),
         }
