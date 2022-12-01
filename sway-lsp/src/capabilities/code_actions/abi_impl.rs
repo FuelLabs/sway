@@ -89,7 +89,7 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
 fn get_contract_impl_string(abi_decl: TyAbiDeclaration) -> String {
     let contract_name = abi_decl.name.to_string();
     format!(
-        "\nimpl {} for Contract {{\n{}\n}}",
+        "\nimpl {} for Contract {{{}\n}}\n",
         contract_name,
         get_function_signatures(abi_decl).as_str()
     )
