@@ -29,10 +29,10 @@ async fn test_parse_logged_varibles() -> Result<(), Error> {
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_variables().call().await?;
 
-    let log_u64 = instance.logs_with_type::<u64>(&response.receipts)?;
-    let log_bits256 = instance.logs_with_type::<Bits256>(&response.receipts)?;
-    let log_string = instance.logs_with_type::<SizedAsciiString<4>>(&response.receipts)?;
-    let log_array = instance.logs_with_type::<[u8; 3]>(&response.receipts)?;
+    let log_u64 = response.get_logs_with_type::<u64>()?;
+    let log_bits256 = response.get_logs_with_type::<Bits256>()?;
+    let log_string = response.get_logs_with_type::<SizedAsciiString<4>>()?;
+    let log_array = response.get_logs_with_type::<[u8; 3]>()?;
 
     let expected_bits256 = Bits256([
         239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,
@@ -54,12 +54,12 @@ async fn test_parse_logs_values() -> Result<(), Error> {
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_values().call().await?;
 
-    let log_u64 = instance.logs_with_type::<u64>(&response.receipts)?;
-    let log_u32 = instance.logs_with_type::<u32>(&response.receipts)?;
-    let log_u16 = instance.logs_with_type::<u16>(&response.receipts)?;
-    let log_u8 = instance.logs_with_type::<u8>(&response.receipts)?;
+    let log_u64 = response.get_logs_with_type::<u64>()?;
+    let log_u32 = response.get_logs_with_type::<u32>()?;
+    let log_u16 = response.get_logs_with_type::<u16>()?;
+    let log_u8 = response.get_logs_with_type::<u8>()?;
     // try to retrieve non existent log
-    let log_nonexistent = instance.logs_with_type::<bool>(&response.receipts)?;
+    let log_nonexistent = response.get_logs_with_type::<bool>()?;
 
     assert_eq!(log_u64, vec![64]);
     assert_eq!(log_u32, vec![32]);
@@ -77,8 +77,8 @@ async fn test_parse_logs_custom_types() -> Result<(), Error> {
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_custom_types().call().await?;
 
-    let log_test_struct = instance.logs_with_type::<TestStruct>(&response.receipts)?;
-    let log_test_enum = instance.logs_with_type::<TestEnum>(&response.receipts)?;
+    let log_test_struct = response.get_logs_with_type::<TestStruct>()?;
+    let log_test_enum = response.get_logs_with_type::<TestEnum>()?;
 
     let expected_bits256 = Bits256([
         239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,
@@ -104,13 +104,13 @@ async fn test_parse_logs_generic_types() -> Result<(), Error> {
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_generic_types().call().await?;
 
-    let log_struct = instance.logs_with_type::<StructWithGeneric<[_; 3]>>(&response.receipts)?;
-    let log_enum = instance.logs_with_type::<EnumWithGeneric<[_; 3]>>(&response.receipts)?;
-    let log_struct_nested = instance
-        .logs_with_type::<StructWithNestedGeneric<StructWithGeneric<[_; 3]>>>(&response.receipts)?;
-    let log_struct_deeply_nested = instance.logs_with_type::<StructDeeplyNestedGeneric<
+    let log_struct = response.get_logs_with_type::<StructWithGeneric<[_; 3]>>()?;
+    let log_enum = response.get_logs_with_type::<EnumWithGeneric<[_; 3]>>()?;
+    let log_struct_nested = response
+        .get_logs_with_type::<StructWithNestedGeneric<StructWithGeneric<[_; 3]>>>()?;
+    let log_struct_deeply_nested = response.get_logs_with_type::<StructDeeplyNestedGeneric<
         StructWithNestedGeneric<StructWithGeneric<[_; 3]>>,
-    >>(&response.receipts)?;
+    >>()?;
 
     let l = [1u8, 2u8, 3u8];
     let expected_struct = StructWithGeneric {
@@ -139,12 +139,12 @@ async fn test_parse_logs_generic_types() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_fetch_logs() -> Result<(), Error> {
+async fn test_get_logs() -> Result<(), Error> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
     let response = contract_methods.produce_multiple_logs().call().await?;
-    let logs = instance.fetch_logs(&response.receipts);
+    let logs = response.get_logs()?;
 
     let expected_bits256 = Bits256([
         239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,

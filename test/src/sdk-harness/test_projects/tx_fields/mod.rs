@@ -3,8 +3,7 @@ use fuels::{
     prelude::*,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
-        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
-        UniqueIdentifier, UtxoId,
+        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId
     },
 };
 use std::str::FromStr;
@@ -97,6 +96,7 @@ async fn generate_predicate_inputs(
         message.amount.0,
         &data,
     );
+
     let predicate_message = TxInput::message_predicate(
         message_id,
         message.sender.clone().into(),
