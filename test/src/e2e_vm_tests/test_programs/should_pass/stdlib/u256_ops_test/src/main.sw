@@ -2,7 +2,6 @@ script;
 
 use std::assert::assert;
 use std::u256::U256;
-use core::num::*;
 
 fn main() -> bool {
     let first = U256::from((0, 0, 0, 0));
