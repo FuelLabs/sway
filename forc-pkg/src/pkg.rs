@@ -2444,6 +2444,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
+    // Check if we have members to build so that we are not trying to build an empty workspace.
+    if member_manifests.is_empty() {
+        bail!("No member found to build")
+    }
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
