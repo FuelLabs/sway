@@ -1,7 +1,7 @@
 use file_lock::{FileLock, FileOptions};
 use std::path::{Path, PathBuf};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Filesystem {
     root: PathBuf,
 }
@@ -26,6 +26,10 @@ impl Filesystem {
 
     pub fn display(&self) -> std::path::Display<'_> {
         self.root.display()
+    }
+
+    pub fn into_path_unlocked(self) -> PathBuf {
+        self.root
     }
 
     pub fn exists(&self) -> bool {
