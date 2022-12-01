@@ -1,6 +1,9 @@
 library lib_multi_test;
 
+use std::logging::log;
+
 fn pow2(x: u64) -> u64 {
+    log(x);
     x * x
 }
 
@@ -16,6 +19,7 @@ fn test_sub() {
 
 #[test]
 fn test_gt() {
+    log(100);
     assert(101 > 100);
 }
 

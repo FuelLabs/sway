@@ -1,6 +1,6 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
+pub(crate) fn default_pkg_manifest(project_name: &str, entry_type: &str) -> String {
     let author = get_author();
 
     format!(
@@ -13,6 +13,12 @@ name = "{project_name}"
 [dependencies]
 "#
     )
+}
+
+pub(crate) fn default_workspace_manifest() -> String {
+    r#"[workspace]
+members = []"#
+        .to_string()
 }
 
 pub(crate) fn default_contract() -> String {
@@ -72,11 +78,18 @@ fn get_author() -> String {
 }
 
 #[test]
-fn parse_default_manifest() {
+fn parse_default_pkg_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::PackageManifest>(&default_manifest("test_proj", MAIN_ENTRY))
+        toml::from_str::<forc_pkg::PackageManifest>(&default_pkg_manifest("test_proj", MAIN_ENTRY))
             .unwrap()
+    )
+}
+#[test]
+fn parse_default_workspace_manifest() {
+    tracing::info!(
+        "{:#?}",
+        toml::from_str::<forc_pkg::PackageManifest>(&default_workspace_manifest()).unwrap()
     )
 }
