@@ -290,7 +290,7 @@ jobs:
           command: install
           args: --debug --path ./forc
       - name: Run Unit Tests
-        run: forc test --path sway-lib-core && forc test --path sway-lib-std
+        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
