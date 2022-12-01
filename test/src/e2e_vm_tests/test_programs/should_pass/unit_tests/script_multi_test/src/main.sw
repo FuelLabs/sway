@@ -1,5 +1,7 @@
 script;
 
+use std::logging::log;
+
 fn main() {
     revert(0);
 }
@@ -11,5 +13,6 @@ fn test_foo() {
 
 #[test]
 fn test_bar() {
+    log("test");
     assert(4 / 2 == 2);
 }
