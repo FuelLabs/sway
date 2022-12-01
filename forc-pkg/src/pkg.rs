@@ -1961,11 +1961,11 @@ where
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
                 if repo_dir.file_type()?.is_dir() {
                     // Get the path of the current repo
-                    let repo_dir_root = Filesystem::new(repo_dir.path());
+                    let repo_dir_path = Filesystem::new(repo_dir.path());
                     // Get the index file from the found path
-                    if let Ok(index_file) = fs::read_to_string(repo_dir_root.join(".forc_index")) {
+                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
                         let index = serde_json::from_str(&index_file)?;
-                        f(index, repo_dir_root)?;
+                        f(index, repo_dir_path)?;
                     }
                 }
             }
