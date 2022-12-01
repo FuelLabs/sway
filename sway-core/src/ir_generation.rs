@@ -81,3 +81,5 @@ pub fn compile_program(
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
 }
+
+pub fn compile_tests() {}

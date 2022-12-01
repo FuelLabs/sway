@@ -20,12 +20,14 @@ pub(crate) struct MetadataManager {
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
+    md_decl_index_cache: HashMap<MetadataIndex, usize>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
+    decl_index_md_cache: HashMap<usize, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -56,6 +58,26 @@ impl MetadataManager {
                         self.md_span_cache.insert(md_idx, span.clone());
 
                         Some(span)
+                    })
+            })
+        })
+    }
+
+    pub(crate) fn md_to_decl_index(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<usize> {
+        Self::for_each_md_idx(context, md_idx, |md_idx| {
+            self.md_decl_index_cache.get(&md_idx).cloned().or_else(|| {
+                // Create a new decl index and save it in the cache
+                md_idx
+                    .get_content(context)
+                    .unwrap_struct("decl_index", 1)
+                    .and_then(|fields| {
+                        let index = fields[0].unwrap_integer().map(|index| index as usize)?;
+                        self.md_decl_index_cache.insert(md_idx, index);
+                        Some(index)
                     })
             })
         })
@@ -196,6 +218,26 @@ impl MetadataManager {
                 Some(md_idx)
             })
         })
+    }
+
+    pub(crate) fn decl_index_to_md(
+        &mut self,
+        context: &mut Context,
+        decl_index: usize,
+    ) -> Option<MetadataIndex> {
+        self.decl_index_md_cache
+            .get(&decl_index)
+            .copied()
+            .or_else(|| {
+                let md_idx = MetadataIndex::new_struct(
+                    context,
+                    "decl_index",
+                    vec![Metadatum::Integer(decl_index as u64)],
+                );
+                self.decl_index_md_cache.insert(decl_index, md_idx);
+
+                Some(md_idx)
+            })
     }
 
     pub(crate) fn storage_key_to_md(

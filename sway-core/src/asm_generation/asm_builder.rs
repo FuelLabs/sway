@@ -54,7 +54,7 @@ pub(super) struct AsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    entries: Vec<(Function, Label, Vec<Op>)>,
+    entries: Vec<(Function, Label, Vec<Op>, usize)>,
     non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -64,7 +64,7 @@ pub(super) struct AsmBuilder<'ir> {
 type AsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet)>,
+    Vec<(Function, Label, AbstractInstructionSet, usize)>,
     Vec<AbstractInstructionSet>,
 );
 
@@ -114,7 +114,7 @@ impl<'ir> AsmBuilder<'ir> {
             self.reg_seqr,
             self.entries
                 .into_iter()
-                .map(|(f, l, ops)| (f, l, AbstractInstructionSet { ops }))
+                .map(|(f, l, ops, decl_index)| (f, l, AbstractInstructionSet { ops }, decl_index))
                 .collect(),
             self.non_entries
                 .into_iter()

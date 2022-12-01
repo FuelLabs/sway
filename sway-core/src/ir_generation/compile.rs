@@ -411,7 +411,9 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
+    let dummy_decl_index = md_mgr.decl_index_to_md(context, 10);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
+    metadata = md_combine(context, &metadata, &dummy_decl_index);
 
     if let Some(inline) = inline_opt {
         let inline_md_idx = md_mgr.inline_to_md(context, inline);
