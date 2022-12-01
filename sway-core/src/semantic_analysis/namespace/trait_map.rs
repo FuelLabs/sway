@@ -887,9 +887,13 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                 )
         }
         (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
-            l.iter().zip(r.iter()).fold(true, |acc, (left, right)| {
-                acc && are_equal_minus_dynamic_types(type_engine, left.type_id, right.type_id)
-            })
+            if l.len() != r.len() {
+                false
+            } else {
+                l.iter().zip(r.iter()).fold(true, |acc, (left, right)| {
+                    acc && are_equal_minus_dynamic_types(type_engine, left.type_id, right.type_id)
+                })
+            }
         }
         (
             TypeInfo::ContractCaller {

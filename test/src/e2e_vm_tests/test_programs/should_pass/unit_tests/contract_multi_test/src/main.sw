@@ -1,5 +1,7 @@
 contract;
 
+use std::logging::log;
+
 abi MyContract {
     fn test_function() -> bool;
 }
@@ -19,5 +21,6 @@ fn test_foo() {
 #[test]
 fn test_bar() {
     let meaning = 6 * 7;
+    log(meaning);
     assert(meaning == 42);
 }
