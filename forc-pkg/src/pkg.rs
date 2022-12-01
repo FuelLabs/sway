@@ -1812,6 +1812,8 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
+
+        let _lock = root.open_rw(".forc-lock")?;
         if root.exists() {
             let _ = std::fs::remove_dir_all(&root);
         };
