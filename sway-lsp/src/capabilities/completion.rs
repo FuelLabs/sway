@@ -4,7 +4,7 @@ use crate::core::{
 };
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
-pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
+pub(crate) fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     let is_initial_declaration = |token_type: &Token| -> bool {

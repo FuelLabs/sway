@@ -17,7 +17,7 @@ where
 }
 
 /// Given a `token::SymbolKind`, return the `lsp_types::SymbolKind` that corresponds to it.
-pub fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
+pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,

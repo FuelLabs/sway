@@ -14,7 +14,7 @@ use tower_lsp::lsp_types::{
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let tokens = session.token_map.tokens_for_file(url);
+    let tokens = session.token_map().tokens_for_file(url);
 
     // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
@@ -35,7 +35,7 @@ pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<Semantic
 /// Tokens are encoded relative to each other.
 ///
 /// This is taken from rust-analyzer which is also a direct port of <https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45>
-pub struct SemanticTokensBuilder {
+struct SemanticTokensBuilder {
     id: String,
     prev_line: u32,
     prev_char: u32,
@@ -108,7 +108,7 @@ pub fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
     builder.build()
 }
 
-pub const SUPPORTED_TYPES: &[SemanticTokenType] = &[
+pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::STRING,
     SemanticTokenType::NUMBER,
     SemanticTokenType::NAMESPACE,
@@ -129,7 +129,7 @@ pub const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("builtinType"),
 ];
 
-pub const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
+pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     // declaration of symbols
     SemanticTokenModifier::DECLARATION,
     // definition of symbols as in header files

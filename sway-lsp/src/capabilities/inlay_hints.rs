@@ -23,7 +23,7 @@ pub struct InlayHint {
     pub label: String,
 }
 
-pub fn inlay_hints(
+pub(crate) fn inlay_hints(
     session: Arc<Session>,
     uri: &Url,
     range: &Range,
@@ -80,7 +80,7 @@ pub fn inlay_hints(
     Some(hints)
 }
 
-pub fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
+fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // after annotated thing
