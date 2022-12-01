@@ -12,9 +12,14 @@ use crate::{
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
-    language::{ty, *},
+    language::{
+        ty::{self, ProjectionKind},
+        *,
+    },
     metadata::MetadataManager,
-    type_system::{look_up_type_id, to_typeinfo, LogId, TypeId, TypeInfo},
+    type_system::{LogId, TypeId, TypeInfo},
+    types::DeterministicallyAborts,
+    PartialEqWithTypeEngine, TypeEngine,
 };
 use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
@@ -29,7 +34,8 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-pub(super) struct FnCompiler {
+pub(crate) struct FnCompiler<'te> {
+    type_engine: &'te TypeEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -43,8 +49,9 @@ pub(super) struct FnCompiler {
     logged_types_map: HashMap<TypeId, LogId>,
 }
 
-impl FnCompiler {
+impl<'te> FnCompiler<'te> {
     pub(super) fn new(
+        type_engine: &'te TypeEngine,
         context: &mut Context,
         module: Module,
         function: Function,
@@ -57,6 +64,7 @@ impl FnCompiler {
                 .map(|(name, _value)| name.clone()),
         );
         FnCompiler {
+            type_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -153,7 +161,7 @@ impl FnCompiler {
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
                     let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
-                    create_enum_aggregate(context, ted.variants).map(|_| ())?;
+                    create_enum_aggregate(self.type_engine, context, ted.variants).map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDeclaration::ImplTrait(_) => {
@@ -344,9 +352,14 @@ impl FnCompiler {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             ty::TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
-            ty::TyExpressionVariant::WhileLoop { body, condition } => {
-                self.compile_while_loop(context, md_mgr, body, *condition, span_md_idx)
-            }
+            ty::TyExpressionVariant::WhileLoop { body, condition } => self.compile_while_loop(
+                context,
+                md_mgr,
+                body,
+                *condition,
+                span_md_idx,
+                ast_expr.span,
+            ),
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
                     // If `self.block_to_break_to` is not None, then it has been set inside
@@ -444,7 +457,12 @@ impl FnCompiler {
             Intrinsic::SizeOfVal => {
                 let exp = arguments[0].clone();
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(context, &exp.return_type, &exp.span)?;
+                let ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &exp.return_type,
+                    &exp.span,
+                )?;
                 self.compile_expression(context, md_mgr, exp)?;
                 Ok(Constant::get_uint(
                     context,
@@ -454,7 +472,8 @@ impl FnCompiler {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -463,7 +482,8 @@ impl FnCompiler {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &targ.type_id, &targ.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
                 Ok(Constant::get_bool(context, !ir_type.is_copy_type()))
             }
             Intrinsic::GetStorageKey => {
@@ -491,9 +511,11 @@ impl FnCompiler {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
+                    self.type_engine,
                     context,
                     md_mgr,
                     self.module,
+                    None,
                     None,
                     &arguments[1],
                 )?;
@@ -510,8 +532,12 @@ impl FnCompiler {
 
                 // Get the target type from the type argument provided
                 let target_type = type_arguments[0].clone();
-                let target_ir_type =
-                    convert_resolved_typeid(context, &target_type.type_id, &target_type.span)?;
+                let target_ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    context,
+                    &target_type.type_id,
+                    &target_type.span,
+                )?;
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -560,7 +586,7 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
                 if !val_ty.is_copy_type() {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
@@ -583,8 +609,8 @@ impl FnCompiler {
                 let val_exp = arguments[1].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = to_typeinfo(val_exp.return_type, &span)?;
-                if val_ty != TypeInfo::RawUntypedPtr {
+                let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -684,7 +710,8 @@ impl FnCompiler {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(context, &len.type_id, &len.span)?;
+                let ir_type =
+                    convert_resolved_typeid(self.type_engine, context, &len.type_id, &len.span)?;
                 let len_value =
                     Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
 
@@ -1025,7 +1052,7 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx),
         };
 
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
 
         // Insert the contract_call instruction
         Ok(self
@@ -1089,6 +1116,7 @@ impl FnCompiler {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
+                    self.type_engine,
                     context,
                     md_mgr,
                     self.module,
@@ -1240,7 +1268,12 @@ impl FnCompiler {
         variant: ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal(
@@ -1266,7 +1299,12 @@ impl FnCompiler {
         exp: Box<ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
-        let enum_aggregate = match convert_resolved_typeid(context, &exp.return_type, &exp.span)? {
+        let enum_aggregate = match convert_resolved_typeid(
+            self.type_engine,
+            context,
+            &exp.return_type,
+            &exp.span,
+        )? {
             Type::Struct(aggregate) => aggregate,
             _ => {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
@@ -1287,7 +1325,14 @@ impl FnCompiler {
         body: ty::TyCodeBlock,
         condition: ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
+        span: Span,
     ) -> Result<Value, CompileError> {
+        // Throw an error if the while loop is used in a predicate module.
+        let module = context.module_iter().next().unwrap();
+        if module.get_kind(context) == Kind::Predicate {
+            return Err(CompileError::DisallowedWhileInPredicate { span });
+        }
+
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
@@ -1348,6 +1393,16 @@ impl FnCompiler {
         Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
     }
 
+    pub fn get_function_ptr(&self, context: &mut Context, name: &str) -> Option<Pointer> {
+        self.lexical_map
+            .get(name)
+            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
+    }
+
+    pub fn get_function_arg(&self, context: &mut Context, name: &str) -> Option<Value> {
+        self.function.get_arg(context, name)
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1356,11 +1411,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
-        if let Some(ptr) = self
-            .lexical_map
-            .get(name)
-            .and_then(|local_name| self.function.get_local_ptr(context, local_name))
-        {
+        if let Some(ptr) = self.get_function_ptr(context, name) {
             let ptr_ty = *ptr.get_type(context);
             let ptr_val = self
                 .current_block
@@ -1369,7 +1420,10 @@ impl FnCompiler {
                 .add_metadatum(context, span_md_idx);
             let fn_param = self.current_fn_param.as_ref();
             let is_ref_primitive = fn_param.is_some()
-                && look_up_type_id(fn_param.unwrap().type_id).is_copy_type()
+                && self
+                    .type_engine
+                    .look_up_type_id(fn_param.unwrap().type_id)
+                    .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
             Ok(if ptr.is_aggregate_ptr(context) || is_ref_primitive {
@@ -1417,21 +1471,26 @@ impl FnCompiler {
         // Nothing to do for an abi cast declarations. The address specified in them is already
         // provided in each contract call node in the AST.
         if matches!(
-            &to_typeinfo(body.return_type, &body.span).map_err(|ty_err| {
-                CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
-            })?,
+            &self
+                .type_engine
+                .to_typeinfo(body.return_type, &body.span)
+                .map_err(|ty_err| {
+                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                })?,
             TypeInfo::ContractCaller { .. }
         ) {
             return Ok(None);
         }
 
         // Grab these before we move body into compilation.
-        let return_type = convert_resolved_typeid(context, &body.return_type, &body.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &body.return_type, &body.span)?;
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
+        let body_deterministically_aborts = body.deterministically_aborts(false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
-        if init_val.is_diverging(context) {
+        if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
         }
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
@@ -1473,10 +1532,18 @@ impl FnCompiler {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
-        let const_expr_val =
-            compile_constant_expression(context, md_mgr, self.module, None, &value)?;
+        let const_expr_val = compile_constant_expression(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &value,
+        )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
-        let return_type = convert_resolved_typeid(context, &value.return_type, &value.span)?;
+        let return_type =
+            convert_resolved_typeid(self.type_engine, context, &value.return_type, &value.span)?;
 
         // We compile consts the same as vars are compiled. This is because ASM generation
         // cannot handle
@@ -1518,7 +1585,7 @@ impl FnCompiler {
             .expect("All local symbols must be in the lexical symbol map.");
 
         // First look for a local ptr with the required name
-        let val = match self.function.get_local_ptr(context, name) {
+        let mut val = match self.function.get_local_ptr(context, name) {
             Some(ptr) => {
                 let ptr_ty = *ptr.get_type(context);
                 self.current_block
@@ -1552,11 +1619,57 @@ impl FnCompiler {
                 .ins(context)
                 .store(val, reassign_val)
                 .add_metadatum(context, span_md_idx);
+        } else if ast_reassignment
+            .lhs_indices
+            .iter()
+            .any(|f| matches!(f, ProjectionKind::ArrayIndex { .. }))
+        {
+            let it = &mut ast_reassignment.lhs_indices.iter().peekable();
+            while let Some(ProjectionKind::ArrayIndex { index, .. }) = it.next() {
+                let index_val = self.compile_expression(context, md_mgr, *index.clone())?;
+                if index_val.is_diverging(context) {
+                    return Ok(index_val);
+                }
+
+                let ty = match val.get_stripped_ptr_type(context).unwrap() {
+                    Type::Array(aggregate) => aggregate,
+                    _otherwise => {
+                        let spans = ast_reassignment
+                            .lhs_indices
+                            .iter()
+                            .fold(ast_reassignment.lhs_base_name.span(), |acc, lhs| {
+                                Span::join(acc, lhs.span())
+                            });
+                        return Err(CompileError::Internal(
+                            "Array index reassignment to non-array.",
+                            spans,
+                        ));
+                    }
+                };
+
+                // When handling nested array indexing, we should keep extracting the first
+                // elements up until the last, and insert into the last element.
+                let is_last_index = it.peek().is_none();
+                if is_last_index {
+                    val = self
+                        .current_block
+                        .ins(context)
+                        .insert_element(val, ty, reassign_val, index_val)
+                        .add_metadatum(context, span_md_idx);
+                } else {
+                    val = self
+                        .current_block
+                        .ins(context)
+                        .extract_element(val, ty, index_val)
+                        .add_metadatum(context, span_md_idx);
+                }
+            }
         } else {
             // An aggregate.  Iterate over the field names from the left hand side and collect
             // field indices.  The struct type from the previous iteration is used to determine the
             // field type for the current iteration.
             let field_idcs = get_indices_for_struct_access(
+                self.type_engine,
                 ast_reassignment.lhs_type,
                 &ast_reassignment.lhs_indices,
             )?;
@@ -1603,6 +1716,7 @@ impl FnCompiler {
 
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -1610,7 +1724,7 @@ impl FnCompiler {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1639,7 +1753,7 @@ impl FnCompiler {
             // we'll just use Unit.
             Type::Unit
         } else {
-            convert_resolved_typeid_no_span(context, &contents[0].return_type)?
+            convert_resolved_typeid_no_span(self.type_engine, context, &contents[0].return_type)?
         };
         let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
 
@@ -1712,17 +1826,26 @@ impl FnCompiler {
             ))
         }?;
 
-        // Check for out of bounds if we have a literal index.
-        let (_, count) = aggregate.get_content(context).array_type();
-        if let ty::TyExpressionVariant::Literal(Literal::U64(index)) = index_expr.expression {
-            if index >= *count {
-                // XXX Here is a very specific case where we want to return an Error enum
-                // specifically, if not an actual CompileError.  This should be a
-                // CompileError::ArrayOutOfBounds, or at least converted to one.
+        let index_expr_span = index_expr.span.clone();
+
+        if let Ok(Constant {
+            value: ConstantValue::Uint(constant_value),
+            ..
+        }) = compile_constant_expression_to_constant(
+            self.type_engine,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            &index_expr,
+        ) {
+            let (_, count) = aggregate.get_content(context).array_type();
+            if constant_value >= *count {
                 return Err(CompileError::ArrayOutOfBounds {
-                    index,
+                    index: constant_value,
                     count: *count,
-                    span: index_expr.span,
+                    span: index_expr_span,
                 });
             }
         }
@@ -1767,7 +1890,7 @@ impl FnCompiler {
         }
 
         // Start with a temporary empty struct and then fill in the values.
-        let aggregate = get_aggregate_for_types(context, &field_types)?;
+        let aggregate = get_aggregate_for_types(self.type_engine, context, &field_types)?;
         let temp_name = self.lexical_map.insert_anon();
         let struct_ptr = self
             .function
@@ -1826,7 +1949,11 @@ impl FnCompiler {
         let field_kind = ty::ProjectionKind::StructField {
             name: ast_field.name.clone(),
         };
-        let field_idx = match get_struct_name_field_index_and_type(struct_type_id, field_kind) {
+        let field_idx = match get_struct_name_field_index_and_type(
+            self.type_engine,
+            struct_type_id,
+            field_kind,
+        ) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
                 ast_field.span,
@@ -1865,7 +1992,7 @@ impl FnCompiler {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let aggregate = create_enum_aggregate(context, enum_decl.variants)?;
+        let aggregate = create_enum_aggregate(self.type_engine, context, enum_decl.variants)?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -1927,7 +2054,11 @@ impl FnCompiler {
             let mut init_values = Vec::with_capacity(fields.len());
             let mut init_types = Vec::with_capacity(fields.len());
             for field_expr in fields {
-                let init_type = convert_resolved_typeid_no_span(context, &field_expr.return_type)?;
+                let init_type = convert_resolved_typeid_no_span(
+                    self.type_engine,
+                    context,
+                    &field_expr.return_type,
+                )?;
                 let init_value = self.compile_expression(context, md_mgr, field_expr)?;
                 if init_value.is_diverging(context) {
                     return Ok(init_value);
@@ -1973,7 +2104,9 @@ impl FnCompiler {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
-        if let Type::Struct(aggregate) = convert_resolved_typeid(context, &tuple_type, &span)? {
+        if let Type::Struct(aggregate) =
+            convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?
+        {
             let span_md_idx = md_mgr.span_to_md(context, &span);
             Ok(self
                 .current_block
@@ -1998,6 +2131,7 @@ impl FnCompiler {
     ) -> Result<Value, CompileError> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
+            self.type_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -2006,7 +2140,7 @@ impl FnCompiler {
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2061,7 +2195,7 @@ impl FnCompiler {
         let returns = returns
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
-        let return_type = convert_resolved_typeid_no_span(context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
         Ok(self
             .current_block
             .ins(context)
@@ -2164,6 +2298,10 @@ impl FnCompiler {
                     )),
                     Type::Pointer(_) => Err(CompileError::Internal(
                         "Pointers in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage_read(
@@ -2282,6 +2420,10 @@ impl FnCompiler {
                     )),
                     Type::Pointer(_) => Err(CompileError::Internal(
                         "Pointers in storage have not been implemented yet.",
+                        Span::dummy(),
+                    )),
+                    Type::Slice => Err(CompileError::Internal(
+                        "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
                     Type::B256 => self.compile_b256_storage_write(

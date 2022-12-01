@@ -13,11 +13,12 @@ use sway_types::span::Span;
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
-use crate::language::ty;
+use crate::{language::ty, TypeEngine};
 
 pub fn compile_program(
     program: ty::TyProgram,
     include_tests: bool,
+    type_engine: &TypeEngine,
 ) -> Result<Context, CompileError> {
     let test_fns = match include_tests {
         true => program.test_fns().collect(),
@@ -42,6 +43,7 @@ pub fn compile_program(
         // predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.
         ty::TyProgramKind::Script { main_function } => compile::compile_script(
+            type_engine,
             &mut ctx,
             main_function,
             &root.namespace,
@@ -50,6 +52,7 @@ pub fn compile_program(
             test_fns,
         ),
         ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
+            type_engine,
             &mut ctx,
             main_function,
             &root.namespace,
@@ -64,8 +67,10 @@ pub fn compile_program(
             declarations,
             &logged_types,
             test_fns,
+            type_engine,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
+            type_engine,
             &mut ctx,
             &root.namespace,
             declarations,

@@ -35,6 +35,8 @@ pub(crate) fn inlay_hints(
         return None;
     }
 
+    let type_engine = session.type_engine.read();
+
     let hints: Vec<lsp_types::InlayHint> = session
         .tokens_for_file(uri)
         .filter_map(|(_, token)| {
@@ -56,7 +58,7 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = sway_core::type_system::look_up_type_id(var.type_ascription);
+            let type_info = type_engine.look_up_type_id(var.type_ascription);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
@@ -65,7 +67,7 @@ pub(crate) fn inlay_hints(
         .map(|var| {
             let range = crate::utils::common::get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", var.type_ascription);
+            let label = format!("{}", type_engine.help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })

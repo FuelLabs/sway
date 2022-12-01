@@ -1,9 +1,12 @@
 mod abi;
+#[allow(clippy::module_inception)]
+mod declaration;
 mod r#enum;
 mod function;
 mod impl_trait;
 mod storage;
 mod r#struct;
+mod supertrait;
 mod r#trait;
 mod trait_fn;
 
@@ -14,4 +17,5 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
+pub(crate) use supertrait::*;
 pub use trait_fn::*;

@@ -1,6 +1,7 @@
 use crate::{
     language::Literal,
-    type_system::{to_typeinfo, TypeId, TypeInfo},
+    type_system::{TypeId, TypeInfo},
+    TypeEngine,
 };
 
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
@@ -43,6 +44,7 @@ pub(super) fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
 }
 
 pub(super) fn convert_resolved_typeid(
+    type_engine: &TypeEngine,
     context: &mut Context,
     ast_type: &TypeId,
     span: &Span,
@@ -50,23 +52,27 @@ pub(super) fn convert_resolved_typeid(
     // There's probably a better way to convert TypeError to String, but... we'll use something
     // other than String eventually?  IrError?
     convert_resolved_type(
+        type_engine,
         context,
-        &to_typeinfo(*ast_type, span)
+        &type_engine
+            .to_typeinfo(*ast_type, span)
             .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
         span,
     )
 }
 
 pub(super) fn convert_resolved_typeid_no_span(
+    type_engine: &TypeEngine,
     context: &mut Context,
     ast_type: &TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span::from_string(msg.to_string());
-    convert_resolved_typeid(context, ast_type, &span)
+    convert_resolved_typeid(type_engine, context, ast_type, &span)
 }
 
 fn convert_resolved_type(
+    type_engine: &TypeEngine,
     context: &mut Context,
     ast_type: &TypeInfo,
     span: &Span,
@@ -89,6 +95,7 @@ fn convert_resolved_type(
         TypeInfo::B256 => Type::B256,
         TypeInfo::Str(n) => Type::String(*n),
         TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
+            type_engine,
             context,
             fields
                 .iter()
@@ -98,10 +105,10 @@ fn convert_resolved_type(
         )
         .map(Type::Struct)?,
         TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(context, variant_types.clone()).map(Type::Struct)?
+            create_enum_aggregate(type_engine, context, variant_types.clone()).map(Type::Struct)?
         }
         TypeInfo::Array(elem_type_id, count, _) => {
-            let elem_type = convert_resolved_typeid(context, elem_type_id, span)?;
+            let elem_type = convert_resolved_typeid(type_engine, context, elem_type_id, span)?;
             Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
         }
         TypeInfo::Tuple(fields) => {
@@ -112,10 +119,11 @@ fn convert_resolved_type(
                 Type::Unit
             } else {
                 let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(context, new_fields).map(Type::Struct)?
+                create_tuple_aggregate(type_engine, context, new_fields).map(Type::Struct)?
             }
         }
         TypeInfo::RawUntypedPtr => Type::Uint(64),
+        TypeInfo::RawUntypedSlice => Type::Slice,
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

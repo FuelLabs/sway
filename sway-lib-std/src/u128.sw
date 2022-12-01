@@ -95,6 +95,17 @@ impl u64 {
 
 impl U128 {
     /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let new_u128 = U128::new();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(new_u128 == zero_u128);
+    /// ```
     pub fn new() -> U128 {
         U128 {
             upper: 0,
@@ -104,6 +115,22 @@ impl U128 {
 
     /// Safely downcast to `u64` without loss of precision.
     /// Returns Err if the number > u64::max()
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u128::{U128, U128Error};
+    ///
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    /// let zero_u64 = zero_u128.as_u64().unwrap();
+    ///
+    /// assert(zero_u64 == 0);
+    ///
+    /// let max_u128 = U128::max();
+    /// let result = max_u128.as_u64();
+    ///
+    /// assert(result.is_err()));
+    /// ```
     pub fn as_u64(self) -> Result<u64, U128Error> {
         match self.upper {
             0 => Result::Ok(self.lower),
@@ -112,6 +139,18 @@ impl U128 {
     }
 
     /// The smallest value that can be represented by this integer type.
+    /// Initializes a new, zeroed `U128`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let min_u128 = U128::min();
+    /// let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///
+    /// assert(min_u128 == zero_u128);
+    /// ```
     pub fn min() -> U128 {
         U128 {
             upper: 0,
@@ -121,6 +160,17 @@ impl U128 {
 
     /// The largest value that can be represented by this type,
     /// 2<sup>128</sup> - 1.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let max_u128 = U128::max();
+    /// let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
+    ///
+    /// assert(max_u128 == maxed_u128);
+    /// ```
     pub fn max() -> U128 {
         U128 {
             upper: u64::max(),
@@ -129,6 +179,16 @@ impl U128 {
     }
 
     /// The size of this type in bits.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// let bits = U128::bits();
+    ///
+    /// assert(bits == 128);
+    /// ```
     pub fn bits() -> u32 {
         128
     }
@@ -244,18 +304,18 @@ impl core::ops::Subtract for U128 {
 impl core::ops::Multiply for U128 {
     /// Multiply a `U128` with a `U128`. Panics of overflow.
     fn multiply(self, other: Self) -> Self {
-        let zero = U128::from((0, 0));
-        let one = U128::from((0, 1));
+        // in case both of the `U128` upper parts are bigger than zero,
+        // it automatically means overflow, as any `U128` value
+        // is upper part multiplied by 2 ^ 64 + lower part
+        assert(self.upper == 0 || other.upper == 0);
 
-        let mut x = self;
-        let mut y = other;
-        let mut result = U128::new();
-        while y != zero {
-            if (y & one).lower != 0 {
-                result += x;
-            }
-            x <<= 1;
-            y >>= 1;
+        let mut result = self.lower.overflowing_mul(other.lower);
+        if self.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.lower * other.upper;
+        } else if other.upper == 0 {
+            // panic in case of overflow
+            result.upper += self.upper * other.lower;
         }
 
         result

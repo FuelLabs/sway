@@ -1,5 +1,5 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
 use forc_util::{find_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{language::parsed::TreeType, parse};
+use sway_core::{language::parsed::TreeType, parse_tree_type};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
@@ -27,25 +27,41 @@ impl ManifestFile {
     /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
     /// returns a `WorkspaceManifestFile` if within a workspace directory.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        if let Ok(package_manifest) = PackageManifestFile::from_dir(manifest_dir) {
-            Ok(ManifestFile::Package(Box::new(package_manifest)))
-        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_dir(manifest_dir) {
-            Ok(ManifestFile::Workspace(workspace_manifest))
+        let maybe_pkg_manifest = PackageManifestFile::from_dir(manifest_dir);
+        let manifest_file = if let Err(e) = maybe_pkg_manifest {
+            if e.to_string().contains("missing field `project`") {
+                // This might be a workspace manifest file
+                let workspace_manifest_file = WorkspaceManifestFile::from_dir(manifest_dir)?;
+                ManifestFile::Workspace(workspace_manifest_file)
+            } else {
+                bail!("{}", e)
+            }
+        } else if let Ok(pkg_manifest) = maybe_pkg_manifest {
+            ManifestFile::Package(Box::new(pkg_manifest))
         } else {
             bail!("Cannot find a valid `Forc.toml` at {:?}", manifest_dir)
-        }
+        };
+        Ok(manifest_file)
     }
 
     /// Returns a `PackageManifestFile` if the path is pointing to package manifest, otherwise
     /// returns a `WorkspaceManifestFile` if it is pointing to a workspace manifest.
     pub fn from_file(path: PathBuf) -> Result<Self> {
-        if let Ok(package_manifest) = PackageManifestFile::from_file(path.clone()) {
-            Ok(ManifestFile::Package(Box::new(package_manifest)))
-        } else if let Ok(workspace_manifest) = WorkspaceManifestFile::from_file(path.clone()) {
-            Ok(ManifestFile::Workspace(workspace_manifest))
+        let maybe_pkg_manifest = PackageManifestFile::from_file(path.clone());
+        let manifest_file = if let Err(e) = maybe_pkg_manifest {
+            if e.to_string().contains("missing field `project`") {
+                // This might be a workspace manifest file
+                let workspace_manifest_file = WorkspaceManifestFile::from_file(path)?;
+                ManifestFile::Workspace(workspace_manifest_file)
+            } else {
+                bail!("{}", e)
+            }
+        } else if let Ok(pkg_manifest) = maybe_pkg_manifest {
+            ManifestFile::Package(Box::new(pkg_manifest))
         } else {
             bail!("Cannot find a valid `Forc.toml` at {:?}", path)
-        }
+        };
+        Ok(manifest_file)
     }
 
     /// The path to the `Forc.toml` from which this manifest was loaded.
@@ -75,6 +91,8 @@ impl ManifestFile {
                 // Check if this package is in a workspace, in that case insert all member manifests
                 if let Some(workspace_manifest_file) = pkg_manifest_file.workspace()? {
                     for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                        let member_manifest =
+                            member_manifest.with_context(|| "Invalid member manifest")?;
                         member_manifest_files
                             .insert(member_manifest.project.name.clone(), member_manifest);
                     }
@@ -85,6 +103,8 @@ impl ManifestFile {
             }
             ManifestFile::Workspace(workspace_manifest_file) => {
                 for member_manifest in workspace_manifest_file.member_pkg_manifests()? {
+                    let member_manifest =
+                        member_manifest.with_context(|| "Invalid member manifest")?;
                     member_manifest_files
                         .insert(member_manifest.project.name.clone(), member_manifest);
                 }
@@ -277,14 +297,14 @@ impl PackageManifestFile {
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {
         let entry_string = self.entry_string()?;
-        let parse_res = parse(entry_string, None);
-        match parse_res.value {
-            Some(parse_program) => Ok(parse_program.kind),
-            None => bail!(parsing_failed(&self.project.name, parse_res.errors)),
-        }
+        let parse_res = parse_tree_type(entry_string);
+        parse_res
+            .value
+            .ok_or_else(|| parsing_failed(&self.project.name, parse_res.errors))
     }
 
-    /// Given the current directory and expected program type, determines whether the correct program type is present.
+    /// Given the current directory and expected program type,
+    /// determines whether the correct program type is present.
     pub fn check_program_type(&self, expected_types: Vec<TreeType>) -> Result<()> {
         let parsed_type = self.program_type()?;
         if !expected_types.contains(&parsed_type) {
@@ -660,6 +680,12 @@ pub struct WorkspaceManifestFile {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct WorkspaceManifest {
+    workspace: Workspace,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct Workspace {
     pub members: Vec<PathBuf>,
 }
 
@@ -692,21 +718,27 @@ impl WorkspaceManifestFile {
 
     /// Returns an iterator over relative paths of workspace members.
     pub fn members(&self) -> impl Iterator<Item = &PathBuf> + '_ {
-        self.members.iter()
+        self.workspace.members.iter()
     }
 
     /// Returns an iterator over workspace member root directories.
     ///
     /// This will always return canonical paths.
     pub fn member_paths(&self) -> Result<impl Iterator<Item = PathBuf> + '_> {
-        Ok(self.members.iter().map(|member| self.dir().join(member)))
+        Ok(self
+            .workspace
+            .members
+            .iter()
+            .map(|member| self.dir().join(member)))
     }
 
     /// Returns an iterator over workspace member package manifests.
-    pub fn member_pkg_manifests(&self) -> Result<impl Iterator<Item = PackageManifestFile> + '_> {
+    pub fn member_pkg_manifests(
+        &self,
+    ) -> Result<impl Iterator<Item = Result<PackageManifestFile>> + '_> {
         let member_paths = self.member_paths()?;
         let member_pkg_manifests =
-            member_paths.flat_map(|member_path| PackageManifestFile::from_dir(&member_path));
+            member_paths.map(|member_path| PackageManifestFile::from_dir(&member_path));
         Ok(member_pkg_manifests)
     }
 
@@ -764,7 +796,7 @@ impl WorkspaceManifest {
     ///
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
-        for member in self.members.iter() {
+        for member in self.workspace.members.iter() {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
                 bail!(
