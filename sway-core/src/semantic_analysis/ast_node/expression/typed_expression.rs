@@ -381,12 +381,12 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let ty::TyVariableDeclaration {
                     name: decl_name,
-                    body,
                     mutability,
+                    return_type,
                     ..
                 } = &**decl;
                 ty::TyExpression {
-                    return_type: body.return_type,
+                    return_type: *return_type,
                     expression: ty::TyExpressionVariant::VariableExpression {
                         name: decl_name.clone(),
                         span: name.span(),
@@ -398,7 +398,7 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
-                    value,
+                    return_type,
                     ..
                 } = check!(
                     CompileResult::from(de_get_constant(decl_id.clone(), &span)),
@@ -407,7 +407,7 @@ impl ty::TyExpression {
                     errors
                 );
                 ty::TyExpression {
-                    return_type: value.return_type,
+                    return_type,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -1632,6 +1632,10 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        if ctx.kind() == TreeType::Predicate {
+            errors.push(CompileError::DisallowedWhileInPredicate { span: span.clone() });
+        }
+
         let type_engine = ctx.type_engine;
         let typed_condition = {
             let ctx = ctx
@@ -1679,10 +1683,10 @@ impl ty::TyExpression {
         let mut warnings = vec![];
 
         let type_engine = ctx.type_engine;
-        let ctx = ctx
+        let mut ctx = ctx
             .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
             .with_help_text("");
-        // ensure that the lhs is a variable expression or struct field access
+        // ensure that the lhs is a supported expression kind
         match lhs {
             ReassignmentTarget::VariableExpression(var) => {
                 let mut expr = var;
@@ -1726,6 +1730,20 @@ impl ty::TyExpression {
                             ..
                         }) => {
                             names_vec.push(ty::ProjectionKind::TupleField { index, index_span });
+                            expr = prefix;
+                        }
+                        ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
+                            let ctx = ctx.by_ref().with_help_text("");
+                            let typed_index = check!(
+                                ty::TyExpression::type_check(ctx, index.as_ref().clone()),
+                                ty::TyExpression::error(span.clone(), type_engine),
+                                warnings,
+                                errors
+                            );
+                            names_vec.push(ty::ProjectionKind::ArrayIndex {
+                                index: Box::new(typed_index),
+                                index_span: index.span(),
+                            });
                             expr = prefix;
                         }
                         _ => {

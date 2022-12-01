@@ -7,6 +7,7 @@ use sway_types::Spanned;
 
 impl Parse for ItemStruct {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStruct> {
+        let visibility = parser.take();
         // Parse `struct`, or recover on `class` as if `struct` was written.
         let struct_token = if let Some(ct) = parser.take::<ClassToken>() {
             parser.emit_error(ParseErrorKind::UnexpectedClass);
@@ -16,7 +17,7 @@ impl Parse for ItemStruct {
         };
 
         Ok(ItemStruct {
-            visibility: None,
+            visibility,
             struct_token,
             name: parser.parse()?,
             generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
