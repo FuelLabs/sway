@@ -1,11 +1,12 @@
 [package]
 name = "forc-fs"
 version = "0.31.3"
+authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Filesystem abstraction for Forc"
 
 [dependencies]
-anyhow = "1.0.66"
-file-lock = "2.1.6"
-tempfile = "3.3.0"
+file-lock = "2.1"
