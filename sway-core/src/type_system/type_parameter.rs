@@ -223,9 +223,18 @@ impl TypeParameter {
                 // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
                 let mut full_trait_name = trait_name.clone();
                 if trait_name.prefixes.is_empty() {
-                    if let Some(vec) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
+                    if let Some(use_synonym) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
+                        let mut prefixes = use_synonym.0.clone();
+                        for mod_path in ctx.namespace.mod_path() {
+                            if prefixes[0].as_str() == mod_path.as_str() {
+                                prefixes.drain(0..1);
+                            } else {
+                                prefixes = use_synonym.0.clone();
+                                break;
+                            }
+                        }
                         full_trait_name = CallPath {
-                            prefixes: vec.0.clone(),
+                            prefixes,
                             suffix: trait_name.suffix.clone(),
                             is_absolute: false,
                         }
