@@ -18,7 +18,7 @@ use tower_lsp::lsp_types::{Position, Range};
 /// See this issue https://github.com/FuelLabs/sway/issues/2257 for more information about why they are
 /// useful to the language server.
 #[derive(Debug, Clone)]
-pub(crate) enum AstToken {
+pub enum AstToken {
     Declaration(Declaration),
     Expression(Expression),
     StructExpressionField(StructExpressionField),
@@ -34,7 +34,7 @@ pub(crate) enum AstToken {
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
 #[derive(Debug, Clone)]
-pub(crate) enum TypedAstToken {
+pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
@@ -49,7 +49,7 @@ pub(crate) enum TypedAstToken {
 
 /// These variants are used to represent the semantic type of the [Token].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum SymbolKind {
+pub enum SymbolKind {
     Field,
     ValueParam,
     Function,
@@ -70,7 +70,7 @@ pub(crate) enum SymbolKind {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TypeDefinition {
+pub enum TypeDefinition {
     TypeId(TypeId),
     Ident(Ident),
 }
@@ -80,7 +80,7 @@ pub(crate) enum TypeDefinition {
 /// It also holds the type definition & semantic type of the token if they could be inferred
 /// during traversal of the AST's.
 #[derive(Debug, Clone)]
-pub(crate) struct Token {
+pub struct Token {
     pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
@@ -91,7 +91,7 @@ impl Token {
     /// Create a new token with the given [SymbolKind].
     /// This function is intended to be used during traversal of the
     /// [sway_core::language::parsed::ParseProgram] AST.
-    pub(crate) fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
+    pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
             parsed: token,
             typed: None,
@@ -101,7 +101,7 @@ impl Token {
     }
 
     /// Return the [Ident] of the declaration of the provided token.
-    pub(crate) fn declared_token_ident(&self, type_engine: &TypeEngine) -> Option<Ident> {
+    pub fn declared_token_ident(&self, type_engine: &TypeEngine) -> Option<Ident> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => ident_of_type_id(type_engine, type_id),
             TypeDefinition::Ident(ident) => Some(ident.clone()),
@@ -111,7 +111,7 @@ impl Token {
     /// Return the [Span] of the declaration of the provided token. This is useful for
     /// performaing == comparisons on spans. We need to do this instead of comparing
     /// the [Ident] because the [PartialEq] implementation is only comparing the name.
-    pub(crate) fn declared_token_span(&self, type_engine: &TypeEngine) -> Option<Span> {
+    pub fn declared_token_span(&self, type_engine: &TypeEngine) -> Option<Span> {
         self.type_def.as_ref().and_then(|type_def| match type_def {
             TypeDefinition::TypeId(type_id) => Some(ident_of_type_id(type_engine, type_id)?.span()),
             TypeDefinition::Ident(ident) => Some(ident.span()),
@@ -120,7 +120,7 @@ impl Token {
 }
 
 /// Check if the given method is a [core::ops] application desugared from short-hand syntax like / + * - etc.
-pub(crate) fn desugared_op(prefixes: &[Ident]) -> bool {
+pub fn desugared_op(prefixes: &[Ident]) -> bool {
     let prefix0 = prefixes.get(0).map(|ident| ident.as_str());
     let prefix1 = prefixes.get(1).map(|ident| ident.as_str());
     if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
@@ -131,12 +131,12 @@ pub(crate) fn desugared_op(prefixes: &[Ident]) -> bool {
 
 /// We need to do this work around as the custom [PartialEq] for [Ident] impl
 /// only checks for the string, not the [Span].
-pub(crate) fn to_ident_key(ident: &Ident) -> (Ident, Span) {
+pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
     (ident.clone(), ident.span())
 }
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
-pub(crate) fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
+pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
     match type_engine.look_up_type_id(*type_id) {
         TypeInfo::UnknownGeneric { name, .. }
         | TypeInfo::Enum { name, .. }
@@ -148,10 +148,7 @@ pub(crate) fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Op
 
 /// Intended to be used during traversal of the [sway_core::language::parsed::ParseProgram] AST.
 /// We can then use the [TypeInfo] to infer the semantic type of the token before type-checking.
-pub(crate) fn type_info_to_symbol_kind(
-    type_engine: &TypeEngine,
-    type_info: &TypeInfo,
-) -> SymbolKind {
+pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) -> SymbolKind {
     match type_info {
         TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Str(..) | TypeInfo::B256 => {
             SymbolKind::BuiltinType
@@ -168,7 +165,7 @@ pub(crate) fn type_info_to_symbol_kind(
 }
 
 /// Given a [Span], convert into a [Range] and return.
-pub(crate) fn get_range_from_span(span: &Span) -> Range {
+pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
 

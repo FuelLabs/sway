@@ -2,7 +2,7 @@ use crate::core::token::{get_range_from_span, SymbolKind, Token};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{self, Location, SymbolInformation, Url};
 
-pub(crate) fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
+pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
 where
     I: Iterator<Item = (Ident, Token)>,
 {
@@ -17,7 +17,7 @@ where
 }
 
 /// Given a `token::SymbolKind`, return the `lsp_types::SymbolKind` that corresponds to it.
-pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
+pub fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,

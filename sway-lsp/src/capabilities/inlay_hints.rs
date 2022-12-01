@@ -12,18 +12,18 @@ use tower_lsp::lsp_types::{self, Range, Url};
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum InlayKind {
+pub enum InlayKind {
     TypeHint,
 }
 
 #[derive(Debug)]
-pub(crate) struct InlayHint {
+pub struct InlayHint {
     pub range: Range,
     pub kind: InlayKind,
     pub label: String,
 }
 
-pub(crate) fn inlay_hints(
+pub fn inlay_hints(
     session: Arc<Session>,
     uri: &Url,
     range: &Range,
@@ -80,7 +80,7 @@ pub(crate) fn inlay_hints(
     Some(hints)
 }
 
-pub(crate) fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
+pub fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // after annotated thing

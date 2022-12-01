@@ -13,10 +13,7 @@ use tower_lsp::lsp_types::{
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
-pub(crate) fn semantic_tokens_full(
-    session: Arc<Session>,
-    url: &Url,
-) -> Option<SemanticTokensResult> {
+pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
     let tokens = session.token_map.tokens_for_file(url);
 
     // The tokens need sorting by their span so each token is sequential
@@ -38,7 +35,7 @@ pub(crate) fn semantic_tokens_full(
 /// Tokens are encoded relative to each other.
 ///
 /// This is taken from rust-analyzer which is also a direct port of <https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45>
-pub(crate) struct SemanticTokensBuilder {
+pub struct SemanticTokensBuilder {
     id: String,
     prev_line: u32,
     prev_char: u32,
@@ -46,7 +43,7 @@ pub(crate) struct SemanticTokensBuilder {
 }
 
 impl SemanticTokensBuilder {
-    pub(crate) fn new(id: String) -> Self {
+    pub fn new(id: String) -> Self {
         SemanticTokensBuilder {
             id,
             prev_line: 0,
@@ -56,7 +53,7 @@ impl SemanticTokensBuilder {
     }
 
     /// Push a new token onto the builder
-    pub(crate) fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
+    pub fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
         let mut push_line = range.start.line as u32;
         let mut push_char = range.start.character as u32;
 
@@ -84,7 +81,7 @@ impl SemanticTokensBuilder {
         self.prev_char = range.start.character as u32;
     }
 
-    pub(crate) fn build(self) -> SemanticTokens {
+    pub fn build(self) -> SemanticTokens {
         SemanticTokens {
             result_id: Some(self.id),
             data: self.data,
@@ -92,7 +89,7 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
+pub fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)
@@ -111,7 +108,7 @@ pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens
     builder.build()
 }
 
-pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
+pub const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::STRING,
     SemanticTokenType::NUMBER,
     SemanticTokenType::NAMESPACE,
@@ -132,7 +129,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("builtinType"),
 ];
 
-pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
+pub const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     // declaration of symbols
     SemanticTokenModifier::DECLARATION,
     // definition of symbols as in header files

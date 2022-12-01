@@ -5,7 +5,7 @@ use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 use crate::error::DocumentError;
 
 #[derive(Debug)]
-pub(crate) struct TextDocument {
+pub struct TextDocument {
     #[allow(dead_code)]
     language_id: String,
     #[allow(dead_code)]
@@ -15,7 +15,7 @@ pub(crate) struct TextDocument {
 }
 
 impl TextDocument {
-    pub(crate) fn build_from_path(path: &str) -> Result<Self, DocumentError> {
+    pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
         std::fs::read_to_string(path)
             .map(|content| Self {
                 language_id: "sway".into(),
@@ -26,18 +26,18 @@ impl TextDocument {
             .map_err(|_| DocumentError::DocumentNotFound { path: path.into() })
     }
 
-    pub(crate) fn get_uri(&self) -> &str {
+    pub fn get_uri(&self) -> &str {
         &self.uri
     }
 
-    pub(crate) fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
+    pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {
         let edit = self.build_edit(change);
 
         self.content.remove(edit.start_index..edit.end_index);
         self.content.insert(edit.start_index, edit.change_text);
     }
 
-    pub(crate) fn get_text(&self) -> String {
+    pub fn get_text(&self) -> String {
         self.content.to_string()
     }
 }

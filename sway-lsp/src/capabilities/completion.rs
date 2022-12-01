@@ -4,7 +4,7 @@ use crate::core::{
 };
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
-pub(crate) fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
+pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     let is_initial_declaration = |token_type: &Token| -> bool {
@@ -40,7 +40,7 @@ pub(crate) fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
 }
 
 /// Given a `SymbolKind`, return the `lsp_types::CompletionItemKind` that corresponds to it.
-pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
+pub fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
     match symbol_kind {
         SymbolKind::Field => Some(CompletionItemKind::FIELD),
         SymbolKind::BuiltinType => Some(CompletionItemKind::TYPE_PARAMETER),

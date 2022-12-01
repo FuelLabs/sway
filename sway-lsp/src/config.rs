@@ -3,7 +3,7 @@ use tracing::metadata::LevelFilter;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct Config {
+pub struct Config {
     pub debug: DebugConfig,
     pub logging: LoggingConfig,
     pub inlay_hints: InlayHintsConfig,
@@ -17,12 +17,12 @@ struct TraceConfig {}
 // Options for debugging various parts of the server
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DebugConfig {
+pub struct DebugConfig {
     pub show_collected_tokens_as_warnings: Warnings,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LoggingConfig {
+pub struct LoggingConfig {
     #[serde(with = "LevelFilterDef")]
     pub level: LevelFilter,
 }
@@ -52,7 +52,7 @@ enum LevelFilterDef {
 /// Instructs the client to draw squiggly lines
 /// under all of the tokens that our server managed to parse.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-pub(crate) enum Warnings {
+pub enum Warnings {
     Default,
     Parsed,
     Typed,
@@ -60,7 +60,7 @@ pub(crate) enum Warnings {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct InlayHintsConfig {
+pub struct InlayHintsConfig {
     /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
     pub render_colons: bool,
     /// Whether to show inlay type hints for variables.

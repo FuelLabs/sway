@@ -12,7 +12,7 @@ use sway_core::{
 use sway_types::Spanned;
 
 /// Insert Declaration tokens into the TokenMap.
-pub(crate) fn collect_parsed_declaration(node: &AstNode, tokens: &TokenMap) {
+pub fn collect_parsed_declaration(node: &AstNode, tokens: &TokenMap) {
     if let AstNodeContent::Declaration(declaration) = &node.content {
         let parsed_token = AstToken::Declaration(declaration.clone());
 
@@ -35,7 +35,7 @@ pub(crate) fn collect_parsed_declaration(node: &AstNode, tokens: &TokenMap) {
 }
 
 /// Insert TypedDeclaration tokens into the TokenMap.
-pub(crate) fn collect_typed_declaration(node: &ty::TyAstNode, tokens: &TokenMap) {
+pub fn collect_typed_declaration(node: &ty::TyAstNode, tokens: &TokenMap) {
     if let ty::TyAstNodeContent::Declaration(declaration) = &node.content {
         let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 

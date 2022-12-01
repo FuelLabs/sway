@@ -7,7 +7,7 @@ use std::sync::Arc;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
 
-pub(crate) fn rename(
+pub fn rename(
     session: Arc<Session>,
     new_name: String,
     url: Url,
@@ -32,7 +32,7 @@ pub(crate) fn rename(
     })
 }
 
-pub(crate) fn prepare_rename(
+pub fn prepare_rename(
     session: Arc<Session>,
     url: Url,
     position: Position,

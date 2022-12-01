@@ -3,7 +3,7 @@ use std::sync::Arc;
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{Position, Range, TextEdit};
 
-pub(crate) fn get_page_text_edit(
+pub fn get_page_text_edit(
     text: Arc<str>,
     formatter: &mut Formatter,
 ) -> Result<TextEdit, LanguageServerError> {

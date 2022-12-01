@@ -30,38 +30,38 @@ use tower_lsp::lsp_types::{
     SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
-pub(crate) type Documents = DashMap<String, TextDocument>;
-pub(crate) type ProjectDirectory = PathBuf;
+pub type Documents = DashMap<String, TextDocument>;
+pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
-pub(crate) struct CompiledProgram {
+pub struct CompiledProgram {
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Session {
+pub struct Session {
     pub documents: Documents,
     pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
-    pub sync: SyncWorkspace,
     pub type_engine: RwLock<TypeEngine>,
+    pub sync: SyncWorkspace,
 }
 
 impl Session {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Session {
             documents: DashMap::new(),
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
-            sync: SyncWorkspace::new(),
             type_engine: <_>::default(),
+            sync: SyncWorkspace::new(),
         }
     }
 
-    pub(crate) fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
@@ -79,7 +79,7 @@ impl Session {
         self.sync.manifest_dir().map_err(Into::into)
     }
 
-    pub(crate) fn shutdown(&self) {
+    pub fn shutdown(&self) {
         // shutdown the thread watching the manifest file
         let handle = self.sync.notify_join_handle.read();
         if let Some(join_handle) = &*handle {
@@ -90,12 +90,12 @@ impl Session {
         self.sync.remove_temp_dir();
     }
 
-    /// Return a reference to the `TokenMap` of the current session.
-    pub(crate) fn token_map(&self) -> &TokenMap {
+    /// Return a reference to the [TokenMap] of the current session.
+    pub fn token_map(&self) -> &TokenMap {
         &self.token_map
     }
 
-    pub(crate) fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
+    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -187,7 +187,7 @@ impl Session {
         Ok(diagnostics)
     }
 
-    pub(crate) fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
+    pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let (_, token) = self.token_map.token_at_position(url, position)?;
         let token_ranges = self
             .token_map
@@ -198,7 +198,7 @@ impl Session {
         Some(token_ranges)
     }
 
-    pub(crate) fn token_definition_response(
+    pub fn token_definition_response(
         &self,
         uri: Url,
         position: Position,
@@ -219,20 +219,20 @@ impl Session {
             })
     }
 
-    pub(crate) fn completion_items(&self) -> Option<Vec<CompletionItem>> {
+    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
         Some(capabilities::completion::to_completion_items(
             self.token_map(),
         ))
     }
 
-    pub(crate) fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
+    pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
         let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
     }
 
-    pub(crate) fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
         let document =
             self.documents
                 .get(url.path())
@@ -244,7 +244,7 @@ impl Session {
             .map(|page_text_edit| vec![page_text_edit])
     }
 
-    pub(crate) fn handle_open_file(&self, uri: &Url) {
+    pub fn handle_open_file(&self, uri: &Url) {
         if !self.documents.contains_key(uri.path()) {
             if let Ok(text_document) = TextDocument::build_from_path(uri.path()) {
                 let _ = self.store_document(text_document);
@@ -253,7 +253,7 @@ impl Session {
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
-    pub(crate) fn update_text_document(
+    pub fn update_text_document(
         &self,
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
@@ -267,7 +267,7 @@ impl Session {
     }
 
     /// Remove the text document from the session.
-    pub(crate) fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
         self.documents
             .remove(url.path())
             .ok_or_else(|| DocumentError::DocumentNotFound {

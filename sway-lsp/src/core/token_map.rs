@@ -9,16 +9,16 @@ use tower_lsp::lsp_types::{Position, Url};
 ///
 /// The TokenMap is a wrapper around a [DashMap], which is a concurrent HashMap.
 #[derive(Debug)]
-pub(crate) struct TokenMap(DashMap<(Ident, Span), Token>);
+pub struct TokenMap(DashMap<(Ident, Span), Token>);
 
 impl TokenMap {
     /// Create a new token map.
-    pub(crate) fn new() -> TokenMap {
+    pub fn new() -> TokenMap {
         TokenMap(DashMap::new())
     }
 
     /// Return an Iterator of tokens belonging to the provided [Url].
-    pub(crate) fn tokens_for_file<'s>(
+    pub fn tokens_for_file<'s>(
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
@@ -39,7 +39,7 @@ impl TokenMap {
     /// Find all references in the TokenMap for a given token.
     ///
     /// This is useful for the highlighting and renaming LSP capabilities.
-    pub(crate) fn all_references_of_token<'s>(
+    pub fn all_references_of_token<'s>(
         &'s self,
         token: &Token,
         type_engine: &'s TypeEngine,
@@ -59,7 +59,7 @@ impl TokenMap {
 
     /// Given a cursor [Position], return the [Ident] of a token in the
     /// Iterator if one exists at that position.
-    pub(crate) fn ident_at_position<I>(&self, cursor_position: Position, tokens: I) -> Option<Ident>
+    pub fn ident_at_position<I>(&self, cursor_position: Position, tokens: I) -> Option<Ident>
     where
         I: Iterator<Item = (Ident, Token)>,
     {
@@ -73,11 +73,7 @@ impl TokenMap {
     }
 
     /// Check if the code editor's cursor is currently over one of our collected tokens.
-    pub(crate) fn token_at_position(
-        &self,
-        uri: &Url,
-        position: Position,
-    ) -> Option<(Ident, Token)> {
+    pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
         match self.ident_at_position(position, tokens) {
             Some(ident) => self.get(&token::to_ident_key(&ident)).map(|item| {
@@ -92,7 +88,7 @@ impl TokenMap {
     ///
     /// This is useful when dealing with tokens that are of the [sway_core::language::ty::TyExpression] type in the AST.
     /// For example, we can then use the `return_type` field which is a [TypeId] to retrieve the declaration Token.
-    pub(crate) fn declaration_of_type_id(
+    pub fn declaration_of_type_id(
         &self,
         type_engine: &TypeEngine,
         type_id: &TypeId,
@@ -109,7 +105,7 @@ impl TokenMap {
 
     /// Returns the [ty::TyStructDeclaration] associated with the TypeId if it
     /// exists within the TokenMap.
-    pub(crate) fn struct_declaration_of_type_id(
+    pub fn struct_declaration_of_type_id(
         &self,
         type_engine: &TypeEngine,
         type_id: &TypeId,

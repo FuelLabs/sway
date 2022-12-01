@@ -24,7 +24,7 @@ use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
 
 #[derive(Debug)]
-pub(crate) struct Backend {
+pub struct Backend {
     pub client: Client,
     pub config: RwLock<Config>,
     sessions: DashMap<PathBuf, Arc<Session>>,

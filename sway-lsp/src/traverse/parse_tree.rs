@@ -27,7 +27,7 @@ use sway_core::{
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
-pub(crate) fn traverse_node(type_engine: &TypeEngine, node: &AstNode, tokens: &TokenMap) {
+pub fn traverse_node(type_engine: &TypeEngine, node: &AstNode, tokens: &TokenMap) {
     match &node.content {
         AstNodeContent::Declaration(declaration) => {
             handle_declaration(type_engine, declaration, tokens)
