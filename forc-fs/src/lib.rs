@@ -28,10 +28,6 @@ impl Filesystem {
         self.root.display()
     }
 
-    pub fn into_path_unlocked(self) -> PathBuf {
-        self.root
-    }
-
     pub fn exists(&self) -> bool {
         self.root.exists()
     }
@@ -41,8 +37,7 @@ impl Filesystem {
     ///
     /// This function will create a file at `path` if it doesn't already exist
     /// (including intermediate directories), and then it will acquire an
-    /// exclusive lock on `path`. If the process must block waiting for the
-    /// lock, the `msg` is printed to `config`.
+    /// exclusive lock on `path`.
     ///
     /// The returned file can be accessed to look at the path and also has
     /// read/write access to the underlying file.
@@ -51,7 +46,6 @@ impl Filesystem {
         P: AsRef<Path>,
     {
         let is_blocking = true;
-        println!("open rw");
         let options = FileOptions::new().read(true).write(true).create(true);
         FileLock::lock(path, is_blocking, options)
     }
