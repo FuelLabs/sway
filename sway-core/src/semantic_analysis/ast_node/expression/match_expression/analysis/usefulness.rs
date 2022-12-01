@@ -187,8 +187,8 @@ use super::{
 ///
 /// This algorithm checks is a match expression is exhaustive and if its match
 /// arms are reachable by applying the above definitions of usefulness and
-/// witnesses. This algorithm sequentionally creates a `WitnessReport` for every
-/// match arm by calling *U(P, q)*, where *P* is the `Matrix` of patterns seen
+/// witnesses. This algorithm sequentially creates a [WitnessReport] for every
+/// match arm by calling *U(P, q)*, where *P* is the [Matrix] of patterns seen
 /// so far and *q* is the current pattern under investigation for its
 /// reachability. A match arm is reachable if its `WitnessReport` is non-empty.
 /// Once all existing match arms have been analyzed, the match expression is
@@ -207,6 +207,17 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
+
+    // If the provided type does has no valid constructor and there are no
+    // branches in the match expression (i.e. no scrutinees to check), then
+    // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
+    // case.
+    if !type_engine.look_up_type_id(type_id).has_valid_constructor() && scrutinees.is_empty() {
+        let witness_report = WitnessReport::NoWitnesses;
+        let arms_reachability = vec![];
+        return ok((witness_report, arms_reachability), warnings, errors);
+    }
+
     let factory = check!(
         ConstructorFactory::new(engines.te(), type_id, &span),
         return err(warnings, errors),
@@ -257,7 +268,7 @@ pub(crate) fn check_match_expression_usefulness(
 /// everything else, and what we do for induction depends on what the first
 /// element of *q* is. Depending on if the first element of *q* is a wildcard
 /// pattern, or-pattern, or constructed pattern we do something different. Each
-/// case returns a witness report that we propogate through the recursive steps.
+/// case returns a witness report that we propagate through the recursive steps.
 fn is_useful(
     engines: Engines<'_>,
     factory: &ConstructorFactory,
@@ -557,7 +568,7 @@ fn is_useful_constructed(
     );
     if s_c_p_m > 0 && s_c_p_n != (c.a() + q.len() - 1) {
         errors.push(CompileError::Internal(
-            "S(c,P) matrix is misshappen",
+            "S(c,P) matrix is misshapen",
             span.clone(),
         ));
         return err(warnings, errors);
@@ -758,8 +769,8 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
 /// Given a constructor *c* and a `PatStack` *pⁱ* from `Matrix` *P*, compute the
 /// resulting row of the specialized `Matrix` *S(c, P)*.
 ///
-/// Intuition: a row in the specialized `Matrix` "expands itself" or "eliminates
-/// itself" depending on if its possible to furthur "drill down" into the
+/// Intuition: a row in the specialized [Matrix] "expands itself" or "eliminates
+/// itself" depending on if its possible to further "drill down" into the
 /// elements of *P* given a *c* that we are specializing for. It is possible to
 /// "drill down" when the first element of a row of *P* *pⁱ₁* matches *c* (in
 /// which case it is possible to "drill down" into the arguments for *pⁱ₁*),
