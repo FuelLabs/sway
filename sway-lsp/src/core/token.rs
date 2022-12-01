@@ -30,6 +30,10 @@ pub enum AstToken {
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
+
+    Ident(Ident),
+    Keyword(Ident),
+    Punct(Ident),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -68,6 +72,7 @@ pub enum SymbolKind {
     BuiltinType,
     Module,
     TypeParameter,
+    Keyword,
     Unknown,
 }
 

@@ -136,6 +136,11 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
+        for (k, v) in &member_manifests {
+            let source = v.entry_string().unwrap();
+            let _ = traverse::items::parse_module(source, Arc::new(v.entry_path()));
+        }
+
         let mut diagnostics = Vec::new();
         let type_engine = &*self.type_engine.read();
         let declaration_engine = &*self.declaration_engine.read();
