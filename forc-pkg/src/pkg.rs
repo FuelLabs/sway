@@ -1806,22 +1806,22 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> Filesystem 
 ///
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Filesystem> {
-    let root = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
+    let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        let _lock = root.open_rw(".forc-lock")?;
-        if root.exists() {
-            let _ = std::fs::remove_dir_all(&root);
+        let _lock = path.open_rw(".forc-lock")?;
+        if path.exists() {
+            let _ = std::fs::remove_dir_all(&path);
         };
-        std::fs::create_dir_all(&root)?;
+        std::fs::create_dir_all(&path)?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().target_dir(root.as_ref());
+        checkout.force().target_dir(path.as_ref());
         repo.checkout_head(Some(&mut checkout))?;
 
         // Fetch HEAD time and create an index
@@ -1837,12 +1837,12 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         );
         // Write the index file
         fs::write(
-            root.join(".forc_index"),
+            path.join(".forc_index"),
             serde_json::to_string(&source_index)?,
         )?;
         Ok(())
     })?;
-    Ok(root)
+    Ok(path)
 }
 
 /// Search local checkout dir for git sources, for non-branch git references tries to find the

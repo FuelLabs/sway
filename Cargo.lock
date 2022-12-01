@@ -1779,9 +1779,7 @@ dependencies = [
 name = "forc-fs"
 version = "0.31.3"
 dependencies = [
- "anyhow",
  "file-lock",
- "tempfile",
 ]
 
 [[package]]
