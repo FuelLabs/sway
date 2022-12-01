@@ -847,7 +847,7 @@ fn dep_path(
     let dep_name = &dep.name;
     match &dep.source {
         SourcePinned::Git(git) => {
-            let repo_path = git_commit_root(&dep.name, &git.source.repo, &git.commit_hash);
+            let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
             find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
                 anyhow!(
                     "failed to find package `{}` in {}",
@@ -1722,7 +1722,7 @@ fn pin_pkg(
                 // newer commit.
                 let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
                 let repo_path =
-                    git_commit_root(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
+                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
                 (pinned_git, repo_path)
             } else {
                 // If we are in online mode and the reference is to a specific commit (tag or
@@ -1739,7 +1739,7 @@ fn pin_pkg(
                         // If the checkout we are looking for does not exists locally or an
                         // error happened during the search fetch it
                         let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-                        let repo_path = git_commit_root(
+                        let repo_path = git_commit_path(
                             &name,
                             &pinned_git.source.repo,
                             &pinned_git.commit_hash,
@@ -1795,7 +1795,7 @@ fn pin_pkg(
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-pub fn git_commit_root(name: &str, repo: &Url, commit_hash: &str) -> Filesystem {
+pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> Filesystem {
     let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
@@ -1806,7 +1806,7 @@ pub fn git_commit_root(name: &str, repo: &Url, commit_hash: &str) -> Filesystem 
 ///
 /// Returns the location of the checked out commit.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Filesystem> {
-    let root = git_commit_root(name, &pinned.source.repo, &pinned.commit_hash);
+    let root = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
