@@ -1610,7 +1610,7 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-    let lock = repo_dir.open_rw(".forc-lock")?;
+    let _lock = repo_dir.open_rw(".forc-lock")?;
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
@@ -1650,7 +1650,7 @@ where
 /// This clones the repository to a temporary directory in order to determine the commit at the
 /// HEAD of the given git reference.
 pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_tmp_git_repo(1, name, &source, |repo| {
+    let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
         // Resolve the reference to the commit ID.
         let commit_id = source
             .reference
