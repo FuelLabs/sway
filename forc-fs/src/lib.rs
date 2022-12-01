@@ -32,6 +32,10 @@ impl Filesystem {
         self.root.exists()
     }
 
+    pub fn into_path_unlocked(self) -> PathBuf {
+        self.root
+    }
+
     /// Opens exclusive access to a file, returning the locked version of a
     /// file.
     ///

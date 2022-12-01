@@ -57,7 +57,7 @@ pub fn init(command: TemplateCommand) -> Result<()> {
             if PackageManifest::from_file(manifest_path.as_ref()).is_err() {
                 anyhow::bail!("failed to find a template in {}", command.url);
             }
-            repo_path.as_ref().to_path_buf()
+            repo_path.into_path_unlocked()
         }
     };
 
