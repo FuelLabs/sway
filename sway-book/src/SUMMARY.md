@@ -6,7 +6,7 @@
 - [Installation](./documentation/introduction/installation/index.md)
   - [Fuelup](./documentation/introduction/installation/fuelup.md)
   - [Cargo](./documentation/introduction/installation/cargo.md)
-  - [Tab Completion](./documentation/introduction/installation/tab-completion.md)
+  - [From Source](./documentation/introduction/installation/source.md)
 
 # The Sway Programming Language
 
@@ -145,4 +145,5 @@
 # Fuel Orchestrator (Forc)
 
 - [Commands](./documentation/forc/commands/index.md)
+  - [Tab Completion](./documentation/forc/commands/tab-completion.md)
 - [Plugins](./documentation/forc/plugins/index.md)
