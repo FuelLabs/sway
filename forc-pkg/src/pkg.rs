@@ -7,6 +7,7 @@ use crate::{
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use fd_lock::RwLock;
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success,
@@ -1609,7 +1610,7 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-    let _lock = repo_dir.open_rw(".forc-lock")?;
+    let _lock = RwLock::new(File::open(".forc-lock")?);
 
     if repo_dir.exists() {
         let _ = std::fs::remove_dir_all(&repo_dir);
@@ -1812,7 +1813,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        let _lock = path.open_rw(".forc-lock")?;
+        let _lock = RwLock::new(File::open(".forc-lock")?);
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
