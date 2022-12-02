@@ -5,7 +5,6 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
-use forc_fs::Filesystem;
 use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -115,8 +114,8 @@ pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
 }
 
 /// Returns the user's `.forc` directory, `$HOME/.forc` by default.
-pub fn user_forc_directory() -> Filesystem {
-    Filesystem::new(
+pub fn user_forc_directory() -> PathBuf {
+    PathBuf::new(
         dirs::home_dir()
             .expect("unable to find the user home directory")
             .join(constants::USER_FORC_DIRECTORY),
@@ -124,7 +123,7 @@ pub fn user_forc_directory() -> Filesystem {
 }
 
 /// The location at which `forc` will checkout git repositories.
-pub fn git_checkouts_directory() -> Filesystem {
+pub fn git_checkouts_directory() -> PathBuf {
     user_forc_directory().join("git").join("checkouts")
 }
 

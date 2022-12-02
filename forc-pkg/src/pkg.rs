@@ -7,7 +7,6 @@ use crate::{
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
-use forc_fs::Filesystem;
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success,
@@ -1307,6 +1306,7 @@ fn pkg_graph_to_manifest_map(
         manifest_map.insert(dep.id(), dep_manifest);
     }
 
+    String::from_utf8(vec)
     Ok(manifest_map)
 }
 
@@ -1557,7 +1557,7 @@ fn hash_url(url: &Url) -> u64 {
 /// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
 /// case that multiple processes or threads may be building different projects that may require
 /// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> Filesystem {
+fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
@@ -1795,7 +1795,7 @@ fn pin_pkg(
 /// ```
 ///
 /// where `<repo_url_hash>` is a hash of the source repository URL.
-pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> Filesystem {
+pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
     let repo_dir_name = git_repo_dir_name(name, repo);
     git_checkouts_directory()
         .join(repo_dir_name)
@@ -1805,7 +1805,7 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> Filesystem 
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
-pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<Filesystem> {
+pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
@@ -1850,7 +1850,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
 fn search_git_source_locally(
     name: &str,
     git_source: &SourceGit,
-) -> Result<Option<(Filesystem, String)>> {
+) -> Result<Option<(PathBuf, String)>> {
     // In the checkouts dir iterate over dirs whose name starts with `name`
     let checkouts_dir = git_checkouts_directory();
     match &git_source.reference {
@@ -1870,10 +1870,10 @@ fn search_git_source_locally(
 
 /// Search and collect repos from checkouts_dir that are from given branch and for the given package
 fn collect_local_repos_with_branch(
-    checkouts_dir: Filesystem,
+    checkouts_dir: PathBuf,
     package_name: &str,
     branch_name: &str,
-) -> Result<Vec<(Filesystem, HeadWithTime)>> {
+) -> Result<Vec<(PathBuf, HeadWithTime)>> {
     let mut list_of_repos = Vec::new();
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Check if the repo's HEAD commit to verify it is from desired branch
@@ -1889,10 +1889,10 @@ fn collect_local_repos_with_branch(
 
 /// Search an exact reference in locally available repos
 fn find_exact_local_repo_with_reference(
-    checkouts_dir: Filesystem,
+    checkouts_dir: PathBuf,
     package_name: &str,
     git_reference: &GitReference,
-) -> Result<Option<(Filesystem, String)>> {
+) -> Result<Option<(PathBuf, String)>> {
     let mut found_local_repo = None;
     if let GitReference::Tag(tag) = git_reference {
         found_local_repo = find_repo_with_tag(tag, package_name, checkouts_dir)?;
@@ -1906,8 +1906,8 @@ fn find_exact_local_repo_with_reference(
 fn find_repo_with_tag(
     tag: &str,
     package_name: &str,
-    checkouts_dir: Filesystem,
-) -> Result<Option<(Filesystem, String)>> {
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
     let mut found_local_repo = None;
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Get current head of the repo
@@ -1926,8 +1926,8 @@ fn find_repo_with_tag(
 fn find_repo_with_rev(
     rev: &str,
     package_name: &str,
-    checkouts_dir: Filesystem,
-) -> Result<Option<(Filesystem, String)>> {
+    checkouts_dir: PathBuf,
+) -> Result<Option<(PathBuf, String)>> {
     let mut found_local_repo = None;
     with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
         // Get current head of the repo
@@ -1944,9 +1944,9 @@ fn find_repo_with_rev(
 
 /// Search local checkouts directory and apply the given function. This is used for iterating over
 /// possible options of a given package.
-fn with_search_checkouts<F>(checkouts_dir: Filesystem, package_name: &str, mut f: F) -> Result<()>
+fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
 where
-    F: FnMut(GitSourceIndex, Filesystem) -> Result<()>,
+    F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
 {
     for entry in fs::read_dir(checkouts_dir)? {
         let entry = entry?;
@@ -1963,7 +1963,7 @@ where
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
                 if repo_dir.file_type()?.is_dir() {
                     // Get the path of the current repo
-                    let repo_dir_path = Filesystem::new(repo_dir.path());
+                    let repo_dir_path = PathBuf::new(repo_dir.path());
                     // Get the index file from the found path
                     if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
                         let index = serde_json::from_str(&index_file)?;
@@ -2814,7 +2814,7 @@ pub fn parse(
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &Filesystem, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &PathBuf, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -2831,7 +2831,7 @@ pub fn find_within(dir: &Filesystem, pkg_name: &str) -> Option<PathBuf> {
 }
 
 /// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &Filesystem, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_dir_within(dir: &PathBuf, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
