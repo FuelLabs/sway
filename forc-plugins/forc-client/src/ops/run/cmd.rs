@@ -35,6 +35,10 @@ pub struct RunCommand {
     #[clap(long)]
     pub print_ast: bool,
 
+    /// Print the computed DCA (Dead Code Analysis) graph.
+    #[clap(long)]
+    pub print_dca_graph: bool,
+
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
