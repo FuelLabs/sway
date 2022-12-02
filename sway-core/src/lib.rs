@@ -319,7 +319,7 @@ pub fn compile_to_asm(
     build_config: BuildConfig,
 ) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(type_engine, input, initial_namespace, Some(&build_config));
-    ast_to_asm(type_engine, ast_res, &build_config)
+    ast_to_asm(type_engine, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
@@ -327,14 +327,14 @@ pub fn compile_to_asm(
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     type_engine: &TypeEngine,
-    ast_res: CompileResult<ty::TyProgram>,
+    ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    match ast_res.value {
-        None => err(ast_res.warnings, ast_res.errors),
+    match &ast_res.value {
+        None => err(ast_res.warnings.clone(), ast_res.errors.clone()),
         Some(typed_program) => {
-            let mut errors = ast_res.errors;
-            let mut warnings = ast_res.warnings;
+            let mut errors = ast_res.errors.clone();
+            let mut warnings = ast_res.warnings.clone();
             let asm = check!(
                 compile_ast_to_ir_to_asm(type_engine, typed_program, build_config),
                 return deduped_err(warnings, errors),
@@ -348,7 +348,7 @@ pub fn ast_to_asm(
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     type_engine: &TypeEngine,
-    program: ty::TyProgram,
+    program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();

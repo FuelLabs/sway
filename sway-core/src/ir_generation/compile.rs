@@ -22,11 +22,11 @@ use std::collections::HashMap;
 pub(super) fn compile_script(
     type_engine: &TypeEngine,
     context: &mut Context,
-    main_function: ty::TyFunctionDeclaration,
+    main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
-    declarations: Vec<ty::TyDeclaration>,
+    declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: Vec<ty::TyFunctionDeclaration>,
+    test_fns: &[ty::TyFunctionDeclaration],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -63,11 +63,11 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     type_engine: &TypeEngine,
     context: &mut Context,
-    main_function: ty::TyFunctionDeclaration,
+    main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
-    declarations: Vec<ty::TyDeclaration>,
+    declarations: &[ty::TyDeclaration],
     logged_types: &HashMap<TypeId, LogId>,
-    test_fns: Vec<ty::TyFunctionDeclaration>,
+    test_fns: &[ty::TyFunctionDeclaration],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -103,11 +103,11 @@ pub(super) fn compile_predicate(
 
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: Vec<ty::TyFunctionDeclaration>,
+    abi_entries: &[ty::TyFunctionDeclaration],
     namespace: &namespace::Module,
-    declarations: Vec<ty::TyDeclaration>,
+    declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: Vec<ty::TyFunctionDeclaration>,
+    test_fns: &[ty::TyFunctionDeclaration],
     type_engine: &TypeEngine,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -148,9 +148,9 @@ pub(super) fn compile_library(
     type_engine: &TypeEngine,
     context: &mut Context,
     namespace: &namespace::Module,
-    declarations: Vec<ty::TyDeclaration>,
+    declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: Vec<ty::TyFunctionDeclaration>,
+    test_fns: &[ty::TyFunctionDeclaration],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -220,7 +220,7 @@ fn compile_declarations(
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
-    declarations: Vec<ty::TyDeclaration>,
+    declarations: &[ty::TyDeclaration],
 ) -> Result<(), CompileError> {
     for declaration in declarations {
         match declaration {
@@ -276,7 +276,7 @@ pub(super) fn compile_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     is_entry: bool,
 ) -> Result<Option<Function>, CompileError> {
@@ -311,7 +311,7 @@ pub(super) fn compile_entry_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
@@ -333,7 +333,7 @@ pub(super) fn compile_tests(
     md_mgr: &mut MetadataManager,
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: Vec<ty::TyFunctionDeclaration>,
+    test_fns: &[ty::TyFunctionDeclaration],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .into_iter()
@@ -374,7 +374,7 @@ fn compile_fn_with_args(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDeclaration,
     is_entry: bool,
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
@@ -410,7 +410,7 @@ fn compile_fn_with_args(
     }
 
     let span_md_idx = md_mgr.span_to_md(context, &span);
-    let storage_md_idx = md_mgr.purity_to_md(context, purity);
+    let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
     if let Some(inline) = inline_opt {
@@ -425,7 +425,7 @@ fn compile_fn_with_args(
         args,
         ret_type,
         selector,
-        visibility == Visibility::Public,
+        *visibility == Visibility::Public,
         is_entry,
         metadata,
     );
@@ -513,7 +513,7 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: ty::TyFunctionDeclaration,
+    ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     type_engine: &TypeEngine,
 ) -> Result<Function, CompileError> {
