@@ -6,7 +6,7 @@ pub enum Never {}
 
 impl Not for Never {
     fn not(self) -> Self {
-        self
+        match self {}
     }
 }
 
