@@ -18,7 +18,7 @@ abigen!(
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
 
-    let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 1, 10);
+    let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
 
     let messages = setup_single_message(
         &Bech32Address {
