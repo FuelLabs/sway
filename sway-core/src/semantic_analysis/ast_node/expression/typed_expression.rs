@@ -1942,7 +1942,10 @@ mod tests {
                     span: Span::dummy(),
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
-                2,
+                Length {
+                    len: 2,
+                    span: Span::dummy(),
+                },
             )),
         )
     }
@@ -2059,7 +2062,10 @@ mod tests {
                     span: Span::dummy(),
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
-                0,
+                Length {
+                    len: 0,
+                    span: Span::dummy(),
+                },
             )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
