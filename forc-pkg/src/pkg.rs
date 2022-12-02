@@ -1306,7 +1306,6 @@ fn pkg_graph_to_manifest_map(
         manifest_map.insert(dep.id(), dep_manifest);
     }
 
-    String::from_utf8(vec)
     Ok(manifest_map)
 }
 
@@ -1816,12 +1815,12 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let _lock = path.open_rw(".forc-lock")?;
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
-        };
+        }
         std::fs::create_dir_all(&path)?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().target_dir(path.as_ref());
+        checkout.force().target_dir(&path);
         repo.checkout_head(Some(&mut checkout))?;
 
         // Fetch HEAD time and create an index
@@ -1963,7 +1962,7 @@ where
                     .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
                 if repo_dir.file_type()?.is_dir() {
                     // Get the path of the current repo
-                    let repo_dir_path = PathBuf::new(repo_dir.path());
+                    let repo_dir_path = repo_dir.path();
                     // Get the index file from the found path
                     if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
                         let index = serde_json::from_str(&index_file)?;
@@ -2814,7 +2813,7 @@ pub fn parse(
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
 ///
 /// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &PathBuf, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -2831,7 +2830,7 @@ pub fn find_within(dir: &PathBuf, pkg_name: &str) -> Option<PathBuf> {
 }
 
 /// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &PathBuf, pkg_name: &str) -> Option<PathBuf> {
+pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 

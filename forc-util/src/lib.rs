@@ -115,11 +115,9 @@ pub fn default_output_directory(manifest_dir: &Path) -> PathBuf {
 
 /// Returns the user's `.forc` directory, `$HOME/.forc` by default.
 pub fn user_forc_directory() -> PathBuf {
-    PathBuf::new(
-        dirs::home_dir()
-            .expect("unable to find the user home directory")
-            .join(constants::USER_FORC_DIRECTORY),
-    )
+    dirs::home_dir()
+        .expect("unable to find the user home directory")
+        .join(constants::USER_FORC_DIRECTORY)
 }
 
 /// The location at which `forc` will checkout git repositories.
