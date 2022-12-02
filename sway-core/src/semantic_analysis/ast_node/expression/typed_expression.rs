@@ -1931,9 +1931,12 @@ mod tests {
             &type_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
-                type_engine.insert_type(TypeInfo::Boolean),
+                TypeArgument {
+                    type_id: type_engine.insert_type(TypeInfo::Boolean),
+                    span: Span::dummy(),
+                    initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
+                },
                 2,
-                type_engine.insert_type(TypeInfo::Boolean),
             )),
         )
     }
@@ -2045,9 +2048,12 @@ mod tests {
             &type_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
-                type_engine.insert_type(TypeInfo::Boolean),
+                TypeArgument {
+                    type_id: type_engine.insert_type(TypeInfo::Boolean),
+                    span: Span::dummy(),
+                    initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
+                },
                 0,
-                type_engine.insert_type(TypeInfo::Boolean),
             )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());
