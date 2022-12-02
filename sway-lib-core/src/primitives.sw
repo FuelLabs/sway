@@ -1,4 +1,4 @@
-library num;
+library primitives;
 
 impl u64 {
     /// The smallest value that can be represented by this integer type.
