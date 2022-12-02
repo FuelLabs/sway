@@ -1,7 +1,6 @@
 contract;
 
 use std::hash::{keccak256, sha256};
-use core::num::*;
 
 abi MyContract {
     fn sha256_u8(value: u8) -> b256;
