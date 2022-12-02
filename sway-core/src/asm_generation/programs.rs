@@ -40,6 +40,7 @@ pub(super) struct AbstractEntry {
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
     pub(super) name: FnName,
+    pub(super) decl_index: usize,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -49,7 +50,7 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
-    entries: Vec<(SelectorOpt, Label, FnName)>,
+    entries: Vec<(SelectorOpt, Label, FnName, usize)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
@@ -57,5 +58,5 @@ pub(super) struct FinalProgram {
     kind: ProgramKind,
     data_section: DataSection,
     ops: InstructionSet,
-    entries: Vec<(SelectorOpt, ImmOffset, FnName)>,
+    entries: Vec<(SelectorOpt, ImmOffset, FnName, usize)>,
 }

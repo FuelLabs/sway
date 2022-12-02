@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_constant,
+    declaration_engine::{declaration_engine::de_get_constant},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,

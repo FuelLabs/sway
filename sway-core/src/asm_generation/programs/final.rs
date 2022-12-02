@@ -11,10 +11,11 @@ impl FinalProgram {
             entries: self
                 .entries
                 .into_iter()
-                .map(|(selector, imm, fn_name)| FinalizedEntry {
+                .map(|(selector, imm, fn_name, decl_id)| FinalizedEntry {
                     imm,
                     fn_name,
                     selector,
+                    decl_id,
                 })
                 .collect(),
         }

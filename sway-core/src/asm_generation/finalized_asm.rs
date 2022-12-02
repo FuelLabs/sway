@@ -28,6 +28,8 @@ pub struct FinalizedEntry {
     pub imm: u64,
     /// The function selector (only `Some` for contract ABI methods).
     pub selector: Option<[u8; 4]>,
+    /// The declaration index for the related function declaration.
+    pub decl_id: usize,
 }
 
 impl FinalizedAsm {

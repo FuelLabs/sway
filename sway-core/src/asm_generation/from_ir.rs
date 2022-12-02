@@ -115,8 +115,8 @@ fn compile_module_to_asm(
         .map(|(func, label, ops, decl_index)| {
             let selector = func.get_selector(context);
             let name = func.get_name(context).to_string();
-            println!("func name: {name} -- func_decl_index {decl_index:?}");
             AbstractEntry {
+                decl_index,
                 selector,
                 label,
                 ops,
