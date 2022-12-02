@@ -253,7 +253,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if public {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public || is_test {
                         ret.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -273,7 +279,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if is_main {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main || is_test {
                         data.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -293,7 +305,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if is_main {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main || is_test {
                         data.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -306,6 +324,22 @@ impl TyProgram {
             }
             TyProgramKind::Contract { abi_entries, .. } => {
                 let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_test {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(ctx),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
                         TyAstNode::from(entry).collect_types_metadata(ctx),
