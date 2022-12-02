@@ -1,6 +1,6 @@
 # Tab Completion
 
-[`forc`](../../forc/commands/index.md) supports a feature known as command-line completion which automatically fills in partially typed commands.
+[`forc`](index.md) supports a feature known as command-line completion which automatically fills in partially typed commands.
 
 After executing one of the commands below close and open a new terminal for the completions to take effect.
 
