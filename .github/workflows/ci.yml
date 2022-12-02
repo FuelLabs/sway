@@ -275,6 +275,23 @@ jobs:
           command: test
           args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
+  forc-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Run Unit Tests
+        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
+
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -592,7 +609,7 @@ jobs:
           crate: cross
           cache-key: "${{ matrix.job.target }}"
 
-      - name: Build forc binaries 
+      - name: Build forc binaries
         run: |
           cross build --profile=release --target ${{ matrix.job.target }} --bins
 
