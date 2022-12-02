@@ -10,7 +10,6 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 
 [dependencies]
 anyhow = "1"
-forc-fs = { version = "0.31.3", path = "../forc-fs" }
 forc-tracing = { version = "0.31.3", path = "../forc-tracing" }
 forc-util = { version = "0.31.3", path = "../forc-util" }
 fuels-types = "0.31" 

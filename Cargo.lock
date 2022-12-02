@@ -1617,18 +1617,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "file-lock"
-version = "2.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0815fc2a1924e651b71ae6d13df07b356a671a09ecaf857dbd344a2ba937a496"
-dependencies = [
- "cc",
- "libc",
- "mktemp",
- "nix",
-]
-
-[[package]]
 name = "filecheck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1776,13 +1764,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-fs"
-version = "0.31.3"
-dependencies = [
- "file-lock",
-]
-
-[[package]]
 name = "forc-lsp"
 version = "0.31.3"
 dependencies = [
@@ -1797,7 +1778,6 @@ name = "forc-pkg"
 version = "0.31.3"
 dependencies = [
  "anyhow",
- "forc-fs",
  "forc-tracing",
  "forc-util",
  "fuels-types",
@@ -1848,7 +1828,6 @@ dependencies = [
  "ansi_term",
  "anyhow",
  "dirs 3.0.2",
- "forc-fs",
  "forc-tracing",
  "sway-core",
  "sway-error",
@@ -3029,26 +3008,6 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.42.0",
-]
-
-[[package]]
-name = "mktemp"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975de676448231fcde04b9149d2543077e166b78fc29eae5aa219e7928410da2"
-dependencies = [
- "uuid",
-]
-
-[[package]]
-name = "nix"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "195cdbc1741b8134346d515b3a56a1c94b0912758009cfd53f99ea0f57b065fc"
-dependencies = [
- "bitflags",
- "cfg-if 1.0.0",
- "libc",
 ]
 
 [[package]]

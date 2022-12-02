@@ -13,7 +13,6 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 ansi_term = "0.12"
 anyhow = "1"
 dirs = "3.0.2"
-forc-fs = { version = "0.31.3", path = "../forc-fs" }
 forc-tracing = { version = "0.31.3", path = "../forc-tracing" }
 sway-core = { version = "0.31.3", path = "../sway-core" }
 sway-error = { version = "0.31.3", path = "../sway-error" }

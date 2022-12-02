@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "forc",
-    "forc-fs",
     "forc-pkg",
     "forc-plugins/forc-client",
     "forc-plugins/forc-doc",
