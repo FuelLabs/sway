@@ -1615,13 +1615,14 @@ where
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
-    let _ = std::fs::create_dir(&repo_dir);
-    let _lock = RwLock::new(
+    let _ = std::fs::create_dir_all(&repo_dir);
+    let mut lock = RwLock::new(
         fs::OpenOptions::new()
             .write(true)
             .create(true)
             .open(repo_dir.join(FORC_FILE_LOCK_NAME))?,
     );
+    let _ = lock.write()?;
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1823,13 +1824,14 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         if path.exists() {
             let _ = std::fs::remove_dir_all(&path);
         }
-        std::fs::create_dir_all(&path)?;
-        let _lock = RwLock::new(
+        let _ = std::fs::create_dir_all(&path)?;
+        let mut lock = RwLock::new(
             fs::OpenOptions::new()
                 .write(true)
                 .create(true)
                 .open(path.join(FORC_FILE_LOCK_NAME))?,
         );
+        let _ = lock.write()?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
