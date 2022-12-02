@@ -115,9 +115,7 @@ pub enum TypeInfo {
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
-    // Static, constant size arrays. The second `TypeId` below contains the initial type ID
-    // which could be generic.
-    // TODO: change this to a struct instead of a tuple
+    // Static, constant size arrays.
     Array(TypeArgument, Length),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
