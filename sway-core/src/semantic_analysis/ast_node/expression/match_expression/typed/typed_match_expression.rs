@@ -164,7 +164,7 @@ impl ty::TyMatchExpression {
                 // branches in the match expression because the type cannot be
                 // constructed or matched upon. In this case, we manually create
                 // a typed expression that is equivalent to
-                // "if true { return; }" where the return type is manually set
+                // "if true { implicit_return }" where the implicit_return type is manually set
                 // to be the return type of this typed match expression object.
                 //
                 // NOTE: This manual construction of the expression can (and
@@ -179,13 +179,8 @@ impl ty::TyMatchExpression {
                         return_type: type_engine.insert_type(TypeInfo::Boolean),
                         span: self.span.clone(),
                     };
-                    let unit_exp = ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: self.return_type_id,
-                        span: self.span.clone(),
-                    };
                     let then_exp = ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Return(Box::new(unit_exp)),
+                        expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
                         return_type: self.return_type_id,
                         span: self.span.clone(),
                     };
