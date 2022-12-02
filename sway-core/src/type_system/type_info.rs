@@ -29,6 +29,12 @@ impl fmt::Display for AbiName {
     }
 }
 
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub struct Length {
+    pub len: usize,
+    pub span: Span,
+}
+
 /// A slow set primitive using `==` to check for containment.
 #[derive(Clone)]
 pub struct VecSet<T>(pub Vec<T>);
@@ -112,7 +118,7 @@ pub enum TypeInfo {
     // Static, constant size arrays. The second `TypeId` below contains the initial type ID
     // which could be generic.
     // TODO: change this to a struct instead of a tuple
-    Array(TypeArgument, usize),
+    Array(TypeArgument, Length),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
@@ -405,7 +411,7 @@ impl DisplayWithTypeEngine for TypeInfo {
                         .unwrap_or_else(|| "None".into())
                 )
             }
-            Array(elem_ty, count) => format!("[{}; {}]", type_engine.help_out(elem_ty), count),
+            Array(elem_ty, count) => format!("[{}; {}]", type_engine.help_out(elem_ty), count.len),
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -558,7 +564,7 @@ impl TypeInfo {
                 format!("contract caller {}", abi_name)
             }
             Array(elem_ty, count) => {
-                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), count)
+                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), count.len)
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -720,7 +726,7 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(elem_ty, size) => {
+            Array(elem_ty, length) => {
                 let name = type_engine
                     .look_up_type_id(elem_ty.type_id)
                     .to_selector_name(type_engine, error_msg_span);
@@ -728,7 +734,7 @@ impl TypeInfo {
                     Some(name) => name,
                     None => return name,
                 };
-                format!("a[{};{}]", name, size)
+                format!("a[{};{}]", name, length.len)
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -757,7 +763,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, size) => *size > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, length) => length.len > 0 && id_uninhabited(elem_ty.type_id),
             _ => false,
         }
     }
@@ -805,8 +811,8 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
-            TypeInfo::Array(elem_ty, size) => {
-                *size == 0
+            TypeInfo::Array(elem_ty, length) => {
+                length.len == 0
                     || type_engine
                         .look_up_type_id(elem_ty.type_id)
                         .is_zero_sized(type_engine)
@@ -825,8 +831,8 @@ impl TypeInfo {
                     .look_up_type_id(type_argument.type_id)
                     .can_safely_ignore(type_engine)
             }),
-            TypeInfo::Array(elem_ty, size) => {
-                *size == 0
+            TypeInfo::Array(elem_ty, length) => {
+                length.len == 0
                     || type_engine
                         .look_up_type_id(elem_ty.type_id)
                         .can_safely_ignore(type_engine)

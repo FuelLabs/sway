@@ -1467,10 +1467,13 @@ impl ty::TyExpression {
                     return_type: type_engine.insert_type(TypeInfo::Array(
                         TypeArgument {
                             type_id: unknown_type,
-                            span: span.clone(),
+                            span: Span::dummy(),
                             initial_type_id: unknown_type,
                         },
-                        0,
+                        Length {
+                            len: 0,
+                            span: Span::dummy(),
+                        },
                     )),
                     span,
                 },
@@ -1524,10 +1527,13 @@ impl ty::TyExpression {
                 return_type: type_engine.insert_type(TypeInfo::Array(
                     TypeArgument {
                         type_id: elem_type,
-                        span: span.clone(),
+                        span: Span::dummy(),
                         initial_type_id: elem_type,
                     },
-                    array_count,
+                    Length {
+                        len: array_count,
+                        span: Span::dummy(),
+                    },
                 )), // Maybe?
                 span,
             },

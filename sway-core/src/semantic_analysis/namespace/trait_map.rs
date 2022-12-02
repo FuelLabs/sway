@@ -917,7 +917,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     .unwrap_or(true)
         }
         (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
-            l1 == r1 && are_equal_minus_dynamic_types(type_engine, l0.type_id, r0.type_id)
+            l1.len == r1.len && are_equal_minus_dynamic_types(type_engine, l0.type_id, r0.type_id)
         }
         _ => false,
     }

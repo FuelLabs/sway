@@ -956,7 +956,7 @@ fn ty_to_type_info(
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
                 ty_to_type_argument(handler, type_engine, *ty_array_descriptor.ty)?,
-                expr_to_usize(handler, *ty_array_descriptor.length)?,
+                expr_to_length(handler, *ty_array_descriptor.length)?,
             )
         }
         Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(handler, *length.into_inner())?),
@@ -1921,6 +1921,14 @@ fn fn_arg_to_function_parameter(
         type_span,
     };
     Ok(function_parameter)
+}
+
+fn expr_to_length(handler: &Handler, expr: Expr) -> Result<Length, ErrorEmitted> {
+    let span = expr.span();
+    Ok(Length {
+        len: expr_to_usize(handler, expr)?,
+        span,
+    })
 }
 
 fn expr_to_usize(handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {
