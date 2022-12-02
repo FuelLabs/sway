@@ -128,13 +128,13 @@ pub(super) fn unify(
             arguments_are_flipped,
             type_engine,
         ),
-        (Array(re, rc, _), Array(ee, ec, _)) if rc == ec => unify::unify_arrays(
+        (Array(re, rc), Array(ee, ec)) if rc == ec => unify::unify_arrays(
             received,
             expected,
             span,
             help_text,
-            re,
-            ee,
+            re.type_id,
+            ee.type_id,
             curried,
             arguments_are_flipped,
             type_engine,
@@ -382,13 +382,13 @@ pub(super) fn unify_right(
             false,
             type_engine,
         ),
-        (Array(re, rc, _), Array(ee, ec, _)) if rc == ec => unify::unify_arrays(
+        (Array(re, rc), Array(ee, ec)) if rc == ec => unify::unify_arrays(
             received,
             expected,
             span,
             help_text,
-            re,
-            ee,
+            re.type_id,
+            ee.type_id,
             curried,
             false,
             type_engine,

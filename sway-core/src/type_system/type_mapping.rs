@@ -202,10 +202,17 @@ impl TypeMapping {
                     type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>(),
                 )
             }
-            (TypeInfo::Array(superset_type, _, _), TypeInfo::Array(subset_type, _, _)) => {
-                TypeMapping {
-                    mapping: vec![(superset_type, subset_type)],
-                }
+            (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
+                TypeMapping::from_type_parameters_and_type_arguments(
+                    vec![type_parameter]
+                        .iter()
+                        .map(|x| x.type_id)
+                        .collect::<Vec<_>>(),
+                    vec![type_argument]
+                        .iter()
+                        .map(|x| x.type_id)
+                        .collect::<Vec<_>>(),
+                )
             }
             (
                 TypeInfo::Storage {
@@ -350,10 +357,13 @@ impl TypeMapping {
                     None
                 }
             }
-            TypeInfo::Array(ary_ty_id, count, initial_elem_ty) => {
-                self.find_match(ary_ty_id, type_engine).map(|matching_id| {
-                    type_engine.insert_type(TypeInfo::Array(matching_id, count, initial_elem_ty))
-                })
+            TypeInfo::Array(mut elem_ty, count) => {
+                if let Some(type_id) = self.find_match(elem_ty.type_id, type_engine) {
+                    elem_ty.type_id = type_id;
+                    Some(type_engine.insert_type(TypeInfo::Array(elem_ty, count)))
+                } else {
+                    None
+                }
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;

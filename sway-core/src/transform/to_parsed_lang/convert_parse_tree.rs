@@ -954,15 +954,9 @@ fn ty_to_type_info(
         }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
-            let initial_elem_ty = type_engine.insert_type(ty_to_type_info(
-                handler,
-                type_engine,
-                *ty_array_descriptor.ty,
-            )?);
             TypeInfo::Array(
-                initial_elem_ty,
+                ty_to_type_argument(handler, type_engine, *ty_array_descriptor.ty)?,
                 expr_to_usize(handler, *ty_array_descriptor.length)?,
-                initial_elem_ty,
             )
         }
         Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(handler, *length.into_inner())?),

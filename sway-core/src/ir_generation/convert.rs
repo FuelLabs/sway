@@ -107,8 +107,9 @@ fn convert_resolved_type(
         TypeInfo::Enum { variant_types, .. } => {
             create_enum_aggregate(type_engine, context, variant_types.clone()).map(Type::Struct)?
         }
-        TypeInfo::Array(elem_type_id, count, _) => {
-            let elem_type = convert_resolved_typeid(type_engine, context, elem_type_id, span)?;
+        TypeInfo::Array(elem_type, count) => {
+            let elem_type =
+                convert_resolved_typeid(type_engine, context, &elem_type.type_id, span)?;
             Type::Array(Aggregate::new_array(context, elem_type, *count as u64))
         }
         TypeInfo::Tuple(fields) => {
