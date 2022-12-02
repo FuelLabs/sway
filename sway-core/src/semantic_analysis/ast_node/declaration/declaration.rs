@@ -239,7 +239,6 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                dbg!(&decl);
                 let name = decl.name.clone();
                 let decl_id = de_insert_struct(decl);
                 let decl = ty::TyDeclaration::StructDeclaration(decl_id);
