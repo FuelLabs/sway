@@ -6,7 +6,7 @@ Cargo can be used to install the Sway toolchain with various [`plugins`](../../f
 
 A prerequisite for installing and using Sway is the [`Rust toolchain`](https://www.rust-lang.org/tools/install) running on the `stable` channel.
 
-After following the installation instructions for the `Rust toolchain` run the following command to check default channel.
+After installing the `Rust toolchain` run the following command to check default channel:
 
 ```bash
 rustup toolchain list
