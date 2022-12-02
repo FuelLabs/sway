@@ -44,7 +44,7 @@ use sway_core::{
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
-use sway_utils::constants;
+use sway_utils::{constants, FORC_FILE_LOCK_NAME};
 use tracing::{info, warn};
 use url::Url;
 
@@ -1610,9 +1610,14 @@ where
 {
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-    let _lock = RwLock::new(File::open(".forc-lock")?);
 
     if repo_dir.exists() {
+        let _lock = RwLock::new(
+            fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(repo_dir.join(FORC_FILE_LOCK_NAME))?,
+        );
         let _ = std::fs::remove_dir_all(&repo_dir);
     }
 
@@ -1813,8 +1818,13 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        let _lock = RwLock::new(File::open(".forc-lock")?);
         if path.exists() {
+            let _lock = RwLock::new(
+                fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .open(path.join(FORC_FILE_LOCK_NAME))?,
+            );
             let _ = std::fs::remove_dir_all(&path);
         }
         std::fs::create_dir_all(&path)?;
