@@ -29,7 +29,7 @@ impl fmt::Display for AbiName {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash)]
 pub struct Length {
     pub len: usize,
     pub span: Span,
@@ -335,7 +335,7 @@ impl PartialEqWithTypeEngine for TypeInfo {
                 type_engine
                     .look_up_type_id(l0.type_id)
                     .eq(&type_engine.look_up_type_id(r0.type_id), type_engine)
-                    && l1 == r1
+                    && l1.len == r1.len
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, type_engine)
@@ -1433,7 +1433,7 @@ impl TypeInfo {
                 type_engine
                     .look_up_type_id(l0.type_id)
                     .is_subset_of(&type_engine.look_up_type_id(r0.type_id), type_engine)
-                    && l1 == r1
+                    && l1.len == r1.len
             }
             (
                 Self::Custom {
