@@ -1,6 +1,6 @@
 library core;
 
-dep num;
+dep primitives;
 dep raw_ptr;
 dep raw_slice;
 dep ops;
