@@ -19,6 +19,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print_ast,
+            dca_graph: cmd.build.print_dca_graph,
             finalized_asm: cmd.build.print_finalized_asm,
             intermediate_asm: cmd.build.print_intermediate_asm,
             ir: cmd.build.print_ir,
