@@ -956,7 +956,7 @@ mod tests {
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 19, 2).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
