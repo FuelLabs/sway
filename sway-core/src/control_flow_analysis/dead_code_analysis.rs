@@ -902,10 +902,23 @@ fn connect_expression(
             Ok(vec![exit])
         }
         StructFieldAccess {
+            prefix,
             field_to_access,
             resolved_type_of_parent,
+            field_instantiation_span,
             ..
         } => {
+            connect_expression(
+                type_engine,
+                &prefix.expression,
+                graph,
+                leaves,
+                exit_node,
+                label,
+                tree_type,
+                field_instantiation_span.clone(),
+            )?;
+
             let resolved_type_of_parent = type_engine
                 .to_typeinfo(*resolved_type_of_parent, &field_to_access.span)
                 .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
