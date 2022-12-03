@@ -93,7 +93,7 @@ fn convert_resolved_type(
         TypeInfo::Numeric => Type::Uint(64),
         TypeInfo::Boolean => Type::Bool,
         TypeInfo::B256 => Type::B256,
-        TypeInfo::Str(n) => Type::String(*n),
+        TypeInfo::Str(n) => Type::String(n.val as u64),
         TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
             type_engine,
             context,
@@ -110,7 +110,7 @@ fn convert_resolved_type(
         TypeInfo::Array(elem_type, length) => {
             let elem_type =
                 convert_resolved_typeid(type_engine, context, &elem_type.type_id, span)?;
-            Type::Array(Aggregate::new_array(context, elem_type, length.len as u64))
+            Type::Array(Aggregate::new_array(context, elem_type, length.val as u64))
         }
         TypeInfo::Tuple(fields) => {
             if fields.is_empty() {

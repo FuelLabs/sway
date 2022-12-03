@@ -31,7 +31,7 @@ impl fmt::Display for AbiName {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Length {
-    pub len: usize,
+    pub val: usize,
     pub span: Span,
 }
 
@@ -78,7 +78,7 @@ pub enum TypeInfo {
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
     },
-    Str(u64),
+    Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
@@ -275,7 +275,7 @@ impl PartialEqWithTypeEngine for TypeInfo {
                         .as_deref()
                         .eq(&r_type_args.as_deref(), type_engine)
             }
-            (Self::Str(l), Self::Str(r)) => l == r,
+            (Self::Str(l), Self::Str(r)) => l.val == r.val,
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
                 Self::Enum {
@@ -335,7 +335,7 @@ impl PartialEqWithTypeEngine for TypeInfo {
                 type_engine
                     .look_up_type_id(l0.type_id)
                     .eq(&type_engine.look_up_type_id(r0.type_id), type_engine)
-                    && l1.len == r1.len
+                    && l1.val == r1.val
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, type_engine)
@@ -359,7 +359,7 @@ impl DisplayWithTypeEngine for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Str(x) => format!("str[{}]", x),
+            Str(x) => format!("str[{}]", x.val),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -409,7 +409,7 @@ impl DisplayWithTypeEngine for TypeInfo {
                         .unwrap_or_else(|| "None".into())
                 )
             }
-            Array(elem_ty, count) => format!("[{}; {}]", type_engine.help_out(elem_ty), count.len),
+            Array(elem_ty, count) => format!("[{}; {}]", type_engine.help_out(elem_ty), count.val),
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -530,7 +530,7 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Str(x) => format!("str[{}]", x),
+            Str(x) => format!("str[{}]", x.val),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -561,8 +561,8 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count) => {
-                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), count.len)
+            Array(elem_ty, length) => {
+                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), length.val)
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -578,7 +578,7 @@ impl TypeInfo {
     ) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
-            Str(len) => format!("str[{}]", len),
+            Str(len) => format!("str[{}]", len.val),
             UnsignedInteger(bits) => {
                 use IntegerBits::*;
                 match bits {
@@ -732,7 +732,7 @@ impl TypeInfo {
                     Some(name) => name,
                     None => return name,
                 };
-                format!("a[{};{}]", name, length.len)
+                format!("a[{};{}]", name, length.val)
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -761,7 +761,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(elem_ty, length) => length.len > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Array(elem_ty, length) => length.val > 0 && id_uninhabited(elem_ty.type_id),
             _ => false,
         }
     }
@@ -810,7 +810,7 @@ impl TypeInfo {
                 all_zero_sized
             }
             TypeInfo::Array(elem_ty, length) => {
-                length.len == 0
+                length.val == 0
                     || type_engine
                         .look_up_type_id(elem_ty.type_id)
                         .is_zero_sized(type_engine)
@@ -830,7 +830,7 @@ impl TypeInfo {
                     .can_safely_ignore(type_engine)
             }),
             TypeInfo::Array(elem_ty, length) => {
-                length.len == 0
+                length.val == 0
                     || type_engine
                         .look_up_type_id(elem_ty.type_id)
                         .can_safely_ignore(type_engine)
@@ -1433,7 +1433,7 @@ impl TypeInfo {
                 type_engine
                     .look_up_type_id(l0.type_id)
                     .is_subset_of(&type_engine.look_up_type_id(r0.type_id), type_engine)
-                    && l1.len == r1.len
+                    && l1.val == r1.val
             }
             (
                 Self::Custom {

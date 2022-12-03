@@ -350,7 +350,10 @@ impl ty::TyExpression {
         type_engine: &TypeEngine,
     ) -> CompileResult<ty::TyExpression> {
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
+            Literal::String(s) => TypeInfo::Str(Length {
+                val: s.as_str().len(),
+                span: s.clone(),
+            }),
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -1471,7 +1474,7 @@ impl ty::TyExpression {
                             initial_type_id: unknown_type,
                         },
                         Length {
-                            len: 0,
+                            val: 0,
                             span: Span::dummy(),
                         },
                     )),
@@ -1531,7 +1534,7 @@ impl ty::TyExpression {
                         initial_type_id: elem_type,
                     },
                     Length {
-                        len: array_count,
+                        val: array_count,
                         span: Span::dummy(),
                     },
                 )), // Maybe?
@@ -1943,7 +1946,7 @@ mod tests {
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
                 Length {
-                    len: 2,
+                    val: 2,
                     span: Span::dummy(),
                 },
             )),
@@ -2063,7 +2066,7 @@ mod tests {
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
                 Length {
-                    len: 0,
+                    val: 0,
                     span: Span::dummy(),
                 },
             )),

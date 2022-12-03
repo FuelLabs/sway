@@ -552,8 +552,8 @@ impl TypeId {
                     format!("({})", field_strs.join(", "))
                 }
                 (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
-                    assert_eq!(count.len, resolved_count.len);
-                    format!("[_; {}]", count.len)
+                    assert_eq!(count.val, resolved_count.val);
+                    format!("[_; {}]", count.val)
                 }
                 (TypeInfo::Custom { .. }, _) => {
                     format!(

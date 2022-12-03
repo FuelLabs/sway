@@ -959,7 +959,7 @@ fn ty_to_type_info(
                 expr_to_length(handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => TypeInfo::Str(expr_to_u64(handler, *length.into_inner())?),
+        Ty::Str { length, .. } => TypeInfo::Str(expr_to_length(handler, *length.into_inner())?),
         Ty::Infer { .. } => TypeInfo::Unknown,
     };
     Ok(type_info)
@@ -1926,7 +1926,7 @@ fn fn_arg_to_function_parameter(
 fn expr_to_length(handler: &Handler, expr: Expr) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
     Ok(Length {
-        len: expr_to_usize(handler, expr)?,
+        val: expr_to_usize(handler, expr)?,
         span,
     })
 }
@@ -1943,33 +1943,6 @@ fn expr_to_usize(handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {
                 }
             }
             match usize::try_from(lit_int.parsed) {
-                Ok(value) => value,
-                Err(..) => {
-                    let error = ConvertParseTreeError::IntLiteralOutOfRange { span };
-                    return Err(handler.emit_err(error.into()));
-                }
-            }
-        }
-        _ => {
-            let error = ConvertParseTreeError::IntLiteralExpected { span };
-            return Err(handler.emit_err(error.into()));
-        }
-    };
-    Ok(value)
-}
-
-fn expr_to_u64(handler: &Handler, expr: Expr) -> Result<u64, ErrorEmitted> {
-    let span = expr.span();
-    let value = match expr {
-        Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
-            match lit_int.ty_opt {
-                None => (),
-                Some(..) => {
-                    let error = ConvertParseTreeError::IntTySuffixNotSupported { span };
-                    return Err(handler.emit_err(error.into()));
-                }
-            }
-            match u64::try_from(lit_int.parsed) {
                 Ok(value) => value,
                 Err(..) => {
                     let error = ConvertParseTreeError::IntLiteralOutOfRange { span };

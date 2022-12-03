@@ -780,7 +780,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
         (TypeInfo::Boolean, TypeInfo::Boolean) => true,
         (TypeInfo::B256, TypeInfo::B256) => true,
         (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
-        (TypeInfo::Str(l), TypeInfo::Str(r)) => l == r,
+        (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val == r.val,
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
         (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
         (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
@@ -917,7 +917,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     .unwrap_or(true)
         }
         (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
-            l1.len == r1.len && are_equal_minus_dynamic_types(type_engine, l0.type_id, r0.type_id)
+            l1.val == r1.val && are_equal_minus_dynamic_types(type_engine, l0.type_id, r0.type_id)
         }
         _ => false,
     }
