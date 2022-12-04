@@ -1128,6 +1128,7 @@ impl<'te> FnCompiler<'te> {
                     &callee_fn_decl,
                     &self.logged_types_map,
                     is_entry,
+                    None,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);

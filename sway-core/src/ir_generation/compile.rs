@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_constant},
+    declaration_engine::{declaration_engine::de_get_constant, DeclarationId},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -26,7 +26,7 @@ pub(super) fn compile_script(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: &[ty::TyFunctionDeclaration],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -47,6 +47,7 @@ pub(super) fn compile_script(
         module,
         main_function,
         logged_types_map,
+        None,
     )?;
     compile_tests(
         type_engine,
@@ -67,7 +68,7 @@ pub(super) fn compile_predicate(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types: &HashMap<TypeId, LogId>,
-    test_fns: &[ty::TyFunctionDeclaration],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -88,6 +89,7 @@ pub(super) fn compile_predicate(
         module,
         main_function,
         &HashMap::new(),
+        None,
     )?;
     compile_tests(
         type_engine,
@@ -107,7 +109,7 @@ pub(super) fn compile_contract(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: &[ty::TyFunctionDeclaration],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
     type_engine: &TypeEngine,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -150,7 +152,7 @@ pub(super) fn compile_library(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: &[ty::TyFunctionDeclaration],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -271,6 +273,7 @@ fn compile_declarations(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_function(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -279,6 +282,7 @@ pub(super) fn compile_function(
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     is_entry: bool,
+    decl_id: Option<DeclarationId>,
 ) -> Result<Option<Function>, CompileError> {
     // Currently monomorphisation of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -301,6 +305,7 @@ pub(super) fn compile_function(
             args,
             None,
             logged_types_map,
+            decl_id,
         )
         .map(Some)
     }
@@ -313,6 +318,7 @@ pub(super) fn compile_entry_function(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    decl_id: Option<DeclarationId>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
@@ -323,6 +329,7 @@ pub(super) fn compile_entry_function(
         ast_fn_decl,
         logged_types_map,
         is_entry,
+        decl_id,
     )
     .map(|f| f.expect("entry point should never contain generics"))
 }
@@ -333,11 +340,11 @@ pub(super) fn compile_tests(
     md_mgr: &mut MetadataManager,
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
-    test_fns: &[ty::TyFunctionDeclaration],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .iter()
-        .map(|ast_fn_decl| {
+        .map(|(ast_fn_decl, decl_id)| {
             compile_entry_function(
                 type_engine,
                 context,
@@ -345,6 +352,7 @@ pub(super) fn compile_tests(
                 module,
                 ast_fn_decl,
                 logged_types_map,
+                Some(decl_id.clone()),
             )
         })
         .collect()
@@ -379,6 +387,7 @@ fn compile_fn_with_args(
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
+    decl_id: Option<DeclarationId>,
 ) -> Result<Function, CompileError> {
     let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
@@ -411,7 +420,13 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
-    let dummy_decl_index = md_mgr.decl_index_to_md(context, 10);
+    // TODO(kaya) : fix this!
+    let decl_index = if let Some(decl_id) = decl_id {
+        *decl_id as usize
+    } else {
+        0
+    };
+    let dummy_decl_index = md_mgr.decl_index_to_md(context, decl_index);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
     metadata = md_combine(context, &metadata, &dummy_decl_index);
 
@@ -562,5 +577,6 @@ fn compile_abi_method(
         args,
         Some(selector),
         logged_types_map,
+        None,
     )
 }

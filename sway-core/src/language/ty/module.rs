@@ -1,7 +1,9 @@
 use sway_types::Ident;
 
 use crate::{
-    declaration_engine::de_get_function, language::ty::*, language::DepName,
+    declaration_engine::{de_get_function, DeclarationId},
+    language::ty::*,
+    language::DepName,
     semantic_analysis::namespace,
 };
 
@@ -29,6 +31,7 @@ pub struct SubmodulesRecursive<'module> {
     )>,
 }
 
+type FunctionDeclarationWithId = (TyFunctionDeclaration, DeclarationId);
 impl TyModule {
     /// An iterator yielding all submodules recursively, depth-first.
     pub fn submodules_recursive(&self) -> SubmodulesRecursive {
@@ -39,7 +42,7 @@ impl TyModule {
     }
 
     /// All test functions within this module.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    pub fn test_fns(&self) -> impl '_ + Iterator<Item = FunctionDeclarationWithId> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
                 node.content
@@ -47,7 +50,7 @@ impl TyModule {
                 let fn_decl = de_get_function(decl_id.clone(), &node.span)
                     .expect("no function declaration for ID");
                 if fn_decl.is_test() {
-                    return Some(fn_decl);
+                    return Some((fn_decl, decl_id.clone()));
                 }
             }
             None

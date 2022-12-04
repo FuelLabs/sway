@@ -46,7 +46,14 @@ impl AbstractProgram {
         let entries = self
             .entries
             .iter()
-            .map(|entry| (entry.selector, entry.label, entry.name.clone(), entry.decl_index))
+            .map(|entry| {
+                (
+                    entry.selector,
+                    entry.label,
+                    entry.name.clone(),
+                    entry.decl_index,
+                )
+            })
             .collect();
 
         // Gather all the functions together, optimise and then verify the instructions.
