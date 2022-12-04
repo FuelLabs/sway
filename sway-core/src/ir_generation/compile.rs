@@ -336,7 +336,7 @@ pub(super) fn compile_tests(
     test_fns: &[ty::TyFunctionDeclaration],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
-        .into_iter()
+        .iter()
         .map(|ast_fn_decl| {
             compile_entry_function(
                 type_engine,
@@ -397,7 +397,7 @@ fn compile_fn_with_args(
         .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
         .collect::<Vec<_>>();
 
-    let ret_type = convert_resolved_typeid(type_engine, context, &return_type, &return_type_span)?;
+    let ret_type = convert_resolved_typeid(type_engine, context, return_type, return_type_span)?;
 
     let returns_by_ref = !is_entry && !ret_type.is_copy_type();
     if returns_by_ref {
@@ -405,11 +405,11 @@ fn compile_fn_with_args(
         args.push((
             "__ret_value".to_owned(),
             Type::Pointer(Pointer::new(context, ret_type, true, None)),
-            md_mgr.span_to_md(context, &return_type_span),
+            md_mgr.span_to_md(context, return_type_span),
         ));
     }
 
-    let span_md_idx = md_mgr.span_to_md(context, &span);
+    let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 

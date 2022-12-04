@@ -18,7 +18,7 @@ pub(super) fn create_enum_aggregate(
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
-        .into_iter()
+        .iter()
         .map(|tev| convert_resolved_typeid_no_span(type_engine, context, &tev.type_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 

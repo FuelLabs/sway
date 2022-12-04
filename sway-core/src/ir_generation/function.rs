@@ -113,7 +113,7 @@ impl<'te> FnCompiler<'te> {
                 Some(ast_node) => ast_node,
                 None => break Ok(Constant::get_unit(context)),
             };
-            match self.compile_ast_node(context, md_mgr, &ast_node) {
+            match self.compile_ast_node(context, md_mgr, ast_node) {
                 Ok(Some(val)) => break Ok(val),
                 Ok(None) => (),
                 Err(err) => break Err(err),
@@ -327,7 +327,14 @@ impl<'te> FnCompiler<'te> {
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr(context, md_mgr, prefix, *tuple_type, *idx, span.clone()),
+            } => self.compile_tuple_elem_expr(
+                context,
+                md_mgr,
+                prefix,
+                *tuple_type,
+                *idx,
+                span.clone(),
+            ),
             ty::TyExpressionVariant::AbiCast { span, .. } => {
                 let span_md_idx = md_mgr.span_to_md(context, span);
                 Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
@@ -351,7 +358,9 @@ impl<'te> FnCompiler<'te> {
             ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 self.compile_unsafe_downcast(context, md_mgr, exp.to_owned(), variant)
             }
-            ty::TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp.to_owned()),
+            ty::TyExpressionVariant::EnumTag { exp } => {
+                self.compile_enum_tag(context, md_mgr, exp.to_owned())
+            }
             ty::TyExpressionVariant::WhileLoop { body, condition } => self.compile_while_loop(
                 context,
                 md_mgr,
@@ -691,8 +700,7 @@ impl<'te> FnCompiler<'te> {
                     .binary_op(op, lhs_value, rhs_value))
             }
             Intrinsic::Revert => {
-                let revert_code_val =
-                    self.compile_expression(context, md_mgr, &arguments[0])?;
+                let revert_code_val = self.compile_expression(context, md_mgr, &arguments[0])?;
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -986,8 +994,7 @@ impl<'te> FnCompiler<'te> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr =
-            self.compile_expression(context, md_mgr, &call_params.contract_address)?;
+        let addr = self.compile_expression(context, md_mgr, &call_params.contract_address)?;
         ra_struct_val = self
             .current_block
             .ins(context)
@@ -1031,9 +1038,7 @@ impl<'te> FnCompiler<'te> {
         let asset_id = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
-            Some(asset_id_expr) => {
-                self.compile_expression(context, md_mgr, asset_id_expr)?
-            }
+            Some(asset_id_expr) => self.compile_expression(context, md_mgr, asset_id_expr)?,
             None => convert_literal_to_value(
                 context,
                 &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
@@ -2166,8 +2171,9 @@ impl<'te> FnCompiler<'te> {
                  }| {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
                     // transpose that to Result<Option<Value>> and map that to an AsmArg.
-                    initializer.
-                        as_ref().map(|init_expr| self.compile_expression(context, md_mgr, init_expr))
+                    initializer
+                        .as_ref()
+                        .map(|init_expr| self.compile_expression(context, md_mgr, init_expr))
                         .transpose()
                         .map(|init| AsmArg {
                             name: name.clone(),

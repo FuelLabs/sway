@@ -34,7 +34,7 @@ pub fn compile_program(
     } = program;
 
     let logged_types = logged_types
-        .into_iter()
+        .iter()
         .map(|(log_id, type_id)| (*type_id, *log_id))
         .collect();
 
