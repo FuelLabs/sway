@@ -279,7 +279,7 @@ impl<'te> FnCompiler<'te> {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, md_mgr, condition, then, r#else.clone()),
+            } => self.compile_if(context, md_mgr, condition, then, r#else.as_deref()),
             ty::TyExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -318,7 +318,7 @@ impl<'te> FnCompiler<'te> {
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.clone()),
+            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
@@ -356,7 +356,7 @@ impl<'te> FnCompiler<'te> {
                 Ok(Value::new_constant(context, Constant::new_unit()))
             }
             ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
-                self.compile_unsafe_downcast(context, md_mgr, exp.to_owned(), variant)
+                self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
             ty::TyExpressionVariant::EnumTag { exp } => {
                 self.compile_enum_tag(context, md_mgr, exp.to_owned())
@@ -540,7 +540,7 @@ impl<'te> FnCompiler<'te> {
                 };
 
                 // Get the target type from the type argument provided
-                let target_type = type_arguments[0].clone();
+                let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_typeid(
                     self.type_engine,
                     context,
@@ -1138,8 +1138,8 @@ impl<'te> FnCompiler<'te> {
         // Now actually call the new function.
         let mut args = {
             let mut args = Vec::with_capacity(ast_args.len());
-            for ((_, expr), param) in ast_args.iter().zip(callee.parameters.clone().into_iter()) {
-                self.current_fn_param = Some(param);
+            for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
+                self.current_fn_param = Some(param.clone());
                 let arg = self.compile_expression(context, md_mgr, expr)?;
                 if arg.is_diverging(context) {
                     return Ok(arg);
@@ -1194,7 +1194,7 @@ impl<'te> FnCompiler<'te> {
         md_mgr: &mut MetadataManager,
         ast_condition: &ty::TyExpression,
         ast_then: &ty::TyExpression,
-        ast_else: Option<Box<ty::TyExpression>>,
+        ast_else: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1227,7 +1227,7 @@ impl<'te> FnCompiler<'te> {
         self.current_block = false_block_begin;
         let false_value = match ast_else {
             None => Constant::get_unit(context),
-            Some(expr) => self.compile_expression(context, md_mgr, &expr)?,
+            Some(expr) => self.compile_expression(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
 
@@ -1269,7 +1269,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        exp: Box<ty::TyExpression>,
+        exp: &ty::TyExpression,
         variant: &ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
@@ -1283,12 +1283,12 @@ impl<'te> FnCompiler<'te> {
             _ => {
                 return Err(CompileError::Internal(
                     "Enum type for `unsafe downcast` is not an enum.",
-                    exp.span,
+                    exp.span.clone(),
                 ));
             }
         };
         // compile the expression to asm
-        let compiled_value = self.compile_expression(context, md_mgr, &exp)?;
+        let compiled_value = self.compile_expression(context, md_mgr, exp)?;
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -1988,7 +1988,7 @@ impl<'te> FnCompiler<'te> {
         md_mgr: &mut MetadataManager,
         enum_decl: &ty::TyEnumDeclaration,
         tag: usize,
-        contents: Option<Box<ty::TyExpression>>,
+        contents: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
