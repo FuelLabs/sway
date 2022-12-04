@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::DeclarationEngine,
+    engine_threading::*,
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
@@ -281,5 +282,10 @@ impl<'a> TypeCheckContext<'a> {
             span,
             self.help_text(),
         )
+    }
+
+    /// Get the various engines needed for engine threading.
+    pub(crate) fn engines(&self) -> Engines<'_> {
+        Engines::new(self.type_engine, self.declaration_engine)
     }
 }

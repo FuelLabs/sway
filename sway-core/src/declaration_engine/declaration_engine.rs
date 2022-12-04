@@ -38,21 +38,25 @@ impl fmt::Display for DeclarationEngine {
 }
 
 impl DeclarationEngine {
-    fn clear(&self) {
+    pub(crate) fn clear(&self) {
         self.slab.clear();
         let mut parents = self.parents.write().unwrap();
         parents.clear();
     }
 
-    fn look_up_decl_id(&self, index: DeclarationId) -> DeclarationWrapper {
+    pub(crate) fn look_up_decl_id(&self, index: DeclarationId) -> DeclarationWrapper {
         self.slab.get(*index)
     }
 
-    fn replace_decl_id(&self, index: DeclarationId, wrapper: DeclarationWrapper) {
+    pub(crate) fn replace_decl_id(&self, index: DeclarationId, wrapper: DeclarationWrapper) {
         self.slab.replace(index, wrapper);
     }
 
-    fn insert(&self, declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
+    pub(crate) fn insert(
+        &self,
+        declaration_wrapper: DeclarationWrapper,
+        span: Span,
+    ) -> DeclarationId {
         DeclarationId::new(self.slab.insert(declaration_wrapper), span)
     }
 
@@ -61,7 +65,7 @@ impl DeclarationEngine {
     /// duplicated computation---if the parents of a [DeclarationId] have
     /// already been found, we do not find them again.
     #[allow(clippy::map_entry)]
-    fn find_all_parents(
+    pub(crate) fn find_all_parents(
         &self,
         index: DeclarationId,
         type_engine: &TypeEngine,
@@ -88,7 +92,7 @@ impl DeclarationEngine {
         acc_parents.values().cloned().collect()
     }
 
-    fn register_parent(&self, index: &DeclarationId, parent: DeclarationId) {
+    pub(crate) fn register_parent(&self, index: &DeclarationId, parent: DeclarationId) {
         let mut parents = self.parents.write().unwrap();
         parents
             .entry(**index)
@@ -96,12 +100,12 @@ impl DeclarationEngine {
             .or_insert_with(|| vec![parent]);
     }
 
-    fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
+    pub(crate) fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclarationId {
         let span = function.span();
         self.insert(DeclarationWrapper::Function(function), span)
     }
 
-    fn get_function(
+    pub(crate) fn get_function(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -109,12 +113,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_function(span)
     }
 
-    fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclarationId {
+    pub(crate) fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclarationId {
         let span = r#trait.name.span();
         self.insert(DeclarationWrapper::Trait(r#trait), span)
     }
 
-    fn get_trait(
+    pub(crate) fn get_trait(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -122,12 +126,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait(span)
     }
 
-    fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
+    pub(crate) fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclarationId {
         let span = trait_fn.name.span();
         self.insert(DeclarationWrapper::TraitFn(trait_fn), span)
     }
 
-    fn get_trait_fn(
+    pub(crate) fn get_trait_fn(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -135,12 +139,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
-    fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclarationId {
+    pub(crate) fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclarationId {
         let span = impl_trait.span.clone();
         self.insert(DeclarationWrapper::ImplTrait(impl_trait), span)
     }
 
-    fn get_impl_trait(
+    pub(crate) fn get_impl_trait(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -148,12 +152,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_impl_trait(span)
     }
 
-    fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclarationId {
+    pub(crate) fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclarationId {
         let span = r#struct.span();
         self.insert(DeclarationWrapper::Struct(r#struct), span)
     }
 
-    fn get_struct(
+    pub(crate) fn get_struct(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -161,12 +165,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_struct(span)
     }
 
-    fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclarationId {
+    pub(crate) fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclarationId {
         let span = storage.span();
         self.insert(DeclarationWrapper::Storage(storage), span)
     }
 
-    fn get_storage(
+    pub(crate) fn get_storage(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -174,12 +178,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_storage(span)
     }
 
-    fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclarationId {
+    pub(crate) fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclarationId {
         let span = abi.span.clone();
         self.insert(DeclarationWrapper::Abi(abi), span)
     }
 
-    fn get_abi(
+    pub(crate) fn get_abi(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -187,7 +191,7 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_abi(span)
     }
 
-    fn insert_constant(&self, constant: ty::TyConstantDeclaration) -> DeclarationId {
+    pub(crate) fn insert_constant(&self, constant: ty::TyConstantDeclaration) -> DeclarationId {
         let span = constant.name.span();
         DeclarationId::new(
             self.slab
@@ -196,7 +200,7 @@ impl DeclarationEngine {
         )
     }
 
-    fn get_constant(
+    pub(crate) fn get_constant(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -204,12 +208,12 @@ impl DeclarationEngine {
         self.slab.get(*index).expect_constant(span)
     }
 
-    fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
+    pub(crate) fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
         let span = enum_decl.span();
         self.insert(DeclarationWrapper::Enum(enum_decl), span)
     }
 
-    fn get_enum(
+    pub(crate) fn get_enum(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -330,10 +334,6 @@ pub fn de_get_constant(
     span: &Span,
 ) -> Result<ty::TyConstantDeclaration, CompileError> {
     DECLARATION_ENGINE.get_constant(index, span)
-}
-
-pub(crate) fn de_insert_enum(enum_decl: ty::TyEnumDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_enum(enum_decl)
 }
 
 pub fn de_get_enum(

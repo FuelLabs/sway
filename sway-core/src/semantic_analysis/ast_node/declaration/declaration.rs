@@ -146,7 +146,9 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = enum_decl.name.clone();
-                let decl = ty::TyDeclaration::EnumDeclaration(de_insert_enum(enum_decl));
+                let decl = ty::TyDeclaration::EnumDeclaration(
+                    ctx.declaration_engine.insert_enum(enum_decl),
+                );
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),

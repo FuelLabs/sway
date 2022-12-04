@@ -88,7 +88,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                type_engine,
+                ctx.engines(),
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for_type_id,
@@ -479,7 +479,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                type_engine,
+                ctx.engines(),
                 &new_impl_type_parameters,
                 &[],
                 implementing_for_type_id,
@@ -797,14 +797,14 @@ fn type_check_trait_implementation(
             .unconstrained_type_parameters(type_engine, impl_type_parameters)
             .into_iter()
             .cloned()
-            .map(|x| WithEngines::new(x, type_engine))
+            .map(|x| WithEngines::new(x, ctx.engines()))
             .collect();
         let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
             ctx.self_type()
                 .unconstrained_type_parameters(type_engine, impl_type_parameters)
                 .into_iter()
                 .cloned()
-                .map(|x| WithEngines::new(x, type_engine))
+                .map(|x| WithEngines::new(x, ctx.engines()))
                 .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
@@ -911,7 +911,7 @@ fn type_check_trait_implementation(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -924,26 +924,28 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (type_engine.look_up_type_id(x.type_id), x.span()))
-            .map(|(thing, sp)| (WithEngines::new(thing, type_engine), sp)),
+            .map(|x| (engines.te().look_up_type_id(x.type_id), x.span()))
+            .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
         generics_in_use.extend(check!(
-            type_engine
+            engines
+                .te()
                 .look_up_type_id(type_arg.type_id)
-                .extract_nested_generics(type_engine, &type_arg.span),
+                .extract_nested_generics(engines, &type_arg.span),
             HashSet::new(),
             warnings,
             errors
         ));
     }
     generics_in_use.extend(check!(
-        type_engine
+        engines
+            .te()
             .look_up_type_id(self_type)
-            .extract_nested_generics(type_engine, self_type_span),
+            .extract_nested_generics(engines, self_type_span),
         HashSet::new(),
         warnings,
         errors

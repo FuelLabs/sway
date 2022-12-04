@@ -1290,13 +1290,13 @@ impl TypeInfo {
 
     pub(crate) fn extract_nested_generics<'a>(
         &self,
-        type_engine: &'a TypeEngine,
+        engines: Engines<'a>,
         span: &Span,
     ) -> CompileResult<HashSet<WithEngines<'a, TypeInfo>>> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(
-            self.clone().extract_nested_types(type_engine, span),
+            self.clone().extract_nested_types(engines.te(), span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1305,10 +1305,7 @@ impl TypeInfo {
             nested_types
                 .into_iter()
                 .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
-                .map(|thing| WithEngines {
-                    thing,
-                    engine: type_engine,
-                }),
+                .map(|thing| WithEngines::new(thing, engines)),
         );
         ok(generics, warnings, errors)
     }

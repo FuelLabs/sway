@@ -212,7 +212,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_enum(new_copy);
+                let new_id = ctx.declaration_engine.insert_enum(new_copy);
 
                 ty::TyDeclaration::EnumDeclaration(new_id)
             }
