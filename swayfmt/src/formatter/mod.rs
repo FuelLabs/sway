@@ -1182,6 +1182,34 @@ abi MyContract {
         assert!(test_stability(formatted_sway_code, formatter));
     }
     #[test]
+    fn test_traits_with_def_block() {
+        let sway_code_to_format = r#"script;
+
+pub trait Foo {
+    fn foo(self, other: Self);
+} {
+    fn bar(self, other: Self) {}
+}
+
+fn main() {}
+"#;
+        let correct_sway_code = r#"script;
+
+pub trait Foo {
+    fn foo(self, other: Self);
+} {
+    fn bar(self, other: Self) {}
+}
+
+fn main() {}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+    #[test]
     fn test_multiple_comma_separated_attributes() {
         let sway_code_to_format = r#"library my_lib;
 
@@ -1198,5 +1226,4 @@ fn foo() {}
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
-    }
 }

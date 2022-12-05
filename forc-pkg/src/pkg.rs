@@ -4,7 +4,7 @@ use crate::{
         BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
         PackageManifest, PackageManifestFile,
     },
-    WorkspaceManifestFile, CORE, PRELUDE, STD,
+    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -268,6 +268,8 @@ pub struct PkgOpts {
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
+    /// Print the computed Sway DCA (Dead Code Analysis) graph.
+    pub dca_graph: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -791,7 +793,7 @@ fn validate_dep(
     let dep_entry = node_manifest
         .dep(dep_name)
         .ok_or_else(|| anyhow!("no entry in parent manifest"))?;
-    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry)?;
+    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry, manifests)?;
     let dep_pkg = graph[dep_node].unpinned(&dep_path);
     if dep_pkg.source != dep_source {
         bail!("dependency node's source does not match manifest entry");
@@ -1378,6 +1380,7 @@ fn fetch_graph(
             offline,
             graph,
             manifest_map,
+            member_manifests,
         )?);
     }
     Ok(added_nodes)
@@ -1401,6 +1404,7 @@ fn fetch_pkg_graph(
     offline: bool,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     // Retrieve the project node, or create one if it does not exist.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
@@ -1438,6 +1442,7 @@ fn fetch_pkg_graph(
         manifest_map,
         &mut fetched,
         &mut visited,
+        member_manifests,
     )
 }
 
@@ -1454,6 +1459,7 @@ fn fetch_deps(
     manifest_map: &mut ManifestMap,
     fetched: &mut HashMap<Pkg, NodeIx>,
     visited: &mut HashSet<NodeIx>,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
@@ -1471,7 +1477,7 @@ fn fetch_deps(
     for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
         let parent_manifest = &manifest_map[&parent_id];
-        let source = dep_to_source_patched(parent_manifest, &name, &dep)
+        let source = dep_to_source_patched(parent_manifest, &name, &dep, member_manifests)
             .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1522,6 +1528,7 @@ fn fetch_deps(
             manifest_map,
             fetched,
             visited,
+            member_manifests,
         )?);
     }
     Ok(added)
@@ -1968,7 +1975,11 @@ where
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
 /// produce the `Source` for that dependendency.
-fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
+fn dep_to_source(
+    pkg_path: &Path,
+    dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
+) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref ver_str) => {
             bail!(
@@ -1985,15 +1996,13 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                     anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
                 })?;
                 // Check if path is a member of a workspace.
-                let workspace_manifest = canonical_path
-                    .parent()
-                    .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
-
-                match workspace_manifest {
-                    Some(ws) if ws.is_member_path(&canonical_path)? => {
-                        Source::Member(canonical_path)
-                    }
-                    _ => Source::Path(canonical_path),
+                if member_manifests
+                    .values()
+                    .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
+                {
+                    Source::Member(canonical_path)
+                } else {
+                    Source::Path(canonical_path)
                 }
             }
             (_, _, Some(repo)) => {
@@ -2044,9 +2053,10 @@ fn apply_patch(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep_source: &Source,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
     match dep_source_patch(manifest, dep_name, dep_source) {
-        Some(patch) => dep_to_source(manifest.dir(), patch),
+        Some(patch) => dep_to_source(manifest.dir(), patch, member_manifests),
         None => Ok(dep_source.clone()),
     }
 }
@@ -2057,9 +2067,10 @@ fn dep_to_source_patched(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
-    let unpatched = dep_to_source(manifest.dir(), dep)?;
-    apply_patch(manifest, dep_name, &unpatched)
+    let unpatched = dep_to_source(manifest.dir(), dep, member_manifests)?;
+    apply_patch(manifest, dep_name, &unpatched, member_manifests)
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
@@ -2075,6 +2086,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
+    .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
@@ -2318,7 +2330,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, ast_res, &sway_build_config)
+        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value
@@ -2405,6 +2417,7 @@ fn build_profile_from_opts(
             Default::default()
         });
     profile.print_ast |= print.ast;
+    profile.print_dca_graph |= print.dca_graph;
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
     profile.print_intermediate_asm |= print.intermediate_asm;
@@ -2435,6 +2448,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
+    // Check if we have members to build so that we are not trying to build an empty workspace.
+    if member_manifests.is_empty() {
+        bail!("No member found to build")
+    }
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
@@ -2744,7 +2761,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace);
+        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
