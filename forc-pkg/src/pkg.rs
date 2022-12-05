@@ -1614,7 +1614,12 @@ where
 
     let _ = std::fs::create_dir_all(&repo_dir);
 
-    let mut lock = RwLock::new(File::open(&repo_dir)?);
+    let mut lock = RwLock::new(
+        fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&repo_dir.join(".forc-lock"))?,
+    );
     let _ = lock.write()?;
 
     // Always clear existing temporary directory.
@@ -1818,7 +1823,12 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         repo.set_head_detached(id)?;
 
         let _ = std::fs::create_dir_all(&path);
-        let mut lock = RwLock::new(File::open(&path)?);
+        let mut lock = RwLock::new(
+            fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open(&path.join(".forc-lock"))?,
+        );
         let _ = lock.write()?;
 
         let _ = std::fs::remove_dir_all(&path);
