@@ -69,6 +69,7 @@ The `[build-profiles]` tables provide a way to customize compiler settings such 
 The following fields needs to be provided for a build-profile:
 
 * `print-ast` - Whether to print out the generated AST (true) or not (false).
+* `print-dca-graph` - Whether to print out the computed DCA graph (in GraphViz DOT format).
 * `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true).
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true).
