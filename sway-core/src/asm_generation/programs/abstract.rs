@@ -51,7 +51,7 @@ impl AbstractProgram {
                     entry.selector,
                     entry.label,
                     entry.name.clone(),
-                    entry.decl_index,
+                    entry.test_decl_id.clone(),
                 )
             })
             .collect();

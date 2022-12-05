@@ -1,5 +1,6 @@
 use super::{DataSection, InstructionSet, ProgramKind};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
+use crate::declaration_engine::DeclarationId;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
@@ -28,8 +29,8 @@ pub struct FinalizedEntry {
     pub imm: u64,
     /// The function selector (only `Some` for contract ABI methods).
     pub selector: Option<[u8; 4]>,
-    /// The declaration index for the related function declaration.
-    pub decl_id: usize,
+    /// The declaration index for the related function declaration, if this is test entry.
+    pub test_decl_id: Option<DeclarationId>,
 }
 
 impl FinalizedAsm {

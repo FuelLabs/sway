@@ -7,7 +7,7 @@ use super::{
     DataSection, InstructionSet,
 };
 
-use crate::asm_lang::Label;
+use crate::{asm_lang::Label, declaration_engine::DeclarationId};
 
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;
@@ -40,7 +40,7 @@ pub(super) struct AbstractEntry {
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
     pub(super) name: FnName,
-    pub(super) decl_index: usize,
+    pub(super) test_decl_id: Option<DeclarationId>,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -50,7 +50,7 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
-    entries: Vec<(SelectorOpt, Label, FnName, usize)>,
+    entries: Vec<(SelectorOpt, Label, FnName, Option<DeclarationId>)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
@@ -58,5 +58,5 @@ pub(super) struct FinalProgram {
     kind: ProgramKind,
     data_section: DataSection,
     ops: InstructionSet,
-    entries: Vec<(SelectorOpt, ImmOffset, FnName, usize)>,
+    entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclarationId>)>,
 }

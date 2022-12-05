@@ -112,11 +112,11 @@ fn compile_module_to_asm(
     let (data_section, reg_seqr, entries, non_entries) = builder.finalize();
     let entries = entries
         .into_iter()
-        .map(|(func, label, ops, decl_index)| {
+        .map(|(func, label, ops, test_decl_id)| {
             let selector = func.get_selector(context);
             let name = func.get_name(context).to_string();
             AbstractEntry {
-                decl_index,
+                test_decl_id,
                 selector,
                 label,
                 ops,
