@@ -20,10 +20,8 @@ stable-x86_64-unknown-linux-gnu (default)
 
 ## Installation & Updating
 
-The Sway toolchain and [`Fuel Core`](https://github.com/FuelLabs/fuel-core) can be installed/updated with:
+The `Sway toolchain` can be installed/updated with:
 
 ```bash
-cargo install forc fuel-core
+cargo install forc
 ```
-
-Installing [`fuel-core`](https://github.com/FuelLabs/fuel-core) may require installing additional [`system dependencies`](https://github.com/FuelLabs/fuel-core#building).
