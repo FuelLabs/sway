@@ -44,7 +44,7 @@ use sway_core::{
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
-use sway_utils::{constants, FORC_FILE_LOCK_NAME};
+use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
 
@@ -1614,7 +1614,7 @@ where
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
 
     if repo_dir.exists() {
-        let mut lock = RwLock::new(File::open(repo_dir)?);
+        let mut lock = RwLock::new(File::open(&repo_dir)?);
         let _ = lock.write()?;
 
         let _ = std::fs::remove_dir_all(&repo_dir);
