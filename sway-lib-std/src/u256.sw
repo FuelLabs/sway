@@ -4,7 +4,6 @@ use ::assert::assert;
 use ::convert::From;
 use ::result::Result;
 use ::u128::U128;
-use ::logging::log;
 
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
