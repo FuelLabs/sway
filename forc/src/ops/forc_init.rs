@@ -1,12 +1,18 @@
 use crate::cli::InitCommand;
-use crate::utils::{defaults, program_type::ProgramType::*};
+use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::{Context, Result};
 use forc_util::validate_name;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use sway_utils::constants;
-use tracing::info;
+use tracing::{debug, info};
+
+#[derive(Debug)]
+enum InitType {
+    Package(ProgramType),
+    Workspace,
+}
 
 fn print_welcome_message() {
     let read_the_docs = format!(
@@ -54,12 +60,10 @@ pub fn init(command: InitCommand) -> Result<()> {
         );
     }
 
-    if command.verbose {
-        info!(
-            "\nUsing project directory at {}",
-            project_dir.canonicalize()?.display()
-        );
-    }
+    debug!(
+        "\nUsing project directory at {}",
+        project_dir.canonicalize()?.display()
+    );
 
     let project_name = match command.name {
         Some(name) => name,
@@ -72,82 +76,73 @@ pub fn init(command: InitCommand) -> Result<()> {
 
     validate_name(&project_name, "project name")?;
 
-    let program_type = match (
+    let init_type = match (
         command.contract,
         command.script,
         command.predicate,
         command.library,
+        command.workspace,
     ) {
-        (_, false, false, false) => Contract,
-        (false, true, false, false) => Script,
-        (false, false, true, false) => Predicate,
-        (false, false, false, true) => Library,
+        (_, false, false, false, false) => InitType::Package(ProgramType::Contract),
+        (false, true, false, false, false) => InitType::Package(ProgramType::Script),
+        (false, false, true, false, false) => InitType::Package(ProgramType::Predicate),
+        (false, false, false, true, false) => InitType::Package(ProgramType::Library),
+        (false, false, false, false, true) => InitType::Workspace,
         _ => anyhow::bail!(
-            "Multiple types detected, please specify only one program type: \
-        \n Possible Types:\n - contract\n - script\n - predicate\n - library"
+            "Multiple types detected, please specify only one initialization type: \
+        \n Possible Types:\n - contract\n - script\n - predicate\n - library\n - workspace"
         ),
     };
 
     // Make a new directory for the project
-    fs::create_dir_all(Path::new(&project_dir).join("src"))?;
-
-    // Make directory for tests
-    fs::create_dir_all(Path::new(&project_dir).join("tests"))?;
+    let dir_to_create = match init_type {
+        InitType::Package(_) => project_dir.join("src"),
+        InitType::Workspace => project_dir.clone(),
+    };
+    fs::create_dir_all(dir_to_create)?;
 
     // Insert default manifest file
-    match program_type {
-        Library => fs::write(
+    match init_type {
+        InitType::Workspace => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&project_name, constants::LIB_ENTRY),
+            defaults::default_workspace_manifest(),
+        )?,
+        InitType::Package(ProgramType::Library) => fs::write(
+            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_manifest(&project_name, constants::MAIN_ENTRY),
+            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
 
-    // Insert default test manifest file
-    fs::write(
-        Path::new(&project_dir).join(constants::TEST_MANIFEST_FILE_NAME),
-        defaults::default_tests_manifest(&project_name),
-    )?;
-
-    match program_type {
-        Contract => fs::write(
+    match init_type {
+        InitType::Package(ProgramType::Contract) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
-        Script => fs::write(
+        InitType::Package(ProgramType::Script) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
-        Library => fs::write(
+        InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
             defaults::default_library(&project_name),
         )?,
-        Predicate => fs::write(
+        InitType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::MAIN_ENTRY),
             defaults::default_predicate(),
         )?,
-    }
-
-    // Insert default test function
-    let harness_path = Path::new(&project_dir).join("tests").join("harness.rs");
-    fs::write(&harness_path, defaults::default_test_program(&project_name))?;
-
-    if command.verbose {
-        info!(
-            "\nCreated test harness at {}",
-            harness_path.canonicalize()?.display()
-        );
+        _ => {}
     }
 
     // Ignore default `out` and `target` directories created by forc and cargo.
@@ -160,16 +155,12 @@ pub fn init(command: InitCommand) -> Result<()> {
         .open(&gitignore_path)?;
     gitignore_file.write_all(defaults::default_gitignore().as_bytes())?;
 
-    if command.verbose {
-        info!(
-            "\nCreated .gitignore at {}",
-            gitignore_path.canonicalize()?.display()
-        );
-    }
+    debug!(
+        "\nCreated .gitignore at {}",
+        gitignore_path.canonicalize()?.display()
+    );
 
-    if command.verbose {
-        info!("\nSuccessfully created {program_type}: {project_name}",);
-    }
+    debug!("\nSuccessfully created {init_type:?}: {project_name}",);
 
     print_welcome_message();
 

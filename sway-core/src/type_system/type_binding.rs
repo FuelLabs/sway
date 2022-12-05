@@ -1,10 +1,12 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
-    error::{err, ok},
+    declaration_engine::declaration_engine::*,
+    error::*,
+    language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::{insert_type, EnforceTypeArguments},
-    CallPath, CompileResult, TypeInfo, TypedDeclaration,
+    type_system::EnforceTypeArguments,
+    CreateTypeId, TypeInfo,
 };
 
 use super::{ReplaceSelfType, TypeArgument, TypeId};
@@ -111,12 +113,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                insert_type(type_info),
+                ctx.type_engine.insert_type(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -128,13 +130,13 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
 impl TypeBinding<CallPath> {
     pub(crate) fn type_check_with_ident(
         &mut self,
-        ctx: &TypeCheckContext,
-    ) -> CompileResult<TypedDeclaration> {
+        mut ctx: TypeCheckContext,
+    ) -> CompileResult<ty::TyDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         // grab the declaration
-        let mut unknown_decl = check!(
+        let unknown_decl = check!(
             ctx.namespace.resolve_call_path(&self.inner).cloned(),
             return err(warnings, errors),
             warnings,
@@ -143,15 +145,30 @@ impl TypeBinding<CallPath> {
 
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.replace_self_type(ctx.self_type());
+            type_argument.replace_self_type(ctx.type_engine, ctx.self_type());
+            type_argument.type_id = check!(
+                ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
         }
 
         // monomorphize the declaration, if needed
-        match unknown_decl {
-            TypedDeclaration::FunctionDeclaration(ref mut decl) => {
+        let new_decl = match unknown_decl {
+            ty::TyDeclaration::FunctionDeclaration(original_id) => {
+                // get the copy from the declaration engine
+                let mut new_copy = check!(
+                    CompileResult::from(de_get_function(original_id.clone(), &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
-                        decl,
+                        &mut new_copy,
                         &mut self.type_arguments,
                         EnforceTypeArguments::No,
                         &self.span
@@ -159,12 +176,26 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+
+                // insert the new copy into the declaration engine
+                let new_id = de_insert_function(new_copy).with_parent(original_id);
+
+                ty::TyDeclaration::FunctionDeclaration(new_id)
             }
-            TypedDeclaration::EnumDeclaration(ref mut decl) => {
+            ty::TyDeclaration::EnumDeclaration(original_id) => {
+                // get the copy from the declaration engine
+                let mut new_copy = check!(
+                    CompileResult::from(de_get_enum(original_id, &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
-                        decl,
+                        &mut new_copy,
                         &mut self.type_arguments,
                         EnforceTypeArguments::No,
                         &self.span
@@ -172,12 +203,32 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
+
+                // insert the new copy into the declaration engine
+                let new_id = de_insert_enum(new_copy);
+
+                ty::TyDeclaration::EnumDeclaration(new_id)
             }
-            TypedDeclaration::StructDeclaration(ref mut decl) => {
+            ty::TyDeclaration::StructDeclaration(original_id) => {
+                // get the copy from the declaration engine
+                let mut new_copy = check!(
+                    CompileResult::from(de_get_struct(original_id, &self.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
+                // monomorphize the copy, in place
                 check!(
                     ctx.monomorphize(
-                        decl,
+                        &mut new_copy,
                         &mut self.type_arguments,
                         EnforceTypeArguments::No,
                         &self.span
@@ -185,10 +236,21 @@ impl TypeBinding<CallPath> {
                     return err(warnings, errors),
                     warnings,
                     errors
-                )
+                );
+
+                // take any trait methods that apply to this type and copy them to the new type
+                ctx.namespace.insert_trait_implementation_for_type(
+                    ctx.type_engine,
+                    new_copy.create_type_id(ctx.type_engine),
+                );
+
+                // insert the new copy into the declaration engine
+                let new_id = de_insert_struct(new_copy);
+
+                ty::TyDeclaration::StructDeclaration(new_id)
             }
-            _ => {}
-        }
-        ok(unknown_decl, warnings, errors)
+            _ => unknown_decl,
+        };
+        ok(new_decl, warnings, errors)
     }
 }

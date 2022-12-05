@@ -1,7 +1,8 @@
 use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
-use forc_pkg::{self as pkg, lock, Lock, ManifestFile};
+use forc_pkg::{self as pkg, lock, Lock};
 use forc_util::lock_path;
+use pkg::manifest::ManifestFile;
 use std::{fs, path::PathBuf};
 use tracing::info;
 
@@ -36,10 +37,15 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
-    let new_plan = pkg::BuildPlan::from_manifest(&manifest, offline)?;
+    let member_manifests = manifest.member_manifests()?;
+    let new_plan = pkg::BuildPlan::from_manifests(&member_manifests, offline)?;
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
-    lock::print_diff(&manifest.project.name, &diff);
+    let member_names = member_manifests
+        .iter()
+        .map(|(_, manifest)| manifest.project.name.clone())
+        .collect();
+    lock::print_diff(&member_names, &diff);
 
     // If we're not only `check`ing, write the updated lock file.
     if !check {

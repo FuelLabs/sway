@@ -1,45 +1,19 @@
-use derivative::Derivative;
-use sway_types::{Ident, Spanned};
+use std::collections::BTreeMap;
+
+use sway_error::warning::{CompileWarning, Warning};
+use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
-    error::{err, ok},
-    semantic_analysis::{
-        ast_node::{type_check_interface_surface, type_check_trait_methods},
-        Mode, TypeCheckContext, TypedCodeBlock,
-    },
-    style::is_upper_camel_case,
-    type_system::{insert_type, CopyTypes, TypeMapping},
-    CallPath, CompileError, CompileResult, FunctionDeclaration, FunctionParameter, Namespace,
-    Supertrait, TraitDeclaration, TypeInfo, TypedDeclaration, TypedFunctionDeclaration, Visibility,
+    declaration_engine::*,
+    error::*,
+    language::{parsed::*, ty, CallPath},
+    semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
+    type_system::*,
 };
 
-use super::{EnforceTypeArguments, TypedFunctionParameter, TypedTraitFn};
+type MethodMap = BTreeMap<Ident, DeclarationId>;
 
-#[derive(Clone, Debug, Derivative)]
-#[derivative(PartialEq, Eq)]
-pub struct TypedTraitDeclaration {
-    pub name: Ident,
-    pub interface_surface: Vec<TypedTraitFn>,
-    // NOTE: deriving partialeq and hash on this element may be important in the
-    // future, but I am not sure. For now, adding this would 2x the amount of
-    // work, so I am just going to exclude it
-    #[derivative(PartialEq = "ignore")]
-    #[derivative(Eq(bound = ""))]
-    pub(crate) methods: Vec<FunctionDeclaration>,
-    pub(crate) supertraits: Vec<Supertrait>,
-    pub visibility: Visibility,
-}
-
-impl CopyTypes for TypedTraitDeclaration {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.interface_surface
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-        // we don't have to type check the methods because it hasn't been type checked yet
-    }
-}
-
-impl TypedTraitDeclaration {
+impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         trait_decl: TraitDeclaration,
@@ -47,198 +21,321 @@ impl TypedTraitDeclaration {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        is_upper_camel_case(&trait_decl.name).ok(&mut warnings, &mut errors);
+        let TraitDeclaration {
+            name,
+            type_parameters,
+            attributes,
+            interface_surface,
+            methods,
+            supertraits,
+            visibility,
+            span,
+        } = trait_decl;
 
-        // type check the interface surface
-        let interface_surface = check!(
-            type_check_interface_surface(trait_decl.interface_surface.to_vec(), ctx.namespace),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        if !is_upper_camel_case(name.as_str()) {
+            warnings.push(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonClassCaseTraitName { name: name.clone() },
+            })
+        }
 
         // A temporary namespace for checking within the trait's scope.
+        let self_type = ctx.type_engine.insert_type(TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let ctx = ctx.scoped(&mut trait_namespace);
+        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
-        // Recursively handle supertraits: make their interfaces and methods available to this trait
+        // type check the type parameters, which will insert them into the namespace
+        let mut new_type_parameters = vec![];
+        for type_parameter in type_parameters.into_iter() {
+            new_type_parameters.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+
+        // Recursively make the interface surfaces and methods of the
+        // supertraits available to this trait.
         check!(
-            handle_supertraits(&trait_decl.supertraits, ctx.namespace),
+            insert_supertraits_into_namespace(ctx.by_ref(), self_type, &supertraits),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // type check the interface surface
+        let mut new_interface_surface = vec![];
+        let mut dummy_interface_surface = vec![];
+        for method in interface_surface.into_iter() {
+            let method = check!(
+                ty::TyTraitFn::type_check(ctx.by_ref(), method),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            let decl_id = de_insert_trait_fn(method.clone());
+            new_interface_surface.push(decl_id.clone());
+            dummy_interface_surface
+                .push(de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id));
+        }
 
         // insert placeholder functions representing the interface surface
         // to allow methods to use those functions
-        ctx.namespace.insert_trait_implementation(
-            CallPath {
-                prefixes: vec![],
-                suffix: trait_decl.name.clone(),
-                is_absolute: false,
-            },
-            insert_type(TypeInfo::SelfType),
-            interface_surface
-                .iter()
-                .map(|x| x.to_dummy_func(Mode::NonAbi))
-                .collect(),
-        );
-        // check the methods for errors but throw them away and use vanilla [FunctionDeclaration]s
-        let ctx = ctx.with_self_type(insert_type(TypeInfo::SelfType));
-        let _methods = check!(
-            type_check_trait_methods(ctx, trait_decl.methods.clone()),
-            vec![],
+        check!(
+            ctx.namespace.insert_trait_implementation(
+                CallPath {
+                    prefixes: vec![],
+                    suffix: name.clone(),
+                    is_absolute: false,
+                },
+                new_type_parameters.iter().map(|x| x.into()).collect(),
+                self_type,
+                &dummy_interface_surface,
+                &span,
+                false,
+                ctx.type_engine,
+            ),
+            return err(warnings, errors),
             warnings,
             errors
         );
-        let typed_trait_decl = TypedTraitDeclaration {
-            name: trait_decl.name.clone(),
-            interface_surface,
-            methods: trait_decl.methods.to_vec(),
-            supertraits: trait_decl.supertraits.to_vec(),
-            visibility: trait_decl.visibility,
+
+        // type check the methods
+        let mut new_methods = vec![];
+        for method in methods.into_iter() {
+            let method = check!(
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDeclaration::error(method, ctx.type_engine),
+                warnings,
+                errors
+            );
+            new_methods.push(de_insert_function(method));
+        }
+
+        let typed_trait_decl = ty::TyTraitDeclaration {
+            name,
+            type_parameters: new_type_parameters,
+            interface_surface: new_interface_surface,
+            methods: new_methods,
+            supertraits,
+            visibility,
+            attributes,
+            span,
         };
         ok(typed_trait_decl, warnings, errors)
     }
-}
 
-/// Recursively handle supertraits by adding all their interfaces and methods to some namespace
-/// which is meant to be the namespace of the subtrait in question
-fn handle_supertraits(
-    supertraits: &[Supertrait],
-    trait_namespace: &mut Namespace,
-) -> CompileResult<()> {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
+    /// Retrieves the interface surface and implemented methods for this trait.
+    pub(crate) fn retrieve_interface_surface_and_implemented_methods_for_type(
+        &self,
+        ctx: TypeCheckContext,
+        type_id: TypeId,
+        call_path: &CallPath,
+    ) -> CompileResult<(MethodMap, MethodMap)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
 
-    for supertrait in supertraits.iter() {
-        match trait_namespace
-            .resolve_call_path(&supertrait.name)
-            .ok(&mut warnings, &mut errors)
-            .cloned()
-        {
-            Some(TypedDeclaration::TraitDeclaration(TypedTraitDeclaration {
-                ref interface_surface,
-                ref methods,
-                ref supertraits,
-                ..
-            })) => {
-                // insert dummy versions of the interfaces for all of the supertraits
-                trait_namespace.insert_trait_implementation(
-                    supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
-                    interface_surface
-                        .iter()
-                        .map(|x| x.to_dummy_func(Mode::NonAbi))
-                        .collect(),
-                );
+        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
+        let mut impld_method_ids: MethodMap = BTreeMap::new();
 
-                // insert dummy versions of the methods of all of the supertraits
-                let dummy_funcs = check!(
-                    convert_trait_methods_to_dummy_funcs(methods, trait_namespace),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                trait_namespace.insert_trait_implementation(
-                    supertrait.name.clone(),
-                    insert_type(TypeInfo::SelfType),
-                    dummy_funcs,
-                );
+        let ty::TyTraitDeclaration {
+            interface_surface,
+            name,
+            ..
+        } = self;
 
-                // Recurse to insert dummy versions of interfaces and methods of the *super*
-                // supertraits
-                check!(
-                    handle_supertraits(supertraits, trait_namespace),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-            }
-            Some(TypedDeclaration::AbiDeclaration(_)) => {
-                errors.push(CompileError::AbiAsSupertrait {
-                    span: supertrait.name.span().clone(),
-                })
-            }
-            _ => errors.push(CompileError::TraitNotFound {
-                name: supertrait.name.clone(),
-            }),
+        // Retrieve the interface surface for this trait.
+        for decl_id in interface_surface.iter() {
+            let method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            interface_surface_method_ids.insert(method.name, decl_id.clone());
         }
+
+        // Retrieve the implemented methods for this type.
+        for decl_id in ctx
+            .namespace
+            .get_methods_for_type_and_trait_name(ctx.type_engine, type_id, call_path)
+            .into_iter()
+        {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &name.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            impld_method_ids.insert(method.name, decl_id);
+        }
+
+        ok(
+            (interface_surface_method_ids, impld_method_ids),
+            warnings,
+            errors,
+        )
     }
 
-    ok((), warnings, errors)
-}
+    /// Retrieves the interface surface, methods, and implemented methods for
+    /// this trait.
+    pub(crate) fn retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
+        &self,
+        ctx: TypeCheckContext,
+        type_id: TypeId,
+        call_path: &CallPath,
+        type_arguments: &[TypeArgument],
+    ) -> CompileResult<(MethodMap, MethodMap, MethodMap)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
 
-/// Convert a vector of FunctionDeclarations into a vector of TypedFunctionDeclarations where only
-/// the parameters and the return types are type checked.
-fn convert_trait_methods_to_dummy_funcs(
-    methods: &[FunctionDeclaration],
-    trait_namespace: &mut Namespace,
-) -> CompileResult<Vec<TypedFunctionDeclaration>> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-    let dummy_funcs = methods
-        .iter()
-        .map(
-            |FunctionDeclaration {
-                 name,
-                 parameters,
-                 return_type,
-                 return_type_span,
-                 ..
-             }| TypedFunctionDeclaration {
-                purity: Default::default(),
-                name: name.clone(),
-                body: TypedCodeBlock { contents: vec![] },
-                parameters: parameters
-                    .iter()
-                    .map(
-                        |FunctionParameter {
-                             name,
-                             is_reference,
-                             is_mutable,
-                             type_id,
-                             type_span,
-                         }| TypedFunctionParameter {
-                            name: name.clone(),
-                            is_reference: *is_reference,
-                            is_mutable: *is_mutable,
-                            type_id: check!(
-                                trait_namespace.resolve_type_with_self(
-                                    *type_id,
-                                    insert_type(TypeInfo::SelfType),
-                                    type_span,
-                                    EnforceTypeArguments::Yes,
-                                    None
-                                ),
-                                insert_type(TypeInfo::ErrorRecovery),
-                                warnings,
-                                errors,
-                            ),
-                            type_span: type_span.clone(),
-                        },
-                    )
-                    .collect(),
-                span: name.span(),
-                return_type: check!(
-                    trait_namespace.resolve_type_with_self(
-                        insert_type(return_type.clone()),
-                        insert_type(TypeInfo::SelfType),
-                        return_type_span,
-                        EnforceTypeArguments::Yes,
-                        None
-                    ),
-                    insert_type(TypeInfo::ErrorRecovery),
-                    warnings,
-                    errors,
-                ),
-                return_type_span: return_type_span.clone(),
-                visibility: Visibility::Public,
-                type_parameters: vec![],
-                is_contract_call: false,
-            },
+        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
+        let mut method_ids: MethodMap = BTreeMap::new();
+        let mut impld_method_ids: MethodMap = BTreeMap::new();
+
+        let ty::TyTraitDeclaration {
+            interface_surface,
+            methods,
+            type_parameters,
+            ..
+        } = self;
+
+        // Retrieve the interface surface for this trait.
+        for decl_id in interface_surface.iter() {
+            let method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            interface_surface_method_ids.insert(method.name, decl_id.clone());
+        }
+
+        // Retrieve the trait methods for this trait.
+        for decl_id in methods.iter() {
+            let method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            method_ids.insert(method.name, decl_id.clone());
+        }
+
+        // Retrieve the implemented methods for this type.
+        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+            type_parameters
+                .iter()
+                .map(|type_param| type_param.type_id)
+                .collect(),
+            type_arguments
+                .iter()
+                .map(|type_arg| type_arg.type_id)
+                .collect(),
+        );
+        for decl_id in ctx
+            .namespace
+            .get_methods_for_type_and_trait_name(ctx.type_engine, type_id, call_path)
+            .into_iter()
+        {
+            let mut method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            method.copy_types(&type_mapping, ctx.type_engine);
+            impld_method_ids.insert(
+                method.name.clone(),
+                de_insert_function(method).with_parent(decl_id),
+            );
+        }
+
+        ok(
+            (interface_surface_method_ids, method_ids, impld_method_ids),
+            warnings,
+            errors,
         )
-        .collect::<Vec<_>>();
+    }
 
-    ok(dummy_funcs, warnings, errors)
+    pub(crate) fn insert_interface_surface_and_methods_into_namespace(
+        &self,
+        ctx: TypeCheckContext,
+        trait_name: &CallPath,
+        type_arguments: &[TypeArgument],
+        type_id: TypeId,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
+
+        let ty::TyTraitDeclaration {
+            interface_surface,
+            methods,
+            type_parameters,
+            ..
+        } = self;
+
+        let mut all_methods = vec![];
+
+        // Retrieve the trait methods for this trait. Transform them into the
+        // correct typing for this impl block by using the type parameters from
+        // the original trait declaration and the given type arguments.
+        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+            type_parameters
+                .iter()
+                .map(|type_param| type_param.type_id)
+                .collect(),
+            type_arguments
+                .iter()
+                .map(|type_arg| type_arg.type_id)
+                .collect(),
+        );
+        for decl_id in interface_surface.iter() {
+            let mut method = check!(
+                CompileResult::from(de_get_trait_fn(decl_id.clone(), &trait_name.span())),
+                continue,
+                warnings,
+                errors
+            );
+            method.replace_self_type(type_engine, type_id);
+            method.copy_types(&type_mapping, type_engine);
+            all_methods.push(
+                de_insert_function(method.to_dummy_func(Mode::NonAbi)).with_parent(decl_id.clone()),
+            );
+        }
+        for decl_id in methods.iter() {
+            let mut method = check!(
+                CompileResult::from(de_get_function(decl_id.clone(), &trait_name.span())),
+                continue,
+                warnings,
+                errors
+            );
+            method.replace_self_type(type_engine, type_id);
+            method.copy_types(&type_mapping, type_engine);
+            all_methods.push(de_insert_function(method).with_parent(decl_id.clone()));
+        }
+
+        // Insert the methods of the trait into the namespace.
+        // Specifically do not check for conflicting definitions because
+        // this is just a temporary namespace for type checking and
+        // these are not actual impl blocks.
+        ctx.namespace.insert_trait_implementation(
+            trait_name.clone(),
+            type_arguments.to_vec(),
+            type_id,
+            &all_methods,
+            &trait_name.span(),
+            false,
+            type_engine,
+        );
+
+        if errors.is_empty() {
+            ok((), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
 }

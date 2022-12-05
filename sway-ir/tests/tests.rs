@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use sway_ir::{optimize as opt, Context, Function};
+use sway_ir::{optimize as opt, Context};
 
 // -------------------------------------------------------------------------------------------------
 // Utility for finding test files and running FileCheck.  See actual pass invocations below.
@@ -15,7 +15,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let input = String::from_utf8_lossy(&input_bytes);
 
         let mut ir = sway_ir::parser::parse(&input).unwrap_or_else(|parse_err| {
-            println!("{parse_err}");
+            println!("{}: {parse_err}", path.display());
             panic!()
         });
 
@@ -69,12 +69,15 @@ fn inline() {
             words
         };
 
-        let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
+        let funcs = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect::<Vec<_>>();
 
         if params.iter().any(|&p| p == "all") {
             // Just inline everything, replacing all CALL instructions.
-            fn_idcs.into_iter().fold(false, |acc, fn_idx| {
-                opt::inline_all_function_calls(ir, &Function(fn_idx)).unwrap() || acc
+            funcs.into_iter().fold(false, |acc, func| {
+                opt::inline_all_function_calls(ir, &func).unwrap() || acc
             })
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
@@ -93,10 +96,10 @@ fn inline() {
                         },
                     );
 
-            fn_idcs.into_iter().fold(false, |acc, fn_idx| {
+            funcs.into_iter().fold(false, |acc, func| {
                 opt::inline_some_function_calls(
                     ir,
-                    &Function(fn_idx),
+                    &func,
                     opt::is_small_fn(max_blocks, max_instrs, max_stack),
                 )
                 .unwrap()
@@ -114,10 +117,12 @@ fn inline() {
 #[test]
 fn constants() {
     run_tests("constants", |_first_line, ir: &mut Context| {
-        let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
-        fn_idcs.into_iter().fold(false, |acc, fn_idx| {
-            sway_ir::optimize::combine_constants(ir, &sway_ir::function::Function(fn_idx)).unwrap()
-                || acc
+        let funcs: Vec<_> = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect();
+        funcs.into_iter().fold(false, |acc, func| {
+            sway_ir::optimize::combine_constants(ir, &func).unwrap() || acc
         })
     })
 }
@@ -128,10 +133,44 @@ fn constants() {
 #[test]
 fn simplify_cfg() {
     run_tests("simplify_cfg", |_first_line, ir: &mut Context| {
-        let fn_idcs: Vec<_> = ir.functions.iter().map(|func| func.0).collect();
-        fn_idcs.into_iter().fold(false, |acc, fn_idx| {
-            sway_ir::optimize::simplify_cfg(ir, &sway_ir::function::Function(fn_idx)).unwrap()
-                || acc
+        let funcs: Vec<_> = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect();
+        funcs.into_iter().fold(false, |acc, func| {
+            sway_ir::optimize::simplify_cfg(ir, &func).unwrap() || acc
+        })
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn dce() {
+    run_tests("dce", |_first_line, ir: &mut Context| {
+        let funcs: Vec<_> = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect();
+        funcs.into_iter().fold(false, |acc, func| {
+            sway_ir::optimize::dce(ir, &func).unwrap() || acc
+        })
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn mem2reg() {
+    run_tests("mem2reg", |_first_line, ir: &mut Context| {
+        let funcs: Vec<_> = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect();
+        funcs.into_iter().fold(false, |acc, func| {
+            sway_ir::optimize::promote_to_registers(ir, &func).unwrap() || acc
         })
     })
 }

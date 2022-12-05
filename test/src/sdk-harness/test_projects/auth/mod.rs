@@ -12,7 +12,12 @@ abigen!(
 #[tokio::test]
 async fn is_external_from_sdk() {
     let (auth_instance, _, _, _, _) = get_contracts().await;
-    let result = auth_instance.is_caller_external().call().await.unwrap();
+    let result = auth_instance
+        .methods()
+        .is_caller_external()
+        .call()
+        .await
+        .unwrap();
 
     assert_eq!(result.value, true);
 }
@@ -21,6 +26,7 @@ async fn is_external_from_sdk() {
 async fn msg_sender_from_sdk() {
     let (auth_instance, _, _, _, wallet) = get_contracts().await;
     let result = auth_instance
+        .methods()
         .returns_msg_sender_address(wallet.address().into())
         .call()
         .await
@@ -34,6 +40,7 @@ async fn msg_sender_from_contract() {
     let (_, auth_id, caller_instance, caller_id, _) = get_contracts().await;
 
     let result = caller_instance
+        .methods()
         .call_auth_contract(auth_id, caller_id)
         .set_contracts(&[auth_id.into()])
         .call()
@@ -48,7 +55,7 @@ async fn get_contracts() -> (
     ContractId,
     AuthCallerContract,
     ContractId,
-    LocalWallet,
+    Wallet,
 ) {
     let wallet = launch_provider_and_get_wallet().await;
 
@@ -77,8 +84,14 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_1 = AuthContractBuilder::new(id_1.to_string(), wallet.clone()).build();
-    let instance_2 = AuthCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
+    let instance_1 = AuthContract::new(id_1.clone(), wallet.clone());
+    let instance_2 = AuthCallerContract::new(id_2.clone(), wallet.clone());
 
-    (instance_1, id_1.into(), instance_2, id_2.into(), wallet)
+    (
+        instance_1,
+        id_1.into(),
+        instance_2,
+        id_2.into(),
+        wallet.lock(),
+    )
 }

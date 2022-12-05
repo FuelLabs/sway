@@ -1,6 +1,6 @@
 contract;
 
-use std::storage::{StorageMap, StorageVec};
+use std::storage::StorageVec;
 
 struct Wrapper {
     map1: StorageMap<u64, u64>,
@@ -14,7 +14,12 @@ storage {
     map1: StorageMap<u32, u32> = StorageMap{},
 }
 
-impl Contract {
+abi MyContract {
+    #[storage(read, write)]
+    fn main() -> u64;
+}
+
+impl MyContract for Contract {
     #[storage(read, write)]
     fn main() -> u64 {
        let local_map1: StorageMap<u64, u64> = StorageMap {};

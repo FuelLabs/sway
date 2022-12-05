@@ -19,12 +19,12 @@ pub struct Command {
     /// Adding this flag creates an empty library program.
     #[clap(long)]
     pub library: bool,
+    /// Adding this flag creates an empty workspace.
+    #[clap(long)]
+    pub workspace: bool,
     /// Set the package name. Defaults to the directory name
     #[clap(long)]
     pub name: Option<String>,
-    /// Use verbose output.
-    #[clap(short = 'v', long)]
-    pub verbose: bool,
     /// The path at which the project directory will be created.
     pub path: String,
 }
@@ -38,8 +38,8 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         script,
         predicate,
         library,
+        workspace,
         name,
-        verbose,
         path,
     } = command;
 
@@ -61,7 +61,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         script,
         predicate,
         library,
-        verbose,
+        workspace,
         name,
     };
 

@@ -1,5 +1,13 @@
 category = "fail"
 
 # check: fn foo(s: str[7]) -> str[7] {
-# nextln: $()Expected: u64
-# nextln: $()found:    str[7]. The definition of this function must match the one in the trait declaration.
+# check: $()Expected: u64
+# check: $()found:    str[7]. The definition of this function must match the one in the ABI "MyContract" declaration.
+
+# check: fn bar() -> u64 {
+# check: $()Expected: u32
+# check: $()found:    u64. The definition of this function must match the one in the ABI "MyContract" declaration.
+
+# check: fn baz() {
+# check: $()Expected: u64
+# check: $()found:    (). The definition of this function must match the one in the ABI "MyContract" declaration.

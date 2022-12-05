@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B3B7F7F1BCA7D931'
+
+[[package]]
+name = 'prelude_access2'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B3B7F7F1BCA7D931'
+dependencies = ['core']

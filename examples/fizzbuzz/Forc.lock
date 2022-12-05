@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-08CA839BA84C13D2'
-dependencies = []
 
 [[package]]
 name = 'fizzbuzz'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

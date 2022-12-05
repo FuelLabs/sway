@@ -1,25 +1,24 @@
-use crate::{
-    Parse, ParseBracket, ParseErrorKind, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek,
-};
+use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed, Peek};
 
 use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, BreakToken, CommaToken, ConstToken, ContinueToken, DivEqToken,
-    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
-    OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, TildeToken, TraitToken, TrueToken, UseToken,
+    AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
+    EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
+    PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
+    SubEqToken, Token, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::Delimiter;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, IfCondition, IfExpr, LitInt, Literal, MatchBranch, MatchBranchKind,
-    Statement, StatementLet,
+    ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
+    MatchBranchKind, PathExprSegment, Statement, StatementLet,
 };
-use sway_types::{Ident, Spanned};
+use sway_error::parser_error::ParseErrorKind;
+use sway_types::{Ident, Span, Spanned};
 
 mod asm;
 pub mod op_code;
@@ -96,16 +95,31 @@ impl Parse for Expr {
 
 impl Parse for StatementLet {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        let let_token = parser.parse()?;
+        let pattern = parser.parse()?;
+        let ty_opt = match parser.take() {
+            Some(colon_token) => Some((colon_token, parser.parse()?)),
+            None => None,
+        };
+        let eq_token: EqToken = parser.parse()?;
+
+        // Recover on missing expression.
+        // FIXME(Centril): We should point at right after `=`, not at it.
+        let on_err = |_| Expr::Error([eq_token.span()].into());
+        let expr = parser.parse().unwrap_or_else(on_err);
+
+        // Recover on missing semicolon.
+        let semicolon_token = parser
+            .parse()
+            .unwrap_or_else(|_| SemicolonToken::new(eq_token.span()));
+
         Ok(StatementLet {
-            let_token: parser.parse()?,
-            pattern: parser.parse()?,
-            ty_opt: match parser.take() {
-                Some(colon_token) => Some((colon_token, parser.parse()?)),
-                None => None,
-            },
-            eq_token: parser.parse()?,
-            expr: parser.parse()?,
-            semicolon_token: parser.parse()?,
+            let_token,
+            pattern,
+            ty_opt,
+            eq_token,
+            expr,
+            semicolon_token,
         })
     }
 }
@@ -155,8 +169,6 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<ImplToken>().is_some()
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
-        || parser.peek::<BreakToken>().is_some()
-        || parser.peek::<ContinueToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
             Some((_, Delimiter::Brace))
@@ -445,7 +457,13 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(expr);
     }
     loop {
-        expr = if let Some((star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+        expr = if let Some((double_star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+            Expr::Pow {
+                lhs: Box::new(expr),
+                double_star_token,
+                rhs,
+            }
+        } else if let Some((star_token, rhs)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
             Expr::Mul {
                 lhs: Box::new(expr),
                 star_token,
@@ -495,39 +513,43 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
         }
         if let Some(dot_token) = parser.take() {
             let target = Box::new(expr);
-            if let Some(name) = parser.take() {
+
+            // Try parsing a field access or a method call.
+            if let Some(path_seg) = parser.guarded_parse::<Ident, PathExprSegment>()? {
                 if !ctx.parsing_conditional {
                     if let Some(contract_args) = Braces::try_parse(parser)? {
-                        let contract_args_opt = Some(contract_args);
-                        let args = Parens::parse(parser)?;
                         expr = Expr::MethodCall {
                             target,
                             dot_token,
-                            name,
-                            contract_args_opt,
-                            args,
+                            path_seg,
+                            contract_args_opt: Some(contract_args),
+                            args: Parens::parse(parser)?,
                         };
                         continue;
                     }
                 }
                 if let Some(args) = Parens::try_parse(parser)? {
-                    let contract_args_opt = None;
                     expr = Expr::MethodCall {
                         target,
                         dot_token,
-                        name,
-                        contract_args_opt,
+                        path_seg,
+                        contract_args_opt: None,
                         args,
                     };
                     continue;
                 }
+
+                // No arguments, so this is a field projection.
+                ensure_field_projection_no_generics(parser, &path_seg.generics_opt);
                 expr = Expr::FieldProjection {
                     target,
                     dot_token,
-                    name,
+                    name: path_seg.name,
                 };
                 continue;
             }
+
+            // Try parsing a tuple field projection.
             if let Some(lit) = parser.take() {
                 let lit_int = match lit {
                     Literal::Int(lit_int) => lit_int,
@@ -557,9 +579,24 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                 };
                 continue;
             }
-            return Err(parser.emit_error(ParseErrorKind::ExpectedFieldName));
+
+            // Nothing expected followed. Now we have parsed `expr .`.
+            // Try to recover as an unknown sort of expression.
+            parser.emit_error(ParseErrorKind::ExpectedFieldName);
+            return Ok(Expr::Error([target.span(), dot_token.span()].into()));
         }
         return Ok(expr);
+    }
+}
+
+/// Ensure we don't have `foo.bar::<...>` where `bar` isn't a method call.
+fn ensure_field_projection_no_generics(
+    parser: &mut Parser,
+    generic_args: &Option<(DoubleColonToken, GenericArgs)>,
+) {
+    if let Some((dct, generic_args)) = generic_args {
+        let span = Span::join(dct.span(), generic_args.span());
+        parser.emit_error_with_span(ParseErrorKind::FieldProjectionWithGenericArgs, span);
     }
 }
 
@@ -614,6 +651,12 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(asm_block) = parser.guarded_parse::<AsmToken, _>()? {
         return Ok(Expr::Asm(asm_block));
     }
+    if let Some(break_token) = parser.take() {
+        return Ok(Expr::Break { break_token });
+    }
+    if let Some(continue_token) = parser.take() {
+        return Ok(Expr::Continue { continue_token });
+    }
     if let Some(abi_token) = parser.take() {
         let args = parser.parse()?;
         return Ok(Expr::AbiCast { abi_token, args });
@@ -658,7 +701,6 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     }
     if parser.peek::<OpenAngleBracketToken>().is_some()
         || parser.peek::<DoubleColonToken>().is_some()
-        || parser.peek::<TildeToken>().is_some()
         || parser.peek::<Ident>().is_some()
     {
         let path = parser.parse()?;

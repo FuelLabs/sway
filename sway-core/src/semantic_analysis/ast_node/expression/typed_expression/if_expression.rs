@@ -1,42 +1,44 @@
+use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{error::*, semantic_analysis::*, type_system::*, types::DeterministicallyAborts};
-
-use super::TypedExpression;
+use crate::{error::*, language::ty, type_system::*, types::DeterministicallyAborts};
 
 pub(crate) fn instantiate_if_expression(
-    condition: TypedExpression,
-    then: TypedExpression,
-    r#else: Option<TypedExpression>,
+    type_engine: &TypeEngine,
+    condition: ty::TyExpression,
+    then: ty::TyExpression,
+    r#else: Option<ty::TyExpression>,
     span: Span,
     type_annotation: TypeId,
     self_type: TypeId,
-) -> CompileResult<TypedExpression> {
+) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     // if the branch aborts, then its return type doesn't matter.
-    let then_deterministically_aborts = then.deterministically_aborts();
+    let then_deterministically_aborts = then.deterministically_aborts(true);
     if !then_deterministically_aborts {
         // if this does not deterministically_abort, check the block return type
         let ty_to_check = if r#else.is_some() {
             type_annotation
         } else {
-            insert_type(TypeInfo::Tuple(vec![]))
+            type_engine.insert_type(TypeInfo::Tuple(vec![]))
         };
-        let (mut new_warnings, new_errors) = unify_with_self(
-            then.return_type,
-            ty_to_check,
-            self_type,
-            &then.span,
-            "`then` branch must return expected type.",
+        append!(
+            type_engine.unify_with_self(
+                then.return_type,
+                ty_to_check,
+                self_type,
+                &then.span,
+                "`then` branch must return expected type.",
+            ),
+            warnings,
+            errors
         );
-        warnings.append(&mut new_warnings);
-        errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
     }
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
-        else_deterministically_aborts = r#else.deterministically_aborts();
+        else_deterministically_aborts = r#else.deterministically_aborts(true);
         let ty_to_check = if then_deterministically_aborts {
             type_annotation
         } else {
@@ -44,15 +46,17 @@ pub(crate) fn instantiate_if_expression(
         };
         if !else_deterministically_aborts {
             // if this does not deterministically_abort, check the block return type
-            let (mut new_warnings, new_errors) = unify_with_self(
-                r#else.return_type,
-                ty_to_check,
-                self_type,
-                &r#else.span,
-                "`else` branch must return expected type.",
+            append!(
+                type_engine.unify_with_self(
+                    r#else.return_type,
+                    ty_to_check,
+                    self_type,
+                    &r#else.span,
+                    "`else` branch must return expected type.",
+                ),
+                warnings,
+                errors
             );
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
         }
         Box::new(r#else)
     });
@@ -60,10 +64,10 @@ pub(crate) fn instantiate_if_expression(
     let r#else_ret_ty = r#else
         .as_ref()
         .map(|x| x.return_type)
-        .unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
+        .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
     // if there is a type annotation, then the else branch must exist
     if !else_deterministically_aborts && !then_deterministically_aborts {
-        let (mut new_warnings, new_errors) = unify_with_self(
+        let (mut new_warnings, mut new_errors) = type_engine.unify_with_self(
             then.return_type,
             r#else_ret_ty,
             self_type,
@@ -72,14 +76,14 @@ pub(crate) fn instantiate_if_expression(
         );
         warnings.append(&mut new_warnings);
         if new_errors.is_empty() {
-            if !look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+            if !type_engine.look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
-                    r#type: look_up_type_id(type_annotation).to_string(),
+                    r#type: type_engine.help_out(type_annotation).to_string(),
                 });
             }
         } else {
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
+            errors.append(&mut new_errors);
         }
     }
 
@@ -88,13 +92,12 @@ pub(crate) fn instantiate_if_expression(
     } else {
         r#else_ret_ty
     };
-    let exp = TypedExpression {
-        expression: TypedExpressionVariant::IfExp {
+    let exp = ty::TyExpression {
+        expression: ty::TyExpressionVariant::IfExp {
             condition: Box::new(condition),
             then: Box::new(then),
             r#else,
         },
-        is_constant: IsConstant::No,
         return_type,
         span,
     };

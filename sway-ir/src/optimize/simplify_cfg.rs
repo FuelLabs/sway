@@ -10,66 +10,145 @@
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum,
+    value::ValueDatum, BranchToWithArgs,
 };
 
 pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
-    loop {
-        if remove_dead_blocks(context, function)? {
-            modified = true;
-            continue;
-        }
+    modified |= remove_dead_blocks(context, function)?;
 
+    loop {
         if merge_blocks(context, function)? {
             modified = true;
             continue;
         }
-
-        // Other passes here... always continue to the top if pass returns true.
         break;
+    }
+
+    modified |= unlink_empty_blocks(context, function)?;
+
+    Ok(modified)
+}
+
+fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+    let mut modified = false;
+    let candidates: Vec<_> = function
+        .block_iter(context)
+        .skip(1)
+        .filter_map(|block| {
+            match block.get_terminator(context) {
+                // Except for a branch, we don't want anything else.
+                Some(Instruction::Branch(to_block)) if block.num_instructions(context) <= 1 => {
+                    Some((block, to_block.clone()))
+                }
+                _ => None,
+            }
+        })
+        .collect();
+    for (
+        block,
+        BranchToWithArgs {
+            block: to_block,
+            args: cur_params,
+        },
+    ) in candidates
+    {
+        // If `to_block`'s predecessors and `block`'s predecessors intersect,
+        // AND `to_block` has an arg, then we have that pred branching to to_block
+        // with different args. While that's valid IR, it's harder to generate
+        // ASM for it, so let's just skip that for now.
+        if to_block.num_args(context) > 0
+            && to_block.pred_iter(context).any(|to_block_pred| {
+                block
+                    .pred_iter(context)
+                    .any(|block_pred| block_pred == to_block_pred)
+            })
+        {
+            // We cannot filter this out in candidates itself because this condition
+            // may get updated *during* this optimization (i.e., inside this loop).
+            continue;
+        }
+        let preds: Vec<_> = block.pred_iter(context).copied().collect();
+        for pred in preds {
+            // Whatever parameters "block" passed to "to_block", that
+            // should now go from "pred" to "to_block".
+            let params_from_pred = pred.get_succ_params(context, &block);
+            let new_params = cur_params
+                .iter()
+                .map(|cur_param| match &context.values[cur_param.0].value {
+                    ValueDatum::Argument(arg) if arg.block == block => {
+                        // An argument should map to the actual parameter passed.
+                        params_from_pred[arg.idx]
+                    }
+                    _ => *cur_param,
+                })
+                .collect();
+
+            pred.replace_successor(context, block, to_block, new_params);
+            modified = true;
+        }
     }
     Ok(modified)
 }
 
 fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    // Find a block other than 'entry' which has no predecessors, remove it if found.
-    function
-        .block_iter(context)
-        .skip(1)
-        .find(|block| block.num_predecessors(context) == 0)
-        .map(|dead_block| function.remove_block(context, &dead_block))
-        .transpose()
-        .map(|result| result.is_some())
+    let mut worklist = Vec::<Block>::new();
+    let mut reachable = std::collections::HashSet::<Block>::new();
+
+    // The entry is always reachable. Let's begin with that.
+    let entry_block = function.get_entry_block(context);
+    reachable.insert(entry_block);
+    worklist.push(entry_block);
+
+    // Mark reachable nodes.
+    while !worklist.is_empty() {
+        let block = worklist.pop().unwrap();
+        let succs = block.successors(context);
+        for BranchToWithArgs { block: succ, .. } in succs {
+            // If this isn't already marked reachable, we mark it and add to the worklist.
+            if !reachable.contains(&succ) {
+                reachable.insert(succ);
+                worklist.push(succ);
+            }
+        }
+    }
+
+    // Delete all unreachable nodes.
+    let mut modified = false;
+    for block in function.block_iter(context) {
+        if !reachable.contains(&block) {
+            modified = true;
+
+            for BranchToWithArgs { block: succ, .. } in block.successors(context) {
+                succ.remove_pred(context, &block);
+            }
+
+            function.remove_block(context, &block)?;
+        }
+    }
+
+    Ok(modified)
 }
 
 fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    // Get the block a block branches to iff its terminator is `br`.
-    let block_terms_with_br = |from_block: Block| -> Option<(Block, Block)> {
-        from_block.get_terminator(context).and_then(|term| {
-            if let Instruction::Branch(to_block) = term {
-                Some((from_block, *to_block))
-            } else {
-                None
-            }
-        })
-    };
-
-    // Check whether a pair of blocks are singly paired.  i.e., `from_block` is the only
-    // predecessor of `to_block`.
-    let are_uniquely_paired = |(from_block, to_block): &(Block, Block)| -> bool {
-        let mut preds = context.blocks[to_block.0].predecessors(context);
-        preds.next() == Some(*from_block) && preds.next().is_none()
+    // Check if block branches soley to another block B, and that B has exactly one predecessor.
+    let check_candidate = |from_block: Block| -> Option<(Block, Block)> {
+        from_block
+            .get_terminator(context)
+            .and_then(|term| match term {
+                Instruction::Branch(BranchToWithArgs {
+                    block: to_block, ..
+                }) if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
+                _ => None,
+            })
     };
 
     // Find a block with an unconditional branch terminator which branches to a block with that
     // single predecessor.
     let twin_blocks = function
         .block_iter(context)
-        // Filter all blocks with a Branch terminator.
-        .filter_map(block_terms_with_br)
-        // Find branching blocks where they are singly paired.
-        .find(are_uniquely_paired);
+        // Find our candidate.
+        .find_map(check_candidate);
 
     // If not found then abort here.
     let mut block_chain = match twin_blocks {
@@ -80,25 +159,20 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
     // There may be more blocks which are also singly paired with these twins, so iteratively
     // search for more blocks in a chain which can be all merged into one.
     loop {
-        match block_terms_with_br(block_chain.last().copied().unwrap()) {
+        match check_candidate(block_chain.last().copied().unwrap()) {
             None => {
                 // There is no twin for this block.
                 break;
             }
             Some(next_pair) => {
-                if are_uniquely_paired(&next_pair) {
-                    // Add the next `to_block` to the chain and continue.
-                    block_chain.push(next_pair.1);
-                } else {
-                    // The chain has ended.
-                    break;
-                }
+                block_chain.push(next_pair.1);
             }
         }
     }
 
     // Keep a copy of the final block in the chain so we can adjust the successors below.
     let final_to_block = block_chain.last().copied().unwrap();
+    let final_to_block_succs = final_to_block.successors(context);
 
     // The first block in the chain will be extended with the contents of the rest of the blocks in
     // the chain, which we'll call `from_block` since we're branching from here to the next one.
@@ -107,17 +181,13 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
 
     // Loop for the rest of the chain, to all the `to_block`s.
     for to_block in block_chain {
-        // Replace the `phi` instruction in `to_block` with its singular element.
-        let phi_val = to_block.get_phi(context);
-        match &context.values[phi_val.0].value {
-            ValueDatum::Instruction(Instruction::Phi(els)) if els.len() == 1 => {
-                // Replace all uses of the phi and then remove it so it isn't merged below.
-                let (_, ref_val) = els[0];
-                function.replace_value(context, phi_val, ref_val, None);
-                to_block.remove_instruction(context, phi_val);
-            }
-            _otherwise => return Err(IrError::InvalidPhi),
-        };
+        let from_params = from_block.get_succ_params(context, &to_block);
+        // We collect here so that we can have &mut Context later on.
+        let to_blocks: Vec<_> = to_block.arg_iter(context).copied().enumerate().collect();
+        for (arg_idx, to_block_arg) in to_blocks {
+            // replace all uses of `to_block_arg` with the parameter from `from_block`.
+            function.replace_value(context, to_block_arg, from_params[arg_idx], None);
+        }
 
         // Re-get the block contents mutably.
         let (from_contents, to_contents) = context.blocks.get2_mut(from_block.0, to_block.0);
@@ -138,11 +208,8 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
 
     // Adjust the successors to the final `to_block` to now be successors of the fully merged
     // `from_block`.
-    let succs = context.blocks[final_to_block.0]
-        .successors(context)
-        .collect::<Vec<_>>();
-    for succ in succs {
-        succ.update_phi_source_block(context, final_to_block, from_block)
+    for BranchToWithArgs { block: succ, .. } in final_to_block_succs {
+        succ.replace_pred(context, &final_to_block, &from_block)
     }
 
     Ok(true)

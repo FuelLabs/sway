@@ -4,26 +4,89 @@ script {
     fn main() -> u64 {
         local ptr u64 x
 
-        entry:
+        entry():
+        call foo()
+        call bar()
+        call baz()
         v0 = get_ptr ptr u64 x, ptr u64, 0
 // check: const u64 11
         v1 = const u64 11
         store v1, ptr v0
-        br block1
+        br block1(v1)
 
         // Dead block, no predecessors.
-        block0:
-        v1 = phi(entry: v0)
+        block0(v1: u64):
 // not: const u64 22
         v2 = const u64 22
         store v2, ptr v0
-        br block1
+        br block1(v2)
 
-        block1:
-        v3 = phi(entry: v0)
+        block1(v3: u64):
 // check: const u64 33
         v4 = const u64 33
         ret u64 v4
+    }
+
+    // Although block0 is empty here, it mustn't be removed
+    // as it acts as a way to produce different values for the PHI.
+    fn foo(b: bool) -> bool {
+        // check: entry
+        entry(b: bool):
+        c2 = const u64 100
+        cbr b, block0(), block1(c2)
+
+        // check: block0():
+        block0():
+        c1 = const u64 333
+        br block1(c1)
+
+        block1(v1: u64):
+        ret bool b
+    }
+
+    fn bar(b: bool) -> bool {
+        // check: entry
+        entry(b: bool):
+        c2 = const u64 100
+        cbr b, block0(), block2(c2)
+
+        // check: block0():
+        block0():
+        // The const from block1 will come here when block1 goes.
+        // check: const u64 333
+        // check: br block2
+        br block1()
+
+        // not: block1():
+        block1():
+        c1 = const u64 333
+        br block2(c1)
+
+        block2(v1: u64):
+        ret bool b
+    }
+
+    fn baz(b: bool) -> bool {
+        // check: entry
+        entry(b: bool):
+        // check: $(v=$ID) = const u64 100
+        c2 = const u64 100
+        // check: cbr b, $ID(), $(block2=$ID)($v)
+        cbr b, block0(), block2(c2)
+
+        block0():
+        // check: $(v2=$ID) = const u64 11
+        v3 = const u64 11
+        // check: br $(block1=$ID)($v2)
+        br block1(v3)
+
+        // not: ($block1)($ID: u64):
+        block1(v2: u64):
+        br block2(v2)
+
+        // check: $block2($ID: u64):
+        block2(v1: u64):
+        ret bool b
     }
 }
 

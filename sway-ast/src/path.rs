@@ -9,7 +9,6 @@ pub struct PathExpr {
 
 #[derive(Clone, Debug)]
 pub struct PathExprSegment {
-    pub fully_qualified: Option<TildeToken>,
     pub name: Ident,
     pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
 }
@@ -24,7 +23,7 @@ impl Spanned for PathExpr {
             None => self.prefix.span(),
         };
         let end = match self.suffix.last() {
-            Some((_double_colon_token, path_expr_segment)) => path_expr_segment.span(),
+            Some((_, path_expr_segment)) => path_expr_segment.span(),
             None => self.prefix.span(),
         };
         Span::join(start, end)
@@ -33,11 +32,7 @@ impl Spanned for PathExpr {
 
 impl PathExpr {
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
-        if self.root_opt.is_none()
-            && self.suffix.is_empty()
-            && self.prefix.fully_qualified.is_none()
-            && self.prefix.generics_opt.is_none()
-        {
+        if self.root_opt.is_none() && self.suffix.is_empty() && self.prefix.generics_opt.is_none() {
             return Ok(self.prefix.name);
         }
         Err(self)
@@ -46,15 +41,11 @@ impl PathExpr {
 
 impl Spanned for PathExprSegment {
     fn span(&self) -> Span {
-        let start = match &self.fully_qualified {
-            Some(tilde_token) => tilde_token.span(),
-            None => self.name.span(),
-        };
-        let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span(),
-        };
-        Span::join(start, end)
+        let start = self.name.span();
+        match &self.generics_opt {
+            Some((_, generic_args)) => Span::join(start, generic_args.span()),
+            None => start,
+        }
     }
 }
 
@@ -75,7 +66,7 @@ impl Spanned for PathType {
             None => self.prefix.span(),
         };
         let end = match self.suffix.last() {
-            Some((_double_colon_token, path_type_segment)) => path_type_segment.span(),
+            Some((_, path_type_segment)) => path_type_segment.span(),
             None => self.prefix.span(),
         };
         Span::join(start, end)
@@ -84,22 +75,17 @@ impl Spanned for PathType {
 
 #[derive(Clone, Debug)]
 pub struct PathTypeSegment {
-    pub fully_qualified: Option<TildeToken>,
     pub name: Ident,
     pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
 }
 
 impl Spanned for PathTypeSegment {
     fn span(&self) -> Span {
-        let start = match &self.fully_qualified {
-            Some(tilde_token) => tilde_token.span(),
-            None => self.name.span(),
-        };
-        let end = match &self.generics_opt {
-            Some((_double_colon_token, generic_args)) => generic_args.span(),
-            None => self.name.span(),
-        };
-        Span::join(start, end)
+        let start = self.name.span();
+        match &self.generics_opt {
+            Some((_, generic_args)) => Span::join(start, generic_args.span()),
+            None => start,
+        }
     }
 }
 

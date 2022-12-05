@@ -1,12 +1,11 @@
 [[package]]
 name = 'auth_testing_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-5781B31F5E4458CC'
-dependencies = []
 
 [[package]]
 name = 'std'

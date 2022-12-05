@@ -26,21 +26,25 @@ mod ir_builder {
     peg::parser! {
         pub(in crate::parser) grammar parser() for str {
             pub(in crate::parser) rule ir_descrs() -> IrAstModule
-                = _ s:script() eoi() {
-                    s
+                = _ sop:script_or_predicate() eoi() {
+                    sop
                 }
                 / _ c:contract() eoi() {
                     c
                 }
 
-            rule script() -> IrAstModule
-                = "script" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+            rule script_or_predicate() -> IrAstModule
+                = kind:module_kind() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
-                        kind: crate::module::Kind::Script,
+                        kind,
                         fn_decls,
                         metadata
                     }
                 }
+
+            rule module_kind() -> Kind
+                = "script" _ { Kind::Script }
+                / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
                 = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
@@ -52,29 +56,40 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = "fn" _ name:id() _ selector:selector_id()? _ "(" _
-                      args:(fn_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
-                          metadata:comma_metadata_idx()? "{" _
-                      locals:fn_local()*
-                      blocks:block_decl()*
-                  "}" _ {
+                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                        name:id() _ selector:selector_id()? _ "(" _
+                        args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
+                            metadata:comma_metadata_idx()? "{" _
+                        locals:fn_local()*
+                        blocks:block_decl()*
+                    "}" _ {
                     IrAstFnDecl {
                         name,
                         args,
                         ret_type,
+                        is_public,
                         metadata,
                         locals,
                         blocks,
-                        selector
+                        selector,
+                        is_entry
                     }
                 }
+
+            rule is_public() -> bool
+                = "pub" _ { true }
+                / "" _ { false }
+
+            rule is_entry() -> bool
+                = "entry" _ { true }
+                / "" _ { false }
 
             rule selector_id() -> [u8; 4]
                 = "<" _ s:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<8>) _ ">" _ {
                     string_to_hex::<4>(s)
                 }
 
-            rule fn_arg() -> (IrAstTy, String, Option<MdIdxRef>)
+            rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
                 = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
                     (ty, name, mdi)
                 }
@@ -90,9 +105,11 @@ mod ir_builder {
                 }
 
             rule block_decl() -> IrAstBlock
-                = label:id() ":" _ instructions: instr_decl()+ {
+                = label:id() "(" _ args:(block_arg() ** comma()) ")" _
+                    ":" _ instructions: instr_decl()* {
                     IrAstBlock {
                         label,
+                        args,
                         instructions
                     }
                 }
@@ -121,11 +138,18 @@ mod ir_builder {
                     mdi
                 }
 
+            rule binary_op_kind() -> BinaryOpKind
+                = "add" _ { BinaryOpKind::Add }
+                / "sub" _ { BinaryOpKind::Sub }
+                / "mul" _ { BinaryOpKind::Mul }
+                / "div" _ { BinaryOpKind::Div }
+
             rule operation() -> IrAstOperation
                 = op_addr_of()
                 / op_asm()
                 / op_branch()
                 / op_bitcast()
+                / op_binary()
                 / op_call()
                 / op_cbr()
                 / op_cmp()
@@ -140,10 +164,12 @@ mod ir_builder {
                 / op_insert_value()
                 / op_int_to_ptr()
                 / op_load()
+                / op_log()
+                / op_mem_copy()
                 / op_nop()
-                / op_phi()
                 / op_read_register()
                 / op_ret()
+                / op_revert()
                 / op_state_load_quad_word()
                 / op_state_load_word()
                 / op_state_store_quad_word()
@@ -173,9 +199,14 @@ mod ir_builder {
                     IrAstOperation::BitCast(val, ty)
                 }
 
+            rule op_binary() -> IrAstOperation
+                = op: binary_op_kind() arg1:id() comma() arg2:id() {
+                    IrAstOperation::BinaryOp(op, arg1, arg2)
+                }
+
             rule op_branch() -> IrAstOperation
-                = "br" _ to_block:id() {
-                    IrAstOperation::Br(to_block)
+                = "br" _ to_block:id() "(" _ args:(id() ** comma()) ")" _ {
+                    IrAstOperation::Br(to_block, args)
                 }
 
             rule op_call() -> IrAstOperation
@@ -184,8 +215,10 @@ mod ir_builder {
             }
 
             rule op_cbr() -> IrAstOperation
-                = "cbr" _ cond:id() comma() tblock:id() comma() fblock:id() {
-                    IrAstOperation::Cbr(cond, tblock, fblock)
+                = "cbr" _ cond:id() comma() tblock:id()
+                "(" _ targs:(id() ** comma()) ")" _
+                 comma() fblock:id() "(" _ fargs:(id() ** comma()) ")" _ {
+                    IrAstOperation::Cbr(cond, tblock, targs, fblock, fargs)
                 }
 
             rule op_cmp() -> IrAstOperation
@@ -251,14 +284,19 @@ mod ir_builder {
                     IrAstOperation::Load(src)
                 }
 
+            rule op_log() -> IrAstOperation
+                = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
+                    IrAstOperation::Log(log_ty, log_val, log_id)
+                }
+
+            rule op_mem_copy() -> IrAstOperation
+                = "mem_copy" _ dst_name:id() comma() src_name:id() comma() len:decimal() {
+                    IrAstOperation::MemCopy(dst_name, src_name, len)
+                }
+
             rule op_nop() -> IrAstOperation
                 = "nop" _ {
                     IrAstOperation::Nop
-                }
-
-            rule op_phi() -> IrAstOperation
-                = "phi" _ "(" _ pairs:((bl:id() ":" _ vn:id() { (bl, vn) }) ** comma()) ")" _ {
-                    IrAstOperation::Phi(pairs)
                 }
 
             rule op_read_register() -> IrAstOperation
@@ -269,6 +307,11 @@ mod ir_builder {
             rule op_ret() -> IrAstOperation
                 = "ret" _ ty:ast_ty() vn:id() {
                     IrAstOperation::Ret(ty, vn)
+                }
+
+            rule op_revert() -> IrAstOperation
+                = "revert" _ vn:id() {
+                    IrAstOperation::Revert(vn)
                 }
 
             rule op_state_load_quad_word() -> IrAstOperation
@@ -421,6 +464,7 @@ mod ir_builder {
                 / array_ty()
                 / struct_ty()
                 / union_ty()
+                / mp:mut_ptr() ty:ast_ty() { IrAstTy::Pointer(Box::new(ty), mp) }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -479,7 +523,8 @@ mod ir_builder {
                     IrMetadatum::Index(idx)
                 }
                 / ['"'] s:$(([^ '"' | '\\'] / ['\\'] ['\\' | '"' ])+) ['"'] __ {
-                    IrMetadatum::String(s.to_owned())
+                    // Metadata strings are printed with '\\' escaped on parsing we unescape it.
+                    IrMetadatum::String(s.to_owned().replace("\\\\", "\\"))
                 }
                 / tag:$(id_char0() id_char()*) __ els:metadata_item()* {
                     IrMetadatum::Struct(tag.to_owned(), els)
@@ -553,6 +598,7 @@ mod ir_builder {
         module::{Kind, Module},
         pointer::Pointer,
         value::Value,
+        BinaryOpKind, BlockArgument,
     };
 
     #[derive(Debug)]
@@ -567,15 +613,18 @@ mod ir_builder {
         name: String,
         args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
+        is_public: bool,
         metadata: Option<MdIdxRef>,
         locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
+        is_entry: bool,
     }
 
     #[derive(Debug)]
     struct IrAstBlock {
         label: String,
+        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
@@ -597,9 +646,10 @@ mod ir_builder {
             Option<MdIdxRef>,
         ),
         BitCast(String, IrAstTy),
-        Br(String),
+        BinaryOp(BinaryOpKind, String, String),
+        Br(String, Vec<String>),
         Call(String, Vec<String>),
-        Cbr(String, String, String),
+        Cbr(String, String, Vec<String>, String, Vec<String>),
         Cmp(String, String, String),
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
@@ -612,10 +662,12 @@ mod ir_builder {
         InsertValue(String, IrAstTy, String, Vec<u64>),
         IntToPtr(String, IrAstTy),
         Load(String),
+        Log(IrAstTy, String, String),
+        MemCopy(String, String, u64),
         Nop,
-        Phi(Vec<(String, String)>),
         ReadRegister(String),
         Ret(IrAstTy, String),
+        Revert(String),
         StateLoadQuadWord(String, String),
         StateLoadWord(String),
         StateStoreQuadWord(String, String),
@@ -718,6 +770,7 @@ mod ir_builder {
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
+        Pointer(Box<IrAstTy>, bool),
     }
 
     impl IrAstTy {
@@ -731,6 +784,10 @@ mod ir_builder {
                 IrAstTy::Array(..) => Type::Array(self.to_ir_aggregate_type(context)),
                 IrAstTy::Union(_) => Type::Union(self.to_ir_aggregate_type(context)),
                 IrAstTy::Struct(_) => Type::Struct(self.to_ir_aggregate_type(context)),
+                IrAstTy::Pointer(ty, is_mut) => {
+                    let ty = ty.to_ir_type(context);
+                    Type::Pointer(Pointer::new(context, ty, *is_mut, None))
+                }
             }
         }
 
@@ -817,19 +874,16 @@ mod ir_builder {
                 context,
                 self.module,
                 fn_decl.name,
-                args.clone(),
+                args,
                 ret_type,
                 fn_decl.selector,
-                false,
+                fn_decl.is_public,
+                fn_decl.is_entry,
                 convert_md_idx(&fn_decl.metadata),
             );
 
             // Gather all the (new) arg values by name into a map.
-            let mut arg_map: HashMap<String, Value> =
-                HashMap::from_iter(args.into_iter().map(|(name, _, _)| {
-                    let arg_val = func.get_arg(context, &name).unwrap();
-                    (name, arg_val)
-                }));
+            let mut arg_map = HashMap::<String, Value>::new();
             let mut ptr_map = HashMap::<String, Pointer>::new();
             for (ty, name, is_mutable, initializer) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
@@ -853,12 +907,32 @@ mod ir_builder {
                     if block.label == "entry" {
                         func.get_entry_block(context)
                     } else {
-                        func.create_block(context, Some(block.label.clone()))
+                        let irblock = func.create_block(context, Some(block.label.clone()));
+                        for (idx, arg) in block.args.iter().enumerate() {
+                            let ty = arg.0.to_ir_type(context);
+                            let arg = Value::new_argument(
+                                context,
+                                BlockArgument {
+                                    block: irblock,
+                                    idx,
+                                    ty,
+                                },
+                            )
+                            .add_metadatum(context, convert_md_idx(&arg.2));
+                            irblock.add_arg(context, arg);
+                        }
+                        irblock
                     },
                 )
             }));
 
             for block in fn_decl.blocks {
+                for (idx, arg) in block.args.iter().enumerate() {
+                    arg_map.insert(
+                        arg.1.clone(),
+                        named_blocks[&block.label].get_arg(context, idx).unwrap(),
+                    );
+                }
                 self.add_block_instructions(context, block, &named_blocks, &ptr_map, &mut arg_map);
             }
             Ok(())
@@ -933,11 +1007,22 @@ mod ir_builder {
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
                             .add_metadatum(context, opt_metadata)
                     }
-                    IrAstOperation::Br(to_block_name) => {
+                    IrAstOperation::BinaryOp(op, arg1, arg2) => block
+                        .ins(context)
+                        .binary_op(
+                            op,
+                            *val_map.get(&arg1).unwrap(),
+                            *val_map.get(&arg2).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Br(to_block_name, args) => {
                         let to_block = named_blocks.get(&to_block_name).unwrap();
                         block
                             .ins(context)
-                            .branch(*to_block, None)
+                            .branch(
+                                *to_block,
+                                args.iter().map(|arg| *val_map.get(arg).unwrap()).collect(),
+                            )
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::Call(callee, args) => {
@@ -961,13 +1046,26 @@ mod ir_builder {
                         self.unresolved_calls.push(PendingCall { call_val, callee });
                         call_val
                     }
-                    IrAstOperation::Cbr(cond_val_name, true_block_name, false_block_name) => block
+                    IrAstOperation::Cbr(
+                        cond_val_name,
+                        true_block_name,
+                        true_args,
+                        false_block_name,
+                        false_args,
+                    ) => block
                         .ins(context)
                         .conditional_branch(
                             *val_map.get(&cond_val_name).unwrap(),
                             *named_blocks.get(&true_block_name).unwrap(),
                             *named_blocks.get(&false_block_name).unwrap(),
-                            None,
+                            true_args
+                                .iter()
+                                .map(|arg| *val_map.get(arg).unwrap())
+                                .collect(),
+                            false_args
+                                .iter()
+                                .map(|arg| *val_map.get(arg).unwrap())
+                                .collect(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Cmp(pred_str, lhs, rhs) => block
@@ -1074,17 +1172,26 @@ mod ir_builder {
                         .ins(context)
                         .load(*val_map.get(&src_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Nop => block.ins(context).nop(),
-                    IrAstOperation::Phi(pairs) => {
-                        for (block_name, val_name) in pairs {
-                            block.add_phi(
-                                context,
-                                *named_blocks.get(&block_name).unwrap(),
-                                *val_map.get(&val_name).unwrap(),
-                            );
-                        }
-                        block.get_phi(context)
+                    IrAstOperation::Log(log_ty, log_val, log_id) => {
+                        let log_ty = log_ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .log(
+                                *val_map.get(&log_val).unwrap(),
+                                log_ty,
+                                *val_map.get(&log_id).unwrap(),
+                            )
+                            .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::MemCopy(dst_name, src_name, len) => block
+                        .ins(context)
+                        .mem_copy(
+                            *val_map.get(&dst_name).unwrap(),
+                            *val_map.get(&src_name).unwrap(),
+                            len,
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Nop => block.ins(context).nop(),
                     IrAstOperation::ReadRegister(reg_name) => block
                         .ins(context)
                         .read_register(match reg_name.as_str() {
@@ -1112,6 +1219,10 @@ mod ir_builder {
                             .ret(*val_map.get(&ret_val_name).unwrap(), ty)
                             .add_metadatum(context, opt_metadata)
                     }
+                    IrAstOperation::Revert(ret_val_name) => block
+                        .ins(context)
+                        .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key) => block
                         .ins(context)
                         .state_load_quad_word(
@@ -1181,11 +1292,7 @@ mod ir_builder {
         context: &mut Context,
         ir_metadata: Vec<(MdIdxRef, IrMetadatum)>,
     ) -> HashMap<MdIdxRef, MetadataIndex> {
-        fn convert_md(
-            context: &mut Context,
-            md: IrMetadatum,
-            md_map: &mut HashMap<MdIdxRef, MetadataIndex>,
-        ) -> Metadatum {
+        fn convert_md(md: IrMetadatum, md_map: &mut HashMap<MdIdxRef, MetadataIndex>) -> Metadatum {
             match md {
                 IrMetadatum::Integer(i) => Metadatum::Integer(i),
                 IrMetadatum::Index(idx) => Metadatum::Index(
@@ -1198,7 +1305,7 @@ mod ir_builder {
                 IrMetadatum::Struct(tag, els) => Metadatum::Struct(
                     tag,
                     els.into_iter()
-                        .map(|el_md| convert_md(context, el_md, md_map))
+                        .map(|el_md| convert_md(el_md, md_map))
                         .collect(),
                 ),
                 IrMetadatum::List(idcs) => Metadatum::List(
@@ -1217,7 +1324,7 @@ mod ir_builder {
         let mut md_map = HashMap::new();
 
         for (ir_idx, ir_md) in ir_metadata {
-            let md = convert_md(context, ir_md, &mut md_map);
+            let md = convert_md(ir_md, &mut md_map);
             let md_idx = MetadataIndex(context.metadata.insert(md));
             md_map.insert(ir_idx, md_idx);
         }

@@ -5,39 +5,46 @@ mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
-pub mod constants;
 mod control_flow_analysis;
-mod convert_parse_tree;
+pub mod declaration_engine;
 pub mod ir_generation;
+pub mod language;
 mod metadata;
-pub mod parse_tree;
 pub mod semantic_analysis;
 pub mod source_map;
-mod style;
+pub mod transform;
 pub mod type_system;
 
+use crate::ir_generation::check_function_purity;
+use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
+pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
+use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use sway_ast::Dependency;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
-pub use semantic_analysis::{
-    namespace::{self, Namespace},
-    TypedDeclaration, TypedFunctionDeclaration, TypedModule, TypedProgram, TypedProgramKind,
-};
+pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
-pub use crate::parse_tree::{
-    Declaration, Expression, ParseModule, ParseProgram, TreeType, UseStatement, *,
-};
 
-pub use error::{CompileError, CompileResult, CompileWarning};
+pub use error::CompileResult;
+use sway_error::error::CompileError;
+use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
-pub use type_system::TypeInfo;
+pub use type_system::*;
+
+use language::{parsed, ty};
+use transform::to_parsed_lang::{self, convert_module_kind};
+
+pub mod fuel_prelude {
+    pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
+}
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
@@ -46,83 +53,83 @@ pub use type_system::TypeInfo;
 /// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
-///     let result = parse(input.into(), Default::default());
+///     let result = parse(input.into(), &<_>::default(), None);
 /// # }
 /// ```
 ///
 /// # Panics
 /// Panics if the parser panics.
-pub fn parse(input: Arc<str>, config: Option<&BuildConfig>) -> CompileResult<ParseProgram> {
-    match config {
-        None => parse_in_memory(input),
-        Some(config) => parse_files(input, config),
-    }
+pub fn parse(
+    input: Arc<str>,
+    type_engine: &TypeEngine,
+    config: Option<&BuildConfig>,
+) -> CompileResult<parsed::ParseProgram> {
+    CompileResult::with_handler(|h| match config {
+        None => parse_in_memory(h, type_engine, input),
+        // When a `BuildConfig` is given,
+        // the module source may declare `dep`s that must be parsed from other files.
+        Some(config) => parse_module_tree(h, type_engine, input, config.canonical_root_module())
+            .map(|(kind, root)| parsed::ParseProgram { kind, root }),
+    })
 }
 
-/// Parse a file with contents `src` at `path`.
-fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> CompileResult<sway_ast::Module> {
-    let handler = sway_parse::handler::Handler::default();
-    match sway_parse::parse_file(&handler, src, path) {
-        Ok(module) => ok(
-            module,
-            vec![],
-            parse_file_error_to_compile_errors(handler, None),
-        ),
-        Err(error) => err(
-            vec![],
-            parse_file_error_to_compile_errors(handler, Some(error)),
-        ),
-    }
+/// Parses the tree kind in the input provided.
+///
+/// This will lex the entire input, but parses only the module kind.
+pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
+    CompileResult::with_handler(|h| {
+        sway_parse::parse_module_kind(h, input, None).map(|kind| convert_module_kind(&kind))
+    })
 }
 
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
-fn parse_in_memory(src: Arc<str>) -> CompileResult<ParseProgram> {
-    parse_file(src, None).flat_map(|module| {
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(kind, tree)| {
-            let submodules = Default::default();
-            let root = ParseModule { tree, submodules };
-            let program = ParseProgram { kind, root };
-            ok(program, vec![], vec![])
-        })
-    })
-}
-
-/// When a `BuildConfig` is given, the module source may declare `dep`s that must be parsed from
-/// other files.
-fn parse_files(src: Arc<str>, config: &BuildConfig) -> CompileResult<ParseProgram> {
-    let root_mod_path = config.canonical_root_module();
-    parse_module_tree(src, root_mod_path).flat_map(|(kind, root)| {
-        let program = ParseProgram { kind, root };
-        ok(program, vec![], vec![])
-    })
+fn parse_in_memory(
+    handler: &Handler,
+    type_engine: &TypeEngine,
+    src: Arc<str>,
+) -> Result<parsed::ParseProgram, ErrorEmitted> {
+    let module = sway_parse::parse_file(handler, src, None)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+    let submodules = Default::default();
+    let root = parsed::ParseModule { tree, submodules };
+    Ok(parsed::ParseProgram { kind, root })
 }
 
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
-    deps: &[Dependency],
+    handler: &Handler,
+    type_engine: &TypeEngine,
+    module: &sway_ast::Module,
     module_dir: &Path,
-) -> CompileResult<Vec<(Ident, ParseSubmodule)>> {
-    let init_res = ok(vec![], vec![], vec![]);
-    deps.iter().fold(init_res, |res, dep| {
+) -> Vec<(Ident, parsed::ParseSubmodule)> {
+    // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
+    let mut submods = Vec::with_capacity(module.dependencies().count());
+
+    module.dependencies().for_each(|dep| {
+        // Read the source code from the dependency.
+        // If we cannot, record as an error, but continue with other files.
         let dep_path = Arc::new(module_path(module_dir, dep));
         let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
-                let error = CompileError::FileCouldNotBeRead {
+                handler.emit_err(CompileError::FileCouldNotBeRead {
                     span: dep.path.span(),
                     file_path: dep_path.to_string_lossy().to_string(),
                     stringified_error: e.to_string(),
-                };
-                return res.flat_map(|_| err(vec![], vec![error]));
+                });
+                return;
             }
         };
-        parse_module_tree(dep_str.clone(), dep_path.clone()).flat_map(|(kind, module)| {
+
+        if let Ok((kind, module)) =
+            parse_module_tree(handler, type_engine, dep_str.clone(), dep_path.clone())
+        {
             let library_name = match kind {
-                TreeType::Library { name } => name,
+                parsed::TreeType::Library { name } => name,
                 _ => {
                     let span = span::Span::new(dep_str, 0, 0, Some(dep_path)).unwrap();
-                    let error = CompileError::ImportMustBeLibrary { span };
-                    return err(vec![], vec![error]);
+                    handler.emit_err(CompileError::ImportMustBeLibrary { span });
+                    return;
                 }
             };
             // NOTE: Typed `IncludStatement`'s include an `alias` field, however its only
@@ -130,36 +137,37 @@ fn parse_submodules(
             // is where we should use it.
             let dep_alias = None;
             let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
-            let submodule = ParseSubmodule {
+            let submodule = parsed::ParseSubmodule {
                 library_name,
                 module,
             };
-            res.flat_map(|mut submods| {
-                submods.push((dep_name, submodule));
-                ok(submods, vec![], vec![])
-            })
-        })
-    })
+            submods.push((dep_name, submodule));
+        }
+    });
+
+    submods
 }
 
-/// Given the source of the module along with its path, parse this module including all of its
-/// submodules.
-fn parse_module_tree(src: Arc<str>, path: Arc<PathBuf>) -> CompileResult<(TreeType, ParseModule)> {
+/// Given the source of the module along with its path,
+/// parse this module including all of its submodules.
+fn parse_module_tree(
+    handler: &Handler,
+    type_engine: &TypeEngine,
+    src: Arc<str>,
+    path: Arc<PathBuf>,
+) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
-    parse_file(src, Some(path.clone())).flat_map(|module| {
-        let module_dir = path.parent().expect("module file has no parent directory");
+    let module_dir = path.parent().expect("module file has no parent directory");
+    let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
 
-        // Parse all submodules before converting to the `ParseTree`.
-        let submodules_res = parse_submodules(&module.dependencies, module_dir);
+    // Parse all submodules before converting to the `ParseTree`.
+    // This always recovers on parse errors for the file itself by skipping that file.
+    let submodules = parse_submodules(handler, type_engine, &module, module_dir);
 
-        // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-        convert_parse_tree::convert_parse_tree(module).flat_map(|(prog_kind, tree)| {
-            submodules_res.flat_map(|submodules| {
-                let parse_module = ParseModule { tree, submodules };
-                ok((prog_kind, parse_module), vec![], vec![])
-            })
-        })
-    })
+    // Convert from the raw parsed module to the `ParseTree` ready for type-check.
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+
+    Ok((kind, parsed::ParseModule { tree, submodules }))
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
@@ -167,225 +175,188 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
         .iter()
         .chain(dep.path.span().as_str().split('/').map(AsRef::as_ref))
         .collect::<PathBuf>()
-        .with_extension(crate::constants::DEFAULT_FILE_EXTENSION)
+        .with_extension(sway_types::constants::DEFAULT_FILE_EXTENSION)
 }
 
-fn parse_file_error_to_compile_errors(
-    handler: sway_parse::handler::Handler,
-    error: Option<sway_parse::ParseFileError>,
-) -> Vec<CompileError> {
-    match error {
-        Some(sway_parse::ParseFileError::Lex(error)) => vec![CompileError::Lex { error }],
-        Some(sway_parse::ParseFileError::Parse(_)) | None => handler
-            .into_errors()
-            .into_iter()
-            .map(|error| CompileError::Parse { error })
-            .collect(),
-    }
-}
+pub struct CompiledAsm(pub FinalizedAsm);
 
-/// Represents the result of compiling Sway code via [compile_to_asm].
-/// Contains the compiled assets or resulting errors, and any warnings generated.
-pub enum CompilationResult {
-    Success {
-        asm: FinalizedAsm,
-        warnings: Vec<CompileWarning>,
-    },
-    Library {
-        name: Ident,
-        namespace: Box<namespace::Root>,
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
-    },
-}
-
-pub enum CompileAstResult {
-    Success {
-        typed_program: Box<TypedProgram>,
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
-    },
-}
-
-/// Represents the result of compiling Sway code via [compile_to_bytecode].
-/// Contains the compiled bytecode in byte form, or resulting errors, and any warnings generated.
-pub enum BytecodeCompilationResult {
-    Success {
-        bytes: Vec<u8>,
-        warnings: Vec<CompileWarning>,
-    },
-    Library {
-        warnings: Vec<CompileWarning>,
-    },
-    Failure {
-        warnings: Vec<CompileWarning>,
-        errors: Vec<CompileError>,
-    },
-}
+/// The bytecode for a sway program.
+pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
-    parse_program: &ParseProgram,
+    type_engine: &TypeEngine,
+    parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
-) -> CompileAstResult {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
+    build_config: Option<&BuildConfig>,
+) -> CompileResult<ty::TyProgram> {
+    // Type check the program.
     let CompileResult {
-        value: typed_program_result,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = TypedProgram::type_check(parse_program, initial_namespace);
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let typed_program = match typed_program_result {
+        value: typed_program_opt,
+        mut warnings,
+        mut errors,
+    } = ty::TyProgram::type_check(type_engine, parse_program, initial_namespace);
+    let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return err(warnings, errors),
     };
 
-    let mut cfa_res = perform_control_flow_analysis(&typed_program);
+    // Collect information about the types used in this program
+    let CompileResult {
+        value: types_metadata_result,
+        warnings: new_warnings,
+        errors: new_errors,
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(type_engine));
+    warnings.extend(new_warnings);
+    errors.extend(new_errors);
+    let types_metadata = match types_metadata_result {
+        Some(types_metadata) => types_metadata,
+        None => return deduped_err(warnings, errors),
+    };
 
-    errors.append(&mut cfa_res.errors);
-    warnings.append(&mut cfa_res.warnings);
-    errors = dedup_unsorted(errors);
-    warnings = dedup_unsorted(warnings);
-    if !errors.is_empty() {
-        return CompileAstResult::Failure { errors, warnings };
+    typed_program
+        .logged_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
+            _ => None,
+        }));
+
+    // Perform control flow analysis and extend with any errors.
+    let cfa_res = perform_control_flow_analysis(
+        type_engine,
+        &typed_program,
+        match build_config {
+            Some(cfg) => cfg.print_dca_graph,
+            None => false,
+        },
+    );
+    errors.extend(cfa_res.errors);
+    warnings.extend(cfa_res.warnings);
+
+    // Evaluate const declarations,
+    // to allow storage slots initializion with consts.
+    let mut ctx = Context::default();
+    let mut md_mgr = MetadataManager::default();
+    let module = Module::new(&mut ctx, Kind::Contract);
+    if let Err(e) = ir_generation::compile::compile_constants(
+        type_engine,
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &typed_program.root.namespace,
+    ) {
+        errors.push(e);
     }
+
+    // CEI pattern analysis
+    let cei_analysis_warnings =
+        semantic_analysis::cei_pattern_analysis::analyze_program(type_engine, &typed_program);
+    warnings.extend(cei_analysis_warnings);
 
     // Check that all storage initializers can be evaluated at compile time.
-    let CompileResult {
-        value: typed_program_with_storage_slots_result,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = typed_program.get_typed_program_with_initialized_storage_slots();
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
-    let typed_program_with_storage_slots = match typed_program_with_storage_slots_result {
+    let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
+        type_engine,
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
+    warnings.extend(typed_wiss_res.warnings);
+    errors.extend(typed_wiss_res.errors);
+    let typed_program_with_storage_slots = match typed_wiss_res.value {
         Some(typed_program_with_storage_slots) => typed_program_with_storage_slots,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return deduped_err(warnings, errors),
     };
 
-    CompileAstResult::Success {
-        typed_program: Box::new(typed_program_with_storage_slots),
-        warnings,
-    }
+    // All unresolved types lead to compile errors.
+    errors.extend(types_metadata.iter().filter_map(|m| match m {
+        TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
+            Some(CompileError::UnableToInferGeneric {
+                ty: name.as_str().to_string(),
+                span: call_site_span_opt.clone().unwrap_or_else(|| name.span()),
+            })
+        }
+        _ => None,
+    }));
+
+    ok(
+        typed_program_with_storage_slots,
+        dedup_unsorted(warnings),
+        dedup_unsorted(errors),
+    )
 }
 
 pub fn compile_to_ast(
+    type_engine: &TypeEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
-) -> CompileAstResult {
-    let mut warnings = Vec::new();
-    let mut errors = Vec::new();
-
+) -> CompileResult<ty::TyProgram> {
+    // Parse the program to a concrete syntax tree (CST).
     let CompileResult {
         value: parse_program_opt,
-        warnings: new_warnings,
-        errors: new_errors,
-    } = parse(input, build_config);
-
-    warnings.extend(new_warnings);
-    errors.extend(new_errors);
+        mut warnings,
+        mut errors,
+    } = parse(input, type_engine, build_config);
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
-        None => {
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            return CompileAstResult::Failure { errors, warnings };
-        }
+        None => return deduped_err(warnings, errors),
     };
 
-    match parsed_to_ast(&parse_program, initial_namespace) {
-        CompileAstResult::Success {
-            typed_program,
-            warnings: new_warnings,
-        } => {
-            warnings.extend(new_warnings);
-            warnings = dedup_unsorted(warnings);
-            CompileAstResult::Success {
-                typed_program,
-                warnings,
-            }
-        }
-        CompileAstResult::Failure {
-            warnings: new_warnings,
-            errors: new_errors,
-        } => {
-            warnings.extend(new_warnings);
-            errors.extend(new_errors);
-            errors = dedup_unsorted(errors);
-            warnings = dedup_unsorted(warnings);
-            CompileAstResult::Failure { errors, warnings }
-        }
-    }
+    // Type check (+ other static analysis) the CST to a typed AST.
+    let typed_res = parsed_to_ast(type_engine, &parse_program, initial_namespace, build_config);
+    errors.extend(typed_res.errors);
+    warnings.extend(typed_res.warnings);
+    let typed_program = match typed_res.value {
+        Some(tp) => tp,
+        None => return deduped_err(warnings, errors),
+    };
+
+    ok(
+        typed_program,
+        dedup_unsorted(warnings),
+        dedup_unsorted(errors),
+    )
 }
 
-/// Given input Sway source code, compile to a [CompilationResult] which contains the asm in opcode
-/// form (not raw bytes/bytecode).
+/// Given input Sway source code,
+/// try compiling to a `CompiledAsm`,
+/// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
+    type_engine: &TypeEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
-) -> CompilationResult {
-    let ast_res = compile_to_ast(input, initial_namespace, Some(&build_config));
-    ast_to_asm(ast_res, &build_config)
+) -> CompileResult<CompiledAsm> {
+    let ast_res = compile_to_ast(type_engine, input, initial_namespace, Some(&build_config));
+    ast_to_asm(type_engine, &ast_res, &build_config)
 }
 
-/// Given an AST compilation result, compile to a [CompilationResult] which contains the asm in
-/// opcode form (not raw bytes/bytecode).
-pub fn ast_to_asm(ast_res: CompileAstResult, build_config: &BuildConfig) -> CompilationResult {
-    match ast_res {
-        CompileAstResult::Failure { warnings, errors } => {
-            CompilationResult::Failure { warnings, errors }
-        }
-        CompileAstResult::Success {
-            typed_program,
-            mut warnings,
-        } => {
-            let mut errors = vec![];
-            let tree_type = typed_program.kind.tree_type();
-            match tree_type {
-                TreeType::Contract | TreeType::Script | TreeType::Predicate => {
-                    let asm = check!(
-                        compile_ast_to_ir_to_asm(*typed_program, build_config),
-                        return CompilationResult::Failure { errors, warnings },
-                        warnings,
-                        errors
-                    );
-                    if !errors.is_empty() {
-                        return CompilationResult::Failure { errors, warnings };
-                    }
-                    CompilationResult::Success { asm, warnings }
-                }
-                TreeType::Library { name } => CompilationResult::Library {
-                    warnings,
-                    name,
-                    namespace: Box::new(typed_program.root.namespace.into()),
-                },
-            }
+/// Given an AST compilation result,
+/// try compiling to a `CompiledAsm`,
+/// containing the asm in opcode form (not raw bytes/bytecode).
+pub fn ast_to_asm(
+    type_engine: &TypeEngine,
+    ast_res: &CompileResult<ty::TyProgram>,
+    build_config: &BuildConfig,
+) -> CompileResult<CompiledAsm> {
+    match &ast_res.value {
+        None => err(ast_res.warnings.clone(), ast_res.errors.clone()),
+        Some(typed_program) => {
+            let mut errors = ast_res.errors.clone();
+            let mut warnings = ast_res.warnings.clone();
+            let asm = check!(
+                compile_ast_to_ir_to_asm(type_engine, typed_program, build_config),
+                return deduped_err(warnings, errors),
+                warnings,
+                errors
+            );
+            ok(CompiledAsm(asm), warnings, errors)
         }
     }
 }
 
-use sway_ir::{context::Context, function::Function};
-
 pub(crate) fn compile_ast_to_ir_to_asm(
-    program: TypedProgram,
+    type_engine: &TypeEngine,
+    program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -402,79 +373,88 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    check!(
-        program.finalize_types(),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(program) {
-        Ok(ir) => ir,
-        Err(e) => {
-            errors.push(e);
-            return err(warnings, errors);
-        }
-    };
+    let mut ir =
+        match ir_generation::compile_program(program, build_config.include_tests, type_engine) {
+            Ok(ir) => ir,
+            Err(e) => return err(warnings, vec![e]),
+        };
 
-    // Find all the entry points.  This is main for scripts and predicates, or ABI methods for
-    // contracts, identified by them having a selector.
+    // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
-        .functions
-        .iter()
-        .filter_map(|(idx, fc)| {
-            if (matches!(tree_type, TreeType::Script | TreeType::Predicate)
-                && fc.name == crate::constants::DEFAULT_ENTRY_POINT_FN_NAME)
-                || (tree_type == TreeType::Contract && fc.selector.is_some())
-            {
-                Some(::sway_ir::function::Function(idx))
-            } else {
-                None
-            }
-        })
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .filter(|func| func.is_entry(&ir))
         .collect();
 
     // Do a purity check on the _unoptimised_ IR.
-    let mut purity_checker = ir_generation::PurityChecker::default();
-    let mut md_mgr = metadata::MetadataManager::default();
-    for entry_point in &entry_point_functions {
-        purity_checker.check_function(&ir, &mut md_mgr, entry_point);
+    {
+        let handler = Handler::default();
+        let mut env = ir_generation::PurityEnv::default();
+        let mut md_mgr = metadata::MetadataManager::default();
+        for entry_point in &entry_point_functions {
+            check_function_purity(&handler, &mut env, &ir, &mut md_mgr, entry_point);
+        }
+        let (e, w) = handler.consume();
+        warnings.extend(w);
+        errors.extend(e);
     }
+
+    // Now we're working with all functions in the module.
+    let all_functions = ir
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ir))
+        .collect::<Vec<_>>();
+
+    // Promote local values to registers.
     check!(
-        purity_checker.results(),
+        promote_to_registers(&mut ir, &all_functions),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // Inline function calls from the entry points.
+    // Inline function calls.
     check!(
-        inline_function_calls(&mut ir, &entry_point_functions),
+        inline_function_calls(&mut ir, &all_functions, &tree_type),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // The only other optimisation we have at the moment is constant combining.  In lieu of a
-    // forthcoming pass manager we can just call it here now.
-    check!(
-        combine_constants(&mut ir, &entry_point_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let res = CompileResult::with_handler(|handler| {
+        // TODO: Experiment with putting combine-constants and simplify-cfg
+        // in a loop, but per function.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        simplify_cfg(handler, &mut ir, &all_functions)?;
+        // Simplify-CFG helps combine constants.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        // And that in-turn enables more simplify-cfg.
+        simplify_cfg(handler, &mut ir, &all_functions)?;
+
+        // Remove dead definitions based on the entry points root set.
+        dce(handler, &mut ir, &entry_point_functions)?;
+        Ok(())
+    });
+    check!(res, return err(warnings, errors), warnings, errors);
 
     if build_config.print_ir {
         tracing::info!("{}", ir);
     }
 
-    compile_ir_to_asm(&ir, Some(build_config))
+    let final_asm = check!(
+        compile_ir_to_asm(&ir, Some(build_config)),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ok(final_asm, warnings, errors)
 }
 
-fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
     for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::inline_all_function_calls(ir, function) {
+        if let Err(ir_error) = sway_ir::optimize::promote_to_registers(ir, function) {
             return err(
                 Vec::new(),
                 vec![CompileError::InternalOwned(
@@ -487,84 +467,223 @@ fn inline_function_calls(ir: &mut Context, functions: &[Function]) -> CompileRes
     ok((), Vec::new(), Vec::new())
 }
 
-fn combine_constants(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure.
+///
+pub fn inline_function_calls(
+    ir: &mut Context,
+    functions: &[Function],
+    tree_type: &parsed::TreeType,
+) -> CompileResult<()> {
+    // Inspect ALL calls and count how often each function is called.
+    // This is not required for predicates because we don't inline their function calls
+    let call_counts: HashMap<Function, u64> = match tree_type {
+        parsed::TreeType::Predicate => HashMap::new(),
+        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
+            for (_block, ins) in func.instruction_iter(ir) {
+                if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
+                    counts
+                        .entry(*callee)
+                        .and_modify(|count| *count += 1)
+                        .or_insert(1);
+                }
+            }
+            counts
+        }),
+    };
+
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let mut md_mgr = metadata::MetadataManager::default();
+        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
+
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            None => {}
+        }
+
+        // For now, pending improvements to ASMgen for calls, we must inline any function which has
+        // too many args.
+        if func.args_iter(ctx).count() as u8
+            > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+        {
+            return true;
+        }
+
+        // If the function is called only once then definitely inline it.
+        if call_counts.get(func).copied().unwrap_or(0) == 1 {
+            return true;
+        }
+
+        // If the function is (still) small then also inline it.
+        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
+        // argument is used as a pointer (probably because it has a ref type) although it actually
+        // isn't one.  Ref type args which aren't pointers need to be inlined.
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val
+                .get_type(ctx)
+                .map(|ty| !ty.is_copy_type())
+                .unwrap_or(false)
+        }) {
+            return true;
+        }
+
+        false
+    };
+
+    let cg = call_graph::build_call_graph(ir, functions);
+    let functions = call_graph::callee_first_order(&cg);
+
+    for function in functions {
+        if let Err(ir_error) = match tree_type {
+            parsed::TreeType::Predicate => {
+                // Inline everything for predicates
+                sway_ir::optimize::inline_all_function_calls(ir, &function)
+            }
+            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
+        } {
+            return err(
+                Vec::new(),
+                vec![CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )],
+            );
+        }
+    }
+    ok((), Vec::new(), Vec::new())
+}
+
+fn combine_constants(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
     for function in functions {
         if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
         }
     }
-    ok((), Vec::new(), Vec::new())
+    Ok(())
 }
 
-/// Given input Sway source code, compile to a [BytecodeCompilationResult] which contains the asm in
-/// bytecode form.
+fn dce(
+    handler: &Handler,
+    ir: &mut Context,
+    entry_functions: &[Function],
+) -> Result<(), ErrorEmitted> {
+    // Remove entire dead functions first.
+    for module in ir.module_iter() {
+        sway_ir::optimize::func_dce(ir, &module, entry_functions);
+    }
+
+    // Then DCE all the remaining functions.
+    for module in ir.module_iter() {
+        for function in module.function_iter(ir) {
+            if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    ir_error.to_string(),
+                    span::Span::dummy(),
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn simplify_cfg(
+    handler: &Handler,
+    ir: &mut Context,
+    functions: &[Function],
+) -> Result<(), ErrorEmitted> {
+    for function in functions {
+        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
+    type_engine: &TypeEngine,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
-) -> BytecodeCompilationResult {
-    let asm_res = compile_to_asm(input, initial_namespace, build_config);
+) -> CompileResult<CompiledBytecode> {
+    let asm_res = compile_to_asm(type_engine, input, initial_namespace, build_config);
     let result = asm_to_bytecode(asm_res, source_map);
     clear_lazy_statics();
     result
 }
 
-/// Given a [CompilationResult] containing the assembly (opcodes), compile to a
-/// [BytecodeCompilationResult] which contains the asm in bytecode form.
+/// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
-    asm_res: CompilationResult,
+    CompileResult {
+        value,
+        mut warnings,
+        mut errors,
+    }: CompileResult<CompiledAsm>,
     source_map: &mut SourceMap,
-) -> BytecodeCompilationResult {
-    match asm_res {
-        CompilationResult::Success {
-            mut asm,
-            mut warnings,
-        } => {
-            let mut asm_res = asm.to_bytecode_mut(source_map);
-            warnings.append(&mut asm_res.warnings);
-            if asm_res.value.is_none() || !asm_res.errors.is_empty() {
-                BytecodeCompilationResult::Failure {
-                    warnings,
-                    errors: asm_res.errors,
-                }
-            } else {
-                // asm_res is confirmed to be Some(bytes).
-                BytecodeCompilationResult::Success {
-                    bytes: asm_res.value.unwrap(),
-                    warnings,
-                }
-            }
+) -> CompileResult<CompiledBytecode> {
+    match value {
+        Some(CompiledAsm(mut asm)) => {
+            let bytes = check!(
+                asm.to_bytecode_mut(source_map),
+                return err(warnings, errors),
+                warnings,
+                errors,
+            );
+            ok(CompiledBytecode(bytes), warnings, errors)
         }
-        CompilationResult::Failure { warnings, errors } => {
-            BytecodeCompilationResult::Failure { warnings, errors }
-        }
-        CompilationResult::Library { warnings, .. } => {
-            BytecodeCompilationResult::Library { warnings }
-        }
+        None => err(warnings, errors),
     }
 }
 
 pub fn clear_lazy_statics() {
-    type_system::clear_type_engine();
+    declaration_engine::declaration_engine::de_clear();
 }
 
-/// Given a [TypedProgram], which is type-checked Sway source, construct a graph to analyze
+/// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
-fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
-    let dca_res = dead_code_analysis(program);
-    let rpa_errors = return_path_analysis(program);
+fn perform_control_flow_analysis(
+    type_engine: &TypeEngine,
+    program: &ty::TyProgram,
+    print_graph: bool,
+) -> CompileResult<()> {
+    let dca_res = dead_code_analysis(type_engine, program);
+    let rpa_errors = return_path_analysis(type_engine, program);
     let rpa_res = if rpa_errors.is_empty() {
         ok((), vec![], vec![])
     } else {
         err(vec![], rpa_errors)
     };
+    if let Some(graph) = dca_res.clone().value {
+        if print_graph {
+            graph.visualize();
+        }
+    }
     dca_res.flat_map(|_| rpa_res)
 }
 
@@ -572,19 +691,24 @@ fn perform_control_flow_analysis(program: &TypedProgram) -> CompileResult<()> {
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(program: &TypedProgram) -> CompileResult<ControlFlowGraph> {
+fn dead_code_analysis(
+    type_engine: &TypeEngine,
+    program: &ty::TyProgram,
+) -> CompileResult<ControlFlowGraph> {
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
-    module_dead_code_analysis(&program.root, &tree_type, &mut dead_code_graph).flat_map(|_| {
-        let warnings = dead_code_graph.find_dead_code();
-        ok(dead_code_graph, warnings, vec![])
-    })
+    module_dead_code_analysis(type_engine, &program.root, &tree_type, &mut dead_code_graph)
+        .flat_map(|_| {
+            let warnings = dead_code_graph.find_dead_code();
+            ok(dead_code_graph, warnings, vec![])
+        })
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
-    module: &TypedModule,
-    tree_type: &TreeType,
+    type_engine: &TypeEngine,
+    module: &ty::TyModule,
+    tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
@@ -593,35 +717,47 @@ fn module_dead_code_analysis(
         .iter()
         .fold(init_res, |res, (_, submodule)| {
             let name = submodule.library_name.clone();
-            let tree_type = TreeType::Library { name };
-            res.flat_map(|_| module_dead_code_analysis(&submodule.module, &tree_type, graph))
+            let tree_type = parsed::TreeType::Library { name };
+            res.flat_map(|_| {
+                module_dead_code_analysis(type_engine, &submodule.module, &tree_type, graph)
+            })
         });
     submodules_res.flat_map(|()| {
-        ControlFlowGraph::append_module_to_dead_code_graph(&module.all_nodes, tree_type, graph)
-            .map(|_| ok((), vec![], vec![]))
-            .unwrap_or_else(|error| err(vec![], vec![error]))
+        ControlFlowGraph::append_module_to_dead_code_graph(
+            type_engine,
+            &module.all_nodes,
+            tree_type,
+            graph,
+        )
+        .map(|_| ok((), vec![], vec![]))
+        .unwrap_or_else(|error| err(vec![], vec![error]))
     })
 }
 
-fn return_path_analysis(program: &TypedProgram) -> Vec<CompileError> {
+fn return_path_analysis(type_engine: &TypeEngine, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(&program.root, &mut errors);
+    module_return_path_analysis(type_engine, &program.root, &mut errors);
     errors
 }
 
-fn module_return_path_analysis(module: &TypedModule, errors: &mut Vec<CompileError>) {
+fn module_return_path_analysis(
+    type_engine: &TypeEngine,
+    module: &ty::TyModule,
+    errors: &mut Vec<CompileError>,
+) {
     for (_, submodule) in &module.submodules {
-        module_return_path_analysis(&submodule.module, errors);
+        module_return_path_analysis(type_engine, &submodule.module, errors);
     }
-    let graph = ControlFlowGraph::construct_return_path_graph(&module.all_nodes);
+    let graph = ControlFlowGraph::construct_return_path_graph(type_engine, &module.all_nodes);
     match graph {
-        Ok(graph) => errors.extend(graph.analyze_return_paths()),
+        Ok(graph) => errors.extend(graph.analyze_return_paths(type_engine)),
         Err(error) => errors.push(error),
     }
 }
 
 #[test]
 fn test_basic_prog() {
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
         contract;
@@ -693,8 +829,6 @@ fn test_basic_prog() {
 
     pub fn prints_number_five() -> u8 {
         let x: u8 = 5;
-        let reference_to_x = ref x;
-        let second_value_of_x = deref x; // u8 is `Copy` so this clones
         println(x);
          x.to_string();
          let some_list = [
@@ -705,6 +839,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -713,6 +848,7 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
         contract;
@@ -722,6 +858,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -731,7 +868,9 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::parse_tree::declaration::FunctionDeclaration;
+    use crate::language::{self, parsed};
+
+    let type_engine = TypeEngine::default();
     let prog = parse(
         r#"
     script;
@@ -741,6 +880,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
+        &type_engine,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -748,25 +888,27 @@ fn test_unary_ordering() {
     let prog = prog.unwrap(&mut warnings, &mut errors);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
-    if let AstNode {
+    if let parsed::AstNode {
         content:
-            AstNodeContent::Declaration(Declaration::FunctionDeclaration(FunctionDeclaration {
-                body,
-                ..
-            })),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
+                parsed::FunctionDeclaration { body, .. },
+            )),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
-        if let AstNode {
+        if let parsed::AstNode {
             content:
-                AstNodeContent::Expression(Expression {
-                    kind: ExpressionKind::LazyOperator(LazyOperatorExpression { op, .. }),
+                parsed::AstNodeContent::Expression(parsed::Expression {
+                    kind:
+                        parsed::ExpressionKind::LazyOperator(parsed::LazyOperatorExpression {
+                            op, ..
+                        }),
                     ..
                 }),
             ..
         } = &body.contents[2]
         {
-            assert_eq!(op, &LazyOp::And)
+            assert_eq!(op, &language::LazyOp::And)
         } else {
             panic!("Was not lazy operator.")
         }
@@ -775,12 +917,18 @@ fn test_unary_ordering() {
     };
 }
 
+/// Return an irrecoverable compile result deduping any errors and warnings.
+fn deduped_err<T>(warnings: Vec<CompileWarning>, errors: Vec<CompileError>) -> CompileResult<T> {
+    err(dedup_unsorted(warnings), dedup_unsorted(errors))
+}
+
 /// We want compile errors and warnings to retain their ordering, since typically
 /// they are grouped by relevance. However, we want to deduplicate them.
 /// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
 /// A hash set would also mess up the order, so this is just a brute force way of doing it
 /// with a vector.
 fn dedup_unsorted<T: PartialEq + std::hash::Hash>(mut data: Vec<T>) -> Vec<T> {
+    // TODO(Centril): Consider using `IndexSet` instead for readability.
     use smallvec::SmallVec;
     use std::collections::hash_map::{DefaultHasher, Entry};
     use std::hash::Hasher;

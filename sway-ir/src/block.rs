@@ -10,24 +10,58 @@
 //!
 //! Every [`Function`] has at least one block, the first of which is usually labeled `entry`.
 
+use rustc_hash::{FxHashMap, FxHashSet};
+
 use crate::{
     context::Context,
     error::IrError,
     function::Function,
     instruction::{Instruction, InstructionInserter, InstructionIterator},
+    pretty::DebugWithContext,
     value::{Value, ValueDatum},
+    BranchToWithArgs, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub generational_arena::Index);
 
 #[doc(hidden)]
 pub struct BlockContent {
+    /// Block label, useful for printing.
     pub label: Label,
+    /// The function containing this block.
     pub function: Function,
+    /// List of instructions in the block.
     pub instructions: Vec<Value>,
+    /// Block arguments: Another form of SSA PHIs.
+    pub args: Vec<Value>,
+    /// CFG predecessors
+    pub preds: FxHashSet<Block>,
+}
+
+#[derive(Debug, Clone, DebugWithContext)]
+pub struct BlockArgument {
+    /// The block of which this is an argument.
+    pub block: Block,
+    /// idx'th argument of the block.
+    pub idx: usize,
+    pub ty: Type,
+}
+
+impl BlockArgument {
+    /// Get the actual parameter passed to this block argument from `from_block`
+    pub fn get_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
+        for pred in self.block.pred_iter(context) {
+            for BranchToWithArgs { block, args } in pred.successors(context) {
+                if block == *from_block {
+                    return Some(args[self.idx]);
+                }
+            }
+        }
+        None
+    }
 }
 
 /// Each block may be explicitly named.  A [`Label`] is a simple `String` synonym.
@@ -40,11 +74,12 @@ impl Block {
     /// is optional and is used only when printing the IR.
     pub fn new(context: &mut Context, function: Function, label: Option<String>) -> Block {
         let label = function.get_unique_label(context, label);
-        let phi = Value::new_instruction(context, Instruction::Phi(Vec::new()));
         let content = BlockContent {
             label,
             function,
-            instructions: vec![phi],
+            instructions: vec![],
+            args: vec![],
+            preds: FxHashSet::default(),
         };
         Block(context.blocks.insert(content))
     }
@@ -65,74 +100,77 @@ impl Block {
         context.blocks[self.0].label.clone()
     }
 
-    /// Get the number of instructions in this block, NOT including the phi instruction.
+    /// Get the number of instructions in this block
     pub fn num_instructions(&self, context: &Context) -> usize {
-        context.blocks[self.0].instructions.len() - 1
+        context.blocks[self.0].instructions.len()
     }
 
-    /// Get the phi instruction for this block.
-    pub fn get_phi(&self, context: &Context) -> Value {
-        context.blocks[self.0].instructions[0]
+    /// Get the i'th block arg.
+    pub fn get_arg(&self, context: &Context, index: usize) -> Option<Value> {
+        context.blocks[self.0].args.get(index).cloned()
     }
 
     /// Get the number of predecessor blocks, i.e., blocks which branch to this one.
     pub fn num_predecessors(&self, context: &Context) -> usize {
-        context.blocks[self.0].num_predecessors(context)
+        context.blocks[self.0].preds.len()
     }
 
-    /// Add a new phi entry to this block.
-    ///
-    /// This indicates that if control flow comes from `from_block` then the phi instruction should
-    /// use `phi_value`.
-    pub fn add_phi(&self, context: &mut Context, from_block: Block, phi_value: Value) {
-        let phi_val = self.get_phi(context);
-        match &mut context.values[phi_val.0].value {
-            ValueDatum::Instruction(Instruction::Phi(list)) => {
-                list.push((from_block, phi_value));
+    /// Add a new block argument of type `ty`. Returns its index.
+    pub fn new_arg(&self, context: &mut Context, ty: Type) -> usize {
+        let idx = context.blocks[self.0].args.len();
+        let arg_val = Value::new_argument(
+            context,
+            BlockArgument {
+                block: *self,
+                idx,
+                ty,
+            },
+        );
+        context.blocks[self.0].args.push(arg_val);
+        idx
+    }
+
+    /// Add a block argument, asserts that `arg` is suitable here.
+    pub fn add_arg(&self, context: &mut Context, arg: Value) {
+        match context.values[arg.0].value {
+            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
+                if block == *self && idx == context.blocks[self.0].args.len() =>
+            {
+                context.blocks[self.0].args.push(arg);
             }
-            _ => unreachable!("First value in block instructions is not a phi."),
+            _ => panic!("Inconsistent block argument being added"),
         }
     }
 
-    /// Get the value from the phi instruction which correlates to `from_block`.
-    ///
-    /// Returns `None` if `from_block` isn't found.
-    pub fn get_phi_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
-        let phi_val = self.get_phi(context);
-        if let ValueDatum::Instruction(Instruction::Phi(pairs)) = &context.values[phi_val.0].value {
-            pairs.iter().find_map(|(block, value)| {
-                if block == from_block {
-                    Some(*value)
-                } else {
-                    None
-                }
-            })
-        } else {
-            unreachable!("Phi value must be a PHI instruction.");
-        }
+    /// Get an iterator over this block's args.
+    pub fn arg_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &Value> {
+        context.blocks[self.0].args.iter()
     }
 
-    /// Replace a block reference in the phi instruction.
-    ///
-    /// Any reference to `old_source` will be replace with `new_source` in the list of phi values.
-    pub fn update_phi_source_block(
-        &self,
-        context: &mut Context,
-        old_source: Block,
-        new_source: Block,
-    ) {
-        let phi_val = self.get_phi(context);
-        if let ValueDatum::Instruction(Instruction::Phi(ref mut pairs)) =
-            &mut context.values[phi_val.0].value
-        {
-            for (block, _) in pairs {
-                if *block == old_source {
-                    *block = new_source;
-                }
-            }
-        } else {
-            unreachable!("Phi value must be a PHI instruction.");
-        }
+    /// How many args does this block have?
+    pub fn num_args(&self, context: &Context) -> usize {
+        context.blocks[self.0].args.len()
+    }
+
+    /// Get an iterator over this block's predecessor blocks.
+    pub fn pred_iter<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = &Block> {
+        context.blocks[self.0].preds.iter()
+    }
+
+    /// Add `from_block` to the set of predecessors of this block.
+    pub fn add_pred(&self, context: &mut Context, from_block: &Block) {
+        context.blocks[self.0].preds.insert(*from_block);
+    }
+
+    /// Remove `from_block` from the set of predecessors of this block.
+    pub fn remove_pred(&self, context: &mut Context, from_block: &Block) {
+        context.blocks[self.0].preds.remove(from_block);
+    }
+
+    /// Replace a `old_source` with `new_source` as a predecessor.
+    pub fn replace_pred(&self, context: &mut Context, old_source: &Block, new_source: &Block) {
+        self.remove_pred(context, old_source);
+        self.add_pred(context, new_source);
     }
 
     /// Get a reference to the block terminator.
@@ -149,6 +187,119 @@ impl Block {
         })
     }
 
+    /// Get a mut reference to the block terminator.
+    ///
+    /// Returns `None` if block is empty.
+    pub fn get_terminator_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
+        context.blocks[self.0].instructions.last().and_then(|val| {
+            // It's guaranteed to be an instruction value.
+            if let ValueDatum::Instruction(term_inst) = &mut context.values[val.0].value {
+                Some(term_inst)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Get the CFG successors (and the parameters passed to them) of this block.
+    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<BranchToWithArgs> {
+        match self.get_terminator(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => vec![true_block.clone(), false_block.clone()],
+
+            Some(Instruction::Branch(block)) => vec![block.clone()],
+
+            _otherwise => Vec::new(),
+        }
+    }
+
+    /// For a particular successor (if it indeed is one), get the arguments passed.
+    pub fn get_succ_params(&self, context: &Context, succ: &Block) -> Vec<Value> {
+        self.successors(context)
+            .iter()
+            .find(|branch| &branch.block == succ)
+            .map_or(vec![], |branch| branch.args.clone())
+    }
+
+    /// For a particular successor (if it indeed is one), get a mut ref to parameters passed.
+    pub fn get_succ_params_mut<'a>(
+        &'a self,
+        context: &'a mut Context,
+        succ: &Block,
+    ) -> Option<&'a mut Vec<Value>> {
+        match self.get_terminator_mut(context) {
+            Some(Instruction::ConditionalBranch {
+                true_block,
+                false_block,
+                ..
+            }) => {
+                if true_block.block == *succ {
+                    Some(&mut true_block.args)
+                } else if false_block.block == *succ {
+                    Some(&mut false_block.args)
+                } else {
+                    None
+                }
+            }
+            Some(Instruction::Branch(block)) if block.block == *succ => Some(&mut block.args),
+            _ => None,
+        }
+    }
+
+    /// Replace successor `old_succ` with `new_succ`.
+    /// Updates `preds` of both `old_succ` and `new_succ`.
+    pub(super) fn replace_successor(
+        &self,
+        context: &mut Context,
+        old_succ: Block,
+        new_succ: Block,
+        new_params: Vec<Value>,
+    ) {
+        let mut modified = false;
+        if let Some(term) = self.get_terminator_mut(context) {
+            match term {
+                Instruction::ConditionalBranch {
+                    true_block:
+                        BranchToWithArgs {
+                            block: true_block,
+                            args: true_opds,
+                        },
+                    false_block:
+                        BranchToWithArgs {
+                            block: false_block,
+                            args: false_opds,
+                        },
+                    cond_value: _,
+                } => {
+                    if old_succ == *true_block {
+                        modified = true;
+                        *true_block = new_succ;
+                        *true_opds = new_params.clone();
+                    }
+                    if old_succ == *false_block {
+                        modified = true;
+                        *false_block = new_succ;
+                        *false_opds = new_params
+                    }
+                }
+
+                Instruction::Branch(BranchToWithArgs { block, args }) if *block == old_succ => {
+                    *block = new_succ;
+                    *args = new_params;
+                    modified = true;
+                }
+                _ => (),
+            }
+        }
+        if modified {
+            old_succ.remove_pred(context, self);
+            new_succ.add_pred(context, self);
+        }
+    }
+
     /// Return whether this block is already terminated.  Checks if the final instruction, if it
     /// exists, is a terminator.
     pub fn is_terminated(&self, context: &Context) -> bool {
@@ -159,18 +310,20 @@ impl Block {
     }
 
     /// Return whether this block is already terminated specifically by a Ret instruction.
-    pub fn is_terminated_by_ret(&self, context: &Context) -> bool {
-        self.get_terminator(context)
-            .map_or(false, |i| matches!(i, Instruction::Ret { .. }))
+    pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
+        self.get_terminator(context).map_or(false, |i| {
+            matches!(i, Instruction::Ret(..) | Instruction::Revert(..))
+        })
     }
 
     /// Replace a value within this block.
     ///
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
-    pub fn replace_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
-        for ins in context.blocks[self.0].instructions.clone() {
-            ins.replace_instruction_value(context, old_val, new_val);
+    pub fn replace_values(&self, context: &mut Context, replace_map: &FxHashMap<Value, Value>) {
+        for ins_idx in 0..context.blocks[self.0].instructions.len() {
+            let ins = context.blocks[self.0].instructions[ins_idx];
+            ins.replace_instruction_values(context, replace_map);
         }
     }
 
@@ -227,6 +380,24 @@ impl Block {
             // We can just create a new empty block and put it before this one.  We know that it
             // will succeed because self is definitely in the function, so we can unwrap().
             let new_block = function.create_block_before(context, self, None).unwrap();
+            // Move the block arguments to the new block. We collect because we want to mutate next.
+            #[allow(clippy::needless_collect)]
+            let args: Vec<_> = self.arg_iter(context).copied().collect();
+            for arg in args.into_iter() {
+                match &mut context.values[arg.0].value {
+                    ValueDatum::Argument(BlockArgument {
+                        block,
+                        idx: _,
+                        ty: _,
+                    }) => {
+                        // We modify the Value in place to be a BlockArgument for the new block.
+                        *block = new_block;
+                    }
+                    _ => unreachable!("Block arg value inconsistent"),
+                }
+                new_block.add_arg(context, arg);
+            }
+            context.blocks[self.0].args.clear();
             (new_block, *self)
         } else {
             // Again, we know that it will succeed because self is definitely in the function, and
@@ -240,25 +411,25 @@ impl Block {
                 .append(&mut tail_instructions);
 
             // If the terminator of the old block (now the new block) was a branch then we need to
-            // update the destination PHI.
+            // update the destination block's preds.
             //
             // Copying the candidate blocks and putting them in a vector to avoid borrowing context
             // as immutable and then mutable in the loop body.
             for to_block in match new_block.get_terminator(context) {
                 Some(Instruction::Branch(to_block)) => {
-                    vec![*to_block]
+                    vec![to_block.block]
                 }
                 Some(Instruction::ConditionalBranch {
                     true_block,
                     false_block,
                     ..
                 }) => {
-                    vec![*true_block, *false_block]
+                    vec![true_block.block, false_block.block]
                 }
 
                 _ => Vec::new(),
             } {
-                to_block.update_phi_source_block(context, *self, new_block);
+                to_block.replace_pred(context, self, &new_block);
             }
 
             (*self, new_block)
@@ -268,58 +439,6 @@ impl Block {
     /// Return an instruction iterator for each instruction in this block.
     pub fn instruction_iter(&self, context: &Context) -> InstructionIterator {
         InstructionIterator::new(context, self)
-    }
-}
-
-#[doc(hidden)]
-impl BlockContent {
-    pub(super) fn predecessors<'a>(
-        &'a self,
-        context: &'a Context,
-    ) -> impl Iterator<Item = Block> + 'a {
-        self.function.block_iter(context).filter(|block| {
-            let has_label = |b: &Block| b.get_label(context) == self.label;
-            block
-                .get_terminator(context)
-                .map(|term_inst| match term_inst {
-                    Instruction::ConditionalBranch {
-                        true_block,
-                        false_block,
-                        ..
-                    } => has_label(true_block) || has_label(false_block),
-
-                    Instruction::Branch(block) => has_label(block),
-
-                    _otherwise => false,
-                })
-                .unwrap_or(false)
-        })
-    }
-
-    pub(super) fn num_predecessors(&self, context: &Context) -> usize {
-        self.predecessors(context).count()
-    }
-
-    pub(super) fn successors<'a>(
-        &'a self,
-        context: &'a Context,
-    ) -> impl Iterator<Item = Block> + 'a {
-        self.function.block_iter(context).flat_map(|block| {
-            block
-                .get_terminator(context)
-                .map(|term_inst| match term_inst {
-                    Instruction::ConditionalBranch {
-                        true_block,
-                        false_block,
-                        ..
-                    } => vec![*true_block, *false_block],
-
-                    Instruction::Branch(block) => vec![*block],
-
-                    _otherwise => Vec::new(),
-                })
-                .unwrap_or_default()
-        })
     }
 }
 

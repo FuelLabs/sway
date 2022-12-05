@@ -1,10 +1,8 @@
 library hash;
 
-use ::core::num::*;
-
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
-    let mut result_buffer: b256 = ~b256::min();
+    let mut result_buffer: b256 = b256::min();
     if !__is_reference_type::<T>() {
         asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
             move buffer sp; // Make `buffer` point to the current top of the stack
@@ -25,7 +23,7 @@ pub fn sha256<T>(param: T) -> b256 {
 
 /// Returns the KECCAK-256 hash of `param`.
 pub fn keccak256<T>(param: T) -> b256 {
-    let mut result_buffer: b256 = ~b256::min();
+    let mut result_buffer: b256 = b256::min();
     if !__is_reference_type::<T>() {
         asm(buffer, ptr: param, eight_bytes: 8, hash: result_buffer) {
             move buffer sp; // Make `buffer` point to the current top of the stack

@@ -1,4 +1,4 @@
-mod compile;
+pub(crate) mod compile;
 pub mod const_eval;
 mod convert;
 mod function;
@@ -7,36 +7,76 @@ mod purity;
 pub mod storage;
 mod types;
 
-use crate::{
-    error::CompileError,
-    semantic_analysis::{TypedProgram, TypedProgramKind},
-};
-
+use sway_error::error::CompileError;
 use sway_ir::Context;
 use sway_types::span::Span;
 
-pub(crate) use purity::PurityChecker;
+pub(crate) use purity::{check_function_purity, PurityEnv};
 
-pub fn compile_program(program: TypedProgram) -> Result<Context, CompileError> {
-    let TypedProgram { kind, root, .. } = program;
+use crate::{language::ty, TypeEngine};
+
+pub fn compile_program(
+    program: &ty::TyProgram,
+    include_tests: bool,
+    type_engine: &TypeEngine,
+) -> Result<Context, CompileError> {
+    let test_fns = match include_tests {
+        true => program.test_fns().collect(),
+        false => vec![],
+    };
+
+    let ty::TyProgram {
+        kind,
+        root,
+        logged_types,
+        declarations,
+        ..
+    } = program;
+
+    let logged_types = logged_types
+        .iter()
+        .map(|(log_id, type_id)| (*type_id, *log_id))
+        .collect();
 
     let mut ctx = Context::default();
     match kind {
-        TypedProgramKind::Script {
+        // predicates and scripts have the same codegen, their only difference is static
+        // type-check time checks.
+        ty::TyProgramKind::Script { main_function } => compile::compile_script(
+            type_engine,
+            &mut ctx,
             main_function,
+            &root.namespace,
             declarations,
-        }
-        | TypedProgramKind::Predicate {
+            &logged_types,
+            &test_fns,
+        ),
+        ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
+            type_engine,
+            &mut ctx,
             main_function,
+            &root.namespace,
             declarations,
-            // predicates and scripts have the same codegen, their only difference is static
-            // type-check time checks.
-        } => compile::compile_script(&mut ctx, main_function, &root.namespace, declarations),
-        TypedProgramKind::Contract {
+            &logged_types,
+            &test_fns,
+        ),
+        ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
+            &mut ctx,
             abi_entries,
+            &root.namespace,
             declarations,
-        } => compile::compile_contract(&mut ctx, abi_entries, &root.namespace, declarations),
-        TypedProgramKind::Library { .. } => unimplemented!("compile library to ir"),
+            &logged_types,
+            &test_fns,
+            type_engine,
+        ),
+        ty::TyProgramKind::Library { .. } => compile::compile_library(
+            type_engine,
+            &mut ctx,
+            &root.namespace,
+            declarations,
+            &logged_types,
+            &test_fns,
+        ),
     }?;
     ctx.verify()
         .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))

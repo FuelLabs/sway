@@ -1,12 +1,11 @@
 [[package]]
 name = 'b256_ops'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-963ABD293AAA1DE4'
-dependencies = []
 
 [[package]]
 name = 'std'

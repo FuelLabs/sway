@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-DD6C78AF57ACC141'
-dependencies = []
 
 [[package]]
 name = 'evm_test_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

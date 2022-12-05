@@ -1,12 +1,11 @@
 [[package]]
 name = 'context_testing_abi'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-BE6A0D2FFDF9E2AB'
-dependencies = []
 
 [[package]]
 name = 'std'

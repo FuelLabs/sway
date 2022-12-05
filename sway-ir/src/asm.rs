@@ -16,15 +16,17 @@
 
 use sway_types::ident::Ident;
 
-use crate::{context::Context, irtype::Type, metadata::MetadataIndex, value::Value};
+use crate::{
+    context::Context, irtype::Type, metadata::MetadataIndex, pretty::DebugWithContext, value::Value,
+};
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
 /// [`Context`].
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct AsmBlock(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+pub struct AsmBlock(#[in_context(asm_blocks)] pub generational_arena::Index);
 
 #[doc(hidden)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, DebugWithContext)]
 pub struct AsmBlockContent {
     pub args_names: Vec<Ident>,
     pub body: Vec<AsmInstruction>,
@@ -65,8 +67,13 @@ impl AsmBlock {
     }
 
     /// Return the [`AsmBlock`] return type.
-    pub fn get_type(&self, context: &Context) -> Option<Type> {
+    pub fn get_type(&self, context: &Context) -> Type {
         // The type is a named register, which will be a u64.
-        Some(context.asm_blocks[self.0].return_type)
+        context.asm_blocks[self.0].return_type
+    }
+
+    /// Get a reference to the [`AsmBlockContent`] for this ASM block.
+    pub fn get_content<'a>(&self, context: &'a Context) -> &'a AsmBlockContent {
+        &context.asm_blocks[self.0]
     }
 }

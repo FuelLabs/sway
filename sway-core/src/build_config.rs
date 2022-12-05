@@ -6,9 +6,11 @@ pub struct BuildConfig {
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
+    pub(crate) print_dca_graph: bool,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
     pub(crate) print_ir: bool,
+    pub(crate) include_tests: bool,
 }
 
 impl BuildConfig {
@@ -43,9 +45,18 @@ impl BuildConfig {
         };
         Self {
             canonical_root_module: Arc::new(canonical_root_module),
+            print_dca_graph: false,
             print_intermediate_asm: false,
             print_finalized_asm: false,
             print_ir: false,
+            include_tests: false,
+        }
+    }
+
+    pub fn print_dca_graph(self, a: bool) -> Self {
+        Self {
+            print_dca_graph: a,
+            ..self
         }
     }
 
@@ -66,6 +77,18 @@ impl BuildConfig {
     pub fn print_ir(self, a: bool) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    /// Whether or not to include test functions in parsing, type-checking and codegen.
+    ///
+    /// This should be set to `true` by invocations like `forc test` or `forc check --tests`.
+    ///
+    /// Default: `false`
+    pub fn include_tests(self, include_tests: bool) -> Self {
+        Self {
+            include_tests,
             ..self
         }
     }

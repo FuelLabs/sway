@@ -1,11 +1,10 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-22C1B8FFEA31F7F0'
-dependencies = []
 
 [[package]]
 name = 'new_alloc'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]

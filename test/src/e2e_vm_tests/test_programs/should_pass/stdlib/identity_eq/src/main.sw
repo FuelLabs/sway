@@ -6,10 +6,10 @@ fn main() -> bool {
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let b2 = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
-    let address1 = Identity::Address(~Address::from(b1));
-    let address2 = Identity::Address(~Address::from(b2));
-    let contract1 = Identity::ContractId(~ContractId::from(b1));
-    let contract2 = Identity::ContractId(~ContractId::from(b2));
+    let address1 = Identity::Address(Address::from(b1));
+    let address2 = Identity::Address(Address::from(b2));
+    let contract1 = Identity::ContractId(ContractId::from(b1));
+    let contract2 = Identity::ContractId(ContractId::from(b2));
 
     // Eq is True
     assert(address1 == address1);

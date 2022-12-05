@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 use ropey::Rope;
-use tower_lsp::lsp_types::{Diagnostic, Position, Range, TextDocumentContentChangeEvent};
+use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
+
+use crate::error::DocumentError;
 
 #[derive(Debug)]
 pub struct TextDocument {
@@ -14,15 +16,14 @@ pub struct TextDocument {
 
 impl TextDocument {
     pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
-        match std::fs::read_to_string(&path) {
-            Ok(content) => Ok(Self {
+        std::fs::read_to_string(path)
+            .map(|content| Self {
                 language_id: "sway".into(),
                 version: 1,
                 uri: path.into(),
                 content: Rope::from_str(&content),
-            }),
-            Err(_) => Err(DocumentError::DocumentNotFound),
-        }
+            })
+            .map_err(|_| DocumentError::DocumentNotFound { path: path.into() })
     }
 
     pub fn get_uri(&self) -> &str {
@@ -106,9 +107,23 @@ struct EditText<'text> {
     change_text: &'text str,
 }
 
-#[derive(Debug)]
-pub enum DocumentError {
-    FailedToParse(Vec<Diagnostic>),
-    DocumentNotFound,
-    DocumentAlreadyStored,
+#[cfg(test)]
+mod tests {
+    use crate::test_utils::get_absolute_path;
+
+    use super::*;
+
+    #[test]
+    fn build_from_path_returns_text_document() {
+        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let result = TextDocument::build_from_path(&path);
+        assert!(result.is_ok(), "result = {:?}", result);
+    }
+
+    #[test]
+    fn build_from_path_returns_document_not_found_error() {
+        let path = get_absolute_path("not/a/real/file/path");
+        let result = TextDocument::build_from_path(&path).expect_err("expected DocumentNotFound");
+        assert_eq!(result, DocumentError::DocumentNotFound { path });
+    }
 }

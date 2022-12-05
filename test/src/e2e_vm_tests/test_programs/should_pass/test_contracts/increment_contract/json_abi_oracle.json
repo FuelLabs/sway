@@ -1,35 +1,37 @@
-[
-  {
-    "inputs": [
-      {
-        "components": null,
-        "name": "increment_by",
-        "type": "u64",
-        "typeArguments": null
-      }
-    ],
-    "name": "increment",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "get",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "get",
-    "outputs": [
-      {
-        "components": null,
+    },
+    {
+      "inputs": [
+        {
+          "name": "increment_by",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "increment",
+      "output": {
         "name": "",
-        "type": "u64",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

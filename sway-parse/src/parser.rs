@@ -1,5 +1,4 @@
-use crate::handler::Handler;
-use crate::{Parse, ParseError, ParseErrorKind, ParseToEnd, Peek};
+use crate::{Parse, ParseToEnd, Peek};
 
 use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
@@ -8,6 +7,9 @@ use sway_ast::token::{
     Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
 };
 use sway_ast::PubToken;
+use sway_error::error::CompileError;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::parser_error::{ParseError, ParseErrorKind};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct Parser<'a, 'e> {
@@ -17,7 +19,7 @@ pub struct Parser<'a, 'e> {
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
-    pub fn new(token_stream: &'a TokenStream, handler: &'e Handler) -> Parser<'a, 'e> {
+    pub fn new(handler: &'e Handler, token_stream: &'a TokenStream) -> Parser<'a, 'e> {
         Parser {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
@@ -29,13 +31,19 @@ impl<'a, 'e> Parser<'a, 'e> {
         let span = match self.token_trees {
             [token_tree, ..] => token_tree.span(),
             _ => {
-                // Create a new span that points to _just_ after the last parsed item
+                // Create a new span that points to _just_ after the last parsed item or 1
+                // character before that if the last parsed item is the last item in the full span.
                 let num_trailing_spaces =
                     self.full_span.as_str().len() - self.full_span.as_str().trim_end().len();
+                let trim_offset = if num_trailing_spaces == 0 {
+                    1
+                } else {
+                    num_trailing_spaces
+                };
                 Span::new(
                     self.full_span.src().clone(),
-                    self.full_span.end() - num_trailing_spaces,
-                    self.full_span.end() - num_trailing_spaces + 1,
+                    self.full_span.end() - trim_offset,
+                    self.full_span.end() - trim_offset + 1,
                     self.full_span.path().cloned(),
                 )
             }
@@ -46,8 +54,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn emit_error_with_span(&mut self, kind: ParseErrorKind, span: Span) -> ErrorEmitted {
         let error = ParseError { span, kind };
-        self.handler.emit_err(error);
-        ErrorEmitted { _priv: () }
+        self.handler.emit_err(CompileError::Parse { error })
     }
 
     /// Eats a `P` in its canonical way by peeking.
@@ -121,7 +128,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn check_empty(&self) -> Option<ParserConsumed<'a>> {
         self.is_empty()
-            .then(|| ParserConsumed { _priv: PhantomData })
+            .then_some(ParserConsumed { _priv: PhantomData })
     }
 
     pub fn debug_tokens(&self) -> &[TokenTree] {
@@ -248,11 +255,6 @@ impl<'a> Peeker<'a> {
             _ => Err(self),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ErrorEmitted {
-    _priv: (),
 }
 
 pub struct ParserConsumed<'a> {

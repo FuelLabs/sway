@@ -1,12 +1,7 @@
 contract;
 
-use std::address::Address;
-use std::chain::auth::*;
-use std::contract_id::ContractId;
+use std::auth::*;
 use auth_testing_abi::*;
-use std::result::*;
-use std::assert::assert;
-use std::identity::Identity;
 
 impl AuthTesting for Contract {
     fn is_caller_external() -> bool {
@@ -21,8 +16,12 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::ContractId(v) => {ret = true},
-            _ => {ret = false},
+            Identity::ContractId(v) => {
+                ret = true
+            },
+            _ => {
+                ret = false
+            },
         }
         ret
     }
@@ -35,8 +34,12 @@ impl AuthTesting for Contract {
         }
         let unwrapped = result.unwrap();
         match unwrapped {
-            Identity::Address(v) => {ret = true},
-            _ => {ret = false},
+            Identity::Address(v) => {
+                ret = true
+            },
+            _ => {
+                ret = false
+            },
         }
         ret
     }

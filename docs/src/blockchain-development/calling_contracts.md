@@ -1,8 +1,8 @@
 # Calling Contracts
 
-Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://github.com/FuelLabs/fuel-specs/blob/master/specs/vm/instruction_set.md#call-call-contract) instruction.
+Smart contracts can be _called_ by other contracts or scripts. In the FuelVM, this is done primarily with the [`call`](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#call-call-contract) instruction.
 
-Sway provides a nice way to manage callable interfaces with its `abi` system. The Fuel ABI specification can be found [here](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md).
+Sway provides a nice way to manage callable interfaces with its `abi` system. The Fuel ABI specification can be found [here](https://fuellabs.github.io/fuel-specs/master/protocol/abi).
 
 ## Example
 
@@ -96,6 +96,59 @@ impl ContractB for Contract {
     }
 }
 ```
+
+### CEI pattern violation static analysis
+
+Another way of avoiding re-entrancy-related attacks is to follow the so-called
+_CEI_ pattern. CEI stands for "Checks, Effects, Interactions", meaning that the
+contract code should first perform safety checks, also known as
+"pre-conditions", then perform effects, i.e. modify or read the contract storage
+and execute external contract calls (interaction) only at the very end of the
+function/method.
+
+Please see this [blog post](https://fravoll.github.io/solidity-patterns/checks_effects_interactions.html)
+for more detail on some vulnerabilities in case of storage modification after
+interaction and this [blog post](https://chainsecurity.com/curve-lp-oracle-manipulation-post-mortem) for
+more information on storage reads after interaction.
+
+The Sway compiler implements a check that the CEI pattern is not violated in the
+user contract and issues warnings if that's the case.
+
+For example, in the following contract the CEI pattern is violated, because an
+external contract call is executed before a storage write.
+
+```sway
+{{#include ../../../examples/cei_analysis/src/main.sw}}
+```
+
+Here, `other_contract` is defined as follows:
+
+```sway
+{{#include ../../../examples/cei_analysis/src/other_contract.sw}}
+```
+
+The CEI pattern analyzer issues a warning as follows, pointing to the
+interaction before a storage modification:
+
+```sh
+warning
+  --> /path/to/contract/main.sw:28:9
+   |
+26 |
+27 |           let caller = abi(OtherContract, external_contract_id.into());
+28 |           caller.external_call { coins: bal }();
+   |  _________-
+29 | |
+30 | |         // Storage update _after_ external call
+31 | |         storage.balances.insert(sender, 0);
+   | |__________________________________________- Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
+32 |       }
+33 |   }
+   |
+____
+```
+
+In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.
 
 ## Differences from the EVM
 

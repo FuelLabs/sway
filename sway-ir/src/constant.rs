@@ -3,18 +3,19 @@
 use crate::{
     context::Context,
     irtype::{Aggregate, Type},
+    pretty::DebugWithContext,
     value::Value,
 };
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub struct Constant {
     pub ty: Type,
     pub value: ConstantValue,
 }
 
 /// A constant representation of each of the supported [`Type`]s.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DebugWithContext)]
 pub enum ConstantValue {
     Undef,
     Unit,
@@ -27,28 +28,6 @@ pub enum ConstantValue {
 }
 
 impl Constant {
-    pub fn new_undef(context: &Context, ty: Type) -> Self {
-        match ty {
-            Type::Array(aggregate) => {
-                let (elem_type, count) = context.aggregates[aggregate.0].array_type();
-                let elem_init = Self::new_undef(context, *elem_type);
-                Constant::new_array(&aggregate, vec![elem_init; *count as usize])
-            }
-            Type::Struct(aggregate) => {
-                let field_types = context.aggregates[aggregate.0].field_types().clone();
-                let field_inits = field_types
-                    .into_iter()
-                    .map(|field_type| Self::new_undef(context, field_type)) // Hrmm, recursive structures would break here.
-                    .collect();
-                Constant::new_struct(&aggregate, field_inits)
-            }
-            _otherwise => Constant {
-                ty,
-                value: ConstantValue::Undef,
-            },
-        }
-    }
-
     pub fn new_unit() -> Self {
         Constant {
             ty: Type::Unit,
@@ -98,8 +77,11 @@ impl Constant {
         }
     }
 
-    pub fn get_undef(context: &mut Context, ty: Type) -> Value {
-        Value::new_constant(context, Constant::new_undef(context, ty))
+    pub fn get_undef(ty: Type) -> Self {
+        Constant {
+            ty,
+            value: ConstantValue::Undef,
+        }
     }
 
     pub fn get_unit(context: &mut Context) -> Value {
@@ -144,5 +126,24 @@ impl Constant {
             }
         ));
         Value::new_constant(context, value)
+    }
+
+    /// Compare two Constant values. Can't impl PartialOrder because of context.
+    pub fn eq(&self, context: &Context, other: &Self) -> bool {
+        self.ty.eq(context, &other.ty)
+            && match (&self.value, &other.value) {
+                // Two Undefs are *NOT* equal (PartialEq allows this).
+                (ConstantValue::Undef, _) | (_, ConstantValue::Undef) => false,
+                (ConstantValue::Unit, ConstantValue::Unit) => true,
+                (ConstantValue::Bool(l0), ConstantValue::Bool(r0)) => l0 == r0,
+                (ConstantValue::Uint(l0), ConstantValue::Uint(r0)) => l0 == r0,
+                (ConstantValue::B256(l0), ConstantValue::B256(r0)) => l0 == r0,
+                (ConstantValue::String(l0), ConstantValue::String(r0)) => l0 == r0,
+                (ConstantValue::Array(l0), ConstantValue::Array(r0))
+                | (ConstantValue::Struct(l0), ConstantValue::Struct(r0)) => {
+                    l0.iter().zip(r0.iter()).all(|(l0, r0)| l0.eq(context, r0))
+                }
+                _ => false,
+            }
     }
 }

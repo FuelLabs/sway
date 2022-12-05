@@ -42,9 +42,8 @@ async fn get_contracts() -> (
     .await
     .unwrap();
 
-    let instance_2 =
-        TestContextCallerContractBuilder::new(id_2.to_string(), wallet.clone()).build();
-    let instance_1 = TestContextContractBuilder::new(id_1.to_string(), wallet.clone()).build();
+    let instance_2 = TestContextCallerContract::new(id_2.clone(), wallet.clone());
+    let instance_1 = TestContextContract::new(id_1.clone(), wallet.clone());
 
     (instance_1, id_1.into(), instance_2, id_2.into())
 }
@@ -55,20 +54,23 @@ async fn can_get_this_balance() {
     let send_amount = 42;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
         .call()
         .await
         .unwrap();
 
     caller_instance
+        .methods()
         .call_receive_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
 
     let result = context_instance
+        .methods()
         .get_this_balance(caller_id)
         .call()
         .await
@@ -83,12 +85,14 @@ async fn can_get_balance_of_contract() {
     let send_amount = 42;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
         .call()
         .await
         .unwrap();
 
     let result = context_instance
+        .methods()
         .get_balance_of_contract(caller_id.clone(), caller_id.clone())
         .set_contracts(&[caller_id.into()])
         .call()
@@ -104,12 +108,14 @@ async fn can_get_msg_value() {
     let send_amount = 11;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
         .call()
         .await
         .unwrap();
 
     let result = caller_instance
+        .methods()
         .call_get_amount_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
         .call()
@@ -125,15 +131,17 @@ async fn can_get_msg_id() {
     let send_amount = 42;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
         .call()
         .await
         .unwrap();
 
     let result = caller_instance
+        .methods()
         .call_get_asset_id_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -147,15 +155,17 @@ async fn can_get_msg_gas() {
     let send_amount = 11;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
         .call()
         .await
         .unwrap();
 
     let result = caller_instance
+        .methods()
         .call_get_gas_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(Some(0), Some(1_000_000), None))
         .call()
         .await
         .unwrap();
@@ -169,16 +179,18 @@ async fn can_get_global_gas() {
     let send_amount = 11;
 
     caller_instance
+        .methods()
         .mint_coins(send_amount)
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();
 
     let result = caller_instance
+        .methods()
         .call_get_global_gas_with_coins(send_amount, context_id)
         .set_contracts(&[context_id.into()])
-        .tx_params(TxParameters::new(None, Some(1_000_000), None, None))
+        .tx_params(TxParameters::new(None, Some(1_000_000), None))
         .call()
         .await
         .unwrap();

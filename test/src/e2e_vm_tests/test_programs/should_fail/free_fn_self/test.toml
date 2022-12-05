@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()fn free_fn(self) {}
+# nextln: $()self parameter is not allowed for a free function

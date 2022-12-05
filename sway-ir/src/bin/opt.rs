@@ -15,6 +15,8 @@ fn main() -> Result<(), anyhow::Error> {
     pass_mgr.register::<ConstCombinePass>();
     pass_mgr.register::<InlinePass>();
     pass_mgr.register::<SimplifyCfgPass>();
+    pass_mgr.register::<DCEPass>();
+    pass_mgr.register::<Mem2RegPass>();
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -76,10 +78,13 @@ trait NamedPass {
         ir: &mut Context,
         mut run_on_fn: F,
     ) -> Result<bool, IrError> {
-        let funcs = ir.functions.iter().map(|(idx, _)| idx).collect::<Vec<_>>();
+        let funcs = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .collect::<Vec<_>>();
         let mut modified = false;
-        for idx in funcs {
-            if run_on_fn(ir, &Function(idx))? {
+        for func in funcs {
+            if run_on_fn(ir, &func)? {
                 modified = true;
             }
         }
@@ -135,11 +140,11 @@ impl NamedPass for InlinePass {
     fn run(ir: &mut Context) -> Result<bool, IrError> {
         // For now we inline everything into `main()`.  Eventually we can be more selective.
         let main_fn = ir
-            .functions
-            .iter()
-            .find_map(|(idx, fc)| if fc.name == "main" { Some(idx) } else { None })
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .find(|f| f.get_name(ir) == "main")
             .unwrap();
-        optimize::inline_all_function_calls(ir, &Function(main_fn))
+        optimize::inline_all_function_calls(ir, &main_fn)
     }
 }
 
@@ -176,6 +181,42 @@ impl NamedPass for SimplifyCfgPass {
 
     fn run(ir: &mut Context) -> Result<bool, IrError> {
         Self::run_on_all_fns(ir, optimize::simplify_cfg)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct DCEPass;
+
+impl NamedPass for DCEPass {
+    fn name() -> &'static str {
+        "dce"
+    }
+
+    fn descr() -> &'static str {
+        "Dead code elimination."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::dce)
+    }
+}
+
+// -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
+
+struct Mem2RegPass;
+
+impl NamedPass for Mem2RegPass {
+    fn name() -> &'static str {
+        "mem2reg"
+    }
+
+    fn descr() -> &'static str {
+        "Promote local memory to SSA registers."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, optimize::promote_to_registers)
     }
 }
 

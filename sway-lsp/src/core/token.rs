@@ -1,13 +1,14 @@
 use dashmap::DashMap;
 use sway_core::{
-    semantic_analysis::ast_node::{
-        expression::typed_expression::TypedExpression, TypeCheckedStorageReassignDescriptor,
-        TypedDeclaration, TypedEnumVariant, TypedFunctionDeclaration, TypedFunctionParameter,
-        TypedReassignment, TypedStorageField, TypedStructField, TypedTraitFn,
+    language::{
+        parsed::{
+            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
+            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
+            TraitFn,
+        },
+        ty,
     },
     type_system::TypeId,
-    Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter, Reassignment,
-    StorageField, StructField, TraitFn,
 };
 use sway_types::{Ident, Span};
 
@@ -24,14 +25,19 @@ pub struct Token {
     pub parsed: AstToken,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
+    pub kind: SymbolKind,
 }
 
 impl Token {
-    pub fn from_parsed(token: AstToken) -> Self {
+    /// Create a new token with the given SymbolKind.
+    /// This function is intended to be used during traversal of the
+    /// `ParseProgram` AST.
+    pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
             parsed: token,
             typed: None,
             type_def: None,
+            kind,
         }
     }
 }
@@ -40,25 +46,48 @@ impl Token {
 pub enum AstToken {
     Declaration(Declaration),
     Expression(Expression),
+    StructExpressionField(StructExpressionField),
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
-    Reassignment(Reassignment),
+    Reassignment(ReassignmentExpression),
     StorageField(StorageField),
+    Scrutinee(Scrutinee),
 }
 
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
-    TypedDeclaration(TypedDeclaration),
-    TypedExpression(TypedExpression),
-    TypedFunctionDeclaration(TypedFunctionDeclaration),
-    TypedFunctionParameter(TypedFunctionParameter),
-    TypedStructField(TypedStructField),
-    TypedEnumVariant(TypedEnumVariant),
-    TypedTraitFn(TypedTraitFn),
-    TypedStorageField(TypedStorageField),
-    TypeCheckedStorageReassignDescriptor(TypeCheckedStorageReassignDescriptor),
-    TypedReassignment(TypedReassignment),
+    TypedDeclaration(ty::TyDeclaration),
+    TypedExpression(ty::TyExpression),
+    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
+    TypedFunctionParameter(ty::TyFunctionParameter),
+    TypedStructField(ty::TyStructField),
+    TypedEnumVariant(ty::TyEnumVariant),
+    TypedTraitFn(ty::TyTraitFn),
+    TypedStorageField(ty::TyStorageField),
+    TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
+    TypedReassignment(ty::TyReassignment),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SymbolKind {
+    Field,
+    ValueParam,
+    Function,
+    Const,
+    Struct,
+    Trait,
+    Enum,
+    Variant,
+    BoolLiteral,
+    ByteLiteral,
+    StringLiteral,
+    NumericLiteral,
+    Variable,
+    BuiltinType,
+    Module,
+    TypeParameter,
+    Unknown,
 }

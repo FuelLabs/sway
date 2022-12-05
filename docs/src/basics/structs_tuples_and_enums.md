@@ -51,9 +51,6 @@ _Enumerations_, or _enums_, are also known as _sum types_. An enum is a type tha
 
 Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type `()`, or unit.
 
-> **Note**
-> enum instantiation does not require the `~` tilde syntax
-
 ```sway
 {{#include ../../../examples/enums/src/basic_enum.sw}}
 ```

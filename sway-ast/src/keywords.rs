@@ -54,6 +54,7 @@ define_keyword!(PubToken, "pub");
 define_keyword!(UseToken, "use");
 define_keyword!(AsToken, "as");
 define_keyword!(StructToken, "struct");
+define_keyword!(ClassToken, "class"); // Not in the language! Exists for recovery.
 define_keyword!(EnumToken, "enum");
 define_keyword!(SelfToken, "self");
 define_keyword!(FnToken, "fn");
@@ -143,6 +144,7 @@ define_token!(
     [Colon]
 );
 define_token!(StarToken, "an asterisk (*)", [Star], [Equals]);
+define_token!(DoubleStarToken, "`**`", [Star, Star], []);
 define_token!(CommaToken, "a comma", [Comma], []);
 define_token!(ColonToken, "a colon", [Colon], [Colon]);
 define_token!(
@@ -160,7 +162,6 @@ define_token!(
 );
 define_token!(OpenAngleBracketToken, "`<`", [LessThan], []);
 define_token!(CloseAngleBracketToken, "`>`", [GreaterThan], []);
-define_token!(TildeToken, "`~`", [Tilde], []);
 define_token!(EqToken, "`=`", [Equals], [GreaterThan, Equals]);
 define_token!(AddEqToken, "`+=`", [Add, Equals], []);
 define_token!(SubEqToken, "`-=`", [Sub, Equals], []);

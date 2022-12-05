@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-9D3054CE9B0DD894'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-9D3054CE9B0DD894'
+dependencies = ['core']
+
+[[package]]
+name = 'u256_div_test'
+source = 'member'
+dependencies = ['std']

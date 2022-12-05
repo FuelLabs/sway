@@ -2,16 +2,23 @@ use fuel_asm::Word;
 use fuel_crypto::Hasher;
 use fuel_tx::{Bytes32, ContractId};
 use serde::{Deserialize, Serialize};
+use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::{io, iter, slice};
 
+pub mod constants;
+
 pub mod ident;
 pub use ident::*;
+
+pub mod integer_bits;
 
 pub mod span;
 pub use span::*;
 
 pub mod state;
+
+pub mod style;
 
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
@@ -69,7 +76,7 @@ impl Instruction {
         // than 32 bytes
         iter.map(Self::to_bytes)
             .fold::<Vec<u8>, _>(vec![], |mut v, b| {
-                v.extend(&b);
+                v.extend(b);
 
                 v
             })
@@ -91,6 +98,13 @@ where
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ConfigTimeConstant {
+    pub r#type: String,
+    pub value: String,
+    #[serde(default)]
+    pub public: bool,
+}
 impl AsRef<PathBuf> for Source {
     fn as_ref(&self) -> &PathBuf {
         &self.path
@@ -338,37 +352,4 @@ impl Context {
             _ => None,
         }
     }
-}
-
-/// TODO: The types `Function` and `Property` below are copied from `fuels-types` except for the
-/// `typeArguments` field of `Property`. Switch back to using fuels-types
-/// directly when the `typeArguments` field is added there
-///
-/// Fuel ABI representation in JSON, originally specified here:
-///
-/// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md
-///
-/// This type may be used by compilers (e.g. Sway) and related tooling to convert an ABI
-/// representation into native Rust structs and vice-versa.
-
-pub type JsonABI = Vec<Function>;
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Function {
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub inputs: Vec<Property>,
-    pub name: String,
-    pub outputs: Vec<Property>,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Property {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub type_field: String,
-    pub components: Option<Vec<Property>>, // Used for custom types
-    pub type_arguments: Option<Vec<Property>>, // Used for generic types. Not yet supported in fuels-rs.
 }

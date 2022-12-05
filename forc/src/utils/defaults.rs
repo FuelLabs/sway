@@ -1,6 +1,6 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_manifest(project_name: &str, entry_type: &str) -> String {
+pub(crate) fn default_pkg_manifest(project_name: &str, entry_type: &str) -> String {
     let author = get_author();
 
     format!(
@@ -15,30 +15,10 @@ name = "{project_name}"
     )
 }
 
-/// Creates a default Cargo manifest for the Rust-based tests.
-/// It includes necessary packages to make the Rust-based
-/// tests work.
-pub(crate) fn default_tests_manifest(project_name: &str) -> String {
-    let author = get_author();
-
-    format!(
-        r#"[project]
-name = "{project_name}"
-version = "0.1.0"
-authors = ["{author}"]
-edition = "2021"
-license = "Apache-2.0"
-
-[dependencies]
-fuels = {{ version = "0.20", features = ["fuel-core-lib"] }}
-tokio = {{ version = "1.12", features = ["rt", "macros"] }}
-
-[[test]]
-harness = true
-name = "integration_tests"
-path = "tests/harness.rs"
-"#
-    )
+pub(crate) fn default_workspace_manifest() -> String {
+    r#"[workspace]
+members = []"#
+        .to_string()
 }
 
 pub(crate) fn default_contract() -> String {
@@ -86,57 +66,6 @@ fn main() -> bool {
     .into()
 }
 
-// TODO Ideally after (instance, id) it should link to the The Fuels-rs Book
-// to provide further information for writing tests/working with sway
-pub(crate) fn default_test_program(project_name: &str) -> String {
-    format!(
-        "{}{}{}{}{}{}{}",
-        r#"use fuels::{prelude::*, tx::ContractId};
-
-// Load abi from json
-abigen!(MyContract, "out/debug/"#,
-        project_name,
-        r#"-abi.json");
-
-async fn get_contract_instance() -> (MyContract, ContractId) {
-    // Launch a local network and deploy the contract
-    let mut wallets = launch_custom_provider_and_get_wallets(
-        WalletsConfig::new(Some(1), Some(1000000), Some(1_000_000)),
-        None,
-    )
-    .await;
-    let wallet = wallets.pop().unwrap();
-
-    let id = Contract::deploy(
-        "./out/debug/"#,
-        project_name,
-        r#".bin",
-        &wallet,
-        TxParameters::default(),
-        StorageConfiguration::with_storage_path(Some(
-            "./out/debug/"#,
-        project_name,
-        r#"-storage_slots.json".to_string(),
-        )),
-    )
-    .await
-    .unwrap();
-
-    let instance = MyContractBuilder::new(id.to_string(), wallet).build();
-
-    (instance, id.into())
-}
-
-#[tokio::test]
-async fn can_get_contract_id() {
-    let (_instance, _id) = get_contract_instance().await;
-
-    // Now you have an instance of your contract you can use to test each function
-}
-"#
-    )
-}
-
 pub(crate) fn default_gitignore() -> String {
     r#"out
 target
@@ -149,20 +78,18 @@ fn get_author() -> String {
 }
 
 #[test]
-fn parse_default_manifest() {
+fn parse_default_pkg_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_manifest("test_proj", MAIN_ENTRY)).unwrap()
+        toml::from_str::<forc_pkg::PackageManifest>(&default_pkg_manifest("test_proj", MAIN_ENTRY))
+            .unwrap()
     )
 }
-
 #[test]
-fn parse_default_tests_manifest() {
+fn parse_default_workspace_manifest() {
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::Manifest>(&default_tests_manifest("test_proj")).unwrap()
+        toml::from_str::<forc_pkg::PackageManifest>(&default_workspace_manifest()).unwrap()
     )
 }
-
-pub const NODE_URL: &str = "http://127.0.0.1:4000";

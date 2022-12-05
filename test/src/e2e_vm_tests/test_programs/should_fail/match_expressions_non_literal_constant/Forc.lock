@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-71302168F25F2AFD'
+
+[[package]]
+name = 'match_expressions_non_literal_constant'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-71302168F25F2AFD'
+dependencies = ['core']

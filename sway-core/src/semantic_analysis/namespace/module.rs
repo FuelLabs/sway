@@ -1,13 +1,24 @@
 use crate::{
     error::*,
-    parse_tree::Visibility,
-    semantic_analysis::{ast_node::TypedVariableDeclaration, declaration::VariableMutability},
-    CompileResult, Ident, TypedDeclaration,
+    language::{parsed::*, ty, Visibility},
+    semantic_analysis::*,
+    transform::to_parsed_lang,
+    Ident, Namespace, TypeEngine,
 };
 
-use super::{items::Items, root::Root, ModuleName, Path};
+use super::{
+    items::{GlobImport, Items, SymbolMap},
+    root::Root,
+    trait_map::TraitMap,
+    ModuleName, Path,
+};
 
-use sway_types::{span::Span, Spanned};
+use std::collections::BTreeMap;
+use sway_ast::ItemConst;
+use sway_error::handler::Handler;
+use sway_error::{error::CompileError, handler::ErrorEmitted};
+use sway_parse::{lex, Parser};
+use sway_types::{span::Span, ConfigTimeConstant, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -17,7 +28,7 @@ use sway_types::{span::Span, Spanned};
 ///
 /// A `Module` contains a set of all items that exist within the lexical scope via declaration or
 /// importing, along with a map of each of its submodules.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct Module {
     /// Submodules of the current module represented as an ordered map from each submodule's name
     /// to the associated `Module`.
@@ -32,6 +43,102 @@ pub struct Module {
 }
 
 impl Module {
+    pub fn default_with_constants(
+        type_engine: &TypeEngine,
+        constants: BTreeMap<String, ConfigTimeConstant>,
+    ) -> Result<Self, vec1::Vec1<CompileError>> {
+        let handler = <_>::default();
+        Module::default_with_constants_inner(&handler, type_engine, constants).map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
+
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
+    }
+
+    fn default_with_constants_inner(
+        handler: &Handler,
+        type_engine: &TypeEngine,
+        constants: BTreeMap<String, ConfigTimeConstant>,
+    ) -> Result<Self, ErrorEmitted> {
+        // it would be nice to one day maintain a span from the manifest file, but
+        // we don't keep that around so we just use the span from the generated const decl instead.
+        let mut compiled_constants: SymbolMap = Default::default();
+        // this for loop performs a miniature compilation of each const item in the config
+        for (
+            name,
+            ConfigTimeConstant {
+                r#type,
+                value,
+                public,
+            },
+        ) in constants.into_iter()
+        {
+            // FIXME(Centril): Stop parsing. Construct AST directly instead!
+            // parser config
+            let const_item = match public {
+                true => format!("pub const {name}: {type} = {value};"),
+                false => format!("const {name}: {type} = {value};"),
+            };
+            let const_item_len = const_item.len();
+            let input_arc = std::sync::Arc::from(const_item);
+            let token_stream = lex(handler, &input_arc, 0, const_item_len, None).unwrap();
+            let mut parser = Parser::new(handler, &token_stream);
+            // perform the parse
+            let const_item: ItemConst = parser.parse()?;
+            let const_item_span = const_item.span().clone();
+
+            // perform the conversions from parser code to parse tree types
+            let name = const_item.name.clone();
+            let attributes = Default::default();
+            // convert to const decl
+            let const_decl = to_parsed_lang::item_const_to_constant_declaration(
+                handler,
+                type_engine,
+                const_item,
+                attributes,
+            )?;
+
+            // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
+            if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
+                return Err(
+                    handler.emit_err(CompileError::ConfigTimeConstantNotALiteral {
+                        span: const_item_span,
+                    }),
+                );
+            }
+
+            let ast_node = AstNode {
+                content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl)),
+                span: const_item_span.clone(),
+            };
+            let mut ns = Namespace::init_root(Default::default());
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns, type_engine);
+            let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
+                .unwrap(&mut vec![], &mut vec![]);
+            // get the decl out of the typed node:
+            // we know as an invariant this must be a const decl, as we hardcoded a const decl in
+            // the above `format!`.  if it isn't we report an
+            // error that only constant items are alowed, defensive programming etc...
+            let typed_decl = match typed_node.content {
+                ty::TyAstNodeContent::Declaration(decl) => decl,
+                _ => {
+                    return Err(
+                        handler.emit_err(CompileError::ConfigTimeConstantNotAConstDecl {
+                            span: const_item_span,
+                        }),
+                    );
+                }
+            };
+            compiled_constants.insert(name, typed_decl);
+        }
+
+        let mut ret = Self::default();
+        ret.items.symbols = compiled_constants;
+        Ok(ret)
+    }
+
     /// Immutable access to this module's submodules.
     pub fn submodules(&self) -> &im::OrdMap<ModuleName, Module> {
         &self.submodules
@@ -82,7 +189,12 @@ impl Module {
     /// This is used when an import path contains an asterisk.
     ///
     /// Paths are assumed to be relative to `self`.
-    pub(crate) fn star_import(&mut self, src: &Path, dst: &Path) -> CompileResult<()> {
+    pub(crate) fn star_import(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let src_ns = check!(
@@ -91,29 +203,92 @@ impl Module {
             warnings,
             errors
         );
+
         let implemented_traits = src_ns.implemented_traits.clone();
-        let symbols = src_ns
-            .symbols
-            .iter()
-            .filter_map(|(symbol, decl)| {
-                if decl.visibility() == Visibility::Public {
-                    Some(symbol.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        let mut symbols = vec![];
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
 
         let dst_ns = &mut self[dst];
-        dst_ns.implemented_traits.extend(implemented_traits);
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
         for symbol in symbols {
-            if dst_ns.use_synonyms.contains_key(&symbol) {
-                errors.push(CompileError::StarImportShadowsOtherSymbol {
-                    name: symbol.clone(),
-                });
-            }
-            dst_ns.use_synonyms.insert(symbol, src.to_vec());
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (src.to_vec(), GlobImport::Yes));
         }
+
+        ok((), warnings, errors)
+    }
+
+    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
+    /// `dst` module.
+    ///
+    /// This is used when an import path contains an asterisk.
+    ///
+    /// Paths are assumed to be relative to `self`.
+    pub fn star_import_with_reexports(
+        &mut self,
+        src: &Path,
+        dst: &Path,
+        type_engine: &TypeEngine,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let src_ns = check!(
+            self.check_submodule(src),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        let implemented_traits = src_ns.implemented_traits.clone();
+        let use_synonyms = src_ns.use_synonyms.clone();
+        let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
+        for (symbol, decl) in src_ns.symbols.iter() {
+            let visibility = check!(
+                decl.visibility(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility == Visibility::Public {
+                symbols.push(symbol.clone());
+            }
+        }
+
+        let dst_ns = &mut self[dst];
+        dst_ns
+            .implemented_traits
+            .extend(implemented_traits, type_engine);
+        let mut try_add = |symbol, path| {
+            dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
+        };
+
+        for symbol in symbols {
+            try_add(symbol, src.to_vec());
+        }
+        for (symbol, (mod_path, _)) in use_synonyms {
+            // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
+            // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
+            //
+            // FIXME(Centril, #2780): Seems like the compiler has no way of
+            // distinguishing between external and crate-relative paths?
+            let mut src = src[..1].to_vec();
+            src.extend(mod_path);
+            try_add(symbol, src);
+        }
+
         ok((), warnings, errors)
     }
 
@@ -123,12 +298,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(src, last_item, dst, alias)
+        self.item_import(type_engine, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -136,6 +312,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
+        type_engine: &TypeEngine,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -149,49 +326,57 @@ impl Module {
             warnings,
             errors
         );
-        let mut impls_to_insert = vec![];
+        let mut impls_to_insert = TraitMap::default();
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
-                if decl.visibility() != Visibility::Public {
+                let visibility = check!(
+                    decl.visibility(),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
                 // if this is a const, insert it into the local namespace directly
-                if let TypedDeclaration::VariableDeclaration(TypedVariableDeclaration {
-                    mutability: VariableMutability::ExportedConst,
-                    ref name,
-                    ..
-                }) = decl
-                {
-                    self[dst].insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
-                    return ok((), warnings, errors);
+                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
+                    let ty::TyVariableDeclaration {
+                        mutability, name, ..
+                    } = &**var_decl;
+                    if mutability == &ty::VariableMutability::ExportedConst {
+                        self[dst]
+                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                        return ok((), warnings, errors);
+                    }
                 }
-                let a = decl.return_type().value;
-                //  if this is an enum or struct, import its implementations
-                let mut res = match a {
-                    Some(a) => src_ns.implemented_traits.get_call_path_and_type_info(a),
-                    None => vec![],
-                };
-                impls_to_insert.append(&mut res);
+                let type_id = decl.return_type(&item.span(), type_engine).value;
+                //  if this is an enum or struct or function, import its implementations
+                if let Some(type_id) = type_id {
+                    impls_to_insert.extend(
+                        src_ns
+                            .implemented_traits
+                            .filter_by_type_item_import(type_id, type_engine),
+                        type_engine,
+                    );
+                }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
+                let mut add_synonym = |name| {
+                    if let Some((_, GlobImport::No)) = dst_ns.use_synonyms.get(name) {
+                        errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                    }
+                    dst_ns
+                        .use_synonyms
+                        .insert(name.clone(), (src.to_vec(), GlobImport::No));
+                };
                 match alias {
                     Some(alias) => {
-                        if dst_ns.use_synonyms.contains_key(&alias) {
-                            errors.push(CompileError::ShadowsOtherSymbol {
-                                name: alias.clone(),
-                            });
-                        }
-                        dst_ns.use_synonyms.insert(alias.clone(), src.to_vec());
+                        add_synonym(&alias);
                         dst_ns
                             .use_aliases
                             .insert(alias.as_str().to_string(), item.clone());
                     }
-                    None => {
-                        if dst_ns.use_synonyms.contains_key(item) {
-                            errors.push(CompileError::ShadowsOtherSymbol { name: item.clone() });
-                        }
-                        dst_ns.use_synonyms.insert(item.clone(), src.to_vec());
-                    }
+                    None => add_synonym(item),
                 };
             }
             None => {
@@ -201,13 +386,9 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        impls_to_insert
-            .into_iter()
-            .for_each(|((call_path, type_info), methods)| {
-                dst_ns
-                    .implemented_traits
-                    .insert(call_path, type_info, methods);
-            });
+        dst_ns
+            .implemented_traits
+            .extend(impls_to_insert, type_engine);
 
         ok((), warnings, errors)
     }

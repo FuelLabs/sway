@@ -1,17 +1,17 @@
 use crate::{
+    language::{parsed::TreeType, Purity},
     namespace::Path,
-    parse_tree::declaration::Purity,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
-        insert_type, monomorphize, unify_with_self, CopyTypes, EnforceTypeArguments,
-        MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        CopyTypes, EnforceTypeArguments, MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeError,
+    CompileResult, CompileWarning, TypeEngine,
 };
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
 
 /// Contextual state tracked and accumulated throughout type-checking.
-pub struct TypeCheckContext<'ns> {
+pub struct TypeCheckContext<'a> {
     /// The namespace context accumulated throughout type-checking.
     ///
     /// Internally, this includes:
@@ -20,7 +20,7 @@ pub struct TypeCheckContext<'ns> {
     /// - The `init` module used to initialise submodule namespaces.
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
-    pub(crate) namespace: &'ns mut Namespace,
+    pub(crate) namespace: &'a mut Namespace,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -46,9 +46,14 @@ pub struct TypeCheckContext<'ns> {
     /// Tracks the purity of the context, e.g. whether or not we should be allowed to write to
     /// storage.
     purity: Purity,
+    /// Provides the kind of the module.
+    /// This is useful for example to throw an error when while loops are present in predicates.
+    kind: TreeType,
+    /// The type engine storing types.
+    pub(crate) type_engine: &'a TypeEngine,
 }
 
-impl<'ns> TypeCheckContext<'ns> {
+impl<'a> TypeCheckContext<'a> {
     /// Initialise a context at the top-level of a module with its namespace.
     ///
     /// Initializes with:
@@ -57,19 +62,21 @@ impl<'ns> TypeCheckContext<'ns> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'ns mut Namespace) -> Self {
-        Self::from_module_namespace(root_namespace)
+    pub fn from_root(root_namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
+        Self::from_module_namespace(root_namespace, type_engine)
     }
 
-    fn from_module_namespace(namespace: &'ns mut Namespace) -> Self {
+    fn from_module_namespace(namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
         Self {
             namespace,
-            type_annotation: insert_type(TypeInfo::Unknown),
+            type_engine,
+            type_annotation: type_engine.insert_type(TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: insert_type(TypeInfo::Contract),
+            self_type: type_engine.insert_type(TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
+            kind: TreeType::Contract,
         }
     }
 
@@ -81,7 +88,7 @@ impl<'ns> TypeCheckContext<'ns> {
     /// rather than the original namespace reference, we instead restrict the returned context to
     /// the local scope and avoid consuming the original context when providing context to the
     /// first visited child node.
-    pub fn by_ref(&mut self) -> TypeCheckContext {
+    pub fn by_ref(&mut self) -> TypeCheckContext<'_> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
@@ -89,11 +96,13 @@ impl<'ns> TypeCheckContext<'ns> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            kind: self.kind.clone(),
+            type_engine: self.type_engine,
         }
     }
 
     /// Scope the `TypeCheckContext` with the given `Namespace`.
-    pub fn scoped(self, namespace: &mut Namespace) -> TypeCheckContext {
+    pub fn scoped(self, namespace: &'a mut Namespace) -> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
@@ -101,6 +110,8 @@ impl<'ns> TypeCheckContext<'ns> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
+            kind: self.kind,
+            type_engine: self.type_engine,
         }
     }
 
@@ -108,16 +119,17 @@ impl<'ns> TypeCheckContext<'ns> {
     /// type-checking its content.
     ///
     /// Returns the result of the given `with_submod_ctx` function.
-    pub fn enter_submodule<F, T>(self, dep_name: Ident, with_submod_ctx: F) -> T
-    where
-        F: FnOnce(TypeCheckContext) -> T,
-    {
+    pub fn enter_submodule<T>(
+        self,
+        dep_name: Ident,
+        with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
+    ) -> T {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace. However, we will likely want to pass through the type engine and declaration
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(dep_name);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns);
+        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, self.type_engine);
         with_submod_ctx(submod_ctx)
     }
 
@@ -144,6 +156,11 @@ impl<'ns> TypeCheckContext<'ns> {
         Self { purity, ..self }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with the given module kind.
+    pub(crate) fn with_kind(self, kind: TreeType) -> Self {
+        Self { kind, ..self }
+    }
+
     /// Map this `TypeCheckContext` instance to a new one with the given purity.
     pub(crate) fn with_self_type(self, self_type: TypeId) -> Self {
         Self { self_type, ..self }
@@ -168,6 +185,10 @@ impl<'ns> TypeCheckContext<'ns> {
         self.purity
     }
 
+    pub(crate) fn kind(&self) -> TreeType {
+        self.kind.clone()
+    }
+
     pub(crate) fn self_type(&self) -> TypeId {
         self.self_type
     }
@@ -176,7 +197,7 @@ impl<'ns> TypeCheckContext<'ns> {
 
     /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
-        &self,
+        &mut self,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -185,13 +206,14 @@ impl<'ns> TypeCheckContext<'ns> {
     where
         T: MonomorphizeHelper + CopyTypes,
     {
-        monomorphize(
+        let mod_path = self.namespace.mod_path.clone();
+        self.type_engine.monomorphize(
             value,
             type_arguments,
             enforce_type_arguments,
             call_site_span,
-            &self.namespace.root,
-            &self.namespace.mod_path,
+            self.namespace,
+            &mod_path,
         )
     }
 
@@ -205,6 +227,7 @@ impl<'ns> TypeCheckContext<'ns> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace.resolve_type_with_self(
+            self.type_engine,
             type_id,
             self.self_type,
             span,
@@ -221,7 +244,7 @@ impl<'ns> TypeCheckContext<'ns> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_without_self(type_id, span, type_info_prefix)
+            .resolve_type_without_self(self.type_engine, type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
@@ -230,8 +253,8 @@ impl<'ns> TypeCheckContext<'ns> {
         &self,
         ty: TypeId,
         span: &Span,
-    ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        unify_with_self(
+    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
+        self.type_engine.unify_with_self(
             ty,
             self.type_annotation(),
             self.self_type(),

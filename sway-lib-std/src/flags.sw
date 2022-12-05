@@ -1,7 +1,7 @@
 //! Functionality for setting and unsetting FuelVM flags to modify behavior related to the `$err` and `$of` registers
 library flags;
 
-use ::context::registers::flags;
+use ::registers::flags;
 
 /// Call this function to allow overflowing operations to occur without a FuelVM panic.
 /// IMPORTANT !!! Don't forget to call enable_panic_on_overflow() after performing the operations for which you disabled the default panic-on-overflow behavior in the first place !

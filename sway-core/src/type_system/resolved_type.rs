@@ -1,7 +1,5 @@
-use crate::semantic_analysis::TypedExpression;
-use crate::type_system::*;
-use crate::{semantic_analysis::ast_node::TypedStructField, CallPath, Ident};
 use derivative::Derivative;
+use sway_types::integer_bits::IntegerBits;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -11,12 +9,12 @@ pub enum ResolvedType {
     UnsignedInteger(IntegerBits),
     Boolean,
     Unit,
-    Byte,
     B256,
+    /*
     #[allow(dead_code)]
     Struct {
         name: Ident,
-        fields: Vec<TypedStructField>,
+        fields: Vec<ty::TyStructField>,
     },
     #[allow(dead_code)]
     Enum {
@@ -33,7 +31,7 @@ pub enum ResolvedType {
     ContractCaller {
         abi_name: CallPath,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
-        address: Box<TypedExpression>,
+        address: Box<ty::TyExpression>,
     },
     #[allow(dead_code)]
     Function {
@@ -43,27 +41,11 @@ pub enum ResolvedType {
     /// used for recovering from errors in the ast
     #[allow(dead_code)]
     ErrorRecovery,
+    */
 }
 
 impl Default for ResolvedType {
     fn default() -> Self {
         ResolvedType::Unit
-    }
-}
-
-impl ResolvedType {
-    pub(crate) fn is_copy_type(&self) -> bool {
-        matches!(
-            self,
-            ResolvedType::Boolean
-                | ResolvedType::Byte
-                | ResolvedType::Unit
-                | ResolvedType::UnsignedInteger(_)
-        )
-    }
-
-    #[allow(dead_code)]
-    pub fn is_numeric(&self) -> bool {
-        matches!(self, ResolvedType::UnsignedInteger(_))
     }
 }

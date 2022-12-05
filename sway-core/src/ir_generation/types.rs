@@ -1,26 +1,25 @@
 use crate::{
-    error::CompileError,
-    semantic_analysis::{
-        ProjectionKind, TypeCheckedStorageAccessDescriptor, TypeCheckedStorageReassignDescriptor,
-        TypedEnumVariant,
-    },
-    type_system::{resolve_type, TypeId, TypeInfo},
+    language::ty,
+    type_system::{TypeId, TypeInfo},
+    TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;
 
+use sway_error::error::CompileError;
 use sway_ir::{Aggregate, Context, Type};
 use sway_types::span::Spanned;
 
 pub(super) fn create_enum_aggregate(
+    type_engine: &TypeEngine,
     context: &mut Context,
-    variants: Vec<TypedEnumVariant>,
+    variants: &[ty::TyEnumVariant],
 ) -> Result<Aggregate, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
-        .into_iter()
-        .map(|tev| convert_resolved_typeid_no_span(context, &tev.type_id))
+        .iter()
+        .map(|tev| convert_resolved_typeid_no_span(type_engine, context, &tev.type_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     // Enums where all the variants are unit types don't really need the union. Only a tag is
@@ -35,46 +34,52 @@ pub(super) fn create_enum_aggregate(
 }
 
 pub(super) fn create_tuple_aggregate(
+    type_engine: &TypeEngine,
     context: &mut Context,
     fields: Vec<TypeId>,
 ) -> Result<Aggregate, CompileError> {
     let field_types = fields
         .into_iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(context, &ty_id))
+        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, context, &ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Aggregate::new_struct(context, field_types))
 }
 
 pub(super) fn create_array_aggregate(
+    type_engine: &TypeEngine,
     context: &mut Context,
     element_type_id: TypeId,
     count: u64,
 ) -> Result<Aggregate, CompileError> {
-    let element_type = convert_resolved_typeid_no_span(context, &element_type_id)?;
+    let element_type = convert_resolved_typeid_no_span(type_engine, context, &element_type_id)?;
     Ok(Aggregate::new_array(context, element_type, count))
 }
 
 pub(super) fn get_aggregate_for_types(
+    type_engine: &TypeEngine,
     context: &mut Context,
     type_ids: &[TypeId],
 ) -> Result<Aggregate, CompileError> {
     let types = type_ids
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(context, ty_id))
+        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, context, ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
     Ok(Aggregate::new_struct(context, types))
 }
 
 pub(super) fn get_struct_name_field_index_and_type(
+    type_engine: &TypeEngine,
     field_type: TypeId,
-    field_kind: ProjectionKind,
+    field_kind: ty::ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
-    let ty_info = resolve_type(field_type, &field_kind.span()).ok()?;
+    let ty_info = type_engine
+        .to_typeinfo(field_type, &field_kind.span())
+        .ok()?;
     match (ty_info, field_kind) {
         (
             TypeInfo::Struct { name, fields, .. },
-            ProjectionKind::StructField { name: field_name },
+            ty::ProjectionKind::StructField { name: field_name },
         ) => Some((
             name.as_str().to_owned(),
             fields
@@ -93,14 +98,14 @@ pub(super) fn get_struct_name_field_index_and_type(
 // trait.  And we can even wrap the implementation in a macro.
 
 pub(super) trait TypedNamedField {
-    fn get_field_kind(&self) -> ProjectionKind;
+    fn get_field_kind(&self) -> ty::ProjectionKind;
 }
 
 macro_rules! impl_typed_named_field_for {
     ($field_type_name: ident) => {
         impl TypedNamedField for $field_type_name {
-            fn get_field_kind(&self) -> ProjectionKind {
-                ProjectionKind::StructField {
+            fn get_field_kind(&self) -> ty::ProjectionKind {
+                ty::ProjectionKind::StructField {
                     name: self.name.clone(),
                 }
             }
@@ -108,18 +113,21 @@ macro_rules! impl_typed_named_field_for {
     };
 }
 
-impl TypedNamedField for ProjectionKind {
-    fn get_field_kind(&self) -> ProjectionKind {
+impl TypedNamedField for ty::ProjectionKind {
+    fn get_field_kind(&self) -> ty::ProjectionKind {
         self.clone()
     }
 }
 
-impl_typed_named_field_for!(TypeCheckedStorageAccessDescriptor);
-impl_typed_named_field_for!(TypeCheckedStorageReassignDescriptor);
+use ty::TyStorageAccessDescriptor;
+use ty::TyStorageReassignDescriptor;
+impl_typed_named_field_for!(TyStorageAccessDescriptor);
+impl_typed_named_field_for!(TyStorageReassignDescriptor);
 
-pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
+pub(super) fn get_indices_for_struct_access(
+    type_engine: &TypeEngine,
     base_type: TypeId,
-    fields: &[F],
+    fields: &[impl TypedNamedField],
 ) -> Result<Vec<u64>, CompileError> {
     fields
         .iter()
@@ -127,7 +135,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
             (Vec::new(), base_type),
             |(mut fld_idcs, prev_type_id), field| {
                 let field_kind = field.get_field_kind();
-                let ty_info = match resolve_type(prev_type_id, &field_kind.span()) {
+                let ty_info = match type_engine.to_typeinfo(prev_type_id, &field_kind.span()) {
                     Ok(ty_info) => ty_info,
                     Err(error) => {
                         return Err(CompileError::InternalOwned(
@@ -141,7 +149,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
                 match (ty_info, &field_kind) {
                     (
                         TypeInfo::Struct { name, fields, .. },
-                        ProjectionKind::StructField { name: field_name },
+                        ty::ProjectionKind::StructField { name: field_name },
                     ) => {
                         let field_idx_and_type_opt = fields
                             .iter()
@@ -164,7 +172,7 @@ pub(super) fn get_indices_for_struct_access<F: TypedNamedField>(
                         fld_idcs.push(field_idx);
                         Ok((fld_idcs, field_type))
                     }
-                    (TypeInfo::Tuple(fields), ProjectionKind::TupleField { index, .. }) => {
+                    (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, .. }) => {
                         let field_type = match fields.get(*index) {
                             Some(field_type_argument) => field_type_argument.type_id,
                             None => {

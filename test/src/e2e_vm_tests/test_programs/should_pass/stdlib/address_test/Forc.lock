@@ -1,12 +1,11 @@
 [[package]]
 name = 'address_test'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-E4CD281CB63A3D38'
-dependencies = []
 
 [[package]]
 name = 'std'

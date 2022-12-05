@@ -1,26 +1,7 @@
 use super::*;
-use crate::CodeBlock;
+use crate::language::{parsed::CodeBlock, ty};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TypedCodeBlock {
-    pub contents: Vec<TypedAstNode>,
-}
-
-impl CopyTypes for TypedCodeBlock {
-    fn copy_types(&mut self, type_mapping: &TypeMapping) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
-    }
-}
-
-impl DeterministicallyAborts for TypedCodeBlock {
-    fn deterministically_aborts(&self) -> bool {
-        self.contents.iter().any(|x| x.deterministically_aborts())
-    }
-}
-
-impl TypedCodeBlock {
+impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
         code_block: CodeBlock,
@@ -35,9 +16,9 @@ impl TypedCodeBlock {
             .iter()
             .filter_map(|node| {
                 let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                TypedAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
+                ty::TyAstNode::type_check(ctx, node.clone()).ok(&mut warnings, &mut errors)
             })
-            .collect::<Vec<TypedAstNode>>();
+            .collect::<Vec<ty::TyAstNode>>();
 
         let implicit_return_span = code_block
             .contents
@@ -47,33 +28,37 @@ impl TypedCodeBlock {
                 _ => None,
             })
             .flatten();
+        let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
 
         // find the implicit return, if any, and use it as the code block's return type.
         // The fact that there is at most one implicit return is an invariant held by the parser.
-        let return_type = evaluated_contents.iter().find_map(|x| match x {
-            TypedAstNode {
-                content:
-                    TypedAstNodeContent::ImplicitReturnExpression(TypedExpression {
-                        ref return_type,
-                        ..
-                    }),
-                ..
-            } if !x.deterministically_aborts() => Some(*return_type),
-            _ => None,
-        });
+        // If any node diverges then the entire block has unknown type.
+        let block_type = evaluated_contents
+            .iter()
+            .find_map(|node| {
+                if node.deterministically_aborts(true) {
+                    Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
+                } else {
+                    match node {
+                        ty::TyAstNode {
+                            content:
+                                ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                                    ref return_type,
+                                    ..
+                                }),
+                            ..
+                        } => Some(*return_type),
+                        _ => None,
+                    }
+                }
+            })
+            .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
 
-        if let Some(return_type) = return_type {
-            let span = implicit_return_span.unwrap_or_else(|| code_block.whole_block_span.clone());
-            let (mut new_warnings, new_errors) = ctx.unify_with_self(return_type, &span);
-            warnings.append(&mut new_warnings);
-            errors.append(&mut new_errors.into_iter().map(|x| x.into()).collect());
-            // The annotation will result in a cast, so set the return type accordingly.
-        }
+        append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 
-        let typed_code_block = TypedCodeBlock {
+        let typed_code_block = ty::TyCodeBlock {
             contents: evaluated_contents,
         };
-        let type_id = return_type.unwrap_or_else(|| insert_type(TypeInfo::Tuple(Vec::new())));
-        ok((typed_code_block, type_id), warnings, errors)
+        ok((typed_code_block, block_type), warnings, errors)
     }
 }

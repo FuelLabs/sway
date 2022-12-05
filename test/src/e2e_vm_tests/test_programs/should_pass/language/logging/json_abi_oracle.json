@@ -1,0 +1,241 @@
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 1,
+      "loggedType": {
+        "name": "",
+        "type": 11,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 2,
+      "loggedType": {
+        "name": "",
+        "type": 10,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 3,
+      "loggedType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 4,
+      "loggedType": {
+        "name": "",
+        "type": 12,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 5,
+      "loggedType": {
+        "name": "",
+        "type": 7,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 6,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 7,
+      "loggedType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 2,
+            "typeArguments": null
+          }
+        ]
+      }
+    },
+    {
+      "logId": 8,
+      "loggedType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": 9,
+      "loggedType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 8,
+            "typeArguments": [
+              {
+                "name": "",
+                "type": 11,
+                "typeArguments": null
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "Some",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum Option",
+      "typeId": 4,
+      "typeParameters": [
+        6
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "VariantOne",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "VariantTwo",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum TestEnum",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[4]",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "field_1",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "field_2",
+          "type": 6,
+          "typeArguments": null
+        },
+        {
+          "name": "field_3",
+          "type": 11,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct TestStruct",
+      "typeId": 8,
+      "typeParameters": [
+        6
+      ]
+    },
+    {
+      "components": null,
+      "type": "u16",
+      "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 12,
+      "typeParameters": null
+    }
+  ]
+}

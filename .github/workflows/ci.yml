@@ -117,9 +117,10 @@ jobs:
           args: --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --debug --path ./forc-plugins/forc-fmt 
-          cargo install --debug --path ./forc-plugins/forc-lsp 
-          cargo install --debug --path ./forc-plugins/forc-explore
+          cargo install --debug --path ./forc-plugins/forc-fmt
+          cargo install --debug --path ./forc-plugins/forc-lsp
+          cargo install --debug --path ./forc-plugins/forc-client
+          cargo install --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
@@ -157,15 +158,25 @@ jobs:
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
         run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
+      - name: Build test project
+        run: forc build --path test-proj
+      # TODO: Re-add this upon landing unit test support: #1832
+      # - name: Run test project's test suite
+      #   run: (cd test-proj && forc test)
+      - name: Install cargo-generate
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-generate
+      - name: Generate Rust Integration Tests
+        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
       - name: Update project cargo manifest with workspace
         run: |
           echo "
 
           [workspace]" >> test-proj/Cargo.toml
-      - name: Build test project
-        run: forc build --path test-proj
-      - name: Run test project's test suite
-        run: cd test-proj && forc test
+      - name: Build and Run Default Integration Test
+        run: (cd test-proj && cargo test)
 
   cargo-build-workspace:
     runs-on: ubuntu-latest
@@ -211,7 +222,7 @@ jobs:
           crate: cargo-toml-lint
           version: "0.1"
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
@@ -230,7 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.9.4
+        image: ghcr.io/fuellabs/fuel-core:v0.14.1
         ports:
           - 4000:4000
     steps:
@@ -249,11 +260,6 @@ jobs:
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
     runs-on: ubuntu-latest
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.9.4
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -267,7 +273,24 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --test-threads=1 --nocapture
+          args: --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+
+  forc-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --debug --path ./forc
+      - name: Run Unit Tests
+        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
 
   cargo-test-workspace:
     runs-on: ubuntu-latest
@@ -323,7 +346,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack On Failure
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
@@ -368,17 +391,24 @@ jobs:
         run: |
           cargo install toml-cli
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-explore/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-client/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-doc/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-pkg/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-test/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ast/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-core/Cargo.toml
-          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-fmt/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-error/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-ir/sway-ir-macros/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-lsp/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-parse/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-types/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
       - name: Publish crate
         uses: katyo/publish-crates@v1
         with:
@@ -386,7 +416,7 @@ jobs:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -461,7 +491,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -516,7 +546,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Notify if Job Fails
-        uses: ravsamhq/notify-slack-action@v1
+        uses: ravsamhq/notify-slack-action@v2
         if: always()
         with:
           status: ${{ job.status }}
@@ -528,20 +558,20 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_NOTIFY_BUILD }}
 
-  install-and-upload-forc-binaries:
-    name: Install and upload forc binaries to release
+  build-and-release-forc-binaries:
+    name: Build and upload forc binaries to release
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
     needs: publish
     strategy:
       matrix:
         job:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: x86_64-unknown-linux-gnu
             arch: amd64
             svm_target_platform: linux-amd64
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: aarch64-unknown-linux-gnu
             arch: arm64
@@ -571,42 +601,17 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           cache-on-failure: true
+          key: "${{ matrix.job.target }}"
 
-      - name: Apple M1 setup
-        if: ${{ matrix.job.target == 'aarch64-apple-darwin' }}
+      - name: Use Cross
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cross
+          cache-key: "${{ matrix.job.target }}"
+
+      - name: Build forc binaries
         run: |
-          echo "SDKROOT=$(xcrun -sdk macosx --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx --show-sdk-platform-version)" >> $GITHUB_ENV
-      - name: Linux ARM setup
-        if: ${{ matrix.job.target == 'aarch64-unknown-linux-gnu' }}
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-
-      - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc
-
-      - name: Install Forc-Fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-fmt
-
-      - name: Install Forc-LSP
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-lsp
-
-      - name: Install Forc-Explore
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --profile=release --path ./forc-plugins/forc-explore
+          cross build --profile=release --target ${{ matrix.job.target }} --bins
 
       - name: Prep Assets
         id: prep_assets
@@ -618,8 +623,8 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for binary in forc forc-fmt forc-lsp forc-explore; do
-            cp $(which ${binary}) ./forc-binaries
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
+            cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries
 

@@ -4,7 +4,6 @@
 //! errors. It is an enum with the variants, [`Ok(T)`], representing
 //! success and containing a value, and [`Err(E)`], representing error
 //! and containing an error value.
-
 library result;
 
 use ::revert::revert;
@@ -14,7 +13,6 @@ use ::revert::revert;
 pub enum Result<T, E> {
     /// Contains the success value
     Ok: T,
-
     /// Contains the error value
     Err: E,
 }
@@ -22,33 +20,23 @@ pub enum Result<T, E> {
 /////////////////////////////////////////////////////////////////////////////
 // Type implementation
 /////////////////////////////////////////////////////////////////////////////
-
 impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
-
     /// Returns `true` if the result is [`Ok`].
-    fn is_ok(self) -> bool {
+    pub fn is_ok(self) -> bool {
         match self {
-            Result::Ok(_) => {
-                true
-            },
-            _ => {
-                false
-            },
+            Result::Ok(_) => true,
+            _ => false,
         }
     }
 
     /// Returns `true` if the result is [`Err`].
-    fn is_err(self) -> bool {
+    pub fn is_err(self) -> bool {
         match self {
-            Result::Ok(_) => {
-                false
-            },
-            _ => {
-                true
-            },
+            Result::Ok(_) => false,
+            _ => true,
         }
     }
 
@@ -57,14 +45,10 @@ impl<T, E> Result<T, E> {
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`Err`]
     /// case explicitly.
-    fn unwrap(self) -> T {
+    pub fn unwrap(self) -> T {
         match self {
-            Result::Ok(inner_value) => {
-                inner_value
-            },
-            _ => {
-                revert(0)
-            },
+            Result::Ok(inner_value) => inner_value,
+            _ => revert(0),
         }
     }
 }

@@ -28,7 +28,9 @@ pub enum IrError {
     VerifyBitcastFromNonCopyType(String),
     VerifyBitcastToNonCopyType(String),
     VerifyBitcastBetweenInvalidTypes(String, String),
+    VerifyBinaryOpIncorrectArgType,
     VerifyBranchToMissingBlock(String),
+    VerifyBranchParamsMismatch,
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
     VerifyCmpBadTypes(String, String),
@@ -43,12 +45,10 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
-    VerifyLoadNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
-    VerifyPhiFromMissingBlock(String),
-    VerifyPhiInconsistentTypes,
-    VerifyPhiNonUniqueLabels,
+    VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
+    VerifyReturnRefTypeValue(String, String),
     VerifyStateKeyBadType,
     VerifyStateDestBadType(String),
     VerifyStoreMismatchedTypes,
@@ -56,6 +56,9 @@ pub enum IrError {
     VerifyStoreToNonPointer,
     VerifyUntypedValuePassedToFunction,
     VerifyInvalidGtfIndexType,
+    VerifyLogId,
+    VerifyMismatchedLoggedTypes,
+    VerifyRevertCodeBadType,
 }
 
 impl std::error::Error for IrError {}
@@ -157,6 +160,12 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
             ),
+            IrError::VerifyBinaryOpIncorrectArgType => {
+                write!(
+                    f,
+                    "Verification failed: Incorrect argument type(s) for binary op"
+                )
+            }
             IrError::VerifyBranchToMissingBlock(label) => {
                 write!(
                     f,
@@ -239,31 +248,31 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
-            IrError::VerifyLoadNonExistentPointer => write!(
-                f,
-                "Verification failed: Attempt to load from a pointer not found in function locals."
-            ),
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
                 "Verification failed: Function {fn_str} return type must match its RET \
                 instructions."
             ),
-            IrError::VerifyPhiFromMissingBlock(label) => {
+            IrError::VerifyBlockArgMalformed => {
+                write!(f, "Verification failed: Block argument is malformed")
+            }
+            IrError::VerifyBranchParamsMismatch => {
                 write!(
                     f,
-                    "Verification failed: PHI has a block '{label}'not from the current function."
+                    "Verification failed: Block parameter passed in branch is malformed"
                 )
-            }
-            IrError::VerifyPhiInconsistentTypes => {
-                write!(f, "Verification failed: PHI has inconsistent types.")
-            }
-            IrError::VerifyPhiNonUniqueLabels => {
-                write!(f, "Verification failed: PHI must have unique block labels.")
             }
             IrError::VerifyPtrCastFromNonPointer => {
                 write!(
                     f,
                     "Verification failed: Pointer cast from non pointer value."
+                )
+            }
+            IrError::VerifyReturnRefTypeValue(fn_str, ty_str) => {
+                write!(
+                    f,
+                    "Verification failed: Function {fn_str} must not return value with reference \
+                    type of {ty_str}.",
                 )
             }
             IrError::VerifyStateKeyBadType => {
@@ -297,6 +306,21 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
             ),
+            IrError::VerifyLogId => {
+                write!(f, "Verification failed: log ID must be an integer.")
+            }
+            IrError::VerifyMismatchedLoggedTypes => {
+                write!(
+                    f,
+                    "Verification failed: log type must match the type of the value being logged."
+                )
+            }
+            IrError::VerifyRevertCodeBadType => {
+                write!(
+                    f,
+                    "Verification failed: error code for revert must be a u64."
+                )
+            }
         }
     }
 }

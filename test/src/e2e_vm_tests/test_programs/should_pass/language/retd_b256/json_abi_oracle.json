@@ -1,15 +1,22 @@
-[
-  {
-    "inputs": [],
-    "name": "main",
-    "outputs": [
-      {
-        "components": null,
+{
+  "functions": [
+    {
+      "inputs": [],
+      "name": "main",
+      "output": {
         "name": "",
-        "type": "b256",
+        "type": 0,
         "typeArguments": null
       }
-    ],
-    "type": "function"
-  }
-]
+    }
+  ],
+  "loggedTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

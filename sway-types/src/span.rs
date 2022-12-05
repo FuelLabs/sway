@@ -64,7 +64,7 @@ impl Position {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Eq, PartialEq, PartialOrd, Hash)]
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,
@@ -173,9 +173,25 @@ impl Span {
             path: s1.path,
         }
     }
+
+    pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Span {
+        spans
+            .into_iter()
+            .reduce(Span::join)
+            .unwrap_or_else(Span::dummy)
+    }
+
+    /// Returns the line and column start and end.
+    pub fn line_col(&self) -> (LineCol, LineCol) {
+        (
+            self.start_pos().line_col().into(),
+            self.end_pos().line_col().into(),
+        )
+    }
 }
 
 impl fmt::Debug for Span {
+    #[cfg(not(feature = "no-span-debug"))]
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("Span")
             .field("src (ptr)", &self.src.as_ptr())
@@ -185,8 +201,27 @@ impl fmt::Debug for Span {
             .field("as_str()", &self.as_str())
             .finish()
     }
+    #[cfg(feature = "no-span-debug")]
+    fn fmt(&self, _fmt: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
 }
 
 pub trait Spanned {
     fn span(&self) -> Span;
+}
+
+#[derive(Clone, Copy)]
+pub struct LineCol {
+    pub line: usize,
+    pub col: usize,
+}
+
+impl From<(usize, usize)> for LineCol {
+    fn from(o: (usize, usize)) -> Self {
+        LineCol {
+            line: o.0,
+            col: o.1,
+        }
+    }
 }

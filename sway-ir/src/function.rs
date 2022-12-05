@@ -7,6 +7,9 @@
 //! existing in the function scope.
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     block::{Block, BlockIterator, Label},
@@ -18,6 +21,7 @@ use crate::{
     module::Module,
     pointer::{Pointer, PointerContent},
     value::Value,
+    BlockArgument, BranchToWithArgs,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -32,6 +36,7 @@ pub struct FunctionContent {
     pub return_type: Type,
     pub blocks: Vec<Block>,
     pub is_public: bool,
+    pub is_entry: bool,
     pub selector: Option<[u8; 4]>,
     pub metadata: Option<MetadataIndex>,
 
@@ -57,23 +62,18 @@ impl Function {
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
+        is_entry: bool,
         metadata: Option<MetadataIndex>,
     ) -> Function {
-        let arguments = args
-            .into_iter()
-            .map(|(name, ty, arg_metadata)| {
-                (
-                    name,
-                    Value::new_argument(context, ty).add_metadatum(context, arg_metadata),
-                )
-            })
-            .collect();
         let content = FunctionContent {
             name,
-            arguments,
+            // Arguments to a function are the arguments to its entry block.
+            // We set it up after creating the entry block below.
+            arguments: Vec::new(),
             return_type,
             blocks: Vec::new(),
             is_public,
+            is_entry,
             selector,
             metadata,
             local_storage: BTreeMap::new(),
@@ -90,6 +90,29 @@ impl Function {
             .unwrap()
             .blocks
             .push(entry_block);
+
+        // Setup the arguments.
+        let arguments: Vec<_> = args
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (name, ty, arg_metadata))| {
+                (
+                    name,
+                    Value::new_argument(
+                        context,
+                        BlockArgument {
+                            block: entry_block,
+                            idx,
+                            ty,
+                        },
+                    )
+                    .add_metadatum(context, arg_metadata),
+                )
+            })
+            .collect();
+        context.functions.get_mut(func.0).unwrap().arguments = arguments.clone();
+        let (_, arg_vals): (Vec<_>, Vec<_>) = arguments.iter().cloned().unzip();
+        context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 
         func
     }
@@ -227,6 +250,11 @@ impl Function {
         context.functions[self.0].blocks[0]
     }
 
+    /// Return the attached metadata.
+    pub fn get_metadata(&self, context: &Context) -> Option<MetadataIndex> {
+        context.functions[self.0].metadata
+    }
+
     /// Whether this function has a valid selector.
     pub fn has_selector(&self, context: &Context) -> bool {
         context.functions[self.0].selector.is_some()
@@ -235,6 +263,22 @@ impl Function {
     /// Return the function selector, if it has one.
     pub fn get_selector(&self, context: &Context) -> Option<[u8; 4]> {
         context.functions[self.0].selector
+    }
+
+    /// Whether or not the function is a program entry point, i.e. `main`, `#[test]` fns or abi
+    /// methods.
+    pub fn is_entry(&self, context: &Context) -> bool {
+        context.functions[self.0].is_entry
+    }
+
+    // Get the function return type.
+    pub fn get_return_type(&self, context: &Context) -> Type {
+        context.functions[self.0].return_type
+    }
+
+    /// Get the number of args.
+    pub fn num_args(&self, context: &Context) -> usize {
+        context.functions[self.0].arguments.len()
     }
 
     /// Get an arg value by name, if found.
@@ -390,15 +434,14 @@ impl Function {
     /// Replace a value with another within this function.
     ///
     /// This is a convenience method which iterates over this function's blocks and calls
-    /// [`Block::replace_value`] in turn.
+    /// [`Block::replace_values`] in turn.
     ///
     /// `starting_block` is an optimisation for when the first possible reference to `old_val` is
     /// known.
-    pub fn replace_value(
+    pub fn replace_values(
         &self,
         context: &mut Context,
-        old_val: Value,
-        new_val: Value,
+        replace_map: &FxHashMap<Value, Value>,
         starting_block: Option<Block>,
     ) {
         let mut block_iter = self.block_iter(context).peekable();
@@ -412,8 +455,48 @@ impl Function {
         }
 
         for block in block_iter {
-            block.replace_value(context, old_val, new_val);
+            block.replace_values(context, replace_map);
         }
+    }
+
+    pub fn replace_value(
+        &self,
+        context: &mut Context,
+        old_val: Value,
+        new_val: Value,
+        starting_block: Option<Block>,
+    ) {
+        let mut map = FxHashMap::<Value, Value>::default();
+        map.insert(old_val, new_val);
+        self.replace_values(context, &map, starting_block);
+    }
+
+    /// A graphviz dot graph of the control-flow-graph.
+    pub fn dot_cfg(&self, context: &Context) -> String {
+        let mut worklist = Vec::<Block>::new();
+        let mut visited = FxHashSet::<Block>::default();
+        let entry = self.get_entry_block(context);
+        let mut res = format!("digraph {} {{\n", self.get_name(context));
+
+        worklist.push(entry);
+        while !worklist.is_empty() {
+            let n = worklist.pop().unwrap();
+            visited.insert(n);
+            for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
+                let _ = writeln!(
+                    res,
+                    "\t{} -> {}\n",
+                    n.get_label(context),
+                    n_succ.get_label(context)
+                );
+                if !visited.contains(&n_succ) {
+                    worklist.push(n_succ);
+                }
+            }
+        }
+
+        res += "}\n";
+        res
     }
 }
 

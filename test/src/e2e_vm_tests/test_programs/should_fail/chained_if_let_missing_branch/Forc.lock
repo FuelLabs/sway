@@ -1,12 +1,11 @@
 [[package]]
 name = 'chained_if_let_missing_branch'
-source = 'root'
+source = 'member'
 dependencies = ['std']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-1D19A81536866BDD'
-dependencies = []
 
 [[package]]
 name = 'std'

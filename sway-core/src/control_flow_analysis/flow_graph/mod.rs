@@ -1,17 +1,18 @@
 //! This is the flow graph, a graph which contains edges that represent possible steps of program
 //! execution.
 
+use std::collections::HashMap;
+
 use crate::{
-    semantic_analysis::{ast_node::TypedEnumVariant, ast_node::TypedStructField, TypedAstNode},
+    language::ty::{self, GetDeclIdent},
     Ident,
 };
 
-use sway_types::span::Span;
+use sway_types::{span::Span, IdentUnique};
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
 mod namespace;
-use crate::semantic_analysis::declaration::TypedStorageField;
 use namespace::ControlFlowNamespace;
 pub(crate) use namespace::FunctionNamespaceEntry;
 
@@ -26,6 +27,7 @@ pub struct ControlFlowGraph {
     pub(crate) graph: Graph,
     pub(crate) entry_points: Vec<NodeIndex>,
     pub(crate) namespace: ControlFlowNamespace,
+    pub(crate) decls: HashMap<IdentUnique, NodeIndex>,
 }
 
 pub type Graph = petgraph::Graph<ControlFlowGraphNode, ControlFlowGraphEdge>;
@@ -50,7 +52,7 @@ impl std::convert::From<&str> for ControlFlowGraphEdge {
 pub enum ControlFlowGraphNode {
     OrganizationalDominator(String),
     #[allow(clippy::large_enum_variant)]
-    ProgramNode(TypedAstNode),
+    ProgramNode(ty::TyAstNode),
     EnumVariant {
         variant_name: Ident,
         is_public: bool,
@@ -66,6 +68,23 @@ pub enum ControlFlowGraphNode {
     StorageField {
         field_name: Ident,
     },
+}
+
+impl GetDeclIdent for ControlFlowGraphNode {
+    fn get_decl_ident(&self) -> Option<Ident> {
+        match self {
+            ControlFlowGraphNode::OrganizationalDominator(_) => None,
+            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(),
+            ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.clone()),
+            ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
+                Some(method_name.clone())
+            }
+            ControlFlowGraphNode::StructField {
+                struct_field_name, ..
+            } => Some(struct_field_name.clone()),
+            ControlFlowGraphNode::StorageField { field_name, .. } => Some(field_name.clone()),
+        }
+    }
 }
 
 impl std::fmt::Debug for ControlFlowGraphNode {
@@ -91,22 +110,22 @@ impl std::fmt::Debug for ControlFlowGraphNode {
         f.write_str(&text)
     }
 }
-impl std::convert::From<&TypedStorageField> for ControlFlowGraphNode {
-    fn from(other: &TypedStorageField) -> Self {
+impl std::convert::From<&ty::TyStorageField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStorageField) -> Self {
         ControlFlowGraphNode::StorageField {
             field_name: other.name.clone(),
         }
     }
 }
 
-impl std::convert::From<&TypedAstNode> for ControlFlowGraphNode {
-    fn from(other: &TypedAstNode) -> Self {
+impl std::convert::From<&ty::TyAstNode> for ControlFlowGraphNode {
+    fn from(other: &ty::TyAstNode) -> Self {
         ControlFlowGraphNode::ProgramNode(other.clone())
     }
 }
 
-impl std::convert::From<&TypedStructField> for ControlFlowGraphNode {
-    fn from(other: &TypedStructField) -> Self {
+impl std::convert::From<&ty::TyStructField> for ControlFlowGraphNode {
+    fn from(other: &ty::TyStructField) -> Self {
         ControlFlowGraphNode::StructField {
             struct_field_name: other.name.clone(),
             span: other.span.clone(),
@@ -132,7 +151,12 @@ impl ControlFlowGraph {
         }
     }
     pub(crate) fn add_node(&mut self, node: ControlFlowGraphNode) -> NodeIndex {
-        self.graph.add_node(node)
+        let ident_opt = node.get_decl_ident();
+        let node_index = self.graph.add_node(node);
+        if let Some(ident) = ident_opt {
+            self.decls.insert(ident.into(), node_index);
+        }
+        node_index
     }
     pub(crate) fn add_edge(
         &mut self,
@@ -143,17 +167,27 @@ impl ControlFlowGraph {
         self.graph.add_edge(from, to, edge)
     }
 
-    #[allow(dead_code)]
-    /// Prints out graphviz for this graph
+    pub(crate) fn get_node_from_decl(&self, cfg_node: &ControlFlowGraphNode) -> Option<NodeIndex> {
+        if let Some(ident) = cfg_node.get_decl_ident() {
+            self.decls.get(&ident.into()).cloned()
+        } else {
+            None
+        }
+    }
+
+    /// Prints out GraphViz DOT format for this graph.
     pub(crate) fn visualize(&self) {
-        use petgraph::dot::Dot;
-        tracing::info!("{:?}", Dot::with_config(&self.graph, &[]));
+        use petgraph::dot::{Config, Dot};
+        tracing::info!(
+            "{:?}",
+            Dot::with_config(&self.graph, &[Config::EdgeNoLabel])
+        );
     }
 }
 
 impl ControlFlowGraphNode {
     pub(crate) fn from_enum_variant(
-        other: &TypedEnumVariant,
+        other: &ty::TyEnumVariant,
         is_public: bool,
     ) -> ControlFlowGraphNode {
         ControlFlowGraphNode::EnumVariant {

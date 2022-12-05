@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-A2B48E1DBD89A4D7'
+
+[[package]]
+name = 'main_args_ref_ref'
+source = 'member'
+dependencies = ['core']

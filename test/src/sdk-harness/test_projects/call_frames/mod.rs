@@ -20,7 +20,7 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
     )
     .await
     .unwrap();
-    let instance = CallFramesTestContractBuilder::new(id.to_string(), wallet).build();
+    let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
 }
@@ -28,27 +28,27 @@ async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
 #[tokio::test]
 async fn can_get_contract_id() {
     let (instance, id) = get_call_frames_instance().await;
-    let result = instance.get_id().call().await.unwrap();
+    let result = instance.methods().get_id().call().await.unwrap();
     assert_eq!(result.value, id);
 }
 
 #[tokio::test]
 async fn can_get_code_size() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_code_size().call().await.unwrap();
+    let result = instance.methods().get_code_size().call().await.unwrap();
     assert!(is_within_range(result.value));
 }
 
 #[tokio::test]
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_first_param().call().await.unwrap();
+    let result = instance.methods().get_first_param().call().await.unwrap();
     // Hash the function name with Sha256
     let mut hasher = Sha256::new();
     let function_name = "get_first_param()";
     hasher.update(function_name);
     let function_name_hash = hasher.finalize();
-    // Grab the first 4 bytes of the hash per https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/abi.md#function-selector-encoding
+    // Grab the first 4 bytes of the hash per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
     let function_name_hash = &function_name_hash[0..4];
     // Convert the bytes to decimal value
     let selector = function_name_hash[3] as u64
@@ -61,14 +61,24 @@ async fn can_get_first_param() {
 #[tokio::test]
 async fn can_get_second_param_u64() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param_u64(101).call().await.unwrap();
+    let result = instance
+        .methods()
+        .get_second_param_u64(101)
+        .call()
+        .await
+        .unwrap();
     assert_eq!(result.value, 101);
 }
 
 #[tokio::test]
 async fn can_get_second_param_bool() {
     let (instance, _id) = get_call_frames_instance().await;
-    let result = instance.get_second_param_bool(true).call().await.unwrap();
+    let result = instance
+        .methods()
+        .get_second_param_bool(true)
+        .call()
+        .await
+        .unwrap();
     assert_eq!(result.value, true);
 }
 
@@ -80,6 +90,7 @@ async fn can_get_second_param_struct() {
         value_1: true,
     };
     let result = instance
+        .methods()
         .get_second_param_struct(expected.clone())
         .call()
         .await
@@ -91,6 +102,7 @@ async fn can_get_second_param_struct() {
 async fn can_get_second_param_multiple_params() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance
+        .methods()
         .get_second_param_multiple_params(true, 42)
         .call()
         .await
@@ -107,6 +119,7 @@ async fn can_get_second_param_multiple_params2() {
     };
     let expected_struct2 = TestStruct2 { value: 100 };
     let result = instance
+        .methods()
         .get_second_param_multiple_params2(300, expected_struct.clone(), expected_struct2.clone())
         .call()
         .await
