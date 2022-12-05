@@ -1612,13 +1612,13 @@ where
 {
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
 
-    // Always clear existing temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
-
     let _ = std::fs::create_dir_all(&repo_dir);
 
     let mut lock = RwLock::new(File::open(&repo_dir)?);
     let _ = lock.write()?;
+
+    // Always clear existing temporary directory.
+    let _ = std::fs::remove_dir_all(&repo_dir);
 
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
@@ -1817,11 +1817,11 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
 
-        let _ = std::fs::remove_dir_all(&path);
-
         let _ = std::fs::create_dir_all(&path);
         let mut lock = RwLock::new(File::open(&path)?);
         let _ = lock.write()?;
+
+        let _ = std::fs::remove_dir_all(&path);
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
