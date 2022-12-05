@@ -20,10 +20,10 @@ pub struct TyEnumDeclaration {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyEnumDeclaration {}
 impl PartialEqWithEngines for TyEnumDeclaration {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
-            && self.type_parameters.eq(&other.type_parameters, type_engine)
-            && self.variants.eq(&other.variants, type_engine)
+            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
     }
 }
@@ -130,11 +130,12 @@ impl HashWithEngines for TyEnumVariant {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
                 .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+                .eq(&type_engine.look_up_type_id(other.type_id), engines)
             && self.tag == other.tag
     }
 }

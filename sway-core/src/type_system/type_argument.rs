@@ -31,10 +31,11 @@ impl HashWithEngines for TypeArgument {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         type_engine
             .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+            .eq(&type_engine.look_up_type_id(other.type_id), engines)
     }
 }
 impl OrdWithEngines for TypeArgument {

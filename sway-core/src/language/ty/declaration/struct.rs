@@ -20,10 +20,10 @@ pub struct TyStructDeclaration {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructDeclaration {}
 impl PartialEqWithEngines for TyStructDeclaration {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
-            && self.fields.eq(&other.fields, type_engine)
-            && self.type_parameters.eq(&other.type_parameters, type_engine)
+            && self.fields.eq(&other.fields, engines)
+            && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
     }
 }
@@ -130,11 +130,12 @@ impl HashWithEngines for TyStructField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
                 .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+                .eq(&type_engine.look_up_type_id(other.type_id), engines)
     }
 }
 

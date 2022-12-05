@@ -17,10 +17,10 @@ pub struct TyIntrinsicFunctionKind {
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.kind == rhs.kind
-            && self.arguments.eq(&rhs.arguments, type_engine)
-            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.kind == other.kind
+            && self.arguments.eq(&other.arguments, engines)
+            && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
 

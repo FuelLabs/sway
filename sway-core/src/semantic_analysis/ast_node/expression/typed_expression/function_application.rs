@@ -19,6 +19,7 @@ pub(crate) fn instantiate_function_application(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
@@ -58,6 +59,7 @@ pub(crate) fn instantiate_function_application(
             );
             append!(
                 type_engine.unify_right(
+                    declaration_engine,
                     exp.return_type,
                     param.type_id,
                     &exp.span,
@@ -96,7 +98,7 @@ pub(crate) fn instantiate_function_application(
     function_decl.replace_decls(&decl_mapping, ctx.engines());
     let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
-    let new_decl_id = ctx.declaration_engine.insert_function(function_decl);
+    let new_decl_id = declaration_engine.insert_function(function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

@@ -181,24 +181,21 @@ impl Items {
 
     pub(crate) fn get_methods_for_type(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
     ) -> Vec<DeclarationId> {
         self.implemented_traits
-            .get_methods_for_type(type_engine, type_id)
+            .get_methods_for_type(engines, type_id)
     }
 
     pub(crate) fn get_methods_for_type_and_trait_name(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<DeclarationId> {
-        self.implemented_traits.get_methods_for_type_and_trait_name(
-            type_engine,
-            type_id,
-            trait_name,
-        )
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {

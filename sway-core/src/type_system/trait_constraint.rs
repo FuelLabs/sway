@@ -27,9 +27,9 @@ impl HashWithEngines for TraitConstraint {
 }
 impl EqWithEngines for TraitConstraint {}
 impl PartialEqWithEngines for TraitConstraint {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.trait_name == rhs.trait_name
-            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.trait_name == other.trait_name
+            && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
 

@@ -21,11 +21,11 @@ pub struct TyReassignment {
 
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.lhs_base_name == rhs.lhs_base_name
-            && self.lhs_type == rhs.lhs_type
-            && self.lhs_indices.eq(&rhs.lhs_indices, type_engine)
-            && self.rhs.eq(&rhs.rhs, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.lhs_base_name == other.lhs_base_name
+            && self.lhs_type == other.lhs_type
+            && self.lhs_indices.eq(&other.lhs_indices, engines)
+            && self.rhs.eq(&other.rhs, engines)
     }
 }
 
@@ -66,7 +66,7 @@ pub enum ProjectionKind {
 
 impl EqWithEngines for ProjectionKind {}
 impl PartialEqWithEngines for ProjectionKind {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
             (
                 ProjectionKind::StructField { name: l_name },
@@ -91,7 +91,7 @@ impl PartialEqWithEngines for ProjectionKind {
                     index: r_index,
                     index_span: r_index_span,
                 },
-            ) => l_index.eq(r_index, type_engine) && l_index_span == r_index_span,
+            ) => l_index.eq(r_index, engines) && l_index_span == r_index_span,
             _ => false,
         }
     }
@@ -127,10 +127,10 @@ pub struct TyStorageReassignment {
 
 impl EqWithEngines for TyStorageReassignment {}
 impl PartialEqWithEngines for TyStorageReassignment {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.fields.eq(&rhs.fields, type_engine)
-            && self.ix == rhs.ix
-            && self.rhs.eq(&rhs.rhs, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.fields.eq(&other.fields, engines)
+            && self.ix == other.ix
+            && self.rhs.eq(&other.rhs, engines)
     }
 }
 
@@ -167,10 +167,11 @@ pub struct TyStorageReassignDescriptor {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageReassignDescriptor {}
 impl PartialEqWithEngines for TyStorageReassignDescriptor {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
                 .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+                .eq(&type_engine.look_up_type_id(other.type_id), engines)
     }
 }

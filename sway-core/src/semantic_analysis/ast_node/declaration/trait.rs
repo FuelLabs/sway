@@ -151,7 +151,7 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
-        let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
         for decl_id in interface_surface.iter() {
@@ -167,7 +167,7 @@ impl ty::TyTraitDeclaration {
         // Retrieve the implemented methods for this type.
         for decl_id in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(type_engine, type_id, call_path)
+            .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
             let method = check!(
@@ -209,7 +209,6 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
-        let type_engine = ctx.type_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
@@ -247,7 +246,7 @@ impl ty::TyTraitDeclaration {
         );
         for decl_id in ctx
             .namespace
-            .get_methods_for_type_and_trait_name(type_engine, type_id, call_path)
+            .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
             let mut method = check!(

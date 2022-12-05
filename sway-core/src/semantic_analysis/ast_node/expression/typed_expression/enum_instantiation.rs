@@ -22,6 +22,7 @@ pub(crate) fn instantiate_enum(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
 
     let enum_variant = check!(
         enum_decl
@@ -64,6 +65,7 @@ pub(crate) fn instantiate_enum(
             );
             append!(
                 type_engine.unify_adt(
+                    declaration_engine,
                     typed_expr.return_type,
                     enum_variant.type_id,
                     &typed_expr.span,

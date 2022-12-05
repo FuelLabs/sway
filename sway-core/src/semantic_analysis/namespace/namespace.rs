@@ -176,7 +176,7 @@ impl Namespace {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_engine, type_id);
+        let local_methods = local_module.get_methods_for_type(engines, type_id);
 
         type_id.replace_self_type(engines, self_type);
 
@@ -205,7 +205,7 @@ impl Namespace {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_engine, type_id);
+        let mut type_methods = type_module.get_methods_for_type(engines, type_id);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);
@@ -229,7 +229,7 @@ impl Namespace {
         if !args_buf
             .get(0)
             .map(|x| type_engine.look_up_type_id(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), type_engine)
+            .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),

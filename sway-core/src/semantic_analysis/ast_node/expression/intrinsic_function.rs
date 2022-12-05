@@ -543,6 +543,7 @@ fn type_check_state_load_word(
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let type_engine = ctx.type_engine;
+    let engines = ctx.engines();
 
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -573,7 +574,7 @@ fn type_check_state_load_word(
         warnings,
         errors
     );
-    if !key_ty.eq(&TypeInfo::B256, type_engine) {
+    if !key_ty.eq(&TypeInfo::B256, engines) {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -649,7 +650,7 @@ fn type_check_state_store_or_quad(
         warnings,
         errors
     );
-    if !key_ty.eq(&TypeInfo::B256, type_engine) {
+    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,

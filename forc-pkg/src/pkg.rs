@@ -2350,7 +2350,12 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
+        sway_core::ast_to_asm(
+            type_engine,
+            declaration_engine,
+            &ast_res,
+            &sway_build_config
+        )
     );
     let entries = asm_res
         .value
@@ -2550,8 +2555,6 @@ pub fn build(
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2750,8 +2753,6 @@ pub fn check(
     type_engine: &TypeEngine,
     declaration_engine: &DeclarationEngine,
 ) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.

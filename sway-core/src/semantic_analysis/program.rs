@@ -7,7 +7,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    TypeEngine,
+    Engines, TypeEngine,
 };
 use sway_ir::{Context, Module};
 use sway_types::Spanned;
@@ -30,7 +30,12 @@ impl ty::TyProgram {
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(type_engine, &root, kind.clone(), mod_span);
+            let res = Self::validate_root(
+                Engines::new(type_engine, declaration_engine),
+                &root,
+                kind.clone(),
+                mod_span,
+            );
             res.map(|(kind, declarations)| Self {
                 kind,
                 root,
@@ -43,7 +48,7 @@ impl ty::TyProgram {
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
         self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
@@ -67,12 +72,7 @@ impl ty::TyProgram {
                             errors
                         );
                         let mut storage_slots = check!(
-                            decl.get_initialized_storage_slots(
-                                type_engine,
-                                context,
-                                md_mgr,
-                                module
-                            ),
+                            decl.get_initialized_storage_slots(engines, context, md_mgr, module),
                             return err(warnings, errors),
                             warnings,
                             errors,

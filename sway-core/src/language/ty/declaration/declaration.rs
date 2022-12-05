@@ -28,17 +28,17 @@ pub enum TyDeclaration {
 
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        match (self, rhs) {
-            (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, type_engine),
-            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, type_engine),
-            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x.eq(y, type_engine),
-            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x.eq(y, type_engine),
-            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x.eq(y, type_engine),
-            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x.eq(y, type_engine),
-            (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, type_engine),
-            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, type_engine),
-            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, type_engine),
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
+            (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
+            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, engines),
+            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x.eq(y, engines),
+            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x.eq(y, engines),
+            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x.eq(y, engines),
+            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x.eq(y, engines),
+            (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, engines),
+            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, engines),
+            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, engines),
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,

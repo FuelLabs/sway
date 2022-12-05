@@ -4,7 +4,7 @@ use crate::{
     declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
     engine_threading::*,
     type_system::TypeId,
-    TypeEngine, TypeInfo,
+    TypeInfo,
 };
 
 #[derive(Debug)]
@@ -77,7 +77,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> Option<TypeInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
@@ -88,7 +88,7 @@ impl ConcurrentSlab<TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, type_engine) {
+            if !actual_prev_value.eq(prev_value, engines) {
                 return Some(actual_prev_value.clone());
             }
         }

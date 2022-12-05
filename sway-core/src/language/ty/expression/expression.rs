@@ -23,11 +23,12 @@ pub struct TyExpression {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
-        self.expression.eq(&other.expression, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
+        self.expression.eq(&other.expression, engines)
             && type_engine
                 .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), type_engine)
+                .eq(&type_engine.look_up_type_id(other.return_type), engines)
     }
 }
 

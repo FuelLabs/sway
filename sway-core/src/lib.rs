@@ -249,6 +249,7 @@ pub fn parsed_to_ast(
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
         type_engine,
+        declaration_engine,
         &mut ctx,
         &mut md_mgr,
         module,
@@ -264,7 +265,7 @@ pub fn parsed_to_ast(
 
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
-        type_engine,
+        Engines::new(type_engine, declaration_engine),
         &mut ctx,
         &mut md_mgr,
         module,
@@ -351,7 +352,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
     );
-    ast_to_asm(type_engine, &ast_res, &build_config)
+    ast_to_asm(type_engine, declaration_engine, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
@@ -359,6 +360,7 @@ pub fn compile_to_asm(
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
@@ -368,7 +370,12 @@ pub fn ast_to_asm(
             let mut errors = ast_res.errors.clone();
             let mut warnings = ast_res.warnings.clone();
             let asm = check!(
-                compile_ast_to_ir_to_asm(type_engine, typed_program, build_config),
+                compile_ast_to_ir_to_asm(
+                    type_engine,
+                    declaration_engine,
+                    typed_program,
+                    build_config
+                ),
                 return deduped_err(warnings, errors),
                 warnings,
                 errors
@@ -380,6 +387,7 @@ pub fn ast_to_asm(
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -398,11 +406,15 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir =
-        match ir_generation::compile_program(program, build_config.include_tests, type_engine) {
-            Ok(ir) => ir,
-            Err(e) => return err(warnings, vec![e]),
-        };
+    let mut ir = match ir_generation::compile_program(
+        program,
+        build_config.include_tests,
+        type_engine,
+        declaration_engine,
+    ) {
+        Ok(ir) => ir,
+        Err(e) => return err(warnings, vec![e]),
+    };
 
     // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
@@ -664,8 +676,7 @@ pub fn compile_to_bytecode(
         initial_namespace,
         build_config,
     );
-    let result = asm_to_bytecode(asm_res, source_map);
-    result
+    asm_to_bytecode(asm_res, source_map)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.

@@ -167,7 +167,7 @@ impl ty::TyFunctionDeclaration {
             .implemented_traits
             .filter_by_type(function_decl.return_type, fn_ctx.engines());
         for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(type_engine, type_param.type_id);
+            return_type_namespace.filter_against_type(engines, type_param.type_id);
         }
         ctx.namespace
             .implemented_traits

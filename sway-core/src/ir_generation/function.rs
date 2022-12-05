@@ -22,7 +22,7 @@ use crate::{
     types::DeterministicallyAborts,
     TypeEngine,
 };
-use declaration_engine::de_get_function;
+use declaration_engine::{de_get_function, DeclarationEngine};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -35,8 +35,9 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-pub(crate) struct FnCompiler<'te> {
-    type_engine: &'te TypeEngine,
+pub(crate) struct FnCompiler<'eng> {
+    type_engine: &'eng TypeEngine,
+    declaration_engine: &'eng DeclarationEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -50,9 +51,10 @@ pub(crate) struct FnCompiler<'te> {
     logged_types_map: HashMap<TypeId, LogId>,
 }
 
-impl<'te> FnCompiler<'te> {
+impl<'eng> FnCompiler<'eng> {
     pub(super) fn new(
-        type_engine: &'te TypeEngine,
+        type_engine: &'eng TypeEngine,
+        declaration_engine: &'eng DeclarationEngine,
         context: &mut Context,
         module: Module,
         function: Function,
@@ -66,6 +68,7 @@ impl<'te> FnCompiler<'te> {
         );
         FnCompiler {
             type_engine,
+            declaration_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -522,6 +525,7 @@ impl<'te> FnCompiler<'te> {
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
                     self.type_engine,
+                    self.declaration_engine,
                     context,
                     md_mgr,
                     self.module,
@@ -620,7 +624,10 @@ impl<'te> FnCompiler<'te> {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
-                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
+                if !val_ty.eq(
+                    &TypeInfo::RawUntypedPtr,
+                    Engines::new(self.type_engine, self.declaration_engine),
+                ) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -1123,6 +1130,7 @@ impl<'te> FnCompiler<'te> {
                 let is_entry = false;
                 let new_func = compile_function(
                     self.type_engine,
+                    self.declaration_engine,
                     context,
                     md_mgr,
                     self.module,
@@ -1540,6 +1548,7 @@ impl<'te> FnCompiler<'te> {
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
             self.type_engine,
+            self.declaration_engine,
             context,
             md_mgr,
             self.module,
@@ -1839,6 +1848,7 @@ impl<'te> FnCompiler<'te> {
             ..
         }) = compile_constant_expression_to_constant(
             self.type_engine,
+            self.declaration_engine,
             context,
             md_mgr,
             self.module,

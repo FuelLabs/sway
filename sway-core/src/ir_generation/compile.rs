@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_constant,
+    declaration_engine::{declaration_engine::de_get_constant, DeclarationEngine},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -19,8 +19,10 @@ use sway_types::{span::Span, Spanned};
 
 use std::collections::HashMap;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -31,9 +33,17 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_constants(
+        type_engine,
+        declaration_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+    )?;
     compile_declarations(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -42,6 +52,7 @@ pub(super) fn compile_script(
     )?;
     compile_entry_function(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -50,6 +61,7 @@ pub(super) fn compile_script(
     )?;
     compile_tests(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -60,8 +72,10 @@ pub(super) fn compile_script(
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_predicate(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -72,9 +86,17 @@ pub(super) fn compile_predicate(
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_constants(
+        type_engine,
+        declaration_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+    )?;
     compile_declarations(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -83,6 +105,7 @@ pub(super) fn compile_predicate(
     )?;
     compile_entry_function(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -91,6 +114,7 @@ pub(super) fn compile_predicate(
     )?;
     compile_tests(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -101,6 +125,7 @@ pub(super) fn compile_predicate(
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: &[ty::TyFunctionDeclaration],
@@ -109,13 +134,22 @@ pub(super) fn compile_contract(
     logged_types_map: &HashMap<TypeId, LogId>,
     test_fns: &[ty::TyFunctionDeclaration],
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_constants(
+        type_engine,
+        declaration_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+    )?;
     compile_declarations(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -130,10 +164,12 @@ pub(super) fn compile_contract(
             decl,
             logged_types_map,
             type_engine,
+            declaration_engine,
         )?;
     }
     compile_tests(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -146,6 +182,7 @@ pub(super) fn compile_contract(
 
 pub(super) fn compile_library(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
@@ -155,9 +192,17 @@ pub(super) fn compile_library(
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(type_engine, context, &mut md_mgr, module, namespace)?;
+    compile_constants(
+        type_engine,
+        declaration_engine,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+    )?;
     compile_declarations(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -166,6 +211,7 @@ pub(super) fn compile_library(
     )?;
     compile_tests(
         type_engine,
+        declaration_engine,
         context,
         &mut md_mgr,
         module,
@@ -178,6 +224,7 @@ pub(super) fn compile_library(
 
 pub(crate) fn compile_constants(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -187,6 +234,7 @@ pub(crate) fn compile_constants(
         compile_const_decl(
             &mut LookupEnv {
                 type_engine,
+                declaration_engine,
                 context,
                 md_mgr,
                 module,
@@ -199,7 +247,14 @@ pub(crate) fn compile_constants(
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(type_engine, context, md_mgr, module, submodule_ns)?;
+        compile_constants(
+            type_engine,
+            declaration_engine,
+            context,
+            md_mgr,
+            module,
+            submodule_ns,
+        )?;
     }
 
     Ok(())
@@ -216,6 +271,7 @@ pub(crate) fn compile_constants(
 // altogether anyway.
 fn compile_declarations(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -229,6 +285,7 @@ fn compile_declarations(
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
+                        declaration_engine,
                         context,
                         md_mgr,
                         module,
@@ -271,8 +328,10 @@ fn compile_declarations(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_function(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -280,7 +339,7 @@ pub(super) fn compile_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     is_entry: bool,
 ) -> Result<Option<Function>, CompileError> {
-    // Currently monomorphisation of generics is inlined into main() and the functions with generic
+    // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
         Ok(None)
@@ -293,6 +352,7 @@ pub(super) fn compile_function(
 
         compile_fn_with_args(
             type_engine,
+            declaration_engine,
             context,
             md_mgr,
             module,
@@ -308,6 +368,7 @@ pub(super) fn compile_function(
 
 pub(super) fn compile_entry_function(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -317,6 +378,7 @@ pub(super) fn compile_entry_function(
     let is_entry = true;
     compile_function(
         type_engine,
+        declaration_engine,
         context,
         md_mgr,
         module,
@@ -329,6 +391,7 @@ pub(super) fn compile_entry_function(
 
 pub(super) fn compile_tests(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -340,6 +403,7 @@ pub(super) fn compile_tests(
         .map(|ast_fn_decl| {
             compile_entry_function(
                 type_engine,
+                declaration_engine,
                 context,
                 md_mgr,
                 module,
@@ -371,6 +435,7 @@ fn convert_fn_param(
 #[allow(clippy::too_many_arguments)]
 fn compile_fn_with_args(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -432,6 +497,7 @@ fn compile_fn_with_args(
 
     let mut compiler = FnCompiler::new(
         type_engine,
+        declaration_engine,
         context,
         module,
         func,
@@ -516,6 +582,7 @@ fn compile_abi_method(
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
@@ -552,6 +619,7 @@ fn compile_abi_method(
 
     compile_fn_with_args(
         type_engine,
+        declaration_engine,
         context,
         md_mgr,
         module,

@@ -12,8 +12,8 @@ pub struct TyStorageDeclaration {
 
 impl EqWithEngines for TyStorageDeclaration {}
 impl PartialEqWithEngines for TyStorageDeclaration {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.fields.eq(&rhs.fields, type_engine) && self.attributes == rhs.attributes
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
     }
 }
 
@@ -169,11 +169,12 @@ pub struct TyStorageField {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
                 .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
-            && self.initializer.eq(&other.initializer, type_engine)
+                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            && self.initializer.eq(&other.initializer, engines)
     }
 }

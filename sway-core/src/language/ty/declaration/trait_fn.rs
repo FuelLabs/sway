@@ -19,12 +19,12 @@ pub struct TyTraitFn {
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name
-            && self.purity == rhs.purity
-            && self.parameters.eq(&rhs.parameters, type_engine)
-            && self.return_type == rhs.return_type
-            && self.attributes == rhs.attributes
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name
+            && self.purity == other.purity
+            && self.parameters.eq(&other.parameters, engines)
+            && self.return_type == other.return_type
+            && self.attributes == other.attributes
     }
 }
 

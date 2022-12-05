@@ -121,7 +121,7 @@ impl ReplaceSelfType for TypeId {
 
 impl CopyTypes for TypeId {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        if let Some(matching_id) = type_mapping.find_match(*self, engines.te()) {
+        if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             *self = matching_id;
         }
     }
@@ -130,12 +130,13 @@ impl CopyTypes for TypeId {
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_parameter: &TypeParameter,
     ) -> bool {
+        let type_engine = engines.te();
         type_engine
             .look_up_type_id(*self)
-            .type_parameter_is_unconstrained(type_engine, type_parameter)
+            .type_parameter_is_unconstrained(engines, type_parameter)
     }
 }
 

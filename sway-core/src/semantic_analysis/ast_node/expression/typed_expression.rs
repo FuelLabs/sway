@@ -767,6 +767,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
 
         let TypeBinding {
             inner: CallPath {
@@ -863,6 +864,7 @@ impl ty::TyExpression {
             );
             append!(
                 type_engine.unify_adt(
+                    declaration_engine,
                     typed_field.return_type,
                     def_field.type_id,
                     &typed_field.span,

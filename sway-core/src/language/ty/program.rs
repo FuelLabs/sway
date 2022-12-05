@@ -8,6 +8,7 @@ use crate::{
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
+    Engines,
 };
 
 #[derive(Debug, Clone)]
@@ -22,7 +23,7 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        ty_engine: &TypeEngine,
+        engines: Engines<'_>,
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
@@ -31,11 +32,13 @@ impl TyProgram {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let ty_engine = engines.te();
+
         // Validate all submodules
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
-                    ty_engine,
+                    engines,
                     &submodule.module,
                     parsed::TreeType::Library {
                         name: submodule.library_name.clone(),
@@ -110,7 +113,7 @@ impl TyProgram {
         for ast_n in &root.all_nodes {
             check!(
                 storage_only_types::validate_decls_for_storage_only_types_in_ast(
-                    ty_engine,
+                    engines,
                     &ast_n.content
                 ),
                 continue,

@@ -6,9 +6,9 @@ use crate::{
             instantiate_struct_field_access, instantiate_tuple_index_access,
             instantiate_unsafe_downcast,
         },
-        namespace::Namespace,
+        TypeCheckContext,
     },
-    CompileResult, Ident, TypeEngine, TypeId,
+    CompileResult, Ident, TypeId,
 };
 
 use sway_types::span::Span;
@@ -61,10 +61,9 @@ pub(crate) type MatcherResult = (MatchReqMap, MatchDeclMap);
 /// ]
 /// ```
 pub(crate) fn matcher(
-    type_engine: &TypeEngine,
+    ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     scrutinee: ty::TyScrutinee,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -74,9 +73,12 @@ pub(crate) fn matcher(
         span,
     } = scrutinee;
 
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
     // unify the type of the scrutinee with the type of the expression
     append!(
-        type_engine.unify(type_id, exp.return_type, &span, ""),
+        type_engine.unify(declaration_engine, type_id, exp.return_type, &span, ""),
         warnings,
         errors
     );
@@ -92,15 +94,11 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::Constant(name, _, type_id) => {
             match_constant(exp, name, type_id, span)
         }
-        ty::TyScrutineeVariant::StructScrutinee(_, fields) => {
-            match_struct(type_engine, exp, fields, namespace)
-        }
+        ty::TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(ctx, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
-            match_enum(type_engine, exp, variant, *value, span, namespace)
+            match_enum(ctx, exp, variant, *value, span)
         }
-        ty::TyScrutineeVariant::Tuple(elems) => {
-            match_tuple(type_engine, exp, elems, span, namespace)
-        }
+        ty::TyScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
     }
 }
 
@@ -152,10 +150,9 @@ fn match_constant(
 }
 
 fn match_struct(
-    type_engine: &TypeEngine,
+    mut ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     fields: Vec<ty::TyStructScrutineeField>,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -168,7 +165,12 @@ fn match_struct(
     } in fields.into_iter()
     {
         let subfield = check!(
-            instantiate_struct_field_access(type_engine, exp.clone(), field.clone(), field_span),
+            instantiate_struct_field_access(
+                ctx.type_engine,
+                exp.clone(),
+                field.clone(),
+                field_span
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -181,7 +183,7 @@ fn match_struct(
             // or if the scrutinee has a more complex agenda
             Some(scrutinee) => {
                 let (mut new_match_req_map, mut new_match_decl_map) = check!(
-                    matcher(type_engine, &subfield, scrutinee, namespace),
+                    matcher(ctx.by_ref(), &subfield, scrutinee),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -196,19 +198,18 @@ fn match_struct(
 }
 
 fn match_enum(
-    type_engine: &TypeEngine,
+    ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     scrutinee: ty::TyScrutinee,
     span: Span,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let (mut match_req_map, unsafe_downcast) =
-        instantiate_unsafe_downcast(type_engine, exp, variant, span);
+        instantiate_unsafe_downcast(ctx.type_engine, exp, variant, span);
     let (mut new_match_req_map, match_decl_map) = check!(
-        matcher(type_engine, &unsafe_downcast, scrutinee, namespace),
+        matcher(ctx, &unsafe_downcast, scrutinee),
         return err(warnings, errors),
         warnings,
         errors
@@ -218,11 +219,10 @@ fn match_enum(
 }
 
 fn match_tuple(
-    type_engine: &TypeEngine,
+    mut ctx: TypeCheckContext,
     exp: &ty::TyExpression,
     elems: Vec<ty::TyScrutinee>,
     span: Span,
-    namespace: &mut Namespace,
 ) -> CompileResult<MatcherResult> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -231,7 +231,7 @@ fn match_tuple(
     for (pos, elem) in elems.into_iter().enumerate() {
         let tuple_index_access = check!(
             instantiate_tuple_index_access(
-                type_engine,
+                ctx.type_engine,
                 exp.clone(),
                 pos,
                 span.clone(),
@@ -242,7 +242,7 @@ fn match_tuple(
             errors
         );
         let (mut new_match_req_map, mut new_match_decl_map) = check!(
-            matcher(type_engine, &tuple_index_access, elem, namespace),
+            matcher(ctx.by_ref(), &tuple_index_access, elem),
             return err(warnings, errors),
             warnings,
             errors

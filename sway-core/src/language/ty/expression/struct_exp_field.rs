@@ -15,8 +15,8 @@ pub struct TyStructExpressionField {
 
 impl EqWithEngines for TyStructExpressionField {}
 impl PartialEqWithEngines for TyStructExpressionField {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name && self.value.eq(&rhs.value, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name && self.value.eq(&other.value, engines)
     }
 }
 

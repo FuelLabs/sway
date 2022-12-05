@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, declaration_engine::de_get_constant},
+    declaration_engine::{de_get_function, declaration_engine::de_get_constant, DeclarationEngine},
     engine_threading::*,
     language::ty,
     metadata::MetadataManager,
@@ -22,6 +22,7 @@ use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
+    pub(crate) declaration_engine: &'a DeclarationEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -101,6 +102,7 @@ pub(crate) fn compile_const_decl(
             if let Some((name, value)) = decl_name_value {
                 let const_val = compile_constant_expression(
                     env.type_engine,
+                    env.declaration_engine,
                     env.context,
                     env.md_mgr,
                     env.module,
@@ -119,8 +121,10 @@ pub(crate) fn compile_const_decl(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -132,6 +136,7 @@ pub(super) fn compile_constant_expression(
 
     let constant_evaluated = compile_constant_expression_to_constant(
         type_engine,
+        declaration_engine,
         context,
         md_mgr,
         module,
@@ -142,8 +147,10 @@ pub(super) fn compile_constant_expression(
     Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_constant_expression_to_constant(
     type_engine: &TypeEngine,
+    declaration_engine: &DeclarationEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -153,6 +160,7 @@ pub(crate) fn compile_constant_expression_to_constant(
 ) -> Result<Constant, CompileError> {
     let lookup = &mut LookupEnv {
         type_engine,
+        declaration_engine,
         context,
         md_mgr,
         module,
@@ -293,7 +301,7 @@ fn const_eval_typed_expr(
             if !element_iter.all(|tid| {
                 lookup.type_engine.look_up_type_id(*tid).eq(
                     &lookup.type_engine.look_up_type_id(element_type_id),
-                    lookup.type_engine,
+                    Engines::new(lookup.type_engine, lookup.declaration_engine),
                 )
             }) {
                 // This shouldn't happen if the type checker did its job.

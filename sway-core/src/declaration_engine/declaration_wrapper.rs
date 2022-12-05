@@ -7,7 +7,7 @@ use crate::{
     engine_threading::*,
     language::ty,
     type_system::{CopyTypes, TypeMapping},
-    ReplaceSelfType, TypeEngine, TypeId,
+    ReplaceSelfType, TypeId,
 };
 
 use super::{DeclMapping, ReplaceDecls};
@@ -39,28 +39,20 @@ impl Default for DeclarationWrapper {
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for DeclarationWrapper {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
             (DeclarationWrapper::Unknown, DeclarationWrapper::Unknown) => true,
-            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => {
-                l.eq(r, type_engine)
-            }
-            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l.eq(r, type_engine),
-            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => {
-                l.eq(r, type_engine)
-            }
+            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l.eq(r, engines),
+            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l.eq(r, engines),
+            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l.eq(r, engines),
             (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => {
-                l.eq(r, type_engine)
+                l.eq(r, engines)
             }
-            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l.eq(r, type_engine),
-            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => {
-                l.eq(r, type_engine)
-            }
-            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l.eq(r, type_engine),
-            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => {
-                l.eq(r, type_engine)
-            }
-            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l.eq(r, type_engine),
+            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l.eq(r, engines),
+            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l.eq(r, engines),
+            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l.eq(r, engines),
+            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l.eq(r, engines),
+            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l.eq(r, engines),
             _ => false,
         }
     }

@@ -18,8 +18,8 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name && self.args.eq(&rhs.args, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name && self.args.eq(&other.args, engines)
     }
 }
 impl OrdWithEngines for TraitSuffix {
@@ -31,10 +31,10 @@ impl OrdWithEngines for TraitSuffix {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.prefixes == rhs.prefixes
-            && self.suffix.eq(&rhs.suffix, type_engine)
-            && self.is_absolute == rhs.is_absolute
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.prefixes == other.prefixes
+            && self.suffix.eq(&other.suffix, engines)
+            && self.is_absolute == other.is_absolute
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
@@ -156,10 +156,10 @@ impl TraitMap {
 
             let types_are_subset = type_engine
                 .look_up_type_id(type_id)
-                .is_subset_of(&type_engine.look_up_type_id(*map_type_id), type_engine);
+                .is_subset_of(&type_engine.look_up_type_id(*map_type_id), engines);
             let traits_are_subset = type_engine
                 .look_up_type_id(trait_type_id)
-                .is_subset_of(&type_engine.look_up_type_id(map_trait_type_id), type_engine);
+                .is_subset_of(&type_engine.look_up_type_id(map_trait_type_id), engines);
 
             if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
@@ -457,7 +457,7 @@ impl TraitMap {
         let type_engine = engines.te();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, type_engine)
+            type_info.is_subset_of(map_type_info, engines)
         };
         let mut all_types = type_engine
             .look_up_type_id(type_id)
@@ -533,8 +533,8 @@ impl TraitMap {
         let type_engine = engines.te();
         // a curried version of the decider protocol to use in the helper functions
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, type_engine)
-                || map_type_info.is_subset_of_for_item_import(type_info, type_engine)
+            type_info.is_subset_of(map_type_info, engines)
+                || map_type_info.is_subset_of_for_item_import(type_info, engines)
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
@@ -544,7 +544,7 @@ impl TraitMap {
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
         let decider2 = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
-            type_info.is_subset_of(map_type_info, type_engine)
+            type_info.is_subset_of(map_type_info, engines)
         };
         trait_map.extend(
             self.filter_by_type_inner(engines, all_types, decider2),
@@ -616,11 +616,12 @@ impl TraitMap {
     /// types of the given `type_id`. This function is used when handling trait
     /// constraints and is coupled with `filter_by_type` and
     /// `filter_by_type_item_import`.
-    pub(crate) fn filter_against_type(&mut self, type_engine: &TypeEngine, type_id: TypeId) {
+    pub(crate) fn filter_against_type(&mut self, engines: Engines<'_>, type_id: TypeId) {
+        let type_engine = engines.te();
         self.trait_impls.retain(|e| {
             !type_engine
                 .look_up_type_id(type_id)
-                .is_subset_of(&type_engine.look_up_type_id(e.key.type_id), type_engine)
+                .is_subset_of(&type_engine.look_up_type_id(e.key.type_id), engines)
         });
     }
 
@@ -635,14 +636,15 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_methods_for_type(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
     ) -> Vec<DeclarationId> {
+        let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case
         if type_engine
             .look_up_type_id(type_id)
-            .eq(&TypeInfo::ErrorRecovery, type_engine)
+            .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return methods;
         }
@@ -672,15 +674,16 @@ impl TraitMap {
     ///     entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_methods_for_type_and_trait_name(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<DeclarationId> {
+        let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case
         if type_engine
             .look_up_type_id(type_id)
-            .eq(&TypeInfo::ErrorRecovery, type_engine)
+            .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return methods;
         }

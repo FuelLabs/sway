@@ -32,12 +32,12 @@ pub struct FunctionParameter {
 
 impl EqWithEngines for FunctionParameter {}
 impl PartialEqWithEngines for FunctionParameter {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name
-            && self.is_reference == rhs.is_reference
-            && self.is_mutable == rhs.is_mutable
-            && self.mutability_span == rhs.mutability_span
-            && self.type_info.eq(&rhs.type_info, type_engine)
-            && self.type_span == rhs.type_span
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name
+            && self.is_reference == other.is_reference
+            && self.is_mutable == other.is_mutable
+            && self.mutability_span == other.mutability_span
+            && self.type_info.eq(&other.type_info, engines)
+            && self.type_span == other.type_span
     }
 }

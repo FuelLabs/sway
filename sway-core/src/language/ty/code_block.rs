@@ -13,8 +13,8 @@ pub struct TyCodeBlock {
 
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.contents.eq(&rhs.contents, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.contents.eq(&other.contents, engines)
     }
 }
 

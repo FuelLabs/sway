@@ -5,7 +5,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     engine_threading::*,
     type_system::{CopyTypes, TypeMapping},
-    ReplaceSelfType, TypeEngine, TypeId,
+    ReplaceSelfType, TypeId,
 };
 
 use super::{declaration_engine::de_look_up_decl_id, DeclMapping, DeclarationEngine, ReplaceDecls};
@@ -25,8 +25,11 @@ impl Clone for DeclarationId {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for DeclarationId {}
 impl PartialEqWithEngines for DeclarationId {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
-        de_look_up_decl_id(self.clone()).eq(&de_look_up_decl_id(other.clone()), type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let declaration_engine = engines.de();
+        let left = declaration_engine.look_up_decl_id(self.clone());
+        let right = declaration_engine.look_up_decl_id(other.clone());
+        left.eq(&right, engines)
     }
 }
 
@@ -81,7 +84,7 @@ impl ReplaceDecls for DeclarationId {
             self.0 = *new_decl_id;
             return;
         }
-        let all_parents = declaration_engine.find_all_parents(self.clone(), engines.te());
+        let all_parents = declaration_engine.find_all_parents(engines, self.clone());
         for parent in all_parents.into_iter() {
             if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
                 self.0 = *new_decl_id;

@@ -57,7 +57,7 @@ impl TypeEngine {
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, self));
+            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, todo!())));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
@@ -127,7 +127,8 @@ impl TypeEngine {
 
     /// Checks if the given [TypeInfo] is a storage only type.
     pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
-        self.storage_only_types.exists(|x| ti.is_subset_of(x, self))
+        self.storage_only_types
+            .exists(|x| ti.is_subset_of(x, Engines::new(self, todo!())))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -160,6 +161,7 @@ impl TypeEngine {
     ///         the same length
     ///     4b. for each type argument in `type_arguments`, resolve the type
     ///     4c. refresh the generic types with a [TypeMapping]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
         declaration_engine: &DeclarationEngine,
@@ -265,7 +267,7 @@ impl TypeEngine {
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         received.replace_self_type(Engines::new(self, declaration_engine), self_type);
         expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        self.unify(received, expected, span, help_text)
+        self.unify(declaration_engine, received, expected, span, help_text)
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -277,13 +279,19 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
+        declaration_engine: &DeclarationEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         normalize_err(unify::unify(
-            self, received, expected, span, help_text, false,
+            Engines::new(self, declaration_engine),
+            received,
+            expected,
+            span,
+            help_text,
+            false,
         ))
     }
 
@@ -301,7 +309,7 @@ impl TypeEngine {
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         received.replace_self_type(Engines::new(self, declaration_engine), self_type);
         expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        self.unify_right(received, expected, span, help_text)
+        self.unify_right(declaration_engine, received, expected, span, help_text)
     }
 
     /// Make the type of `expected` equivalent to `received`.
@@ -344,13 +352,18 @@ impl TypeEngine {
     /// This is the function that makes that distinction for us!
     pub(crate) fn unify_right(
         &self,
+        declaration_engine: &DeclarationEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         normalize_err(unify::unify_right(
-            self, received, expected, span, help_text,
+            Engines::new(self, declaration_engine),
+            received,
+            expected,
+            span,
+            help_text,
         ))
     }
 
@@ -400,13 +413,19 @@ impl TypeEngine {
     /// generic types, then `expected` will be replaced with `received`.
     pub(crate) fn unify_adt(
         &self,
+        declaration_engine: &DeclarationEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         normalize_err(unify::unify(
-            self, expected, received, span, help_text, true,
+            Engines::new(self, declaration_engine),
+            expected,
+            received,
+            span,
+            help_text,
+            true,
         ))
     }
 
@@ -422,6 +441,7 @@ impl TypeEngine {
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type(
         &self,
         declaration_engine: &DeclarationEngine,

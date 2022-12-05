@@ -127,7 +127,8 @@ pub enum TyExpressionVariant {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -153,8 +154,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
-                        .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, type_engine))
-                    && l_function_decl.body.eq(&r_function_decl.body, type_engine)
+                        .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
+                    && l_function_decl.body.eq(&r_function_decl.body, engines)
             }
             (
                 Self::LazyOperator {
@@ -169,8 +170,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => {
                 l_op == r_op
-                    && (**l_lhs).eq(&(**r_lhs), type_engine)
-                    && (**l_rhs).eq(&(**r_rhs), type_engine)
+                    && (**l_lhs).eq(&(**r_lhs), engines)
+                    && (**l_rhs).eq(&(**r_rhs), engines)
             }
             (
                 Self::VariableExpression {
@@ -185,7 +186,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
-                l_fields.eq(r_fields, type_engine)
+                l_fields.eq(r_fields, engines)
             }
             (
                 Self::Array {
@@ -194,7 +195,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::Array {
                     contents: r_contents,
                 },
-            ) => l_contents.eq(r_contents, type_engine),
+            ) => l_contents.eq(r_contents, engines),
             (
                 Self::ArrayIndex {
                     prefix: l_prefix,
@@ -204,9 +205,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     prefix: r_prefix,
                     index: r_index,
                 },
-            ) => {
-                (**l_prefix).eq(&**r_prefix, type_engine) && (**l_index).eq(&**r_index, type_engine)
-            }
+            ) => (**l_prefix).eq(&**r_prefix, engines) && (**l_index).eq(&**r_index, engines),
             (
                 Self::StructExpression {
                     struct_name: l_struct_name,
@@ -219,11 +218,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     span: r_span,
                 },
             ) => {
-                l_struct_name == r_struct_name
-                    && l_fields.eq(r_fields, type_engine)
-                    && l_span == r_span
+                l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
             }
-            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, type_engine),
+            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, engines),
             (
                 Self::IfExp {
                     condition: l_condition,
@@ -236,10 +233,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     r#else: r_r,
                 },
             ) => {
-                (**l_condition).eq(&**r_condition, type_engine)
-                    && (**l_then).eq(&**r_then, type_engine)
+                (**l_condition).eq(&**r_condition, engines)
+                    && (**l_then).eq(&**r_then, engines)
                     && if let (Some(l), Some(r)) = (l_r, r_r) {
-                        (**l).eq(&**r, type_engine)
+                        (**l).eq(&**r, engines)
                     } else {
                         true
                     }
@@ -258,7 +255,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                l_registers.eq(r_registers, type_engine)
+                l_registers.eq(r_registers, engines)
                     && l_body.clone() == r_body.clone()
                     && l_returns == r_returns
             }
@@ -276,11 +273,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                (**l_prefix).eq(&**r_prefix, type_engine)
-                    && l_field_to_access.eq(r_field_to_access, type_engine)
+                (**l_prefix).eq(&**r_prefix, engines)
+                    && l_field_to_access.eq(r_field_to_access, engines)
                     && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
                         &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        type_engine,
+                        engines,
                     )
             }
             (
@@ -297,11 +294,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                (**l_prefix).eq(&**r_prefix, type_engine)
+                (**l_prefix).eq(&**r_prefix, engines)
                     && l_elem_to_access_num == r_elem_to_access_num
                     && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
                         &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        type_engine,
+                        engines,
                     )
             }
             (
@@ -320,11 +317,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                l_enum_decl.eq(r_enum_decl, type_engine)
+                l_enum_decl.eq(r_enum_decl, engines)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
-                        (**l_contents).eq(&**r_contents, type_engine)
+                        (**l_contents).eq(&**r_contents, engines)
                     } else {
                         true
                     }
@@ -340,9 +337,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     address: r_address,
                     ..
                 },
-            ) => l_abi_name == r_abi_name && (**l_address).eq(&**r_address, type_engine),
+            ) => l_abi_name == r_abi_name && (**l_address).eq(&**r_address, engines),
             (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => {
-                l_kind.eq(r_kind, type_engine)
+                l_kind.eq(r_kind, engines)
             }
             (
                 Self::UnsafeDowncast {
@@ -353,9 +350,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     exp: r_exp,
                     variant: r_variant,
                 },
-            ) => l_exp.eq(r_exp, type_engine) && l_variant.eq(r_variant, type_engine),
+            ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
-                l_exp.eq(&**r_exp, type_engine)
+                l_exp.eq(&**r_exp, engines)
             }
             (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
             (
@@ -367,7 +364,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     body: r_body,
                     condition: r_condition,
                 },
-            ) => l_body.eq(r_body, type_engine) && l_condition.eq(r_condition, type_engine),
+            ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
             _ => false,
         }
     }

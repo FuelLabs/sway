@@ -12,7 +12,6 @@ use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
     engine_threading::*,
     language::ty,
-    TypeEngine,
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
@@ -61,8 +60,8 @@ impl DeclarationEngine {
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents(
         &self,
+        engines: Engines<'_>,
         index: DeclarationId,
-        type_engine: &TypeEngine,
     ) -> Vec<DeclarationId> {
         let parents = self.parents.read().unwrap();
         let mut acc_parents: HashMap<usize, DeclarationId> = HashMap::new();
@@ -77,7 +76,7 @@ impl DeclarationEngine {
                     if !acc_parents.contains_key(&**curr_parent) {
                         acc_parents.insert(**curr_parent, curr_parent.clone());
                     }
-                    if !left_to_check.iter().any(|x| x.eq(curr_parent, type_engine)) {
+                    if !left_to_check.iter().any(|x| x.eq(curr_parent, engines)) {
                         left_to_check.push_back(curr_parent.clone());
                     }
                 }

@@ -12,10 +12,10 @@ pub struct TyAsmRegisterDeclaration {
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for TyAsmRegisterDeclaration {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
             && if let (Some(l), Some(r)) = (&self.initializer, &other.initializer) {
-                l.eq(r, type_engine)
+                l.eq(r, engines)
             } else {
                 true
             }

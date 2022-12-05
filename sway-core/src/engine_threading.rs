@@ -58,7 +58,7 @@ impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
 
 impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engines.te())
+        self.thing.eq(&rhs.thing, self.engines)
     }
 }
 
@@ -104,7 +104,7 @@ impl<T: HashWithEngines> HashWithEngines for [T] {
 pub trait EqWithEngines: PartialEqWithEngines {}
 
 pub trait PartialEqWithEngines {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool;
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool;
 }
 
 pub trait OrdWithEngines {
@@ -113,8 +113,8 @@ pub trait OrdWithEngines {
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
 impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        (*self).eq(*rhs, type_engine)
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        (*self).eq(*other, engines)
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
@@ -125,10 +125,10 @@ impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
 
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        match (self, rhs) {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
             (None, None) => true,
-            (Some(x), Some(y)) => x.eq(y, type_engine),
+            (Some(x), Some(y)) => x.eq(y, engines),
             _ => false,
         }
     }
@@ -136,12 +136,8 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
 
 impl<T: EqWithEngines> EqWithEngines for [T] {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.len() == rhs.len()
-            && self
-                .iter()
-                .zip(rhs.iter())
-                .all(|(x, y)| x.eq(y, type_engine))
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, engines))
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
@@ -153,3 +149,23 @@ impl<T: OrdWithEngines> OrdWithEngines for [T] {
             .unwrap_or_else(|| self.len().cmp(&rhs.len()))
     }
 }
+
+// impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         self.thing.fmt(f, self.engines.te())
+//     }
+// }
+
+// impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//         self.thing.hash(state, self.engines.te())
+//     }
+// }
+
+// impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
+//     fn eq(&self, rhs: &Self) -> bool {
+//         self.thing.eq(&rhs.thing, self.engines)
+//     }
+// }
+
+// impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}

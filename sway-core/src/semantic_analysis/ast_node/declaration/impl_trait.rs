@@ -176,7 +176,7 @@ impl ty::TyImplTrait {
 
                 if !type_engine
                     .look_up_type_id(implementing_for_type_id)
-                    .eq(&TypeInfo::Contract, type_engine)
+                    .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
@@ -800,14 +800,14 @@ fn type_check_trait_implementation(
         let unconstrained_type_parameters_in_this_function: HashSet<
             WithEngines<'_, TypeParameter>,
         > = impl_method
-            .unconstrained_type_parameters(type_engine, impl_type_parameters)
+            .unconstrained_type_parameters(engines, impl_type_parameters)
             .into_iter()
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect();
         let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
             ctx.self_type()
-                .unconstrained_type_parameters(type_engine, impl_type_parameters)
+                .unconstrained_type_parameters(engines, impl_type_parameters)
                 .into_iter()
                 .cloned()
                 .map(|x| WithEngines::new(x, engines))
