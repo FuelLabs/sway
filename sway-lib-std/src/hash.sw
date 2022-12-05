@@ -1,7 +1,5 @@
 library hash;
 
-use ::core::num::*;
-
 /// Returns the SHA-2-256 hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = b256::min();

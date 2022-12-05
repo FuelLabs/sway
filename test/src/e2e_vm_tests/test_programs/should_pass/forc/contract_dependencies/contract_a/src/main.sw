@@ -10,8 +10,7 @@ abi MyContract {
 impl MyContract for Contract {
     fn test_function() {
         let CONTRACT_B = CONTRACT_B_ID;
-        let CONTRACT_C = CONTRACT_C_ID;
         let contract_b_id = ContractId::from(CONTRACT_B);
-        let contract_c_id = ContractId::from(CONTRACT_C);
+        let contract_c_id = ContractId::from(contract_c::CONTRACT_ID);
     }
 }
