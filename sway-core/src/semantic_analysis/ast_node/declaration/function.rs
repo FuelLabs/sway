@@ -215,14 +215,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(TypeInfo::Str(Length {
-                    val: 5,
-                    span: Span::dummy(),
-                })),
-                initial_type_id: type_engine.insert_type(TypeInfo::Str(Length {
-                    val: 5,
-                    span: Span::dummy(),
-                })),
+                type_id: type_engine.insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -231,10 +226,8 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: type_engine.insert_type(TypeInfo::Str(Length {
-                    val: 5,
-                    span: Span::dummy(),
-                })),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],
