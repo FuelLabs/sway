@@ -4,6 +4,7 @@ use ::assert::assert;
 use ::convert::From;
 use ::result::Result;
 use ::u128::U128;
+use ::logging::log;
 
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
@@ -356,14 +357,17 @@ impl core::ops::Add for U256 {
 impl core::ops::Subtract for U256 {
     /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
+        if self == other {
+            return Self::min();
+        } else if other == Self::min() {
+            return self;
+        }
         // If trying to subtract a larger number, panic.
-        assert(!(self < other));
-
+        assert(self > other);
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut result_a = word_1 - other_word_1;
-
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
@@ -371,11 +375,15 @@ impl core::ops::Subtract for U256 {
         } else {
             result_b = word_2 - other_word_2;
         }
-
         let mut result_c = 0;
         if word_3 < other_word_3 {
             result_c = u64::max() - (other_word_3 - word_3 - 1);
-            result_b -= 1;
+            if result_b > 0 {
+                result_b -= 1;
+            } else {
+                result_a -= 1;
+                result_b = u64::max();
+            }
         } else {
             result_c = word_3 - other_word_3;
         }
@@ -383,7 +391,17 @@ impl core::ops::Subtract for U256 {
         let mut result_d = 0;
         if word_4 < other_word_4 {
             result_d = u64::max() - (other_word_4 - word_4 - 1);
-            result_c -= 1;
+            if result_c > 0 {
+                result_c -= 1;
+            } else {
+                if result_b > 0 {
+                    result_b -= 1;
+                } else {
+                    result_a -= 1;
+                    result_b = u64::max();
+                }
+                result_c = u64::max();
+            }
         } else {
             result_d = word_4 - other_word_4;
         }
