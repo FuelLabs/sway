@@ -1226,4 +1226,5 @@ fn foo() {}
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
+    }
 }
