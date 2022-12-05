@@ -120,8 +120,6 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
             let offset = u32::try_from(entry.imm).expect("test instruction offset out of range");
             let name = entry.fn_name.clone();
             let (state, duration) = exec_test(&built_pkg.bytecode, offset);
-            let decl_id = &entry.test_decl_id;
-            println!("test {name} dec_id = {decl_id:?}");
             TestResult {
                 name,
                 state,

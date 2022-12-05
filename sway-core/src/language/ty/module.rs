@@ -31,7 +31,6 @@ pub struct SubmodulesRecursive<'module> {
     )>,
 }
 
-type FunctionDeclarationWithId = (TyFunctionDeclaration, DeclarationId);
 impl TyModule {
     /// An iterator yielding all submodules recursively, depth-first.
     pub fn submodules_recursive(&self) -> SubmodulesRecursive {
@@ -42,7 +41,7 @@ impl TyModule {
     }
 
     /// All test functions within this module.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = FunctionDeclarationWithId> {
+    pub fn test_fns(&self) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
                 node.content
