@@ -1925,10 +1925,7 @@ fn fn_arg_to_function_parameter(
 
 fn expr_to_length(handler: &Handler, expr: Expr) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length {
-        val: expr_to_usize(handler, expr)?,
-        span,
-    })
+    Ok(Length::new(expr_to_usize(handler, expr)?, span))
 }
 
 fn expr_to_usize(handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {

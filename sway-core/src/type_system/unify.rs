@@ -47,8 +47,8 @@ pub(super) fn unify(
             expected,
             span,
             help_text,
-            l.val,
-            r.val,
+            l.val(),
+            r.val(),
             arguments_are_flipped,
             type_engine,
         ),
@@ -128,7 +128,7 @@ pub(super) fn unify(
             arguments_are_flipped,
             type_engine,
         ),
-        (Array(re, rc), Array(ee, ec)) if rc.val == ec.val => unify::unify_arrays(
+        (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => unify::unify_arrays(
             received,
             expected,
             span,
@@ -322,8 +322,8 @@ pub(super) fn unify_right(
             expected,
             span,
             help_text,
-            l.val,
-            r.val,
+            l.val(),
+            r.val(),
             false,
             type_engine,
         ),
@@ -382,7 +382,7 @@ pub(super) fn unify_right(
             false,
             type_engine,
         ),
-        (Array(re, rc), Array(ee, ec)) if rc.val == ec.val => unify::unify_arrays(
+        (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => unify::unify_arrays(
             received,
             expected,
             span,

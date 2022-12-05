@@ -350,10 +350,7 @@ impl ty::TyExpression {
         type_engine: &TypeEngine,
     ) -> CompileResult<ty::TyExpression> {
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(Length {
-                val: s.as_str().len(),
-                span: s.clone(),
-            }),
+            Literal::String(s) => TypeInfo::Str(Length::new(s.as_str().len(), s.clone())),
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -1473,10 +1470,7 @@ impl ty::TyExpression {
                             span: Span::dummy(),
                             initial_type_id: unknown_type,
                         },
-                        Length {
-                            val: 0,
-                            span: Span::dummy(),
-                        },
+                        Length::new(0, Span::dummy()),
                     )),
                     span,
                 },
@@ -1533,10 +1527,7 @@ impl ty::TyExpression {
                         span: Span::dummy(),
                         initial_type_id: elem_type,
                     },
-                    Length {
-                        val: array_count,
-                        span: Span::dummy(),
-                    },
+                    Length::new(array_count, Span::dummy()),
                 )), // Maybe?
                 span,
             },
@@ -1945,10 +1936,7 @@ mod tests {
                     span: Span::dummy(),
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
-                Length {
-                    val: 2,
-                    span: Span::dummy(),
-                },
+                Length::new(2, Span::dummy()),
             )),
         )
     }
@@ -2065,10 +2053,7 @@ mod tests {
                     span: Span::dummy(),
                     initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
                 },
-                Length {
-                    val: 0,
-                    span: Span::dummy(),
-                },
+                Length::new(0, Span::dummy()),
             )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());

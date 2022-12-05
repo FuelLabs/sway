@@ -4,7 +4,7 @@ use crate::{
     Ident,
 };
 use sway_error::error::CompileError;
-use sway_types::{integer_bits::IntegerBits, span::Span};
+use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
     collections::HashSet,
@@ -31,8 +31,24 @@ impl fmt::Display for AbiName {
 
 #[derive(Debug, Clone, Hash)]
 pub struct Length {
-    pub val: usize,
-    pub span: Span,
+    val: usize,
+    span: Span,
+}
+
+impl Length {
+    pub fn new(val: usize, span: Span) -> Self {
+        Length { val, span }
+    }
+
+    pub fn val(&self) -> usize {
+        self.val
+    }
+}
+
+impl Spanned for Length {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 /// A slow set primitive using `==` to check for containment.
