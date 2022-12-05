@@ -20,14 +20,14 @@ pub(crate) struct MetadataManager {
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
-    md_decl_index_cache: HashMap<MetadataIndex, Option<usize>>,
+    md_test_decl_index_cache: HashMap<MetadataIndex, usize>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
-    decl_index_md_cache: HashMap<Option<usize>, MetadataIndex>,
+    test_decl_index_md_cache: HashMap<usize, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -63,31 +63,27 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn md_to_decl_index(
+    pub(crate) fn md_to_test_decl_index(
         &mut self,
         context: &Context,
         md_idx: Option<MetadataIndex>,
     ) -> Option<usize> {
         Self::for_each_md_idx(context, md_idx, |md_idx| {
-            self.md_decl_index_cache.get(&md_idx).cloned().or_else(|| {
-                // Create a new decl index and save it in the cache
-                md_idx
-                    .get_content(context)
-                    .unwrap_struct("decl_index", 2)
-                    .and_then(|fields| {
-                        // First check if the read metadata corresponds to Some(_) or None
-                        let is_index_some = fields[0].unwrap_integer().map(|index| index != 0)?;
-                        let index = if is_index_some {
-                            Some(fields[1].unwrap_integer().map(|index| index as usize)?)
-                        } else {
-                            None
-                        };
-                        self.md_decl_index_cache.insert(md_idx, index);
-                        Some(index)
-                    })
-            })
+            self.md_test_decl_index_cache
+                .get(&md_idx)
+                .cloned()
+                .or_else(|| {
+                    // Create a new decl index and save it in the cache
+                    md_idx
+                        .get_content(context)
+                        .unwrap_struct("decl_index", 1)
+                        .and_then(|fields| {
+                            let index = fields[0].unwrap_integer().map(|index| index as usize)?;
+                            self.md_test_decl_index_cache.insert(md_idx, index);
+                            Some(index)
+                        })
+                })
         })
-        .flatten()
     }
 
     pub(crate) fn md_to_storage_op(
@@ -227,30 +223,21 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn decl_index_to_md(
+    pub(crate) fn test_decl_index_to_md(
         &mut self,
         context: &mut Context,
-        decl_index: Option<usize>,
+        decl_index: usize,
     ) -> Option<MetadataIndex> {
-        let decl_index_val = decl_index.unwrap_or_default();
-        // Since Metadata cannot hold optional values, we place an integer for providing
-        // optional type, i.e `Some` or `None`. While reading the value back from MetadataIndex, first
-        // check the type of the decl_index. This is needed for distinguishing `decl_index` param
-        // being None and Some(0).
-        let is_decl_index_some = u64::from(decl_index.is_some());
-        self.decl_index_md_cache
+        self.test_decl_index_md_cache
             .get(&decl_index)
             .copied()
             .or_else(|| {
                 let md_idx = MetadataIndex::new_struct(
                     context,
                     "decl_index",
-                    vec![
-                        Metadatum::Integer(is_decl_index_some),
-                        Metadatum::Integer(decl_index_val as u64),
-                    ],
+                    vec![Metadatum::Integer(decl_index as u64)],
                 );
-                self.decl_index_md_cache.insert(decl_index, md_idx);
+                self.test_decl_index_md_cache.insert(decl_index, md_idx);
 
                 Some(md_idx)
             })
