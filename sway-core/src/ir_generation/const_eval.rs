@@ -314,11 +314,8 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(
-                lookup.type_engine,
-                lookup.context,
-                enum_decl.variants.clone(),
-            );
+            let aggregate =
+                create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
             if let Ok(aggregate) = aggregate {
                 let tag_value = Constant::new_uint(64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
