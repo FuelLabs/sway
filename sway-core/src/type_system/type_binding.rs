@@ -91,6 +91,8 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+
         let (type_info, type_info_span) = self.inner.suffix.clone();
 
         // find the module that the symbol is in
@@ -113,12 +115,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                ctx.type_engine.insert_type(type_info),
+                type_engine.insert_type(type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -135,6 +137,9 @@ impl TypeBinding<CallPath> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
+
         // grab the declaration
         let unknown_decl = check!(
             ctx.namespace.resolve_call_path(&self.inner).cloned(),
@@ -145,10 +150,10 @@ impl TypeBinding<CallPath> {
 
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.replace_self_type(ctx.type_engine, ctx.self_type());
+            type_argument.replace_self_type(engines, ctx.self_type());
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -179,7 +184,10 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_function(new_copy).with_parent(original_id);
+                let new_id = ctx
+                    .declaration_engine
+                    .insert_function(new_copy)
+                    .with_parent(ctx.declaration_engine, original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }
@@ -207,8 +215,8 @@ impl TypeBinding<CallPath> {
 
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
-                    ctx.type_engine,
-                    new_copy.create_type_id(ctx.type_engine),
+                    engines,
+                    new_copy.create_type_id(type_engine),
                 );
 
                 // insert the new copy into the declaration engine
@@ -240,12 +248,12 @@ impl TypeBinding<CallPath> {
 
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
-                    ctx.type_engine,
-                    new_copy.create_type_id(ctx.type_engine),
+                    engines,
+                    new_copy.create_type_id(type_engine),
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_struct(new_copy);
+                let new_id = ctx.declaration_engine.insert_struct(new_copy);
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }

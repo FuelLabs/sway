@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    engine_threading::Engines,
     error::*,
     language::{ty, CallPath},
     namespace::*,
@@ -135,7 +136,7 @@ impl Items {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn insert_trait_implementation(
+    pub(crate) fn insert_trait_implementation<'a>(
         &mut self,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
@@ -143,7 +144,7 @@ impl Items {
         methods: &[DeclarationId],
         impl_span: &Span,
         is_impl_self: bool,
-        type_engine: &TypeEngine,
+        engines: Engines<'a>,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -166,17 +167,16 @@ impl Items {
             methods,
             impl_span,
             is_impl_self,
-            type_engine,
+            engines,
         )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
     ) {
-        self.implemented_traits
-            .insert_for_type(type_engine, type_id);
+        self.implemented_traits.insert_for_type(engines, type_id);
     }
 
     pub(crate) fn get_methods_for_type(

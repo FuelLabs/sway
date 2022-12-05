@@ -25,6 +25,7 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
@@ -70,10 +71,8 @@ impl ty::TyTraitFn {
         let trait_map = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(trait_fn.return_type, type_engine);
-        ctx.namespace
-            .implemented_traits
-            .extend(trait_map, type_engine);
+            .filter_by_type(trait_fn.return_type, engines);
+        ctx.namespace.implemented_traits.extend(trait_map, engines);
 
         ok(trait_fn, warnings, errors)
     }

@@ -7,7 +7,6 @@ pub(crate) use expression::*;
 pub(crate) use mode::*;
 
 use crate::{
-    declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
@@ -34,12 +33,12 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path, type_engine),
+                        ImportType::Star => ctx.namespace.star_import(&path, ctx.engines()),
                         ImportType::SelfImport => {
-                            ctx.namespace.self_import(ctx.type_engine, &path, a.alias)
+                            ctx.namespace.self_import(ctx.engines(), &path, a.alias)
                         }
                         ImportType::Item(s) => {
-                            ctx.namespace.item_import(type_engine, &path, &s, a.alias)
+                            ctx.namespace.item_import(ctx.engines(), &path, &s, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);

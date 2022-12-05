@@ -31,7 +31,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    TypeEngine,
+    Engines, TypeEngine,
 };
 use sway_core::{
     language::{
@@ -2170,14 +2170,14 @@ pub fn dependency_namespace(
     namespace.star_import_with_reexports(
         &[CORE, PRELUDE].map(Ident::new_no_span),
         &[],
-        type_engine,
+        Engines::new(type_engine, declaration_engine),
     );
 
     if has_std_dep(graph, node) {
         namespace.star_import_with_reexports(
             &[STD, PRELUDE].map(Ident::new_no_span),
             &[],
-            type_engine,
+            Engines::new(type_engine, declaration_engine),
         );
     }
 

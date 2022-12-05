@@ -162,6 +162,7 @@ impl TypeEngine {
     ///     4c. refresh the generic types with a [TypeMapping]
     pub(crate) fn monomorphize<T>(
         &self,
+        declaration_engine: &DeclarationEngine,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -188,7 +189,7 @@ impl TypeEngine {
                     return err(warnings, errors);
                 }
                 let type_mapping = TypeMapping::from_type_parameters(value.type_parameters(), self);
-                value.copy_types(&type_mapping, self);
+                value.copy_types(&type_mapping, Engines::new(self, declaration_engine));
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -220,6 +221,7 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type(
+                            declaration_engine,
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
@@ -243,7 +245,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping, self);
+                value.copy_types(&type_mapping, Engines::new(self, declaration_engine));
                 ok((), warnings, errors)
             }
         }
@@ -254,14 +256,15 @@ impl TypeEngine {
     /// `expected`.
     pub(crate) fn unify_with_self(
         &self,
+        declaration_engine: &DeclarationEngine,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(self, self_type);
-        expected.replace_self_type(self, self_type);
+        received.replace_self_type(Engines::new(self, declaration_engine), self_type);
+        expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
         self.unify(received, expected, span, help_text)
     }
 
@@ -289,14 +292,15 @@ impl TypeEngine {
     /// `received` and `expected`.
     pub(crate) fn unify_right_with_self(
         &self,
+        declaration_engine: &DeclarationEngine,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(self, self_type);
-        expected.replace_self_type(self, self_type);
+        received.replace_self_type(Engines::new(self, declaration_engine), self_type);
+        expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
         self.unify_right(received, expected, span, help_text)
     }
 
@@ -420,6 +424,7 @@ impl TypeEngine {
     /// enum, or a reference to a type parameter.
     pub(crate) fn resolve_type(
         &self,
+        declaration_engine: &DeclarationEngine,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -453,6 +458,7 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
+                                declaration_engine,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -469,7 +475,10 @@ impl TypeEngine {
                         let type_id = new_copy.create_type_id(self);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(self, type_id);
+                        namespace.insert_trait_implementation_for_type(
+                            Engines::new(self, declaration_engine),
+                            type_id,
+                        );
 
                         // return the id
                         type_id
@@ -486,6 +495,7 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
+                                declaration_engine,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -502,7 +512,10 @@ impl TypeEngine {
                         let type_id = new_copy.create_type_id(self);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(self, type_id);
+                        namespace.insert_trait_implementation_for_type(
+                            Engines::new(self, declaration_engine),
+                            type_id,
+                        );
 
                         // return the id
                         type_id
@@ -520,7 +533,8 @@ impl TypeEngine {
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
                     self.resolve_type(
-                        elem_ty.type_id,
+                        declaration_engine,
+                        type_id,
                         span,
                         enforce_type_arguments,
                         None,
@@ -537,6 +551,7 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type(
+                            declaration_engine,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
@@ -561,6 +576,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type_with_self(
         &self,
+        declaration_engine: &DeclarationEngine,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -569,8 +585,9 @@ impl TypeEngine {
         namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self, self_type);
+        type_id.replace_self_type(Engines::new(self, declaration_engine), self_type);
         self.resolve_type(
+            declaration_engine,
             type_id,
             span,
             enforce_type_arguments,

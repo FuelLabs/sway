@@ -32,18 +32,17 @@ impl PartialEqWithEngines for TyVariableDeclaration {
 }
 
 impl CopyTypes for TyVariableDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.return_type.copy_types(type_mapping, type_engine);
-        self.type_ascription.copy_types(type_mapping, type_engine);
-        self.body.copy_types(type_mapping, type_engine)
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.return_type.copy_types(type_mapping, engines);
+        self.type_ascription.copy_types(type_mapping, engines);
+        self.body.copy_types(type_mapping, engines)
     }
 }
 
 impl ReplaceSelfType for TyVariableDeclaration {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.return_type.replace_self_type(type_engine, self_type);
-        self.type_ascription
-            .replace_self_type(type_engine, self_type);
-        self.body.replace_self_type(type_engine, self_type)
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.return_type.replace_self_type(engines, self_type);
+        self.type_ascription.replace_self_type(engines, self_type);
+        self.body.replace_self_type(engines, self_type)
     }
 }

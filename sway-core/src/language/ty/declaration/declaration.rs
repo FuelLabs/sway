@@ -56,15 +56,15 @@ impl PartialEqWithEngines for TyDeclaration {
 }
 
 impl CopyTypes for TyDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, type_engine),
-            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
-            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
-            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
-            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, type_engine),
-            ImplTrait(decl_id) => decl_id.copy_types(type_mapping, type_engine),
+            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, engines),
+            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
+            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
+            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
+            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
+            ImplTrait(decl_id) => decl_id.copy_types(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -76,19 +76,15 @@ impl CopyTypes for TyDeclaration {
 }
 
 impl ReplaceSelfType for TyDeclaration {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => {
-                var_decl.replace_self_type(type_engine, self_type)
-            }
-            FunctionDeclaration(ref mut decl_id) => {
-                decl_id.replace_self_type(type_engine, self_type)
-            }
-            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
-            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
-            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(type_engine, self_type),
-            ImplTrait(decl_id) => decl_id.replace_self_type(type_engine, self_type),
+            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
+            FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -209,38 +205,12 @@ impl CollectTypesMetadata for TyDeclaration {
             FunctionDeclaration(decl_id) => match de_get_function(decl_id.clone(), &decl_id.span())
             {
                 Ok(decl) => {
-                    let mut body = vec![];
-                    for content in decl.body.contents.iter() {
-                        body.append(&mut check!(
-                            content.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                    body.append(&mut check!(
-                        decl.return_type.collect_types_metadata(ctx),
+                    check!(
+                        decl.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    ));
-                    for type_param in decl.type_parameters.iter() {
-                        body.append(&mut check!(
-                            type_param.type_id.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                    for param in decl.parameters.iter() {
-                        body.append(&mut check!(
-                            param.type_id.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                    body
+                    )
                 }
                 Err(e) => {
                     errors.push(e);

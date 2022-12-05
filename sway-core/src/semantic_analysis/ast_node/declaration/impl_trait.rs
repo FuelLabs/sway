@@ -31,6 +31,7 @@ impl ty::TyImplTrait {
         } = impl_trait;
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -88,7 +89,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                ctx.engines(),
+                engines,
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for_type_id,
@@ -419,6 +420,7 @@ impl ty::TyImplTrait {
         } = impl_self;
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
@@ -479,7 +481,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                ctx.engines(),
+                engines,
                 &new_impl_type_parameters,
                 &[],
                 implementing_for_type_id,
@@ -523,7 +525,7 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| de_insert_function(d.clone()))
+            .map(|d| ctx.declaration_engine.insert_function(d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -559,7 +561,9 @@ fn type_check_trait_implementation(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
+    let engines = ctx.engines();
     let self_type = ctx.self_type();
+
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -610,7 +614,7 @@ fn type_check_trait_implementation(
             .collect::<Vec<_>>(),
         &trait_name.span(),
         false,
-        type_engine,
+        engines,
     );
 
     // This map keeps track of the remaining functions in the interface surface
@@ -675,7 +679,7 @@ fn type_check_trait_implementation(
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
         // declaration
-        impl_method_signature.replace_self_type(type_engine, ctx.self_type());
+        impl_method_signature.replace_self_type(engines, ctx.self_type());
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -717,6 +721,7 @@ fn type_check_trait_implementation(
             }
 
             let (new_warnings, new_errors) = type_engine.unify_right_with_self(
+                ctx.declaration_engine,
                 impl_method_param.type_id,
                 impl_method_signature_param.type_id,
                 ctx.self_type(),
@@ -759,6 +764,7 @@ fn type_check_trait_implementation(
         // unify the return type of the implemented function and the return
         // type of the signature
         let (new_warnings, new_errors) = type_engine.unify_right_with_self(
+            ctx.declaration_engine,
             impl_method.return_type,
             impl_method_signature.return_type,
             ctx.self_type(),
@@ -797,14 +803,14 @@ fn type_check_trait_implementation(
             .unconstrained_type_parameters(type_engine, impl_type_parameters)
             .into_iter()
             .cloned()
-            .map(|x| WithEngines::new(x, ctx.engines()))
+            .map(|x| WithEngines::new(x, engines))
             .collect();
         let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
             ctx.self_type()
                 .unconstrained_type_parameters(type_engine, impl_type_parameters)
                 .into_iter()
                 .cloned()
-                .map(|x| WithEngines::new(x, ctx.engines()))
+                .map(|x| WithEngines::new(x, engines))
                 .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
@@ -818,7 +824,7 @@ fn type_check_trait_implementation(
             .append(&mut unconstrained_type_parameters_to_be_added);
 
         let name = impl_method.name.clone();
-        let decl_id = de_insert_function(impl_method);
+        let decl_id = ctx.declaration_engine.insert_function(impl_method);
         impld_method_ids.insert(name, decl_id);
     }
 
@@ -851,10 +857,14 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        method.replace_decls(&decl_mapping, type_engine);
-        method.copy_types(&type_mapping, ctx.type_engine);
-        method.replace_self_type(type_engine, ctx.self_type());
-        all_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
+        method.replace_decls(&decl_mapping, engines);
+        method.copy_types(&type_mapping, engines);
+        method.replace_self_type(engines, ctx.self_type());
+        all_method_ids.push(
+            ctx.declaration_engine
+                .insert_function(method)
+                .with_parent(ctx.declaration_engine, decl_id.clone()),
+        );
     }
 
     // check that the implementation checklist is complete

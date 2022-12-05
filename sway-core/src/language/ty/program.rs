@@ -342,7 +342,7 @@ impl TyProgram {
                 }
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
-                        TyAstNode::from(entry).collect_types_metadata(ctx),
+                        entry.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors

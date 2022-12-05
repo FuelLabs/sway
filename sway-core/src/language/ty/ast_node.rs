@@ -42,33 +42,29 @@ impl DisplayWithEngines for TyAstNode {
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping, type_engine)
+                exp.copy_types(type_mapping, engines)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => {
-                decl.copy_types(type_mapping, type_engine)
-            }
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.copy_types(type_mapping, type_engine)
-            }
+            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping, engines),
+            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_self_type(type_engine, self_type)
+                exp.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::Declaration(ref mut decl) => {
-                decl.replace_self_type(type_engine, self_type)
+                decl.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_self_type(type_engine, self_type)
+                expr.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::SideEffect => (),
         }
@@ -76,15 +72,13 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, type_engine)
+                exp.replace_decls(decl_mapping, engines)
             }
             TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_decls(decl_mapping, type_engine)
-            }
+            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }

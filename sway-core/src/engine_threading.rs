@@ -13,7 +13,7 @@ pub struct Engines<'a> {
 }
 
 impl Engines<'_> {
-    pub(crate) fn new<'a>(
+    pub fn new<'a>(
         type_engine: &'a TypeEngine,
         declaration_engine: &'a DeclarationEngine,
     ) -> Engines<'a> {

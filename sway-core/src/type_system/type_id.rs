@@ -54,8 +54,8 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl ReplaceSelfType for TypeId {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        match type_engine.look_up_type_id(*self) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        match engines.te().look_up_type_id(*self) {
             TypeInfo::SelfType => {
                 *self = self_type;
             }
@@ -65,10 +65,10 @@ impl ReplaceSelfType for TypeId {
                 ..
             } => {
                 for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(type_engine, self_type);
+                    type_parameter.replace_self_type(engines, self_type);
                 }
                 for variant_type in variant_types.iter_mut() {
-                    variant_type.replace_self_type(type_engine, self_type);
+                    variant_type.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Struct {
@@ -77,30 +77,30 @@ impl ReplaceSelfType for TypeId {
                 ..
             } => {
                 for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(type_engine, self_type);
+                    type_parameter.replace_self_type(engines, self_type);
                 }
                 for field in fields.iter_mut() {
-                    field.replace_self_type(type_engine, self_type);
+                    field.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.replace_self_type(type_engine, self_type);
+                    type_argument.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
                 if let Some(mut type_arguments) = type_arguments {
                     for type_argument in type_arguments.iter_mut() {
-                        type_argument.replace_self_type(type_engine, self_type);
+                        type_argument.replace_self_type(engines, self_type);
                     }
                 }
             }
             TypeInfo::Array(mut type_id, _) => {
-                type_id.replace_self_type(type_engine, self_type);
+                type_id.replace_self_type(engines, self_type);
             }
             TypeInfo::Storage { mut fields } => {
                 for field in fields.iter_mut() {
-                    field.replace_self_type(type_engine, self_type);
+                    field.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Unknown
@@ -120,8 +120,8 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl CopyTypes for TypeId {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        if let Some(matching_id) = type_mapping.find_match(*self, type_engine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        if let Some(matching_id) = type_mapping.find_match(*self, engines.te()) {
             *self = matching_id;
         }
     }

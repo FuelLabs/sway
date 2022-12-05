@@ -32,27 +32,27 @@ impl PartialEqWithEngines for TyImplTrait {
 }
 
 impl CopyTypes for TyImplTrait {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
         self.implementing_for_type_id
-            .copy_types(type_mapping, type_engine);
+            .copy_types(type_mapping, engines);
         self.methods
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
     }
 }
 
 impl ReplaceSelfType for TyImplTrait {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
         self.implementing_for_type_id
-            .replace_self_type(type_engine, self_type);
+            .replace_self_type(engines, self_type);
         self.methods
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }

@@ -55,20 +55,20 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.type_id.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.type_id.copy_types(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
     }
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.type_id.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_id.replace_self_type(engines, self_type);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }
 

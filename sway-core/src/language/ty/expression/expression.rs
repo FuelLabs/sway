@@ -32,22 +32,22 @@ impl PartialEqWithEngines for TyExpression {
 }
 
 impl CopyTypes for TyExpression {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.return_type.copy_types(type_mapping, type_engine);
-        self.expression.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.return_type.copy_types(type_mapping, engines);
+        self.expression.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.return_type.replace_self_type(type_engine, self_type);
-        self.expression.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.return_type.replace_self_type(engines, self_type);
+        self.expression.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyExpression {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
-        self.expression.replace_decls(decl_mapping, type_engine);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        self.expression.replace_decls(decl_mapping, engines);
     }
 }
 

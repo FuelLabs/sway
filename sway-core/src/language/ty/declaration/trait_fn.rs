@@ -29,20 +29,20 @@ impl PartialEqWithEngines for TyTraitFn {
 }
 
 impl CopyTypes for TyTraitFn {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
-        self.return_type.copy_types(type_mapping, type_engine);
+            .for_each(|x| x.copy_types(type_mapping, engines));
+        self.return_type.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyTraitFn {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
-        self.return_type.replace_self_type(type_engine, self_type);
+            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.return_type.replace_self_type(engines, self_type);
     }
 }
 

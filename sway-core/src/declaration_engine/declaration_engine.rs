@@ -250,23 +250,11 @@ pub(super) fn de_find_all_parents(
     DECLARATION_ENGINE.find_all_parents(index, type_engine)
 }
 
-pub(super) fn de_register_parent(index: &DeclarationId, parent: DeclarationId) {
-    DECLARATION_ENGINE.register_parent(index, parent);
-}
-
-pub(crate) fn de_insert_function(function: ty::TyFunctionDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_function(function)
-}
-
 pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
 ) -> Result<ty::TyFunctionDeclaration, CompileError> {
     DECLARATION_ENGINE.get_function(index, span)
-}
-
-pub(crate) fn de_insert_trait(r#trait: ty::TyTraitDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_trait(r#trait)
 }
 
 pub fn de_get_trait(
@@ -276,16 +264,8 @@ pub fn de_get_trait(
     DECLARATION_ENGINE.get_trait(index, span)
 }
 
-pub(crate) fn de_insert_trait_fn(trait_fn: ty::TyTraitFn) -> DeclarationId {
-    DECLARATION_ENGINE.insert_trait_fn(trait_fn)
-}
-
 pub fn de_get_trait_fn(index: DeclarationId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
     DECLARATION_ENGINE.get_trait_fn(index, span)
-}
-
-pub(crate) fn de_insert_impl_trait(impl_trait: ty::TyImplTrait) -> DeclarationId {
-    DECLARATION_ENGINE.insert_impl_trait(impl_trait)
 }
 
 pub fn de_get_impl_trait(
@@ -295,19 +275,11 @@ pub fn de_get_impl_trait(
     DECLARATION_ENGINE.get_impl_trait(index, span)
 }
 
-pub(crate) fn de_insert_struct(r#struct: ty::TyStructDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_struct(r#struct)
-}
-
 pub fn de_get_struct(
     index: DeclarationId,
     span: &Span,
 ) -> Result<ty::TyStructDeclaration, CompileError> {
     DECLARATION_ENGINE.get_struct(index, span)
-}
-
-pub(crate) fn de_insert_storage(storage: ty::TyStorageDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_storage(storage)
 }
 
 pub fn de_get_storage(
@@ -317,16 +289,8 @@ pub fn de_get_storage(
     DECLARATION_ENGINE.get_storage(index, span)
 }
 
-pub(crate) fn de_insert_abi(abi: ty::TyAbiDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_abi(abi)
-}
-
 pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
     DECLARATION_ENGINE.get_abi(index, span)
-}
-
-pub(crate) fn de_insert_constant(constant: ty::TyConstantDeclaration) -> DeclarationId {
-    DECLARATION_ENGINE.insert_constant(constant)
 }
 
 pub fn de_get_constant(

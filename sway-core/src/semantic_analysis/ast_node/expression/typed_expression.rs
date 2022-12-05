@@ -591,15 +591,7 @@ impl ty::TyExpression {
             )
         });
         let exp = check!(
-            instantiate_if_expression(
-                type_engine,
-                condition,
-                then,
-                r#else,
-                span,
-                ctx.type_annotation(),
-                ctx.self_type(),
-            ),
+            instantiate_if_expression(ctx, condition, then, r#else, span,),
             return err(warnings, errors),
             warnings,
             errors
@@ -1007,6 +999,9 @@ impl ty::TyExpression {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
+
         if !ctx.namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
             return err(warnings, errors);
@@ -1022,7 +1017,7 @@ impl ty::TyExpression {
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
             ctx.namespace
-                .apply_storage_load(ctx.type_engine, checkee, &storage_fields, span),
+                .apply_storage_load(type_engine, checkee, &storage_fields, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1307,6 +1302,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // TODO use lib-std's Address type instead of b256
         // type check the address and make sure it is
@@ -1415,7 +1411,9 @@ impl ty::TyExpression {
                 errors
             );
             abi_methods.push(
-                de_insert_function(method.to_dummy_func(Mode::ImplAbiFn)).with_parent(decl_id),
+                ctx.declaration_engine
+                    .insert_function(method.to_dummy_func(Mode::ImplAbiFn))
+                    .with_parent(ctx.declaration_engine, decl_id),
             );
         }
 
@@ -1431,7 +1429,7 @@ impl ty::TyExpression {
                 &abi_methods,
                 &span,
                 false,
-                type_engine,
+                engines,
             ),
             return err(warnings, errors),
             warnings,

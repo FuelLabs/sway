@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::DeclarationEngine,
+    engine_threading::Engines,
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
@@ -198,7 +199,7 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -226,7 +227,7 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns
             .implemented_traits
-            .extend(implemented_traits, type_engine);
+            .extend(implemented_traits, engines);
         for symbol in symbols {
             dst_ns
                 .use_synonyms
@@ -246,7 +247,7 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -275,7 +276,7 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns
             .implemented_traits
-            .extend(implemented_traits, type_engine);
+            .extend(implemented_traits, engines);
         let mut try_add = |symbol, path| {
             dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
         };
@@ -303,13 +304,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(type_engine, src, last_item, dst, alias)
+        self.item_import(engines, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -317,7 +318,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -354,14 +355,14 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let type_id = decl.return_type(&item.span(), type_engine).value;
+                let type_id = decl.return_type(&item.span(), engines.te()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(
                         src_ns
                             .implemented_traits
-                            .filter_by_type_item_import(type_id, type_engine),
-                        type_engine,
+                            .filter_by_type_item_import(type_id, engines),
+                        engines,
                     );
                 }
                 // no matter what, import it this way though.
@@ -391,9 +392,7 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        dst_ns
-            .implemented_traits
-            .extend(impls_to_insert, type_engine);
+        dst_ns.implemented_traits.extend(impls_to_insert, engines);
 
         ok((), warnings, errors)
     }

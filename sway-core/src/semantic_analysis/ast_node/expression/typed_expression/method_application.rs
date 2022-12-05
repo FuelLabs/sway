@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, de_insert_function, DeclarationId},
+    declaration_engine::{de_get_function, DeclarationId},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -108,7 +108,7 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
-                    let type_annotation = ctx.type_engine.insert_type(
+                    let type_annotation = type_engine.insert_type(
                         if param.name.span().as_str()
                             != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
                         {
@@ -315,6 +315,7 @@ pub(crate) fn type_check_method_application(
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
         let (mut new_warnings, new_errors) = type_engine.unify_right_with_self(
+            ctx.declaration_engine,
             arg.return_type,
             param.type_id,
             ctx.self_type(),
@@ -363,6 +364,9 @@ pub(crate) fn resolve_method_name(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+    let engines = ctx.engines();
+
     // retrieve the function declaration using the components of the method name
     let decl_id = match &method_name.inner {
         MethodName::FromType {
@@ -372,7 +376,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = check!(
                 call_path_binding.type_check_with_type_info(&mut ctx),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -396,7 +400,7 @@ pub(crate) fn resolve_method_name(
                     method_name,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -411,7 +415,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -421,7 +425,7 @@ pub(crate) fn resolve_method_name(
                     &call_path.suffix,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -436,7 +440,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -446,7 +450,7 @@ pub(crate) fn resolve_method_name(
                     method_name,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -475,7 +479,10 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_id = de_insert_function(func_decl).with_parent(decl_id);
+    let decl_id = ctx
+        .declaration_engine
+        .insert_function(func_decl)
+        .with_parent(ctx.declaration_engine, decl_id);
 
     ok(decl_id, warnings, errors)
 }

@@ -84,7 +84,7 @@ impl ty::TyFunctionParameter {
 
         let type_id = check!(
             ctx.namespace.resolve_type_with_self(
-                ctx.type_engine,
+                ctx.engines(),
                 initial_type_id,
                 ctx.type_engine.insert_type(TypeInfo::SelfType),
                 &type_span,

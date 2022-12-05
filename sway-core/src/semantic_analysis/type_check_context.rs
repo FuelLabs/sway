@@ -229,6 +229,7 @@ impl<'a> TypeCheckContext<'a> {
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(
+            self.declaration_engine,
             value,
             type_arguments,
             enforce_type_arguments,
@@ -248,7 +249,7 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace.resolve_type_with_self(
-            self.type_engine,
+            self.engines(),
             type_id,
             self.self_type,
             span,
@@ -265,7 +266,7 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_without_self(self.type_engine, type_id, span, type_info_prefix)
+            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
@@ -276,6 +277,7 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify_with_self(
+            self.declaration_engine,
             ty,
             self.type_annotation(),
             self.self_type(),
@@ -284,8 +286,8 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Get the various engines needed for engine threading.
-    pub(crate) fn engines(&self) -> Engines<'_> {
+    /// Get the engines needed for engine threading.
+    pub(crate) fn engines(&self) -> Engines<'a> {
         Engines::new(self.type_engine, self.declaration_engine)
     }
 }

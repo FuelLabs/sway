@@ -102,15 +102,15 @@ impl ty::TyMatchExpression {
             typed_if_exp = Some(match (typed_if_exp.clone(), conditional) {
                 (None, None) => result,
                 (None, Some(conditional)) => {
+                    // TODO: figure out if this argument matters or not
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
-                            self.return_type_id, // TODO: figure out if this argument matters or not
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -118,6 +118,7 @@ impl ty::TyMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), None) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: type_engine.insert_type(TypeInfo::Boolean),
@@ -125,13 +126,11 @@ impl ty::TyMatchExpression {
                     };
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -139,15 +138,14 @@ impl ty::TyMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), Some(conditional)) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,

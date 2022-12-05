@@ -9,9 +9,9 @@ use crate::{
 };
 
 use super::{
-    de_find_all_parents, de_insert, de_register_parent,
+    de_find_all_parents,
     declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
-    DeclMapping, ReplaceDecls,
+    DeclMapping, DeclarationEngine, ReplaceDecls,
 };
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
@@ -61,28 +61,28 @@ impl Spanned for DeclarationId {
 }
 
 impl CopyTypes for DeclarationId {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.copy_types(type_mapping, type_engine);
+        decl.copy_types(type_mapping, engines);
         de_replace_decl_id(self.clone(), decl);
     }
 }
 
 impl ReplaceSelfType for DeclarationId {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.replace_self_type(type_engine, self_type);
+        decl.replace_self_type(engines, self_type);
         de_replace_decl_id(self.clone(), decl);
     }
 }
 
 impl ReplaceDecls for DeclarationId {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         if let Some(new_decl_id) = decl_mapping.find_match(self) {
             self.0 = *new_decl_id;
             return;
         }
-        let all_parents = de_find_all_parents(self.clone(), type_engine);
+        let all_parents = de_find_all_parents(self.clone(), engines.te());
         for parent in all_parents.into_iter() {
             if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
                 self.0 = *new_decl_id;
@@ -97,8 +97,12 @@ impl DeclarationId {
         DeclarationId(index, span)
     }
 
-    pub(crate) fn with_parent(self, parent: DeclarationId) -> DeclarationId {
-        de_register_parent(&self, parent);
+    pub(crate) fn with_parent(
+        self,
+        declaration_engine: &DeclarationEngine,
+        parent: DeclarationId,
+    ) -> DeclarationId {
+        declaration_engine.register_parent(&self, parent);
         self
     }
 
@@ -109,30 +113,39 @@ impl DeclarationId {
     pub(crate) fn copy_types_and_insert_new(
         &self,
         type_mapping: &TypeMapping,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.copy_types(type_mapping, type_engine);
-        de_insert(decl, self.1.clone()).with_parent(self.clone())
+        decl.copy_types(type_mapping, engines);
+        engines
+            .de()
+            .insert(decl, self.1.clone())
+            .with_parent(engines.de(), self.clone())
     }
 
     pub(crate) fn replace_self_type_and_insert_new(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         self_type: TypeId,
     ) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.replace_self_type(type_engine, self_type);
-        de_insert(decl, self.1.clone()).with_parent(self.clone())
+        decl.replace_self_type(engines, self_type);
+        engines
+            .de()
+            .insert(decl, self.1.clone())
+            .with_parent(engines.de(), self.clone())
     }
 
     pub(crate) fn replace_decls_and_insert_new(
         &self,
         decl_mapping: &DeclMapping,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> DeclarationId {
         let mut decl = de_look_up_decl_id(self.clone());
-        decl.replace_decls(decl_mapping, type_engine);
-        de_insert(decl, self.1.clone()).with_parent(self.clone())
+        decl.replace_decls(decl_mapping, engines);
+        engines
+            .de()
+            .insert(decl, self.1.clone())
+            .with_parent(engines.de(), self.clone())
     }
 }

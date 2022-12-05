@@ -35,6 +35,7 @@ impl ty::TyFunctionDeclaration {
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
@@ -164,13 +165,13 @@ impl ty::TyFunctionDeclaration {
         let mut return_type_namespace = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(function_decl.return_type, type_engine);
+            .filter_by_type(function_decl.return_type, fn_ctx.engines());
         for type_param in function_decl.type_parameters.iter() {
             return_type_namespace.filter_against_type(type_engine, type_param.type_id);
         }
         ctx.namespace
             .implemented_traits
-            .extend(return_type_namespace, type_engine);
+            .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
     }

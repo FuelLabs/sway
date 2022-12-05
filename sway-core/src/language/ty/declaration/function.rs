@@ -31,17 +31,17 @@ pub struct TyFunctionDeclaration {
     pub purity: Purity,
 }
 
-impl From<&TyFunctionDeclaration> for TyAstNode {
-    fn from(o: &TyFunctionDeclaration) -> Self {
-        let span = o.span.clone();
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
-                de_insert_function(o.clone()),
-            )),
-            span,
-        }
-    }
-}
+// impl From<&TyFunctionDeclaration> for TyAstNode {
+//     fn from(o: &TyFunctionDeclaration) -> Self {
+//         let span = o.span.clone();
+//         TyAstNode {
+//             content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
+//                 de_insert_function(o.clone()),
+//             )),
+//             span,
+//         }
+//     }
+// }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
@@ -63,34 +63,34 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
-        self.return_type.copy_types(type_mapping, type_engine);
-        self.body.copy_types(type_mapping, type_engine);
+            .for_each(|x| x.copy_types(type_mapping, engines));
+        self.return_type.copy_types(type_mapping, engines);
+        self.body.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
-        self.return_type.replace_self_type(type_engine, self_type);
-        self.body.replace_self_type(type_engine, self_type);
+            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.return_type.replace_self_type(engines, self_type);
+        self.body.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyFunctionDeclaration {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
-        self.body.replace_decls(decl_mapping, type_engine);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        self.body.replace_decls(decl_mapping, engines);
     }
 }
 
@@ -141,6 +141,48 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         }
 
         false
+    }
+}
+
+impl CollectTypesMetadata for TyFunctionDeclaration {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut body = vec![];
+        for content in self.body.contents.iter() {
+            body.append(&mut check!(
+                content.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        body.append(&mut check!(
+            self.return_type.collect_types_metadata(ctx),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+        for type_param in self.type_parameters.iter() {
+            body.append(&mut check!(
+                type_param.type_id.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for param in self.parameters.iter() {
+            body.append(&mut check!(
+                param.type_id.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        ok(body, warnings, errors)
     }
 }
 
@@ -386,14 +428,14 @@ impl PartialEqWithEngines for TyFunctionParameter {
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.type_id.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.type_id.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.type_id.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_id.replace_self_type(engines, self_type);
     }
 }
 

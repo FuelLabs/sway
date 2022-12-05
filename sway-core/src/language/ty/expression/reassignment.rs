@@ -30,22 +30,22 @@ impl PartialEqWithEngines for TyReassignment {
 }
 
 impl CopyTypes for TyReassignment {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.rhs.copy_types(type_mapping, type_engine);
-        self.lhs_type.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.rhs.copy_types(type_mapping, engines);
+        self.lhs_type.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyReassignment {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.rhs.replace_self_type(type_engine, self_type);
-        self.lhs_type.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.rhs.replace_self_type(engines, self_type);
+        self.lhs_type.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyReassignment {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
-        self.rhs.replace_decls(decl_mapping, type_engine);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        self.rhs.replace_decls(decl_mapping, engines);
     }
 }
 
