@@ -29,7 +29,8 @@ pub struct FinalizedEntry {
     pub imm: u64,
     /// The function selector (only `Some` for contract ABI methods).
     pub selector: Option<[u8; 4]>,
-    /// The declaration index for the related function declaration, if this is test entry.
+    /// If this entry is constructed from a test function contains the declaration id for that
+    /// function, otherwise contains `None`.
     pub test_decl_id: Option<DeclarationId>,
 }
 

@@ -318,7 +318,7 @@ pub(super) fn compile_entry_function(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
-    decl_id: Option<DeclarationId>,
+    test_decl_id: Option<DeclarationId>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
@@ -329,7 +329,7 @@ pub(super) fn compile_entry_function(
         ast_fn_decl,
         logged_types_map,
         is_entry,
-        decl_id,
+        test_decl_id,
     )
     .map(|f| f.expect("entry point should never contain generics"))
 }
@@ -420,8 +420,10 @@ fn compile_fn_with_args(
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
+
     let decl_index = test_decl_id.map(|decl_id| *decl_id as usize);
     let decl_index_md_idx = md_mgr.decl_index_to_md(context, decl_index);
+
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
     metadata = md_combine(context, &metadata, &decl_index_md_idx);
 

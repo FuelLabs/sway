@@ -233,10 +233,10 @@ impl MetadataManager {
         decl_index: Option<usize>,
     ) -> Option<MetadataIndex> {
         let decl_index_val = decl_index.unwrap_or_default();
-        // Since Metadata cannot hold Optional values, first place an integer for providing
-        // Optional type, i.e Some or None. While reading the value back from MetadataIndex, first
-        // check the type of the read decl_index. This is needed for distinguising decl_index param
-        // to be None and Some(0).
+        // Since Metadata cannot hold optional values, we place an integer for providing
+        // optional type, i.e `Some` or `None`. While reading the value back from MetadataIndex, first
+        // check the type of the decl_index. This is needed for distinguishing `decl_index` param
+        // being None and Some(0).
         let is_decl_index_some = u64::from(decl_index.is_some());
         self.decl_index_md_cache
             .get(&decl_index)
