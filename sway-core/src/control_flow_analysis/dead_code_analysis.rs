@@ -902,10 +902,23 @@ fn connect_expression(
             Ok(vec![exit])
         }
         StructFieldAccess {
+            prefix,
             field_to_access,
             resolved_type_of_parent,
+            field_instantiation_span,
             ..
         } => {
+            connect_expression(
+                type_engine,
+                &prefix.expression,
+                graph,
+                leaves,
+                exit_node,
+                label,
+                tree_type,
+                field_instantiation_span.clone(),
+            )?;
+
             let resolved_type_of_parent = type_engine
                 .to_typeinfo(*resolved_type_of_parent, &field_to_access.span)
                 .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
@@ -1114,13 +1127,16 @@ fn connect_expression(
             tree_type,
             exp.span.clone(),
         ),
-        WhileLoop { body, .. } => {
+        WhileLoop {
+            body, condition, ..
+        } => {
             // a while loop can loop back to the beginning,
             // or it can terminate.
             // so we connect the _end_ of the while loop _both_ to its beginning and the next node.
             // the loop could also be entirely skipped
 
             let entry = leaves[0];
+
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());
 
             // it is possible for a whole while loop to be skipped so add edge from
@@ -1131,6 +1147,19 @@ fn connect_expression(
                 "condition is initially false".into(),
             );
             let mut leaves = vec![entry];
+
+            // handle the condition of the loop
+            connect_expression(
+                type_engine,
+                &condition.expression,
+                graph,
+                &leaves,
+                exit_node,
+                label,
+                tree_type,
+                Span::dummy(),
+            )?;
+
             let (l_leaves, _l_exit_node) = depth_first_insertion_code_block(
                 type_engine,
                 body,

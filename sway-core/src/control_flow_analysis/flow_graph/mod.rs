@@ -175,8 +175,7 @@ impl ControlFlowGraph {
         }
     }
 
-    #[allow(dead_code)]
-    /// Prints out graphviz for this graph
+    /// Prints out GraphViz DOT format for this graph.
     pub(crate) fn visualize(&self) {
         use petgraph::dot::{Config, Dot};
         tracing::info!(
