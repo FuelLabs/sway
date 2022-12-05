@@ -165,6 +165,7 @@ impl Namespace {
         let mut errors = vec![];
 
         let type_engine = engines.te();
+        let declaration_engine = engines.de();
 
         // grab the local module
         let local_module = check!(
@@ -182,7 +183,7 @@ impl Namespace {
         // resolve the type
         let type_id = check!(
             type_engine.resolve_type(
-                engines.de(),
+                declaration_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,

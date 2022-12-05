@@ -38,12 +38,6 @@ impl fmt::Display for DeclarationEngine {
 }
 
 impl DeclarationEngine {
-    pub(crate) fn clear(&self) {
-        self.slab.clear();
-        let mut parents = self.parents.write().unwrap();
-        parents.clear();
-    }
-
     pub(crate) fn look_up_decl_id(&self, index: DeclarationId) -> DeclarationWrapper {
         self.slab.get(*index)
     }
@@ -227,27 +221,8 @@ pub(crate) fn de_print() {
     println!("{}", &*DECLARATION_ENGINE);
 }
 
-pub(crate) fn de_clear() {
-    DECLARATION_ENGINE.clear();
-}
-
 pub fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
     DECLARATION_ENGINE.look_up_decl_id(index)
-}
-
-pub(crate) fn de_replace_decl_id(index: DeclarationId, wrapper: DeclarationWrapper) {
-    DECLARATION_ENGINE.replace_decl_id(index, wrapper)
-}
-
-pub(crate) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> DeclarationId {
-    DECLARATION_ENGINE.insert(declaration_wrapper, span)
-}
-
-pub(super) fn de_find_all_parents(
-    index: DeclarationId,
-    type_engine: &TypeEngine,
-) -> Vec<DeclarationId> {
-    DECLARATION_ENGINE.find_all_parents(index, type_engine)
 }
 
 pub fn de_get_function(

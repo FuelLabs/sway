@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::{de_get_function, de_insert, de_look_up_decl_id, DeclarationId},
+    declaration_engine::{de_get_function, de_look_up_decl_id, DeclarationId},
     engine_threading::*,
     error::*,
     language::CallPath,
@@ -560,6 +560,7 @@ impl TraitMap {
         decider: impl Fn(&TypeInfo, &TypeInfo) -> bool,
     ) -> TraitMap {
         let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let mut trait_map = TraitMap::default();
         for TraitEntry {
             key:
@@ -593,7 +594,9 @@ impl TraitMap {
                             decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
-                                de_insert(decl, decl_id.span()).with_parent(engines.de(), decl_id),
+                                declaration_engine
+                                    .insert(decl, decl_id.span())
+                                    .with_parent(declaration_engine, decl_id),
                             )
                         })
                         .collect();

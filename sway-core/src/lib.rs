@@ -665,7 +665,6 @@ pub fn compile_to_bytecode(
         build_config,
     );
     let result = asm_to_bytecode(asm_res, source_map);
-    clear_lazy_statics();
     result
 }
 
@@ -690,10 +689,6 @@ pub fn asm_to_bytecode(
         }
         None => err(warnings, errors),
     }
-}
-
-pub fn clear_lazy_statics() {
-    declaration_engine::declaration_engine::de_clear();
 }
 
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
