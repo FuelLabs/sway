@@ -357,7 +357,6 @@ impl TypeMapping {
                     elem_ty.type_id = type_id;
                     type_engine.insert_type(TypeInfo::Array(elem_ty, count))
                 }),
-            }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let fields = fields
