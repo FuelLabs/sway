@@ -204,14 +204,8 @@ impl TypeMapping {
             }
             (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
                 TypeMapping::from_type_parameters_and_type_arguments(
-                    vec![type_parameter]
-                        .iter()
-                        .map(|x| x.type_id)
-                        .collect::<Vec<_>>(),
-                    vec![type_argument]
-                        .iter()
-                        .map(|x| x.type_id)
-                        .collect::<Vec<_>>(),
+                    vec![type_parameter.type_id],
+                    vec![type_argument.type_id],
                 )
             }
             (
