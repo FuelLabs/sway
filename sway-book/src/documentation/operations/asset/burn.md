@@ -17,7 +17,7 @@ To use the function we must import it.
 
 ## burn
 
-To burn some amount of an asset we specify the `amount` that we would like to burn and pass it into the `burn()` function. 
+To burn some amount of an asset we specify the `amount` that we would like to burn and pass it into the `burn()` function.
 
 ```sway
 {{#include ../../../code/operations/asset_operations/src/lib.sw:burn}}

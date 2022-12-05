@@ -1,6 +1,6 @@
 # Summary
 
-# Introduction
+## Introduction
 
 - [Welcome!](./index.md)
 - [Installation](./documentation/introduction/installation/index.md)
@@ -9,7 +9,7 @@
   - [From Source](./documentation/introduction/installation/source.md)
   - [Fuel Core](./documentation/introduction/installation/fuel-core.md)
 
-# The Sway Programming Language
+## The Sway Programming Language
 
 - [Program Types](./documentation/language/program-types/index.md)
   - [Smart Contract](./documentation/language/program-types/contract.md)
@@ -69,7 +69,7 @@
   - [Comments](./documentation/language/style-guide/comments.md)
   - [Getter Functions](./documentation/language/style-guide/getters.md)
 
-# Common Operations
+## Common Operations
 
 - [Storage](./documentation/operations/storage/index.md)
   - [Initialization](./documentation/operations/storage/init.md)
@@ -112,7 +112,7 @@
   - [Fuel Address](./documentation/operations/signatures/fuel.md)
   - [Ethereum Address](./documentation/operations/signatures/ethereum.md)
 
-# Examples
+## Examples
 
 - [Counter](./documentation/examples/counter.md)
 - [Fizzbuzz](./documentation/examples/fizzbuzz.md)
@@ -120,7 +120,7 @@
 - [Wallet](./documentation/examples/wallet.md)
 - [Liquidity Pool](./documentation/examples/liquidity-pool.md)
 
-# Miscellaneous
+## Miscellaneous
 
 - [Standard Library Prelude](./documentation/misc/prelude.md)
 - [Language Comparison](./documentation/misc/language-comparison/index.md)
@@ -143,7 +143,7 @@
   - [Storage](./documentation/misc/workarounds/storage.md)
 - [Manifest Reference](./documentation/misc/manifest/index.md)
 
-# Fuel Orchestrator (Forc)
+## Fuel Orchestrator (Forc)
 
 - [Commands](./documentation/forc/commands/index.md)
   - [Tab Completion](./documentation/forc/commands/tab-completion.md)

@@ -2,7 +2,7 @@
 
 The following example implements access control to restrict functionality to a privileged user.
 
- ## ABI
+## ABI
 
 The [`interface`](../language/program-types/contract.md) contains a function to set the owner and a function that only the owner can use.
 

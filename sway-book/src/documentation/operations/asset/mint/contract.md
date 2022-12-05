@@ -8,7 +8,7 @@ To use the function we must import it.
 {{#include ../../../../code/operations/asset_operations/src/lib.sw:mint_to_contract_import}}
 ```
 
-To mint some amount of an asset we specify the `amount` that we would like to mint and the `ContractId` to send it to. 
+To mint some amount of an asset we specify the `amount` that we would like to mint and the `ContractId` to send it to.
 
 ```sway
 {{#include ../../../../code/operations/asset_operations/src/lib.sw:mint_to_contract}}

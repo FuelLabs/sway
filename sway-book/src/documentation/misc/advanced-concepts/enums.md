@@ -6,7 +6,7 @@ The space reserved after the tag is equivalent to the size of the _largest_ enum
 
 ## Examples
 
-The following examples consist of [enums](../../language/built-ins/enums.md) with two variants. 
+The following examples consist of [enums](../../language/built-ins/enums.md) with two variants.
 
 The largest variant for [`Example One`](#example-one) is the [`u64`](../../language/built-ins/numeric.md) and [`b256`](../../language/built-ins/b256.md) for [`Example Two`](#example-two).
 

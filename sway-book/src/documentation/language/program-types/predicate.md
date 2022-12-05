@@ -12,7 +12,7 @@ In Fuel, coins can be sent to an address uniquely representing a particular pred
 
 ## Spending Predicate Coins
 
-The coin UTXOs become spendable not on the provision of a valid signature, but rather if the supplied predicate both has a root that matches their owner, and [evaluates](https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#predicate-verification) to `true`. 
+The coin UTXOs become spendable not on the provision of a valid signature, but rather if the supplied predicate both has a root that matches their owner, and [evaluates](https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/index.md#predicate-verification) to `true`.
 
 If a predicate reverts, or tries to access impure VM opcodes, the evaluation is automatically `false`.
 

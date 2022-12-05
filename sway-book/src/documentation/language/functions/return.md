@@ -18,7 +18,7 @@ To return from a function explicitly we use the `return` keyword followed by the
 {{#include ../../../code/language/functions/src/explicit.sw:main}}
 ```
 
-A return expression is typically used at the end of a function; however, it can be used earlier as a mechanism to exit a function early if some condition is met. 
+A return expression is typically used at the end of a function; however, it can be used earlier as a mechanism to exit a function early if some condition is met.
 
 ```sway
 {{#include ../../../code/language/functions/src/explicit.sw:return_data}}

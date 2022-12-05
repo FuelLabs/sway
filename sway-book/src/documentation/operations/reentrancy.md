@@ -4,7 +4,7 @@ Re-entrancy occurs when a contract makes a call back into the contract that call
 
 To mitigate security concerns there are two approaches that are commonly used:
 
-- [Implement a guard](#re-entrency-guard): detect when a re-entrancy occurs
+- [Implement a guard](#re-entrancy-guard): detect when a re-entrancy occurs
 - [Defensive programming](#checks-effects-interactions-pattern): perform calls after all state changes have been made
 
 ## Re-entrancy Guard
@@ -23,7 +23,7 @@ Then call it in a contract function.
 {{#include ../../code/operations/re_entrency/src/main.sw:guard}}
 ```
 
-## Checks-Effects-Interactions Pattern 
+## Checks-Effects-Interactions Pattern
 
 The pattern states that all state (storage) changes should be made before a call is made.
 

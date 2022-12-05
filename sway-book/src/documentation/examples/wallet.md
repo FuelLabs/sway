@@ -4,7 +4,7 @@ The following example implements a wallet that utilizes the base asset.
 
 ## ABI
 
-The [`interface`](../language/program-types/contract.md) contains a function which tracks the amount of the base asset received and a function to transfer the funds. 
+The [`interface`](../language/program-types/contract.md) contains a function which tracks the amount of the base asset received and a function to transfer the funds.
 
 ```sway
 {{#include ../../code/examples/wallet/src/main.sw:abi}}
