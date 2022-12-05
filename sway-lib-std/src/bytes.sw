@@ -665,6 +665,7 @@ fn test_packing() {
     assert(bytes.capacity() == 16);
     assert(size_of_val(bytes.buf) == 16);
 }
+
 #[test()]
 fn test_capacity() {
     let mut bytes = Bytes::new();
