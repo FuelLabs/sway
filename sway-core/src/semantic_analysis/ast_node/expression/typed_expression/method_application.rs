@@ -205,33 +205,35 @@ pub(crate) fn type_check_method_application(
         Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
-        let unknown_decl = check!(
-            ctx.namespace.resolve_symbol(name).cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        if *is_mutable {
+            let unknown_decl = check!(
+                ctx.namespace.resolve_symbol(name).cloned(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
 
-        let is_decl_mutable = match unknown_decl {
-            ty::TyDeclaration::ConstantDeclaration(_) => false,
-            _ => {
-                let variable_decl = check!(
-                    unknown_decl.expect_variable().cloned(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                variable_decl.mutability.is_mutable()
+            let is_decl_mutable = match unknown_decl {
+                ty::TyDeclaration::ConstantDeclaration(_) => false,
+                _ => {
+                    let variable_decl = check!(
+                        unknown_decl.expect_variable().cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    variable_decl.mutability.is_mutable()
+                }
+            };
+
+            if !is_decl_mutable {
+                errors.push(CompileError::MethodRequiresMutableSelf {
+                    method_name: method_name_binding.inner.easy_name(),
+                    variable_name: name.clone(),
+                    span,
+                });
+                return err(warnings, errors);
             }
-        };
-
-        if !is_decl_mutable && *is_mutable {
-            errors.push(CompileError::MethodRequiresMutableSelf {
-                method_name: method_name_binding.inner.easy_name(),
-                variable_name: name.clone(),
-                span,
-            });
-            return err(warnings, errors);
         }
     }
 

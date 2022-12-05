@@ -269,6 +269,8 @@ pub struct PkgOpts {
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
+    /// Print the computed Sway DCA (Dead Code Analysis) graph.
+    pub dca_graph: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -2099,6 +2101,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
+    .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
@@ -2429,6 +2432,7 @@ fn build_profile_from_opts(
             Default::default()
         });
     profile.print_ast |= print.ast;
+    profile.print_dca_graph |= print.dca_graph;
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
     profile.print_intermediate_asm |= print.intermediate_asm;
@@ -2772,7 +2776,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace);
+        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
