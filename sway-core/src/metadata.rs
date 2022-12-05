@@ -20,14 +20,14 @@ pub(crate) struct MetadataManager {
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
-    md_decl_index_cache: HashMap<MetadataIndex, usize>,
+    md_decl_index_cache: HashMap<MetadataIndex, Option<usize>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
-    decl_index_md_cache: HashMap<usize, MetadataIndex>,
+    decl_index_md_cache: HashMap<Option<usize>, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -73,14 +73,21 @@ impl MetadataManager {
                 // Create a new decl index and save it in the cache
                 md_idx
                     .get_content(context)
-                    .unwrap_struct("decl_index", 1)
+                    .unwrap_struct("decl_index", 2)
                     .and_then(|fields| {
-                        let index = fields[0].unwrap_integer().map(|index| index as usize)?;
+                        // First check if the read metadata corresponds to Some(_) or None
+                        let is_index_some = fields[0].unwrap_integer().map(|index| index != 0)?;
+                        let index = if is_index_some {
+                            Some(fields[1].unwrap_integer().map(|index| index as usize)?)
+                        } else {
+                            None
+                        };
                         self.md_decl_index_cache.insert(md_idx, index);
                         Some(index)
                     })
             })
         })
+        .flatten()
     }
 
     pub(crate) fn md_to_storage_op(
@@ -223,8 +230,14 @@ impl MetadataManager {
     pub(crate) fn decl_index_to_md(
         &mut self,
         context: &mut Context,
-        decl_index: usize,
+        decl_index: Option<usize>,
     ) -> Option<MetadataIndex> {
+        let decl_index_val = decl_index.unwrap_or_default();
+        // Since Metadata cannot hold Optional values, first place an integer for providing
+        // Optional type, i.e Some or None. While reading the value back from MetadataIndex, first
+        // check the type of the read decl_index. This is needed for distinguising decl_index param
+        // to be None and Some(0).
+        let is_decl_index_some = u64::from(decl_index.is_some());
         self.decl_index_md_cache
             .get(&decl_index)
             .copied()
@@ -232,7 +245,10 @@ impl MetadataManager {
                 let md_idx = MetadataIndex::new_struct(
                     context,
                     "decl_index",
-                    vec![Metadatum::Integer(decl_index as u64)],
+                    vec![
+                        Metadatum::Integer(is_decl_index_some),
+                        Metadatum::Integer(decl_index_val as u64),
+                    ],
                 );
                 self.decl_index_md_cache.insert(decl_index, md_idx);
 
