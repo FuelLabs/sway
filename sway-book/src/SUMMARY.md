@@ -7,6 +7,7 @@
   - [Fuelup](./documentation/introduction/installation/fuelup.md)
   - [Cargo](./documentation/introduction/installation/cargo.md)
   - [From Source](./documentation/introduction/installation/source.md)
+  - [Fuel Core](./documentation/introduction/installation/fuel-core.md)
 
 # The Sway Programming Language
 
