@@ -351,13 +351,12 @@ impl TypeMapping {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_ty, count) => {
-                if let Some(type_id) = self.find_match(elem_ty.type_id, type_engine) {
+            TypeInfo::Array(mut elem_ty, count) => self
+                .find_match(elem_ty.type_id, type_engine)
+                .map(|type_id| {
                     elem_ty.type_id = type_id;
-                    Some(type_engine.insert_type(TypeInfo::Array(elem_ty, count)))
-                } else {
-                    None
-                }
+                    type_engine.insert_type(TypeInfo::Array(elem_ty, count))
+                }),
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
