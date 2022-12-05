@@ -3,7 +3,8 @@ use fuels::{
     prelude::*,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
-        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer, UniqueIdentifier, UtxoId
+        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
+        UniqueIdentifier, UtxoId,
     },
 };
 use std::str::FromStr;
@@ -17,8 +18,15 @@ abigen!(
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
+    let mut deployment_wallet = WalletUnlocked::new_random(None);
+    let deployment_coins = setup_single_asset_coins(
+        deployment_wallet.address(),
+        BASE_ASSET_ID,
+        1,
+        DEFAULT_COIN_AMOUNT,
+    );
 
-    let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
+    // let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
 
     let messages = setup_single_message(
         &Bech32Address {
@@ -32,19 +40,21 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     );
 
     let (provider, _address) =
-        setup_test_provider(coins.clone(), messages.clone(), None, None).await;
-    wallet.set_provider(provider);
+        setup_test_provider(deployment_coins.clone(), messages.clone(), None, None).await;
+
+    wallet.set_provider(provider.clone());
+    deployment_wallet.set_provider(provider);
 
     let contract_id = Contract::deploy(
         "test_artifacts/tx_contract/out/debug/tx_contract.bin",
-        &wallet,
+        &deployment_wallet,
         TxParameters::default(),
         StorageConfiguration::default(),
     )
     .await
     .unwrap();
 
-    let instance = TxContractTest::new(contract_id.clone(), wallet.clone());
+    let instance = TxContractTest::new(contract_id.clone(), deployment_wallet.clone());
 
     (instance, contract_id.into(), wallet)
 }
@@ -214,7 +224,10 @@ mod tx {
     #[tokio::test]
     async fn can_get_inputs_count() {
         let (contract_instance, _, _) = get_contracts().await;
-        let inputs_count = 3;
+
+        let call_handler = contract_instance.methods().get_tx_inputs_count();
+        let script = call_handler.get_call_execution_script().await.unwrap();
+        let inputs = script.tx.inputs();
 
         let result = contract_instance
             .methods()
@@ -222,13 +235,16 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, inputs_count);
+        assert_eq!(result.value, inputs.len() as u64);
     }
 
     #[tokio::test]
     async fn can_get_outputs_count() {
         let (contract_instance, _, _) = get_contracts().await;
-        let outputs_count = 1;
+
+        let call_handler = contract_instance.methods().get_tx_outputs_count();
+        let script = call_handler.get_call_execution_script().await.unwrap();
+        let outputs = script.tx.outputs();
 
         let result = contract_instance
             .methods()
@@ -236,7 +252,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, outputs_count);
+        assert_eq!(result.value, outputs.len() as u64);
     }
 
     #[tokio::test]
@@ -444,7 +460,7 @@ mod inputs {
                 .call()
                 .await
                 .unwrap();
-            assert_eq!(result.value, Input::Message());
+            assert_eq!(result.value, Input::Coin());
         }
 
         #[tokio::test]
@@ -517,7 +533,7 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id.0.0;
+                let message_id: [u8; 32] = *messages[0].message_id.0 .0;
                 ();
                 assert_eq!(result.value, Bits256(message_id));
                 Ok(())
