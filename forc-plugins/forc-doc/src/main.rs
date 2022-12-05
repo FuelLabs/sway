@@ -77,13 +77,11 @@ pub fn main() -> Result<()> {
     }
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");
+    let assets_path = doc_path.join("assets");
+    fs::create_dir_all(&assets_path)?;
     for file in ASSETS_DIR.files() {
-        let mut doc_path = doc_path.clone();
-        doc_path.push("assets");
-
-        fs::create_dir_all(&doc_path)?;
-        doc_path.push(file.path());
-        fs::write(&doc_path, file.contents())?;
+        let asset_path = assets_path.join(file.path());
+        fs::write(&asset_path, file.contents())?;
     }
 
     // check if the user wants to open the doc in the browser
