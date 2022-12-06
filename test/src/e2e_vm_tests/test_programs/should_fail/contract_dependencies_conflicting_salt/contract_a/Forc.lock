@@ -1,0 +1,26 @@
+[[package]]
+name = 'contract_a'
+source = 'member'
+dependencies = ['std']
+contract-dependencies = [
+    'contract_b',
+    'contract_c',
+]
+
+[[package]]
+name = 'contract_b'
+source = 'path+from-root-C28B6153CE3E3FEB'
+contract-dependencies = ['contract_c']
+
+[[package]]
+name = 'contract_c'
+source = 'path+from-root-C28B6153CE3E3FEB'
+
+[[package]]
+name = 'core'
+source = 'path+from-root-C28B6153CE3E3FEB'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C28B6153CE3E3FEB'
+dependencies = ['core']

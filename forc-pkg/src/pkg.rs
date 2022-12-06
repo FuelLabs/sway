@@ -2468,7 +2468,6 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         build_options.pkg.locked,
         build_options.pkg.offline,
     )?;
-    println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
