@@ -44,10 +44,11 @@ pub fn main() -> Result<()> {
         bail!("forc-doc does not support workspaces.")
     };
 
-    // check if the out path exists
+    // create doc path
+    const DOC_DIR_NAME: &str = "doc";
     let project_name = &pkg_manifest.project.name;
     let out_path = default_output_directory(manifest.dir());
-    let doc_path = out_path.join("doc");
+    let doc_path = out_path.join(DOC_DIR_NAME);
     fs::create_dir_all(&doc_path)?;
 
     // compile the program and extract the docs
@@ -77,18 +78,25 @@ pub fn main() -> Result<()> {
     }
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");
-    let assets_path = doc_path.join("assets");
+    const ASSETS_DIR_NAME: &str = "assets";
+    let assets_path = doc_path.join(ASSETS_DIR_NAME);
     fs::create_dir_all(&assets_path)?;
     for file in ASSETS_DIR.files() {
         let asset_path = assets_path.join(file.path());
         fs::write(&asset_path, file.contents())?;
     }
+    // Sway syntax highlighting file
+    const SWAY_HJS_FILENAME: &str = "sway.js";
+    let sway_hjs = std::include_bytes!("../../../scripts/highlightjs/sway.js");
+    fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
 
     // check if the user wants to open the doc in the browser
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
-        let path = doc_path.join("all.html");
-        let default_browser_opt = std::env::var_os("BROWSER");
+        const INDEX_FILENAME: &str = "all.html";
+        const BROWSER_ENV_VAR: &str = "BROWSER";
+        let path = doc_path.join(INDEX_FILENAME);
+        let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {
                 let browser = PathBuf::from(def_browser);
