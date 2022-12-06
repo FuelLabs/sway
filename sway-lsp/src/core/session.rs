@@ -138,7 +138,7 @@ impl Session {
 
         for (k, v) in &member_manifests {
             let source = v.entry_string().unwrap();
-            let _ = traverse::items::parse_module(source, Arc::new(v.entry_path()));
+            //let _ = traverse::items::parse_module(source, Arc::new(v.entry_path()));
         }
 
         let mut diagnostics = Vec::new();
