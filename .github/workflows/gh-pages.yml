@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - braqzen-2443
     tags:
       - v*
 
@@ -40,7 +41,9 @@ jobs:
         with:
           mdbook-version: "0.4.15"
 
-      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
+      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
+
+      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/reference
 
       - name: Deploy master
         uses: peaceiris/actions-gh-pages@v3
@@ -61,7 +64,15 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book
-          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}
+          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/book
+        if: startsWith(github.ref, 'refs/tags')
+
+      - name: Deploy tag
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/reference
+          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/reference
         if: startsWith(github.ref, 'refs/tags')
 
       - name: Create latest HTML redirect file

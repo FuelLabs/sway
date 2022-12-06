@@ -1,4 +1,6 @@
-# Setup
+# The Sway Reference
+
+## Setup
 
 If you wish contribute to this reference:
 
@@ -9,16 +11,14 @@ If you wish contribute to this reference:
    cargo install mdbook
    ```
 
-3. To [build](https://rust-lang.github.io/mdBook/cli/build.html) the book make sure that you are in `/sway/sway-book` and run
+3. To [build](https://rust-lang.github.io/mdBook/cli/build.html) the book, ensure you are in `/sway/sway-book` and run:
 
    ```bash
    mdbook build
    ```
 
-4. To develop the book in real time, in the browser, run
+4. To serve a hot-reloading instance of the book in your browser, run:
 
    ```bash
    mdbook serve --open
    ```
-
-## How to edit the book

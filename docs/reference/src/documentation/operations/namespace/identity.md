@@ -5,7 +5,7 @@ The `Identity` type is an [enum](../../language/built-ins/enums.md) that allows 
 An `Identity` is implemented as follows.
 
 ```sway
-{{#include ../../../../../sway-lib-std/src/identity.sw:docs_identity}}
+{{#include ../../../../../../sway-lib-std/src/identity.sw:docs_identity}}
 ```
 
 Casting to an `Identity` must be done explicitly:
