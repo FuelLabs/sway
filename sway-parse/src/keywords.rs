@@ -69,7 +69,8 @@ keyword_impls! {
     TrueToken,
     FalseToken,
     BreakToken,
-    ContinueToken
+    ContinueToken,
+    ConfigurableToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
@@ -185,4 +186,5 @@ pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "false",
     "break",
     "continue",
+    "configurable",
 };

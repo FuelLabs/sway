@@ -524,6 +524,7 @@ impl Renderable for TyConstantDeclaration {
             value: _,
             attributes,
             visibility: _,
+            is_configurable: _,
             return_type: _,
             span,
         } = &self;

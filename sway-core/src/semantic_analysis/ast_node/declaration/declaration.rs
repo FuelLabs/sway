@@ -77,6 +77,7 @@ impl ty::TyDeclaration {
                 value,
                 visibility,
                 attributes,
+                is_configurable,
                 span,
                 ..
             }) => {
@@ -130,6 +131,7 @@ impl ty::TyDeclaration {
                     visibility,
                     return_type,
                     attributes,
+                    is_configurable,
                     span,
                 };
                 let typed_const_decl =

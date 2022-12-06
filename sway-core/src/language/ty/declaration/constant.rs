@@ -13,6 +13,7 @@ pub struct TyConstantDeclaration {
     pub value: TyExpression,
     pub visibility: Visibility,
     pub return_type: TypeId,
+    pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
     pub span: Span,
 }

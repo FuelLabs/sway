@@ -21,6 +21,7 @@ impl Format for ItemKind {
             Abi(item_abi) => item_abi.format(formatted_code, formatter),
             Const(item_const) => item_const.format(formatted_code, formatter),
             Storage(item_storage) => item_storage.format(formatted_code, formatter),
+            Configurable(_item_configurable) => todo!(),
         }
     }
 }
@@ -38,6 +39,7 @@ impl LeafSpans for ItemKind {
             Trait(item_trait) => item_trait.leaf_spans(),
             Impl(item_impl) => item_impl.leaf_spans(),
             Use(item_use) => item_use.leaf_spans(),
+            Configurable(_item_configurable) => todo!(),
         }
     }
 }

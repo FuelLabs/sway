@@ -33,6 +33,7 @@ pub use crate::{
     intrinsics::*,
     item::{
         item_abi::ItemAbi,
+        item_configurable::{ConfigurableField, ItemConfigurable},
         item_const::ItemConst,
         item_enum::ItemEnum,
         item_fn::ItemFn,

@@ -11,11 +11,11 @@ use sway_ast::{
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
-    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, Module,
-    ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
-    PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Traits,
-    Ty, TypeField, UseTree, WhereClause,
+    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
+    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType,
+    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
+    Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -189,6 +189,15 @@ fn item_to_ast_nodes(
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(handler, type_engine, item_storage, attributes)?,
         )),
+        ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
+            handler,
+            type_engine,
+            item_configurable,
+            attributes,
+        )?
+        .into_iter()
+        .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
+        .collect(),
     };
 
     Ok(contents
@@ -673,6 +682,7 @@ pub(crate) fn item_const_to_constant_declaration(
         type_ascription_span,
         value: expr_to_expression(handler, type_engine, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
+        is_configurable: false,
         attributes,
         span,
     })
@@ -717,6 +727,46 @@ fn item_storage_to_storage_declaration(
         fields,
     };
     Ok(storage_declaration)
+}
+
+fn item_configurable_to_constant_declarations(
+    handler: &Handler,
+    type_engine: &TypeEngine,
+    item_configurable: ItemConfigurable,
+    _attributes: AttributesMap,
+) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
+    let mut errors = Vec::new();
+    let declarations: Vec<ConstantDeclaration> = item_configurable
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|configurable_field| {
+            let attributes = item_attrs_to_map(handler, &configurable_field.attribute_list)?;
+            configurable_field_to_constant_declaration(
+                handler,
+                type_engine,
+                configurable_field.value,
+                attributes,
+            )
+        })
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each configurable field is declared once
+    let mut names_of_declarations = std::collections::HashSet::new();
+    declarations.iter().for_each(|v| {
+        if !names_of_declarations.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateConfigurableField {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = emit_all(handler, errors) {
+        return Err(errors);
+    }
+
+    Ok(declarations)
 }
 
 fn type_field_to_struct_field(
@@ -1838,6 +1888,31 @@ fn storage_field_to_storage_field(
         initializer: expr_to_expression(handler, type_engine, storage_field.initializer)?,
     };
     Ok(storage_field)
+}
+
+fn configurable_field_to_constant_declaration(
+    handler: &Handler,
+    type_engine: &TypeEngine,
+    configurable_field: sway_ast::ConfigurableField,
+    attributes: AttributesMap,
+) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let span = configurable_field.name.span();
+    let type_ascription_span = if let Ty::Path(path_type) = &configurable_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        configurable_field.ty.span()
+    };
+
+    Ok(ConstantDeclaration {
+        name: configurable_field.name,
+        type_ascription: ty_to_type_info(handler, type_engine, configurable_field.ty)?,
+        type_ascription_span: Some(type_ascription_span),
+        value: expr_to_expression(handler, type_engine, configurable_field.initializer)?,
+        visibility: Visibility::Public,
+        is_configurable: true,
+        attributes,
+        span,
+    })
 }
 
 fn statement_to_ast_nodes(

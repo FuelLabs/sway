@@ -13,6 +13,7 @@ pub use {
         intrinsics::*,
         item::{
             item_abi::ItemAbi,
+            item_configurable::ItemConfigurable,
             item_const::ItemConst,
             item_enum::ItemEnum,
             item_fn::ItemFn,
