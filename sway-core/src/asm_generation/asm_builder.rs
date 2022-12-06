@@ -1,8 +1,8 @@
 mod functions;
 
 use super::{
-    compiler_constants, from_ir::*, register_sequencer::RegisterSequencer, AbstractInstructionSet,
-    DataSection, Entry,
+    compiler_constants, from_ir::*, programs::ProgramKind, register_sequencer::RegisterSequencer,
+    AbstractInstructionSet, DataSection, Entry,
 };
 
 use crate::{
@@ -21,6 +21,8 @@ use either::Either;
 use std::{collections::HashMap, sync::Arc};
 
 pub(super) struct AsmBuilder<'ir> {
+    program_kind: ProgramKind,
+
     // Data section is used by the rest of code gen to layout const memory.
     data_section: DataSection,
 
@@ -70,11 +72,13 @@ type AsmBuilderResult = (
 
 impl<'ir> AsmBuilder<'ir> {
     pub(super) fn new(
+        program_kind: ProgramKind,
         data_section: DataSection,
         reg_seqr: RegisterSequencer,
         context: &'ir Context,
     ) -> Self {
         AsmBuilder {
+            program_kind,
             data_section,
             reg_seqr,
             func_label_map: HashMap::new(),

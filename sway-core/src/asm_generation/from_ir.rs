@@ -88,7 +88,14 @@ fn compile_module_to_asm(
     context: &Context,
     module: Module,
 ) -> CompileResult<AbstractProgram> {
-    let mut builder = AsmBuilder::new(DataSection::default(), reg_seqr, context);
+    let kind = match module.get_kind(context) {
+        Kind::Contract => ProgramKind::Contract,
+        Kind::Library => ProgramKind::Library,
+        Kind::Predicate => ProgramKind::Predicate,
+        Kind::Script => ProgramKind::Script,
+    };
+
+    let mut builder = AsmBuilder::new(kind, DataSection::default(), reg_seqr, context);
 
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.
@@ -123,12 +130,6 @@ fn compile_module_to_asm(
             }
         })
         .collect();
-    let kind = match module.get_kind(context) {
-        Kind::Contract => ProgramKind::Contract,
-        Kind::Library => ProgramKind::Library,
-        Kind::Predicate => ProgramKind::Predicate,
-        Kind::Script => ProgramKind::Script,
-    };
 
     ok(
         AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr),

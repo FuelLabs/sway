@@ -1,13 +1,13 @@
 use super::{
     compiler_constants, ir_type_size_in_bytes, size_bytes_in_words,
-    size_bytes_round_up_to_word_alignment, AsmBuilder,
+    size_bytes_round_up_to_word_alignment, AsmBuilder, ProgramKind,
 };
 
 use crate::{
     asm_generation::{from_ir::*, Entry},
     asm_lang::{
-        virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate24,
-        VirtualOp,
+        virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     error::*,
     fuel_prelude::fuel_asm::GTFArgs,
@@ -167,9 +167,7 @@ impl<'ir> AsmBuilder<'ir> {
         }
 
         if func_is_entry {
-            // Read the args from VM/transaction memory.
-            let func_is_main = function.get_name(self.context) == "main";
-            self.compile_external_args(function, func_is_main)
+            self.compile_external_args(function)
         } else {
             // Make copies of the arg registers.
             self.compile_fn_call_args(function)
@@ -284,7 +282,7 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     // Handle loading the arguments of a contract call
-    fn compile_external_args(&mut self, function: Function, from_script_data: bool) {
+    fn compile_external_args(&mut self, function: Function) {
         match function.args_iter(self.context).count() {
             // Nothing to do if there are no arguments
             0 => (),
@@ -294,34 +292,54 @@ impl<'ir> AsmBuilder<'ir> {
             1 => {
                 let (_, val) = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.value_to_register(val);
-                if !from_script_data {
-                    // The 'base' actually contains the argument.
-                    self.read_args_base_from_frame(&single_arg_reg);
-                } else {
-                    self.read_args_base_from_script_data(&single_arg_reg);
+                match self.program_kind {
+                    ProgramKind::Script => {
+                        self.read_args_base_from_script_data(&single_arg_reg);
 
-                    // The base is an offset.  Dereference it.
-                    if val.get_type(self.context).unwrap().is_copy_type() {
-                        self.cur_bytecode.push(Op {
-                            opcode: either::Either::Left(VirtualOp::LW(
-                                single_arg_reg.clone(),
-                                single_arg_reg.clone(),
-                                VirtualImmediate12 { value: 0 },
-                            )),
-                            comment: "load main fn parameter".into(),
-                            owning_span: None,
-                        });
+                        // The base is an offset.  Dereference it.
+                        if val.get_type(self.context).unwrap().is_copy_type() {
+                            self.cur_bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::LW(
+                                    single_arg_reg.clone(),
+                                    single_arg_reg.clone(),
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "load main fn parameter".into(),
+                                owning_span: None,
+                            });
+                        }
                     }
+                    ProgramKind::Contract => self.read_args_base_from_frame(&single_arg_reg),
+                    ProgramKind::Predicate => {
+                        self.read_args_base_from_predicate_data(&single_arg_reg);
+
+                        // The base is an offset.  Dereference it.
+                        if val.get_type(self.context).unwrap().is_copy_type() {
+                            self.cur_bytecode.push(Op {
+                                opcode: either::Either::Left(VirtualOp::LW(
+                                    single_arg_reg.clone(),
+                                    single_arg_reg.clone(),
+                                    VirtualImmediate12 { value: 0 },
+                                )),
+                                comment: "load main fn parameter".into(),
+                                owning_span: None,
+                            });
+                        }
+                    }
+                    _ => (),
                 }
             }
 
             // Otherwise, the args are bundled together and pointed to by the base register.
             _ => {
                 let args_base_reg = self.reg_seqr.next();
-                if !from_script_data {
-                    self.read_args_base_from_frame(&args_base_reg);
-                } else {
-                    self.read_args_base_from_script_data(&args_base_reg);
+                match self.program_kind {
+                    ProgramKind::Script => self.read_args_base_from_script_data(&args_base_reg),
+                    ProgramKind::Contract => self.read_args_base_from_frame(&args_base_reg),
+                    ProgramKind::Predicate => {
+                        self.read_args_base_from_predicate_data(&args_base_reg)
+                    }
+                    _ => return,
                 }
 
                 // Successively load each argument. The asm generated depends on the arg type size
@@ -424,6 +442,125 @@ impl<'ir> AsmBuilder<'ir> {
             comment: "base register for main fn parameter".into(),
             owning_span: None,
         });
+    }
+
+    /// Read the returns the base pointer for predicate data
+    fn read_args_base_from_predicate_data(&mut self, base_reg: &VirtualRegister) {
+        // Final label to jump to to continue execution, once the predicate data pointer is
+        // successfully found
+        let success_label = self.reg_seqr.get_label();
+
+        // Find the type of the "Input" using `GTF`. The returned value is one of three possible
+        // ones:
+        // 0 -> Input Coin = 0,
+        // 1 -> Input Contract,
+        // 2 -> Input Message
+        // We only care about input coins and input message.
+        let input_type = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                input_type.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: GTFArgs::InputType as u16,
+                },
+            )),
+            comment: "get Input type".into(),
+            owning_span: None,
+        });
+
+        // Label to jump to if the input type is *not* zero, i.e. not "coin". Then do the jump.
+        let input_type_not_coin_label = self.reg_seqr.get_label();
+        self.cur_bytecode.push(Op::jump_if_not_zero(
+            input_type.clone(),
+            input_type_not_coin_label,
+        ));
+
+        // If the input is indeed a "message", then use `GTF` to get the "input coin predicate data
+        // pointer" and store in the `base_reg`
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                base_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: GTFArgs::InputCoinPredicateData as u16,
+                },
+            )),
+            comment: "get input coin predicate data pointer".into(),
+            owning_span: None,
+        });
+
+        // Now that we have the actual pointer, we can jump to the success label to continue
+        // execution.
+        self.cur_bytecode.push(Op::jump_to_label(success_label));
+
+        // Otherwise, insert the label to jump to if the input type is not "coin".
+        self.cur_bytecode
+            .push(Op::unowned_jump_label(input_type_not_coin_label));
+
+        // Check if the input type is "message" by comparing the input type to a register
+        // containing 2.
+        let input_type_not_message = self.reg_seqr.next();
+        let two = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::MOVI(
+                two.clone(),
+                VirtualImmediate18 { value: 2u32 },
+            )),
+            comment: "register containing 2".into(),
+            owning_span: None,
+        });
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::EQ(
+                input_type_not_message.clone(),
+                input_type,
+                two,
+            )),
+            comment: "Input type is not message(2)".into(),
+            owning_span: None,
+        });
+
+        // Label to jump to if the input type is *not* 2, i.e. not "message" (and not "coin" since
+        // we checked that earlier). Then do the jump.
+        let input_type_not_message_label = self.reg_seqr.get_label();
+        self.cur_bytecode.push(Op::jump_if_not_zero(
+            input_type_not_message,
+            input_type_not_message_label,
+        ));
+
+        // If the input is indeed a "message", then use `GTF` to get the "input message predicate
+        // data pointer" and store it in `base_reg`
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GTF(
+                base_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: GTFArgs::InputMessagePredicateData as u16,
+                },
+            )),
+            comment: "Input message predicate data pointer".into(),
+            owning_span: None,
+        });
+        self.cur_bytecode.push(Op::jump_to_label(success_label));
+
+        // Otherwise, insert the label to jump to if the input type is not "message".
+        self.cur_bytecode
+            .push(Op::unowned_jump_label(input_type_not_message_label));
+
+        // If we got here, then the input type is neither a coin nor a message. In this case, the
+        // predicate should just fail to verify and should return `false`.
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::RET(VirtualRegister::Constant(
+                ConstantRegister::Zero,
+            ))),
+            owning_span: None,
+            comment: "returning false".into(),
+        });
+
+        // Final success label to continue execution at if we successfully obtained the predicate
+        // data pointer
+        self.cur_bytecode
+            .push(Op::unowned_jump_label(success_label));
     }
 
     fn init_locals(&mut self, function: Function) {
