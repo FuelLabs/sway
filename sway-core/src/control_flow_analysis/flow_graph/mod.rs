@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    declaration_engine::DeclarationEngine,
     language::ty::{self, GetDeclIdent},
     Ident,
 };
@@ -71,10 +72,10 @@ pub enum ControlFlowGraphNode {
 }
 
 impl GetDeclIdent for ControlFlowGraphNode {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
-            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(),
+            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(declaration_engine),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.clone()),
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
                 Some(method_name.clone())
@@ -150,14 +151,20 @@ impl ControlFlowGraph {
             self.graph.add_edge(*entry, to, label.clone());
         }
     }
-    pub(crate) fn add_node(&mut self, node: ControlFlowGraphNode) -> NodeIndex {
-        let ident_opt = node.get_decl_ident();
+
+    pub(crate) fn add_node(
+        &mut self,
+        declaration_engine: &DeclarationEngine,
+        node: ControlFlowGraphNode,
+    ) -> NodeIndex {
+        let ident_opt = node.get_decl_ident(declaration_engine);
         let node_index = self.graph.add_node(node);
         if let Some(ident) = ident_opt {
             self.decls.insert(ident.into(), node_index);
         }
         node_index
     }
+
     pub(crate) fn add_edge(
         &mut self,
         from: NodeIndex,
@@ -167,8 +174,12 @@ impl ControlFlowGraph {
         self.graph.add_edge(from, to, edge)
     }
 
-    pub(crate) fn get_node_from_decl(&self, cfg_node: &ControlFlowGraphNode) -> Option<NodeIndex> {
-        if let Some(ident) = cfg_node.get_decl_ident() {
+    pub(crate) fn get_node_from_decl(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        cfg_node: &ControlFlowGraphNode,
+    ) -> Option<NodeIndex> {
+        if let Some(ident) = cfg_node.get_decl_ident(declaration_engine) {
             self.decls.get(&ident.into()).cloned()
         } else {
             None

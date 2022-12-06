@@ -16,7 +16,6 @@ pub(crate) use self::{
 
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
-    declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -45,6 +44,9 @@ impl ty::TyExpression {
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = ctx.declaration_engine;
+
         let call_path = CallPath {
             prefixes: vec![
                 Ident::new_with_override("core", span.clone()),
@@ -72,10 +74,9 @@ impl ty::TyExpression {
             errors
         );
         let method = check!(
-            CompileResult::from(de_get_function(
-                decl_id.clone(),
-                &method_name_binding.span()
-            )),
+            CompileResult::from(
+                declaration_engine.get_function(decl_id.clone(), &method_name_binding.span())
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -120,7 +121,7 @@ impl ty::TyExpression {
             }
             ExpressionKind::Literal(lit) => Self::type_check_literal(lit, span, type_engine),
             ExpressionKind::Variable(name) => {
-                Self::type_check_variable_expression(ctx.namespace, type_engine, name, span)
+                Self::type_check_variable_expression(ctx.by_ref(), name, span)
             }
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
@@ -369,15 +370,17 @@ impl ty::TyExpression {
     }
 
     pub(crate) fn type_check_variable_expression(
-        namespace: &Namespace,
-        type_engine: &TypeEngine,
+        ctx: TypeCheckContext,
         name: Ident,
         span: Span,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let exp = match namespace.resolve_symbol(&name).value {
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+
+        let exp = match ctx.namespace.resolve_symbol(&name).value {
             Some(ty::TyDeclaration::VariableDeclaration(decl)) => {
                 let ty::TyVariableDeclaration {
                     name: decl_name,
@@ -401,7 +404,7 @@ impl ty::TyExpression {
                     return_type,
                     ..
                 } = check!(
-                    CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                    CompileResult::from(declaration_engine.get_constant(decl_id.clone(), &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -420,7 +423,7 @@ impl ty::TyExpression {
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
-                    CompileResult::from(de_get_abi(decl_id.clone(), &span)),
+                    CompileResult::from(declaration_engine.get_abi(decl_id.clone(), &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1304,6 +1307,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // TODO use lib-std's Address type instead of b256
@@ -1338,7 +1342,7 @@ impl ty::TyExpression {
         } = match abi {
             ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
-                    CompileResult::from(de_get_abi(decl_id, &span)),
+                    CompileResult::from(declaration_engine.get_abi(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1367,7 +1371,7 @@ impl ty::TyExpression {
                             errors
                         );
                         check!(
-                            unknown_decl.expect_abi(&span),
+                            unknown_decl.expect_abi(declaration_engine, &span),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1407,15 +1411,15 @@ impl ty::TyExpression {
         let mut abi_methods = vec![];
         for decl_id in interface_surface.into_iter() {
             let method = check!(
-                CompileResult::from(de_get_trait_fn(decl_id.clone(), &name.span())),
+                CompileResult::from(declaration_engine.get_trait_fn(decl_id.clone(), &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
             abi_methods.push(
-                ctx.declaration_engine
+                declaration_engine
                     .insert_function(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(ctx.declaration_engine, decl_id),
+                    .with_parent(declaration_engine, decl_id),
             );
         }
 
@@ -1912,6 +1916,7 @@ impl ty::TyExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::declaration_engine::DeclarationEngine;
     use sway_error::type_error::TypeError;
 
     fn do_type_check(

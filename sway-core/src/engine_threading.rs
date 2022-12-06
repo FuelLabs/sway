@@ -149,23 +149,3 @@ impl<T: OrdWithEngines> OrdWithEngines for [T] {
             .unwrap_or_else(|| self.len().cmp(&rhs.len()))
     }
 }
-
-// impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         self.thing.fmt(f, self.engines.te())
-//     }
-// }
-
-// impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         self.thing.hash(state, self.engines.te())
-//     }
-// }
-
-// impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
-//     fn eq(&self, rhs: &Self) -> bool {
-//         self.thing.eq(&rhs.thing, self.engines)
-//     }
-// }
-
-// impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}

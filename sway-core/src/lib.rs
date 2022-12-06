@@ -232,7 +232,7 @@ pub fn parsed_to_ast(
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(
-        type_engine,
+        Engines::new(type_engine, declaration_engine),
         &typed_program,
         match build_config {
             Some(cfg) => cfg.print_dca_graph,
@@ -705,12 +705,12 @@ pub fn asm_to_bytecode(
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     program: &ty::TyProgram,
     print_graph: bool,
 ) -> CompileResult<()> {
-    let dca_res = dead_code_analysis(type_engine, program);
-    let rpa_errors = return_path_analysis(type_engine, program);
+    let dca_res = dead_code_analysis(engines, program);
+    let rpa_errors = return_path_analysis(engines, program);
     let rpa_res = if rpa_errors.is_empty() {
         ok((), vec![], vec![])
     } else {
@@ -729,21 +729,23 @@ fn perform_control_flow_analysis(
 ///
 /// Returns the graph that was used for analysis.
 fn dead_code_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     program: &ty::TyProgram,
 ) -> CompileResult<ControlFlowGraph> {
+    let declaration_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
-    module_dead_code_analysis(type_engine, &program.root, &tree_type, &mut dead_code_graph)
-        .flat_map(|_| {
-            let warnings = dead_code_graph.find_dead_code();
+    module_dead_code_analysis(engines, &program.root, &tree_type, &mut dead_code_graph).flat_map(
+        |_| {
+            let warnings = dead_code_graph.find_dead_code(declaration_engine);
             ok(dead_code_graph, warnings, vec![])
-        })
+        },
+    )
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
 fn module_dead_code_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph,
@@ -756,12 +758,12 @@ fn module_dead_code_analysis(
             let name = submodule.library_name.clone();
             let tree_type = parsed::TreeType::Library { name };
             res.flat_map(|_| {
-                module_dead_code_analysis(type_engine, &submodule.module, &tree_type, graph)
+                module_dead_code_analysis(engines, &submodule.module, &tree_type, graph)
             })
         });
     submodules_res.flat_map(|()| {
         ControlFlowGraph::append_module_to_dead_code_graph(
-            type_engine,
+            engines,
             &module.all_nodes,
             tree_type,
             graph,
@@ -771,21 +773,22 @@ fn module_dead_code_analysis(
     })
 }
 
-fn return_path_analysis(type_engine: &TypeEngine, program: &ty::TyProgram) -> Vec<CompileError> {
+fn return_path_analysis(engines: Engines<'_>, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(type_engine, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root, &mut errors);
     errors
 }
 
 fn module_return_path_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     module: &ty::TyModule,
     errors: &mut Vec<CompileError>,
 ) {
+    let type_engine = engines.te();
     for (_, submodule) in &module.submodules {
-        module_return_path_analysis(type_engine, &submodule.module, errors);
+        module_return_path_analysis(engines, &submodule.module, errors);
     }
-    let graph = ControlFlowGraph::construct_return_path_graph(type_engine, &module.all_nodes);
+    let graph = ControlFlowGraph::construct_return_path_graph(engines, &module.all_nodes);
     match graph {
         Ok(graph) => errors.extend(graph.analyze_return_paths(type_engine)),
         Err(error) => errors.push(error),

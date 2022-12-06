@@ -215,15 +215,6 @@ impl DeclarationEngine {
     }
 }
 
-#[allow(dead_code)]
-pub(crate) fn de_print() {
-    println!("{}", &*DECLARATION_ENGINE);
-}
-
-pub fn de_look_up_decl_id(index: DeclarationId) -> DeclarationWrapper {
-    DECLARATION_ENGINE.look_up_decl_id(index)
-}
-
 pub fn de_get_function(
     index: DeclarationId,
     span: &Span,
@@ -236,10 +227,6 @@ pub fn de_get_trait(
     span: &Span,
 ) -> Result<ty::TyTraitDeclaration, CompileError> {
     DECLARATION_ENGINE.get_trait(index, span)
-}
-
-pub fn de_get_trait_fn(index: DeclarationId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
-    DECLARATION_ENGINE.get_trait_fn(index, span)
 }
 
 pub fn de_get_impl_trait(
@@ -261,10 +248,6 @@ pub fn de_get_storage(
     span: &Span,
 ) -> Result<ty::TyStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.get_storage(index, span)
-}
-
-pub fn de_get_abi(index: DeclarationId, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_abi(index, span)
 }
 
 pub fn de_get_constant(

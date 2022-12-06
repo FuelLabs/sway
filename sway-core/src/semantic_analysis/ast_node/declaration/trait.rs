@@ -40,6 +40,7 @@ impl ty::TyTraitDeclaration {
         }
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
@@ -77,12 +78,12 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            let decl_id = ctx.declaration_engine.insert_trait_fn(method.clone());
+            let decl_id = declaration_engine.insert_trait_fn(method.clone());
             new_interface_surface.push(decl_id.clone());
             dummy_interface_surface.push(
-                ctx.declaration_engine
+                declaration_engine
                     .insert_function(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(ctx.declaration_engine, decl_id),
+                    .with_parent(declaration_engine, decl_id),
             );
         }
 
@@ -116,7 +117,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            new_methods.push(ctx.declaration_engine.insert_function(method));
+            new_methods.push(declaration_engine.insert_function(method));
         }
 
         let typed_trait_decl = ty::TyTraitDeclaration {
@@ -151,12 +152,15 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
         for decl_id in interface_surface.iter() {
             let method = check!(
-                CompileResult::from(de_get_trait_fn(decl_id.clone(), &call_path.span())),
+                CompileResult::from(
+                    declaration_engine.get_trait_fn(decl_id.clone(), &call_path.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -209,12 +213,15 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
         for decl_id in interface_surface.iter() {
             let method = check!(
-                CompileResult::from(de_get_trait_fn(decl_id.clone(), &call_path.span())),
+                CompileResult::from(
+                    declaration_engine.get_trait_fn(decl_id.clone(), &call_path.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -258,9 +265,9 @@ impl ty::TyTraitDeclaration {
             method.copy_types(&type_mapping, engines);
             impld_method_ids.insert(
                 method.name.clone(),
-                ctx.declaration_engine
+                declaration_engine
                     .insert_function(method)
-                    .with_parent(ctx.declaration_engine, decl_id),
+                    .with_parent(declaration_engine, decl_id),
             );
         }
 
@@ -281,6 +288,7 @@ impl ty::TyTraitDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         let ty::TyTraitDeclaration {
@@ -307,7 +315,9 @@ impl ty::TyTraitDeclaration {
         );
         for decl_id in interface_surface.iter() {
             let mut method = check!(
-                CompileResult::from(de_get_trait_fn(decl_id.clone(), &trait_name.span())),
+                CompileResult::from(
+                    declaration_engine.get_trait_fn(decl_id.clone(), &trait_name.span())
+                ),
                 continue,
                 warnings,
                 errors

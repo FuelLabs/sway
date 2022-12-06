@@ -31,6 +31,7 @@ impl ty::TyImplTrait {
         } = impl_trait;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // create a namespace for the impl
@@ -168,7 +169,7 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(de_get_abi(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_abi(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -420,6 +421,7 @@ impl ty::TyImplTrait {
         } = impl_self;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // create the namespace for the impl
@@ -525,7 +527,7 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| ctx.declaration_engine.insert_function(d.clone()))
+            .map(|d| declaration_engine.insert_function(d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -561,6 +563,7 @@ fn type_check_trait_implementation(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
 
@@ -631,7 +634,7 @@ fn type_check_trait_implementation(
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
-            CompileResult::from(de_get_trait_fn(decl_id.clone(), block_span)),
+            CompileResult::from(declaration_engine.get_trait_fn(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -721,7 +724,7 @@ fn type_check_trait_implementation(
             }
 
             let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-                ctx.declaration_engine,
+                declaration_engine,
                 impl_method_param.type_id,
                 impl_method_signature_param.type_id,
                 ctx.self_type(),
@@ -764,7 +767,7 @@ fn type_check_trait_implementation(
         // unify the return type of the implemented function and the return
         // type of the signature
         let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-            ctx.declaration_engine,
+            declaration_engine,
             impl_method.return_type,
             impl_method_signature.return_type,
             ctx.self_type(),
@@ -824,7 +827,7 @@ fn type_check_trait_implementation(
             .append(&mut unconstrained_type_parameters_to_be_added);
 
         let name = impl_method.name.clone();
-        let decl_id = ctx.declaration_engine.insert_function(impl_method);
+        let decl_id = declaration_engine.insert_function(impl_method);
         impld_method_ids.insert(name, decl_id);
     }
 
@@ -861,9 +864,9 @@ fn type_check_trait_implementation(
         method.copy_types(&type_mapping, engines);
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
-            ctx.declaration_engine
+            declaration_engine
                 .insert_function(method)
-                .with_parent(ctx.declaration_engine, decl_id.clone()),
+                .with_parent(declaration_engine, decl_id.clone()),
         );
     }
 

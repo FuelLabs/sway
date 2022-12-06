@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    declaration_engine::{de_get_function, DeclMapping, DeclarationEngine, ReplaceDecls},
     engine_threading::*,
     error::*,
     language::{parsed, ty::*},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self) -> Option<Ident>;
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -107,8 +107,8 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self) -> Option<Ident> {
-        self.content.get_decl_ident()
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+        self.content.get_decl_ident(declaration_engine)
     }
 }
 
@@ -259,9 +259,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(declaration_engine),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect => None,
