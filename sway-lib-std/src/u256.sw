@@ -370,6 +370,8 @@ impl core::ops::Subtract for U256 {
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
             result_b = word_2 - other_word_2;
@@ -380,6 +382,8 @@ impl core::ops::Subtract for U256 {
             if result_b > 0 {
                 result_b -= 1;
             } else {
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // which we ruled out at the beginning of the function.
                 result_a -= 1;
                 result_b = u64::max();
             }
@@ -396,6 +400,8 @@ impl core::ops::Subtract for U256 {
                 if result_b > 0 {
                     result_b -= 1;
                 } else {
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // which we ruled out at the beginning of the function.
                     result_a -= 1;
                     result_b = u64::max();
                 }
