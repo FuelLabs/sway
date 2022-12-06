@@ -94,8 +94,8 @@ pub(crate) fn type_info_to_symbol_kind(
         TypeInfo::Numeric => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
-        TypeInfo::Array(type_id, ..) => {
-            let type_info = type_engine.look_up_type_id(*type_id);
+        TypeInfo::Array(elem_ty, _) => {
+            let type_info = type_engine.look_up_type_id(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info)
         }
         _ => SymbolKind::Unknown,
