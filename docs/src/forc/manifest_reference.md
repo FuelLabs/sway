@@ -182,3 +182,12 @@ fn main() {
   let foo_id = foo::CONTRACT_ID;
 }
 ```
+
+Since contract id is created deterministcly, building the same contract would always result with the same contract id. Since two contracts with same contract id cannot be deployed, a salt is needed to add randomness to the contract id. For each contract dependency declared under `[contract-dependencies]`, a salt can be specified by providing it with the declaration, an example can be seen below.
+
+```toml
+[contract-dependencies]
+foo = { path = "../foo", salt = "0x1000000000000000000000000000000000000000000000000000000000000000" }
+```
+
+For contract dependencies that does not declare any salt, default salt is implicitly added (which is 32 bytes of 0).
