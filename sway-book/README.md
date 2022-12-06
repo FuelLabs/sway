@@ -1,8 +1,6 @@
 # Setup
 
-> TODO: forc plugins etc. need to be added back in
-
-If you wish to alter the documentation presented in this book then follow the instructions.
+If you wish contribute to this reference:
 
 1. Install [Rust](https://www.rust-lang.org/tools/install) if it's not installed.
 2. Install [mdbook](https://rust-lang.github.io/mdBook/).
@@ -24,5 +22,3 @@ If you wish to alter the documentation presented in this book then follow the in
    ```
 
 ## How to edit the book
-
-> TODO: specify contributing guidelines to ensure that the quality and conciseness of the book remains high
