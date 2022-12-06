@@ -55,6 +55,7 @@ pub struct Edge {
     /// This may differ from the package name as declared under the dependency package's manifest.
     pub name: String,
     pub kind: DepKind,
+    pub salt: Option<fuel_tx::Salt>,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -326,8 +327,8 @@ impl GitSourceIndex {
 }
 
 impl Edge {
-    pub fn new(name: String, kind: DepKind) -> Edge {
-        Edge { name, kind }
+    pub fn new(name: String, kind: DepKind, salt: Option<fuel_tx::Salt>) -> Edge {
+        Edge { name, kind, salt }
     }
 }
 
@@ -1465,16 +1466,22 @@ fn fetch_deps(
     let parent_id = graph[node].id();
     let package_manifest = &manifest_map[&parent_id];
     // If the current package is a contract, we need to first get the deployment dependencies
-    let deps: Vec<(String, Dependency, DepKind)> = package_manifest
+    let deps: Vec<(String, (Dependency, Option<fuel_tx::Salt>), DepKind)> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .map(|(n, d)| {
+            (
+                n.clone(),
+                (d.dependency.clone(), Some(d.salt)),
+                DepKind::Contract,
+            )
+        })
         .chain(
             package_manifest
                 .deps()
-                .map(|(n, d)| (n.clone(), d.clone(), DepKind::Library)),
+                .map(|(n, d)| (n.clone(), (d.clone(), None), DepKind::Library)),
         )
         .collect();
-    for (dep_name, dep, dep_kind) in deps {
+    for (dep_name, (dep, salt), dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
         let parent_manifest = &manifest_map[&parent_id];
         let source = dep_to_source_patched(parent_manifest, &name, &dep, member_manifests)
@@ -1492,7 +1499,7 @@ fn fetch_deps(
             }
         };
 
-        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind, salt);
         // Ensure we have an edge to the dependency.
         graph.update_edge(node, dep_node, dep_edge.clone());
 
@@ -2105,7 +2112,7 @@ pub fn sway_build_config(
 /// then the std prelude will also be added.
 pub fn dependency_namespace(
     lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
-    compiled_contract_deps: &HashMap<NodeIx, BuiltPackage>,
+    compiled_contract_deps: &HashMap<NodeIx, (BuiltPackage, fuel_tx::Salt)>,
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -2128,7 +2135,9 @@ pub fn dependency_namespace(
                 let mut constants = BTreeMap::default();
                 let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
-                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    Some((dep_contract_compiled, dep_contract_salt)) => {
+                        contract_id(dep_contract_compiled, dep_contract_salt)
+                    }
                     // On `check` we don't compile contracts, so we use a placeholder.
                     None => ContractId::default(),
                 };
@@ -2459,6 +2468,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         build_options.pkg.locked,
         build_options.pkg.offline,
     )?;
+    println!("{:?}", petgraph::dot::Dot::new(&build_plan.graph()));
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
@@ -2510,14 +2520,39 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage) -> ContractId {
+fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
-    let salt = fuel_tx::Salt::new([0; 32]);
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    contract.id(&salt, &contract.root(), &state_root)
+    contract.id(salt, &contract.root(), &state_root)
+}
+
+/// Returns the `Salt` for the given contract depdendency.
+///
+/// Checks if there are conficting `Salt` declarations for the given contract dependency in the
+/// graph, errors out if that is the case.
+fn contract_dep_salt(graph: &Graph, contract_dep_node: NodeIx) -> Result<fuel_tx::Salt> {
+    let salt_declarations: Vec<fuel_tx::Salt> = graph
+        .edges_directed(contract_dep_node, Direction::Incoming)
+        .filter(|e| e.weight().kind == DepKind::Contract)
+        .filter_map(|e| e.weight().salt)
+        .collect();
+
+    let number_of_unique_salts = salt_declarations.iter().collect::<HashSet<_>>().len();
+
+    if number_of_unique_salts == 1 {
+        Ok(salt_declarations[0])
+    } else if number_of_unique_salts == 0 {
+        Ok(fuel_tx::Salt::default())
+    } else {
+        let name = &graph[contract_dep_node].name;
+        bail!(
+            "There are conflicting salt declarations for contract dependency named: {}",
+            name
+        );
+    }
 }
 
 /// Build an entire forc package and return the built_package output.
@@ -2580,7 +2615,8 @@ pub fn build(
             .edges_directed(node, Direction::Incoming)
             .any(|e| e.weight().kind == DepKind::Contract)
         {
-            compiled_contract_deps.insert(node, built_package.clone());
+            let contract_dep_salt = contract_dep_salt(&plan.graph, node)?;
+            compiled_contract_deps.insert(node, (built_package.clone(), contract_dep_salt));
         }
         if let TreeType::Library { .. } = built_package.tree_type {
             lib_namespace_map.insert(node, namespace.into());

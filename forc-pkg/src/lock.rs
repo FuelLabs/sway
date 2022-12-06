@@ -8,7 +8,9 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::Path,
+    str::FromStr,
 };
+use sway_core::fuel_prelude::fuel_tx;
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -201,14 +203,14 @@ impl Lock {
                 .flatten()
                 .map(|lib_dep| (lib_dep, DepKind::Library));
             for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
-                let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
+                let (dep_salt, dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                let dep_edge = Edge::new(dep_name, dep_kind.to_owned());
+                let dep_edge = Edge::new(dep_name, dep_kind.to_owned(), dep_salt);
                 graph.update_edge(node, dep_node, dep_edge);
             }
         }
@@ -262,7 +264,7 @@ fn pkg_dep_line(
     }
 }
 
-type ParsedPkgLine<'a> = (Option<&'a str>, &'a str);
+type ParsedPkgLine<'a> = (Option<fuel_tx::Salt>, Option<&'a str>, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
 // I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
@@ -272,8 +274,23 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
 
     // Check for the open bracket.
+    let salt = if !s.starts_with('(') {
+        None
+    } else {
+        // If we have the open bracket, grab everything until the closing bracket.
+        let s = &s["(".len()..];
+        let mut iter = s.split(')');
+        let dep_salt = iter
+            .next()
+            .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+        // It is possible that we don't have a salt but a dep_name so we do not want to error out
+        // instead we want to return Some(Salt) if the str we grabbed is corresponding to a `Salt`.
+        fuel_tx::Salt::from_str(dep_salt).ok()
+    };
+
+    // Check for the open bracket.
     if !s.starts_with('(') {
-        return Ok((None, s));
+        return Ok((salt, None, s));
     }
 
     // If we have the open bracket, grab everything until the closing bracket.
@@ -286,7 +303,7 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     // The rest is the unique package string.
     let s = &s[dep_name.len() + ")".len()..];
     let pkg_str = s.trim_start();
-    Ok((Some(dep_name), pkg_str))
+    Ok((salt, Some(dep_name), pkg_str))
 }
 
 pub fn print_diff(member_names: &HashSet<String>, diff: &Diff) {
