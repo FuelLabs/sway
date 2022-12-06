@@ -6,11 +6,11 @@ use anyhow::Result;
 pub fn add(command: AddCommand) -> Result<()> {
     // 1. How will forc know where to add a dependency to?
     let AddCommand {
-        crates,
+        crates: _,
         manifest_path,
     } = command;
 
-    let dir = match manifest_path {
+    let _dir = match manifest_path {
         Some(ref path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
@@ -19,6 +19,6 @@ pub fn add(command: AddCommand) -> Result<()> {
     // 3. Write new dependency to that block (name and version)
     Ok(())
 }
-pub fn remove(command: RemoveCommand) -> Result<()> {
+pub fn remove(_command: RemoveCommand) -> Result<()> {
     Ok(())
 }
