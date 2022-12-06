@@ -2330,7 +2330,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, ast_res, &sway_build_config)
+        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value

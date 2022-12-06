@@ -491,6 +491,11 @@ impl core::ops::Divide for U256 {
 
         assert(divisor != zero);
 
+        if self.a == 0 && self.b == 0 && divisor.a == 0 && divisor.b == 0 {
+            let res = U128::from((self.c, self.d)) / U128::from((divisor.c, divisor.d));
+            return U256::from((0, 0, res.upper, res.lower));
+        }
+
         let mut quotient = U256::from((0, 0, 0, 0));
         let mut remainder = U256::from((0, 0, 0, 0));
 

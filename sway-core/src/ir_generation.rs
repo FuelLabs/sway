@@ -16,7 +16,7 @@ pub(crate) use purity::{check_function_purity, PurityEnv};
 use crate::{language::ty, TypeEngine};
 
 pub fn compile_program(
-    program: ty::TyProgram,
+    program: &ty::TyProgram,
     include_tests: bool,
     type_engine: &TypeEngine,
 ) -> Result<Context, CompileError> {
@@ -34,8 +34,8 @@ pub fn compile_program(
     } = program;
 
     let logged_types = logged_types
-        .into_iter()
-        .map(|(log_id, type_id)| (type_id, log_id))
+        .iter()
+        .map(|(log_id, type_id)| (*type_id, *log_id))
         .collect();
 
     let mut ctx = Context::default();
@@ -49,7 +49,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
-            test_fns,
+            &test_fns,
         ),
         ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
             type_engine,
@@ -58,7 +58,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
-            test_fns,
+            &test_fns,
         ),
         ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
             &mut ctx,
@@ -66,7 +66,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
-            test_fns,
+            &test_fns,
             type_engine,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
@@ -75,7 +75,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
-            test_fns,
+            &test_fns,
         ),
     }?;
     ctx.verify()
