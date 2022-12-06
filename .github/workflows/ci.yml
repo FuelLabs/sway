@@ -143,7 +143,8 @@ jobs:
 
       - name: Emit reference logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/reference &> tmp.txt
+          mdbook build docs/reference
+          mdbook build docs/reference &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
             cat tmp.txt
