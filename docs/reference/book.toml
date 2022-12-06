@@ -3,12 +3,10 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 language = "en"
 multilingual = false
 src = "src"
-title = "The Sway Book"
+title = "The Sway Reference"
 
 [output.html]
 git-repository-url = "https://github.com/FuelLabs/sway"
-
-[preprocessor.forc-documenter]
 
 [output.html.fold]
 enable = true

@@ -142,9 +142,3 @@
   - [Pattern Matching](./documentation/misc/workarounds/pattern-matching.md)
   - [Storage](./documentation/misc/workarounds/storage.md)
 - [Manifest Reference](./documentation/misc/manifest/index.md)
-
-## Fuel Orchestrator (Forc)
-
-- [Commands](./documentation/forc/commands/index.md)
-  - [Tab Completion](./documentation/forc/commands/tab-completion.md)
-- [Plugins](./documentation/forc/plugins/index.md)
