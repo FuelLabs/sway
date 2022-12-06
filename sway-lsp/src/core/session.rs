@@ -24,7 +24,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, TypeEngine,
+    CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -266,7 +266,11 @@ impl Session {
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    traverse_typed_tree::traverse_node(type_engine, an, tm)
+                    traverse_typed_tree::traverse_node(
+                        Engines::new(type_engine, declaration_engine),
+                        an,
+                        tm,
+                    )
                 });
 
                 self.save_parse_program(parse_program.to_owned().clone());

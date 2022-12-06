@@ -98,7 +98,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Function(function), span)
     }
 
-    pub(crate) fn get_function(
+    pub fn get_function(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -111,7 +111,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Trait(r#trait), span)
     }
 
-    pub(crate) fn get_trait(
+    pub fn get_trait(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -124,7 +124,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::TraitFn(trait_fn), span)
     }
 
-    pub(crate) fn get_trait_fn(
+    pub fn get_trait_fn(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -137,7 +137,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::ImplTrait(impl_trait), span)
     }
 
-    pub(crate) fn get_impl_trait(
+    pub fn get_impl_trait(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -150,7 +150,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Struct(r#struct), span)
     }
 
-    pub(crate) fn get_struct(
+    pub fn get_struct(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -163,7 +163,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Storage(storage), span)
     }
 
-    pub(crate) fn get_storage(
+    pub fn get_storage(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -176,7 +176,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Abi(abi), span)
     }
 
-    pub(crate) fn get_abi(
+    pub fn get_abi(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -193,7 +193,7 @@ impl DeclarationEngine {
         )
     }
 
-    pub(crate) fn get_constant(
+    pub fn get_constant(
         &self,
         index: DeclarationId,
         span: &Span,
@@ -206,7 +206,7 @@ impl DeclarationEngine {
         self.insert(DeclarationWrapper::Enum(enum_decl), span)
     }
 
-    pub(crate) fn get_enum(
+    pub fn get_enum(
         &self,
         index: DeclarationId,
         span: &Span,

@@ -54,60 +54,68 @@ pub(crate) enum Descriptor {
 }
 
 impl Descriptor {
-    pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Result<Self> {
+    pub(crate) fn from_typed_decl(
+        declaration_engine: &DeclarationEngine,
+        d: &TyDeclaration,
+        module_prefix: Vec<String>,
+    ) -> Result<Self> {
         use TyDeclaration::*;
         match d {
             StructDeclaration(ref decl_id) => {
-                let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                let struct_decl =
+                    declaration_engine.get_struct(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
                 })
             }
             EnumDeclaration(ref decl_id) => {
-                let enum_decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
+                let enum_decl = declaration_engine.get_enum(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Enum(enum_decl)),
                 })
             }
             TraitDeclaration(ref decl_id) => {
-                let trait_decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
+                let trait_decl = declaration_engine.get_trait(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Trait(trait_decl)),
                 })
             }
             AbiDeclaration(ref decl_id) => {
-                let abi_decl = de_get_abi(decl_id.clone(), &decl_id.span())?;
+                let abi_decl = declaration_engine.get_abi(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Abi(abi_decl)),
                 })
             }
             StorageDeclaration(ref decl_id) => {
-                let storage_decl = de_get_storage(decl_id.clone(), &decl_id.span())?;
+                let storage_decl =
+                    declaration_engine.get_storage(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Storage(storage_decl)),
                 })
             }
             ImplTrait(ref decl_id) => {
-                let impl_trait = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
+                let impl_trait =
+                    declaration_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::ImplTraitDesc(impl_trait)),
                 })
             }
             FunctionDeclaration(ref decl_id) => {
-                let fn_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                let fn_decl = declaration_engine.get_function(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Function(fn_decl)),
                 })
             }
             ConstantDeclaration(ref decl_id) => {
-                let const_decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                let const_decl =
+                    declaration_engine.get_constant(decl_id.clone(), &decl_id.span())?;
                 Ok(Descriptor::Documentable {
                     module_prefix,
                     desc_ty: Box::new(DescriptorType::Const(Box::new(const_decl))),
