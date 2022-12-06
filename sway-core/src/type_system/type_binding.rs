@@ -1,7 +1,6 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -138,6 +137,7 @@ impl TypeBinding<CallPath> {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         // grab the declaration
@@ -164,7 +164,9 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_function(original_id.clone(), &self.span())),
+                    CompileResult::from(
+                        declaration_engine.get_function(original_id.clone(), &self.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -194,7 +196,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_enum(original_id, &self.span())),
+                    CompileResult::from(declaration_engine.get_enum(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -227,7 +229,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_struct(original_id, &self.span())),
+                    CompileResult::from(declaration_engine.get_struct(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

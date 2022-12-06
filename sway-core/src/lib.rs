@@ -215,7 +215,10 @@ pub fn parsed_to_ast(
         value: types_metadata_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(type_engine));
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(
+        type_engine,
+        declaration_engine,
+    ));
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {

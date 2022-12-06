@@ -231,12 +231,15 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = engines.te();
+
         let symbol = match self.symbols.get(base_name).cloned() {
             Some(s) => s,
             None => {
@@ -247,7 +250,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(&base_name.span(), type_engine),
+            symbol.return_type(engines, &base_name.span()),
             return err(warnings, errors),
             warnings,
             errors

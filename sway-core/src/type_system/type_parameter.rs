@@ -78,13 +78,8 @@ impl Spanned for TypeParameter {
 }
 
 impl DisplayWithEngines for TypeParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.name_ident,
-            type_engine.help_out(self.type_id)
-        )
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
     }
 }
 

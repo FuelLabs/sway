@@ -13,11 +13,12 @@ impl ty::TyScrutinee {
     pub(crate) fn type_check(ctx: TypeCheckContext, scrutinee: Scrutinee) -> CompileResult<Self> {
         let warnings = vec![];
         let errors = vec![];
+        let type_engine = ctx.type_engine;
         match scrutinee {
             Scrutinee::CatchAll { span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: ctx.type_engine.insert_type(TypeInfo::Unknown),
+                    type_id: type_engine.insert_type(TypeInfo::Unknown),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -25,7 +26,7 @@ impl ty::TyScrutinee {
             Scrutinee::Literal { value, span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Literal(value.clone()),
-                    type_id: ctx.type_engine.insert_type(value.to_typeinfo()),
+                    type_id: type_engine.insert_type(value.to_typeinfo()),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -53,7 +54,7 @@ fn type_check_variable(
 ) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
-
+    let type_engine = ctx.type_engine;
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
@@ -86,7 +87,7 @@ fn type_check_variable(
         // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
-            type_id: ctx.type_engine.insert_type(TypeInfo::Unknown),
+            type_id: type_engine.insert_type(TypeInfo::Unknown),
             span,
         },
     };
@@ -103,6 +104,9 @@ fn type_check_struct(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
     // find the struct definition from the name
     let unknown_decl = check!(
         ctx.namespace.resolve_symbol(&struct_name).cloned(),
@@ -111,7 +115,7 @@ fn type_check_struct(
         errors
     );
     let mut struct_decl = check!(
-        unknown_decl.expect_struct(&span),
+        unknown_decl.expect_struct(declaration_engine, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -186,7 +190,7 @@ fn type_check_struct(
 
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
-        type_id: struct_decl.create_type_id(ctx.type_engine),
+        type_id: struct_decl.create_type_id(type_engine),
         span,
     };
 
@@ -201,6 +205,9 @@ fn type_check_enum(
 ) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
 
     let enum_name = match call_path.prefixes.last() {
         Some(enum_name) => enum_name,
@@ -222,7 +229,7 @@ fn type_check_enum(
         errors
     );
     let mut enum_decl = check!(
-        unknown_decl.expect_enum(&enum_name.span()),
+        unknown_decl.expect_enum(declaration_engine, &enum_name.span()),
         return err(warnings, errors),
         warnings,
         errors
@@ -240,7 +247,7 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let enum_type_id = enum_decl.create_type_id(ctx.type_engine);
+    let enum_type_id = enum_decl.create_type_id(type_engine);
 
     // check to see if the variant exists and grab it if it does
     let variant = check!(
@@ -279,6 +286,8 @@ fn type_check_tuple(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+
     let mut typed_elems = vec![];
     for elem in elems.into_iter() {
         typed_elems.push(check!(
@@ -288,7 +297,7 @@ fn type_check_tuple(
             errors
         ));
     }
-    let type_id = ctx.type_engine.insert_type(TypeInfo::Tuple(
+    let type_id = type_engine.insert_type(TypeInfo::Tuple(
         typed_elems
             .iter()
             .map(|x| TypeArgument {

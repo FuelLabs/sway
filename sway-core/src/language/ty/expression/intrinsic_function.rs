@@ -47,16 +47,16 @@ impl ReplaceSelfType for TyIntrinsicFunctionKind {
 }
 
 impl DisplayWithEngines for TyIntrinsicFunctionKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| type_engine.help_out(targ.type_id))
+            .map(|targ| engines.help_out(targ.type_id))
             .join(", ");
         let args = self
             .arguments
             .iter()
-            .map(|e| format!("{}", type_engine.help_out(e)))
+            .map(|e| format!("{}", engines.help_out(e)))
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)

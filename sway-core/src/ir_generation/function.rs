@@ -141,7 +141,9 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = declaration_engine::de_get_constant(decl_id.clone(), &ast_node.span)?;
+                    let tcd = self
+                        .declaration_engine
+                        .get_constant(decl_id.clone(), &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -164,7 +166,9 @@ impl<'eng> FnCompiler<'eng> {
                     })
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = declaration_engine::de_get_enum(decl_id.clone(), &ast_node.span)?;
+                    let ted = self
+                        .declaration_engine
+                        .get_enum(decl_id.clone(), &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }

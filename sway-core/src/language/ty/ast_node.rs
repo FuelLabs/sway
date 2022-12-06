@@ -30,12 +30,12 @@ impl PartialEqWithEngines for TyAstNode {
 }
 
 impl DisplayWithEngines for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, type_engine),
-            Expression(exp) => DisplayWithEngines::fmt(exp, f, type_engine),
-            ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
+            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, engines),
+            Expression(exp) => DisplayWithEngines::fmt(exp, f, engines),
+            ImplicitReturnExpression(exp) => write!(f, "return {}", engines.help_out(exp)),
             SideEffect => f.write_str(""),
         }
     }
@@ -130,13 +130,13 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> CompileResult<bool> {
+    pub(crate) fn is_public(&self, declaration_engine: &DeclarationEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let public = match &self.content {
             TyAstNodeContent::Declaration(decl) => {
                 let visibility = check!(
-                    decl.visibility(),
+                    decl.visibility(declaration_engine),
                     return err(warnings, errors),
                     warnings,
                     errors

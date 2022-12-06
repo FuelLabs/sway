@@ -47,11 +47,11 @@ impl OrdWithEngines for TypeArgument {
 }
 
 impl DisplayWithEngines for TypeArgument {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
-            type_engine.help_out(type_engine.look_up_type_id(self.type_id))
+            engines.help_out(engines.te().look_up_type_id(self.type_id))
         )
     }
 }

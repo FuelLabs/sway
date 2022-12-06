@@ -203,6 +203,9 @@ impl Module {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -214,7 +217,7 @@ impl Module {
         let mut symbols = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(),
+                decl.visibility(declaration_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -251,6 +254,9 @@ impl Module {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -263,7 +269,7 @@ impl Module {
         let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(),
+                decl.visibility(declaration_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -326,6 +332,9 @@ impl Module {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -336,7 +345,7 @@ impl Module {
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
-                    decl.visibility(),
+                    decl.visibility(declaration_engine),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -355,7 +364,7 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let type_id = decl.return_type(&item.span(), engines.te()).value;
+                let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(

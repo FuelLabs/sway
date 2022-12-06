@@ -2,10 +2,7 @@ use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    declaration_engine::declaration_engine::*, engine_threading::*, error::*, language::ty,
-    type_system::*,
-};
+use crate::{engine_threading::*, error::*, language::ty, type_system::*};
 
 fn ast_node_validate(engines: Engines<'_>, x: &ty::TyAstNodeContent) -> CompileResult<()> {
     let errors: Vec<CompileError> = vec![];
@@ -172,6 +169,7 @@ fn check_type(
 fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResult<()> {
     let mut warnings: Vec<CompileWarning> = vec![];
     let mut errors: Vec<CompileError> = vec![];
+    let declaration_engine = engines.de();
     match decl {
         ty::TyDeclaration::VariableDeclaration(decl) => {
             check!(
@@ -186,7 +184,9 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             let ty::TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
-                CompileResult::from(de_get_constant(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(
+                    declaration_engine.get_constant(decl_id.clone(), &decl_id.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -203,7 +203,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             let ty::TyFunctionDeclaration {
                 body, parameters, ..
             } = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &decl.span())),
+                CompileResult::from(declaration_engine.get_function(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -228,13 +228,15 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::ImplTrait(decl_id) => {
             let ty::TyImplTrait { methods, span, .. } = check!(
-                CompileResult::from(de_get_impl_trait(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(
+                    declaration_engine.get_impl_trait(decl_id.clone(), &decl_id.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
             for method_id in methods {
-                match de_get_function(method_id, &span) {
+                match declaration_engine.get_function(method_id, &span) {
                     Ok(method) => check!(
                         validate_decls_for_storage_only_types_in_codeblock(engines, &method.body),
                         continue,
@@ -247,7 +249,9 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::StructDeclaration(decl_id) => {
             let ty::TyStructDeclaration { fields, .. } = check!(
-                CompileResult::from(de_get_struct(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(
+                    declaration_engine.get_struct(decl_id.clone(), &decl_id.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors,
@@ -263,7 +267,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::EnumDeclaration(decl_id) => {
             let ty::TyEnumDeclaration { variants, .. } = check!(
-                CompileResult::from(de_get_enum(decl_id.clone(), &decl.span())),
+                CompileResult::from(declaration_engine.get_enum(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -279,7 +283,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
             let ty::TyStorageDeclaration { fields, .. } = check!(
-                CompileResult::from(de_get_storage(decl_id.clone(), &decl.span())),
+                CompileResult::from(declaration_engine.get_storage(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

@@ -460,6 +460,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         // type check the declaration
         let unknown_decl = check!(
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref()),
@@ -470,7 +472,7 @@ impl ty::TyExpression {
 
         // check that the decl is a function decl
         let function_decl = check!(
-            unknown_decl.expect_function(&span),
+            unknown_decl.expect_function(declaration_engine, &span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1082,6 +1084,8 @@ impl ty::TyExpression {
         span: Span,
         args: Vec<Expression>,
     ) -> CompileResult<ty::TyExpression> {
+        let declaration_engine = ctx.declaration_engine;
+
         // Is `path = prefix ++ before` a module?
         let mut path = Vec::with_capacity(prefixes.len() + 1);
         path.extend(prefixes.iter().cloned());
@@ -1098,7 +1102,7 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.expect_enum(&before.inner.span()))
+                .flat_map(|decl| decl.expect_enum(declaration_engine, &before.inner.span()))
                 .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
                 .is_none()
@@ -1181,6 +1185,8 @@ impl ty::TyExpression {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         // The first step is to determine if the call path refers to a module, enum, or function.
         // If only one exists, then we use that one. Otherwise, if more than one exist, it is
         // an ambiguous reference error.
@@ -1208,7 +1214,7 @@ impl ty::TyExpression {
         let maybe_function = {
             let mut call_path_binding = call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_function(&span))
+                .flat_map(|unknown_decl| unknown_decl.expect_function(declaration_engine, &span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
         };
 
@@ -1226,7 +1232,9 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_enum(&call_path_binding.span()))
+                .flat_map(|unknown_decl| {
+                    unknown_decl.expect_enum(declaration_engine, &call_path_binding.span())
+                })
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name))
         };
@@ -1237,7 +1245,9 @@ impl ty::TyExpression {
         let maybe_const = {
             let mut call_path_binding = call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_const(&call_path_binding.span()))
+                .flat_map(|unknown_decl| {
+                    unknown_decl.expect_const(declaration_engine, &call_path_binding.span())
+                })
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
                 .map(|const_decl| (const_decl, call_path_binding.span()))
         };
@@ -1691,6 +1701,7 @@ impl ty::TyExpression {
         let mut warnings = vec![];
 
         let type_engine = ctx.type_engine;
+
         let mut ctx = ctx
             .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
             .with_help_text("");
@@ -1763,7 +1774,7 @@ impl ty::TyExpression {
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) = check!(
                     ctx.namespace
-                        .find_subfield_type(type_engine, &base_name, &names_vec),
+                        .find_subfield_type(ctx.engines(), &base_name, &names_vec),
                     return err(warnings, errors),
                     warnings,
                     errors

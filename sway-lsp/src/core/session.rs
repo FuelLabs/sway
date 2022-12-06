@@ -232,6 +232,7 @@ impl Session {
         let mut diagnostics = Vec::new();
         let type_engine = &*self.type_engine.read();
         let declaration_engine = &*self.declaration_engine.read();
+        let engines = Engines::new(type_engine, declaration_engine);
         let results = pkg::check(&plan, true, type_engine, declaration_engine)
             .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
@@ -266,11 +267,7 @@ impl Session {
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    traverse_typed_tree::traverse_node(
-                        Engines::new(type_engine, declaration_engine),
-                        an,
-                        tm,
-                    )
+                    traverse_typed_tree::traverse_node(engines, an, tm)
                 });
 
                 self.save_parse_program(parse_program.to_owned().clone());
@@ -282,10 +279,9 @@ impl Session {
                 // Collect tokens from dependencies and the standard library prelude.
                 self.parse_ast_to_tokens(parse_program, dependency::collect_parsed_declaration);
 
-                self.parse_ast_to_typed_tokens(
-                    typed_program,
-                    dependency::collect_typed_declaration,
-                );
+                self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
+                    dependency::collect_typed_declaration(engines, an, tm)
+                });
             }
         }
         Ok(diagnostics)

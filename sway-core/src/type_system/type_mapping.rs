@@ -13,7 +13,7 @@ pub(crate) struct TypeMapping {
 }
 
 impl DisplayWithEngines for TypeMapping {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
             "TypeMapping {{ {} }}",
@@ -22,8 +22,8 @@ impl DisplayWithEngines for TypeMapping {
                 .map(|(source_type, dest_type)| {
                     format!(
                         "{} -> {}",
-                        type_engine.help_out(source_type),
-                        type_engine.help_out(dest_type)
+                        engines.help_out(source_type),
+                        engines.help_out(dest_type)
                     )
                 })
                 .collect::<Vec<_>>()

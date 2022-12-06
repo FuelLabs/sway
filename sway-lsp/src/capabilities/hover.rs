@@ -10,9 +10,8 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
-    declaration_engine,
     language::{ty, Visibility},
-    TypeEngine, TypeId,
+    Engines, TypeId,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
@@ -34,7 +33,14 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
         None => (ident, token),
     };
 
-    let contents = hover_format(&session.type_engine.read(), &decl_token, &decl_ident);
+    let contents = hover_format(
+        Engines::new(
+            &session.type_engine.read(),
+            &session.declaration_engine.read(),
+        ),
+        &decl_token,
+        &decl_ident,
+    );
     Some(lsp_types::Hover {
         contents,
         range: Some(range),
@@ -91,11 +97,10 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
     lsp_types::MarkupContent { kind, value }
 }
 
-fn hover_format(
-    type_engine: &TypeEngine,
-    token: &Token,
-    ident: &Ident,
-) -> lsp_types::HoverContents {
+fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types::HoverContents {
+    let type_engine = engines.te();
+    let declaration_engine = engines.de();
+
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
@@ -117,39 +122,36 @@ fn hover_format(
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => {
-                    declaration_engine::de_get_struct(decl_id.clone(), &decl.span())
-                        .map(|struct_decl| {
-                            format_visibility_hover(
-                                struct_decl.visibility,
-                                decl.friendly_name(),
-                                &token_name,
-                            )
-                        })
-                        .ok()
-                }
-                ty::TyDeclaration::TraitDeclaration(ref decl_id) => {
-                    declaration_engine::de_get_trait(decl_id.clone(), &decl.span())
-                        .map(|trait_decl| {
-                            format_visibility_hover(
-                                trait_decl.visibility,
-                                decl.friendly_name(),
-                                &token_name,
-                            )
-                        })
-                        .ok()
-                }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    declaration_engine::de_get_enum(decl_id.clone(), &decl.span())
-                        .map(|enum_decl| {
-                            format_visibility_hover(
-                                enum_decl.visibility,
-                                decl.friendly_name(),
-                                &token_name,
-                            )
-                        })
-                        .ok()
-                }
+                ty::TyDeclaration::StructDeclaration(decl_id) => declaration_engine
+                    .get_struct(decl_id.clone(), &decl.span())
+                    .map(|struct_decl| {
+                        format_visibility_hover(
+                            struct_decl.visibility,
+                            decl.friendly_name(),
+                            &token_name,
+                        )
+                    })
+                    .ok(),
+                ty::TyDeclaration::TraitDeclaration(ref decl_id) => declaration_engine
+                    .get_trait(decl_id.clone(), &decl.span())
+                    .map(|trait_decl| {
+                        format_visibility_hover(
+                            trait_decl.visibility,
+                            decl.friendly_name(),
+                            &token_name,
+                        )
+                    })
+                    .ok(),
+                ty::TyDeclaration::EnumDeclaration(decl_id) => declaration_engine
+                    .get_enum(decl_id.clone(), &decl.span())
+                    .map(|enum_decl| {
+                        format_visibility_hover(
+                            enum_decl.visibility,
+                            decl.friendly_name(),
+                            &token_name,
+                        )
+                    })
+                    .ok(),
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {

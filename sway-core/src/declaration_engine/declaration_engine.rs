@@ -256,10 +256,3 @@ pub fn de_get_constant(
 ) -> Result<ty::TyConstantDeclaration, CompileError> {
     DECLARATION_ENGINE.get_constant(index, span)
 }
-
-pub fn de_get_enum(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyEnumDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_enum(index, span)
-}

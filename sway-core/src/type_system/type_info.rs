@@ -344,8 +344,9 @@ impl Default for TypeInfo {
 }
 
 impl DisplayWithEngines for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
+        let type_engine = engines.te();
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
@@ -362,7 +363,7 @@ impl DisplayWithEngines for TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| type_engine.help_out(field).to_string())
+                    .map(|field| engines.help_out(field).to_string())
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -400,7 +401,7 @@ impl DisplayWithEngines for TypeInfo {
                 )
             }
             Array(elem_ty, count) => {
-                format!("[{}; {}]", type_engine.help_out(elem_ty), count.val())
+                format!("[{}; {}]", engines.help_out(elem_ty), count.val())
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),

@@ -244,6 +244,7 @@ impl TyProgram {
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = ctx.declaration_engine;
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
         let metadata = match &self.kind {
@@ -251,7 +252,7 @@ impl TyProgram {
                 let mut ret = vec![];
                 for node in self.root.all_nodes.iter() {
                     let public = check!(
-                        node.is_public(),
+                        node.is_public(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors

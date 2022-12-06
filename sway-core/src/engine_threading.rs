@@ -30,6 +30,14 @@ impl Engines<'_> {
     pub fn de(&self) -> &DeclarationEngine {
         self.declaration_engine
     }
+
+    /// Helps out some `thing: T` by adding `self` as context.
+    pub(crate) fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
+        WithEngines {
+            thing,
+            engines: *self,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -46,7 +54,7 @@ impl<'a, T> WithEngines<'a, T> {
 
 impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.thing.fmt(f, self.engines.te())
+        self.thing.fmt(f, self.engines)
     }
 }
 
@@ -65,12 +73,12 @@ impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
 impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}
 
 pub(crate) trait DisplayWithEngines {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result;
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result;
 }
 
 impl<T: DisplayWithEngines> DisplayWithEngines for &T {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
-        (*self).fmt(f, type_engine)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        (*self).fmt(f, engines)
     }
 }
 
