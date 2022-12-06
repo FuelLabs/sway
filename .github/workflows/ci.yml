@@ -135,6 +135,7 @@ jobs:
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
+            cat tmp.txt
             rm tmp.txt && exit 1
           else
             rm tmp.txt && exit 0
@@ -145,6 +146,7 @@ jobs:
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/reference &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
+            cat tmp.txt
             rm tmp.txt && exit 1
           else
             rm tmp.txt && exit 0
