@@ -41,6 +41,14 @@ fn main() -> bool {
     assert(sub_max_again.c == 0);
     assert(sub_max_again.d == u64::max());
 
+    let zero_in_between = U256::from((0, 1, 0, 10));
+    let d_nonzero = U256::from((0, 0, 0, 12));
+
+    let res = zero_in_between - d_nonzero;
+
+    assert(res.c == u64::max());
+    assert(res.d == u64::max() - 1);
+
     let one_upper = U256::from((0, 0, 1, 0));
 
     let right_shift_one_upper = one_upper >> 1;
