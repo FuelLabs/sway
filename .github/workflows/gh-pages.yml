@@ -131,8 +131,8 @@ jobs:
           cat > ./latest/index.html <<EOF
           <!DOCTYPE html>
           <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0; URL=../${{ steps.branch_name.outputs.BRANCH_NAME }}/">
-          <link rel="canonical" href="../${{ steps.branch_name.outputs.BRANCH_NAME }}/">
+          <meta http-equiv="refresh" content="0; URL=../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
+          <link rel="canonical" href="../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
           EOF
 
       - name: Set latest to point to tag
