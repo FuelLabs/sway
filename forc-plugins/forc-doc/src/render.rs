@@ -11,6 +11,8 @@ use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
 use swayfmt::parse;
 
+pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
+
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
 enum ItemType {
@@ -142,7 +144,7 @@ impl RenderedDocument {
         // All Doc
         rendered_docs.push(Self {
             module_prefix: vec![],
-            file_name: "all.html".to_string(),
+            file_name: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString(page_from(all_items(project_name.to_string(), &all_doc))),
         });
         rendered_docs
@@ -202,7 +204,7 @@ fn html_body(
     item_attrs: String,
 ) -> Box<dyn RenderBox> {
     let mut all_path = module_depth_to_path_prefix(module_depth);
-    all_path.push_str("all.html");
+    all_path.push_str(ALL_DOC_FILENAME);
 
     box_html! {
         body(class=format!("swaydoc {decl_ty}")) {
@@ -332,7 +334,7 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
             link(rel="stylesheet", type="text/css", href="assets/ayu.css");
         }
         body(class="swaydoc mod") {
-            : sidebar(0, format!("Crate {crate_name}"), "all.html".to_string());
+            : sidebar(0, format!("Crate {crate_name}"), ALL_DOC_FILENAME.to_string());
             main {
                 div(class="width-limiter") {
                     div(class="sub-container") {
