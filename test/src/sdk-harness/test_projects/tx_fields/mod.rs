@@ -16,17 +16,22 @@ abigen!(
     "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
 );
 
-async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
+async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
+
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
-    let deployment_coins = setup_single_asset_coins(
+
+
+    let mut deployment_coins = setup_single_asset_coins(
         deployment_wallet.address(),
         BASE_ASSET_ID,
-        1,
+        120,
         DEFAULT_COIN_AMOUNT,
     );
 
-    // let coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
+    let mut coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
+
+    coins.append(&mut deployment_coins);
 
     let messages = setup_single_message(
         &Bech32Address {
@@ -40,7 +45,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
     );
 
     let (provider, _address) =
-        setup_test_provider(deployment_coins.clone(), messages.clone(), None, None).await;
+        setup_test_provider(coins.clone(), messages.clone(), None, None).await;
 
     wallet.set_provider(provider.clone());
     deployment_wallet.set_provider(provider);
@@ -56,7 +61,7 @@ async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked) {
 
     let instance = TxContractTest::new(contract_id.clone(), deployment_wallet.clone());
 
-    (instance, contract_id.into(), wallet)
+    (instance, contract_id.into(), wallet, deployment_wallet)
 }
 
 async fn generate_predicate_inputs(
@@ -103,7 +108,7 @@ async fn generate_predicate_inputs(
         &message.sender.clone().into(),
         &message.recipient.clone().into(),
         message.nonce.clone().into(),
-        message.amount.0,
+        message.amount,
         &data,
     );
 
@@ -111,7 +116,7 @@ async fn generate_predicate_inputs(
         message_id,
         message.sender.clone().into(),
         message.recipient.clone().into(),
-        message.amount.0,
+        message.amount,
         0,
         data.clone(),
         predicate_bytecode.clone(),
@@ -132,7 +137,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_tx_type() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let result = contract_instance
             .methods()
@@ -146,7 +151,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_gas_price() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         let gas_price = 3;
 
         let result = contract_instance
@@ -162,7 +167,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_gas_limit() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         let gas_limit = 420301;
 
         let result = contract_instance
@@ -178,7 +183,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_maturity() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         // TODO set this to a non-zero value once SDK supports setting maturity.
         let maturity = 0;
 
@@ -193,7 +198,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_script_length() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         // TODO use programmatic script length https://github.com/FuelLabs/fuels-rs/issues/181
         let script_length = 32;
 
@@ -208,7 +213,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_script_data_length() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         // TODO make this programmatic.
         let script_data_length = 88;
 
@@ -223,10 +228,10 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_inputs_count() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_inputs_count();
-        let script = call_handler.get_call_execution_script().await.unwrap();
+        let script = call_handler.get_executable_call().await.unwrap();
         let inputs = script.tx.inputs();
 
         let result = contract_instance
@@ -240,10 +245,10 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_outputs_count() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_outputs_count();
-        let script = call_handler.get_call_execution_script().await.unwrap();
+        let script = call_handler.get_executable_call().await.unwrap();
         let outputs = script.tx.outputs();
 
         let result = contract_instance
@@ -257,7 +262,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witnesses_count() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         let witnesses_count = 1;
 
         let result = contract_instance
@@ -271,7 +276,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witness_pointer() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let result = contract_instance
             .methods()
@@ -279,12 +284,12 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, 11144);
+        assert_eq!(result.value, 10960);
     }
 
     #[tokio::test]
     async fn can_get_witness_data_length() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let result = contract_instance
             .methods()
@@ -297,10 +302,10 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witness_data() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_witness_data(0);
-        let script = call_handler.get_call_execution_script().await.unwrap();
+        let script = call_handler.get_executable_call().await.unwrap();
         let witnesses = script.tx.witnesses();
 
         let result = contract_instance
@@ -323,7 +328,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_receipts_root() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         let zero_receipts_root =
             Bytes32::from_str("4be973feb50f1dabb9b2e451229135add52f9c0973c11e556fe5bce4a19df470")
                 .unwrap();
@@ -339,7 +344,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_script_start_offset() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let script_start_offset = ConsensusParameters::DEFAULT.tx_offset()
             + fuel_vm::fuel_tx::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
@@ -355,12 +360,12 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_script_bytecode_hash() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let tx = contract_instance
             .methods()
             .get_tx_script_bytecode_hash()
-            .get_call_execution_script()
+            .get_executable_call()
             .await
             .unwrap()
             .tx;
@@ -383,10 +388,10 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_tx_id() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_id();
-        let script = call_handler.get_call_execution_script().await.unwrap();
+        let script = call_handler.get_executable_call().await.unwrap();
         let tx_id = script.tx.id();
 
         let result = contract_instance
@@ -403,7 +408,7 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_get_tx_script_data_start_pointer() {
-        let (contract_instance, _, _) = get_contracts().await;
+        let (contract_instance, _, _, _) = get_contracts().await;
         let result = contract_instance
             .methods()
             .get_tx_script_data_start_pointer()
@@ -426,7 +431,7 @@ mod inputs {
             #[tokio::test]
             #[should_panic(expected = "Revert(0)")]
             async fn fails_to_get_predicate_data_pointer_from_input_contract() {
-                let (contract_instance, _, _) = get_contracts().await;
+                let (contract_instance, _, _, _) = get_contracts().await;
                 let call_params = CallParameters::default();
                 contract_instance
                     .methods()
@@ -444,7 +449,7 @@ mod inputs {
 
         #[tokio::test]
         async fn can_get_input_type() {
-            let (contract_instance, _, _) = get_contracts().await;
+            let (contract_instance, _, _, _) = get_contracts().await;
 
             let result = contract_instance
                 .methods()
@@ -466,7 +471,7 @@ mod inputs {
         #[tokio::test]
         async fn can_get_tx_input_amount() {
             let default_amount = 1000000000;
-            let (contract_instance, _, _) = get_contracts().await;
+            let (contract_instance, _, _, _) = get_contracts().await;
             let result = contract_instance
                 .methods()
                 .get_input_amount(1)
@@ -479,7 +484,7 @@ mod inputs {
 
         #[tokio::test]
         async fn can_get_tx_input_coin_owner() {
-            let (contract_instance, _, wallet) = get_contracts().await;
+            let (contract_instance, _, _, deployment_wallet) = get_contracts().await;
 
             let owner_result = contract_instance
                 .methods()
@@ -488,12 +493,12 @@ mod inputs {
                 .await
                 .unwrap();
 
-            assert_eq!(owner_result.value, wallet.address().into());
+            assert_eq!(owner_result.value, deployment_wallet.address().into());
         }
 
         #[tokio::test]
         async fn can_get_input_predicate() {
-            let (contract_instance, _, wallet) = get_contracts().await;
+            let (contract_instance, _, wallet, _) = get_contracts().await;
             let provider = wallet.get_provider().unwrap();
             let (predicate_bytecode, predicate_coin, predicate_message) =
                 generate_predicate_inputs(100, vec![], &wallet).await;
@@ -501,7 +506,7 @@ mod inputs {
 
             // Add predicate coin to inputs and call contract
             let call_handler = contract_instance.methods().get_input_predicate(2);
-            let script = call_handler.get_call_execution_script().await.unwrap();
+            let script = call_handler.get_executable_call().await.unwrap();
 
             let new_outputs = generate_outputs();
 
@@ -515,7 +520,7 @@ mod inputs {
             }
 
             let result = call_handler
-                .get_response(script.call(provider).await.unwrap())
+                .get_response(script.execute(provider).await.unwrap())
                 .unwrap();
             assert_eq!(result.value, Bits256(predicate_bytes));
         }
@@ -525,7 +530,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_msg_id() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_message_msg_id(1)
@@ -533,7 +538,7 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                let message_id: [u8; 32] = *messages[0].message_id.0 .0;
+                let message_id: [u8; 32] = *messages[0].message_id();
                 ();
                 assert_eq!(result.value, Bits256(message_id));
                 Ok(())
@@ -541,7 +546,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_sender() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_message_sender(1)
@@ -549,15 +554,13 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                let contract_bytes: [u8; 32] = result.value.into();
-                let message_bytes: [u8; 32] = messages[0].sender.0 .0.into();
-                assert_eq!(contract_bytes, message_bytes);
+                assert_eq!(Bech32Address::from(result.value), messages[0].sender);
                 Ok(())
             }
 
             #[tokio::test]
             async fn can_get_input_message_recipient() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_message_recipient(1)
@@ -566,14 +569,13 @@ mod inputs {
                     .unwrap();
                 let messages = wallet.get_messages().await?;
                 let contract_bytes: [u8; 32] = result.value.into();
-                let message_bytes: [u8; 32] = messages[0].recipient.0 .0.into();
-                assert_eq!(contract_bytes, message_bytes);
+                assert_eq!(Bech32Address::from(result.value), messages[0].recipient);
                 Ok(())
             }
 
             #[tokio::test]
             async fn can_get_input_message_nonce() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_message_nonce(1)
@@ -581,30 +583,30 @@ mod inputs {
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                // assert_eq!(result.value, messages[0].nonce);
+                let nonce: u64 = messages[0].nonce.clone().into();
+                assert_eq!(result.value, nonce);
                 Ok(())
             }
 
             #[tokio::test]
-            async fn can_get_input_message_witness_index() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+            async fn can_get_input_message_witness_index() {
+                let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_witness_index(1)
                     .call()
                     .await
                     .unwrap();
-                // let messages = wallet.get_messages().await?;
-                // assert_eq!(result.value, messages[0].witness_index);
-                Ok(())
+
+                assert_eq!(result.value, 0);
             }
 
             #[tokio::test]
             async fn can_get_input_message_data_length() {
-                let (contract_instance, _, _) = get_contracts().await;
+                let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
-                    .get_input_message_data_length(1)
+                    .get_input_message_data_length(0)
                     .call()
                     .await
                     .unwrap();
@@ -613,7 +615,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate_length() {
-                let (contract_instance, _, _) = get_contracts().await;
+                let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_predicate_length(1)
@@ -627,7 +629,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate_data_length() {
-                let (contract_instance, _, _) = get_contracts().await;
+                let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1)
@@ -639,7 +641,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_data() -> Result<(), Error> {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let result = contract_instance
                     .methods()
                     .get_input_message_data(1, 0)
@@ -656,7 +658,7 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate() {
-                let (contract_instance, _, wallet) = get_contracts().await;
+                let (contract_instance, _, wallet, _) = get_contracts().await;
                 let provider = wallet.get_provider().unwrap();
                 let (predicate_bytecode, predicate_coin, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
@@ -664,7 +666,7 @@ mod inputs {
 
                 // Add predicate coin to inputs and call contract
                 let call_handler = contract_instance.methods().get_input_predicate(1);
-                let script = call_handler.get_call_execution_script().await.unwrap();
+                let script = call_handler.get_executable_call().await.unwrap();
 
                 let new_outputs = generate_outputs();
 
@@ -678,7 +680,7 @@ mod inputs {
                 }
 
                 let result = call_handler
-                    .get_response(script.call(provider).await.unwrap())
+                    .get_response(script.execute(provider).await.unwrap())
                     .unwrap();
                 assert_eq!(result.value, Bits256(predicate_bytes));
             }
@@ -694,7 +696,7 @@ mod outputs {
 
         #[tokio::test]
         async fn can_get_tx_output_type() {
-            let (contract_instance, _, _) = get_contracts().await;
+            let (contract_instance, _, _, _) = get_contracts().await;
             let result = contract_instance
                 .methods()
                 .get_output_type(0)
@@ -717,7 +719,7 @@ mod outputs {
             #[tokio::test]
             #[should_panic(expected = "Revert(0)")]
             async fn fails_to_get_amount_for_output_contract() {
-                let (contract_instance, _, _) = get_contracts().await;
+                let (contract_instance, _, _, _) = get_contracts().await;
                 contract_instance
                     .methods()
                     .get_tx_output_amount(0)

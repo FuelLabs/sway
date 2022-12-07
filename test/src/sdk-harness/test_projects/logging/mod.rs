@@ -1,7 +1,10 @@
-use fuels::contract::script::Script;
 use fuels::prelude::*;
-use fuels::tx::{ConsensusParameters, Transaction};
+use fuels::{
+    contract::execution_script::ExecutableFuelCall,
+    tx::{ConsensusParameters, Transaction},
+};
 use hex;
+
 
 #[tokio::test]
 async fn run_valid() {
@@ -24,7 +27,7 @@ async fn run_valid() {
 
     let provider = wallet.get_provider().unwrap();
 
-    let receipts = Script::new(tx).call(&provider).await.unwrap();
+    let receipts = ExecutableFuelCall::new(tx).execute(&provider).await.unwrap();
 
     let correct_hex =
         hex::decode("ef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a");

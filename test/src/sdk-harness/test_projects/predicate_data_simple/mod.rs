@@ -1,9 +1,9 @@
-use fuel_gql_client::client::schema::resource::Resource;
+use fuels::types::resource::Resource;
 use fuel_vm::consts::*;
 use fuel_vm::prelude::Opcode;
 use fuels::contract::abi_encoder::ABIEncoder;
-use fuels::contract::script::Script;
 use fuels::prelude::*;
+use fuels::contract::execution_script::ExecutableFuelCall;
 use fuels::signers::wallet::Wallet;
 use fuels::test_helpers::Config;
 use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId};
@@ -102,7 +102,7 @@ async fn submit_to_predicate(
                 let input_coin = Input::coin_predicate(
                     UtxoId::from(coin.utxo_id),
                     coin.owner.into(),
-                    coin.amount.0,
+                    coin.amount,
                     asset_id,
                     tx_pointer,
                     0,
@@ -110,7 +110,7 @@ async fn submit_to_predicate(
                     predicate_data.clone(),
                 );
                 inputs.push(input_coin);
-                total_amount_in_predicate += coin.amount.0;
+                total_amount_in_predicate += coin.amount;
             }
             Resource::Message(_) => {}
         }
@@ -129,8 +129,8 @@ async fn submit_to_predicate(
         vec![],
     );
 
-    let script = Script::new(new_tx);
-    let _call_result = script.call(&wallet.get_provider().unwrap()).await;
+    let script = ExecutableFuelCall::new(new_tx);
+    let _call_result = script.execute(&wallet.get_provider().unwrap()).await;
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
