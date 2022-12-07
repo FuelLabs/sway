@@ -41,10 +41,10 @@ jobs:
           mdbook-version: "0.4.15"
 
       - name: Build Sway book
-      - run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
+        run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
 
       - name: Build Sway reference
-      - run: mdbook build docs/reference
+        run: mdbook build docs/reference
 
       - name: Deploy master book
         uses: peaceiris/actions-gh-pages@v3
