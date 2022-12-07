@@ -698,7 +698,7 @@ fn collect_type_args(
         let mut token = token.clone();
         let type_info = type_engine.look_up_type_id(arg.type_id);
         // TODO handle tuple and arrays in type_arguments - https://github.com/FuelLabs/sway/issues/2486
-        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _, _) = type_info {
+        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _) = type_info {
             continue;
         }
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
