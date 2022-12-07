@@ -412,7 +412,7 @@ fn _module_index() -> Box<dyn RenderBox> {
 fn sidebar(
     module_depth: usize,
     location: String,
-    href: String, /* sidebar_items */
+    href: String, /* TODO: sidebar_items */
 ) -> Box<dyn RenderBox> {
     let mut logo_path = module_depth_to_path_prefix(module_depth);
     logo_path.push_str("assets/sway-logo.svg");
