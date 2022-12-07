@@ -447,7 +447,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         declaration_engine: &'a DeclarationEngine,
-    ) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(declaration_engine))

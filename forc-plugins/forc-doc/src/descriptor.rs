@@ -36,8 +36,8 @@ impl DescriptorType {
             Abi(_) => "abi",
             Storage(_) => "storage",
             ImplTraitDesc(_) => "impl_trait",
-            Function(_) => "function",
-            Const(_) => "const",
+            Function(_) => "fn",
+            Const(_) => "constant",
         }
     }
 }
