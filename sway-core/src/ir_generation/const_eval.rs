@@ -12,6 +12,7 @@ use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
+    metadata::combine as md_combine,
     module::Module,
     value::Value,
     Instruction,
@@ -99,6 +100,7 @@ pub(crate) fn compile_const_decl(
             };
             if let Some((name, value)) = decl_name_value {
                 let const_val = compile_constant_expression(
+                    &name,
                     env.type_engine,
                     env.context,
                     env.md_mgr,
@@ -119,6 +121,7 @@ pub(crate) fn compile_const_decl(
 }
 
 pub(super) fn compile_constant_expression(
+    name: &Ident,
     type_engine: &TypeEngine,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
@@ -128,6 +131,9 @@ pub(super) fn compile_constant_expression(
     const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
+    let config_const_name =
+        md_mgr.config_const_name_to_md(context, &std::sync::Arc::from(name.as_str()));
+    let metadata = md_combine(context, &span_id_idx, &config_const_name);
 
     let constant_evaluated = compile_constant_expression_to_constant(
         type_engine,
@@ -138,7 +144,7 @@ pub(super) fn compile_constant_expression(
         function_compiler,
         const_expr,
     )?;
-    Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
+    Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, metadata))
 }
 
 pub(crate) fn compile_constant_expression_to_constant(
