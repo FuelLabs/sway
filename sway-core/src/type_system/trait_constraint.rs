@@ -92,6 +92,8 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
@@ -132,7 +134,8 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine
+                    .insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );

@@ -39,15 +39,19 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert_type(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        ty: TypeInfo,
+    ) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, self)(&ty);
 
-        let raw_entry = id_map
-            .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, todo!())));
+        let raw_entry = id_map.raw_entry_mut().from_hash(ty_hash, |x| {
+            x.eq(&ty, Engines::new(self, declaration_engine))
+        });
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
@@ -116,9 +120,13 @@ impl TypeEngine {
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+    pub(crate) fn is_type_info_storage_only(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        ti: &TypeInfo,
+    ) -> bool {
         self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, todo!())))
+            .exists(|x| ti.is_subset_of(x, Engines::new(self, declaration_engine)))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -167,6 +175,7 @@ impl TypeEngine {
     {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let engines = Engines::new(self, declaration_engine);
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
@@ -180,8 +189,9 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters(), self);
-                value.copy_types(&type_mapping, Engines::new(self, declaration_engine));
+                let type_mapping =
+                    TypeMapping::from_type_parameters(engines, value.type_parameters());
+                value.copy_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -221,7 +231,7 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -237,7 +247,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping, Engines::new(self, declaration_engine));
+                value.copy_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
         }
@@ -444,6 +454,7 @@ impl TypeEngine {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let engines = Engines::new(self, declaration_engine);
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.look_up_type_id(type_id) {
             TypeInfo::Custom {
@@ -484,13 +495,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(self);
+                        let type_id = new_copy.create_type_id(engines);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(
-                            Engines::new(self, declaration_engine),
-                            type_id,
-                        );
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
                         type_id
@@ -523,13 +531,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(self);
+                        let type_id = new_copy.create_type_id(engines);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(
-                            Engines::new(self, declaration_engine),
-                            type_id,
-                        );
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
                         type_id
@@ -540,7 +545,7 @@ impl TypeEngine {
                             name: name.to_string(),
                             span: name.span(),
                         });
-                        self.insert_type(TypeInfo::ErrorRecovery)
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery)
                     }
                 }
             }
@@ -555,11 +560,11 @@ impl TypeEngine {
                         namespace,
                         mod_path
                     ),
-                    self.insert_type(TypeInfo::ErrorRecovery),
+                    self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert_type(TypeInfo::Array(elem_ty, n))
+                self.insert_type(declaration_engine, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -573,12 +578,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert_type(TypeInfo::Tuple(type_arguments))
+                self.insert_type(declaration_engine, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };

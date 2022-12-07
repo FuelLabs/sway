@@ -2742,7 +2742,7 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, engines.te())?;
+        } = parse(manifest, terse_mode, engines)?;
 
         let parse_program = match value {
             None => {
@@ -2786,7 +2786,7 @@ pub fn check(
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
         terse: terse_mode,
@@ -2794,11 +2794,7 @@ pub fn parse(
     };
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::parse(
-        source,
-        type_engine,
-        Some(&sway_build_config),
-    ))
+    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.

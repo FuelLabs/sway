@@ -64,14 +64,14 @@ pub use engine_threading::Engines;
 /// Panics if the parser panics.
 pub fn parse(
     input: Arc<str>,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<parsed::ParseProgram> {
     CompileResult::with_handler(|h| match config {
-        None => parse_in_memory(h, type_engine, input),
+        None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, type_engine, input, config.canonical_root_module())
+        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module())
             .map(|(kind, root)| parsed::ParseProgram { kind, root }),
     })
 }
@@ -88,11 +88,11 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     src: Arc<str>,
 ) -> Result<parsed::ParseProgram, ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
     Ok(parsed::ParseProgram { kind, root })
@@ -101,7 +101,7 @@ fn parse_in_memory(
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     module: &sway_ast::Module,
     module_dir: &Path,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
@@ -125,7 +125,7 @@ fn parse_submodules(
         };
 
         if let Ok((kind, module)) =
-            parse_module_tree(handler, type_engine, dep_str.clone(), dep_path.clone())
+            parse_module_tree(handler, engines, dep_str.clone(), dep_path.clone())
         {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
@@ -155,7 +155,7 @@ fn parse_submodules(
 /// parse this module including all of its submodules.
 fn parse_module_tree(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     src: Arc<str>,
     path: Arc<PathBuf>,
 ) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
@@ -165,10 +165,10 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, type_engine, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
 
     Ok((kind, parsed::ParseModule { tree, submodules }))
 }
@@ -298,7 +298,7 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         mut warnings,
         mut errors,
-    } = parse(input, engines.te(), build_config);
+    } = parse(input, engines, build_config);
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
@@ -756,7 +756,11 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
+    use crate::declaration_engine::DeclarationEngine;
+
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
         contract;
@@ -838,7 +842,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -847,7 +851,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
+    use crate::declaration_engine::DeclarationEngine;
+
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
         contract;
@@ -857,7 +865,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -867,9 +875,14 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::language::{self, parsed};
+    use crate::{
+        declaration_engine::DeclarationEngine,
+        language::{self, parsed},
+    };
 
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
     script;
@@ -879,7 +892,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

@@ -44,7 +44,7 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert_type(TypeInfo::SelfType);
+        let self_type = type_engine.insert_type(declaration_engine, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
@@ -113,7 +113,7 @@ impl ty::TyTraitDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method, type_engine),
+                ty::TyFunctionDeclaration::error(method, engines),
                 warnings,
                 errors
             );

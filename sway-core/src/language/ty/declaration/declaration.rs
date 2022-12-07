@@ -516,7 +516,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.create_type_id(type_engine)
+                decl.create_type_id(engines)
             }
             TyDeclaration::EnumDeclaration(decl_id) => {
                 let decl = check!(
@@ -525,7 +525,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.create_type_id(type_engine)
+                decl.create_type_id(engines)
             }
             TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
@@ -536,9 +536,12 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                type_engine.insert_type(TypeInfo::Storage {
-                    fields: storage_decl.fields_as_typed_struct_fields(),
-                })
+                type_engine.insert_type(
+                    declaration_engine,
+                    TypeInfo::Storage {
+                        fields: storage_decl.fields_as_typed_struct_fields(),
+                    },
+                )
             }
             TyDeclaration::GenericTypeForFunctionScope { type_id, .. } => *type_id,
             decl => {

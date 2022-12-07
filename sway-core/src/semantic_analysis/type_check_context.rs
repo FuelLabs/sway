@@ -78,10 +78,10 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             type_engine,
             declaration_engine,
-            type_annotation: type_engine.insert_type(TypeInfo::Unknown),
+            type_annotation: type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert_type(TypeInfo::Contract),
+            self_type: type_engine.insert_type(declaration_engine, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,

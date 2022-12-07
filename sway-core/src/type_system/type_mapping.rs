@@ -57,18 +57,23 @@ impl TypeMapping {
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
     pub(crate) fn from_type_parameters(
+        engines: Engines<'_>,
         type_parameters: &[TypeParameter],
-        type_engine: &TypeEngine,
     ) -> TypeMapping {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(TypeInfo::UnknownGeneric {
-                        name: x.name_ident.clone(),
-                        trait_constraints: VecSet(x.trait_constraints.clone()),
-                    }),
+                    type_engine.insert_type(
+                        declaration_engine,
+                        TypeInfo::UnknownGeneric {
+                            name: x.name_ident.clone(),
+                            trait_constraints: VecSet(x.trait_constraints.clone()),
+                        },
+                    ),
                 )
             })
             .collect();
@@ -277,6 +282,7 @@ impl TypeMapping {
     /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
         let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let type_info = type_engine.look_up_type_id(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
@@ -308,11 +314,14 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(TypeInfo::Struct {
-                        fields,
-                        name,
-                        type_parameters,
-                    }))
+                    Some(type_engine.insert_type(
+                        declaration_engine,
+                        TypeInfo::Struct {
+                            fields,
+                            name,
+                            type_parameters,
+                        },
+                    ))
                 } else {
                     None
                 }
@@ -344,11 +353,14 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(TypeInfo::Enum {
-                        variant_types,
-                        type_parameters,
-                        name,
-                    }))
+                    Some(type_engine.insert_type(
+                        declaration_engine,
+                        TypeInfo::Enum {
+                            variant_types,
+                            type_parameters,
+                            name,
+                        },
+                    ))
                 } else {
                     None
                 }
@@ -356,7 +368,7 @@ impl TypeMapping {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert_type(TypeInfo::Array(elem_ty, count))
+                    type_engine.insert_type(declaration_engine, TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -372,7 +384,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert_type(declaration_engine, TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -390,7 +402,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(TypeInfo::Storage { fields }))
+                    Some(type_engine.insert_type(declaration_engine, TypeInfo::Storage { fields }))
                 } else {
                     None
                 }

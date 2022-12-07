@@ -26,11 +26,13 @@ impl PartialEqWithEngines for TyAbiDeclaration {
 }
 
 impl CreateTypeId for TyAbiDeclaration {
-    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        type_engine.insert_type(ty)
+        type_engine.insert_type(declaration_engine, ty)
     }
 }

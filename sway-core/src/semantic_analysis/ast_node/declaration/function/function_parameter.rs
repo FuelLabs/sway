@@ -18,6 +18,9 @@ impl ty::TyFunctionParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+
         let FunctionParameter {
             name,
             is_reference,
@@ -27,7 +30,7 @@ impl ty::TyFunctionParameter {
             type_span,
         } = parameter;
 
-        let initial_type_id = ctx.type_engine.insert_type(type_info);
+        let initial_type_id = type_engine.insert_type(declaration_engine, type_info);
 
         let type_id = check!(
             ctx.resolve_type_with_self(
@@ -36,7 +39,7 @@ impl ty::TyFunctionParameter {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -71,6 +74,9 @@ impl ty::TyFunctionParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+
         let FunctionParameter {
             name,
             is_reference,
@@ -80,18 +86,18 @@ impl ty::TyFunctionParameter {
             type_span,
         } = parameter;
 
-        let initial_type_id = ctx.type_engine.insert_type(type_info);
+        let initial_type_id = type_engine.insert_type(declaration_engine, type_info);
 
         let type_id = check!(
             ctx.namespace.resolve_type_with_self(
                 ctx.engines(),
                 initial_type_id,
-                ctx.type_engine.insert_type(TypeInfo::SelfType),
+                type_engine.insert_type(declaration_engine, TypeInfo::SelfType),
                 &type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

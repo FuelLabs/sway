@@ -18,6 +18,7 @@ impl ty::TyDeclaration {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         let decl = match decl {
@@ -30,12 +31,12 @@ impl ty::TyDeclaration {
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert_type(type_ascription),
+                        type_engine.insert_type(declaration_engine, type_ascription),
                         &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    type_engine.insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
@@ -46,7 +47,7 @@ impl ty::TyDeclaration {
                 let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                 let body = check!(
                     result,
-                    ty::TyExpression::error(name.span(), type_engine),
+                    ty::TyExpression::error(name.span(), engines),
                     warnings,
                     errors
                 );
@@ -82,12 +83,12 @@ impl ty::TyDeclaration {
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert_type(type_ascription),
+                        type_engine.insert_type(declaration_engine, type_ascription),
                         &span,
                         EnforceTypeArguments::No,
                         None
                     ),
-                    type_engine.insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 );
@@ -112,7 +113,7 @@ impl ty::TyDeclaration {
 
                 let value = check!(
                     result,
-                    ty::TyExpression::error(name.span(), type_engine),
+                    ty::TyExpression::error(name.span(), engines),
                     warnings,
                     errors
                 );
@@ -160,7 +161,9 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
-                let mut ctx = ctx.with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+                let mut ctx = ctx.with_type_annotation(
+                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                );
                 let fn_decl = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
@@ -288,7 +291,7 @@ impl ty::TyDeclaration {
                 {
                     let type_id = check!(
                         ctx.resolve_type_without_self(
-                            type_engine.insert_type(type_info),
+                            type_engine.insert_type(declaration_engine, type_info),
                             &name.span(),
                             None
                         ),

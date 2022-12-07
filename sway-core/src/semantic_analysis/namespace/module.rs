@@ -63,8 +63,6 @@ impl Module {
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, ErrorEmitted> {
-        let type_engine = engines.te();
-
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
         let mut compiled_constants: SymbolMap = Default::default();
@@ -97,10 +95,7 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                handler,
-                type_engine,
-                const_item,
-                attributes,
+                handler, engines, const_item, attributes,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.

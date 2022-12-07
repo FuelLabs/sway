@@ -91,6 +91,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
 
         let (type_info, type_info_span) = self.inner.suffix.clone();
 
@@ -114,12 +115,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                type_engine.insert_type(type_info),
+                type_engine.insert_type(declaration_engine, type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -153,7 +154,7 @@ impl TypeBinding<CallPath> {
             type_argument.replace_self_type(engines, ctx.self_type());
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                type_engine.insert_type(TypeInfo::ErrorRecovery),
+                type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -218,7 +219,7 @@ impl TypeBinding<CallPath> {
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
                     engines,
-                    new_copy.create_type_id(type_engine),
+                    new_copy.create_type_id(engines),
                 );
 
                 // insert the new copy into the declaration engine
@@ -251,7 +252,7 @@ impl TypeBinding<CallPath> {
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
                     engines,
-                    new_copy.create_type_id(type_engine),
+                    new_copy.create_type_id(engines),
                 );
 
                 // insert the new copy into the declaration engine

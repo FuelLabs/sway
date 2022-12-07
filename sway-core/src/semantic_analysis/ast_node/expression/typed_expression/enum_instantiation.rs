@@ -40,7 +40,7 @@ pub(crate) fn instantiate_enum(
     match (&args[..], type_engine.look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: enum_decl.create_type_id(ctx.type_engine),
+                return_type: enum_decl.create_type_id(engines),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -57,7 +57,9 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+                .with_type_annotation(
+                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                );
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
@@ -81,7 +83,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 ty::TyExpression {
-                    return_type: enum_decl.create_type_id(type_engine),
+                    return_type: enum_decl.create_type_id(engines),
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),

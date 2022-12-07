@@ -181,8 +181,10 @@ impl TyFunctionDeclaration {
     /// compile, preventing cascading namespace errors.
     pub(crate) fn error(
         decl: parsed::FunctionDeclaration,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> TyFunctionDeclaration {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -192,7 +194,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,

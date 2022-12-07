@@ -139,6 +139,7 @@ fn check_type(
     let mut errors: Vec<CompileError> = vec![];
 
     let ty_engine = engines.te();
+    let declaration_engine = engines.de();
 
     let type_info = check!(
         CompileResult::from(ty_engine.to_typeinfo(ty, &span).map_err(CompileError::from)),
@@ -156,7 +157,7 @@ fn check_type(
         if ignore_self && ty.eq(&type_info, engines) {
             continue;
         }
-        if ty_engine.is_type_info_storage_only(&ty) {
+        if ty_engine.is_type_info_storage_only(declaration_engine, &ty) {
             errors.push(CompileError::InvalidStorageOnlyTypeDecl {
                 ty: engines.help_out(ty).to_string(),
                 span: span.clone(),

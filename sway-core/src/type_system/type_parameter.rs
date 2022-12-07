@@ -97,6 +97,9 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+
         let TypeParameter {
             initial_type_id,
             name_ident,
@@ -117,10 +120,13 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
-            name: name_ident.clone(),
-            trait_constraints: VecSet(trait_constraints.clone()),
-        });
+        let type_id = type_engine.insert_type(
+            declaration_engine,
+            TypeInfo::UnknownGeneric {
+                name: name_ident.clone(),
+                trait_constraints: VecSet(trait_constraints.clone()),
+            },
+        );
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {

@@ -68,7 +68,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(type_implementing_for),
+                type_engine.insert_type(declaration_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -493,7 +493,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(type_implementing_for),
+                type_engine.insert_type(declaration_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -529,7 +529,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -680,7 +680,7 @@ fn type_check_trait_implementation(
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         // type check the function declaration
         let mut impl_method = check!(

@@ -24,6 +24,7 @@ impl ty::TyAstNode {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
         let node = ty::TyAstNode {
@@ -35,12 +36,12 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path, ctx.engines()),
+                        ImportType::Star => ctx.namespace.star_import(&path, engines),
                         ImportType::SelfImport => {
-                            ctx.namespace.self_import(ctx.engines(), &path, a.alias)
+                            ctx.namespace.self_import(engines, &path, a.alias)
                         }
                         ImportType::Item(s) => {
-                            ctx.namespace.item_import(ctx.engines(), &path, &s, a.alias)
+                            ctx.namespace.item_import(engines, &path, &s, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -56,11 +57,13 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
+                        .with_type_annotation(
+                            type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                        )
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span(), type_engine),
+                        ty::TyExpression::error(expr.span(), engines),
                         warnings,
                         errors
                     );
@@ -71,7 +74,7 @@ impl ty::TyAstNode {
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span(), type_engine),
+                        ty::TyExpression::error(expr.span(), engines),
                         warnings,
                         errors
                     );
@@ -112,6 +115,7 @@ pub(crate) fn reassign_storage_subfield(
 
     let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     if !ctx.namespace.has_storage_declared() {
         errors.push(CompileError::NoDeclaredStorage { span });
@@ -198,7 +202,7 @@ pub(crate) fn reassign_storage_subfield(
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
-        ty::TyExpression::error(span, type_engine),
+        ty::TyExpression::error(span, engines),
         warnings,
         errors
     );

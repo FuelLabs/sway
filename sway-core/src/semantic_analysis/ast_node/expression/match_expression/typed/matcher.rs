@@ -202,7 +202,7 @@ fn match_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
     let (mut match_req_map, unsafe_downcast) =
-        instantiate_unsafe_downcast(ctx.type_engine, exp, variant, span);
+        instantiate_unsafe_downcast(ctx.engines(), exp, variant, span);
     let (mut new_match_req_map, match_decl_map) = check!(
         matcher(ctx, &unsafe_downcast, scrutinee),
         return err(warnings, errors),

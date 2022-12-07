@@ -51,12 +51,17 @@ impl ReplaceSelfType for TyEnumDeclaration {
 }
 
 impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
-        type_engine.insert_type(TypeInfo::Enum {
-            name: self.name.clone(),
-            variant_types: self.variants.clone(),
-            type_parameters: self.type_parameters.clone(),
-        })
+    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
+        type_engine.insert_type(
+            declaration_engine,
+            TypeInfo::Enum {
+                name: self.name.clone(),
+                variant_types: self.variants.clone(),
+                type_parameters: self.type_parameters.clone(),
+            },
+        )
     }
 }
 

@@ -37,10 +37,7 @@ pub(crate) fn inlay_hints(
 
     let type_engine = session.type_engine.read();
     let declaration_engine = session.declaration_engine.read();
-    let engines = Engines::new(
-        &type_engine,
-        &declaration_engine,
-    );
+    let engines = Engines::new(&type_engine, &declaration_engine);
 
     let hints: Vec<lsp_types::InlayHint> = session
         .tokens_for_file(uri)
