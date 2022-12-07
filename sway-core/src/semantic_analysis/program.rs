@@ -1,5 +1,4 @@
 use crate::{
-    declaration_engine::declaration_engine::de_get_storage,
     error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
@@ -49,6 +48,7 @@ impl ty::TyProgram {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = engines.de();
         match &self.kind {
             ty::TyProgramKind::Contract { .. } => {
                 let storage_decl = self
@@ -60,7 +60,9 @@ impl ty::TyProgram {
                 match storage_decl {
                     Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
                         let decl = check!(
-                            CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                            CompileResult::from(
+                                declaration_engine.get_storage(decl_id.clone(), &decl_id.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors

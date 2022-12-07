@@ -21,6 +21,7 @@ use crate::{
     semantic_analysis::*,
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
+    Engines,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -1008,6 +1009,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
 
         if !ctx.namespace.has_storage_declared() {
             errors.push(CompileError::NoDeclaredStorage { span: span.clone() });
@@ -1015,7 +1017,8 @@ impl ty::TyExpression {
         }
 
         let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(span),
+            ctx.namespace
+                .get_storage_field_descriptors(declaration_engine, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1023,8 +1026,12 @@ impl ty::TyExpression {
 
         // Do all namespace checking here!
         let (storage_access, return_type) = check!(
-            ctx.namespace
-                .apply_storage_load(type_engine, checkee, &storage_fields, span),
+            ctx.namespace.apply_storage_load(
+                Engines::new(type_engine, declaration_engine),
+                checkee,
+                &storage_fields,
+                span
+            ),
             return err(warnings, errors),
             warnings,
             errors

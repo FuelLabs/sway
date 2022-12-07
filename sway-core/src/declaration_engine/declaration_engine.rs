@@ -242,10 +242,3 @@ pub fn de_get_struct(
 ) -> Result<ty::TyStructDeclaration, CompileError> {
     DECLARATION_ENGINE.get_struct(index, span)
 }
-
-pub fn de_get_storage(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyStorageDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_storage(index, span)
-}

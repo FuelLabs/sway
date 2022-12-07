@@ -33,6 +33,7 @@ impl TyProgram {
         let mut warnings = vec![];
 
         let ty_engine = engines.te();
+        let declaration_engine = engines.de();
 
         // Validate all submodules
         for (_, submodule) in &root.submodules {
@@ -59,7 +60,9 @@ impl TyProgram {
             match &node.content {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
                     let func = check!(
-                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        CompileResult::from(
+                            declaration_engine.get_function(decl_id.clone(), &node.span)
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -85,7 +88,9 @@ impl TyProgram {
                         span,
                         ..
                     } = check!(
-                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        CompileResult::from(
+                            declaration_engine.get_impl_trait(decl_id.clone(), &node.span)
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -95,7 +100,7 @@ impl TyProgram {
                         TypeInfo::Contract
                     ) {
                         for method_id in methods {
-                            match de_get_function(method_id, &span) {
+                            match declaration_engine.get_function(method_id, &span) {
                                 Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }
@@ -126,7 +131,11 @@ impl TyProgram {
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
             if !matches!(kind, parsed::TreeType::Library { .. }) {
-                errors.extend(disallow_impure_functions(&declarations, &mains));
+                errors.extend(disallow_impure_functions(
+                    declaration_engine,
+                    &declarations,
+                    &mains,
+                ));
             }
 
             // `storage` declarations are not allowed in non-contracts
@@ -136,7 +145,9 @@ impl TyProgram {
 
             if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
                 let TyStorageDeclaration { span, .. } = check!(
-                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    CompileResult::from(
+                        declaration_engine.get_storage(decl_id.clone(), &decl_id.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -470,6 +481,7 @@ impl TyProgramKind {
 }
 
 fn disallow_impure_functions(
+    declaration_engine: &DeclarationEngine,
     declarations: &[TyDeclaration],
     mains: &[TyFunctionDeclaration],
 ) -> Vec<CompileError> {
@@ -478,7 +490,7 @@ fn disallow_impure_functions(
         .iter()
         .filter_map(|decl| match decl {
             TyDeclaration::FunctionDeclaration(decl_id) => {
-                match de_get_function(decl_id.clone(), &decl.span()) {
+                match declaration_engine.get_function(decl_id.clone(), &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {
                         errs.push(err);

@@ -111,6 +111,8 @@ pub(crate) fn reassign_storage_subfield(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
     if !ctx.namespace.has_storage_declared() {
         errors.push(CompileError::NoDeclaredStorage { span });
 
@@ -118,7 +120,8 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace.get_storage_field_descriptors(&span),
+        ctx.namespace
+            .get_storage_field_descriptors(declaration_engine, &span),
         return err(warnings, errors),
         warnings,
         errors

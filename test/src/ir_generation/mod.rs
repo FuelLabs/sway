@@ -8,14 +8,15 @@ use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
     compile_ir_to_asm, compile_to_ast, declaration_engine::DeclarationEngine,
-    inline_function_calls, ir_generation::compile_program, namespace, TypeEngine,
+    inline_function_calls, ir_generation::compile_program, namespace, Engines, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
-    let core_lib = compile_core(&type_engine, &declaration_engine);
+    let engines = Engines::new(&type_engine, &declaration_engine);
+    let core_lib = compile_core(engines);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -117,8 +118,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 );
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
-                    &type_engine,
-                    &declaration_engine,
+                    engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
@@ -144,19 +144,14 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = false;
-                let mut ir = compile_program(
-                    &typed_program,
-                    include_tests,
-                    &type_engine,
-                    &declaration_engine,
-                )
-                .unwrap_or_else(|e| {
-                    panic!("Failed to compile test {}:\n{e}", path.display());
-                })
-                .verify()
-                .unwrap_or_else(|err| {
-                    panic!("IR verification failed for test {}:\n{err}", path.display());
-                });
+                let mut ir = compile_program(&typed_program, include_tests, engines)
+                    .unwrap_or_else(|e| {
+                        panic!("Failed to compile test {}:\n{e}", path.display());
+                    })
+                    .verify()
+                    .unwrap_or_else(|err| {
+                        panic!("IR verification failed for test {}:\n{err}", path.display());
+                    });
                 let ir_output = sway_ir::printer::to_string(&ir);
 
                 if ir_checker.is_none() {
@@ -296,10 +291,7 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
-) -> namespace::Module {
+fn compile_core(engines: Engines<'_>) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -310,7 +302,7 @@ fn compile_core(
         locked: false,
     };
 
-    let res = forc::test::forc_check::check(check_cmd, type_engine, declaration_engine)
+    let res = forc::test::forc_check::check(check_cmd, engines)
         .expect("Failed to compile sway-lib-core for IR tests.");
 
     match res.value {
