@@ -201,7 +201,6 @@ impl MetadataManager {
                 .get(&md_idx)
                 .cloned()
                 .or_else(|| {
-                    // Create a new file location (path and src) and save it in the cache.
                     md_idx
                         .get_content(context)
                         .unwrap_struct("config_name", 1)
