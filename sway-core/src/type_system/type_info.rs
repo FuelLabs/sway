@@ -346,7 +346,6 @@ impl Default for TypeInfo {
 impl DisplayWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
-        let type_engine = engines.te();
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
@@ -377,7 +376,7 @@ impl DisplayWithEngines for TypeInfo {
                 type_parameters,
                 ..
             } => print_inner_types(
-                type_engine,
+                engines,
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
@@ -386,7 +385,7 @@ impl DisplayWithEngines for TypeInfo {
                 type_parameters,
                 ..
             } => print_inner_types(
-                type_engine,
+                engines,
                 name.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
@@ -1537,12 +1536,13 @@ impl TypeInfo {
     /// 3) in the case where a `subfield` does not exist on `self`
     pub(crate) fn apply_subfields(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         subfields: &[Ident],
         span: &Span,
     ) -> CompileResult<ty::TyStructField> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let type_engine = engines.te();
         match (self, subfields.split_first()) {
             (TypeInfo::Struct { .. }, None) => err(warnings, errors),
             (TypeInfo::Struct { name, fields, .. }, Some((first, rest))) => {
@@ -1567,11 +1567,9 @@ impl TypeInfo {
                     field
                 } else {
                     check!(
-                        type_engine.look_up_type_id(field.type_id).apply_subfields(
-                            type_engine,
-                            rest,
-                            span
-                        ),
+                        type_engine
+                            .look_up_type_id(field.type_id)
+                            .apply_subfields(engines, rest, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1585,7 +1583,7 @@ impl TypeInfo {
             }
             (type_info, _) => {
                 errors.push(CompileError::FieldAccessOnNonStruct {
-                    actually: type_engine.help_out(type_info).to_string(),
+                    actually: engines.help_out(type_info).to_string(),
                     span: span.clone(),
                 });
                 err(warnings, errors)
@@ -1629,7 +1627,7 @@ impl TypeInfo {
     /// Returns an error if `self` is not a `TypeInfo::Tuple`.
     pub(crate) fn expect_tuple(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<&Vec<TypeArgument>> {
@@ -1643,7 +1641,7 @@ impl TypeInfo {
                 vec![CompileError::NotATuple {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: type_engine.help_out(a).to_string(),
+                    actually: engines.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1655,7 +1653,7 @@ impl TypeInfo {
     /// Returns an error if `self` is not a `TypeInfo::Enum`.
     pub(crate) fn expect_enum(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         debug_string: impl Into<String>,
         debug_span: &Span,
     ) -> CompileResult<(&Ident, &Vec<ty::TyEnumVariant>)> {
@@ -1673,7 +1671,7 @@ impl TypeInfo {
                 vec![CompileError::NotAnEnum {
                     name: debug_string.into(),
                     span: debug_span.clone(),
-                    actually: type_engine.help_out(a).to_string(),
+                    actually: engines.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1686,7 +1684,7 @@ impl TypeInfo {
     #[allow(dead_code)]
     pub(crate) fn expect_struct(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         debug_span: &Span,
     ) -> CompileResult<(&Ident, &Vec<ty::TyStructField>)> {
         let warnings = vec![];
@@ -1698,7 +1696,7 @@ impl TypeInfo {
                 vec![],
                 vec![CompileError::NotAStruct {
                     span: debug_span.clone(),
-                    actually: type_engine.help_out(a).to_string(),
+                    actually: engines.help_out(a).to_string(),
                 }],
             ),
         }
@@ -1813,12 +1811,12 @@ fn types_are_subset_of(engines: Engines<'_>, left: &[TypeInfo], right: &[TypeInf
 }
 
 fn print_inner_types(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     name: String,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
-        .map(|x| type_engine.help_out(x).to_string())
+        .map(|x| engines.help_out(x).to_string())
         .collect::<Vec<_>>();
     format!(
         "{}{}",

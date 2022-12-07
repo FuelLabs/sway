@@ -173,7 +173,7 @@ impl TraitMap {
                             "<{}>",
                             trait_type_args
                                 .iter()
-                                .map(|type_arg| type_engine.help_out(type_arg).to_string())
+                                .map(|type_arg| engines.help_out(type_arg).to_string())
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         )
@@ -181,7 +181,7 @@ impl TraitMap {
                 );
                 errors.push(CompileError::ConflictingImplsForTraitAndType {
                     trait_name: trait_name_str,
-                    type_implementing_for: type_engine.help_out(type_id).to_string(),
+                    type_implementing_for: engines.help_out(type_id).to_string(),
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset {
@@ -197,7 +197,7 @@ impl TraitMap {
                         );
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
                             func_name: method.name.to_string(),
-                            type_implementing_for: type_engine.help_out(type_id).to_string(),
+                            type_implementing_for: engines.help_out(type_id).to_string(),
                             span: method.name.span(),
                         });
                     }
@@ -712,10 +712,12 @@ impl TraitMap {
         type_id: TypeId,
         constraints: &[TraitConstraint],
         access_span: &Span,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         let warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = engines.te();
 
         let required_traits: BTreeSet<Ident> = constraints
             .iter()
@@ -762,7 +764,7 @@ impl TraitMap {
         for trait_name in required_traits.difference(&found_traits) {
             // TODO: use a better span
             errors.push(CompileError::TraitConstraintNotSatisfied {
-                ty: type_engine.help_out(type_id).to_string(),
+                ty: engines.help_out(type_id).to_string(),
                 trait_name: trait_name.to_string(),
                 span: access_span.clone(),
             });

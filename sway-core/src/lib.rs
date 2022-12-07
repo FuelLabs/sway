@@ -744,13 +744,12 @@ fn module_return_path_analysis(
     module: &ty::TyModule,
     errors: &mut Vec<CompileError>,
 ) {
-    let type_engine = engines.te();
     for (_, submodule) in &module.submodules {
         module_return_path_analysis(engines, &submodule.module, errors);
     }
     let graph = ControlFlowGraph::construct_return_path_graph(engines, &module.all_nodes);
     match graph {
-        Ok(graph) => errors.extend(graph.analyze_return_paths(type_engine)),
+        Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
         Err(error) => errors.push(error),
     }
 }

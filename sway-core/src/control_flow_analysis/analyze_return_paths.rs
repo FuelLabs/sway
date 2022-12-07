@@ -34,7 +34,7 @@ impl ControlFlowGraph {
     /// and the functions namespace and validating that all paths leading to the function exit node
     /// return the same type. Additionally, if a function has a return type, all paths must indeed
     /// lead to the function exit node.
-    pub(crate) fn analyze_return_paths(&self, type_engine: &TypeEngine) -> Vec<CompileError> {
+    pub(crate) fn analyze_return_paths(&self, engines: Engines<'_>) -> Vec<CompileError> {
         let mut errors = vec![];
         for (
             name,
@@ -47,7 +47,7 @@ impl ControlFlowGraph {
         {
             // For every node connected to the entry point
             errors.append(&mut self.ensure_all_paths_reach_exit(
-                type_engine,
+                engines,
                 *entry_point,
                 *exit_point,
                 name,
@@ -59,7 +59,7 @@ impl ControlFlowGraph {
 
     fn ensure_all_paths_reach_exit(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
         function_name: &Ident,
@@ -101,7 +101,7 @@ impl ControlFlowGraph {
                         // different. To save some code duplication,
                         span,
                         function_name: function_name.clone(),
-                        ty: type_engine.help_out(return_ty).to_string(),
+                        ty: engines.help_out(return_ty).to_string(),
                     });
                 }
                 next_rovers.append(&mut neighbors);

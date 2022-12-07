@@ -23,6 +23,7 @@ pub(crate) fn instantiate_enum(
 
     let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     let enum_variant = check!(
         enum_decl
@@ -110,7 +111,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_variant_name.span(),
-                ty: type_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
             });
             err(warnings, errors)
         }

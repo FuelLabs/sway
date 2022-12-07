@@ -357,7 +357,7 @@ impl Items {
                 (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -365,7 +365,7 @@ impl Items {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -373,7 +373,7 @@ impl Items {
                     errors.push(CompileError::NotIndexable {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }

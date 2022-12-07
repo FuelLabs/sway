@@ -52,7 +52,7 @@ pub(super) fn unify(
             l.val(),
             r.val(),
             arguments_are_flipped,
-            type_engine,
+            engines,
         ),
         (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
             unify::unify_tuples(help_text, rfs, efs, curried)
@@ -106,7 +106,7 @@ pub(super) fn unify(
             (en, etps, efs),
             curried,
             arguments_are_flipped,
-            type_engine,
+            engines,
         ),
         (
             Enum {
@@ -128,7 +128,7 @@ pub(super) fn unify(
             (en, etps, evs),
             curried,
             arguments_are_flipped,
-            type_engine,
+            engines,
         ),
         (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => unify::unify_arrays(
             received,
@@ -139,7 +139,7 @@ pub(super) fn unify(
             ee.type_id,
             curried,
             arguments_are_flipped,
-            type_engine,
+            engines,
         ),
         (
             ref r @ TypeInfo::ContractCaller {
@@ -274,8 +274,8 @@ pub(super) fn unify(
         (TypeInfo::ErrorRecovery, _) => (vec![], vec![]),
         (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
         (r, e) => {
-            let e = type_engine.help_out(e).to_string();
-            let r = type_engine.help_out(r).to_string();
+            let e = engines.help_out(e).to_string();
+            let r = engines.help_out(r).to_string();
             let (expected, received) = if !arguments_are_flipped {
                 (e, r)
             } else {
@@ -329,7 +329,7 @@ pub(super) fn unify_right(
             l.val(),
             r.val(),
             false,
-            type_engine,
+            engines,
         ),
         (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
             unify::unify_tuples(help_text, rfs, efs, curried)
@@ -362,7 +362,7 @@ pub(super) fn unify_right(
             (en, etps, efs),
             curried,
             false,
-            type_engine,
+            engines,
         ),
         (
             Enum {
@@ -384,18 +384,10 @@ pub(super) fn unify_right(
             (en, etps, evs),
             curried,
             false,
-            type_engine,
+            engines,
         ),
         (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => unify::unify_arrays(
-            received,
-            expected,
-            span,
-            help_text,
-            re.type_id,
-            ee.type_id,
-            curried,
-            false,
-            type_engine,
+            received, expected, span, help_text, re.type_id, ee.type_id, curried, false, engines,
         ),
         (
             TypeInfo::ContractCaller {
@@ -473,8 +465,8 @@ pub(super) fn unify_right(
         (_, TypeInfo::ErrorRecovery) => (vec![], vec![]),
         (r, e) => {
             let errors = vec![TypeError::MismatchedType {
-                expected: type_engine.help_out(e).to_string(),
-                received: type_engine.help_out(r).to_string(),
+                expected: engines.help_out(e).to_string(),
+                received: engines.help_out(r).to_string(),
                 help_text: help_text.to_string(),
                 span: span.clone(),
             }];
@@ -492,13 +484,13 @@ fn unify_strs(
     r: usize,
     e: usize,
     arguments_are_flipped: bool,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>) {
     let warnings = vec![];
     let mut errors = vec![];
     if r != e {
-        let expected = type_engine.help_out(expected).to_string();
-        let received = type_engine.help_out(received).to_string();
+        let expected = engines.help_out(expected).to_string();
+        let received = engines.help_out(received).to_string();
         let (expected, received) = if arguments_are_flipped {
             (received, expected)
         } else {
@@ -609,7 +601,7 @@ fn unify_structs<F>(
     e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
     unifier: F,
     arguments_are_flipped: bool,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
     F: Fn(TypeId, TypeId, &Span, &str) -> (Vec<CompileWarning>, Vec<TypeError>),
@@ -634,8 +626,8 @@ where
             );
         });
     } else {
-        let expected = type_engine.help_out(expected).to_string();
-        let received = type_engine.help_out(received).to_string();
+        let expected = engines.help_out(expected).to_string();
+        let received = engines.help_out(received).to_string();
         let (expected, received) = if arguments_are_flipped {
             (received, expected)
         } else {
@@ -661,7 +653,7 @@ fn unify_enums<F>(
     e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     unifier: F,
     arguments_are_flipped: bool,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
     F: Fn(TypeId, TypeId, &Span, &str) -> (Vec<CompileWarning>, Vec<TypeError>),
@@ -686,8 +678,8 @@ where
             );
         });
     } else {
-        let expected = type_engine.help_out(expected).to_string();
-        let received = type_engine.help_out(received).to_string();
+        let expected = engines.help_out(expected).to_string();
+        let received = engines.help_out(received).to_string();
         let (expected, received) = if arguments_are_flipped {
             (received, expected)
         } else {
@@ -713,7 +705,7 @@ fn unify_arrays<F>(
     e: TypeId,
     unifier: F,
     arguments_are_flipped: bool,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> (Vec<CompileWarning>, Vec<TypeError>)
 where
     F: Fn(TypeId, TypeId, &Span, &str) -> (Vec<CompileWarning>, Vec<TypeError>),
@@ -724,8 +716,8 @@ where
     // the elem types.
     let mut errors = vec![];
     if !new_errors.is_empty() {
-        let expected = type_engine.help_out(expected).to_string();
-        let received = type_engine.help_out(received).to_string();
+        let expected = engines.help_out(expected).to_string();
+        let received = engines.help_out(received).to_string();
         let (expected, received) = if arguments_are_flipped {
             (received, expected)
         } else {

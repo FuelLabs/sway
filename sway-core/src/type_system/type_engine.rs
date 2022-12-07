@@ -1,4 +1,4 @@
-use core::fmt;
+use core::fmt::Write;
 use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
@@ -20,16 +20,6 @@ pub struct TypeEngine {
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
     unify_map: RwLock<HashMap<TypeId, Vec<TypeId>>>,
-}
-
-impl fmt::Display for TypeEngine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.slab.with_slice(|elems| {
-            let list = elems.iter().map(|type_info| self.help_out(type_info));
-            let list = ListDisplay { list };
-            write!(f, "TypeEngine {{\n{}\n}}", list)
-        })
-    }
 }
 
 fn make_hasher<'a: 'b, 'b, K>(
@@ -621,10 +611,18 @@ impl TypeEngine {
         )
     }
 
-    /// Helps out some `thing: T` by adding `self` as context.
-    pub fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
-        let engines = Engines::new(self, todo!());
-        WithEngines { thing, engines }
+    /// Pretty print method for printing the [TypeEngine]. This method is
+    /// manually implemented to avoid implementation overhead regarding using
+    /// [DisplayWithEngines].
+    pub fn pretty_print(&self, declaration_engine: &DeclarationEngine) -> String {
+        let engines = Engines::new(self, declaration_engine);
+        let mut builder = String::new();
+        self.slab.with_slice(|elems| {
+            let list = elems.iter().map(|type_info| engines.help_out(type_info));
+            let list = ListDisplay { list };
+            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+        });
+        builder
     }
 }
 

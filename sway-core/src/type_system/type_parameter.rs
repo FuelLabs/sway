@@ -202,7 +202,7 @@ impl TypeParameter {
                         *type_id,
                         trait_constraints,
                         access_span,
-                        ctx.type_engine,
+                        ctx.engines()
                     ),
                 continue,
                 warnings,

@@ -158,7 +158,7 @@ fn check_type(
         }
         if ty_engine.is_type_info_storage_only(&ty) {
             errors.push(CompileError::InvalidStorageOnlyTypeDecl {
-                ty: ty_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
                 span: span.clone(),
             });
         }

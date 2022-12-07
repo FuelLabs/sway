@@ -24,6 +24,8 @@ impl ty::TyAstNode {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
+
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -85,9 +87,7 @@ impl ty::TyAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: type_engine
-                    .help_out(node.type_info(type_engine))
-                    .to_string(),
+                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
                 node.type_info(type_engine).can_safely_ignore(type_engine),

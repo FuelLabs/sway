@@ -25,6 +25,7 @@ pub(crate) fn type_check_method_application(
 
     let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     // type check the function arguments
     let mut args_buf = VecDeque::new();
@@ -327,8 +328,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: type_engine.help_out(arg.return_type).to_string(),
-                should_be: type_engine.help_out(param.type_id).to_string(),
+                provided: engines.help_out(arg.return_type).to_string(),
+                should_be: engines.help_out(param.type_id).to_string(),
             });
         }
     }

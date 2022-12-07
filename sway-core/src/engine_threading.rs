@@ -36,7 +36,7 @@ impl<'a> Engines<'a> {
     }
 
     /// Helps out some `thing: T` by adding `self` as context.
-    pub(crate) fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
+    pub fn help_out<T>(&self, thing: T) -> WithEngines<'_, T> {
         WithEngines {
             thing,
             engines: *self,

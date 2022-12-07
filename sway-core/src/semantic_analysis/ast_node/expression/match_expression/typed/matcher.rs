@@ -165,12 +165,7 @@ fn match_struct(
     } in fields.into_iter()
     {
         let subfield = check!(
-            instantiate_struct_field_access(
-                ctx.type_engine,
-                exp.clone(),
-                field.clone(),
-                field_span
-            ),
+            instantiate_struct_field_access(ctx.engines(), exp.clone(), field.clone(), field_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -231,7 +226,7 @@ fn match_tuple(
     for (pos, elem) in elems.into_iter().enumerate() {
         let tuple_index_access = check!(
             instantiate_tuple_index_access(
-                ctx.type_engine,
+                ctx.engines(),
                 exp.clone(),
                 pos,
                 span.clone(),

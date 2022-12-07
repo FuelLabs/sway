@@ -615,6 +615,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // type check the value
         let typed_value = {
@@ -654,7 +655,7 @@ impl ty::TyExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(type_engine, type_id, typed_scrutinees, span.clone()),
+            check_match_expression_usefulness(engines, type_id, typed_scrutinees, span.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -774,6 +775,7 @@ impl ty::TyExpression {
 
         let type_engine = ctx.type_engine;
         let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         let TypeBinding {
             inner: CallPath {
@@ -825,7 +827,7 @@ impl ty::TyExpression {
         // extract the struct name and fields from the type info
         let type_info = type_engine.look_up_type_id(type_id);
         let (struct_name, struct_fields) = check!(
-            type_info.expect_struct(type_engine, &span),
+            type_info.expect_struct(engines, &span),
             return err(warnings, errors),
             warnings,
             errors
@@ -920,6 +922,8 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
+
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
@@ -930,7 +934,7 @@ impl ty::TyExpression {
             errors
         );
         let exp = check!(
-            instantiate_struct_field_access(type_engine, parent, field_to_access, span),
+            instantiate_struct_field_access(engines, parent, field_to_access, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1058,6 +1062,8 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
+
         let ctx = ctx
             .with_help_text("")
             .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
@@ -1068,7 +1074,7 @@ impl ty::TyExpression {
             errors
         );
         let exp = check!(
-            instantiate_tuple_index_access(type_engine, parent, index, index_span, span),
+            instantiate_tuple_index_access(engines, parent, index, index_span, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1847,6 +1853,7 @@ impl ty::TyExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
+        let engines = ctx.engines();
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
@@ -1855,7 +1862,7 @@ impl ty::TyExpression {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {
                             Literal::handle_parse_int_error(
-                                type_engine,
+                                engines,
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Eight),
                                 span.clone(),
@@ -1866,7 +1873,7 @@ impl ty::TyExpression {
                     IntegerBits::Sixteen => (
                         num.to_string().parse().map(Literal::U16).map_err(|e| {
                             Literal::handle_parse_int_error(
-                                type_engine,
+                                engines,
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
                                 span.clone(),
@@ -1877,7 +1884,7 @@ impl ty::TyExpression {
                     IntegerBits::ThirtyTwo => (
                         num.to_string().parse().map(Literal::U32).map_err(|e| {
                             Literal::handle_parse_int_error(
-                                type_engine,
+                                engines,
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                                 span.clone(),
@@ -1888,7 +1895,7 @@ impl ty::TyExpression {
                     IntegerBits::SixtyFour => (
                         num.to_string().parse().map(Literal::U64).map_err(|e| {
                             Literal::handle_parse_int_error(
-                                type_engine,
+                                engines,
                                 e,
                                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
                                 span.clone(),
@@ -1900,7 +1907,7 @@ impl ty::TyExpression {
                 TypeInfo::Numeric => (
                     num.to_string().parse().map(Literal::U64).map_err(|e| {
                         Literal::handle_parse_int_error(
-                            type_engine,
+                            engines,
                             e,
                             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
                             span.clone(),

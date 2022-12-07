@@ -98,14 +98,13 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 }
 
 fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types::HoverContents {
-    let type_engine = engines.te();
     let declaration_engine = engines.de();
 
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
-        let type_name = format!("{}", type_engine.help_out(type_id));
+        let type_name = format!("{}", engines.help_out(type_id));
         format!("{}: {}", name, type_name)
     };
 
@@ -115,7 +114,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
-                    let type_name = format!("{}", type_engine.help_out(var_decl.type_ascription));
+                    let type_name = format!("{}", engines.help_out(var_decl.type_ascription));
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -165,7 +164,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             }
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
-                    Some(format!("{}", type_engine.help_out(expr.return_type)))
+                    Some(format!("{}", engines.help_out(expr.return_type)))
                 }
                 _ => None,
             },

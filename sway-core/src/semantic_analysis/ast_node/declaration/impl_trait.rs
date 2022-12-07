@@ -181,7 +181,7 @@ impl ty::TyImplTrait {
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: type_engine.help_out(implementing_for_type_id).to_string(),
+                        ty: engines.help_out(implementing_for_type_id).to_string(),
                     });
                 }
 
@@ -619,7 +619,7 @@ fn type_check_trait_implementation(
                     .map(|x| x.into())
                     .collect::<Vec<_>>(),
                 block_span,
-                type_engine,
+                engines,
             ),
         return err(warnings, errors),
         warnings,
@@ -767,8 +767,8 @@ fn type_check_trait_implementation(
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
-                    given: type_engine.help_out(impl_method_param.type_id).to_string(),
-                    expected: type_engine
+                    given: engines.help_out(impl_method_param.type_id).to_string(),
+                    expected: engines
                         .help_out(impl_method_signature_param.type_id)
                         .to_string(),
                 });
@@ -810,10 +810,10 @@ fn type_check_trait_implementation(
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
-                expected: type_engine
+                expected: engines
                     .help_out(impl_method_signature.return_type)
                     .to_string(),
-                given: type_engine.help_out(impl_method.return_type).to_string(),
+                given: engines.help_out(impl_method.return_type).to_string(),
             });
             continue;
         }

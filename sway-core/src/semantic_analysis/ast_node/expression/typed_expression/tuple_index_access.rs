@@ -3,11 +3,11 @@ use sway_types::Span;
 use crate::{
     error::{err, ok},
     language::ty,
-    CompileError, CompileResult, TypeEngine,
+    CompileError, CompileResult, Engines,
 };
 
 pub(crate) fn instantiate_tuple_index_access(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     parent: ty::TyExpression,
     index: usize,
     index_span: Span,
@@ -15,10 +15,11 @@ pub(crate) fn instantiate_tuple_index_access(
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
+    let type_engine = engines.te();
     let mut tuple_type_arg_to_access = None;
     let type_info = type_engine.look_up_type_id(parent.return_type);
     let type_args = check!(
-        type_info.expect_tuple(type_engine, parent.span.as_str(), &parent.span),
+        type_info.expect_tuple(engines, parent.span.as_str(), &parent.span),
         return err(warnings, errors),
         warnings,
         errors

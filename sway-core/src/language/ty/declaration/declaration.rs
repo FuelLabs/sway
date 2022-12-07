@@ -544,7 +544,7 @@ impl TyDeclaration {
             decl => {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
-                    name: type_engine.help_out(decl).to_string(),
+                    name: engines.help_out(decl).to_string(),
                     actually_is: decl.friendly_name(),
                 });
                 return err(warnings, errors);

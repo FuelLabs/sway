@@ -1,4 +1,4 @@
-use crate::type_system::*;
+use crate::{type_system::*, Engines};
 
 use sway_error::error::CompileError;
 use sway_types::{integer_bits::IntegerBits, span};
@@ -121,22 +121,22 @@ impl Literal {
 
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         e: ParseIntError,
         ty: TypeInfo,
         span: sway_types::Span,
     ) -> CompileError {
         match e.kind() {
             IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: type_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: type_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: type_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
                 span,
             },
             IntErrorKind::Zero | IntErrorKind::Empty | _ => {
