@@ -9,6 +9,8 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let declaration_engine = ctx.declaration_engine;
+
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
         let evaluated_contents = code_block
@@ -36,7 +38,7 @@ impl ty::TyCodeBlock {
         let block_type = evaluated_contents
             .iter()
             .find_map(|node| {
-                if node.deterministically_aborts(true) {
+                if node.deterministically_aborts(declaration_engine, true) {
                     Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
                 } else {
                     match node {

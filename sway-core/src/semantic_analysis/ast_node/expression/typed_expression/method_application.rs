@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, DeclarationId},
+    declaration_engine::DeclarationId,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -49,10 +49,9 @@ pub(crate) fn type_check_method_application(
         errors
     );
     let method = check!(
-        CompileResult::from(de_get_function(
-            decl_id.clone(),
-            &method_name_binding.span()
-        )),
+        CompileResult::from(
+            declaration_engine.get_function(decl_id.clone(), &method_name_binding.span())
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -367,6 +366,7 @@ pub(crate) fn resolve_method_name(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
@@ -462,7 +462,7 @@ pub(crate) fn resolve_method_name(
     };
 
     let mut func_decl = check!(
-        CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+        CompileResult::from(declaration_engine.get_function(decl_id.clone(), &decl_id.span())),
         return err(warnings, errors),
         warnings,
         errors

@@ -4,7 +4,6 @@ use std::{
     sync::RwLock,
 };
 
-use lazy_static::lazy_static;
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
@@ -15,10 +14,6 @@ use crate::{
 };
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
-
-lazy_static! {
-    static ref DECLARATION_ENGINE: DeclarationEngine = DeclarationEngine::default();
-}
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
@@ -213,32 +208,4 @@ impl DeclarationEngine {
     ) -> Result<ty::TyEnumDeclaration, CompileError> {
         self.slab.get(*index).expect_enum(span)
     }
-}
-
-pub fn de_get_function(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyFunctionDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_function(index, span)
-}
-
-pub fn de_get_trait(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyTraitDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_trait(index, span)
-}
-
-pub fn de_get_impl_trait(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyImplTrait, CompileError> {
-    DECLARATION_ENGINE.get_impl_trait(index, span)
-}
-
-pub fn de_get_struct(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyStructDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_struct(index, span)
 }

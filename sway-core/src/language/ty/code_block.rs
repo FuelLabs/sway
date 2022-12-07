@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{DeclMapping, ReplaceDecls},
+    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
     engine_threading::*,
     language::ty::*,
     type_system::*,
@@ -43,9 +43,13 @@ impl ReplaceDecls for TyCodeBlock {
 }
 
 impl DeterministicallyAborts for TyCodeBlock {
-    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
+    fn deterministically_aborts(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        check_call_body: bool,
+    ) -> bool {
         self.contents
             .iter()
-            .any(|x| x.deterministically_aborts(check_call_body))
+            .any(|x| x.deterministically_aborts(declaration_engine, check_call_body))
     }
 }

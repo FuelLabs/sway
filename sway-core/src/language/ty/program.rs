@@ -269,7 +269,7 @@ impl TyProgram {
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -289,13 +289,13 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Script),
+                        node.is_main_function(declaration_engine, parsed::TreeType::Script),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -315,13 +315,13 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Predicate),
+                        node.is_main_function(declaration_engine, parsed::TreeType::Predicate),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -341,7 +341,7 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -444,11 +444,14 @@ impl TyProgram {
     }
 
     /// All test function declarations within the program.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    pub fn test_fns<'a: 'b, 'b>(
+        &'b self,
+        declaration_engine: &'a DeclarationEngine,
+    ) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
         self.root
             .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns())
-            .chain(self.root.test_fns())
+            .flat_map(|(_, submod)| submod.module.test_fns(declaration_engine))
+            .chain(self.root.test_fns(declaration_engine))
     }
 }
 

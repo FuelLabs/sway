@@ -248,6 +248,8 @@ fn handle_trait(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let declaration_engine = ctx.declaration_engine;
+
     let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
 
@@ -259,7 +261,7 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

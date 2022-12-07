@@ -16,8 +16,10 @@ pub(crate) fn instantiate_if_expression(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let declaration_engine = ctx.declaration_engine;
+
     // if the branch aborts, then its return type doesn't matter.
-    let then_deterministically_aborts = then.deterministically_aborts(true);
+    let then_deterministically_aborts = then.deterministically_aborts(declaration_engine, true);
     if !then_deterministically_aborts {
         // if this does not deterministically_abort, check the block return type
         let ty_to_check = if r#else.is_some() {
@@ -40,7 +42,7 @@ pub(crate) fn instantiate_if_expression(
     }
     let mut else_deterministically_aborts = false;
     let r#else = r#else.map(|r#else| {
-        else_deterministically_aborts = r#else.deterministically_aborts(true);
+        else_deterministically_aborts = r#else.deterministically_aborts(declaration_engine, true);
         let ty_to_check = if then_deterministically_aborts {
             ctx.type_annotation()
         } else {

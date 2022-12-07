@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, DeclarationEngine, ReplaceDecls},
+    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
     engine_threading::*,
     error::*,
     language::{parsed, ty::*},
@@ -94,12 +94,16 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
+    fn deterministically_aborts(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        check_call_body: bool,
+    ) -> bool {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(check_call_body)
+                exp.deterministically_aborts(declaration_engine, check_call_body)
             }
             SideEffect => false,
         }
@@ -152,7 +156,11 @@ impl TyAstNode {
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
     /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(&self, tree_type: parsed::TreeType) -> CompileResult<bool> {
+    pub(crate) fn is_main_function(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        tree_type: parsed::TreeType,
+    ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -162,7 +170,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { name, .. } = check!(
-                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -179,7 +187,10 @@ impl TyAstNode {
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(&self) -> CompileResult<bool> {
+    pub(crate) fn is_test_function(
+        &self,
+        declaration_engine: &DeclarationEngine,
+    ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -189,7 +200,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -175,7 +175,7 @@ impl ty::TyTraitDeclaration {
             .into_iter()
         {
             let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &name.span())),
+                CompileResult::from(declaration_engine.get_function(decl_id.clone(), &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -232,7 +232,9 @@ impl ty::TyTraitDeclaration {
         // Retrieve the trait methods for this trait.
         for decl_id in methods.iter() {
             let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                CompileResult::from(
+                    declaration_engine.get_function(decl_id.clone(), &call_path.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -257,7 +259,9 @@ impl ty::TyTraitDeclaration {
             .into_iter()
         {
             let mut method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &call_path.span())),
+                CompileResult::from(
+                    declaration_engine.get_function(decl_id.clone(), &call_path.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -332,7 +336,9 @@ impl ty::TyTraitDeclaration {
         }
         for decl_id in methods.iter() {
             let mut method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &trait_name.span())),
+                CompileResult::from(
+                    declaration_engine.get_function(decl_id.clone(), &trait_name.span())
+                ),
                 continue,
                 warnings,
                 errors

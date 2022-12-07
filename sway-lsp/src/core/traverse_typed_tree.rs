@@ -217,7 +217,6 @@ fn handle_declaration(engines: Engines<'_>, declaration: &ty::TyDeclaration, tok
 }
 
 fn handle_expression(engines: Engines<'_>, expression: &ty::TyExpression, tokens: &TokenMap) {
-    let type_engine = engines.te();
     let declaration_engine = engines.de();
     match &expression.expression {
         ty::TyExpressionVariant::Literal { .. } => {
@@ -306,7 +305,7 @@ fn handle_expression(engines: Engines<'_>, expression: &ty::TyExpression, tokens
                     token.typed = Some(TypedAstToken::TypedExpression(field.value.clone()));
 
                     if let Some(struct_decl) =
-                        &struct_declaration_of_type_id(type_engine, &expression.return_type, tokens)
+                        &struct_declaration_of_type_id(engines, &expression.return_type, tokens)
                     {
                         for decl_field in &struct_decl.fields {
                             if decl_field.name == field.name {
@@ -433,11 +432,9 @@ fn handle_expression(engines: Engines<'_>, expression: &ty::TyExpression, tokens
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(name)) {
                         token.typed =
                             Some(TypedAstToken::TypedReassignment((**reassignment).clone()));
-                        if let Some(struct_decl) = &struct_declaration_of_type_id(
-                            type_engine,
-                            &reassignment.lhs_type,
-                            tokens,
-                        ) {
+                        if let Some(struct_decl) =
+                            &struct_declaration_of_type_id(engines, &reassignment.lhs_type, tokens)
+                        {
                             for decl_field in &struct_decl.fields {
                                 if &decl_field.name == name {
                                     token.type_def =

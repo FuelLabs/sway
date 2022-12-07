@@ -4,7 +4,6 @@ use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
@@ -154,6 +153,8 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         let TraitConstraint {
             trait_name,
             type_arguments,
@@ -169,7 +170,7 @@ impl TraitConstraint {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -3,7 +3,6 @@
 
 use crate::{
     control_flow_analysis::*,
-    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
     language::{ty, CallPath},
     type_system::*,
     Engines,
@@ -196,7 +195,7 @@ fn connect_declaration(
             Ok(vec![entry_node])
         }
         FunctionDeclaration(decl_id) => {
-            let fn_decl = de_get_function(decl_id.clone(), &decl.span())?;
+            let fn_decl = declaration_engine.get_function(decl_id.clone(), &decl.span())?;
             let entry_node = graph.add_node(declaration_engine, node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -209,7 +208,7 @@ fn connect_declaration(
                 trait_name,
                 methods,
                 ..
-            } = de_get_impl_trait(decl_id.clone(), &span)?;
+            } = declaration_engine.get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(declaration_engine, node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -217,7 +216,7 @@ fn connect_declaration(
 
             let methods = methods
                 .into_iter()
-                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
+                .map(|decl_id| declaration_engine.get_function(decl_id, &trait_name.span()))
                 .collect::<Result<Vec<_>, CompileError>>()?;
 
             connect_impl_trait(engines, &trait_name, graph, &methods, entry_node)?;

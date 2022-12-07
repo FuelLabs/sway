@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, DeclarationId},
+    declaration_engine::DeclarationId,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -212,7 +212,9 @@ impl Namespace {
 
         for decl_id in methods.into_iter() {
             let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(
+                    declaration_engine.get_function(decl_id.clone(), &decl_id.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors

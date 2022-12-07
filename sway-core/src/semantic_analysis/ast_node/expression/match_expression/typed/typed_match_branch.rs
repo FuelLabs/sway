@@ -26,6 +26,7 @@ impl ty::TyMatchBranch {
         } = branch;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
 
         // type check the scrutinee
         let typed_scrutinee = check!(
@@ -84,7 +85,7 @@ impl ty::TyMatchBranch {
         };
 
         // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts(true) {
+        if !typed_result.deterministically_aborts(declaration_engine, true) {
             append!(
                 ctx.unify_with_self(typed_result.return_type, &typed_result.span),
                 warnings,

@@ -252,7 +252,7 @@ pub fn parsed_to_ast(
 
     // CEI pattern analysis
     let cei_analysis_warnings =
-        semantic_analysis::cei_pattern_analysis::analyze_program(engines.te(), &typed_program);
+        semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
     warnings.extend(cei_analysis_warnings);
 
     // Check that all storage initializers can be evaluated at compile time.

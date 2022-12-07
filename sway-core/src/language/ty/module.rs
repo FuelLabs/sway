@@ -1,7 +1,7 @@
 use sway_types::Ident;
 
 use crate::{
-    declaration_engine::de_get_function, language::ty::*, language::DepName,
+    declaration_engine::DeclarationEngine, language::ty::*, language::DepName,
     semantic_analysis::namespace,
 };
 
@@ -39,12 +39,16 @@ impl TyModule {
     }
 
     /// All test functions within this module.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    pub fn test_fns<'a: 'b, 'b>(
+        &'b self,
+        declaration_engine: &'a DeclarationEngine,
+    ) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
                 node.content
             {
-                let fn_decl = de_get_function(decl_id.clone(), &node.span)
+                let fn_decl = declaration_engine
+                    .get_function(decl_id.clone(), &node.span)
                     .expect("no function declaration for ID");
                 if fn_decl.is_test() {
                     return Some(fn_decl);

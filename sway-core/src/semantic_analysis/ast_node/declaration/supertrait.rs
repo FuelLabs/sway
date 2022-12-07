@@ -2,7 +2,6 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
-    declaration_engine::*,
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -18,6 +17,8 @@ pub(crate) fn insert_supertraits_into_namespace(
 ) -> CompileResult<()> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let declaration_engine = ctx.declaration_engine;
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
@@ -40,7 +41,9 @@ pub(crate) fn insert_supertraits_into_namespace(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    CompileResult::from(
+                        declaration_engine.get_trait(decl_id.clone(), &supertrait.span())
+                    ),
                     break,
                     warnings,
                     errors

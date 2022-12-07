@@ -1,9 +1,8 @@
 use crate::core::token::{AstToken, SymbolKind, Token, TokenMap, TypedAstToken};
 use sway_core::{
-    declaration_engine,
     language::ty,
     type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    Engines, TypeEngine,
 };
 use sway_types::{ident::Ident, span::Span, Spanned};
 
@@ -60,14 +59,16 @@ pub(crate) fn declaration_of_type_id(
 /// Returns the TypedStructDeclaration associated with the TypeId if it
 /// exists within the TokenMap.
 pub(crate) fn struct_declaration_of_type_id(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     type_id: &TypeId,
     tokens: &TokenMap,
 ) -> Option<ty::TyStructDeclaration> {
+    let type_engine = engines.te();
+    let declaration_engine = engines.de();
     declaration_of_type_id(type_engine, type_id, tokens).and_then(|decl| match decl {
-        ty::TyDeclaration::StructDeclaration(ref decl_id) => {
-            declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
-        }
+        ty::TyDeclaration::StructDeclaration(ref decl_id) => declaration_engine
+            .get_struct(decl_id.clone(), &decl_id.span())
+            .ok(),
         _ => None,
     })
 }

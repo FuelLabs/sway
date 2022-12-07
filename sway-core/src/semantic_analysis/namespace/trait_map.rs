@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclarationId},
+    declaration_engine::DeclarationId,
     engine_threading::*,
     error::*,
     language::CallPath,
@@ -107,11 +107,12 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
+        let declaration_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
         for decl_id in methods.iter() {
             let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), impl_span)),
+                CompileResult::from(declaration_engine.get_function(decl_id.clone(), impl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -187,7 +188,9 @@ impl TraitMap {
                 for (name, decl_id) in trait_methods.iter() {
                     if map_trait_methods.get(name).is_some() {
                         let method = check!(
-                            CompileResult::from(de_get_function(decl_id.clone(), impl_span)),
+                            CompileResult::from(
+                                declaration_engine.get_function(decl_id.clone(), impl_span)
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors

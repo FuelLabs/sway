@@ -6,7 +6,7 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, DeclarationId, ReplaceDecls},
+    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,
@@ -129,6 +129,7 @@ impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
+        let declaration_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -145,10 +146,12 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_function_decl =
-                    de_get_function(l_function_decl_id.clone(), &Span::dummy()).unwrap();
-                let r_function_decl =
-                    de_get_function(r_function_decl_id.clone(), &Span::dummy()).unwrap();
+                let l_function_decl = declaration_engine
+                    .get_function(l_function_decl_id.clone(), &Span::dummy())
+                    .unwrap();
+                let r_function_decl = declaration_engine
+                    .get_function(r_function_decl_id.clone(), &Span::dummy())
+                    .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments

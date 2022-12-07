@@ -20,8 +20,10 @@ pub fn compile_program(
     include_tests: bool,
     engines: Engines<'_>,
 ) -> Result<Context, CompileError> {
+    let declaration_engine = engines.de();
+
     let test_fns = match include_tests {
-        true => program.test_fns().collect(),
+        true => program.test_fns(declaration_engine).collect(),
         false => vec![],
     };
 

@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
     engine_threading::*,
     error::*,
     language::{ty::*, Literal},
@@ -71,6 +71,7 @@ impl CollectTypesMetadata for TyExpression {
         use TyExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = ctx.declaration_engine;
         let mut res = check!(
             self.return_type.collect_types_metadata(ctx),
             return err(warnings, errors),
@@ -92,10 +93,11 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
-                    Ok(decl) => decl,
-                    Err(e) => return err(vec![], vec![e]),
-                };
+                let function_decl =
+                    match declaration_engine.get_function(function_decl_id.clone(), &self.span) {
+                        Ok(decl) => decl,
+                        Err(e) => return err(vec![], vec![e]),
+                    };
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -396,7 +398,11 @@ impl CollectTypesMetadata for TyExpression {
 }
 
 impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
+    fn deterministically_aborts(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        check_call_body: bool,
+    ) -> bool {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
@@ -407,46 +413,58 @@ impl DeterministicallyAborts for TyExpression {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl = match de_get_function(function_decl_id.clone(), &self.span) {
-                    Ok(decl) => decl,
-                    Err(_e) => panic!("failed to get function"),
-                };
-                function_decl.body.deterministically_aborts(check_call_body)
-                    || arguments
-                        .iter()
-                        .any(|(_, x)| x.deterministically_aborts(check_call_body))
+                let function_decl =
+                    match declaration_engine.get_function(function_decl_id.clone(), &self.span) {
+                        Ok(decl) => decl,
+                        Err(_e) => panic!("failed to get function"),
+                    };
+                function_decl
+                    .body
+                    .deterministically_aborts(declaration_engine, check_call_body)
+                    || arguments.iter().any(|(_, x)| {
+                        x.deterministically_aborts(declaration_engine, check_call_body)
+                    })
             }
             Tuple { fields, .. } => fields
                 .iter()
-                .any(|x| x.deterministically_aborts(check_call_body)),
+                .any(|x| x.deterministically_aborts(declaration_engine, check_call_body)),
             Array { contents, .. } => contents
                 .iter()
-                .any(|x| x.deterministically_aborts(check_call_body)),
-            CodeBlock(contents) => contents.deterministically_aborts(check_call_body),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(check_call_body),
-            StructExpression { fields, .. } => fields
-                .iter()
-                .any(|x| x.value.deterministically_aborts(check_call_body)),
+                .any(|x| x.deterministically_aborts(declaration_engine, check_call_body)),
+            CodeBlock(contents) => {
+                contents.deterministically_aborts(declaration_engine, check_call_body)
+            }
+            LazyOperator { lhs, .. } => {
+                lhs.deterministically_aborts(declaration_engine, check_call_body)
+            }
+            StructExpression { fields, .. } => fields.iter().any(|x| {
+                x.value
+                    .deterministically_aborts(declaration_engine, check_call_body)
+            }),
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
-                .map(|x| x.deterministically_aborts(check_call_body))
+                .map(|x| x.deterministically_aborts(declaration_engine, check_call_body))
                 .unwrap_or(false),
-            AbiCast { address, .. } => address.deterministically_aborts(check_call_body),
+            AbiCast { address, .. } => {
+                address.deterministically_aborts(declaration_engine, check_call_body)
+            }
             StructFieldAccess { .. }
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(check_call_body),
+            IntrinsicFunction(kind) => {
+                kind.deterministically_aborts(declaration_engine, check_call_body)
+            }
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(check_call_body)
-                    || index.deterministically_aborts(check_call_body)
+                prefix.deterministically_aborts(declaration_engine, check_call_body)
+                    || index.deterministically_aborts(declaration_engine, check_call_body)
             }
             AsmExpression { registers, .. } => registers.iter().any(|x| {
                 x.initializer
                     .as_ref()
-                    .map(|x| x.deterministically_aborts(check_call_body))
+                    .map(|x| x.deterministically_aborts(declaration_engine, check_call_body))
                     .unwrap_or(false)
             }),
             IfExp {
@@ -455,28 +473,32 @@ impl DeterministicallyAborts for TyExpression {
                 r#else,
                 ..
             } => {
-                condition.deterministically_aborts(check_call_body)
-                    || (then.deterministically_aborts(check_call_body)
+                condition.deterministically_aborts(declaration_engine, check_call_body)
+                    || (then.deterministically_aborts(declaration_engine, check_call_body)
                         && r#else
                             .as_ref()
-                            .map(|x| x.deterministically_aborts(check_call_body))
+                            .map(|x| {
+                                x.deterministically_aborts(declaration_engine, check_call_body)
+                            })
                             .unwrap_or(false))
             }
             AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(check_call_body),
-            UnsafeDowncast { exp, .. } => exp.deterministically_aborts(check_call_body),
+            EnumTag { exp } => exp.deterministically_aborts(declaration_engine, check_call_body),
+            UnsafeDowncast { exp, .. } => {
+                exp.deterministically_aborts(declaration_engine, check_call_body)
+            }
             WhileLoop { condition, body } => {
-                condition.deterministically_aborts(check_call_body)
-                    || body.deterministically_aborts(check_call_body)
+                condition.deterministically_aborts(declaration_engine, check_call_body)
+                    || body.deterministically_aborts(declaration_engine, check_call_body)
             }
             Break => false,
             Continue => false,
-            Reassignment(reassignment) => {
-                reassignment.rhs.deterministically_aborts(check_call_body)
-            }
+            Reassignment(reassignment) => reassignment
+                .rhs
+                .deterministically_aborts(declaration_engine, check_call_body),
             StorageReassignment(storage_reassignment) => storage_reassignment
                 .rhs
-                .deterministically_aborts(check_call_body),
+                .deterministically_aborts(declaration_engine, check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
