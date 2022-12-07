@@ -12,7 +12,6 @@ pub struct Command {
     #[clap(long)]
     pub manifest_path: Option<String>,
     /// Include non-public items in the documentation.
-    /// This will be enabled by default if documenting a binary target.
     #[clap(long)]
     pub document_private_items: bool,
     /// Open the docs in a browser after building them.
