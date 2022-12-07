@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
@@ -24,6 +24,7 @@ use sway_core::TypeEngine;
 pub fn main() -> Result<()> {
     let Command {
         manifest_path,
+        document_private_items,
         open: open_result,
         offline,
         silent,
@@ -63,7 +64,7 @@ pub fn main() -> Result<()> {
     let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
     // render docs to HTML
     let rendered_docs: RenderedDocumentation =
-        RenderedDocument::from_raw_docs(&raw_docs, project_name);
+        RenderedDocument::from_raw_docs(&raw_docs, project_name, document_private_items);
 
     // write contents to outfile
     for doc in rendered_docs {
