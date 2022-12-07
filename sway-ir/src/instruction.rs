@@ -220,6 +220,7 @@ impl Instruction {
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
                 ValueDatum::Argument(arg) => Some(arg.ty.strip_ptr_type(context)),
+                ValueDatum::Configurable(conf) => Some(conf.ty.strip_ptr_type(context)),
                 ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
                 ValueDatum::Instruction(ins) => {
                     ins.get_type(context).map(|f| f.strip_ptr_type(context))

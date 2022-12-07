@@ -9,6 +9,7 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
+    configurable::Configurable,
     constant::Constant,
     context::Context,
     instruction::Instruction,
@@ -35,6 +36,7 @@ pub struct ValueContent {
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
     Argument(BlockArgument),
+    Configurable(Configurable),
     Constant(Constant),
     Instruction(Instruction),
 }
@@ -44,6 +46,15 @@ impl Value {
     pub fn new_argument(context: &mut Context, arg: BlockArgument) -> Value {
         let content = ValueContent {
             value: ValueDatum::Argument(arg),
+            metadata: None,
+        };
+        Value(context.values.insert(content))
+    }
+
+    /// Return a new configurable [`Value`].
+    pub fn new_configurable(context: &mut Context, configurable: Configurable) -> Value {
+        let content = ValueContent {
+            value: ValueDatum::Configurable(configurable),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -89,6 +100,11 @@ impl Value {
     }
 
     /// Return whether this is a constant value.
+    pub fn is_configurable(&self, context: &Context) -> bool {
+        matches!(context.values[self.0].value, ValueDatum::Configurable(_))
+    }
+
+    /// Return whether this is a constant value.
     pub fn is_constant(&self, context: &Context) -> bool {
         matches!(context.values[self.0].value, ValueDatum::Constant(_))
     }
@@ -119,7 +135,9 @@ impl Value {
                     | Instruction::Ret(..)
                     | Instruction::Revert(..)
             ),
-            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
+            ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
+                false
+            }
         }
     }
 
@@ -171,6 +189,15 @@ impl Value {
         }
     }
 
+    /// Get a reference to this value as a configurable, iff it is one.
+    pub fn get_configurable<'a>(&self, context: &'a Context) -> Option<&'a Configurable> {
+        if let ValueDatum::Configurable(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
+        } else {
+            None
+        }
+    }
+
     /// Iff this value is an argument, return its type.
     pub fn get_argument_type(&self, context: &Context) -> Option<Type> {
         if let ValueDatum::Argument(BlockArgument { ty, .. }) =
@@ -188,6 +215,7 @@ impl Value {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match &context.values[self.0].value {
             ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
+            ValueDatum::Configurable(c) => Some(c.ty),
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }

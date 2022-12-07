@@ -7,7 +7,7 @@ use crate::{
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
-use sway_ir::{Aggregate, Constant, Context, Type, Value};
+use sway_ir::{Aggregate, Configurable, Constant, Context, Type, Value};
 use sway_types::span::Span;
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
@@ -40,6 +40,20 @@ pub(super) fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
         Literal::String(s) => Constant::new_string(s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => Constant::new_bool(*b),
         Literal::B256(bs) => Constant::new_b256(*bs),
+    }
+}
+
+pub(super) fn convert_literal_to_configurable(ast_literal: &Literal) -> Configurable {
+    match ast_literal {
+        // All integers are `u64`.  See comment above.
+        Literal::U8(n) => Configurable::new_uint(64, *n as u64),
+        Literal::U16(n) => Configurable::new_uint(64, *n as u64),
+        Literal::U32(n) => Configurable::new_uint(64, *n as u64),
+        Literal::U64(n) => Configurable::new_uint(64, *n),
+        Literal::Numeric(n) => Configurable::new_uint(64, *n),
+        Literal::String(s) => Configurable::new_string(s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => Configurable::new_bool(*b),
+        Literal::B256(bs) => Configurable::new_b256(*bs),
     }
 }
 

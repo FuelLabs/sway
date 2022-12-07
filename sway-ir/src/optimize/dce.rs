@@ -30,7 +30,8 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                         .and_modify(|(_block, count)| *count += 1)
                         .or_insert((block, 1));
                 }
-                ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
+                ValueDatum::Constant(_) | ValueDatum::Configurable(_) | ValueDatum::Argument(_) => {
+                }
             }
         }
     }
@@ -58,7 +59,8 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                         worklist.push((*block, v));
                     }
                 }
-                ValueDatum::Constant(_) | ValueDatum::Argument(_) => (),
+                ValueDatum::Constant(_) | ValueDatum::Configurable(_) | ValueDatum::Argument(_) => {
+                }
             }
         }
 

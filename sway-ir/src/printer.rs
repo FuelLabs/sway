@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 use crate::{
     asm::*,
     block::Block,
+    configurable::{Configurable, ConfigurableValue},
     constant::{Constant, ConstantValue},
     context::Context,
     function::{Function, FunctionContent},
@@ -275,6 +276,19 @@ fn constant_to_doc(
             ))
             .append(md_namer.md_idx_to_doc(context, metadata)),
         )
+    } else if let ValueContent {
+        value: ValueDatum::Configurable(configurable),
+        metadata,
+    } = &context.values[const_val.0]
+    {
+        Doc::line(
+            Doc::text(format!(
+                "{} = config {}",
+                namer.name(context, const_val),
+                configurable.as_lit_string(context)
+            ))
+            .append(md_namer.md_idx_to_doc(context, metadata)),
+        )
     } else {
         unreachable!("Not a constant value.")
     }
@@ -287,7 +301,9 @@ fn maybe_constant_to_doc(
     maybe_const_val: &Value,
 ) -> Doc {
     // Create a new doc only if value is new and unknown, and is a constant.
-    if !namer.is_known(maybe_const_val) && maybe_const_val.is_constant(context) {
+    if !namer.is_known(maybe_const_val)
+        && (maybe_const_val.is_constant(context) || maybe_const_val.is_configurable(context))
+    {
         constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty
@@ -858,11 +874,62 @@ impl Constant {
     }
 }
 
+impl Configurable {
+    fn as_lit_string(&self, context: &Context) -> String {
+        match &self.value {
+            ConfigurableValue::Undef => format!("{} undef", self.ty.as_string(context)),
+            ConfigurableValue::Unit => "unit ()".into(),
+            ConfigurableValue::Bool(b) => format!("bool {}", if *b { "true" } else { "false" }),
+            ConfigurableValue::Uint(v) => format!("{} {}", self.ty.as_string(context), v),
+            ConfigurableValue::B256(bs) => format!(
+                "b256 0x{}",
+                bs.iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect::<Vec<String>>()
+                    .concat()
+            ),
+            ConfigurableValue::String(bs) => format!(
+                "{} \"{}\"",
+                self.ty.as_string(context),
+                bs.iter()
+                    .map(
+                        |b| if b.is_ascii() && !b.is_ascii_control() && *b != b'\\' && *b != b'"' {
+                            format!("{}", *b as char)
+                        } else {
+                            format!("\\x{b:02x}")
+                        }
+                    )
+                    .collect::<Vec<_>>()
+                    .join("")
+            ),
+            ConfigurableValue::Array(elems) => format!(
+                "{} [{}]",
+                self.ty.as_string(context),
+                elems
+                    .iter()
+                    .map(|elem| elem.as_lit_string(context))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            ConfigurableValue::Struct(fields) => format!(
+                "{} {{ {} }}",
+                self.ty.as_string(context),
+                fields
+                    .iter()
+                    .map(|field| field.as_lit_string(context))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+        }
+    }
+}
+
 struct Namer {
     function: Function,
 
     names: HashMap<Value, String>,
     next_value_idx: u64,
+    next_configurable_idx: u64,
 }
 
 impl Namer {
@@ -871,6 +938,7 @@ impl Namer {
             function,
             names: HashMap::new(),
             next_value_idx: 0,
+            next_configurable_idx: 0,
         }
     }
 
@@ -882,8 +950,18 @@ impl Namer {
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
             ValueDatum::Constant(_) => self.default_name(value),
+            ValueDatum::Configurable(_) => self.default_configurable_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
         }
+    }
+
+    fn default_configurable_name(&mut self, value: &Value) -> String {
+        self.names.get(value).cloned().unwrap_or_else(|| {
+            let new_name = format!("c{}", self.next_configurable_idx);
+            self.next_configurable_idx += 1;
+            self.names.insert(*value, new_name.clone());
+            new_name
+        })
     }
 
     fn default_name(&mut self, value: &Value) -> String {

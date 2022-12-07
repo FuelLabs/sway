@@ -400,6 +400,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors.extend(e);
     }
 
+    if build_config.print_ir {
+        tracing::info!("{}", ir);
+    }
+
     // Now we're working with all functions in the module.
     let all_functions = ir
         .module_iter()

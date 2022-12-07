@@ -1539,7 +1539,6 @@ impl<'te> FnCompiler<'te> {
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
-            &name,
             self.type_engine,
             context,
             md_mgr,

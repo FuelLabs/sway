@@ -43,6 +43,8 @@ pub mod asm;
 pub use asm::*;
 pub mod block;
 pub use block::*;
+pub mod configurable;
+pub use configurable::*;
 pub mod constant;
 pub use constant::*;
 pub mod context;
