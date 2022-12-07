@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    declaration_engine::declaration_engine,
+    declaration_engine::DeclarationEngine,
     engine_threading::*,
     fuel_prelude::fuel_types,
     ir_generation::const_eval::{
@@ -22,7 +22,6 @@ use crate::{
     types::DeterministicallyAborts,
     TypeEngine,
 };
-use declaration_engine::{de_get_function, DeclarationEngine};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -53,14 +52,14 @@ pub(crate) struct FnCompiler<'eng> {
 
 impl<'eng> FnCompiler<'eng> {
     pub(super) fn new(
-        type_engine: &'eng TypeEngine,
-        declaration_engine: &'eng DeclarationEngine,
+        engines: Engines<'eng>,
         context: &mut Context,
         module: Module,
         function: Function,
         returns_by_ref: bool,
         logged_types_map: &HashMap<TypeId, LogId>,
     ) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -252,7 +251,9 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = de_get_function(function_decl_id.clone(), &ast_expr.span)?;
+                    let function_decl = self
+                        .declaration_engine
+                        .get_function(function_decl_id.clone(), &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -468,6 +469,8 @@ impl<'eng> FnCompiler<'eng> {
             Ok(key_ptr_val)
         }
 
+        let engines = Engines::new(self.type_engine, self.declaration_engine);
+
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
         match kind {
@@ -528,8 +531,7 @@ impl<'eng> FnCompiler<'eng> {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
-                    self.type_engine,
-                    self.declaration_engine,
+                    engines,
                     context,
                     md_mgr,
                     self.module,
@@ -628,10 +630,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
-                if !val_ty.eq(
-                    &TypeInfo::RawUntypedPtr,
-                    Engines::new(self.type_engine, self.declaration_engine),
-                ) {
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
@@ -1133,8 +1132,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    self.type_engine,
-                    self.declaration_engine,
+                    Engines::new(self.type_engine, self.declaration_engine),
                     context,
                     md_mgr,
                     self.module,
@@ -1551,8 +1549,7 @@ impl<'eng> FnCompiler<'eng> {
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
-            self.type_engine,
-            self.declaration_engine,
+            Engines::new(self.type_engine, self.declaration_engine),
             context,
             md_mgr,
             self.module,
@@ -1851,8 +1848,7 @@ impl<'eng> FnCompiler<'eng> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            self.type_engine,
-            self.declaration_engine,
+            Engines::new(self.type_engine, self.declaration_engine),
             context,
             md_mgr,
             self.module,

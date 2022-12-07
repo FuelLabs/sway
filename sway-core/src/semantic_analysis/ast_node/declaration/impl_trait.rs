@@ -115,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -230,28 +230,30 @@ impl ty::TyImplTrait {
     // impl_typ can only be a storage type.
     // This is noted down in the type engine.
     fn gather_storage_only_types(
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         impl_typ: TypeId,
         methods: &[ty::TyFunctionDeclaration],
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
                 ty::TyAstNodeContent::Expression(expr)
                 | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-                    expr_contains_get_storage_index(expr, access_span)
+                    expr_contains_get_storage_index(declaration_engine, expr, access_span)
                 }
                 ty::TyAstNodeContent::Declaration(decl) => {
-                    decl_contains_get_storage_index(decl, access_span)
+                    decl_contains_get_storage_index(declaration_engine, decl, access_span)
                 }
                 ty::TyAstNodeContent::SideEffect => Ok(false),
             }
         }
 
         fn expr_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -266,7 +268,8 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiName(_) => false,
                 ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for f in arguments.iter() {
-                        let b = expr_contains_get_storage_index(&f.1, access_span)?;
+                        let b =
+                            expr_contains_get_storage_index(declaration_engine, &f.1, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -282,13 +285,14 @@ impl ty::TyImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(expr1, access_span)?
-                        || expr_contains_get_storage_index(expr2, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, expr1, access_span)?
+                        || expr_contains_get_storage_index(declaration_engine, expr2, access_span)?
                 }
                 ty::TyExpressionVariant::Tuple { fields: exprvec }
                 | ty::TyExpressionVariant::Array { contents: exprvec } => {
                     for f in exprvec.iter() {
-                        let b = expr_contains_get_storage_index(f, access_span)?;
+                        let b =
+                            expr_contains_get_storage_index(declaration_engine, f, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -298,7 +302,11 @@ impl ty::TyImplTrait {
 
                 ty::TyExpressionVariant::StructExpression { fields, .. } => {
                     for f in fields.iter() {
-                        let b = expr_contains_get_storage_index(&f.value, access_span)?;
+                        let b = expr_contains_get_storage_index(
+                            declaration_engine,
+                            &f.value,
+                            access_span,
+                        )?;
                         if b {
                             return Ok(true);
                         }
@@ -306,17 +314,17 @@ impl ty::TyImplTrait {
                     false
                 }
                 ty::TyExpressionVariant::CodeBlock(cb) => {
-                    codeblock_contains_get_storage_index(cb, access_span)?
+                    codeblock_contains_get_storage_index(declaration_engine, cb, access_span)?
                 }
                 ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(condition, access_span)?
-                        || expr_contains_get_storage_index(then, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
+                        || expr_contains_get_storage_index(declaration_engine, then, access_span)?
                         || r#else.as_ref().map_or(Ok(false), |r#else| {
-                            expr_contains_get_storage_index(r#else, access_span)
+                            expr_contains_get_storage_index(declaration_engine, r#else, access_span)
                         })?
                 }
                 ty::TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -324,11 +332,11 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiCast { address: exp, .. }
                 | ty::TyExpressionVariant::EnumTag { exp }
                 | ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(exp, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
                 }
                 ty::TyExpressionVariant::EnumInstantiation { contents, .. } => {
                     contents.as_ref().map_or(Ok(false), |f| {
-                        expr_contains_get_storage_index(f, access_span)
+                        expr_contains_get_storage_index(declaration_engine, f, access_span)
                     })?
                 }
 
@@ -337,34 +345,47 @@ impl ty::TyImplTrait {
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
                 ty::TyExpressionVariant::WhileLoop { condition, body } => {
-                    expr_contains_get_storage_index(condition, access_span)?
-                        || codeblock_contains_get_storage_index(body, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
+                        || codeblock_contains_get_storage_index(
+                            declaration_engine,
+                            body,
+                            access_span,
+                        )?
                 }
                 ty::TyExpressionVariant::Reassignment(reassignment) => {
-                    expr_contains_get_storage_index(&reassignment.rhs, access_span)?
+                    expr_contains_get_storage_index(
+                        declaration_engine,
+                        &reassignment.rhs,
+                        access_span,
+                    )?
                 }
                 ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                    expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
+                    expr_contains_get_storage_index(
+                        declaration_engine,
+                        &storage_reassignment.rhs,
+                        access_span,
+                    )?
                 }
                 ty::TyExpressionVariant::Return(exp) => {
-                    expr_contains_get_storage_index(exp, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
                 }
             };
             Ok(res)
         }
 
         fn decl_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
                 ty::TyDeclaration::VariableDeclaration(decl) => {
-                    expr_contains_get_storage_index(&decl.body, access_span)
+                    expr_contains_get_storage_index(declaration_engine, &decl.body, access_span)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        de_get_constant(decl_id.clone(), access_span)?;
-                    expr_contains_get_storage_index(&expr, access_span)
+                        declaration_engine.get_constant(decl_id.clone(), access_span)?;
+                    expr_contains_get_storage_index(declaration_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
@@ -381,11 +402,16 @@ impl ty::TyImplTrait {
         }
 
         fn codeblock_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             for content in cb.contents.iter() {
-                let b = ast_node_contains_get_storage_index(&content.content, access_span)?;
+                let b = ast_node_contains_get_storage_index(
+                    declaration_engine,
+                    &content.content,
+                    access_span,
+                )?;
                 if b {
                     return Ok(true);
                 }
@@ -393,9 +419,15 @@ impl ty::TyImplTrait {
             Ok(false)
         }
 
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
+
         for method in methods.iter() {
-            let contains_get_storage_index =
-                codeblock_contains_get_storage_index(&method.body, access_span)?;
+            let contains_get_storage_index = codeblock_contains_get_storage_index(
+                declaration_engine,
+                &method.body,
+                access_span,
+            )?;
             if contains_get_storage_index {
                 type_engine.set_type_as_storage_only(impl_typ);
                 return Ok(());
@@ -515,7 +547,7 @@ impl ty::TyImplTrait {
 
         check!(
             CompileResult::from(Self::gather_storage_only_types(
-                type_engine,
+                engines,
                 implementing_for_type_id,
                 &methods,
                 &type_implementing_for_span,
@@ -855,7 +887,7 @@ fn type_check_trait_implementation(
         DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
-            CompileResult::from(de_get_function(decl_id.clone(), block_span)),
+            CompileResult::from(declaration_engine.get_function(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -997,6 +1029,8 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let declaration_engine = ctx.declaration_engine;
+
     let mut interface_surface_methods_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let self_type = ctx.self_type();
@@ -1022,7 +1056,9 @@ fn handle_supertraits(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    CompileResult::from(
+                        declaration_engine.get_trait(decl_id.clone(), &supertrait.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors

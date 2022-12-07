@@ -55,8 +55,7 @@ impl ty::TyStorageField {
         ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
-            engines.te(),
-            engines.de(),
+            engines,
             context,
             md_mgr,
             module,

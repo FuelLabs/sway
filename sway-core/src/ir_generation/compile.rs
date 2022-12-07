@@ -1,10 +1,9 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_constant, DeclarationEngine},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
     type_system::{LogId, TypeId},
-    TypeEngine,
+    Engines, TypeEngine,
 };
 
 use super::{
@@ -21,8 +20,7 @@ use std::collections::HashMap;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -33,17 +31,9 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(
-        type_engine,
-        declaration_engine,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-    )?;
+    compile_constants(engines, context, &mut md_mgr, module, namespace)?;
     compile_declarations(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -51,8 +41,7 @@ pub(super) fn compile_script(
         declarations,
     )?;
     compile_entry_function(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -60,8 +49,7 @@ pub(super) fn compile_script(
         logged_types_map,
     )?;
     compile_tests(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -74,8 +62,7 @@ pub(super) fn compile_script(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_predicate(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     main_function: &ty::TyFunctionDeclaration,
     namespace: &namespace::Module,
@@ -86,17 +73,9 @@ pub(super) fn compile_predicate(
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(
-        type_engine,
-        declaration_engine,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-    )?;
+    compile_constants(engines, context, &mut md_mgr, module, namespace)?;
     compile_declarations(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -104,8 +83,7 @@ pub(super) fn compile_predicate(
         declarations,
     )?;
     compile_entry_function(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -113,8 +91,7 @@ pub(super) fn compile_predicate(
         &HashMap::new(),
     )?;
     compile_tests(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -133,23 +110,14 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     test_fns: &[ty::TyFunctionDeclaration],
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(
-        type_engine,
-        declaration_engine,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-    )?;
+    compile_constants(engines, context, &mut md_mgr, module, namespace)?;
     compile_declarations(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -163,13 +131,11 @@ pub(super) fn compile_contract(
             module,
             decl,
             logged_types_map,
-            type_engine,
-            declaration_engine,
+            engines,
         )?;
     }
     compile_tests(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -181,8 +147,7 @@ pub(super) fn compile_contract(
 }
 
 pub(super) fn compile_library(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
@@ -192,17 +157,9 @@ pub(super) fn compile_library(
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(
-        type_engine,
-        declaration_engine,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-    )?;
+    compile_constants(engines, context, &mut md_mgr, module, namespace)?;
     compile_declarations(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -210,8 +167,7 @@ pub(super) fn compile_library(
         declarations,
     )?;
     compile_tests(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         &mut md_mgr,
         module,
@@ -223,13 +179,13 @@ pub(super) fn compile_library(
 }
 
 pub(crate) fn compile_constants(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
+    let (type_engine, declaration_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
         compile_const_decl(
             &mut LookupEnv {
@@ -247,14 +203,7 @@ pub(crate) fn compile_constants(
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(
-            type_engine,
-            declaration_engine,
-            context,
-            md_mgr,
-            module,
-            submodule_ns,
-        )?;
+        compile_constants(engines, context, md_mgr, module, submodule_ns)?;
     }
 
     Ok(())
@@ -270,18 +219,18 @@ pub(crate) fn compile_constants(
 // they are monomorphised only at the instantation site.  We must ignore the generic declarations
 // altogether anyway.
 fn compile_declarations(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
 ) -> Result<(), CompileError> {
+    let (type_engine, declaration_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
             ty::TyDeclaration::ConstantDeclaration(ref decl_id) => {
-                let decl = de_get_constant(decl_id.clone(), &declaration.span())?;
+                let decl = declaration_engine.get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
@@ -330,8 +279,7 @@ fn compile_declarations(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_function(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -339,6 +287,7 @@ pub(super) fn compile_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     is_entry: bool,
 ) -> Result<Option<Function>, CompileError> {
+    let type_engine = engines.te();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
@@ -351,8 +300,7 @@ pub(super) fn compile_function(
             .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
         compile_fn_with_args(
-            type_engine,
-            declaration_engine,
+            engines,
             context,
             md_mgr,
             module,
@@ -367,8 +315,7 @@ pub(super) fn compile_function(
 }
 
 pub(super) fn compile_entry_function(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -377,8 +324,7 @@ pub(super) fn compile_entry_function(
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         md_mgr,
         module,
@@ -390,8 +336,7 @@ pub(super) fn compile_entry_function(
 }
 
 pub(super) fn compile_tests(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -402,8 +347,7 @@ pub(super) fn compile_tests(
         .iter()
         .map(|ast_fn_decl| {
             compile_entry_function(
-                type_engine,
-                declaration_engine,
+                engines,
                 context,
                 md_mgr,
                 module,
@@ -434,8 +378,7 @@ fn convert_fn_param(
 
 #[allow(clippy::too_many_arguments)]
 fn compile_fn_with_args(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -445,6 +388,8 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
 ) -> Result<Function, CompileError> {
+    let type_engine = engines.te();
+
     let inline_opt = ast_fn_decl.inline();
     let ty::TyFunctionDeclaration {
         name,
@@ -496,8 +441,7 @@ fn compile_fn_with_args(
     );
 
     let mut compiler = FnCompiler::new(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         module,
         func,
@@ -581,9 +525,10 @@ fn compile_abi_method(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
 ) -> Result<Function, CompileError> {
+    let type_engine = engines.te();
+
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
     let mut warnings = Vec::new();
@@ -618,8 +563,7 @@ fn compile_abi_method(
         .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
 
     compile_fn_with_args(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         md_mgr,
         module,

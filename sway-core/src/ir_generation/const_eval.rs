@@ -1,10 +1,6 @@
 use crate::{
-    declaration_engine::{de_get_function, declaration_engine::de_get_constant, DeclarationEngine},
-    engine_threading::*,
-    language::ty,
-    metadata::MetadataManager,
-    semantic_analysis::*,
-    TypeEngine,
+    declaration_engine::DeclarationEngine, engine_threading::*, language::ty,
+    metadata::MetadataManager, semantic_analysis::*, TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -93,16 +89,16 @@ pub(crate) fn compile_const_decl(
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let ty::TyConstantDeclaration { name, value, .. } =
-                        de_get_constant(decl_id.clone(), &name.span())?;
+                    let ty::TyConstantDeclaration { name, value, .. } = env
+                        .declaration_engine
+                        .get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }
                 _otherwise => None,
             };
             if let Some((name, value)) = decl_name_value {
                 let const_val = compile_constant_expression(
-                    env.type_engine,
-                    env.declaration_engine,
+                    Engines::new(env.type_engine, env.declaration_engine),
                     env.context,
                     env.md_mgr,
                     env.module,
@@ -123,8 +119,7 @@ pub(crate) fn compile_const_decl(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -135,8 +130,7 @@ pub(super) fn compile_constant_expression(
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
     let constant_evaluated = compile_constant_expression_to_constant(
-        type_engine,
-        declaration_engine,
+        engines,
         context,
         md_mgr,
         module,
@@ -149,8 +143,7 @@ pub(super) fn compile_constant_expression(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_constant_expression_to_constant(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -158,6 +151,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
+    let (type_engine, declaration_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
         type_engine,
         declaration_engine,
@@ -219,7 +213,9 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = de_get_function(function_decl_id.clone(), &expr.span)?;
+            let function_decl = lookup
+                .declaration_engine
+                .get_function(function_decl_id.clone(), &expr.span)?;
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }

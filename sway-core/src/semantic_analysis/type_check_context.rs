@@ -68,19 +68,12 @@ impl<'a> TypeCheckContext<'a> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(
-        root_namespace: &'a mut Namespace,
-        type_engine: &'a TypeEngine,
-        declaration_engine: &'a DeclarationEngine,
-    ) -> Self {
-        Self::from_module_namespace(root_namespace, type_engine, declaration_engine)
+    pub fn from_root(root_namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+        Self::from_module_namespace(root_namespace, engines)
     }
 
-    fn from_module_namespace(
-        namespace: &'a mut Namespace,
-        type_engine: &'a TypeEngine,
-        declaration_engine: &'a DeclarationEngine,
-    ) -> Self {
+    fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         Self {
             namespace,
             type_engine,
@@ -148,8 +141,7 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = namespace.enter_submodule(dep_name);
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
-            self.type_engine,
-            self.declaration_engine,
+            Engines::new(self.type_engine, self.declaration_engine),
         );
         with_submod_ctx(submod_ctx)
     }

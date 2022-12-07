@@ -249,10 +249,3 @@ pub fn de_get_storage(
 ) -> Result<ty::TyStorageDeclaration, CompileError> {
     DECLARATION_ENGINE.get_storage(index, span)
 }
-
-pub fn de_get_constant(
-    index: DeclarationId,
-    span: &Span,
-) -> Result<ty::TyConstantDeclaration, CompileError> {
-    DECLARATION_ENGINE.get_constant(index, span)
-}

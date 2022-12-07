@@ -24,7 +24,6 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
-use declaration_engine::DeclarationEngine;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -188,8 +187,7 @@ pub struct CompiledAsm(pub FinalizedAsm);
 pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -199,12 +197,7 @@ pub fn parsed_to_ast(
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(
-        type_engine,
-        declaration_engine,
-        parse_program,
-        initial_namespace,
-    );
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -215,10 +208,7 @@ pub fn parsed_to_ast(
         value: types_metadata_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(
-        type_engine,
-        declaration_engine,
-    ));
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(engines));
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {
@@ -235,7 +225,7 @@ pub fn parsed_to_ast(
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(
-        Engines::new(type_engine, declaration_engine),
+        engines,
         &typed_program,
         match build_config {
             Some(cfg) => cfg.print_dca_graph,
@@ -251,8 +241,7 @@ pub fn parsed_to_ast(
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
-        type_engine,
-        declaration_engine,
+        engines,
         &mut ctx,
         &mut md_mgr,
         module,
@@ -263,12 +252,12 @@ pub fn parsed_to_ast(
 
     // CEI pattern analysis
     let cei_analysis_warnings =
-        semantic_analysis::cei_pattern_analysis::analyze_program(type_engine, &typed_program);
+        semantic_analysis::cei_pattern_analysis::analyze_program(engines.te(), &typed_program);
     warnings.extend(cei_analysis_warnings);
 
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
-        Engines::new(type_engine, declaration_engine),
+        engines,
         &mut ctx,
         &mut md_mgr,
         module,
@@ -299,8 +288,7 @@ pub fn parsed_to_ast(
 }
 
 pub fn compile_to_ast(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -310,20 +298,14 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         mut warnings,
         mut errors,
-    } = parse(input, type_engine, build_config);
+    } = parse(input, engines.te(), build_config);
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(
-        type_engine,
-        declaration_engine,
-        &parse_program,
-        initial_namespace,
-        build_config,
-    );
+    let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -342,28 +324,20 @@ pub fn compile_to_ast(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    let ast_res = compile_to_ast(
-        type_engine,
-        declaration_engine,
-        input,
-        initial_namespace,
-        Some(&build_config),
-    );
-    ast_to_asm(type_engine, declaration_engine, &ast_res, &build_config)
+    let ast_res = compile_to_ast(engines, input, initial_namespace, Some(&build_config));
+    ast_to_asm(engines, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
@@ -373,12 +347,7 @@ pub fn ast_to_asm(
             let mut errors = ast_res.errors.clone();
             let mut warnings = ast_res.warnings.clone();
             let asm = check!(
-                compile_ast_to_ir_to_asm(
-                    type_engine,
-                    declaration_engine,
-                    typed_program,
-                    build_config
-                ),
+                compile_ast_to_ir_to_asm(engines, typed_program, build_config),
                 return deduped_err(warnings, errors),
                 warnings,
                 errors
@@ -389,8 +358,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -409,12 +377,8 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir = match ir_generation::compile_program(
-        program,
-        build_config.include_tests,
-        type_engine,
-        declaration_engine,
-    ) {
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
+    {
         Ok(ir) => ir,
         Err(e) => return err(warnings, vec![e]),
     };
@@ -665,20 +629,13 @@ fn simplify_cfg(
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> CompileResult<CompiledBytecode> {
-    let asm_res = compile_to_asm(
-        type_engine,
-        declaration_engine,
-        input,
-        initial_namespace,
-        build_config,
-    );
+    let asm_res = compile_to_asm(engines, input, initial_namespace, build_config);
     asm_to_bytecode(asm_res, source_map)
 }
 

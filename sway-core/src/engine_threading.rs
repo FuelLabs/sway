@@ -12,8 +12,8 @@ pub struct Engines<'a> {
     declaration_engine: &'a DeclarationEngine,
 }
 
-impl Engines<'_> {
-    pub fn new<'a>(
+impl<'a> Engines<'a> {
+    pub fn new(
         type_engine: &'a TypeEngine,
         declaration_engine: &'a DeclarationEngine,
     ) -> Engines<'a> {
@@ -29,6 +29,10 @@ impl Engines<'_> {
 
     pub fn de(&self) -> &DeclarationEngine {
         self.declaration_engine
+    }
+
+    pub(crate) fn unwrap(self) -> (&'a TypeEngine, &'a DeclarationEngine) {
+        (self.type_engine, self.declaration_engine)
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    declaration_engine::DeclarationEngine, type_system::TypeId, CompileResult, TypeEngine,
+    declaration_engine::DeclarationEngine, type_system::TypeId, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Ident, Span};
 
@@ -50,7 +50,7 @@ pub struct CollectTypesMetadataContext<'cx> {
     pub(crate) declaration_engine: &'cx DeclarationEngine,
 }
 
-impl<'a> CollectTypesMetadataContext<'a> {
+impl<'cx> CollectTypesMetadataContext<'cx> {
     pub fn log_id_counter(&self) -> usize {
         self.log_id_counter
     }
@@ -87,7 +87,8 @@ impl<'a> CollectTypesMetadataContext<'a> {
         None
     }
 
-    pub fn new(type_engine: &'a TypeEngine, declaration_engine: &'a DeclarationEngine) -> Self {
+    pub fn new(engines: Engines<'cx>) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         let mut ctx = Self {
             type_engine,
             declaration_engine,

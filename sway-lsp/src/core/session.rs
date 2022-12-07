@@ -233,8 +233,8 @@ impl Session {
         let type_engine = &*self.type_engine.read();
         let declaration_engine = &*self.declaration_engine.read();
         let engines = Engines::new(type_engine, declaration_engine);
-        let results = pkg::check(&plan, true, type_engine, declaration_engine)
-            .map_err(LanguageServerError::FailedToCompile)?;
+        let results =
+            pkg::check(&plan, true, engines).map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.

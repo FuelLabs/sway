@@ -1927,17 +1927,16 @@ impl ty::TyExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::{declaration_engine::DeclarationEngine, Engines};
     use sway_error::type_error::TypeError;
 
     fn do_type_check(
-        type_engine: &TypeEngine,
-        declaration_engine: &DeclarationEngine,
+        engines: Engines<'_>,
         expr: Expression,
         type_annotation: TypeId,
     ) -> CompileResult<ty::TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine, declaration_engine)
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(ctx, expr)
     }
@@ -1946,8 +1945,7 @@ mod tests {
         let type_engine = TypeEngine::default();
         let declaration_engine = DeclarationEngine::default();
         do_type_check(
-            &type_engine,
-            &declaration_engine,
+            Engines::new(&type_engine, &declaration_engine),
             expr,
             type_engine.insert_type(TypeInfo::Array(
                 TypeArgument {
@@ -2065,8 +2063,7 @@ mod tests {
         let type_engine = TypeEngine::default();
         let declaration_engine = DeclarationEngine::default();
         let comp_res = do_type_check(
-            &type_engine,
-            &declaration_engine,
+            Engines::new(&type_engine, &declaration_engine),
             expr,
             type_engine.insert_type(TypeInfo::Array(
                 TypeArgument {

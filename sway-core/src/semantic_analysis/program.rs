@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_storage, DeclarationEngine},
+    declaration_engine::declaration_engine::de_get_storage,
     error::*,
     language::{parsed::ParseProgram, ty},
     metadata::MetadataManager,
@@ -7,7 +7,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines, TypeEngine,
+    Engines,
 };
 use sway_ir::{Context, Module};
 use sway_types::Spanned;
@@ -18,24 +18,18 @@ impl ty::TyProgram {
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
-        type_engine: &TypeEngine,
-        declaration_engine: &DeclarationEngine,
+        engines: Engines<'_>,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, type_engine, declaration_engine)
-            .with_kind(parsed.kind.clone());
+        let ctx =
+            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
-            let res = Self::validate_root(
-                Engines::new(type_engine, declaration_engine),
-                &root,
-                kind.clone(),
-                mod_span,
-            );
+            let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
             res.map(|(kind, declarations)| Self {
                 kind,
                 root,

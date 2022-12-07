@@ -3,13 +3,9 @@ use anyhow::Result;
 use forc_pkg::{self as pkg};
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
-use sway_core::{declaration_engine::DeclarationEngine, language::ty, CompileResult, TypeEngine};
+use sway_core::{language::ty, CompileResult, Engines};
 
-pub fn check(
-    command: CheckCommand,
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
-) -> Result<CompileResult<ty::TyProgram>> {
+pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
         path,
         offline_mode: offline,
@@ -28,7 +24,7 @@ pub fn check(
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
-    let mut v = pkg::check(&plan, terse_mode, type_engine, declaration_engine)?;
+    let mut v = pkg::check(&plan, terse_mode, engines)?;
     let res = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector")

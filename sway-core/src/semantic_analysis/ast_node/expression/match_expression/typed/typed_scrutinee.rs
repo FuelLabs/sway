@@ -1,7 +1,6 @@
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::de_get_constant,
     error::{err, ok},
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -54,12 +53,15 @@ fn type_check_variable(
 ) -> CompileResult<ty::TyScrutinee> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
             let constant_decl = check!(
-                CompileResult::from(de_get_constant(decl_id.clone(), &span)),
+                CompileResult::from(declaration_engine.get_constant(decl_id.clone(), &span)),
                 return err(warnings, errors),
                 warnings,
                 errors

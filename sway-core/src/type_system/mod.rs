@@ -116,7 +116,7 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    use crate::DeclarationEngine;
+    use crate::declaration_engine::DeclarationEngine;
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
 
@@ -137,7 +137,7 @@ fn basic_numeric_unknown() {
 
 #[test]
 fn unify_numerics() {
-    use crate::DeclarationEngine;
+    use crate::declaration_engine::DeclarationEngine;
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
     let sp = Span::dummy();
@@ -158,7 +158,7 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use crate::DeclarationEngine;
+    use crate::declaration_engine::DeclarationEngine;
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
     let sp = Span::dummy();

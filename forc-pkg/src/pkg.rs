@@ -2110,11 +2110,9 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace =
-        namespace::Module::default_with_constants(type_engine, declaration_engine, constants)?;
+    let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2145,11 +2143,7 @@ pub fn dependency_namespace(
                     public: true,
                 };
                 constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(
-                    type_engine,
-                    declaration_engine,
-                    constants,
-                )?
+                namespace::Module::default_with_constants(engines, constants)?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2167,18 +2161,10 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(
-        &[CORE, PRELUDE].map(Ident::new_no_span),
-        &[],
-        Engines::new(type_engine, declaration_engine),
-    );
+    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[], engines);
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(
-            &[STD, PRELUDE].map(Ident::new_no_span),
-            &[],
-            Engines::new(type_engine, declaration_engine),
-        );
+        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[], engines);
     }
 
     Ok(namespace)
@@ -2238,8 +2224,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
@@ -2247,13 +2232,7 @@ pub fn compile_ast(
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res = sway_core::compile_to_ast(
-        type_engine,
-        declaration_engine,
-        source,
-        namespace,
-        Some(&sway_build_config),
-    );
+    let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
 
@@ -2280,8 +2259,7 @@ pub fn compile(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
@@ -2316,13 +2294,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(
-            type_engine,
-            declaration_engine,
-            manifest,
-            build_profile,
-            namespace
-        )?
+        compile_ast(engines, manifest, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2336,7 +2308,7 @@ pub fn compile(
     let mut types = vec![];
     let json_abi_program = time_expr!(
         "generate JSON ABI program",
-        typed_program.generate_json_abi_program(type_engine, &mut types)
+        typed_program.generate_json_abi_program(engines.te(), &mut types)
     );
 
     let storage_slots = typed_program.storage_slots.clone();
@@ -2350,12 +2322,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(
-            type_engine,
-            declaration_engine,
-            &ast_res,
-            &sway_build_config
-        )
+        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value
@@ -2564,6 +2531,8 @@ pub fn build(
 
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
+
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
     for &node in plan
@@ -2581,8 +2550,7 @@ pub fn build(
             &plan.graph,
             node,
             constants,
-            &type_engine,
-            &declaration_engine,
+            engines,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2595,8 +2563,7 @@ pub fn build(
             manifest,
             profile,
             dep_namespace,
-            &type_engine,
-            &declaration_engine,
+            engines,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
@@ -2750,8 +2717,7 @@ type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-    type_engine: &TypeEngine,
-    declaration_engine: &DeclarationEngine,
+    engines: Engines<'_>,
 ) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2769,15 +2735,14 @@ pub fn check(
             &plan.graph,
             node,
             constants,
-            type_engine,
-            declaration_engine,
+            engines,
         )
         .expect("failed to create dependency namespace");
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, type_engine)?;
+        } = parse(manifest, terse_mode, engines.te())?;
 
         let parse_program = match value {
             None => {
@@ -2787,13 +2752,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(
-            type_engine,
-            declaration_engine,
-            &parse_program,
-            dep_namespace,
-            None,
-        );
+        let ast_result = sway_core::parsed_to_ast(engines, &parse_program, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
