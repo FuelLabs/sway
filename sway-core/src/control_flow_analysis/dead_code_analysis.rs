@@ -112,6 +112,9 @@ impl ControlFlowGraph {
                 &leaves,
                 exit_node,
                 tree_type,
+                NodeConnectionOptions {
+                    force_struct_fields_connection: false,
+                },
             )?;
 
             leaves = l_leaves;
@@ -210,6 +213,15 @@ fn entry_points(
     Ok(entry_points)
 }
 
+/// This struct is used to pass node connection further down the tree as
+/// we are processing AST nodes.
+#[derive(Clone, Copy)]
+struct NodeConnectionOptions {
+    /// When this is enabled, connect struct fields to the struct itself,
+    /// thus making all struct fields considered as being used in the graph.
+    force_struct_fields_connection: bool,
+}
+
 fn connect_node(
     type_engine: &TypeEngine,
     node: &ty::TyAstNode,
@@ -217,6 +229,7 @@ fn connect_node(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError> {
     //    let mut graph = graph.clone();
     let span = node.span.clone();
@@ -237,6 +250,7 @@ fn connect_node(
                 "",
                 tree_type,
                 expr.span.clone(),
+                options,
             )?;
             for leaf in return_contents.clone() {
                 graph.add_edge(this_index, leaf, "".into());
@@ -269,6 +283,7 @@ fn connect_node(
                     "",
                     tree_type,
                     span.clone(),
+                    options,
                 )?,
                 exit_node,
             )
@@ -295,6 +310,7 @@ fn connect_node(
                     exit_node,
                     tree_type,
                     leaves,
+                    options,
                 )?,
                 exit_node,
             )
@@ -312,6 +328,7 @@ fn connect_declaration(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
     leaves: &[NodeIndex],
+    options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyDeclaration::*;
     match decl {
@@ -335,6 +352,7 @@ fn connect_declaration(
                     "variable instantiation",
                     tree_type,
                     body.clone().span,
+                    options,
                 )
             }
         }
@@ -351,6 +369,7 @@ fn connect_declaration(
                 "constant declaration expression",
                 tree_type,
                 value.span.clone(),
+                options,
             )
         }
         FunctionDeclaration(decl_id) => {
@@ -363,6 +382,7 @@ fn connect_declaration(
                 span,
                 exit_node,
                 tree_type,
+                options,
             )?;
             Ok(leaves.to_vec())
         }
@@ -405,6 +425,7 @@ fn connect_declaration(
                 &methods,
                 entry_node,
                 tree_type,
+                options,
             )?;
             Ok(leaves.to_vec())
         }
@@ -467,6 +488,7 @@ fn connect_impl_trait(
     methods: &[ty::TyFunctionDeclaration],
     entry_node: NodeIndex,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let trait_decl_node = graph.namespace.find_trait(trait_name).cloned();
     match trait_decl_node {
@@ -497,6 +519,7 @@ fn connect_impl_trait(
             fn_decl.span.clone(),
             None,
             tree_type,
+            options,
         )?;
         methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
@@ -585,6 +608,7 @@ fn connect_enum_declaration(
 /// When connecting a function declaration, we are inserting a new root node into the graph that
 /// has no entry points, since it is just a declaration.
 /// When something eventually calls it, it gets connected to the declaration.
+#[allow(clippy::too_many_arguments)]
 fn connect_typed_fn_decl(
     type_engine: &TypeEngine,
     fn_decl: &ty::TyFunctionDeclaration,
@@ -593,6 +617,7 @@ fn connect_typed_fn_decl(
     span: Span,
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
@@ -602,6 +627,7 @@ fn connect_typed_fn_decl(
         &[entry_node],
         Some(fn_exit_node),
         tree_type,
+        options,
     )?;
     if let Some(exit_node) = exit_node {
         graph.add_edge(fn_exit_node, exit_node, "".into());
@@ -667,12 +693,20 @@ fn depth_first_insertion_code_block(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError> {
     let mut leaves = leaves.to_vec();
     let mut exit_node = exit_node;
     for node in node_content.contents.iter() {
-        let (this_node, l_exit_node) =
-            connect_node(type_engine, node, graph, &leaves, exit_node, tree_type)?;
+        let (this_node, l_exit_node) = connect_node(
+            type_engine,
+            node,
+            graph,
+            &leaves,
+            exit_node,
+            tree_type,
+            options,
+        )?;
         leaves = this_node;
         exit_node = l_exit_node;
     }
@@ -691,6 +725,7 @@ fn connect_expression(
     label: &'static str,
     tree_type: &TreeType,
     _expression_span: Span,
+    mut options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyExpressionVariant::*;
     match expr_variant {
@@ -724,6 +759,17 @@ fn connect_expression(
             for leaf in leaves {
                 graph.add_edge(*leaf, fn_entrypoint, label.into());
             }
+
+            // save the existing options value to restore after handling the arguments
+            let force_struct_fields_connection = options.force_struct_fields_connection;
+
+            // if the function is external, assume that any struct that is being referenced
+            // as an argument "consumes" all of the respective struct fields.
+            // this could lead to false negatives but it is the best we can do at the moment
+            // with our current DCA analysis architecture. revisit this once we switch
+            // to an inter-procedural/module analysis approach.
+            options.force_struct_fields_connection |= is_external;
+
             // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
             for (_name, arg) in arguments {
@@ -736,8 +782,11 @@ fn connect_expression(
                     "arg eval",
                     tree_type,
                     arg.clone().span,
+                    options,
                 )?;
             }
+            options.force_struct_fields_connection = force_struct_fields_connection;
+
             // connect final leaf to fn exit
             for leaf in current_leaf {
                 graph.add_edge(leaf, fn_exit_point, "".into());
@@ -764,6 +813,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 lhs.span.clone(),
+                options,
             )?;
             let rhs_expr = connect_expression(
                 type_engine,
@@ -774,6 +824,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 rhs.span.clone(),
+                options,
             )?;
             Ok([lhs_expr, rhs_expr].concat())
         }
@@ -814,6 +865,7 @@ fn connect_expression(
                 leaves,
                 exit_node,
                 tree_type,
+                options,
             )
         }
         IfExp {
@@ -830,6 +882,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 condition.span.clone(),
+                options,
             )?;
             let then_expr = connect_expression(
                 type_engine,
@@ -840,6 +893,7 @@ fn connect_expression(
                 "then branch",
                 tree_type,
                 then.span.clone(),
+                options,
             )?;
 
             let else_expr = if let Some(else_expr) = r#else {
@@ -852,6 +906,7 @@ fn connect_expression(
                     "else branch",
                     tree_type,
                     else_expr.clone().span,
+                    options,
                 )?
             } else {
                 vec![]
@@ -860,7 +915,7 @@ fn connect_expression(
             Ok([condition_expr, then_expr, else_expr].concat())
         }
         CodeBlock(a @ ty::TyCodeBlock { .. }) => {
-            connect_code_block(type_engine, a, graph, leaves, exit_node, tree_type)
+            connect_code_block(type_engine, a, graph, leaves, exit_node, tree_type, options)
         }
         StructExpression {
             struct_name,
@@ -880,6 +935,15 @@ fn connect_expression(
             // connect the entry to the decl, to denote that the struct has been constructed
             graph.add_edge(entry, decl, "".into());
 
+            // connect the struct fields to the struct if its requested as an option
+            if options.force_struct_fields_connection {
+                if let Some(ns) = graph.namespace.get_struct(struct_name).cloned() {
+                    for (_, field_ix) in ns.fields.iter() {
+                        graph.add_edge(decl, *field_ix, "".into());
+                    }
+                }
+            }
+
             let mut current_leaf = vec![entry];
             // for every field, connect its expression
             for ty::TyStructExpressionField { value, .. } in fields {
@@ -892,6 +956,7 @@ fn connect_expression(
                     "struct field instantiation",
                     tree_type,
                     value.clone().span,
+                    options,
                 )?;
             }
 
@@ -917,6 +982,7 @@ fn connect_expression(
                 label,
                 tree_type,
                 field_instantiation_span.clone(),
+                options,
             )?;
 
             let resolved_type_of_parent = type_engine
@@ -970,6 +1036,7 @@ fn connect_expression(
                         "asm block argument initialization",
                         tree_type,
                         initializer.clone().span,
+                        options,
                     )?,
                     None => current_leaf,
                 }
@@ -1002,6 +1069,7 @@ fn connect_expression(
                     "tuple field instantiation",
                     tree_type,
                     value.clone().span,
+                    options,
                 )?;
             }
 
@@ -1020,6 +1088,7 @@ fn connect_expression(
             "abi cast address",
             tree_type,
             address.span.clone(),
+            options,
         ),
         Array { contents } => {
             let nodes = contents
@@ -1034,6 +1103,7 @@ fn connect_expression(
                         "",
                         tree_type,
                         elem.span.clone(),
+                        options,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -1049,6 +1119,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 prefix.span.clone(),
+                options,
             )?;
             let index_idx = connect_expression(
                 type_engine,
@@ -1059,6 +1130,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 index.span.clone(),
+                options,
             )?;
             Ok([prefix_idx, index_idx].concat())
         }
@@ -1072,6 +1144,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 prefix.span.clone(),
+                options,
             )?;
             Ok(prefix_idx)
         }
@@ -1116,6 +1189,7 @@ fn connect_expression(
             "enum tag exp",
             tree_type,
             exp.span.clone(),
+            options,
         ),
         UnsafeDowncast { exp, .. } => connect_expression(
             type_engine,
@@ -1126,6 +1200,7 @@ fn connect_expression(
             "unsafe downcast exp",
             tree_type,
             exp.span.clone(),
+            options,
         ),
         WhileLoop {
             body, condition, ..
@@ -1158,6 +1233,7 @@ fn connect_expression(
                 label,
                 tree_type,
                 Span::dummy(),
+                options,
             )?;
 
             let (l_leaves, _l_exit_node) = depth_first_insertion_code_block(
@@ -1167,6 +1243,7 @@ fn connect_expression(
                 &leaves,
                 exit_node,
                 tree_type,
+                options,
             )?;
             // insert edges from end of block back to beginning of it
             for leaf in &l_leaves {
@@ -1202,6 +1279,7 @@ fn connect_expression(
             "variable reassignment",
             tree_type,
             typed_reassignment.rhs.clone().span,
+            options,
         ),
         StorageReassignment(typed_storage_reassignment) => connect_expression(
             type_engine,
@@ -1212,6 +1290,7 @@ fn connect_expression(
             "variable reassignment",
             tree_type,
             typed_storage_reassignment.rhs.clone().span,
+            options,
         ),
         Return(exp) => {
             let this_index = graph.add_node("return entry".into());
@@ -1227,6 +1306,7 @@ fn connect_expression(
                 "",
                 tree_type,
                 exp.span.clone(),
+                options,
             )?;
             // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
             // node?
@@ -1251,7 +1331,7 @@ fn connect_intrinsic_function(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(kind.to_string().into());
+    let node = graph.add_node(format!("Intrinsic {}", kind).into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }
@@ -1266,6 +1346,9 @@ fn connect_intrinsic_function(
             "intrinsic",
             tree_type,
             exp.span.clone(),
+            NodeConnectionOptions {
+                force_struct_fields_connection: true,
+            },
         )?;
         accum.append(&mut res);
         Ok::<_, CompileError>(accum)
@@ -1280,6 +1363,7 @@ fn connect_code_block(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     let contents = &block.contents;
     let block_entry = graph.add_node("Code block entry".into());
@@ -1295,6 +1379,7 @@ fn connect_code_block(
             &current_leaf,
             exit_node,
             tree_type,
+            options,
         )?
         .0;
     }
@@ -1316,6 +1401,7 @@ fn connect_enum_instantiation(
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
+    options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     let enum_name = &enum_decl.name;
     let (decl_ix, variant_index) = graph
@@ -1354,6 +1440,7 @@ fn connect_enum_instantiation(
             "",
             tree_type,
             enum_decl.span.clone(),
+            options,
         )?;
         for leaf in instantiator_contents {
             graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
