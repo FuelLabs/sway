@@ -33,11 +33,7 @@ pub(crate) struct RenderedDocument {
 }
 impl RenderedDocument {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from_raw_docs(
-        raw: &Documentation,
-        project_name: &String,
-        document_private_items: bool,
-    ) -> RenderedDocumentation {
+    pub fn from_raw_docs(raw: &Documentation, project_name: &String) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
@@ -61,7 +57,7 @@ impl RenderedDocument {
                         ItemType::Struct,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    struct_decl.render(module, module_depth, decl_ty, document_private_items)
+                    struct_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Enum(enum_decl) => {
                     let path_str = if module_depth == 0 {
@@ -73,7 +69,7 @@ impl RenderedDocument {
                         ItemType::Enum,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    enum_decl.render(module, module_depth, decl_ty, document_private_items)
+                    enum_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Trait(trait_decl) => {
                     let path_str = if module_depth == 0 {
@@ -85,7 +81,7 @@ impl RenderedDocument {
                         ItemType::Trait,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    trait_decl.render(module, module_depth, decl_ty, document_private_items)
+                    trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Abi(abi_decl) => {
                     let path_str = if module_depth == 0 {
@@ -97,7 +93,7 @@ impl RenderedDocument {
                         ItemType::Abi,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    abi_decl.render(module, module_depth, decl_ty, document_private_items)
+                    abi_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Storage(storage_decl) => {
                     all_doc.push((
@@ -108,11 +104,11 @@ impl RenderedDocument {
                             file_name.clone(),
                         ),
                     ));
-                    storage_decl.render(module, module_depth, decl_ty, document_private_items)
+                    storage_decl.render(module, module_depth, decl_ty)
                 }
                 // TODO: Figure out how to represent impl traits
                 DescriptorType::ImplTraitDesc(impl_trait_decl) => {
-                    impl_trait_decl.render(module, module_depth, decl_ty, document_private_items)
+                    impl_trait_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Function(fn_decl) => {
                     let path_str = if module_depth == 0 {
@@ -124,7 +120,7 @@ impl RenderedDocument {
                         ItemType::Function,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    fn_decl.render(module, module_depth, decl_ty, document_private_items)
+                    fn_decl.render(module, module_depth, decl_ty)
                 }
                 DescriptorType::Const(const_decl) => {
                     let path_str = if module_depth == 0 {
@@ -136,7 +132,7 @@ impl RenderedDocument {
                         ItemType::Constant,
                         (path_str, module_prefix.clone(), file_name.clone()),
                     ));
-                    const_decl.render(module, module_depth, decl_ty, document_private_items)
+                    const_decl.render(module, module_depth, decl_ty)
                 }
             };
             rendered_docs.push(Self {
@@ -482,52 +478,22 @@ fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
 }
 
 trait Renderable {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox>;
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
 }
 
 impl Renderable for TyStructDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyStructDeclaration {
-            name: base_ident,
+            name,
             fields: _,
             type_parameters: _,
-            visibility,
+            visibility: _,
             attributes,
             span,
         } = &self;
-        // maybe we should check for visibility before this step
-        let mut name = String::with_capacity(base_ident.as_str().chars().count() as usize);
-        let mut code_str = String::with_capacity(span.as_str().chars().count() as usize);
-        let mut struct_attributes = String::new();
-        if !document_private_items && visibility.is_private() {
-        } else {
-            write!(&mut name, "{}", base_ident.as_str()).expect("error writing struct base_ident");
-            write!(
-                &mut code_str,
-                "{}",
-                parse::parse_format::<sway_ast::ItemStruct>(span.as_str())
-            )
-            .expect("error writing struct code_str");
-            write!(
-                &mut struct_attributes,
-                "{}",
-                attrsmap_to_html_string(attributes)
-            )
-            .expect("error writing struct attributes");
-        }
-
+        let name = name.as_str().to_string();
+        let code_str = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
+        let struct_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
             : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, struct_attributes);
@@ -535,13 +501,7 @@ impl Renderable for TyStructDeclaration {
     }
 }
 impl Renderable for TyEnumDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyEnumDeclaration {
             name,
             type_parameters: _,
@@ -560,13 +520,7 @@ impl Renderable for TyEnumDeclaration {
     }
 }
 impl Renderable for TyTraitDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyTraitDeclaration {
             name,
             interface_surface: _,
@@ -587,13 +541,7 @@ impl Renderable for TyTraitDeclaration {
     }
 }
 impl Renderable for TyAbiDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyAbiDeclaration {
             name,
             interface_surface: _,
@@ -611,13 +559,7 @@ impl Renderable for TyAbiDeclaration {
     }
 }
 impl Renderable for TyStorageDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyStorageDeclaration {
             fields: _,
             span,
@@ -633,13 +575,7 @@ impl Renderable for TyStorageDeclaration {
     }
 }
 impl Renderable for TyImplTrait {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyImplTrait {
             impl_type_parameters: _,
             trait_name,
@@ -659,13 +595,7 @@ impl Renderable for TyImplTrait {
     }
 }
 impl Renderable for TyFunctionDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyFunctionDeclaration {
             name,
             body: _,
@@ -690,13 +620,7 @@ impl Renderable for TyFunctionDeclaration {
     }
 }
 impl Renderable for TyConstantDeclaration {
-    fn render(
-        &self,
-        module: String,
-        module_depth: usize,
-        decl_ty: String,
-        document_private_items: bool,
-    ) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyConstantDeclaration {
             name,
             value: _,

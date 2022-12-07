@@ -61,10 +61,11 @@ pub fn main() -> Result<()> {
     let compilation = pkg::check(&plan, silent, &type_engine)?
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");
-    let raw_docs: Documentation = Document::from_ty_program(&compilation, no_deps)?;
+    let raw_docs: Documentation =
+        Document::from_ty_program(&compilation, no_deps, document_private_items)?;
     // render docs to HTML
     let rendered_docs: RenderedDocumentation =
-        RenderedDocument::from_raw_docs(&raw_docs, project_name, document_private_items);
+        RenderedDocument::from_raw_docs(&raw_docs, project_name);
 
     // write contents to outfile
     for doc in rendered_docs {
