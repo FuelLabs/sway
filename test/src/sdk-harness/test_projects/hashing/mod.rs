@@ -87,14 +87,14 @@ fn hash_array(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
 }
 
 fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
-    /* 
+    /*
         Enums are encoded in the following format:
         1. Encode the discriminant (the variant tag)
         2. Encode the type of the enum variant
-        
-        If all the variants are of type (), or unit, 
+
+        If all the variants are of type (), or unit,
         then only the discriminant needs to be encoded.
-        
+
         enum Test {
             A,
             B,
