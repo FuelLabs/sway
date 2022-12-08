@@ -77,10 +77,13 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
                 for (failed_test_name, failed_test_detail) in failed_test_details {
                     let path = &*failed_test_detail.file_path;
                     let line_number = failed_test_detail.line_number;
-                    info!("      - test {}, {:?}:{} ", failed_test_name, path, line_number);
+                    info!(
+                        "      - test {}, {:?}:{} ",
+                        failed_test_name, path, line_number
+                    );
                 }
                 info!("\n");
-            } 
+            }
             info!(
                 "   Result: {}. {} passed. {} failed. Finished in {:?}.",
                 color.paint(state),
