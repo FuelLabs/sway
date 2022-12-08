@@ -2,7 +2,7 @@
 use crate::core::token::{AstToken, Token};
 use sway_core::{language::parsed::Declaration, transform};
 
-pub(crate) fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
+pub fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
     match &token.parsed {
         AstToken::Declaration(declaration) => match declaration {
             Declaration::EnumDeclaration(decl) => Some(&decl.attributes),
@@ -21,13 +21,13 @@ pub(crate) fn attributes_map(token: &Token) -> Option<&transform::AttributesMap>
     }
 }
 
-pub(crate) fn doc_attributes(token: &Token) -> Option<&[transform::Attribute]> {
+pub fn doc_attributes(token: &Token) -> Option<&[transform::Attribute]> {
     attributes_map(token)
         .and_then(|attributes| attributes.get(&transform::AttributeKind::Doc))
         .map(Vec::as_slice)
 }
 
-pub(crate) fn storage_attributes(token: &Token) -> Option<&[transform::Attribute]> {
+pub fn storage_attributes(token: &Token) -> Option<&[transform::Attribute]> {
     attributes_map(token)
         .and_then(|attributes| attributes.get(&transform::AttributeKind::Storage))
         .map(Vec::as_slice)

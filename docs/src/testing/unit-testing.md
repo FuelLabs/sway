@@ -13,7 +13,7 @@ fn test_meaning_of_life() {
 
 Each test function is ran as if it were the entry point for a
 [script](../sway-program-types/scripts.md). Tests "pass" if they return
-successfully, and "fail" if they revert.
+successfully, and "fail" if they revert or vice versa while [testing failure](#testing-failure).
 
 ## Building and Running Tests
 
@@ -40,10 +40,16 @@ the options available for `forc test`.
 
 ## Testing Failure
 
-***Coming Soon***
+Forc supports testing failing cases for test functions declared with `#[test(should_revert)]`. For example:
 
-*Track progress on `#[test(should_revert)]`
-[here](https://github.com/FuelLabs/sway/issues/3260).*
+```sway
+#[test(should_revert)]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+```
+
+Tests with `#[test(should_revert)]` considered to be passing if they are reverting.
 
 ## Calling Contracts
 
