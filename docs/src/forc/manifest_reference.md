@@ -183,11 +183,11 @@ fn main() {
 }
 ```
 
-Since contract id is created deterministcly, building the same contract would always result with the same contract id. Since two contracts with same contract id cannot be deployed, a salt is needed to add randomness to the contract id. For each contract dependency declared under `[contract-dependencies]`, a salt can be specified by providing it with the declaration, an example can be seen below.
+Because the ID of a contract is computed deterministically, rebuilding the same contract would always result in the same contract ID. Since two contracts with same contract ID cannot be deployed on the blockchain, a "salt" factor is needed to modify the contract ID. For each contract dependency declared under `[contract-dependencies]`, `salt` can be specified. An example is shown below:
 
 ```toml
 [contract-dependencies]
 foo = { path = "../foo", salt = "0x1000000000000000000000000000000000000000000000000000000000000000" }
 ```
 
-For contract dependencies that does not declare any salt, default salt is implicitly added (which is 32 bytes of 0).
+For contract dependencies that do not specify any value for `salt`, a default of all zeros for `salt` is implicitly applied.
