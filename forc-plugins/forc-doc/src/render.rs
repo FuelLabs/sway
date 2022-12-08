@@ -170,9 +170,11 @@ fn html_head(
     decl_name: String,
 ) -> Box<dyn RenderBox> {
     let prefix = module_depth_to_path_prefix(module_depth);
+    let mut favicon = prefix.clone();
     let mut normalize = prefix.clone();
     let mut swaydoc = prefix.clone();
     let mut ayu = prefix;
+    favicon.push_str("assets/sway-logo.svg");
     normalize.push_str("assets/normalize.css");
     swaydoc.push_str("assets/swaydoc.css");
     ayu.push_str("assets/ayu.css");
@@ -187,6 +189,7 @@ fn html_head(
                 content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
             );
             meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
+            link(rel="icon", href=favicon);
             title: format!("{decl_name} in {location} - Sway");
             link(rel="stylesheet", type="text/css", href=normalize);
             link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
@@ -328,6 +331,7 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
                 content="List of all items in this crate"
             );
             meta(name="keywords", content="sway, swaylang, sway-lang");
+            link(rel="icon", href="assets/sway-logo.svg");
             title: "List of all items in this crate";
             link(rel="stylesheet", type="text/css", href="assets/normalize.css");
             link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");

@@ -161,17 +161,17 @@ async fn test_get_logs() -> Result<(), Error> {
         field_2: 64,
     };
     let expected_logs: Vec<String> = vec![
-        format!("{:#?}", 64u64),
-        format!("{:#?}", 32u32),
-        format!("{:#?}", 16u16),
-        format!("{:#?}", 8u8),
-        format!("{:#?}", 64u64),
-        format!("{:#?}", expected_bits256),
-        format!("{:#?}", SizedAsciiString::<4>::new("Fuel".to_string())?),
-        format!("{:#?}", [1, 2, 3]),
-        format!("{:#?}", expected_struct),
-        format!("{:#?}", expected_enum),
-        format!("{:#?}", expected_generic_struct),
+        format!("{:?}", 64u64),
+        format!("{:?}", 32u32),
+        format!("{:?}", 16u16),
+        format!("{:?}", 8u8),
+        format!("{:?}", 64u64),
+        format!("{:?}", expected_bits256),
+        format!("{:?}", SizedAsciiString::<4>::new("Fuel".to_string())?),
+        format!("{:?}", [1, 2, 3]),
+        format!("{:?}", expected_struct),
+        format!("{:?}", expected_enum),
+        format!("{:?}", expected_generic_struct),
     ];
 
     assert_eq!(logs, expected_logs);
