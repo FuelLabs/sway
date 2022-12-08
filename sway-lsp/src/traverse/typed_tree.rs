@@ -33,17 +33,19 @@ fn handle_declaration(
 ) {
     match declaration {
         ty::TyDeclaration::VariableDeclaration(variable) => {
+            let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&variable.name)) {
-                token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
             }
             if let Some(type_ascription_span) = &variable.type_ascription_span {
-                if let Some(mut token) =
-                    tokens.get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
-                {
-                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(variable.type_ascription));
-                }
+                collect_type_id(
+                    type_engine,
+                    variable.type_ascription,
+                    &typed_token,
+                    tokens,
+                    type_ascription_span.clone(),
+                );
             }
 
             handle_expression(type_engine, &variable.body, tokens);
@@ -106,7 +108,7 @@ fn handle_declaration(
                         field.type_id,
                         &typed_token,
                         tokens,
-                        Some(field.type_span.clone()),
+                        field.type_span.clone(),
                     );
                 }
 
@@ -145,7 +147,7 @@ fn handle_declaration(
                         variant.type_id,
                         &typed_token,
                         tokens,
-                        Some(variant.type_span.clone()),
+                        variant.type_span.clone(),
                     );
                 }
             }
@@ -534,7 +536,7 @@ fn collect_typed_fn_param_token(
         param.type_id,
         &typed_token,
         tokens,
-        Some(param.type_span.clone()),
+        param.type_span.clone(),
     );
 }
 
@@ -543,7 +545,7 @@ fn collect_type_id(
     type_id: TypeId,
     typed_token: &TypedAstToken,
     tokens: &TokenMap,
-    type_span: Option<Span>,
+    type_span: Span,
 ) {
     let type_info = type_engine.look_up_type_id(type_id);
     match &type_info {
@@ -553,7 +555,7 @@ fn collect_type_id(
                 type_arg.type_id,
                 typed_token,
                 tokens,
-                Some(type_arg.span.clone()),
+                type_arg.span.clone(),
             );
         }
         TypeInfo::Tuple(type_arguments) => {
@@ -563,18 +565,16 @@ fn collect_type_id(
                     type_arg.type_id,
                     typed_token,
                     tokens,
-                    Some(type_arg.span.clone()),
+                    type_arg.span.clone(),
                 );
             }
         }
         _ => {
             let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
-            if let Some(span) = type_span {
-                if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span))) {
-                    token.kind = symbol_kind;
-                    token.typed = Some(typed_token.clone());
-                    token.type_def = Some(TypeDefinition::TypeId(type_id));
-                }
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+                token.kind = symbol_kind;
+                token.typed = Some(typed_token.clone());
+                token.type_def = Some(TypeDefinition::TypeId(type_id));
             }
         }
     }
