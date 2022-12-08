@@ -480,6 +480,13 @@ fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
     options.parse.default_info_string = Some("sway".into());
     markdown_to_html(&format_docs(&docs), &options)
 }
+/// Takes a formatted String fn and returns only the function signature.
+fn trim_fn_body(f: String) -> String {
+    match f.find("{") {
+        Some(index) => f.split_at(index).0.to_string(),
+        None => f,
+    }
+}
 
 trait Renderable {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
@@ -615,7 +622,7 @@ impl Renderable for TyFunctionDeclaration {
             visibility: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemFn>(span.as_str());
+        let code_str = trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(span.as_str()));
         let function_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
