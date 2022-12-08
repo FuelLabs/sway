@@ -566,12 +566,12 @@ jobs:
     strategy:
       matrix:
         job:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: x86_64-unknown-linux-gnu
             arch: amd64
             svm_target_platform: linux-amd64
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: aarch64-unknown-linux-gnu
             arch: arm64

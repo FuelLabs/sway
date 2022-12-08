@@ -1,0 +1,4 @@
+category = "compile"
+
+# check: $()This function is never called.
+

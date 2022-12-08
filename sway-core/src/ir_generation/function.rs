@@ -92,7 +92,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: ty::TyCodeBlock,
+        ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.compile_with_new_scope(|fn_compiler| {
             fn_compiler.compile_code_block_inner(context, md_mgr, ast_block)
@@ -103,11 +103,11 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_block: ty::TyCodeBlock,
+        ast_block: &ty::TyCodeBlock,
     ) -> Result<Value, CompileError> {
         self.lexical_map.enter_scope();
 
-        let mut ast_nodes = ast_block.contents.into_iter();
+        let mut ast_nodes = ast_block.contents.iter();
         let value_res = loop {
             let ast_node = match ast_nodes.next() {
                 Some(ast_node) => ast_node,
@@ -128,40 +128,40 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_node: ty::TyAstNode,
+        ast_node: &ty::TyAstNode,
     ) -> Result<Option<Value>, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_node.span);
-        match ast_node.content {
+        match &ast_node.content {
             ty::TyAstNodeContent::Declaration(td) => match td {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
-                    self.compile_var_decl(context, md_mgr, *tvd, span_md_idx)
+                    self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = declaration_engine::de_get_constant(decl_id, &ast_node.span)?;
+                    let tcd = declaration_engine::de_get_constant(decl_id.clone(), &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
                 ty::TyDeclaration::FunctionDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "function",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
                 ty::TyDeclaration::TraitDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "trait",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
                 ty::TyDeclaration::StructDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "struct",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = declaration_engine::de_get_enum(decl_id, &ast_node.span)?;
-                    create_enum_aggregate(self.type_engine, context, ted.variants).map(|_| ())?;
+                    let ted = declaration_engine::de_get_enum(decl_id.clone(), &ast_node.span)?;
+                    create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDeclaration::ImplTrait(_) => {
@@ -174,24 +174,24 @@ impl<'te> FnCompiler<'te> {
                 }
                 ty::TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
                     decl_type: "abi",
-                    span: ast_node.span,
+                    span: ast_node.span.clone(),
                 }),
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
                 ty::TyDeclaration::ErrorRecovery { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "error recovery",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
                 ty::TyDeclaration::StorageDeclaration(_) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "storage",
-                        span: ast_node.span,
+                        span: ast_node.span.clone(),
                     })
                 }
             },
@@ -217,12 +217,12 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_expr: ty::TyExpression,
+        ast_expr: &ty::TyExpression,
     ) -> Result<Value, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &ast_expr.span);
-        match ast_expr.expression {
+        match &ast_expr.expression {
             ty::TyExpressionVariant::Literal(l) => {
-                Ok(convert_literal_to_value(context, &l).add_metadatum(context, span_md_idx))
+                Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
             }
             ty::TyExpressionVariant::FunctionApplication {
                 call_path: name,
@@ -236,27 +236,27 @@ impl<'te> FnCompiler<'te> {
                     self.compile_contract_call(
                         context,
                         md_mgr,
-                        &metadata,
-                        &contract_call_params,
+                        metadata,
+                        contract_call_params,
                         name.suffix.as_str(),
                         arguments,
                         ast_expr.return_type,
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = de_get_function(function_decl_id, &ast_expr.span)?;
+                    let function_decl = de_get_function(function_decl_id.clone(), &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
                         arguments,
-                        function_decl,
-                        self_state_idx,
+                        &function_decl,
+                        *self_state_idx,
                         span_md_idx,
                     )
                 }
             }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
-                self.compile_lazy_op(context, md_mgr, op, *lhs, *rhs, span_md_idx)
+                self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
@@ -265,7 +265,7 @@ impl<'te> FnCompiler<'te> {
                 self.compile_array_expr(context, md_mgr, contents, span_md_idx)
             }
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-                self.compile_array_index(context, md_mgr, *prefix, *index, span_md_idx)
+                self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
@@ -273,27 +273,27 @@ impl<'te> FnCompiler<'te> {
             ty::TyExpressionVariant::CodeBlock(cb) => self.compile_code_block(context, md_mgr, cb),
             ty::TyExpressionVariant::FunctionParameter => Err(CompileError::Internal(
                 "Unexpected function parameter declaration.",
-                ast_expr.span,
+                ast_expr.span.clone(),
             )),
             ty::TyExpressionVariant::IfExp {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, md_mgr, *condition, *then, r#else),
+            } => self.compile_if(context, md_mgr, condition, then, r#else.as_deref()),
             ty::TyExpressionVariant::AsmExpression {
                 registers,
                 body,
                 returns,
                 whole_block_span,
             } => {
-                let span_md_idx = md_mgr.span_to_md(context, &whole_block_span);
+                let span_md_idx = md_mgr.span_to_md(context, whole_block_span);
                 self.compile_asm_expr(
                     context,
                     md_mgr,
                     registers,
                     body,
                     ast_expr.return_type,
-                    returns,
+                    returns.as_ref(),
                     span_md_idx,
                 )
             }
@@ -307,8 +307,8 @@ impl<'te> FnCompiler<'te> {
                 self.compile_struct_field_expr(
                     context,
                     md_mgr,
-                    *prefix,
-                    resolved_type_of_parent,
+                    prefix,
+                    *resolved_type_of_parent,
                     field_to_access,
                     span_md_idx,
                 )
@@ -318,7 +318,7 @@ impl<'te> FnCompiler<'te> {
                 tag,
                 contents,
                 ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, tag, contents),
+            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }
@@ -327,9 +327,16 @@ impl<'te> FnCompiler<'te> {
                 elem_to_access_num: idx,
                 elem_to_access_span: span,
                 resolved_type_of_parent: tuple_type,
-            } => self.compile_tuple_elem_expr(context, md_mgr, *prefix, tuple_type, idx, span),
+            } => self.compile_tuple_elem_expr(
+                context,
+                md_mgr,
+                prefix,
+                *tuple_type,
+                *idx,
+                span.clone(),
+            ),
             ty::TyExpressionVariant::AbiCast { span, .. } => {
-                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let span_md_idx = md_mgr.span_to_md(context, span);
                 Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
@@ -343,7 +350,7 @@ impl<'te> FnCompiler<'te> {
                 )
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
-                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span)
+                self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
             }
             ty::TyExpressionVariant::AbiName(_) => {
                 Ok(Value::new_constant(context, Constant::new_unit()))
@@ -351,14 +358,16 @@ impl<'te> FnCompiler<'te> {
             ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
             }
-            ty::TyExpressionVariant::EnumTag { exp } => self.compile_enum_tag(context, md_mgr, exp),
+            ty::TyExpressionVariant::EnumTag { exp } => {
+                self.compile_enum_tag(context, md_mgr, exp.to_owned())
+            }
             ty::TyExpressionVariant::WhileLoop { body, condition } => self.compile_while_loop(
                 context,
                 md_mgr,
                 body,
-                *condition,
+                condition,
                 span_md_idx,
-                ast_expr.span,
+                ast_expr.span.clone(),
             ),
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
@@ -370,7 +379,7 @@ impl<'te> FnCompiler<'te> {
                         .ins(context)
                         .branch(block_to_break_to, vec![])),
                     None => Err(CompileError::BreakOutsideLoop {
-                        span: ast_expr.span,
+                        span: ast_expr.span.clone(),
                     }),
                 }
             }
@@ -383,11 +392,11 @@ impl<'te> FnCompiler<'te> {
                     .ins(context)
                     .branch(block_to_continue_to, vec![])),
                 None => Err(CompileError::ContinueOutsideLoop {
-                    span: ast_expr.span,
+                    span: ast_expr.span.clone(),
                 }),
             },
             ty::TyExpressionVariant::Reassignment(reassignment) => {
-                self.compile_reassignment(context, md_mgr, *reassignment, span_md_idx)
+                self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
             }
             ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => self
                 .compile_storage_reassignment(
@@ -399,7 +408,7 @@ impl<'te> FnCompiler<'te> {
                     span_md_idx,
                 ),
             ty::TyExpressionVariant::Return(exp) => {
-                self.compile_return_statement(context, md_mgr, *exp)
+                self.compile_return_statement(context, md_mgr, exp)
             }
         }
     }
@@ -413,7 +422,7 @@ impl<'te> FnCompiler<'te> {
             arguments,
             type_arguments,
             span: _,
-        }: ty::TyIntrinsicFunctionKind,
+        }: &ty::TyIntrinsicFunctionKind,
         span: Span,
     ) -> Result<Value, CompileError> {
         fn store_key_in_local_mem(
@@ -455,7 +464,7 @@ impl<'te> FnCompiler<'te> {
         // because the type-checker ensures that the arguments are all there.
         match kind {
             Intrinsic::SizeOfVal => {
-                let exp = arguments[0].clone();
+                let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(
                     self.type_engine,
@@ -495,8 +504,8 @@ impl<'te> FnCompiler<'te> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::Eq => {
-                let lhs = arguments[0].clone();
-                let rhs = arguments[1].clone();
+                let lhs = &arguments[0];
+                let rhs = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
                 Ok(self
@@ -506,7 +515,7 @@ impl<'te> FnCompiler<'te> {
             }
             Intrinsic::Gtf => {
                 // The index is just a Value
-                let index = self.compile_expression(context, md_mgr, arguments[0].clone())?;
+                let index = self.compile_expression(context, md_mgr, &arguments[0])?;
 
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
@@ -531,7 +540,7 @@ impl<'te> FnCompiler<'te> {
                 };
 
                 // Get the target type from the type argument provided
-                let target_type = type_arguments[0].clone();
+                let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_typeid(
                     self.type_engine,
                     context,
@@ -561,7 +570,7 @@ impl<'te> FnCompiler<'te> {
                 }
             }
             Intrinsic::AddrOf => {
-                let exp = arguments[0].clone();
+                let exp = &arguments[0];
                 let value = self.compile_expression(context, md_mgr, exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 Ok(self
@@ -571,7 +580,7 @@ impl<'te> FnCompiler<'te> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadWord => {
-                let exp = arguments[0].clone();
+                let exp = &arguments[0];
                 let value = self.compile_expression(context, md_mgr, exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_ptr_val = store_key_in_local_mem(self, context, value, span_md_idx)?;
@@ -582,8 +591,8 @@ impl<'te> FnCompiler<'te> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateStoreWord => {
-                let key_exp = arguments[0].clone();
-                let val_exp = arguments[1].clone();
+                let key_exp = &arguments[0];
+                let val_exp = &arguments[1];
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
@@ -605,8 +614,8 @@ impl<'te> FnCompiler<'te> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
-                let key_exp = arguments[0].clone();
-                let val_exp = arguments[1].clone();
+                let key_exp = &arguments[0];
+                let val_exp = &arguments[1];
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
@@ -643,7 +652,7 @@ impl<'te> FnCompiler<'te> {
             }
             Intrinsic::Log => {
                 // The log value and the log ID are just Value.
-                let log_val = self.compile_expression(context, md_mgr, arguments[0].clone())?;
+                let log_val = self.compile_expression(context, md_mgr, &arguments[0])?;
                 let log_id = match self.logged_types_map.get(&arguments[0].return_type) {
                     None => {
                         return Err(CompileError::Internal(
@@ -681,8 +690,8 @@ impl<'te> FnCompiler<'te> {
                     Intrinsic::Div => BinaryOpKind::Div,
                     _ => unreachable!(),
                 };
-                let lhs = arguments[0].clone();
-                let rhs = arguments[1].clone();
+                let lhs = &arguments[0];
+                let rhs = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let rhs_value = self.compile_expression(context, md_mgr, rhs)?;
                 Ok(self
@@ -691,8 +700,7 @@ impl<'te> FnCompiler<'te> {
                     .binary_op(op, lhs_value, rhs_value))
             }
             Intrinsic::Revert => {
-                let revert_code_val =
-                    self.compile_expression(context, md_mgr, arguments[0].clone())?;
+                let revert_code_val = self.compile_expression(context, md_mgr, &arguments[0])?;
 
                 // The `revert` instruction
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -715,8 +723,8 @@ impl<'te> FnCompiler<'te> {
                 let len_value =
                     Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
 
-                let lhs = arguments[0].clone();
-                let count = arguments[1].clone();
+                let lhs = &arguments[0];
+                let count = &arguments[1];
                 let lhs_value = self.compile_expression(context, md_mgr, lhs)?;
                 let count_value = self.compile_expression(context, md_mgr, count)?;
                 let rhs_value = self.current_block.ins(context).binary_op(
@@ -736,14 +744,14 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_expr: ty::TyExpression,
+        ast_expr: &ty::TyExpression,
     ) -> Result<Value, CompileError> {
         // Nothing to do if the current block already has a terminator
         if self.current_block.is_terminated(context) {
             return Ok(Constant::get_unit(context));
         }
 
-        let ret_value = self.compile_expression(context, md_mgr, ast_expr.clone())?;
+        let ret_value = self.compile_expression(context, md_mgr, ast_expr)?;
 
         if ret_value.is_diverging(context) {
             return Ok(ret_value);
@@ -759,7 +767,7 @@ impl<'te> FnCompiler<'te> {
         match ret_value.get_stripped_ptr_type(context) {
             None => Err(CompileError::Internal(
                 "Unable to determine type for return statement expression.",
-                ast_expr.span,
+                ast_expr.span.clone(),
             )),
             Some(ret_ty) => Ok(self
                 .current_block
@@ -792,9 +800,9 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_op: LazyOp,
-        ast_lhs: ty::TyExpression,
-        ast_rhs: ty::TyExpression,
+        ast_op: &LazyOp,
+        ast_lhs: &ty::TyExpression,
+        ast_rhs: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Short-circuit: if LHS is true for AND we still must eval the RHS block; for OR we can
@@ -854,13 +862,13 @@ impl<'te> FnCompiler<'te> {
         call_params: &ty::ContractCallParams,
         contract_call_parameters: &HashMap<String, ty::TyExpression>,
         ast_name: &str,
-        ast_args: Vec<(Ident, ty::TyExpression)>,
+        ast_args: &[(Ident, ty::TyExpression)],
         return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile each user argument
         let compiled_args = ast_args
-            .into_iter()
+            .iter()
             .map(|(_, expr)| self.compile_expression(context, md_mgr, expr))
             .collect::<Result<Vec<Value>, CompileError>>()?;
 
@@ -986,8 +994,7 @@ impl<'te> FnCompiler<'te> {
             .add_metadatum(context, span_md_idx);
 
         // Insert the contract address
-        let addr =
-            self.compile_expression(context, md_mgr, *call_params.contract_address.clone())?;
+        let addr = self.compile_expression(context, md_mgr, &call_params.contract_address)?;
         ra_struct_val = self
             .current_block
             .ins(context)
@@ -1020,7 +1027,7 @@ impl<'te> FnCompiler<'te> {
         let coins = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_COINS_PARAMETER_NAME.to_string())
         {
-            Some(coins_expr) => self.compile_expression(context, md_mgr, coins_expr.clone())?,
+            Some(coins_expr) => self.compile_expression(context, md_mgr, coins_expr)?,
             None => convert_literal_to_value(
                 context,
                 &Literal::U64(constants::CONTRACT_CALL_COINS_PARAMETER_DEFAULT_VALUE),
@@ -1031,9 +1038,7 @@ impl<'te> FnCompiler<'te> {
         let asset_id = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME.to_string())
         {
-            Some(asset_id_expr) => {
-                self.compile_expression(context, md_mgr, asset_id_expr.clone())?
-            }
+            Some(asset_id_expr) => self.compile_expression(context, md_mgr, asset_id_expr)?,
             None => convert_literal_to_value(
                 context,
                 &Literal::B256(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE),
@@ -1044,7 +1049,7 @@ impl<'te> FnCompiler<'te> {
         let gas = match contract_call_parameters
             .get(&constants::CONTRACT_CALL_GAS_PARAMETER_NAME.to_string())
         {
-            Some(gas_expr) => self.compile_expression(context, md_mgr, gas_expr.clone())?,
+            Some(gas_expr) => self.compile_expression(context, md_mgr, gas_expr)?,
             None => self
                 .current_block
                 .ins(context)
@@ -1074,8 +1079,8 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_args: Vec<(Ident, ty::TyExpression)>,
-        callee: ty::TyFunctionDeclaration,
+        ast_args: &[(Ident, ty::TyExpression)],
+        callee: &ty::TyFunctionDeclaration,
         self_state_idx: Option<StateIndex>,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
@@ -1112,7 +1117,7 @@ impl<'te> FnCompiler<'te> {
                         context.get_unique_id()
                     ))),
                     parameters: callee.parameters.clone(),
-                    ..callee
+                    ..callee.clone()
                 };
                 let is_entry = false;
                 let new_func = compile_function(
@@ -1120,9 +1125,10 @@ impl<'te> FnCompiler<'te> {
                     context,
                     md_mgr,
                     self.module,
-                    callee_fn_decl,
+                    &callee_fn_decl,
                     &self.logged_types_map,
                     is_entry,
+                    None,
                 )?
                 .unwrap();
                 self.recreated_fns.insert(fn_key, new_func);
@@ -1133,8 +1139,8 @@ impl<'te> FnCompiler<'te> {
         // Now actually call the new function.
         let mut args = {
             let mut args = Vec::with_capacity(ast_args.len());
-            for ((_, expr), param) in ast_args.into_iter().zip(callee.parameters.into_iter()) {
-                self.current_fn_param = Some(param);
+            for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
+                self.current_fn_param = Some(param.clone());
                 let arg = self.compile_expression(context, md_mgr, expr)?;
                 if arg.is_diverging(context) {
                     return Ok(arg);
@@ -1187,9 +1193,9 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_condition: ty::TyExpression,
-        ast_then: ty::TyExpression,
-        ast_else: Option<Box<ty::TyExpression>>,
+        ast_condition: &ty::TyExpression,
+        ast_then: &ty::TyExpression,
+        ast_else: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1222,7 +1228,7 @@ impl<'te> FnCompiler<'te> {
         self.current_block = false_block_begin;
         let false_value = match ast_else {
             None => Constant::get_unit(context),
-            Some(expr) => self.compile_expression(context, md_mgr, *expr)?,
+            Some(expr) => self.compile_expression(context, md_mgr, expr)?,
         };
         let false_block_end = self.current_block;
 
@@ -1264,8 +1270,8 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        exp: Box<ty::TyExpression>,
-        variant: ty::TyEnumVariant,
+        exp: &ty::TyExpression,
+        variant: &ty::TyEnumVariant,
     ) -> Result<Value, CompileError> {
         // retrieve the aggregate info for the enum
         let enum_aggregate = match convert_resolved_typeid(
@@ -1278,12 +1284,12 @@ impl<'te> FnCompiler<'te> {
             _ => {
                 return Err(CompileError::Internal(
                     "Enum type for `unsafe downcast` is not an enum.",
-                    exp.span,
+                    exp.span.clone(),
                 ));
             }
         };
         // compile the expression to asm
-        let compiled_value = self.compile_expression(context, md_mgr, *exp)?;
+        let compiled_value = self.compile_expression(context, md_mgr, exp)?;
         // retrieve the value minus the tag
         Ok(self.current_block.ins(context).extract_value(
             compiled_value,
@@ -1310,7 +1316,7 @@ impl<'te> FnCompiler<'te> {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
             }
         };
-        let exp = self.compile_expression(context, md_mgr, *exp)?;
+        let exp = self.compile_expression(context, md_mgr, &exp)?;
         Ok(self
             .current_block
             .ins(context)
@@ -1322,8 +1328,8 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        body: ty::TyCodeBlock,
-        condition: ty::TyExpression,
+        body: &ty::TyCodeBlock,
+        condition: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
         span: Span,
     ) -> Result<Value, CompileError> {
@@ -1459,7 +1465,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_var_decl: ty::TyVariableDeclaration,
+        ast_var_decl: &ty::TyVariableDeclaration,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Option<Value>, CompileError> {
         let ty::TyVariableDeclaration {
@@ -1576,7 +1582,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_reassignment: ty::TyReassignment,
+        ast_reassignment: &ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let name = self
@@ -1608,7 +1614,7 @@ impl<'te> FnCompiler<'te> {
             }
         };
 
-        let reassign_val = self.compile_expression(context, md_mgr, ast_reassignment.rhs)?;
+        let reassign_val = self.compile_expression(context, md_mgr, &ast_reassignment.rhs)?;
         if reassign_val.is_diverging(context) {
             return Ok(reassign_val);
         }
@@ -1626,7 +1632,7 @@ impl<'te> FnCompiler<'te> {
         {
             let it = &mut ast_reassignment.lhs_indices.iter().peekable();
             while let Some(ProjectionKind::ArrayIndex { index, .. }) = it.next() {
-                let index_val = self.compile_expression(context, md_mgr, *index.clone())?;
+                let index_val = self.compile_expression(context, md_mgr, index)?;
                 if index_val.is_diverging(context) {
                     return Ok(index_val);
                 }
@@ -1709,7 +1715,7 @@ impl<'te> FnCompiler<'te> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // Compile the RHS into a value
-        let rhs = self.compile_expression(context, md_mgr, rhs.clone())?;
+        let rhs = self.compile_expression(context, md_mgr, rhs)?;
         if rhs.is_diverging(context) {
             return Ok(rhs);
         }
@@ -1744,7 +1750,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        contents: Vec<ty::TyExpression>,
+        contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let elem_type = if contents.is_empty() {
@@ -1770,7 +1776,7 @@ impl<'te> FnCompiler<'te> {
             .get_ptr(array_ptr, array_ptr_ty, 0)
             .add_metadatum(context, span_md_idx);
 
-        for (idx, elem_expr) in contents.into_iter().enumerate() {
+        for (idx, elem_expr) in contents.iter().enumerate() {
             let elem_value = self.compile_expression(context, md_mgr, elem_expr)?;
             if elem_value.is_diverging(context) {
                 return Ok(elem_value);
@@ -1790,8 +1796,8 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        array_expr: ty::TyExpression,
-        index_expr: ty::TyExpression,
+        array_expr: &ty::TyExpression,
+        index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let array_expr_span = array_expr.span.clone();
@@ -1838,7 +1844,7 @@ impl<'te> FnCompiler<'te> {
             self.module,
             None,
             Some(self),
-            &index_expr,
+            index_expr,
         ) {
             let (_, count) = aggregate.get_content(context).array_type();
             if constant_value >= *count {
@@ -1866,7 +1872,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: Vec<ty::TyStructExpressionField>,
+        fields: &[ty::TyStructExpressionField],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
@@ -1879,9 +1885,9 @@ impl<'te> FnCompiler<'te> {
 
         let mut inserted_values_indices = Vec::with_capacity(fields.len());
         let mut field_types = Vec::with_capacity(fields.len());
-        for (insert_idx, struct_field) in fields.into_iter().enumerate() {
+        for (insert_idx, struct_field) in fields.iter().enumerate() {
             let field_ty = struct_field.value.return_type;
-            let insert_val = self.compile_expression(context, md_mgr, struct_field.value)?;
+            let insert_val = self.compile_expression(context, md_mgr, &struct_field.value)?;
             if insert_val.is_diverging(context) {
                 return Ok(insert_val);
             }
@@ -1918,9 +1924,9 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_struct_expr: ty::TyExpression,
+        ast_struct_expr: &ty::TyExpression,
         struct_type_id: TypeId,
-        ast_field: ty::TyStructField,
+        ast_field: &ty::TyStructField,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let ast_struct_expr_span = ast_struct_expr.span.clone();
@@ -1956,7 +1962,7 @@ impl<'te> FnCompiler<'te> {
         ) {
             None => Err(CompileError::Internal(
                 "Unknown struct in field expression.",
-                ast_field.span,
+                ast_field.span.clone(),
             )),
             Some((struct_name, field_idx_and_type_opt)) => match field_idx_and_type_opt {
                 None => Err(CompileError::InternalOwned(
@@ -1964,7 +1970,7 @@ impl<'te> FnCompiler<'te> {
                         "Unknown field name '{}' for struct '{struct_name}' in field expression.",
                         ast_field.name
                     ),
-                    ast_field.span,
+                    ast_field.span.clone(),
                 )),
                 Some((field_idx, _field_type)) => Ok(field_idx),
             },
@@ -1981,9 +1987,9 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        enum_decl: ty::TyEnumDeclaration,
+        enum_decl: &ty::TyEnumDeclaration,
         tag: usize,
-        contents: Option<Box<ty::TyExpression>>,
+        contents: Option<&ty::TyExpression>,
     ) -> Result<Value, CompileError> {
         // XXX The enum instantiation AST node includes the full declaration.  If the enum was
         // declared in a different module then it seems for now there's no easy way to pre-analyse
@@ -1992,7 +1998,7 @@ impl<'te> FnCompiler<'te> {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let aggregate = create_enum_aggregate(self.type_engine, context, enum_decl.variants)?;
+        let aggregate = create_enum_aggregate(self.type_engine, context, &enum_decl.variants)?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -2022,11 +2028,11 @@ impl<'te> FnCompiler<'te> {
                 Ok(if field_tys.len() == 1 {
                     agg_value
                 } else {
-                    match contents {
+                    match &contents {
                         None => agg_value,
                         Some(te) => {
                             // Insert the value too.
-                            let contents_value = self.compile_expression(context, md_mgr, *te)?;
+                            let contents_value = self.compile_expression(context, md_mgr, te)?;
                             self.current_block
                                 .ins(context)
                                 .insert_value(agg_value, aggregate, contents_value, vec![1])
@@ -2043,7 +2049,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        fields: Vec<ty::TyExpression>,
+        fields: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         if fields.is_empty() {
@@ -2098,7 +2104,7 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        tuple: ty::TyExpression,
+        tuple: &ty::TyExpression,
         tuple_type: TypeId,
         idx: usize,
         span: Span,
@@ -2152,14 +2158,14 @@ impl<'te> FnCompiler<'te> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        registers: Vec<ty::TyAsmRegisterDeclaration>,
-        body: Vec<AsmOp>,
+        registers: &[ty::TyAsmRegisterDeclaration],
+        body: &[AsmOp],
         return_type: TypeId,
-        returns: Option<(AsmRegister, Span)>,
+        returns: Option<&(AsmRegister, Span)>,
         whole_block_span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         let registers = registers
-            .into_iter()
+            .iter()
             .map(
                 |ty::TyAsmRegisterDeclaration {
                      initializer, name, ..
@@ -2167,17 +2173,18 @@ impl<'te> FnCompiler<'te> {
                     // Take the optional initialiser, map it to an Option<Result<Value>>,
                     // transpose that to Result<Option<Value>> and map that to an AsmArg.
                     initializer
+                        .as_ref()
                         .map(|init_expr| self.compile_expression(context, md_mgr, init_expr))
                         .transpose()
                         .map(|init| AsmArg {
-                            name,
+                            name: name.clone(),
                             initializer: init,
                         })
                 },
             )
             .collect::<Result<Vec<AsmArg>, CompileError>>()?;
         let body = body
-            .into_iter()
+            .iter()
             .map(
                 |AsmOp {
                      op_name,
@@ -2185,10 +2192,10 @@ impl<'te> FnCompiler<'te> {
                      immediate,
                      span,
                  }| AsmInstruction {
-                    name: op_name,
-                    args: op_args,
-                    immediate,
-                    metadata: md_mgr.span_to_md(context, &span),
+                    name: op_name.clone(),
+                    args: op_args.clone(),
+                    immediate: immediate.clone(),
+                    metadata: md_mgr.span_to_md(context, span),
                 },
             )
             .collect();

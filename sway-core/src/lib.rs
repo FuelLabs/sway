@@ -187,6 +187,7 @@ pub fn parsed_to_ast(
     type_engine: &TypeEngine,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
+    build_config: Option<&BuildConfig>,
 ) -> CompileResult<ty::TyProgram> {
     // Type check the program.
     let CompileResult {
@@ -220,7 +221,14 @@ pub fn parsed_to_ast(
         }));
 
     // Perform control flow analysis and extend with any errors.
-    let cfa_res = perform_control_flow_analysis(type_engine, &typed_program);
+    let cfa_res = perform_control_flow_analysis(
+        type_engine,
+        &typed_program,
+        match build_config {
+            Some(cfg) => cfg.print_dca_graph,
+            None => false,
+        },
+    );
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
@@ -294,7 +302,7 @@ pub fn compile_to_ast(
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(type_engine, &parse_program, initial_namespace);
+    let typed_res = parsed_to_ast(type_engine, &parse_program, initial_namespace, build_config);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -319,7 +327,7 @@ pub fn compile_to_asm(
     build_config: BuildConfig,
 ) -> CompileResult<CompiledAsm> {
     let ast_res = compile_to_ast(type_engine, input, initial_namespace, Some(&build_config));
-    ast_to_asm(type_engine, ast_res, &build_config)
+    ast_to_asm(type_engine, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
@@ -327,14 +335,14 @@ pub fn compile_to_asm(
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
     type_engine: &TypeEngine,
-    ast_res: CompileResult<ty::TyProgram>,
+    ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    match ast_res.value {
-        None => err(ast_res.warnings, ast_res.errors),
+    match &ast_res.value {
+        None => err(ast_res.warnings.clone(), ast_res.errors.clone()),
         Some(typed_program) => {
-            let mut errors = ast_res.errors;
-            let mut warnings = ast_res.warnings;
+            let mut errors = ast_res.errors.clone();
+            let mut warnings = ast_res.warnings.clone();
             let asm = check!(
                 compile_ast_to_ir_to_asm(type_engine, typed_program, build_config),
                 return deduped_err(warnings, errors),
@@ -348,7 +356,7 @@ pub fn ast_to_asm(
 
 pub(crate) fn compile_ast_to_ir_to_asm(
     type_engine: &TypeEngine,
-    program: ty::TyProgram,
+    program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
     let mut warnings = Vec::new();
@@ -662,6 +670,7 @@ pub fn clear_lazy_statics() {
 fn perform_control_flow_analysis(
     type_engine: &TypeEngine,
     program: &ty::TyProgram,
+    print_graph: bool,
 ) -> CompileResult<()> {
     let dca_res = dead_code_analysis(type_engine, program);
     let rpa_errors = return_path_analysis(type_engine, program);
@@ -670,6 +679,11 @@ fn perform_control_flow_analysis(
     } else {
         err(vec![], rpa_errors)
     };
+    if let Some(graph) = dca_res.clone().value {
+        if print_graph {
+            graph.visualize();
+        }
+    }
     dca_res.flat_map(|_| rpa_res)
 }
 

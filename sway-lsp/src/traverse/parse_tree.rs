@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 use std::iter;
 
-use crate::{
-    core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition},
-    utils::token::{desugared_op, to_ident_key, type_info_to_symbol_kind},
+use crate::core::{
+    token::{
+        desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
+        TypeDefinition,
+    },
+    token_map::TokenMap,
 };
 use sway_core::{
     language::{
@@ -698,7 +701,7 @@ fn collect_type_args(
         let mut token = token.clone();
         let type_info = type_engine.look_up_type_id(arg.type_id);
         // TODO handle tuple and arrays in type_arguments - https://github.com/FuelLabs/sway/issues/2486
-        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _, _) = type_info {
+        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _) = type_info {
             continue;
         }
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);

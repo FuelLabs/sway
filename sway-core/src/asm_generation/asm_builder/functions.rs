@@ -9,6 +9,7 @@ use crate::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate24,
         VirtualOp,
     },
+    declaration_engine::DeclarationId,
     error::*,
     fuel_prelude::fuel_asm::GTFArgs,
 };
@@ -147,6 +148,11 @@ impl<'ir> AsmBuilder<'ir> {
         let (start_label, end_label) = self.func_to_labels(&function);
         let md = function.get_metadata(self.context);
         let span = self.md_mgr.md_to_span(self.context, md);
+        let test_decl_index = self.md_mgr.md_to_test_decl_index(self.context, md);
+        let test_decl_id = match (&span, &test_decl_index) {
+            (Some(span), Some(decl_index)) => Some(DeclarationId::new(*decl_index, span.clone())),
+            _ => None,
+        };
         let comment = format!(
             "--- start of function: {} ---",
             function.get_name(self.context)
@@ -251,7 +257,8 @@ impl<'ir> AsmBuilder<'ir> {
         let mut ops = Vec::new();
         ops.append(&mut self.cur_bytecode);
         if func_is_entry {
-            self.entries.push((function, start_label, ops));
+            self.entries
+                .push((function, start_label, ops, test_decl_id));
         } else {
             self.non_entries.push(ops);
         }

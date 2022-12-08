@@ -350,7 +350,7 @@ impl ty::TyExpression {
         type_engine: &TypeEngine,
     ) -> CompileResult<ty::TyExpression> {
         let return_type = match &lit {
-            Literal::String(s) => TypeInfo::Str(s.as_str().len() as u64),
+            Literal::String(s) => TypeInfo::Str(Length::new(s.as_str().len(), s.clone())),
             Literal::Numeric(_) => TypeInfo::Numeric,
             Literal::U8(_) => TypeInfo::UnsignedInteger(IntegerBits::Eight),
             Literal::U16(_) => TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
@@ -1465,9 +1465,12 @@ impl ty::TyExpression {
                         contents: Vec::new(),
                     },
                     return_type: type_engine.insert_type(TypeInfo::Array(
-                        unknown_type,
-                        0,
-                        unknown_type,
+                        TypeArgument {
+                            type_id: unknown_type,
+                            span: Span::dummy(),
+                            initial_type_id: unknown_type,
+                        },
+                        Length::new(0, Span::dummy()),
                     )),
                     span,
                 },
@@ -1519,9 +1522,12 @@ impl ty::TyExpression {
                     contents: typed_contents,
                 },
                 return_type: type_engine.insert_type(TypeInfo::Array(
-                    elem_type,
-                    array_count,
-                    elem_type,
+                    TypeArgument {
+                        type_id: elem_type,
+                        span: Span::dummy(),
+                        initial_type_id: elem_type,
+                    },
+                    Length::new(array_count, Span::dummy()),
                 )), // Maybe?
                 span,
             },
@@ -1555,9 +1561,7 @@ impl ty::TyExpression {
         };
 
         // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let TypeInfo::Array(elem_type_id, _, _) =
-            type_engine.look_up_type_id(prefix_te.return_type)
-        {
+        if let TypeInfo::Array(elem_type, _) = type_engine.look_up_type_id(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
@@ -1575,7 +1579,7 @@ impl ty::TyExpression {
                         prefix: Box::new(prefix_te),
                         index: Box::new(index_te),
                     },
-                    return_type: elem_type_id,
+                    return_type: elem_type.type_id,
                     span,
                 },
                 warnings,
@@ -1927,9 +1931,12 @@ mod tests {
             &type_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
-                type_engine.insert_type(TypeInfo::Boolean),
-                2,
-                type_engine.insert_type(TypeInfo::Boolean),
+                TypeArgument {
+                    type_id: type_engine.insert_type(TypeInfo::Boolean),
+                    span: Span::dummy(),
+                    initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
+                },
+                Length::new(2, Span::dummy()),
             )),
         )
     }
@@ -2041,9 +2048,12 @@ mod tests {
             &type_engine,
             expr,
             type_engine.insert_type(TypeInfo::Array(
-                type_engine.insert_type(TypeInfo::Boolean),
-                0,
-                type_engine.insert_type(TypeInfo::Boolean),
+                TypeArgument {
+                    type_id: type_engine.insert_type(TypeInfo::Boolean),
+                    span: Span::dummy(),
+                    initial_type_id: type_engine.insert_type(TypeInfo::Boolean),
+                },
+                Length::new(0, Span::dummy()),
             )),
         );
         assert!(comp_res.warnings.is_empty() && comp_res.errors.is_empty());

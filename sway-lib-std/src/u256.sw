@@ -356,26 +356,37 @@ impl core::ops::Add for U256 {
 impl core::ops::Subtract for U256 {
     /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
+        if self == other {
+            return Self::min();
+        } else if other == Self::min() {
+            return self;
+        }
         // If trying to subtract a larger number, panic.
-        assert(!(self < other));
-
+        assert(self > other);
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut result_a = word_1 - other_word_1;
-
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
             result_b = word_2 - other_word_2;
         }
-
         let mut result_c = 0;
         if word_3 < other_word_3 {
             result_c = u64::max() - (other_word_3 - word_3 - 1);
-            result_b -= 1;
+            if result_b > 0 {
+                result_b -= 1;
+            } else {
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // which we ruled out at the beginning of the function.
+                result_a -= 1;
+                result_b = u64::max();
+            }
         } else {
             result_c = word_3 - other_word_3;
         }
@@ -383,7 +394,19 @@ impl core::ops::Subtract for U256 {
         let mut result_d = 0;
         if word_4 < other_word_4 {
             result_d = u64::max() - (other_word_4 - word_4 - 1);
-            result_c -= 1;
+            if result_c > 0 {
+                result_c -= 1;
+            } else {
+                if result_b > 0 {
+                    result_b -= 1;
+                } else {
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // which we ruled out at the beginning of the function.
+                    result_a -= 1;
+                    result_b = u64::max();
+                }
+                result_c = u64::max();
+            }
         } else {
             result_d = word_4 - other_word_4;
         }
@@ -467,6 +490,11 @@ impl core::ops::Divide for U256 {
         let one = U256::from((0, 0, 0, 1));
 
         assert(divisor != zero);
+
+        if self.a == 0 && self.b == 0 && divisor.a == 0 && divisor.b == 0 {
+            let res = U128::from((self.c, self.d)) / U128::from((divisor.c, divisor.d));
+            return U256::from((0, 0, res.upper, res.lower));
+        }
 
         let mut quotient = U256::from((0, 0, 0, 0));
         let mut remainder = U256::from((0, 0, 0, 0));
