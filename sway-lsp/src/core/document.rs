@@ -109,7 +109,7 @@ struct EditText<'text> {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::get_absolute_path;
+    use crate::utils::test::get_absolute_path;
 
     use super::*;
 

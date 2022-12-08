@@ -1,10 +1,11 @@
+use crate::core::{
+    session::Session,
+    token::{get_range_from_span, AstToken},
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{Position, PrepareRenameResponse, TextEdit, Url, WorkspaceEdit};
-
-use crate::core::{session::Session, token::AstToken};
-use crate::utils::common::get_range_from_span;
 
 pub fn rename(
     session: Arc<Session>,
@@ -12,11 +13,14 @@ pub fn rename(
     url: Url,
     position: Position,
 ) -> Option<WorkspaceEdit> {
-    let (_, token) = session.token_at_position(&url, position)?;
+    let (_, token) = session.token_map().token_at_position(&url, position)?;
     let mut edits = Vec::new();
 
     // todo: currently only supports single file rename
-    for (ident, _) in session.all_references_of_token(&token) {
+    for (ident, _) in session
+        .token_map()
+        .all_references_of_token(&token, &session.type_engine.read())
+    {
         let range = get_range_from_span(&ident.span());
         edits.push(TextEdit::new(range, new_name.clone()));
     }
@@ -33,7 +37,7 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let (ident, token) = session.token_at_position(&url, position)?;
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
     match token.parsed {
         AstToken::Reassignment(_) => None,
         _ => Some(PrepareRenameResponse::RangeWithPlaceholder {

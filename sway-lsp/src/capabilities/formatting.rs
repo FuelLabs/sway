@@ -1,8 +1,7 @@
+use crate::error::LanguageServerError;
 use std::sync::Arc;
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{Position, Range, TextEdit};
-
-use crate::error::LanguageServerError;
 
 pub fn get_page_text_edit(
     text: Arc<str>,
