@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-E6171879CB601FD9'
+
+[[package]]
+name = 'log_stdlib'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-E6171879CB601FD9'
+dependencies = ['core']
