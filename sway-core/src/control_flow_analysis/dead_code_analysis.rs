@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
     TypeEngine,
@@ -413,11 +413,6 @@ fn connect_declaration(
                 ..
             } = de_get_impl_trait(decl_id.clone(), &span)?;
 
-            let methods = methods
-                .into_iter()
-                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
-                .collect::<Result<Vec<_>, CompileError>>()?;
-
             connect_impl_trait(
                 type_engine,
                 &trait_name,
@@ -485,7 +480,7 @@ fn connect_impl_trait(
     type_engine: &TypeEngine,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[ty::TyFunctionDeclaration],
+    methods: &[DeclarationId],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -503,17 +498,21 @@ fn connect_impl_trait(
     };
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for fn_decl in methods {
+    for method_decl_id in methods {
+        let fn_decl = de_get_function(method_decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
+            method_decl_id: method_decl_id.clone(),
         });
-        graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+        if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
+            graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+        }
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
         connect_typed_fn_decl(
             type_engine,
-            fn_decl,
+            &fn_decl,
             graph,
             fn_decl_entry_node,
             fn_decl.span.clone(),
@@ -713,6 +712,48 @@ fn depth_first_insertion_code_block(
     Ok((leaves, exit_node))
 }
 
+fn get_trait_fn_node_index(
+    function_decl_id: DeclarationId,
+    expression_span: Span,
+    graph: &ControlFlowGraph,
+) -> Result<Option<&NodeIndex>, CompileError> {
+    let fn_decl = de_get_function(function_decl_id, &expression_span)?;
+    if let Some(implementing_type) = fn_decl.implementing_type {
+        match implementing_type {
+            ty::TyDeclaration::TraitDeclaration(decl) => {
+                let trait_decl = de_get_trait(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
+            }
+            ty::TyDeclaration::StructDeclaration(decl) => {
+                let struct_decl = de_get_struct(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&struct_decl.name.into(), &fn_decl.name))
+            }
+            ty::TyDeclaration::ImplTrait(decl) => {
+                let impl_trait = de_get_impl_trait(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
+            }
+            ty::TyDeclaration::AbiDeclaration(decl) => {
+                let abi_decl = de_get_abi(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&abi_decl.name.into(), &fn_decl.name))
+            }
+            _ => Err(CompileError::Internal(
+                "Could not get node index for trait function",
+                expression_span,
+            )),
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 /// connects any inner parts of an expression to the graph
 /// note the main expression node has already been inserted
 #[allow(clippy::too_many_arguments)]
@@ -724,7 +765,7 @@ fn connect_expression(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: &TreeType,
-    _expression_span: Span,
+    expression_span: Span,
     mut options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyExpressionVariant::*;
@@ -732,13 +773,15 @@ fn connect_expression(
         FunctionApplication {
             call_path: name,
             arguments,
+            function_decl_id,
             ..
         } => {
+            let fn_decl = de_get_function(function_decl_id.clone(), &expression_span)?;
             let mut is_external = false;
             // find the function in the namespace
             let (fn_entrypoint, fn_exit_point) = graph
                 .namespace
-                .get_function(&name.suffix)
+                .get_function(&fn_decl.name)
                 .cloned()
                 .map(
                     |FunctionNamespaceEntry {
@@ -756,6 +799,15 @@ fn connect_expression(
                         graph.add_node(format!("extern fn {} exit", name.suffix.as_str()).into()),
                     )
                 });
+
+            let trait_fn_node_idx =
+                get_trait_fn_node_index(function_decl_id.clone(), expression_span, graph)?;
+            if let Some(trait_fn_node_idx) = trait_fn_node_idx {
+                if fn_entrypoint != *trait_fn_node_idx {
+                    graph.add_edge(fn_entrypoint, *trait_fn_node_idx, "".into());
+                }
+            }
+
             for leaf in leaves {
                 graph.add_edge(*leaf, fn_entrypoint, label.into());
             }
