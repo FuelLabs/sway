@@ -283,7 +283,13 @@ fn pkg_dep_line(
     };
     match salt {
         None => pkg_string,
-        Some(salt) => format!("({}) {}", salt, pkg_string),
+        Some(salt) => {
+            if *salt == fuel_tx::Salt::zeroed() {
+                pkg_string
+            } else {
+                format!("({}) {}", salt, pkg_string)
+            }
+        }
     }
 }
 

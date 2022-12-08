@@ -11,4 +11,4 @@ source = 'member'
 name = 'test_script'
 source = 'member'
 dependencies = ['test_lib']
-contract-dependencies = ['(0000000000000000000000000000000000000000000000000000000000000000) test_contract']
+contract-dependencies = ['test_contract']
