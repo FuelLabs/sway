@@ -1,6 +1,6 @@
-use crate::{
-    core::token::{AstToken, SymbolKind, Token, TokenMap, TypeDefinition, TypedAstToken},
-    utils::token::to_ident_key,
+use crate::core::{
+    token::{self, AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
+    token_map::TokenMap,
 };
 use sway_core::{
     declaration_engine as de,
@@ -28,7 +28,7 @@ pub fn collect_parsed_declaration(node: &AstNode, tokens: &TokenMap) {
             _ => return,
         };
 
-        let key = to_ident_key(&ident);
+        let key = token::to_ident_key(&ident);
         let token = Token::from_parsed(parsed_token, symbol_kind);
         tokens.insert(key, token);
     }
@@ -58,7 +58,7 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, tokens: &TokenMap) {
             }
             _ => return,
         } {
-            let ident = to_ident_key(&ident);
+            let ident = token::to_ident_key(&ident);
             if let Some(mut token) = tokens.get_mut(&ident) {
                 token.typed = Some(typed_token);
                 token.type_def = Some(TypeDefinition::Ident(ident.0));
