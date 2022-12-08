@@ -7,23 +7,6 @@ use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 pub(crate) fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
-    let is_initial_declaration = |token_type: &Token| -> bool {
-        match &token_type.typed {
-            Some(typed_ast_token) => {
-                matches!(
-                    typed_ast_token,
-                    TypedAstToken::TypedDeclaration(_) | TypedAstToken::TypedFunctionDeclaration(_)
-                )
-            }
-            None => {
-                matches!(
-                    token_type.parsed,
-                    AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
-                )
-            }
-        }
-    };
-
     for item in token_map.iter() {
         let ((ident, _), token) = item.pair();
         if is_initial_declaration(token) {
@@ -59,5 +42,22 @@ pub fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKi
         | SymbolKind::NumericLiteral => Some(CompletionItemKind::VALUE),
         SymbolKind::Variable => Some(CompletionItemKind::VARIABLE),
         SymbolKind::Unknown => None,
+    }
+}
+
+fn is_initial_declaration(token_type: &Token) -> bool {
+    match &token_type.typed {
+        Some(typed_ast_token) => {
+            matches!(
+                typed_ast_token,
+                TypedAstToken::TypedDeclaration(_) | TypedAstToken::TypedFunctionDeclaration(_)
+            )
+        }
+        None => {
+            matches!(
+                token_type.parsed,
+                AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
+            )
+        }
     }
 }

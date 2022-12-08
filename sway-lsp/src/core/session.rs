@@ -39,10 +39,14 @@ pub struct CompiledProgram {
     pub typed: Option<ty::TyProgram>,
 }
 
+/// A `Session` is used to store information about a single member in a workspace.
+/// It stores the parsed and typed Tokens, as well as the [TypeEngine] associated with the project.
+///
+/// The API provides methods for responding to LSP requests from the server.
 #[derive(Debug)]
 pub struct Session {
+    token_map: TokenMap,
     pub documents: Documents,
-    pub token_map: TokenMap,
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
@@ -52,8 +56,8 @@ pub struct Session {
 impl Session {
     pub fn new() -> Self {
         Session {
-            documents: DashMap::new(),
             token_map: TokenMap::new(),
+            documents: DashMap::new(),
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),

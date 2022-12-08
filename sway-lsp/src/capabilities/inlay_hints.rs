@@ -41,7 +41,7 @@ pub(crate) fn inlay_hints(
     let type_engine = session.type_engine.read();
 
     let hints: Vec<lsp_types::InlayHint> = session
-        .token_map
+        .token_map()
         .tokens_for_file(uri)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
