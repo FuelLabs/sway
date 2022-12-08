@@ -48,8 +48,10 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         forc_test::Tested::Package(pkg) => {
             let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
             let failed = pkg.tests.len() - succeeded;
+            let mut failed_test_details = Vec::new();
             for test in &pkg.tests {
-                let (state, color) = match test.passed() {
+                let test_passed = test.passed();
+                let (state, color) = match test_passed {
                     true => ("ok", Colour::Green),
                     false => ("FAILED", Colour::Red),
                 };
@@ -59,11 +61,26 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
                     color.paint(state),
                     test.duration
                 );
+
+                // If the test is failing, save details.
+                if !test_passed {
+                    let details = test.details()?;
+                    failed_test_details.push((test.name.clone(), details));
+                }
             }
             let (state, color) = match succeeded == pkg.tests.len() {
                 true => ("OK", Colour::Green),
                 false => ("FAILED", Colour::Red),
             };
+            if failed != 0 {
+                info!("\n   failures:");
+                for (failed_test_name, failed_test_detail) in failed_test_details {
+                    let path = &*failed_test_detail.file_path;
+                    let line_number = failed_test_detail.line_number;
+                    info!("      - test {}, {:?}:{} ", failed_test_name, path, line_number);
+                }
+                info!("\n");
+            } 
             info!(
                 "   Result: {}. {} passed. {} failed. Finished in {:?}.",
                 color.paint(state),
