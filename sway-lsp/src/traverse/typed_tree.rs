@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::core::{
-    token::{to_ident_key, TypeDefinition, TypedAstToken},
+    token::{to_ident_key, type_info_to_symbol_kind, TypeDefinition, TypedAstToken},
     token_map::TokenMap,
 };
 use sway_core::{
@@ -9,7 +9,7 @@ use sway_core::{
     language::ty,
     TypeEngine, TypeId, TypeInfo,
 };
-use sway_types::{ident::Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 pub fn traverse_node(type_engine: &TypeEngine, node: &ty::TyAstNode, tokens: &TokenMap) {
     match &node.content {
@@ -80,7 +80,7 @@ fn handle_declaration(
                         trait_fn_decl_id.clone(),
                         &trait_fn_decl_id.span(),
                     ) {
-                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                        collect_typed_trait_fn_token(type_engine, &trait_fn, tokens);
                     }
                 }
             }
@@ -100,44 +100,14 @@ fn handle_declaration(
                         token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                     }
 
-                    // collect_type_id(type_engine, field.type_id, tokens);
-
-                    // fn collect_type_id(
-                    //     type_engine: &TypeEngine,
-                    //     type_id: TypeId,
-                    //     tokens: &TokenMap,
-                    // ){
-                    //     let type_info = type_engine.look_up_type_id(type_id);
-                    //     let s = type_info.span();
-                    //     match &type_info {
-                    //         TypeInfo::Array(type_arg, length) => {
-
-                    //             //tokens.insert(to_ident_key(&Ident::new(length.span())), token.clone());
-                    //             collect_type_arg(type_engine, &type_arg, &token, tokens);
-                    //         }
-                    //         TypeInfo::Tuple(type_arguments) => {
-                    //             for type_arg in type_arguments {
-                    //                 collect_type_arg(type_engine, type_arg, &token, tokens);
-                    //             }
-                    //         }
-                    //         _ => {
-                    //             let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
-                    //             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(length.span()))) {
-
-                    //             }
-                    //             token.kind = symbol_kind;
-                    //             token.type_def = Some(TypeDefinition::TypeId(type_id));
-                    //             tokens.insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
-                    //         }
-                    //     }
-                    // }
-
-                    if let Some(mut token) =
-                        tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
-                    {
-                        token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(field.type_id));
-                    }
+                    let typed_token = TypedAstToken::TypedStructField(field.clone());
+                    collect_type_id(
+                        type_engine,
+                        field.type_id,
+                        &typed_token,
+                        tokens,
+                        Some(field.type_span.clone()),
+                    );
                 }
 
                 for type_param in &struct_decl.type_parameters {
@@ -164,17 +134,19 @@ fn handle_declaration(
                 }
 
                 for variant in &enum_decl.variants {
+                    let typed_token = TypedAstToken::TypedEnumVariant(variant.clone());
                     if let Some(mut token) = tokens.get_mut(&to_ident_key(&variant.name)) {
-                        token.typed = Some(TypedAstToken::TypedEnumVariant(variant.clone()));
+                        token.typed = Some(typed_token.clone());
                         token.type_def = Some(TypeDefinition::TypeId(variant.type_id));
                     }
 
-                    if let Some(mut token) =
-                        tokens.get_mut(&to_ident_key(&Ident::new(variant.type_span.clone())))
-                    {
-                        token.typed = Some(TypedAstToken::TypedEnumVariant(variant.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(variant.type_id));
-                    }
+                    collect_type_id(
+                        type_engine,
+                        variant.type_id,
+                        &typed_token,
+                        tokens,
+                        Some(variant.type_span.clone()),
+                    );
                 }
             }
         }
@@ -226,7 +198,7 @@ fn handle_declaration(
                         trait_fn_decl_id.clone(),
                         &trait_fn_decl_id.span(),
                     ) {
-                        collect_typed_trait_fn_token(&trait_fn, tokens);
+                        collect_typed_trait_fn_token(type_engine, &trait_fn, tokens);
                     }
                 }
             }
@@ -525,14 +497,18 @@ fn handle_while_loop(
     }
 }
 
-fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
+fn collect_typed_trait_fn_token(
+    type_engine: &TypeEngine,
+    trait_fn: &ty::TyTraitFn,
+    tokens: &TokenMap,
+) {
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&trait_fn.name)) {
         token.typed = Some(TypedAstToken::TypedTraitFn(trait_fn.clone()));
         token.type_def = Some(TypeDefinition::Ident(trait_fn.name.clone()));
     }
 
     for parameter in &trait_fn.parameters {
-        collect_typed_fn_param_token(parameter, tokens);
+        collect_typed_fn_param_token(type_engine, parameter, tokens);
     }
 
     let return_ident = Ident::new(trait_fn.return_type_span.clone());
@@ -542,16 +518,65 @@ fn collect_typed_trait_fn_token(trait_fn: &ty::TyTraitFn, tokens: &TokenMap) {
     }
 }
 
-fn collect_typed_fn_param_token(param: &ty::TyFunctionParameter, tokens: &TokenMap) {
+fn collect_typed_fn_param_token(
+    type_engine: &TypeEngine,
+    param: &ty::TyFunctionParameter,
+    tokens: &TokenMap,
+) {
     let typed_token = TypedAstToken::TypedFunctionParameter(param.clone());
     if let Some(mut token) = tokens.get_mut(&to_ident_key(&param.name)) {
         token.typed = Some(typed_token.clone());
         token.type_def = Some(TypeDefinition::TypeId(param.type_id));
     }
 
-    if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(param.type_span.clone()))) {
-        token.typed = Some(typed_token);
-        token.type_def = Some(TypeDefinition::TypeId(param.type_id));
+    collect_type_id(
+        type_engine,
+        param.type_id,
+        &typed_token,
+        tokens,
+        Some(param.type_span.clone()),
+    );
+}
+
+fn collect_type_id(
+    type_engine: &TypeEngine,
+    type_id: TypeId,
+    typed_token: &TypedAstToken,
+    tokens: &TokenMap,
+    type_span: Option<Span>,
+) {
+    let type_info = type_engine.look_up_type_id(type_id);
+    match &type_info {
+        TypeInfo::Array(type_arg, ..) => {
+            collect_type_id(
+                type_engine,
+                type_arg.type_id,
+                typed_token,
+                tokens,
+                Some(type_arg.span.clone()),
+            );
+        }
+        TypeInfo::Tuple(type_arguments) => {
+            for type_arg in type_arguments {
+                collect_type_id(
+                    type_engine,
+                    type_arg.type_id,
+                    typed_token,
+                    tokens,
+                    Some(type_arg.span.clone()),
+                );
+            }
+        }
+        _ => {
+            let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
+            if let Some(span) = type_span {
+                if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(span))) {
+                    token.kind = symbol_kind;
+                    token.typed = Some(typed_token.clone());
+                    token.type_def = Some(TypeDefinition::TypeId(type_id));
+                }
+            }
+        }
     }
 }
 
@@ -569,7 +594,7 @@ fn collect_typed_fn_decl(
         traverse_node(type_engine, node, tokens);
     }
     for parameter in &func_decl.parameters {
-        collect_typed_fn_param_token(parameter, tokens);
+        collect_typed_fn_param_token(type_engine, parameter, tokens);
     }
 
     for type_param in &func_decl.type_parameters {
