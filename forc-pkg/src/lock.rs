@@ -81,7 +81,13 @@ impl PkgLock {
                 let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
                 (
-                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, dep_kind, disambiguate),
+                    pkg_dep_line(
+                        dep_name,
+                        &dep_pkg.name,
+                        &dep_pkg.source,
+                        dep_kind,
+                        disambiguate,
+                    ),
                     dep_kind.clone(),
                 )
             })
@@ -140,7 +146,10 @@ impl PkgLock {
 /// Represents a `DepKind` before getting parsed.
 ///
 /// Used to carry on the type of the `DepKind` until parsing. After parsing pkg_dep_line converted into `DepKind`.
-enum UnparsedDepKind { Library, Contract }
+enum UnparsedDepKind {
+    Library,
+    Contract,
+}
 
 impl Lock {
     /// Load the `Lock` structure from the TOML `Forc.lock` file at the specified path.
@@ -198,12 +207,7 @@ impl Lock {
                 .as_ref()
                 .into_iter()
                 .flatten()
-                .map(|contract_dep| {
-                    (
-                        contract_dep,
-                        UnparsedDepKind::Contract
-                    )
-                });
+                .map(|contract_dep| (contract_dep, UnparsedDepKind::Contract));
             // If `pkg.dependencies` is None, we will be collecting an empty list of
             // lib_deps so that we will omit them during edge adding phase
             let lib_deps = pkg
@@ -224,7 +228,7 @@ impl Lock {
                     UnparsedDepKind::Library => DepKind::Library,
                     UnparsedDepKind::Contract => {
                         let dep_salt = dep_salt.unwrap_or_default();
-                        DepKind::Contract { salt: dep_salt } 
+                        DepKind::Contract { salt: dep_salt }
                     }
                 };
                 let dep_edge = Edge::new(dep_name, dep_kind);
@@ -283,13 +287,13 @@ fn pkg_dep_line(
     // Append the salt if dep_kind is DepKind::Contract.
     match dep_kind {
         DepKind::Library => pkg_string,
-        DepKind::Contract { salt } =>  {
+        DepKind::Contract { salt } => {
             if *salt == fuel_tx::Salt::zeroed() {
                 pkg_string
             } else {
                 format!("{} ({})", pkg_string, salt)
             }
-        },
+        }
     }
 }
 
