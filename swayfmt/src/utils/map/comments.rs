@@ -171,7 +171,7 @@ fn add_comments(
 }
 
 // A CommentWithContext is the Comment and the offset before it. The offset can be between the (from) item we searched for this comment or from the last comment inside range
-type CommentWithContext = (Comment, String);
+type CommentWithContext = (Comment, String, String);
 
 /// Returns a list of comments between given spans. For each comment returns the Context
 /// Context of a comment is basically the offset (the characters between the last item/comment) to the current comment
@@ -193,9 +193,25 @@ fn get_comments_between_spans(
                 // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
                 comments_with_context[index - 1].0.span.end()
             };
+
+            let mut rest_of_code = unformatted_code
+                .get(comment_span.end..)
+                .unwrap_or_default()
+                .lines()
+                .take(2);
+
+            let _ = rest_of_code.next();
+            let maybe_context_after = rest_of_code.next().unwrap_or_default();
+            let (spaces_till_next_char, _) = maybe_context_after
+                .char_indices()
+                .find(|(_, c)| !c.is_whitespace())
+                .unwrap_or_default();
+
             comments_with_context.push((
                 comment.clone(),
                 unformatted_code[starting_position_for_context..comment_span.start].to_string(),
+                unformatted_code[comment_span.end..comment_span.end + spaces_till_next_char]
+                    .to_string(),
             ));
         }
     }
@@ -233,15 +249,17 @@ fn insert_after_span(
     let mut comment_str = String::new();
     let mut pre_module_comment = false;
     for comment_with_context in iter {
-        let (comment_value, comment_context) = comment_with_context;
+        let (comment_value, comment_context, context_after) = comment_with_context;
         if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
+        println!("c: {:?}", comment_with_context);
         write!(
             comment_str,
-            "{}{}",
+            "{}{}{}",
             format_context(comment_context, 2),
-            &format_comment(comment_value)
+            &format_comment(comment_value),
+            context_after
         )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
