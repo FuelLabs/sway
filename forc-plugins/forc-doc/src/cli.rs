@@ -11,6 +11,9 @@ pub struct Command {
     /// file in the current directory or any parent directory.
     #[clap(long)]
     pub manifest_path: Option<String>,
+    /// Include non-public items in the documentation.
+    #[clap(long)]
+    pub document_private_items: bool,
     /// Open the docs in a browser after building them.
     #[clap(long)]
     pub open: bool,
