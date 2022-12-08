@@ -1,7 +1,7 @@
 [[package]]
 name = 'contract_b'
 source = 'member'
-contract-dependencies = ['contract_c']
+contract-dependencies = ['(1111111111111111111111111111111111111111111111111111111111111111) contract_c']
 
 [[package]]
 name = 'contract_c'

@@ -45,7 +45,7 @@ pub struct PkgLock {
 /// dependency. It is formatted like so:
 ///
 /// ```ignore
-/// (<dep_name>) <pkg_name> <source_string>
+/// (<salt>) (<dep_name>) <pkg_name> <source_string>
 /// ```
 ///
 /// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
@@ -79,9 +79,13 @@ impl PkgLock {
                     None
                 };
                 let dep_kind = &dep_edge.kind;
+                let salt = match dep_kind {
+                    DepKind::Library => None,
+                    DepKind::Contract { salt } => Some(salt),
+                };
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
                 (
-                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate),
+                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, salt, disambiguate),
                     dep_kind.clone(),
                 )
             })
@@ -93,7 +97,7 @@ impl PkgLock {
             .collect();
         let mut contract_dependencies: Vec<String> = all_dependencies
             .iter()
-            .filter(|(_, dep_kind)| *dep_kind == DepKind::Contract)
+            .filter(|(_, dep_kind)| matches!(*dep_kind, DepKind::Contract { salt: _ }))
             .map(|(dep_pkg, _)| dep_pkg.clone())
             .collect();
         dependencies.sort();
@@ -193,7 +197,14 @@ impl Lock {
                 .as_ref()
                 .into_iter()
                 .flatten()
-                .map(|contract_dep| (contract_dep, DepKind::Contract));
+                .map(|contract_dep| {
+                    (
+                        contract_dep,
+                        DepKind::Contract {
+                            salt: fuel_tx::Salt::zeroed(),
+                        },
+                    )
+                });
             // If `pkg.dependencies` is None, we will be collecting an empty list of
             // lib_deps so that we will omit them during edge adding phase
             let lib_deps = pkg
@@ -210,7 +221,14 @@ impl Lock {
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                let dep_edge = Edge::new(dep_name, dep_kind.to_owned(), dep_salt);
+                let dep_kind = match dep_kind {
+                    DepKind::Library => dep_kind,
+                    DepKind::Contract { salt: _ } => {
+                        let dep_salt = dep_salt.unwrap_or_default();
+                        DepKind::Contract { salt: dep_salt }
+                    }
+                };
+                let dep_edge = Edge::new(dep_name, dep_kind);
                 graph.update_edge(node, dep_node, dep_edge);
             }
         }
@@ -252,22 +270,27 @@ fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
     source: &pkg::SourcePinned,
+    salt: Option<&fuel_tx::Salt>,
     disambiguate: bool,
 ) -> PkgDepLine {
     // Only include the full unique string in the case that this dep requires disambiguation.
     let source_string = source.to_string();
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
-    match dep_name {
+    let pkg_string = match dep_name {
         None => pkg_string.into_owned(),
         Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
+    };
+    match salt {
+        None => pkg_string,
+        Some(salt) => format!("({}) {}", salt, pkg_string),
     }
 }
 
 type ParsedPkgLine<'a> = (Option<fuel_tx::Salt>, Option<&'a str>, &'a str);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
-// I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
+// I.e. given "(<salt>) (<dep_name>) <name> <source>", returns ("<salt>", "<dep_name>", "<name> <source>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {

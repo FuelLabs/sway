@@ -3,14 +3,14 @@ name = 'contract_a'
 source = 'member'
 dependencies = ['std']
 contract-dependencies = [
-    'contract_b',
-    'contract_c',
+    '(0000000000000000000000000000000000000000000000000000000000000000) contract_c',
+    '(1111111111111111111111111111111111111111111111111111111111111111) contract_b',
 ]
 
 [[package]]
 name = 'contract_b'
 source = 'path+from-root-C28B6153CE3E3FEB'
-contract-dependencies = ['contract_c']
+contract-dependencies = ['(0000000000000000000000000000000000000000000000000000000000000000) contract_c']
 
 [[package]]
 name = 'contract_c'
