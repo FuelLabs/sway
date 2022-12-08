@@ -69,7 +69,7 @@ impl fmt::Display for DepKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DepKind::Library => write!(f, "library"),
-            DepKind::Contract { salt: _ } => write!(f, "contract"),
+            DepKind::Contract { .. } => write!(f, "contract"),
         }
     }
 }
