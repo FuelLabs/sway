@@ -147,7 +147,7 @@ fn test_meaning_of_life() {
 </code></pre>
 <p>Each test function is ran as if it were the entry point for a
 <a href="../sway-program-types/scripts.html">script</a>. Tests &quot;pass&quot; if they return
-successfully, and &quot;fail&quot; if they revert.</p>
+successfully, and &quot;fail&quot; if they revert or vice versa while <a href="#testing-failure">testing failure</a>.</p>
 <h2 id="building-and-running-tests"><a class="header" href="#building-and-running-tests">Building and Running Tests</a></h2>
 <p>We can build and execute all tests within a package with the following:</p>
 <pre><code class="language-console">forc test
@@ -164,9 +164,13 @@ successfully, and &quot;fail&quot; if they revert.</p>
 <p>Visit the <a href="../forc/commands/forc_test.html"><code>forc test</code></a> command reference to find
 the options available for <code>forc test</code>.</p>
 <h2 id="testing-failure"><a class="header" href="#testing-failure">Testing Failure</a></h2>
-<p><em><strong>Coming Soon</strong></em></p>
-<p><em>Track progress on <code>#[test(should_revert)]</code>
-<a href="https://github.com/FuelLabs/sway/issues/3260">here</a>.</em></p>
+<p>Forc supports testing failing cases for test functions declared with <code>#[test(should_revert)]</code>. For example:</p>
+<pre><code class="language-sway">#[test(should_revert)]
+fn test_meaning_of_life() {
+    assert(6 * 6 == 42);
+}
+</code></pre>
+<p>Tests with <code>#[test(should_revert)]</code> considered to be passing if they are reverting.</p>
 <h2 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h2>
 <p><em><strong>Coming Soon</strong></em></p>
 <p><em>Track progress on constract calls in tests
