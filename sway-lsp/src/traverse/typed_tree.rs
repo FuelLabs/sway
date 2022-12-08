@@ -7,7 +7,7 @@ use crate::core::{
 use sway_core::{
     declaration_engine::{self, de_get_function},
     language::ty,
-    TypeEngine,
+    TypeEngine, TypeId, TypeInfo,
 };
 use sway_types::{ident::Ident, Spanned};
 
@@ -99,6 +99,38 @@ fn handle_declaration(
                         token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
                         token.type_def = Some(TypeDefinition::TypeId(field.type_id));
                     }
+
+                    // collect_type_id(type_engine, field.type_id, tokens);
+
+                    // fn collect_type_id(
+                    //     type_engine: &TypeEngine,
+                    //     type_id: TypeId,
+                    //     tokens: &TokenMap,
+                    // ){
+                    //     let type_info = type_engine.look_up_type_id(type_id);
+                    //     let s = type_info.span();
+                    //     match &type_info {
+                    //         TypeInfo::Array(type_arg, length) => {
+
+                    //             //tokens.insert(to_ident_key(&Ident::new(length.span())), token.clone());
+                    //             collect_type_arg(type_engine, &type_arg, &token, tokens);
+                    //         }
+                    //         TypeInfo::Tuple(type_arguments) => {
+                    //             for type_arg in type_arguments {
+                    //                 collect_type_arg(type_engine, type_arg, &token, tokens);
+                    //             }
+                    //         }
+                    //         _ => {
+                    //             let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
+                    //             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(length.span()))) {
+
+                    //             }
+                    //             token.kind = symbol_kind;
+                    //             token.type_def = Some(TypeDefinition::TypeId(type_id));
+                    //             tokens.insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+                    //         }
+                    //     }
+                    // }
 
                     if let Some(mut token) =
                         tokens.get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
