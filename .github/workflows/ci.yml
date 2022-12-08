@@ -130,11 +130,24 @@ jobs:
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: "0.4.15"
-      - name: Emit logs to tmp.txt, fail if build logs contain 'ERROR'
+      - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
-          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs &> tmp.txt
+          MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
           then
+            cat tmp.txt
+            rm tmp.txt && exit 1
+          else
+            rm tmp.txt && exit 0
+          fi
+
+      - name: Emit reference logs to tmp.txt, fail if build logs contain 'ERROR'
+        run: |
+          mdbook build docs/reference
+          mdbook build docs/reference &> tmp.txt
+          if cat tmp.txt | grep 'ERROR'
+          then
+            cat tmp.txt
             rm tmp.txt && exit 1
           else
             rm tmp.txt && exit 0
@@ -566,12 +579,12 @@ jobs:
     strategy:
       matrix:
         job:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: x86_64-unknown-linux-gnu
             arch: amd64
             svm_target_platform: linux-amd64
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             platform: linux
             target: aarch64-unknown-linux-gnu
             arch: arm64

@@ -429,7 +429,7 @@ impl TyProgram {
     }
 
     /// All test function declarations within the program.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    pub fn test_fns(&self) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns())
