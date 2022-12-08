@@ -251,8 +251,10 @@ fn handle_declaration(type_engine: &TypeEngine, declaration: &Declaration, token
                     SymbolKind::Struct,
                 );
                 tokens.insert(to_ident_key(name), token.clone());
-                if let Some(args) = type_arguments {
-                    collect_type_args(type_engine, args, &token, tokens);
+                if let Some(type_arguments) = type_arguments {
+                    for type_arg in type_arguments {
+                        collect_type_arg(type_engine, type_arg, &token, tokens);
+                    }
                 }
             }
 
@@ -356,12 +358,9 @@ fn handle_expression(type_engine: &TypeEngine, expression: &Expression, tokens: 
 
                 tokens.insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-                collect_type_args(
-                    type_engine,
-                    &call_path_binding.type_arguments,
-                    &token,
-                    tokens,
-                );
+                for type_arg in &call_path_binding.type_arguments {
+                    collect_type_arg(type_engine, type_arg, &token, tokens);
+                }
             }
 
             for exp in arguments {
@@ -422,7 +421,9 @@ fn handle_expression(type_engine: &TypeEngine, expression: &Expression, tokens: 
             let token =
                 Token::from_parsed(AstToken::Expression(expression.clone()), SymbolKind::Struct);
             tokens.insert(to_ident_key(name), token.clone());
-            collect_type_args(type_engine, type_arguments, &token, tokens);
+            for type_arg in type_arguments {
+                collect_type_arg(type_engine, type_arg, &token, tokens);
+            }
 
             for field in fields {
                 tokens.insert(
@@ -562,12 +563,9 @@ fn handle_expression(type_engine: &TypeEngine, expression: &Expression, tokens: 
                 token.clone(),
             );
 
-            collect_type_args(
-                type_engine,
-                &call_path_binding.type_arguments,
-                &token,
-                tokens,
-            );
+            for type_arg in &call_path_binding.type_arguments {
+                collect_type_arg(type_engine, type_arg, &token, tokens);
+            }
 
             for exp in args {
                 handle_expression(type_engine, exp, tokens);
@@ -592,12 +590,9 @@ fn handle_expression(type_engine: &TypeEngine, expression: &Expression, tokens: 
 
             tokens.insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-            collect_type_args(
-                type_engine,
-                &call_path_binding.type_arguments,
-                &token,
-                tokens,
-            );
+            for type_arg in &call_path_binding.type_arguments {
+                collect_type_arg(type_engine, type_arg, &token, tokens);
+            }
 
             for exp in args {
                 handle_expression(type_engine, exp, tokens);
@@ -691,23 +686,31 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
     }
 }
 
-fn collect_type_args(
+fn collect_type_arg(
     type_engine: &TypeEngine,
-    type_arguments: &Vec<TypeArgument>,
+    type_argument: &TypeArgument,
     token: &Token,
     tokens: &TokenMap,
 ) {
-    for arg in type_arguments {
-        let mut token = token.clone();
-        let type_info = type_engine.look_up_type_id(arg.type_id);
-        // TODO handle tuple and arrays in type_arguments - https://github.com/FuelLabs/sway/issues/2486
-        if let TypeInfo::Tuple(_) | TypeInfo::Array(_, _) = type_info {
-            continue;
+    let mut token = token.clone();
+    let type_info = type_engine.look_up_type_id(type_argument.type_id);
+    match &type_info {
+        TypeInfo::Array(type_arg, length) => {
+            token.kind = SymbolKind::NumericLiteral;
+            tokens.insert(to_ident_key(&Ident::new(length.span())), token.clone());
+            collect_type_arg(type_engine, &type_arg, &token, tokens);
         }
-        let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
-        token.kind = symbol_kind;
-        token.type_def = Some(TypeDefinition::TypeId(arg.type_id));
-        tokens.insert(to_ident_key(&Ident::new(arg.span.clone())), token);
+        TypeInfo::Tuple(type_arguments) => {
+            for type_arg in type_arguments {
+                collect_type_arg(type_engine, type_arg, &token, tokens);
+            }
+        }
+        _ => {
+            let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
+            token.kind = symbol_kind;
+            token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
+            tokens.insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+        }
     }
 }
 
@@ -793,8 +796,18 @@ fn collect_type_info_token(
                 tokens.insert(to_ident_key(&Ident::new(type_span)), token);
             }
         }
-        TypeInfo::Tuple(args) => {
-            collect_type_args(type_engine, args, &token, tokens);
+        TypeInfo::Str(length) => {
+            tokens.insert(to_ident_key(&Ident::new(length.span())), token);
+        }
+        TypeInfo::Array(type_arg, length) => {
+            token.kind = SymbolKind::NumericLiteral;
+            tokens.insert(to_ident_key(&Ident::new(length.span())), token.clone());
+            collect_type_arg(type_engine, type_arg, &token, tokens);
+        }
+        TypeInfo::Tuple(type_arguments) => {
+            for type_arg in type_arguments {
+                collect_type_arg(type_engine, type_arg, &token, tokens);
+            }
         }
         TypeInfo::Custom {
             name,
@@ -802,8 +815,10 @@ fn collect_type_info_token(
         } => {
             token.type_def = Some(TypeDefinition::Ident(name.clone()));
             tokens.insert(to_ident_key(name), token.clone());
-            if let Some(args) = type_arguments {
-                collect_type_args(type_engine, args, &token, tokens);
+            if let Some(type_arguments) = type_arguments {
+                for type_arg in type_arguments {
+                    collect_type_arg(type_engine, type_arg, &token, tokens);
+                }
             }
         }
         _ => (),
