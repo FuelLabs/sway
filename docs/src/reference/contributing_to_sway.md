@@ -99,3 +99,30 @@ Multiple issues should use full syntax for each issue and separate by a comma, l
 ```markdown
 close #123, ref #456
 ```
+
+## Debugging strategies
+
+There are a number of valid debugging approaches when debugging in this repo.
+
+Aside from adding print statements or using your own debugging approach, it may
+be useful to use `rust-lldb` to debug stack overflow bugs. (`rust-lldb` comes
+pre-installed with the `cargo` install).
+
+Here is an example of how to use `rust-lldb`:
+
+```bash
+$ cargo build
+Finished dev [unoptimized + debuginfo] target(s) in 2.98s
+```
+
+```bash
+$ rust-lldb ./target/debug/forc -- build --verbose --time-phases --path <your Rust project path>
+target create "./target/debug/forc"
+Current executable set to < >.
+settings set -- target.run-args  "build" "--verbose" "--time-phases" "--path" <your Rust project path>
+```
+
+```
+(lldb) run
+<where the stack overflow is coming from>
+```
