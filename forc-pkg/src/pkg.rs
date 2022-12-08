@@ -2534,8 +2534,9 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
             .collect();
         if salt_declarations.len() > 1 {
             bail!(
-                "There are conflicting salt declarations for contract dependency named: {}",
-                name
+                "There are conflicting salt declarations for contract dependency named: {}\nDeclared salts: {:?}",
+                name,
+                salt_declarations,
             )
         }
     }
@@ -2600,7 +2601,7 @@ pub fn build(
         if plan
             .graph()
             .edges_directed(node, Direction::Incoming)
-            .any(|e| matches!(e.weight().kind, DepKind::Contract { salt: _ }))
+            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }

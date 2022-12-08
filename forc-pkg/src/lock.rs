@@ -79,13 +79,9 @@ impl PkgLock {
                     None
                 };
                 let dep_kind = &dep_edge.kind;
-                let salt = match dep_kind {
-                    DepKind::Library => None,
-                    DepKind::Contract { salt } => Some(salt),
-                };
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
                 (
-                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, salt, disambiguate),
+                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, dep_kind, disambiguate),
                     dep_kind.clone(),
                 )
             })
@@ -97,7 +93,7 @@ impl PkgLock {
             .collect();
         let mut contract_dependencies: Vec<String> = all_dependencies
             .iter()
-            .filter(|(_, dep_kind)| matches!(*dep_kind, DepKind::Contract { salt: _ }))
+            .filter(|(_, dep_kind)| matches!(*dep_kind, DepKind::Contract { .. }))
             .map(|(dep_pkg, _)| dep_pkg.clone())
             .collect();
         dependencies.sort();
@@ -140,6 +136,11 @@ impl PkgLock {
         pkg_name_disambiguated(&self.name, &self.source, disambiguate)
     }
 }
+
+/// Represents a `DepKind` before getting parsed.
+///
+/// Used to carry on the type of the `DepKind` until parsing. After parsing pkg_dep_line converted into `DepKind`.
+enum UnparsedDepKind { Library, Contract }
 
 impl Lock {
     /// Load the `Lock` structure from the TOML `Forc.lock` file at the specified path.
@@ -200,9 +201,7 @@ impl Lock {
                 .map(|contract_dep| {
                     (
                         contract_dep,
-                        DepKind::Contract {
-                            salt: fuel_tx::Salt::zeroed(),
-                        },
+                        UnparsedDepKind::Contract
                     )
                 });
             // If `pkg.dependencies` is None, we will be collecting an empty list of
@@ -212,7 +211,7 @@ impl Lock {
                 .as_ref()
                 .into_iter()
                 .flatten()
-                .map(|lib_dep| (lib_dep, DepKind::Library));
+                .map(|lib_dep| (lib_dep, UnparsedDepKind::Library));
             for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
                 let (dep_salt, dep_name, dep_key) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
@@ -222,10 +221,10 @@ impl Lock {
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
                 let dep_kind = match dep_kind {
-                    DepKind::Library => dep_kind,
-                    DepKind::Contract { salt: _ } => {
+                    UnparsedDepKind::Library => DepKind::Library,
+                    UnparsedDepKind::Contract => {
                         let dep_salt = dep_salt.unwrap_or_default();
-                        DepKind::Contract { salt: dep_salt }
+                        DepKind::Contract { salt: dep_salt } 
                     }
                 };
                 let dep_edge = Edge::new(dep_name, dep_kind);
@@ -270,7 +269,7 @@ fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
     source: &pkg::SourcePinned,
-    salt: Option<&fuel_tx::Salt>,
+    dep_kind: &DepKind,
     disambiguate: bool,
 ) -> PkgDepLine {
     // Only include the full unique string in the case that this dep requires disambiguation.
@@ -281,15 +280,16 @@ fn pkg_dep_line(
         None => pkg_string.into_owned(),
         Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
     };
-    match salt {
-        None => pkg_string,
-        Some(salt) => {
+    // Append the salt if dep_kind is DepKind::Contract.
+    match dep_kind {
+        DepKind::Library => pkg_string,
+        DepKind::Contract { salt } =>  {
             if *salt == fuel_tx::Salt::zeroed() {
                 pkg_string
             } else {
                 format!("{} ({})", pkg_string, salt)
             }
-        }
+        },
     }
 }
 
