@@ -130,6 +130,9 @@ impl ControlFlowNamespace {
         }
     }
 
+    pub(crate) fn get_struct(&self, ident: &Ident) -> Option<&StructNamespaceEntry> {
+        self.struct_namespace.get(ident.as_str())
+    }
     pub(crate) fn insert_struct(
         &mut self,
         struct_name: String,

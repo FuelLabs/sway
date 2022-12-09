@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "my_library"
+
+[dependencies]
+my_other_library = { path = "../my_other_library" }
