@@ -509,7 +509,7 @@ impl Bytes {
     }
 
     pub fn split(self, index: u64) -> (Bytes, Bytes) {
-        assert(index != 0); 
+        assert(index != 0);
         assert(index < self.len - 1);
         let mut first = Bytes::with_capacity(index);
         let mut second = Bytes::with_capacity(self.len - index);
@@ -548,14 +548,13 @@ impl Bytes {
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len == other.len {
-            let result = asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
-                meq result r2 r3 r4;
-                result: bool
-            };
-            result
-        } else {
-            false
+        if self.len != other.len {
+            return false;
+        }
+
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+            meq result r2 r3 r4;
+            result: bool
         }
     }
 }
@@ -846,7 +845,6 @@ fn test_join() {
 
 #[test()]
 fn test_eq() {
-
     let (mut bytes, a, b, c) = setup();
     let (mut bytes2, a, b, c) = setup();
     assert(bytes == bytes2);
@@ -869,4 +867,3 @@ fn test_eq() {
     other.swap(0, 1);
     assert(bytes != other);
 }
-
