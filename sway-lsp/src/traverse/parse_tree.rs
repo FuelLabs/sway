@@ -220,12 +220,18 @@ fn handle_declaration(type_engine: &TypeEngine, declaration: &Declaration, token
                 ),
             );
 
-            tokens.insert(
-                to_ident_key(&Ident::new(impl_trait.type_implementing_for_span.clone())),
-                Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    type_info_to_symbol_kind(type_engine, &impl_trait.type_implementing_for),
-                ),
+            let token = Token::from_parsed(
+                AstToken::Declaration(declaration.clone()),
+                type_info_to_symbol_kind(type_engine, &impl_trait.type_implementing_for),
+            );
+
+            collect_type_info_token(
+                type_engine,
+                tokens,
+                &token,
+                &impl_trait.type_implementing_for,
+                Some(impl_trait.type_implementing_for_span.clone()),
+                Some(SymbolKind::Variant),
             );
 
             for type_param in &impl_trait.impl_type_parameters {

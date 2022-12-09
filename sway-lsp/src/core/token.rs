@@ -7,8 +7,8 @@ use sway_core::{
         },
         ty,
     },
-    type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    type_system::{TypeId, TypeInfo, TypeParameter},
+    TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -45,6 +45,8 @@ pub enum TypedAstToken {
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
+    TypeArgument(TypeArgument),
+    TypeParameter(TypeParameter),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
