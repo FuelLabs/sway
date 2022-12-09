@@ -217,7 +217,7 @@ impl Lock {
                 .flatten()
                 .map(|lib_dep| (lib_dep, UnparsedDepKind::Library));
             for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
-                let (dep_salt, dep_name, dep_key) = parse_pkg_dep_line(dep_line)
+                let (dep_name, dep_key, dep_salt) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
@@ -297,38 +297,28 @@ fn pkg_dep_line(
     }
 }
 
-type ParsedPkgLine<'a> = (Option<fuel_tx::Salt>, Option<&'a str>, &'a str);
+type ParsedPkgLine<'a> = (Option<&'a str>, &'a str, Option<fuel_tx::Salt>);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
-// I.e. given "(<dep_name>) <name> <source> (<salt>)", returns ("<salt>", "<dep_name>", "<name> <source>").
+// I.e. given "(<dep_name>) <name> <source> (<salt>)", returns ("<dep_name>", "<name> <source>", "<salt>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
-
-    // Check for the open bracket.
-    if !s.starts_with('(') {
-        let mut iter = s.split('(');
-        let pkg_str = iter
-            .next()
-            .ok_or_else(|| anyhow!("missing pkg string"))?
-            .trim();
-        let salt = iter
-            .next()
-            .map(|s| s.trim())
-            .map(|s| &s[..s.len() - 1])
-            .and_then(|s| fuel_tx::Salt::from_str(s).ok());
-        return Ok((salt, None, pkg_str));
-    }
-
-    // If we have the open bracket, grab everything until the closing bracket.
-    let s = &s["(".len()..];
-    let mut iter = s.split(')');
-    let dep_name = iter
-        .next()
-        .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
-    // The rest is the unique package string and possibly the salt.
-    let s = &s[dep_name.len() + ")".len()..];
+    let (dep_name, s) = match s.starts_with('(') {
+        false => (None, s),
+        true => {
+            // If we have the open bracket, grab everything until the closing bracket.
+            let s = &s["(".len()..];
+            let mut iter = s.split(')');
+            let dep_name = iter
+                .next()
+                .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+            // The rest is the unique package string and possibly the salt.
+            let s = &s[dep_name.len() + ")".len()..];
+            (Some(dep_name), s)
+        }
+    };
 
     // Check for salt.
     let mut iter = s.split('(');
@@ -336,13 +326,16 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
         .next()
         .ok_or_else(|| anyhow!("missing pkg string"))?
         .trim();
-    let salt = iter
-        .next()
-        .map(|s| s.trim())
-        .map(|s| &s[..s.len() - 1])
-        .and_then(|s| fuel_tx::Salt::from_str(s).ok());
+    let salt_str = iter.next().map(|s| s.trim()).map(|s| &s[..s.len() - 1]);
+    let salt = match salt_str {
+        Some(salt_str) => Some(
+            fuel_tx::Salt::from_str(salt_str)
+                .map_err(|e| anyhow!("invalid salt in lock file: {e}"))?,
+        ),
+        None => None,
+    };
 
-    Ok((salt, Some(dep_name), pkg_str))
+    Ok((dep_name, pkg_str, salt))
 }
 
 pub fn print_diff(member_names: &HashSet<String>, diff: &Diff) {
@@ -391,7 +384,7 @@ mod tests {
     #[test]
     fn test_parse_pkg_line_with_salt_with_dep_name() {
         let pkg_dep_line = "(std2) std path+from-root (0000000000000000000000000000000000000000000000000000000000000000)";
-        let (salt, dep_name, pkg_string) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
         assert_eq!(salt, Some(fuel_tx::Salt::zeroed()));
         assert_eq!(dep_name, Some("std2"));
         assert_eq!(pkg_string, "std path+from-root");
@@ -401,7 +394,7 @@ mod tests {
     fn test_parse_pkg_line_with_salt_without_dep_name() {
         let pkg_dep_line =
             "std path+from-root (0000000000000000000000000000000000000000000000000000000000000000)";
-        let (salt, dep_name, pkg_string) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
         assert_eq!(salt, Some(fuel_tx::Salt::zeroed()));
         assert_eq!(dep_name, None);
         assert_eq!(pkg_string, "std path+from-root");
@@ -410,7 +403,7 @@ mod tests {
     #[test]
     fn test_parse_pkg_line_without_salt_with_dep_name() {
         let pkg_dep_line = "(std2) std path+from-root";
-        let (salt, dep_name, pkg_string) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
         assert_eq!(salt, None);
         assert_eq!(dep_name, Some("std2"));
         assert_eq!(pkg_string, "std path+from-root");
@@ -419,9 +412,16 @@ mod tests {
     #[test]
     fn test_parse_pkg_line_without_salt_without_dep_name() {
         let pkg_dep_line = "std path+from-root";
-        let (salt, dep_name, pkg_string) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
         assert_eq!(salt, None);
         assert_eq!(dep_name, None);
         assert_eq!(pkg_string, "std path+from-root");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_pkg_line_invalid_salt() {
+        let pkg_dep_line = "std path+from-root (1)";
+        parse_pkg_dep_line(pkg_dep_line).unwrap();
     }
 }
