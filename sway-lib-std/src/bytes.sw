@@ -508,7 +508,7 @@ impl Bytes {
         vec
     }
 
-    /// Splits a Bytes at the given index and returns two smaller Bytes.
+    /// Splits a Bytes at the given index, modifying the original and returning the second part.
     ///
     /// ### Arguments
     ///
@@ -529,23 +529,19 @@ impl Bytes {
     /// assert(first.len() == 1);
     /// assert(second.len() == 2);
     /// ```
-    pub fn split(self, index: u64) -> (Bytes, Bytes) {
+    pub fn split(ref mut self, index: u64) -> Bytes {
         assert(index != 0);
         assert(index < self.len - 1);
-        let mut first = Bytes::with_capacity(index);
         let mut second = Bytes::with_capacity(self.len - index);
-        let mut i = 0;
-        while i < index {
-            first.push(self.get(i).unwrap());
-            i += 1;
-        };
 
-        i = index;
+        let mut i = index;
         while i < self.len {
             second.push(self.get(i).unwrap());
             i += 1;
         };
-        (first, second)
+
+        self.len = index;
+        second
     }
 
     /// Joins two Bytes into a single larger Bytes.
@@ -852,13 +848,13 @@ fn test_bytes_limits() {
 
 #[test()]
 fn test_split() {
-    let (mut bytes, a, b, c) = setup();
-    assert(bytes.len() == 3);
+    let (mut original, a, b, c) = setup();
+    assert(original.len() == 3);
     let index = 1;
-    let (first, second) = bytes.split(index);
-    assert(first.capacity() == index);
-    assert(second.capacity() == bytes.len() - index);
-    assert(first.len() == 1);
+    let second = original.split(index);
+    assert(original.capacity() == 4);
+    assert(second.capacity() == 2);
+    assert(original.len() == 1);
     assert(second.len() == 2);
 }
 
