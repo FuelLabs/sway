@@ -508,6 +508,27 @@ impl Bytes {
         vec
     }
 
+    /// Splits a Bytes at the given index and returns two smaller Bytes.
+    ///
+    /// ### Arguments
+    ///
+    /// * index - The index to split the original Bytes at
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    ///
+    /// use std:bytes::Bytes;
+    ///
+    /// let (mut bytes, a, b, c) = setup();
+    /// assert(bytes.len() == 3);
+    /// let index = 1;
+    /// let (first, second) = bytes.split(index);
+    /// assert(first.capacity() == index);
+    /// assert(second.capacity() == bytes.len() - index);
+    /// assert(first.len() == 1);
+    /// assert(second.len() == 2);
+    /// ```
     pub fn split(self, index: u64) -> (Bytes, Bytes) {
         assert(index != 0);
         assert(index < self.len - 1);
