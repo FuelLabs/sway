@@ -15,6 +15,7 @@ comrak = "0.15"
 forc-pkg = { version = "0.31.3", path = "../../forc-pkg" }
 forc-util = { version = "0.31.3", path = "../../forc-util"}
 horrorshow = "0.8.4"
+include_dir = "0.7.3"
 opener = "0.5.0"
 sway-ast = { version = "0.31.3", path = "../../sway-ast" }
 sway-core = { version = "0.31.3", path = "../../sway-core" }

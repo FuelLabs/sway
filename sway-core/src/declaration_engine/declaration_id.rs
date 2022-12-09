@@ -92,7 +92,7 @@ impl ReplaceDecls for DeclarationId {
 }
 
 impl DeclarationId {
-    pub(super) fn new(index: usize, span: Span) -> DeclarationId {
+    pub(crate) fn new(index: usize, span: Span) -> DeclarationId {
         DeclarationId(index, span)
     }
 
