@@ -1211,7 +1211,7 @@ fn main() {}
     }
 
     #[test]
-    fn test_if_else_retain_multiline() {
+    fn test_if_else_multiline_to_inline() {
         let sway_code_to_format = r#"script;
 
 fn main() {
@@ -1225,8 +1225,34 @@ fn main() {
         let correct_sway_code = r#"script;
 
 fn main() {
+    if foo { let x = 1; } else { bar(y); }
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        println!("formatted: {}", formatted_sway_code);
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn test_if_else_retain_multiline() {
+        let sway_code_to_format = r#"script;
+
+fn main() {
+    if foo    {
+           let really_long_variable = 1;
+    } else    {
+        bar(y)   ;
+    }
+}
+"#;
+        let correct_sway_code = r#"script;
+
+fn main() {
     if foo {
-        let x = 1;
+        let really_long_variable = 1;
     } else {
         bar(y);
     }
