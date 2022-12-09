@@ -72,10 +72,6 @@ fn get_full_width_line_style(
             let mut if_expr_str = FormattedCode::new();
             format_if_expr(if_expr, &mut if_expr_str, temp_formatter)?;
 
-            if if_expr_str.contains('\n') {
-                return Ok(LineStyle::Multiline);
-            }
-
             let if_expr_width = if_expr_str.chars().count();
 
             temp_formatter.shape.code_line.update_width(if_expr_width);
