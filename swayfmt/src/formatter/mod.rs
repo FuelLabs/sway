@@ -1080,41 +1080,6 @@ library test_module_kind_with_comments;
     }
 
     #[test]
-    fn comments_between_if_else() {
-        let sway_code_to_format = r#"script;
-
-fn main() {
-    if true {
-        let x = 1;
-        let y = 2;
-    }
-    // This is a comment
-    else {
-        let z = 3;
-    }
-}
-"#;
-
-        let correct_sway_code = r#"script;
-
-fn main() {
-    if true {
-        let x = 1;
-        let y = 2;
-    }
-    // This is a comment
-    else {
-        let z = 3;
-    }
-}
-"#;
-        let mut formatter = Formatter::default();
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code);
-    }
-
-    #[test]
     fn test_destructure_structs() {
         let sway_code_to_format = r#"library test_destructure_structs;
 
@@ -1188,6 +1153,52 @@ fn func_with_multiline_collections() {
         let correct_sway_code = r#"library test_multiline_collections;
 fn func_with_multiline_collections() {
     let x = ("hello", "world");
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn comments_between_if_else() {
+        let sway_code_to_format = r#"script;
+
+fn main() {
+    if pledge_history_index != 0 {
+        // This is a comment
+        storage.pledge_history.insert((user, pledge_history_index), pledge);
+    }
+    // This is also a comment,
+    // but multiline
+    else if true {
+        storage.pledge_count.insert(user, pledge_count + 1);
+    }
+    // This is yet another comment
+    else {
+        storage.pledge_count.insert(user, pledge_count + 1);
+    }
+}
+"#;
+
+        let correct_sway_code = r#"script;
+
+fn main() {
+    if pledge_history_index != 0 {
+        // This is a comment
+        storage.pledge_history.insert((user, pledge_history_index), pledge);
+    }
+    // This is also a comment,
+    // but multiline
+    else if true {
+        storage.pledge_count.insert(user, pledge_count + 1);
+    }
+    // This is yet another comment
+    else {
+        storage.pledge_count.insert(user, pledge_count + 1);
+    }
 }
 "#;
         let mut formatter = Formatter::default();

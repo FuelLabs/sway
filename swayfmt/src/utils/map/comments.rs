@@ -201,17 +201,29 @@ fn get_comments_between_spans(
                 .take(2);
 
             let _ = rest_of_code.next();
-            let maybe_context_after = rest_of_code.next().unwrap_or_default();
-            let (spaces_till_next_char, _) = maybe_context_after
-                .char_indices()
-                .find(|(_, c)| !c.is_whitespace())
-                .unwrap_or_default();
+            let next_line = rest_of_code.next().unwrap_or_default();
+            println!(
+                "{:?}",
+                next_line
+                    .chars()
+                    .take_while(|c| c.is_whitespace())
+                    .collect::<String>()
+            );
+            let post_context: String = if next_line.trim_start().starts_with("else") {
+                let else_token_start = next_line
+                    .char_indices()
+                    .find(|(_, c)| !c.is_whitespace())
+                    .map(|ci| ci.0)
+                    .unwrap_or_default();
+                unformatted_code[comment_span.end..comment_span.end + else_token_start].to_string()
+            } else {
+                "".to_string()
+            };
 
             comments_with_context.push((
                 comment.clone(),
                 unformatted_code[starting_position_for_context..comment_span.start].to_string(),
-                unformatted_code[comment_span.end..comment_span.end + spaces_till_next_char]
-                    .to_string(),
+                post_context,
             ));
         }
     }
@@ -253,13 +265,13 @@ fn insert_after_span(
         if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
-        println!("c: {:?}", comment_with_context);
+
         write!(
             comment_str,
             "{}{}{}",
             format_context(comment_context, 2),
             &format_comment(comment_value),
-            context_after
+            format_context(context_after, 2)
         )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);
@@ -276,6 +288,7 @@ fn insert_after_span(
     } else {
         src_rope.insert(from.end + offset, &comment_str);
     }
+
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(comment_str.len())
