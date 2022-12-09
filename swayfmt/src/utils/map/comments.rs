@@ -202,14 +202,15 @@ fn get_comments_between_spans(
 
             let _ = rest_of_code.next();
             let next_line = rest_of_code.next().unwrap_or_default();
-            println!(
-                "{:?}",
-                next_line
-                    .chars()
-                    .take_while(|c| c.is_whitespace())
-                    .collect::<String>()
-            );
-            let post_context: String = if next_line.trim_start().starts_with("else") {
+
+            // In certain cases where comments come in between unusual places,
+            // ..
+            //     }
+            //     // This is a comment
+            //     else {
+            // ..
+            // We need to know the context after the comment as well.
+            let context_after: String = if next_line.trim_start().starts_with("else") {
                 let else_token_start = next_line
                     .char_indices()
                     .find(|(_, c)| !c.is_whitespace())
@@ -223,7 +224,7 @@ fn get_comments_between_spans(
             comments_with_context.push((
                 comment.clone(),
                 unformatted_code[starting_position_for_context..comment_span.start].to_string(),
-                post_context,
+                context_after,
             ));
         }
     }
@@ -249,7 +250,7 @@ fn format_context(context: &str, threshold: usize) -> String {
     formatted_context
 }
 
-/// Inserts after given span and returns the offset. While inserting comments this also inserts Context of the comments so that the alignment whitespaces/newlines are intact
+/// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
 fn insert_after_span(
     from: &ByteSpan,
     comments_to_insert: Vec<CommentWithContext>,
@@ -261,7 +262,7 @@ fn insert_after_span(
     let mut comment_str = String::new();
     let mut pre_module_comment = false;
     for comment_with_context in iter {
-        let (comment_value, comment_context, context_after) = comment_with_context;
+        let (comment_value, context_before, context_after) = comment_with_context;
         if comment_value.span.start() == from.start {
             pre_module_comment = true;
         }
@@ -269,7 +270,7 @@ fn insert_after_span(
         write!(
             comment_str,
             "{}{}{}",
-            format_context(comment_context, 2),
+            format_context(context_before, 2),
             &format_comment(comment_value),
             format_context(context_after, 2)
         )?;
