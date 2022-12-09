@@ -510,19 +510,19 @@ impl Bytes {
 
     pub fn split(self, index: u64) -> (Bytes, Bytes) {
         assert(index != 0); 
-        assert(index < self.len() - 1);
+        assert(index < self.len - 1);
         let mut first = Bytes::with_capacity(index);
-        let mut second = Bytes::with_capacity(self.len() - index);
+        let mut second = Bytes::with_capacity(self.len - index);
         let mut i = 0;
         while i < index {
             first.push(self.get(i).unwrap());
             i += 1;
         };
 
-        let mut i2 = index;
-        while i2 < self.len {
-            second.push(self.get(i2).unwrap());
-            i2 += 1;
+        i = index;
+        while i < self.len {
+            second.push(self.get(i).unwrap());
+            i += 1;
         };
         (first, second)
     }
@@ -531,15 +531,15 @@ impl Bytes {
         let mut joined = Bytes::with_capacity(self.len + other.len);
 
         let mut i = 0;
-        while i < self.len() {
+        while i < self.len {
             joined.push(self.get(i).unwrap());
             i += 1;
         };
 
-        let mut i2 = 0;
-        while i2 < other.len() {
-            joined.push(other.get(i2).unwrap());
-            i2 += 1;
+        i = 0;
+        while i < other.len {
+            joined.push(other.get(i).unwrap());
+            i += 1;
         };
 
         joined
@@ -548,13 +548,12 @@ impl Bytes {
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len() == other.len() {
-            let mut i = self.len();
-            while i > 0 {
-                assert(self.get(i - 1).unwrap() == other.get(i - 1).unwrap());
-                i -= 1;
+        if self.len == other.len {
+            let result = asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+                meq result r2 r3 r4;
+                result: bool
             };
-            true
+            result
         } else {
             false
         }
@@ -844,3 +843,30 @@ fn test_join() {
         i += 1;
     };
 }
+
+#[test()]
+fn test_eq() {
+
+    let (mut bytes, a, b, c) = setup();
+    let (mut bytes2, a, b, c) = setup();
+    assert(bytes == bytes2);
+
+    let d = 5u8;
+    let e = 7u8;
+    let f = 9u8;
+    let mut other = Bytes::new();
+    other.push(d);
+    other.push(e);
+    other.push(f);
+    assert(bytes == other);
+
+    other.push(42u8);
+    assert(bytes != other);
+
+    bytes.push(42u8);
+    assert(bytes == other);
+
+    other.swap(0, 1);
+    assert(bytes != other);
+}
+
