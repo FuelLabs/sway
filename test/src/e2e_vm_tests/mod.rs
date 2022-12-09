@@ -345,9 +345,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     };
     let mut number_of_tests_executed = 0;
     let mut number_of_tests_failed = 0;
+    let mut failed_tests = vec![];
 
     for (i, test) in tests.into_iter().enumerate() {
-        print!("Testing {} ...", test.name.bold());
+        let name = test.name.clone();
+        print!("Testing {} ...", name.clone().bold());
         stdout().flush().unwrap();
 
         let mut output = String::new();
@@ -365,6 +367,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
             println!("{}", textwrap::indent(&output, "          "));
             number_of_tests_failed += 1;
+            failed_tests.push(name);
         } else {
             println!(" {}", "ok".green().bold());
 
@@ -420,6 +423,17 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             number_of_tests_failed,
             disabled_tests.len()
         );
+        if number_of_tests_failed > 0 {
+            tracing::info!("{}", "Failing tests:".red().bold());
+            tracing::info!(
+                "    {}",
+                failed_tests
+                    .into_iter()
+                    .map(|test_name| format!("{} ... {}", test_name.bold(), "failed".red().bold()))
+                    .collect::<Vec<_>>()
+                    .join("\n    ")
+            );
+        }
     }
     if number_of_tests_failed != 0 {
         Err(anyhow::Error::msg("Failed tests"))
