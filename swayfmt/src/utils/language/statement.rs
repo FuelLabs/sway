@@ -67,10 +67,11 @@ impl Format for StatementLet {
         write!(formatted_code, " {} ", self.eq_token.span().as_str())?;
         // expr
         self.expr.format(formatted_code, formatter)?;
-        // `;\n`
         if formatter.shape.code_line.line_style == LineStyle::Inline {
+            // `;`
             write!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
         } else {
+            // `;\n`
             writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
         }
 
