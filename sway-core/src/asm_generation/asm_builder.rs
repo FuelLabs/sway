@@ -234,6 +234,18 @@ impl<'ir> AsmBuilder<'ir> {
                     }
                 }
                 Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),
+                Instruction::Smo {
+                    recipient_and_message,
+                    message_size,
+                    output_index,
+                    coins,
+                } => self.compile_smo(
+                    instr_val,
+                    recipient_and_message,
+                    message_size,
+                    output_index,
+                    coins,
+                ),
                 Instruction::StateLoadQuadWord { load_val, key } => check!(
                     self.compile_state_access_quad_word(
                         instr_val,
@@ -1393,6 +1405,17 @@ impl<'ir> AsmBuilder<'ir> {
             opcode: Either::Left(VirtualOp::RVRT(revert_reg)),
             comment: "".into(),
         });
+    }
+
+    fn compile_smo(
+        &mut self,
+        instr_val: &Value,
+        recipient_and_message: &Value,
+        message_size: &Value,
+        output_index: &Value,
+        coins: &Value,
+    ) {
+        todo!()
     }
 
     fn offset_reg(

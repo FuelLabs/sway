@@ -59,6 +59,9 @@ pub enum IrError {
     VerifyLogId,
     VerifyMismatchedLoggedTypes,
     VerifyRevertCodeBadType,
+    VerifySmoMessageSize,
+    VerifySmoCoins,
+    VerifySmoOutputIndex,
 }
 
 impl std::error::Error for IrError {}
@@ -320,6 +323,21 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: error code for revert must be a u64."
                 )
+            }
+            IrError::VerifySmoMessageSize => {
+                write!(
+                    f,
+                    "Verification failed: smo message size must be an integer."
+                )
+            }
+            IrError::VerifySmoOutputIndex => {
+                write!(
+                    f,
+                    "Verification failed: smo output index value must be an integer"
+                )
+            }
+            IrError::VerifySmoCoins => {
+                write!(f, "Verification failed: smo coins value must be an integer")
             }
         }
     }

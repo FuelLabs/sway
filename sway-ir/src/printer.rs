@@ -675,6 +675,35 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
+            Instruction::Smo {
+                recipient_and_message,
+                message_size,
+                output_index,
+                coins,
+            } => maybe_constant_to_doc(context, md_namer, namer, recipient_and_message)
+                .append(maybe_constant_to_doc(
+                    context,
+                    md_namer,
+                    namer,
+                    message_size,
+                ))
+                .append(maybe_constant_to_doc(
+                    context,
+                    md_namer,
+                    namer,
+                    output_index,
+                ))
+                .append(maybe_constant_to_doc(context, md_namer, namer, coins))
+                .append(Doc::line(
+                    Doc::text(format!(
+                        "smo {}, {}, {}, {}",
+                        namer.name(context, recipient_and_message),
+                        namer.name(context, message_size),
+                        namer.name(context, output_index),
+                        namer.name(context, coins),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )),
             Instruction::StateLoadQuadWord { load_val, key } => Doc::line(
                 Doc::text(format!(
                     "state_load_quad_word ptr {}, key ptr {}",

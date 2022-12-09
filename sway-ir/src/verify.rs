@@ -205,6 +205,14 @@ impl<'a> InstructionVerifier<'a> {
                     Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(val, ty)?,
                     Instruction::Revert(val) => self.verify_revert(val)?,
+                    Instruction::Smo {
+                        recipient_and_message,
+                        message_size,
+                        output_index,
+                        coins,
+                    } => {
+                        self.verify_smo(recipient_and_message, message_size, output_index, coins)?
+                    }
                     Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
                     Instruction::StateLoadQuadWord {
                         load_val: dst_val,
@@ -699,6 +707,28 @@ impl<'a> InstructionVerifier<'a> {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_smo(
+        &self,
+        _recipient_and_message: &Value,
+        message_size: &Value,
+        output_index: &Value,
+        coins: &Value,
+    ) -> Result<(), IrError> {
+        if !matches!(message_size.get_type(self.context), Some(Type::Uint(64))) {
+            return Err(IrError::VerifySmoMessageSize);
+        }
+
+        if !matches!(output_index.get_type(self.context), Some(Type::Uint(64))) {
+            return Err(IrError::VerifySmoOutputIndex);
+        }
+
+        if !matches!(coins.get_type(self.context), Some(Type::Uint(64))) {
+            return Err(IrError::VerifySmoCoins);
+        }
+
+        Ok(())
     }
 
     fn verify_state_load_store(

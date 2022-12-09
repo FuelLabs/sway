@@ -19,6 +19,7 @@ use sway_types::{span::Span, Spanned};
 
 use std::collections::HashMap;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -64,6 +65,7 @@ pub(super) fn compile_script(
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_predicate(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -109,6 +111,7 @@ pub(super) fn compile_predicate(
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: &[ty::TyFunctionDeclaration],
@@ -324,6 +327,7 @@ pub(super) fn compile_function(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_entry_function(
     type_engine: &TypeEngine,
     context: &mut Context,

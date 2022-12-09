@@ -124,6 +124,18 @@ pub enum Instruction {
     Ret(Value, Type),
     /// Revert VM execution.
     Revert(Value),
+    /// Sends `message_data` of type `message_ty` and a `coins` amount of the base asset to
+    /// `recipient`.
+    /// - Assume the existence of an `OutputMessage` at `output_index`
+    /// - Also accepts a unique ID describing the `smo` instance.
+    /// - `recipient` must be of type `b256`
+    /// - `output_index`, `coins`, and `message_id` must be of type `U64`.
+    Smo {
+        recipient_and_message: Value,
+        message_size: Value,
+        output_index: Value,
+        coins: Value,
+    },
     /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
     StateLoadQuadWord {
         load_val: Value,
@@ -242,6 +254,7 @@ impl Instruction {
             Instruction::Revert(..) => None,
 
             Instruction::MemCopy { .. } => Some(Type::Unit),
+            Instruction::Smo { .. } => Some(Type::Unit),
             Instruction::StateLoadQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreQuadWord { .. } => Some(Type::Unit),
             Instruction::StateStoreWord { .. } => Some(Type::Unit),
@@ -365,6 +378,12 @@ impl Instruction {
             Instruction::ReadRegister(_) => vec![],
             Instruction::Ret(v, _) => vec![*v],
             Instruction::Revert(v) => vec![*v],
+            Instruction::Smo {
+                recipient_and_message,
+                message_size,
+                output_index,
+                coins,
+            } => vec![*recipient_and_message, *message_size, *output_index, *coins],
             Instruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
             Instruction::StateLoadWord(key) => vec![*key],
             Instruction::StateStoreQuadWord { stored_val, key } => vec![*stored_val, *key],
@@ -471,6 +490,17 @@ impl Instruction {
             Instruction::ReadRegister { .. } => (),
             Instruction::Ret(ret_val, _) => replace(ret_val),
             Instruction::Revert(revert_val) => replace(revert_val),
+            Instruction::Smo {
+                recipient_and_message,
+                message_size,
+                output_index,
+                coins,
+            } => {
+                replace(recipient_and_message);
+                replace(message_size);
+                replace(output_index);
+                replace(coins);
+            }
             Instruction::StateLoadQuadWord { load_val, key } => {
                 replace(load_val);
                 replace(key);
@@ -499,6 +529,7 @@ impl Instruction {
                 | Instruction::ContractCall { .. }
                 | Instruction::Log { .. }
                 | Instruction::MemCopy { .. }
+                | Instruction::Smo { .. }
                 | Instruction::StateLoadQuadWord { .. }
                 | Instruction::StateStoreQuadWord { .. }
                 | Instruction::StateStoreWord { .. }
@@ -845,6 +876,24 @@ impl<'a> InstructionInserter<'a> {
             .instructions
             .push(revert_val);
         revert_val
+    }
+
+    pub fn smo(
+        self,
+        recipient_and_message: Value,
+        message_size: Value,
+        output_index: Value,
+        coins: Value,
+    ) -> Value {
+        make_instruction!(
+            self,
+            Instruction::Smo {
+                recipient_and_message,
+                message_size,
+                output_index,
+                coins,
+            }
+        )
     }
 
     pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {

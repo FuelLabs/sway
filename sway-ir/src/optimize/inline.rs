@@ -448,6 +448,17 @@ fn inline_instruction(
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
             Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
+            Instruction::Smo {
+                recipient_and_message,
+                message_size,
+                output_index,
+                coins,
+            } => new_block.ins(context).smo(
+                map_value(recipient_and_message),
+                map_value(message_size),
+                map_value(output_index),
+                map_value(coins),
+            ),
             Instruction::StateLoadQuadWord { load_val, key } => new_block
                 .ins(context)
                 .state_load_quad_word(map_value(load_val), map_value(key)),
