@@ -1415,7 +1415,22 @@ impl<'ir> AsmBuilder<'ir> {
         output_index: &Value,
         coins: &Value,
     ) {
-        todo!()
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let recipient_and_message_reg = self.value_to_register(recipient_and_message);
+        let message_size_reg = self.value_to_register(message_size);
+        let output_index_reg = self.value_to_register(output_index);
+        let coins_reg = self.value_to_register(coins);
+
+        self.cur_bytecode.push(Op {
+            owning_span,
+            opcode: Either::Left(VirtualOp::SMO(
+                recipient_and_message_reg,
+                message_size_reg,
+                output_index_reg,
+                coins_reg,
+            )),
+            comment: "".into(),
+        });
     }
 
     fn offset_reg(
