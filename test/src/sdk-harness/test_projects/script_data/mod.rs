@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use fuels::contract::script::Script;
+use fuels::contract::execution_script::ExecutableFuelCall;
 use fuels::prelude::*;
 use fuels::tx::{ConsensusParameters, Receipt, Transaction};
 
@@ -21,9 +21,8 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelud
 
     wallet.sign_transaction(&mut tx).await.unwrap();
 
-    let provider = wallet.get_provider().unwrap();
-
-    Script::new(tx).call(&provider).await
+    let script = ExecutableFuelCall::new(tx);
+    script.execute(&wallet.get_provider().unwrap()).await
 }
 
 #[tokio::test]

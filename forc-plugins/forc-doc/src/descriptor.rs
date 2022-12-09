@@ -55,12 +55,12 @@ pub(crate) enum Descriptor {
 
 impl Descriptor {
     pub(crate) fn from_typed_decl(
-        d: &TyDeclaration,
+        ty_decl: &TyDeclaration,
         module_prefix: Vec<String>,
         document_private_items: bool,
     ) -> Result<Self> {
         use TyDeclaration::*;
-        match d {
+        match ty_decl {
             StructDeclaration(ref decl_id) => {
                 let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && struct_decl.visibility.is_private() {
