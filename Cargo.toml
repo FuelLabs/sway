@@ -30,4 +30,3 @@ exclude = [
 
 [profile.dev.package.sway-lsp]
 debug = 2
-
