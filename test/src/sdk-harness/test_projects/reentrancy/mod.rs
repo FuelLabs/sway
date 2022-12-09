@@ -1,5 +1,4 @@
-use fuels::prelude::*;
-use fuels::tx::ContractId;
+use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
     AttackerContract,

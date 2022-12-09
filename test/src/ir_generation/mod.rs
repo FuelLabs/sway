@@ -141,7 +141,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let tree_type = typed_program.kind.tree_type();
 
                 // Compile to IR.
-                let include_tests = false;
+                let include_tests = true;
                 let mut ir = compile_program(&typed_program, include_tests, &type_engine)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());

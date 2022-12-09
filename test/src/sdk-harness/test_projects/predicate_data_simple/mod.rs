@@ -1,15 +1,18 @@
-use fuel_gql_client::client::schema::resource::Resource;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::Opcode;
-use fuels::contract::abi_encoder::ABIEncoder;
-use fuels::contract::script::Script;
-use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
-use fuels::test_helpers::Config;
-use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{consts::*, prelude::Opcode};
+use fuels::{
+    contract::abi_encoder::ABIEncoder,
+    contract::execution_script::ExecutableFuelCall,
+    prelude::*,
+    signers::wallet::Wallet,
+    test_helpers::Config,
+    tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
+    types::resource::Resource,
+};
 use std::str::FromStr;
+use {
+    rand::rngs::StdRng,
+    rand::{Rng, SeedableRng},
+};
 
 async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
     let predicate_code =
@@ -102,7 +105,7 @@ async fn submit_to_predicate(
                 let input_coin = Input::coin_predicate(
                     UtxoId::from(coin.utxo_id),
                     coin.owner.into(),
-                    coin.amount.0,
+                    coin.amount,
                     asset_id,
                     tx_pointer,
                     0,
@@ -110,7 +113,7 @@ async fn submit_to_predicate(
                     predicate_data.clone(),
                 );
                 inputs.push(input_coin);
-                total_amount_in_predicate += coin.amount.0;
+                total_amount_in_predicate += coin.amount;
             }
             Resource::Message(_) => {}
         }
@@ -129,8 +132,8 @@ async fn submit_to_predicate(
         vec![],
     );
 
-    let script = Script::new(new_tx);
-    let _call_result = script.call(&wallet.get_provider().unwrap()).await;
+    let script = ExecutableFuelCall::new(new_tx);
+    let _call_result = script.execute(&wallet.get_provider().unwrap()).await;
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u64 {
