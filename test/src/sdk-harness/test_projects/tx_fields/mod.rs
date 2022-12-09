@@ -17,10 +17,8 @@ abigen!(
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
-
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
-
 
     let mut deployment_coins = setup_single_asset_coins(
         deployment_wallet.address(),

@@ -106,8 +106,8 @@ async fn test_parse_logs_generic_types() -> Result<(), Error> {
 
     let log_struct = response.get_logs_with_type::<StructWithGeneric<[_; 3]>>()?;
     let log_enum = response.get_logs_with_type::<EnumWithGeneric<[_; 3]>>()?;
-    let log_struct_nested = response
-        .get_logs_with_type::<StructWithNestedGeneric<StructWithGeneric<[_; 3]>>>()?;
+    let log_struct_nested =
+        response.get_logs_with_type::<StructWithNestedGeneric<StructWithGeneric<[_; 3]>>>()?;
     let log_struct_deeply_nested = response.get_logs_with_type::<StructDeeplyNestedGeneric<
         StructWithNestedGeneric<StructWithGeneric<[_; 3]>>,
     >>()?;
@@ -161,17 +161,17 @@ async fn test_get_logs() -> Result<(), Error> {
         field_2: 64,
     };
     let expected_logs: Vec<String> = vec![
-        format!("{:#?}", 64u64),
-        format!("{:#?}", 32u32),
-        format!("{:#?}", 16u16),
-        format!("{:#?}", 8u8),
-        format!("{:#?}", 64u64),
-        format!("{:#?}", expected_bits256),
-        format!("{:#?}", SizedAsciiString::<4>::new("Fuel".to_string())?),
-        format!("{:#?}", [1, 2, 3]),
-        format!("{:#?}", expected_struct),
-        format!("{:#?}", expected_enum),
-        format!("{:#?}", expected_generic_struct),
+        format!("{:?}", 64u64),
+        format!("{:?}", 32u32),
+        format!("{:?}", 16u16),
+        format!("{:?}", 8u8),
+        format!("{:?}", 64u64),
+        format!("{:?}", expected_bits256),
+        format!("{:?}", SizedAsciiString::<4>::new("Fuel".to_string())?),
+        format!("{:?}", [1, 2, 3]),
+        format!("{:?}", expected_struct),
+        format!("{:?}", expected_enum),
+        format!("{:?}", expected_generic_struct),
     ];
 
     assert_eq!(logs, expected_logs);

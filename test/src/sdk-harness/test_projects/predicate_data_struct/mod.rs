@@ -1,14 +1,17 @@
-use fuels::types::resource::Resource;
-use fuel_vm::consts::*;
-use fuel_vm::prelude::Opcode;
-use fuels::contract::abi_encoder::ABIEncoder;
-use fuels::contract::execution_script::ExecutableFuelCall;
-use fuels::prelude::*;
-use fuels::signers::wallet::Wallet;
-use fuels::test_helpers::Config;
-use fuels::tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{consts::*, prelude::Opcode};
+use fuels::{
+    contract::abi_encoder::ABIEncoder,
+    contract::execution_script::ExecutableFuelCall,
+    prelude::*,
+    signers::wallet::Wallet,
+    test_helpers::Config,
+    tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
+    types::resource::Resource,
+};
+use rand::{
+    rngs::StdRng,
+    {Rng, SeedableRng},
+};
 use std::str::FromStr;
 
 async fn setup() -> (Vec<u8>, Address, WalletUnlocked, u64, AssetId) {
