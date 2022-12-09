@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use rand::{Rng, SeedableRng};
 use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -22,16 +22,25 @@ pub struct TestedPackage {
     pub tests: Vec<TestResult>,
 }
 
+#[derive(Debug)]
+pub struct TestDetails {
+    /// The file that contains the test function.
+    pub file_path: Arc<PathBuf>,
+    /// The line number for the test declaration.
+    pub line_number: usize,
+}
+
 /// The result of executing a single test within a single package.
-// TODO: This should include the function path, span and expected result.
 #[derive(Debug)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,
-    /// The resulting state after executing the test function.
-    pub state: vm::state::ProgramState,
     /// The time taken for the test to execute.
     pub duration: std::time::Duration,
+    /// The span for the function declaring this tests.
+    pub span: Span,
+    /// The resulting state after executing the test function.
+    pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: TestPassCondition,
 }
@@ -63,7 +72,7 @@ pub struct Opts {
     pub build_profile: Option<String>,
     /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
     ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
@@ -97,6 +106,26 @@ impl TestResult {
                 !matches!(self.state, vm::state::ProgramState::Revert(_))
             }
         }
+    }
+
+    /// Return `TestDetails` from the span of the function declaring this test.
+    pub fn details(&self) -> anyhow::Result<TestDetails> {
+        let file_path = self
+            .span
+            .path()
+            .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?
+            .to_owned();
+        let span_start = self.span.start();
+        let file_str = fs::read_to_string(&*file_path)?;
+        let line_number = file_str[..span_start]
+            .chars()
+            .into_iter()
+            .filter(|&c| c == '\n')
+            .count();
+        Ok(TestDetails {
+            file_path,
+            line_number,
+        })
     }
 }
 
@@ -164,15 +193,16 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
                 .test_decl_id
                 .clone()
                 .expect("test entry point is missing declaration id");
-            let test_decl_span = test_decl_id.span();
+            let span = test_decl_id.span();
             let test_function_decl =
-                sway_core::declaration_engine::de_get_function(test_decl_id, &test_decl_span)
+                sway_core::declaration_engine::de_get_function(test_decl_id, &span)
                     .expect("declaration engine is missing function declaration for test");
             let condition = test_pass_condition(&test_function_decl)?;
             Ok(TestResult {
                 name,
-                state,
                 duration,
+                span,
+                state,
                 condition,
             })
         })
