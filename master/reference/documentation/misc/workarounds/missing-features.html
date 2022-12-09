@@ -138,32 +138,6 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="missing-features"><a class="header" href="#missing-features">Missing Features</a></h1>
-<blockquote>
-<p>TODO: also copied from the current book (some old version). Needs work</p>
-</blockquote>
-<ul>
-<li><a href="https://github.com/FuelLabs/sway/issues/1182">Issue: #1182</a>
-<ul>
-<li>Arrays in a storage block are not yet supported. See the <a href="https://fuellabs.github.io/sway/">Manual Storage Management</a> section for details on how to use <code>store</code> and <code>get</code> from the standard library to manage storage slots directly. Note, however, that <code>StorageMap&lt;K, V&gt;</code> does support arbitrary types for <code>K</code> and <code>V</code> without any limitations.</li>
-</ul>
-</li>
-<li><a href="https://github.com/FuelLabs/sway/issues/428">Issue: #428</a>
-<ul>
-<li>Arrays are currently immutable which means that changing elements of an array once initialized is not yet possible.</li>
-</ul>
-</li>
-<li><a href="https://github.com/FuelLabs/sway/issues/2465">Issue: #2465</a> and <a href="https://github.com/FuelLabs/sway/issues/1796">Issue: #1796</a>
-<ul>
-<li>It is not yet allowed to use <code>StorageMap&lt;K, V&gt;</code> as a component of a complex type such as a struct or an enum.</li>
-</ul>
-</li>
-<li><a href="https://github.com/FuelLabs/sway/issues/2647">Issue: #2647</a>
-<ul>
-<li>Currently, it is only possible to define configuration-time constants that have primitive types and that are initialized using literals.</li>
-</ul>
-</li>
-</ul>
-<p>Ternary operator does not exist because <code>if</code> expressions cover that functionality</p>
 
                     </main>
 
