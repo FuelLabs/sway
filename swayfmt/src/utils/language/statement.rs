@@ -37,7 +37,7 @@ fn format_statement(
             }
             if let Some(semicolon) = semicolon_token_opt {
                 if formatter.shape.code_line.line_style == LineStyle::Inline {
-                    write!(formatted_code, "{}", semicolon.span().as_str().trim())?;
+                    write!(formatted_code, "{}", semicolon.span().as_str())?;
                 } else {
                     writeln!(formatted_code, "{}", semicolon.span().as_str())?;
                 }
