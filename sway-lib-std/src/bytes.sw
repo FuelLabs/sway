@@ -509,11 +509,8 @@ impl Bytes {
     }
 
     pub fn split(self, index: u64) -> (Bytes, Bytes) {
-        // TODO: handle edge cases:
-        // index == 0 (also handles the self.len() == 1 case)
-        // index == self.len() - maybe we say index must be < self.len - 1
-        // @todo check rust impl for this type of thing
-        assert(index < self.len());
+        assert(index != 0); 
+        assert(index < self.len() - 1);
         let mut first = Bytes::with_capacity(index);
         let mut second = Bytes::with_capacity(self.len() - index);
         let mut i = 0;
