@@ -84,7 +84,7 @@ pub struct BuiltPackage {
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
-    pkg_name: String,
+    pub pkg_name: String,
 }
 
 /// The result of successfully compiling a workspace.
