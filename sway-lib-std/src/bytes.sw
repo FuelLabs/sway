@@ -548,6 +548,35 @@ impl Bytes {
         (first, second)
     }
 
+    /// Joins two Bytes into a single larger Bytes.
+    ///
+    /// ### Arguments
+    ///
+    /// * other - The Bytes to join to self.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    ///
+    /// use std:bytes::Bytes;
+    ///
+    ///
+    /// let mut bytes = Bytes::new();
+    /// bytes.push(5u8);
+    /// bytes.push(7u8);
+    /// bytes.push(9u8);
+    /// assert(bytes.len() == 3);
+    ///
+    /// let mut bytes2 = Bytes::new();
+    /// bytes2.push(5u8);
+    /// bytes2.push(7u8);
+    /// bytes2.push(9u8);
+    /// assert(bytes2.len() == 3);
+    ///
+    /// let mut joined = bytes.join(bytes2);
+    /// assert(joined.len() == bytes.len() + bytes2.len());
+    /// assert(joined.capacity() == bytes.len() + bytes2.len());
+    /// ```
     pub fn join(ref mut self, other: self) -> Self {
         let mut joined = Bytes::with_capacity(self.len + other.len);
 
