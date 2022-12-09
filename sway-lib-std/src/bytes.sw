@@ -120,7 +120,7 @@ impl Bytes {
         // If there is insufficient capacity, grow the buffer.
         if self.len == self.buf.capacity() {
             self.buf.grow();
-        };
+        }
 
         // Get a pointer to the end of the buffer, where the new element will
         // be inserted.
@@ -154,7 +154,7 @@ impl Bytes {
     pub fn pop(ref mut self) -> Option<u8> {
         if self.len == 0 {
             return Option::None;
-        };
+        }
         // decrement length.
         self.len -= 1;
         let target = self.buf.ptr().add_uint_offset(self.len);
@@ -183,7 +183,7 @@ impl Bytes {
         // First check that index is within bounds.
         if self.len <= index {
             return Option::None;
-        };
+        }
 
         let item_ptr = self.buf.ptr().add_uint_offset(index);
 
@@ -469,7 +469,7 @@ impl Bytes {
         while i < length {
             bytes.push(vec.get(i).unwrap());
             i += 1;
-        };
+        }
         bytes
     }
 
@@ -504,7 +504,7 @@ impl Bytes {
         while i < length {
             vec.push(self.get(i).unwrap());
             i += 1;
-        };
+        }
         vec
     }
 
@@ -520,13 +520,13 @@ impl Bytes {
         while i < index {
             first.push(self.get(i).unwrap());
             i += 1;
-        };
+        }
 
         let mut i2 = index;
         while i2 < self.len {
             second.push(self.get(i2).unwrap());
             i2 += 1;
-        };
+        }
         (first, second)
     }
 
@@ -537,13 +537,13 @@ impl Bytes {
         while i < self.len() {
             joined.push(self.get(i).unwrap());
             i += 1;
-        };
+        }
 
         let mut i2 = 0;
         while i2 < other.len() {
             joined.push(other.get(i2).unwrap());
             i2 += 1;
-        };
+        }
 
         joined
     }
@@ -556,7 +556,7 @@ impl core::ops::Eq for Bytes {
             while i > 0 {
                 assert(self.get(i - 1).unwrap() == other.get(i - 1).unwrap());
                 i -= 1;
-            };
+            }
             true
         } else {
             false
@@ -845,5 +845,5 @@ fn test_join() {
     while i < 6 {
         assert(joined.get(i).unwrap() == values[i]);
         i += 1;
-    };
+    }
 }
