@@ -1810,6 +1810,7 @@ dependencies = [
  "fuel-vm",
  "rand 0.8.5",
  "sway-core",
+ "sway-types",
 ]
 
 [[package]]
@@ -1874,6 +1875,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-chain-config"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f56056dc76e152c92f82d35a5ed2354f6d0f1a306daf5ec26d970a72879edbce"
+dependencies = [
+ "anyhow",
+ "fuel-core-interfaces",
+ "fuel-poa-coordinator",
+ "hex",
+ "itertools",
+ "rand 0.8.5",
+ "ron",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tracing",
+]
+
+[[package]]
+name = "fuel-core-interfaces"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b9a3b068c3990cbae13131ac8fa53aaea91a8bd22e3c46463d5c9022e885dd7"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "derive_more",
+ "fuel-vm",
+ "futures",
+ "lazy_static",
+ "parking_lot 0.12.1",
+ "secrecy",
+ "serde",
+ "tai64",
+ "thiserror",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
 name = "fuel-crypto"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1926,6 +1967,21 @@ dependencies = [
  "hex",
  "sha2 0.10.6",
  "thiserror",
+]
+
+[[package]]
+name = "fuel-poa-coordinator"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49262d99abab91616534a9ef2bab5d55b72c9076f1c8555c93cfdba293a14a23"
+dependencies = [
+ "anyhow",
+ "fuel-core-interfaces",
+ "humantime-serde",
+ "parking_lot 0.12.1",
+ "serde",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1986,9 +2042,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.31.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "563f07b3451e0fa4c721d7ede3c1a6a216f12f79a82b80e779d5e491387c2447"
+checksum = "f90f87fa1c3616aa001152cc0286e0fb34df229c0779b85f6d04daeec4646c7c"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -2013,12 +2069,13 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.31.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e197e9e8c095c354a3326997d349fd4e3b2f2e45f5f1eb3d0284f6bbda45be93"
+checksum = "637db0375aee4950b6bbcec908789c3383cd5f17872d7dc30dc2435aa4ebde3d"
 dependencies = [
  "async-trait",
  "bytes",
+ "chrono",
  "elliptic-curve 0.11.12",
  "eth-keystore",
  "fuel-crypto",
@@ -2036,12 +2093,15 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.31.0"
+version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e93b5cfebf32d115d55937d1d8406c0adba1352a9fac073be3eb551e32cb8bd0"
+checksum = "93c81ff2f34949edbdeb097aa4567e6f46d44069376eb2b9bc61d66050fe9042"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
+ "chrono",
+ "fuel-chain-config",
+ "fuel-gql-client",
  "fuel-tx",
  "hex",
  "itertools",
@@ -2378,6 +2438,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "hkdf"
@@ -2504,6 +2567,16 @@ name = "humantime"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
+
+[[package]]
+name = "humantime-serde"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57a3db5ea5923d99402c94e9feb261dc5ee9b4efa158b0315f788cf549cc200c"
+dependencies = [
+ "humantime",
+ "serde",
+]
 
 [[package]]
 name = "hyper"
@@ -3838,6 +3911,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
+dependencies = [
+ "base64 0.13.1",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "ropey"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4058,6 +4142,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "secrecy"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bd1c54ea06cfd2f6b63219704de0b9b4f72dcc2b8fdef820be6cd799780e91e"
+dependencies = [
+ "zeroize",
+]
+
+[[package]]
 name = "security-framework"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4176,6 +4269,28 @@ dependencies = [
  "itoa 1.0.4",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_with"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "678b5a069e50bf00ecd22d0cd8ddf7c236f68581b03db652061ed5eb13a312ff"
+dependencies = [
+ "serde",
+ "serde_with_macros",
+]
+
+[[package]]
+name = "serde_with_macros"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e182d6ec6f05393cc0e5ed1bf81ad6db3a8feedf8ee515ecdd369809bcce8082"
+dependencies = [
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

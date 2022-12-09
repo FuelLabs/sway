@@ -170,9 +170,11 @@ fn html_head(
     decl_name: String,
 ) -> Box<dyn RenderBox> {
     let prefix = module_depth_to_path_prefix(module_depth);
+    let mut favicon = prefix.clone();
     let mut normalize = prefix.clone();
     let mut swaydoc = prefix.clone();
     let mut ayu = prefix;
+    favicon.push_str("assets/sway-logo.svg");
     normalize.push_str("assets/normalize.css");
     swaydoc.push_str("assets/swaydoc.css");
     ayu.push_str("assets/ayu.css");
@@ -187,6 +189,7 @@ fn html_head(
                 content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
             );
             meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
+            link(rel="icon", href=favicon);
             title: format!("{decl_name} in {location} - Sway");
             link(rel="stylesheet", type="text/css", href=normalize);
             link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
@@ -328,6 +331,7 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
                 content="List of all items in this crate"
             );
             meta(name="keywords", content="sway, swaylang, sway-lang");
+            link(rel="icon", href="assets/sway-logo.svg");
             title: "List of all items in this crate";
             link(rel="stylesheet", type="text/css", href="assets/normalize.css");
             link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
@@ -476,6 +480,13 @@ fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
     options.parse.default_info_string = Some("sway".into());
     markdown_to_html(&format_docs(&docs), &options)
 }
+/// Takes a formatted String fn and returns only the function signature.
+fn trim_fn_body(f: String) -> String {
+    match f.find('{') {
+        Some(index) => f.split_at(index).0.to_string(),
+        None => f,
+    }
+}
 
 trait Renderable {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
@@ -611,7 +622,7 @@ impl Renderable for TyFunctionDeclaration {
             visibility: _,
         } = &self;
         let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemFn>(span.as_str());
+        let code_str = trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(span.as_str()));
         let function_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());

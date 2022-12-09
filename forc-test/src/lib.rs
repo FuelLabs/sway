@@ -1,7 +1,11 @@
+use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
+
 use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use rand::{Rng, SeedableRng};
+use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
+use sway_types::{Span, Spanned};
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -18,16 +22,34 @@ pub struct TestedPackage {
     pub tests: Vec<TestResult>,
 }
 
+#[derive(Debug)]
+pub struct TestDetails {
+    /// The file that contains the test function.
+    pub file_path: Arc<PathBuf>,
+    /// The line number for the test declaration.
+    pub line_number: usize,
+}
+
 /// The result of executing a single test within a single package.
-// TODO: This should include the function path, span and expected result.
 #[derive(Debug)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,
-    /// The resulting state after executing the test function.
-    pub state: vm::state::ProgramState,
     /// The time taken for the test to execute.
     pub duration: std::time::Duration,
+    /// The span for the function declaring this tests.
+    pub span: Span,
+    /// The resulting state after executing the test function.
+    pub state: vm::state::ProgramState,
+    /// The required state of the VM for this test to pass.
+    pub condition: TestPassCondition,
+}
+
+/// The possible conditions for a test result to be considered "passing".
+#[derive(Debug)]
+pub enum TestPassCondition {
+    ShouldRevert,
+    ShouldNotRevert,
 }
 
 /// A package that has been built, ready for test execution.
@@ -50,7 +72,7 @@ pub struct Opts {
     pub build_profile: Option<String>,
     /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
     ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
@@ -76,7 +98,34 @@ impl Opts {
 impl TestResult {
     /// Whether or not the test passed.
     pub fn passed(&self) -> bool {
-        !matches!(self.state, vm::state::ProgramState::Revert(_))
+        match &self.condition {
+            TestPassCondition::ShouldRevert => {
+                matches!(self.state, vm::state::ProgramState::Revert(_))
+            }
+            TestPassCondition::ShouldNotRevert => {
+                !matches!(self.state, vm::state::ProgramState::Revert(_))
+            }
+        }
+    }
+
+    /// Return `TestDetails` from the span of the function declaring this test.
+    pub fn details(&self) -> anyhow::Result<TestDetails> {
+        let file_path = self
+            .span
+            .path()
+            .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?
+            .to_owned();
+        let span_start = self.span.start();
+        let file_str = fs::read_to_string(&*file_path)?;
+        let line_number = file_str[..span_start]
+            .chars()
+            .into_iter()
+            .filter(|&c| c == '\n')
+            .count();
+        Ok(TestDetails {
+            file_path,
+            line_number,
+        })
     }
 }
 
@@ -106,6 +155,26 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     Ok(BuiltTests { built_pkg })
 }
 
+fn test_pass_condition(
+    test_function_decl: &TyFunctionDeclaration,
+) -> anyhow::Result<TestPassCondition> {
+    let test_args: HashSet<String> = test_function_decl
+        .attributes
+        .get(&AttributeKind::Test)
+        .expect("test declaration is missing test attribute")
+        .iter()
+        .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
+        .collect();
+    let test_name = &test_function_decl.name;
+    if test_args.is_empty() {
+        Ok(TestPassCondition::ShouldNotRevert)
+    } else if test_args.get("should_revert").is_some() {
+        Ok(TestPassCondition::ShouldRevert)
+    } else {
+        anyhow::bail!("Invalid test argument(s) for test: {test_name}.")
+    }
+}
+
 /// Build the the given package and run its tests, returning the results.
 fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
     let BuiltTests { built_pkg } = built;
@@ -120,13 +189,24 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
             let offset = u32::try_from(entry.imm).expect("test instruction offset out of range");
             let name = entry.fn_name.clone();
             let (state, duration) = exec_test(&built_pkg.bytecode, offset);
-            TestResult {
+            let test_decl_id = entry
+                .test_decl_id
+                .clone()
+                .expect("test entry point is missing declaration id");
+            let span = test_decl_id.span();
+            let test_function_decl =
+                sway_core::declaration_engine::de_get_function(test_decl_id, &span)
+                    .expect("declaration engine is missing function declaration for test");
+            let condition = test_pass_condition(&test_function_decl)?;
+            Ok(TestResult {
                 name,
-                state,
                 duration,
-            }
+                span,
+                state,
+                condition,
+            })
         })
-        .collect();
+        .collect::<anyhow::Result<_>>()?;
 
     let built = built_pkg;
     let tested_pkg = TestedPackage { built, tests };
