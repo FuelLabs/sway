@@ -300,25 +300,14 @@ impl<'ir> AsmBuilder<'ir> {
                 let (_, val) = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.value_to_register(val);
                 match self.program_kind {
-                    ProgramKind::Script => {
-                        self.read_args_base_from_script_data(&single_arg_reg);
-
-                        // The base is an offset.  Dereference it.
-                        if val.get_type(self.context).unwrap().is_copy_type() {
-                            self.cur_bytecode.push(Op {
-                                opcode: either::Either::Left(VirtualOp::LW(
-                                    single_arg_reg.clone(),
-                                    single_arg_reg.clone(),
-                                    VirtualImmediate12 { value: 0 },
-                                )),
-                                comment: "load main fn parameter".into(),
-                                owning_span: None,
-                            });
-                        }
-                    }
                     ProgramKind::Contract => self.read_args_base_from_frame(&single_arg_reg),
-                    ProgramKind::Predicate => {
-                        self.read_args_base_from_predicate_data(&single_arg_reg);
+                    ProgramKind::Library => return, // Nothing to do here
+                    ProgramKind::Script | ProgramKind::Predicate => {
+                        if let ProgramKind::Predicate = self.program_kind {
+                            self.read_args_base_from_predicate_data(&single_arg_reg);
+                        } else {
+                            self.read_args_base_from_script_data(&single_arg_reg);
+                        }
 
                         // The base is an offset.  Dereference it.
                         if val.get_type(self.context).unwrap().is_copy_type() {
@@ -333,7 +322,6 @@ impl<'ir> AsmBuilder<'ir> {
                             });
                         }
                     }
-                    _ => (),
                 }
             }
 
@@ -341,12 +329,12 @@ impl<'ir> AsmBuilder<'ir> {
             _ => {
                 let args_base_reg = self.reg_seqr.next();
                 match self.program_kind {
-                    ProgramKind::Script => self.read_args_base_from_script_data(&args_base_reg),
                     ProgramKind::Contract => self.read_args_base_from_frame(&args_base_reg),
+                    ProgramKind::Library => return, // Nothing to do here
                     ProgramKind::Predicate => {
                         self.read_args_base_from_predicate_data(&args_base_reg)
                     }
-                    _ => return,
+                    ProgramKind::Script => self.read_args_base_from_script_data(&args_base_reg),
                 }
 
                 // Successively load each argument. The asm generated depends on the arg type size
