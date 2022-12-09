@@ -301,7 +301,7 @@ impl<'ir> AsmBuilder<'ir> {
                 let single_arg_reg = self.value_to_register(val);
                 match self.program_kind {
                     ProgramKind::Contract => self.read_args_base_from_frame(&single_arg_reg),
-                    ProgramKind::Library => return, // Nothing to do here
+                    ProgramKind::Library => (), // Nothing to do here
                     ProgramKind::Script | ProgramKind::Predicate => {
                         if let ProgramKind::Predicate = self.program_kind {
                             self.read_args_base_from_predicate_data(&single_arg_reg);
