@@ -21,6 +21,7 @@ pub enum Intrinsic {
     Revert,
     PtrAdd,
     PtrSub,
+    Smo,
 }
 
 impl fmt::Display for Intrinsic {
@@ -45,6 +46,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Revert => "revert",
             Intrinsic::PtrAdd => "ptr_add",
             Intrinsic::PtrSub => "ptr_sub",
+            Intrinsic::Smo => "smo",
         };
         write!(f, "{}", s)
     }
@@ -73,6 +75,7 @@ impl Intrinsic {
             "__revert" => Revert,
             "__ptr_add" => PtrAdd,
             "__ptr_sub" => PtrSub,
+            "__smo" => Smo,
             _ => return None,
         })
     }

@@ -30,11 +30,29 @@ impl LogId {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+pub struct MessageId(usize);
+
+impl std::ops::Deref for MessageId {
+    type Target = usize;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl MessageId {
+    pub fn new(index: usize) -> MessageId {
+        MessageId(index)
+    }
+}
+
 pub enum TypeMetadata {
     // UnresolvedType receives the Ident of the type and a call site span.
     UnresolvedType(Ident, Option<Span>),
     // A log with a unique log ID and the type ID of the type of the value being logged
     LoggedType(LogId, TypeId),
+    // An smo with a unique message ID and the type ID of the type of the message data being sent
+    MessageType(MessageId, TypeId),
 }
 
 // A simple context that only contains a single counter for now but may expand in the future.
@@ -42,6 +60,10 @@ pub struct CollectTypesMetadataContext<'cx> {
     // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
     // obtain a unique ID for a given log instance.
     log_id_counter: usize,
+
+    // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
+    // obtain a unique ID for a given smo instance.
+    message_id_counter: usize,
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) type_engine: &'cx TypeEngine,
@@ -54,6 +76,14 @@ impl<'a> CollectTypesMetadataContext<'a> {
 
     pub fn log_id_counter_mut(&mut self) -> &mut usize {
         &mut self.log_id_counter
+    }
+
+    pub fn message_id_counter(&self) -> usize {
+        self.message_id_counter
+    }
+
+    pub fn message_id_counter_mut(&mut self) -> &mut usize {
+        &mut self.message_id_counter
     }
 
     pub fn call_site_push(&mut self) {
@@ -88,6 +118,7 @@ impl<'a> CollectTypesMetadataContext<'a> {
         let mut ctx = Self {
             type_engine,
             log_id_counter: 0,
+            message_id_counter: 0,
             call_site_spans: vec![],
         };
         ctx.call_site_push();

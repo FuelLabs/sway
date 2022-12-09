@@ -17,6 +17,7 @@ pub struct TyProgram {
     pub declarations: Vec<TyDeclaration>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
+    pub messages_types: Vec<(MessageId, TypeId)>,
 }
 
 impl TyProgram {
@@ -370,26 +371,31 @@ impl TyProgram {
                     .map(|x| x.generate_json_abi_function(type_engine, types))
                     .collect();
                 let logged_types = self.generate_json_logged_types(type_engine, types);
+                let messages_types = self.generate_json_messages_types(type_engine, types);
                 fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
+                    messages_types: Some(messages_types),
                 }
             }
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
                 let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
                 let logged_types = self.generate_json_logged_types(type_engine, types);
+                let messages_types = self.generate_json_messages_types(type_engine, types);
                 fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
+                    messages_types: Some(messages_types),
                 }
             }
             _ => fuels_types::ProgramABI {
                 types: vec![],
                 functions: vec![],
                 logged_types: None,
+                messages_types: None,
             },
         }
     }
@@ -419,6 +425,40 @@ impl TyProgram {
             .iter()
             .map(|(log_id, type_id)| fuels_types::LoggedType {
                 log_id: **log_id as u64,
+                application: fuels_types::TypeApplication {
+                    name: "".to_string(),
+                    type_id: type_id.index(),
+                    type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
+                },
+            })
+            .collect()
+    }
+
+    fn generate_json_messages_types(
+        &self,
+        type_engine: &TypeEngine,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> Vec<fuels_types::MessageType> {
+        // A list of all `fuels_types::TypeDeclaration`s needed for the messages types
+        let messages_types = self
+            .messages_types
+            .iter()
+            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+                type_id: type_id.index(),
+                type_field: type_id.get_json_type_str(type_engine, *type_id),
+                components: type_id.get_json_type_components(type_engine, types, *type_id),
+                type_parameters: type_id.get_json_type_parameters(type_engine, types, *type_id),
+            })
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(messages_types);
+
+        // Generate the JSON data for the messages types
+        self.messages_types
+            .iter()
+            .map(|(message_id, type_id)| fuels_types::MessageType {
+                message_id: **message_id as u64,
                 application: fuels_types::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),

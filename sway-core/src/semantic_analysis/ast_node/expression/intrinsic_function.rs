@@ -51,6 +51,7 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 type_check_ptr_ops(ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::Smo => type_check_smo(ctx, kind, arguments, type_arguments, span),
         }
     }
 }
@@ -1039,6 +1040,137 @@ fn type_check_ptr_ops(
                 span,
             },
             type_engine.insert_type(lhs_ty),
+        ),
+        warnings,
+        errors,
+    )
+}
+
+/// Signature: `__smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)`
+/// Description: Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset
+/// to address `recipient`. This intrinsic assumes that an OutputMessage is available at index
+/// `output_index`.
+/// Constraints: None.
+///
+fn type_check_smo(
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.type_engine;
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if arguments.len() != 4 {
+        errors.push(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 4,
+            span,
+        });
+        return err(warnings, errors);
+    }
+
+    if type_arguments.len() > 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+
+    // Type check the first argument which is the recipient address, so it has to be a `b256`.
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_engine.insert_type(TypeInfo::B256));
+    let recipient = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    let type_argument = type_arguments.get(0).map(|targ| {
+        let mut ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+        let initial_type_info = check!(
+            CompileResult::from(
+                type_engine
+                    .to_typeinfo(targ.type_id, &targ.span)
+                    .map_err(CompileError::from)
+            ),
+            TypeInfo::ErrorRecovery,
+            warnings,
+            errors
+        );
+        let initial_type_id = type_engine.insert_type(initial_type_info);
+        let type_id = check!(
+            ctx.resolve_type_with_self(
+                initial_type_id,
+                &targ.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+        TypeArgument {
+            type_id,
+            initial_type_id,
+            span: span.clone(),
+        }
+    });
+
+    // Type check the second argument which is the data, which can be anything.
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_argument
+            .clone()
+            .map_or(type_engine.insert_type(TypeInfo::Unknown), |ta| ta.type_id),
+    );
+    let data = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Type check the third argument which is the output index, so it has to be a `u64`.
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+    );
+    let output_index = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
+    let mut ctx = ctx.by_ref().with_type_annotation(
+        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+    );
+    let coins = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[3].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    ok(
+        (
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![recipient, data, output_index, coins],
+                type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+                span,
+            },
+            type_engine.insert_type(TypeInfo::Tuple(vec![])),
         ),
         warnings,
         errors,

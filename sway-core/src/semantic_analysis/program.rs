@@ -36,6 +36,7 @@ impl ty::TyProgram {
                 declarations,
                 storage_slots: vec![],
                 logged_types: vec![],
+                messages_types: vec![],
             })
         })
     }

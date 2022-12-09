@@ -17,7 +17,7 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, TypeId, TypeInfo},
+    type_system::{LogId, MessageId, TypeId, TypeInfo},
     types::DeterministicallyAborts,
     PartialEqWithTypeEngine, TypeEngine,
 };
@@ -47,6 +47,8 @@ pub(crate) struct FnCompiler<'te> {
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
     logged_types_map: HashMap<TypeId, LogId>,
+    // This is a map from the type IDs of a message data type and the ID of the corresponding smo
+    messages_types_map: HashMap<TypeId, MessageId>,
 }
 
 impl<'te> FnCompiler<'te> {
@@ -57,6 +59,7 @@ impl<'te> FnCompiler<'te> {
         function: Function,
         returns_by_ref: bool,
         logged_types_map: &HashMap<TypeId, LogId>,
+        messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -75,6 +78,7 @@ impl<'te> FnCompiler<'te> {
             recreated_fns: HashMap::new(),
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
+            messages_types_map: messages_types_map.clone(),
         }
     }
 
@@ -737,6 +741,20 @@ impl<'te> FnCompiler<'te> {
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
+            Intrinsic::Smo => {
+                let message_id = match self.messages_types_map.get(&arguments[1].return_type) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine ID for smo instance.",
+                            span,
+                        ))
+                    }
+                    Some(message_id) => {
+                        convert_literal_to_value(context, &Literal::U64(**message_id as u64))
+                    }
+                };
+                todo!();
+            }
         }
     }
 
@@ -1127,6 +1145,7 @@ impl<'te> FnCompiler<'te> {
                     self.module,
                     &callee_fn_decl,
                     &self.logged_types_map,
+                    &self.messages_types_map,
                     is_entry,
                     None,
                 )?
