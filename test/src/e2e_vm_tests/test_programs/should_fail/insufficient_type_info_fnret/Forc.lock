@@ -1,6 +1,6 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-125BF2A2DA112749'
+source = 'path+from-root-DC44092249FC5867'
 
 [[package]]
 name = 'insufficient_type_info_fnret'
@@ -9,5 +9,5 @@ dependencies = ['std']
 
 [[package]]
 name = 'std'
-source = 'path+from-root-125BF2A2DA112749'
+source = 'path+from-root-DC44092249FC5867'
 dependencies = ['core']
