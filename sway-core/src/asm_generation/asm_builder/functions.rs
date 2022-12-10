@@ -445,6 +445,19 @@ impl<'ir> AsmBuilder<'ir> {
         // successfully found
         let success_label = self.reg_seqr.get_label();
 
+        let input_index = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::GM(
+                input_index.clone(),
+                VirtualImmediate18 {
+                    value: 3 as u32,
+                },
+            )),
+            comment: "get Input index".into(),
+            owning_span: None,
+        });
+
+
         // Find the type of the "Input" using `GTF`. The returned value is one of three possible
         // ones:
         // 0 -> Input Coin = 0,
@@ -455,7 +468,8 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
                 input_type.clone(),
-                VirtualRegister::Constant(ConstantRegister::Zero),
+                input_index.clone(),
+                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputType as u16,
                 },
@@ -476,7 +490,8 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::Zero),
+                input_index.clone(),
+                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputCoinPredicateData as u16,
                 },
@@ -528,7 +543,8 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::Zero),
+                input_index.clone(),
+                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputMessagePredicateData as u16,
                 },
