@@ -47,14 +47,14 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     match &name {
         Some(name) => validate_name(name, "project name")?,
         None => {
-            // If there is no name specified for the project directory name will be used by default
-            // so we should also check that.
+            // If there is no name specified for the project, the last component of the `path` (directory name)
+            // will be used by default so we should also check that.
             let project_path = PathBuf::from(&path);
-            let project_name = project_path
+            let directory_name = project_path
                 .file_name()
                 .ok_or_else(|| anyhow!("missing path for new command"))?
                 .to_string_lossy();
-            validate_name(&project_name, "project_name")?;
+            validate_name(&directory_name, "project_name")?;
         }
     }
 
