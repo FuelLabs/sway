@@ -674,7 +674,7 @@ fn type_check_trait_implementation(
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
         // declaration
-        impl_method_signature.replace_self_type(type_engine, ctx.self_type());
+        impl_method_signature.replace_self_type(type_engine, self_type);
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -695,8 +695,8 @@ fn type_check_trait_implementation(
         // with the parameters of the function signature
         for (impl_method_signature_param, impl_method_param) in impl_method_signature
             .parameters
-            .iter()
-            .zip(&impl_method.parameters)
+            .iter_mut()
+            .zip(&mut impl_method.parameters)
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
@@ -715,14 +715,13 @@ fn type_check_trait_implementation(
                 });
             }
 
-            let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-                impl_method_param.type_id,
-                impl_method_signature_param.type_id,
-                ctx.self_type(),
-                &impl_method_signature_param.type_span,
-                ctx.help_text(),
-            );
-            if !new_warnings.is_empty() || !new_errors.is_empty() {
+            impl_method_param
+                .type_id
+                .replace_self_type(type_engine, self_type);
+            if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
+                &type_engine.look_up_type_id(impl_method_signature_param.type_id),
+                type_engine,
+            ) {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
@@ -755,16 +754,13 @@ fn type_check_trait_implementation(
             });
         }
 
-        // unify the return type of the implemented function and the return
-        // type of the signature
-        let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-            impl_method.return_type,
-            impl_method_signature.return_type,
-            ctx.self_type(),
-            &impl_method.return_type_span,
-            ctx.help_text(),
-        );
-        if !new_warnings.is_empty() || !new_errors.is_empty() {
+        impl_method
+            .return_type
+            .replace_self_type(type_engine, self_type);
+        if !type_engine.look_up_type_id(impl_method.return_type).eq(
+            &type_engine.look_up_type_id(impl_method_signature.return_type),
+            type_engine,
+        ) {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
