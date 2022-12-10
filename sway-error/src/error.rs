@@ -155,8 +155,9 @@ pub enum CompileError {
     )]
     MultipleImmediates(Span),
     #[error(
-        "Expected: {expected} \n\
-         found:    {given}. The definition of this function must \
+        "expected: {expected} \n\
+         found:    {given} \n\
+         help:     The definition of this function must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
