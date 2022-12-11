@@ -48,7 +48,7 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         forc_test::Tested::Workspace(pkgs) => {
             for pkg in pkgs {
                 let built = &pkg.built.pkg_name;
-                info!("\n   testing -- {built}\n");
+                info!("\n   tested -- {built}\n");
                 print_tested_pkg(&pkg)?;
             }
             info!("\n   Finished in {:?}", duration);

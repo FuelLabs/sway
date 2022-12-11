@@ -185,12 +185,12 @@ fn test_pass_condition(
 fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = run_pkg_tests(&pkg)?;
+            let tested_pkg = run_pkg_tests(*pkg)?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
-                .iter()
+                .into_iter()
                 .map(run_pkg_tests)
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
@@ -198,7 +198,7 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
     }
 }
 
-fn run_pkg_tests(built_pkg: &BuiltPackage) -> anyhow::Result<TestedPackage> {
+fn run_pkg_tests(built_pkg: BuiltPackage) -> anyhow::Result<TestedPackage> {
     // Run all tests and collect their results.
     // TODO: We can easily parallelise this, but let's wait until testing is stable first.
     let tests = built_pkg
@@ -229,7 +229,7 @@ fn run_pkg_tests(built_pkg: &BuiltPackage) -> anyhow::Result<TestedPackage> {
         .collect::<anyhow::Result<_>>()?;
 
     let tested_pkg = TestedPackage {
-        built: Box::new(built_pkg.clone()),
+        built: Box::new(built_pkg),
         tests,
     };
 
