@@ -36,7 +36,7 @@ fn check_script_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
     for op in ops {
         match op.opcode {
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                errors.push(CompileError::GMFromExternalContract {
+                errors.push(CompileError::GMFromExternalContext {
                     span: get_op_span(op),
                 });
             }
@@ -113,7 +113,7 @@ fn check_predicate_opcodes(ops: &[AllocatedOp]) -> CompileResult<()> {
             CROO(..) => invalid_opcode("CROO", &mut errors),
             CSIZ(..) => invalid_opcode("CSIZ", &mut errors),
             GM(_, VirtualImmediate18 { value: 1..=2 }) => {
-                errors.push(CompileError::GMFromExternalContract {
+                errors.push(CompileError::GMFromExternalContext {
                     span: get_op_span(op),
                 });
             }
