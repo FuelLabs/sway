@@ -700,17 +700,18 @@ fn type_check_trait_implementation(
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
-            // check if the mutability of the parameters is incompatible
-            if impl_method_param.is_mutable != impl_method_signature_param.is_mutable {
-                errors.push(CompileError::ParameterMutabilityMismatch {
-                    span: impl_method_param.mutability_span.clone(),
-                });
+            // Check if we have a non-ref mutable argument. That's not allowed.
+            if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
+                errors.push(CompileError::MutableParameterNotSupported {
+                    param_name: impl_method_signature.name.clone(),
+                })
             }
 
-            if (impl_method_param.is_reference || impl_method_signature_param.is_reference)
-                && is_contract
+            // check if reference / mutability of the parameters is incompatible
+            if impl_method_param.is_mutable != impl_method_signature_param.is_mutable
+                || impl_method_param.is_reference != impl_method_signature_param.is_reference
             {
-                errors.push(CompileError::RefMutParameterInContract {
+                errors.push(CompileError::ParameterRefMutabilityMismatch {
                     span: impl_method_param.mutability_span.clone(),
                 });
             }
