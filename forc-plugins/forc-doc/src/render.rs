@@ -611,6 +611,7 @@ impl Renderable for TyFunctionDeclaration {
             name,
             body: _,
             parameters: _,
+            implementing_type: _,
             span,
             attributes,
             return_type: _,
