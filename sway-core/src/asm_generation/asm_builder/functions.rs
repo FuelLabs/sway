@@ -445,6 +445,8 @@ impl<'ir> AsmBuilder<'ir> {
         // successfully found
         let success_label = self.reg_seqr.get_label();
 
+        // Use the `gm` instruction to get the index of the predicate. This is the index we're
+        // going to use in the subsequent `gtf` instructions. 
         let input_index = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GM(
