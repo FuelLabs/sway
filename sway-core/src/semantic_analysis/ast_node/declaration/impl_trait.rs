@@ -700,7 +700,6 @@ fn type_check_trait_implementation(
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
-
             // Check if we have a non-ref mutable argument. That's not allowed.
             if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
                 errors.push(CompileError::MutableParameterNotSupported {
