@@ -530,9 +530,10 @@ impl<'ir> AsmBuilder<'ir> {
         // Invert `input_type_is_message` to use in `jnzi`
         let input_type_not_message = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::NOT(
+            opcode: Either::Left(VirtualOp::XORI(
                 input_type_not_message.clone(),
                 input_type_is_message,
+                VirtualImmediate12 { value: 1 },
             )),
             comment: "input type is not message(2)".into(),
             owning_span: None,
