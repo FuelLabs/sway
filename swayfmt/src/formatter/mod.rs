@@ -90,7 +90,6 @@ impl Formatter {
             &mut formatted_code,
             &raw_formatted_code,
         )?;
-        println!("\nfinal code:\n----\n{}\n-----\n", formatted_code);
         if !formatted_code.ends_with('\n') {
             writeln!(formatted_code)?;
         }
@@ -1078,7 +1077,6 @@ library test_module_kind_with_comments;
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
-
     #[test]
     fn test_destructure_structs() {
         let sway_code_to_format = r#"library test_destructure_structs;
@@ -1209,41 +1207,6 @@ fn main() {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
-
-    #[test]
-    fn comments_between_if_else_do_not_inline() {
-        let sway_code_to_format = r#"script;
-
-fn main() {
-    if foo {
-        let x = true;
-    }
-    // comment
-    else {
-        bar(x);
-    }
-}
-"#;
-
-        let correct_sway_code = r#"script;
-
-fn main() {
-    if foo {
-        let x = true;
-    }
-    // comment
-    else {
-        bar(x);
-    }
-}
-"#;
-        let mut formatter = Formatter::default();
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code);
-        assert!(test_stability(formatted_sway_code, formatter));
-    }
-
     #[test]
     fn test_parameterless_attributes() {
         let sway_code_to_format = r#"library my_lib;
