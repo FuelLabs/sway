@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{language::parsed::TreeType, parse_tree_type};
+use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
@@ -144,7 +144,7 @@ pub struct PackageManifest {
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
     pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
-    pub contract_dependencies: Option<BTreeMap<String, Dependency>>,
+    pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -165,6 +165,15 @@ pub struct Project {
 pub struct Network {
     #[serde(default = "default_url")]
     pub url: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub struct ContractDependency {
+    #[serde(flatten)]
+    pub dependency: Dependency,
+    #[serde(default = "fuel_tx::Salt::default")]
+    pub salt: fuel_tx::Salt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -457,7 +466,7 @@ impl PackageManifest {
     }
 
     /// Produce an iterator yielding all listed contract dependencies
-    pub fn contract_deps(&self) -> impl Iterator<Item = (&String, &Dependency)> {
+    pub fn contract_deps(&self) -> impl Iterator<Item = (&String, &ContractDependency)> {
         self.contract_dependencies
             .as_ref()
             .into_iter()
@@ -547,7 +556,7 @@ impl PackageManifest {
     }
 
     /// Retrieve a reference to the contract dependency with the given name.
-    pub fn contract_dep(&self, contract_dep_name: &str) -> Option<&Dependency> {
+    pub fn contract_dep(&self, contract_dep_name: &str) -> Option<&ContractDependency> {
         self.contract_dependencies
             .as_ref()
             .and_then(|contract_dependencies| contract_dependencies.get(contract_dep_name))
@@ -559,7 +568,7 @@ impl PackageManifest {
         contract_dep_name: &str,
     ) -> Option<&DependencyDetails> {
         self.contract_dep(contract_dep_name)
-            .and_then(|contract_dep| match contract_dep {
+            .and_then(|contract_dep| match &contract_dep.dependency {
                 Dependency::Simple(_) => None,
                 Dependency::Detailed(detailed) => Some(detailed),
             })
