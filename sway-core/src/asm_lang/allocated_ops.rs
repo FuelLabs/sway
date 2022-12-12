@@ -402,7 +402,7 @@ impl fmt::Display for AllocatedOpcode {
 
             /* Other Instructions */
             FLAG(a) => write!(fmtr, "flag {}", a),
-            GM(a, b) => write!(fmtr, "gm {} {}", a, b),
+            GM(a, b) => write!(fmtr, "gm   {} {}", a, b),
             GTF(a, b, c) => write!(fmtr, "gtf  {} {} {}", a, b, c),
 
             /* Non-VM Instructions */

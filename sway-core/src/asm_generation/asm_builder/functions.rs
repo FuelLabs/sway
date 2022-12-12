@@ -449,14 +449,11 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GM(
                 input_index.clone(),
-                VirtualImmediate18 {
-                    value: 3 as u32,
-                },
+                VirtualImmediate18 { value: 3 as u32 },
             )),
-            comment: "get Input index".into(),
+            comment: "get predicate index".into(),
             owning_span: None,
         });
-
 
         // Find the type of the "Input" using `GTF`. The returned value is one of three possible
         // ones:
@@ -469,12 +466,11 @@ impl<'ir> AsmBuilder<'ir> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 input_type.clone(),
                 input_index.clone(),
-                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputType as u16,
                 },
             )),
-            comment: "get Input type".into(),
+            comment: "get input type".into(),
             owning_span: None,
         });
 
@@ -491,7 +487,6 @@ impl<'ir> AsmBuilder<'ir> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
                 input_index.clone(),
-                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputCoinPredicateData as u16,
                 },
@@ -526,7 +521,7 @@ impl<'ir> AsmBuilder<'ir> {
                 input_type,
                 two,
             )),
-            comment: "Input type is not message(2)".into(),
+            comment: "input type is not message(2)".into(),
             owning_span: None,
         });
 
@@ -544,12 +539,11 @@ impl<'ir> AsmBuilder<'ir> {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
                 input_index.clone(),
-                //VirtualRegister::Constant(ConstantRegister::Zero),
                 VirtualImmediate12 {
                     value: GTFArgs::InputMessagePredicateData as u16,
                 },
             )),
-            comment: "Input message predicate data pointer".into(),
+            comment: "input message predicate data pointer".into(),
             owning_span: None,
         });
         self.cur_bytecode.push(Op::jump_to_label(success_label));
@@ -565,7 +559,7 @@ impl<'ir> AsmBuilder<'ir> {
                 ConstantRegister::Zero,
             ))),
             owning_span: None,
-            comment: "returning false".into(),
+            comment: "return false".into(),
         });
 
         // Final success label to continue execution at if we successfully obtained the predicate
