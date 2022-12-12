@@ -1,16 +1,24 @@
 category = "fail"
 
+# check: $()fn set(self, val: Option<T>) {
+# check: $()expected: T
+# check: $()found:    Option<T>
+# check: $()help:     The definition of this function must match the one in the trait "MyTrait" declaration.
+
 # check: fn foo(s: str[7]) -> str[7] {
-# check: $()Expected: u64
-# check: $()found:    str[7]. The definition of this function must match the one in the trait "Foo" declaration.
+# nextln: $()expected: u64
+# nextln: $()found:    str[7]
+# nextln: $()The definition of this function must match the one in the trait "Foo" declaration.
 
 # check: fn bar(ref mut variable: u64) -> bool {
 # check: $()Parameter mutability mismatch between the trait function declaration and its implementation.
 
 # check: fn baz() -> u64 {
-# check: $()Expected: u32
-# check: $()found:    u64. The definition of this function must match the one in the trait "Foo" declaration.
+# nextln: $()expected: u32
+# nextln: $()found:    u64
+# nextln: $()The definition of this function must match the one in the trait "Foo" declaration.
 
 # check: fn quux() {
-# check: $()Expected: u64
-# check: $()found:    (). The definition of this function must match the one in the trait "Foo" declaration.
+# nextln: $()expected: u64
+# nextln: $()found:    ()
+# nextln: $()The definition of this function must match the one in the trait "Foo" declaration.

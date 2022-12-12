@@ -49,4 +49,43 @@ impl raw_ptr {
             };
         }
     }
+
+    /// Writes the given byte to the address.
+    pub fn write_byte(self, val: u8) {
+        let val_ptr = asm(r1: val) { r1: raw_ptr };
+        asm(ptr: self, val: val_ptr) {
+            sb ptr val i0;
+        };
+    }
+
+    /// reads a byte from the given address.
+    pub fn read_byte(self) -> u8 {
+        asm(r1: self, r2) {
+            lb r2 r1 i0;
+            r2: u8
+        }
+    }
+
+    /// Copies `count` bytes from `self` to `dst`
+    pub fn copy_bytes_to(self, dst: raw_ptr, count: u64) {
+        asm(dst: dst, src: self, len: count) {
+            mcp dst src len;
+        };
+    }
+
+    /// Add a u64 offset to a raw_ptr
+    pub fn add_uint_offset(self, offset: u64) -> raw_ptr {
+        asm(ptr: self, offset: offset, new) {
+            add new ptr offset;
+            new: raw_ptr
+        }
+    }
+
+    /// Subtract a u64 offset from a raw_ptr
+    pub fn sub_uint_offset(self, offset: u64) -> raw_ptr {
+        asm(ptr: self, offset: offset, new) {
+            sub new ptr offset;
+            new: raw_ptr
+        }
+    }
 }

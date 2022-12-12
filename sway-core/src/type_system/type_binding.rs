@@ -154,6 +154,10 @@ impl TypeBinding<CallPath> {
             );
         }
 
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
+
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
             ty::TyDeclaration::FunctionDeclaration(original_id) => {

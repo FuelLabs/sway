@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-DC44092249FC5867'
+
+[[package]]
+name = 'insufficient_type_info_fnret'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DC44092249FC5867'
+dependencies = ['core']

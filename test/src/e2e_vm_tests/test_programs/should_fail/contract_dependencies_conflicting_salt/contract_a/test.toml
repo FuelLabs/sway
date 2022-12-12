@@ -1,0 +1,3 @@
+category = "fail" 
+
+# check: There are conflicting salt declarations for contract dependency named: contract_c 
