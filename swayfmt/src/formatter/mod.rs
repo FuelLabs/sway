@@ -1174,9 +1174,10 @@ fn main() {
     // This is also a comment,
     // but multiline
     else if true {
+        // This is yet another comment
         storage.pledge_count.insert(user, pledge_count + 1);
     }
-    // This is yet another comment
+    // This is the last comment
     else {
         storage.pledge_count.insert(user, pledge_count + 1);
     }
@@ -1193,9 +1194,10 @@ fn main() {
     // This is also a comment,
     // but multiline
     else if true {
+        // This is yet another comment
         storage.pledge_count.insert(user, pledge_count + 1);
     }
-    // This is yet another comment
+    // This is the last comment
     else {
         storage.pledge_count.insert(user, pledge_count + 1);
     }
@@ -1207,6 +1209,41 @@ fn main() {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
+
+    #[test]
+    fn comments_between_if_else_do_not_inline() {
+        let sway_code_to_format = r#"script;
+
+fn main() {
+    if foo {
+        let x = true;
+    }
+    // comment
+    else {
+        bar(x);
+    }
+}
+"#;
+
+        let correct_sway_code = r#"script;
+
+fn main() {
+    if foo {
+        let x = true;
+    }
+    // comment
+    else {
+        bar(x);
+    }
+}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
     #[test]
     fn test_parameterless_attributes() {
         let sway_code_to_format = r#"library my_lib;
