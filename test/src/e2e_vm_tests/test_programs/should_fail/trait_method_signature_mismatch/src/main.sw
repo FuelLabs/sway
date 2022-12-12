@@ -3,6 +3,21 @@
 
 library test;
 
+struct MyStruct<T> {
+    val: T
+}
+
+trait MyTrait<T> {
+    fn set(self, val: T);
+}
+
+impl<T> MyTrait<T> for MyStruct<T> {
+    // This implementation uses an Option, but the definition does not
+    fn set(self, val: Option<T>) {
+
+    }
+}
+
 trait Foo {
     fn foo(x: u64) -> str[7];
     fn bar(variable: u64) -> bool;

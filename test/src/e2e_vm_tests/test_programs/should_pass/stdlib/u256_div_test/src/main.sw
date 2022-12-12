@@ -22,5 +22,27 @@ fn main() -> bool {
     let mut res = dividend / max_u64;
     assert(res == U256::from((1, 0, 0, 0)));
 
+    let base_u256 = U256 {
+        a: 0,
+        b: 0,
+        c: 0,
+        d: 1_000_000_000,
+    };
+    let factor_u256 = U256 {
+        a: 0,
+        b: 0,
+        c: 4000,
+        d: 0,
+    };
+    let denominator_u256 = U256 {
+        a: 0,
+        b: 0,
+        c: 1,
+        d: 0,
+    };
+    let res_u256 = (base_u256 * factor_u256) / denominator_u256;
+
+    assert(res_u256 == U256::from((0, 0, 0, 4000000000000)));
+
     true
 }
