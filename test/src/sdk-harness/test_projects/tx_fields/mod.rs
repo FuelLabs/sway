@@ -578,14 +578,17 @@ mod inputs {
             #[tokio::test]
             async fn can_get_input_message_sender() -> Result<(), Error> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
-                let result = contract_instance
-                    .methods()
-                    .get_input_message_sender(1)
-                    .call()
+                let handler = contract_instance.methods().get_input_message_sender(2);
+                let mut executable = handler.get_executable_call().await.unwrap();
+                add_message_input(&mut executable, wallet.clone()).await;              // let result = contract_instance
+
+                let receipts = executable
+                    .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
-                assert_eq!(Bech32Address::from(result.value), messages[0].sender);
+                
+                assert_eq!(receipts[1].data().unwrap(), *messages[0].sender.hash());
                 Ok(())
             }
 
@@ -607,15 +610,17 @@ mod inputs {
             #[tokio::test]
             async fn can_get_input_message_nonce() -> Result<(), Error> {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
-                let result = contract_instance
-                    .methods()
-                    .get_input_message_nonce(1)
-                    .call()
+                let handler = contract_instance.methods().get_input_message_nonce(2);
+                let mut executable = handler.get_executable_call().await.unwrap();
+                add_message_input(&mut executable, wallet.clone()).await;
+
+                let receipts = executable
+                    .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
                 let messages = wallet.get_messages().await?;
                 let nonce: u64 = messages[0].nonce.clone().into();
-                assert_eq!(result.value, nonce);
+                assert_eq!(receipts[1].val().unwrap(), nonce);
                 Ok(())
             }
 
