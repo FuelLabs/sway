@@ -1,14 +1,14 @@
 use super::*;
 use crate::{
-    declaration_engine::declaration_engine::*,
+    declaration_engine::{declaration_engine::*, DeclarationId},
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
-    TypeEngine,
+    TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
-use sway_error::error::CompileError;
 use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -252,6 +252,7 @@ fn connect_node(
                 expr.span.clone(),
                 options,
             )?;
+
             for leaf in return_contents.clone() {
                 graph.add_edge(this_index, leaf, "".into());
             }
@@ -393,7 +394,7 @@ fn connect_declaration(
         }
         AbiDeclaration(decl_id) => {
             let abi_decl = de_get_abi(decl_id.clone(), &span)?;
-            connect_abi_declaration(&abi_decl, graph, entry_node);
+            connect_abi_declaration(type_engine, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
         StructDeclaration(decl_id) => {
@@ -412,11 +413,6 @@ fn connect_declaration(
                 methods,
                 ..
             } = de_get_impl_trait(decl_id.clone(), &span)?;
-
-            let methods = methods
-                .into_iter()
-                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
-                .collect::<Result<Vec<_>, CompileError>>()?;
 
             connect_impl_trait(
                 type_engine,
@@ -485,7 +481,7 @@ fn connect_impl_trait(
     type_engine: &TypeEngine,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[ty::TyFunctionDeclaration],
+    methods: &[DeclarationId],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -503,17 +499,21 @@ fn connect_impl_trait(
     };
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for fn_decl in methods {
+    for method_decl_id in methods {
+        let fn_decl = de_get_function(method_decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
+            method_decl_id: method_decl_id.clone(),
         });
-        graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+        if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
+            graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+        }
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
         connect_typed_fn_decl(
             type_engine,
-            fn_decl,
+            &fn_decl,
             graph,
             fn_decl_entry_node,
             fn_decl.span.clone(),
@@ -563,10 +563,11 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
+    type_engine: &TypeEngine,
     decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
-) {
+) -> Result<(), CompileError> {
     graph.namespace.add_trait(
         CallPath {
             prefixes: vec![],
@@ -575,6 +576,81 @@ fn connect_abi_declaration(
         },
         entry_node,
     );
+
+    // If a struct type is used as a return type in the interface surface
+    // of the contract, then assume that any fields inside the struct can
+    // be used outside of the contract.
+    for fn_decl_id in decl.interface_surface.iter() {
+        let fn_decl = de_get_trait_fn(fn_decl_id.clone(), &decl.span)?;
+        if let Some(TypeInfo::Struct { name, .. }) =
+            get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
+        {
+            if let Some(ns) = graph.namespace.get_struct(&name).cloned() {
+                for (_, field_ix) in ns.fields.iter() {
+                    graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn get_struct_type_info_from_type_id(
+    type_engine: &TypeEngine,
+    type_id: TypeId,
+) -> Result<Option<TypeInfo>, TypeError> {
+    let type_info = type_engine.to_typeinfo(type_id, &Span::dummy())?;
+    match type_info {
+        TypeInfo::Enum {
+            type_parameters,
+            variant_types,
+            ..
+        } => {
+            for param in type_parameters.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, param.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            for var in variant_types.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, var.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Tuple(type_args) => {
+            for arg in type_args.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, arg.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Custom { type_arguments, .. } => {
+            if let Some(type_arguments) = type_arguments {
+                for arg in type_arguments.iter() {
+                    if let Ok(Some(type_info)) =
+                        get_struct_type_info_from_type_id(type_engine, arg.type_id)
+                    {
+                        return Ok(Some(type_info));
+                    }
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Struct { .. } => Ok(Some(type_info)),
+        TypeInfo::Array(type_arg, _) => {
+            get_struct_type_info_from_type_id(type_engine, type_arg.type_id)
+        }
+        _ => Ok(None),
+    }
 }
 
 /// For an enum declaration, we want to make a declaration node for every individual enum
@@ -713,6 +789,48 @@ fn depth_first_insertion_code_block(
     Ok((leaves, exit_node))
 }
 
+fn get_trait_fn_node_index(
+    function_decl_id: DeclarationId,
+    expression_span: Span,
+    graph: &ControlFlowGraph,
+) -> Result<Option<&NodeIndex>, CompileError> {
+    let fn_decl = de_get_function(function_decl_id, &expression_span)?;
+    if let Some(implementing_type) = fn_decl.implementing_type {
+        match implementing_type {
+            ty::TyDeclaration::TraitDeclaration(decl) => {
+                let trait_decl = de_get_trait(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
+            }
+            ty::TyDeclaration::StructDeclaration(decl) => {
+                let struct_decl = de_get_struct(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&struct_decl.name.into(), &fn_decl.name))
+            }
+            ty::TyDeclaration::ImplTrait(decl) => {
+                let impl_trait = de_get_impl_trait(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
+            }
+            ty::TyDeclaration::AbiDeclaration(decl) => {
+                let abi_decl = de_get_abi(decl, &expression_span)?;
+                Ok(graph
+                    .namespace
+                    .find_trait_method(&abi_decl.name.into(), &fn_decl.name))
+            }
+            _ => Err(CompileError::Internal(
+                "Could not get node index for trait function",
+                expression_span,
+            )),
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 /// connects any inner parts of an expression to the graph
 /// note the main expression node has already been inserted
 #[allow(clippy::too_many_arguments)]
@@ -724,7 +842,7 @@ fn connect_expression(
     exit_node: Option<NodeIndex>,
     label: &'static str,
     tree_type: &TreeType,
-    _expression_span: Span,
+    expression_span: Span,
     mut options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyExpressionVariant::*;
@@ -732,13 +850,15 @@ fn connect_expression(
         FunctionApplication {
             call_path: name,
             arguments,
+            function_decl_id,
             ..
         } => {
+            let fn_decl = de_get_function(function_decl_id.clone(), &expression_span)?;
             let mut is_external = false;
             // find the function in the namespace
             let (fn_entrypoint, fn_exit_point) = graph
                 .namespace
-                .get_function(&name.suffix)
+                .get_function(&fn_decl.name)
                 .cloned()
                 .map(
                     |FunctionNamespaceEntry {
@@ -756,6 +876,15 @@ fn connect_expression(
                         graph.add_node(format!("extern fn {} exit", name.suffix.as_str()).into()),
                     )
                 });
+
+            let trait_fn_node_idx =
+                get_trait_fn_node_index(function_decl_id.clone(), expression_span, graph)?;
+            if let Some(trait_fn_node_idx) = trait_fn_node_idx {
+                if fn_entrypoint != *trait_fn_node_idx {
+                    graph.add_edge(fn_entrypoint, *trait_fn_node_idx, "".into());
+                }
+            }
+
             for leaf in leaves {
                 graph.add_edge(*leaf, fn_entrypoint, label.into());
             }

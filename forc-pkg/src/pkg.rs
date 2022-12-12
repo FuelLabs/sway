@@ -62,7 +62,16 @@ pub enum DepKind {
     /// The dependency is a library and declared under `[dependencies]`.
     Library,
     /// The dependency is a contract and declared under `[contract-dependencies]`.
-    Contract,
+    Contract { salt: fuel_tx::Salt },
+}
+
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract { .. } => write!(f, "contract"),
+        }
+    }
 }
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
@@ -328,27 +337,6 @@ impl GitSourceIndex {
 impl Edge {
     pub fn new(name: String, kind: DepKind) -> Edge {
         Edge { name, kind }
-    }
-}
-
-impl FromStr for DepKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "library" => Ok(DepKind::Library),
-            "contract" => Ok(DepKind::Contract),
-            _ => bail!("invalid dep kind"),
-        }
-    }
-}
-
-impl fmt::Display for DepKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            DepKind::Library => write!(f, "library"),
-            DepKind::Contract => write!(f, "contract"),
-        }
     }
 }
 
@@ -732,6 +720,7 @@ fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTre
         .into_iter()
         .flat_map(move |(n, _)| validate_deps(graph, n, manifests, &mut visited))
         .collect();
+
     Ok(edges)
 }
 
@@ -812,7 +801,8 @@ fn validate_dep_manifest(
     let dep_program_type = dep_manifest.program_type()?;
     // Check if the dependency is either a library or a contract declared as a contract dependency
     match (&dep_program_type, &dep_edge.kind) {
-        (TreeType::Contract, DepKind::Contract) | (TreeType::Library { .. }, DepKind::Library) => {}
+        (TreeType::Contract, DepKind::Contract { salt: _ })
+        | (TreeType::Library { .. }, DepKind::Library) => {}
         _ => bail!(
             "\"{}\" is declared as a {} dependency, but is actually a {}",
             dep.name,
@@ -1367,6 +1357,8 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 /// If the given `manifest` is of type ManifestFile::Workspace resulting graph will have multiple
 /// root nodes, each representing a member of the workspace. Otherwise resulting graph will only
 /// have a single root node, representing the package that is described by the ManifestFile::Package
+///
+/// Checks the created graph after fetching for conflicting salt declarations.
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
@@ -1383,6 +1375,7 @@ fn fetch_graph(
             member_manifests,
         )?);
     }
+    validate_contract_deps(graph)?;
     Ok(added_nodes)
 }
 
@@ -1467,7 +1460,13 @@ fn fetch_deps(
     // If the current package is a contract, we need to first get the deployment dependencies
     let deps: Vec<(String, Dependency, DepKind)> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .map(|(n, d)| {
+            (
+                n.clone(),
+                d.dependency.clone(),
+                DepKind::Contract { salt: d.salt },
+            )
+        })
         .chain(
             package_manifest
                 .deps()
@@ -1492,7 +1491,7 @@ fn fetch_deps(
             }
         };
 
-        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind.clone());
         // Ensure we have an edge to the dependency.
         graph.update_edge(node, dep_node, dep_edge.clone());
 
@@ -2124,11 +2123,11 @@ pub fn dependency_namespace(
                 .get(&dep_node)
                 .cloned()
                 .expect("no namespace module"),
-            DepKind::Contract => {
+            DepKind::Contract { salt } => {
                 let mut constants = BTreeMap::default();
                 let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
-                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled, &salt),
                     // On `check` we don't compile contracts, so we use a placeholder.
                     None => ContractId::default(),
                 };
@@ -2510,14 +2509,38 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage) -> ContractId {
+fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
-    let salt = fuel_tx::Salt::new([0; 32]);
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    contract.id(&salt, &contract.root(), &state_root)
+    contract.id(salt, &contract.root(), &state_root)
+}
+
+/// Checks if there are conficting `Salt` declarations for the contract dependencies in the graph.
+fn validate_contract_deps(graph: &Graph) -> Result<()> {
+    // For each contract dependency node in the graph, check if there are conflicting salt
+    // declarations.
+    for node in graph.node_indices() {
+        let pkg = &graph[node];
+        let name = pkg.name.clone();
+        let salt_declarations: HashSet<fuel_tx::Salt> = graph
+            .edges_directed(node, Direction::Incoming)
+            .filter_map(|e| match e.weight().kind {
+                DepKind::Library => None,
+                DepKind::Contract { salt } => Some(salt),
+            })
+            .collect();
+        if salt_declarations.len() > 1 {
+            bail!(
+                "There are conflicting salt declarations for contract dependency named: {}\nDeclared salts: {:?}",
+                name,
+                salt_declarations,
+            )
+        }
+    }
+    Ok(())
 }
 
 /// Build an entire forc package and return the built_package output.
@@ -2578,7 +2601,7 @@ pub fn build(
         if plan
             .graph()
             .edges_directed(node, Direction::Incoming)
-            .any(|e| e.weight().kind == DepKind::Contract)
+            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }

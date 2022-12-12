@@ -131,7 +131,7 @@ pub enum CompileError {
     MutableParameterNotSupported { param_name: Ident },
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
-    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
@@ -155,8 +155,9 @@ pub enum CompileError {
     )]
     MultipleImmediates(Span),
     #[error(
-        "Expected: {expected} \n\
-         found:    {given}. The definition of this function must \
+        "expected: {expected} \n\
+         found:    {given} \n\
+         help:     The definition of this function must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
@@ -582,11 +583,9 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
-        "Parameter mutability mismatch between the trait function declaration and its implementation."
+        "Parameter reference type or mutability mismatch between the trait function declaration and its implementation."
     )]
-    ParameterMutabilityMismatch { span: Span },
-    #[error("Ref mutable parameter is not supported for contract ABI function.")]
-    RefMutParameterInContract { span: Span },
+    ParameterRefMutabilityMismatch { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -840,8 +839,7 @@ impl Spanned for CompileError {
             DeclIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
-            ParameterMutabilityMismatch { span, .. } => span.clone(),
-            RefMutParameterInContract { span, .. } => span.clone(),
+            ParameterRefMutabilityMismatch { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
