@@ -183,7 +183,7 @@ fn handle_declaration(
                     implementing_for_type_id,
                     &TypedAstToken::TypedDeclaration(declaration.clone()),
                     tokens,
-                    type_implementing_for_span.clone(),
+                    type_implementing_for_span,
                 );
             }
         }
@@ -555,7 +555,7 @@ fn collect_type_id(
                 type_arg.type_id,
                 &TypedAstToken::TypeArgument(type_arg.clone()),
                 tokens,
-                type_arg.span().clone(),
+                type_arg.span(),
             );
         }
         TypeInfo::Tuple(type_arguments) => {
@@ -574,7 +574,7 @@ fn collect_type_id(
             variant_types,
             ..
         } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
@@ -599,7 +599,7 @@ fn collect_type_id(
             fields,
             ..
         } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
@@ -620,7 +620,7 @@ fn collect_type_id(
             }
         }
         TypeInfo::Custom { type_arguments, .. } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
@@ -644,7 +644,7 @@ fn collect_type_id(
             }
         }
         _ => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
+            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));

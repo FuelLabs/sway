@@ -704,7 +704,7 @@ fn collect_type_arg(
         TypeInfo::Array(type_arg, length) => {
             token.kind = SymbolKind::NumericLiteral;
             tokens.insert(to_ident_key(&Ident::new(length.span())), token.clone());
-            collect_type_arg(type_engine, &type_arg, &token, tokens);
+            collect_type_arg(type_engine, type_arg, &token, tokens);
         }
         TypeInfo::Tuple(type_arguments) => {
             for type_arg in type_arguments {
