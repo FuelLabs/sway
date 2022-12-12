@@ -1,5 +1,6 @@
 use fuel_vm::{consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher};
 use fuels::{
+    contract::execution_script::ExecutableFuelCall,
     prelude::*,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
@@ -130,6 +131,30 @@ fn generate_outputs() -> Vec<TxOutput> {
     v
 }
 
+async fn add_message_input(call: &mut ExecutableFuelCall, wallet: WalletUnlocked) {
+    let message = &wallet.get_messages().await.unwrap()[0];
+
+    let message_id = TxInput::compute_message_id(
+        &message.sender.clone().into(),
+        &message.recipient.clone().into(),
+        message.nonce.clone().into(),
+        message.amount,
+        &message.data,
+    );
+
+    let message_input = TxInput::MessageSigned {
+        message_id: message_id,
+        sender: message.sender.clone().into(),
+        recipient: message.recipient.clone().into(),
+        amount: message.amount,
+        nonce: message.nonce,
+        witness_index: 0,
+        data: message.data.clone(),
+    };
+
+    call.tx.inputs_mut().push(message_input);
+}
+
 mod tx {
     use super::*;
 
@@ -226,19 +251,22 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_inputs_count() {
-        let (contract_instance, _, _, _) = get_contracts().await;
+        let (contract_instance, _, wallet, _) = get_contracts().await;
 
         let call_handler = contract_instance.methods().get_tx_inputs_count();
-        let script = call_handler.get_executable_call().await.unwrap();
-        let inputs = script.tx.inputs();
+        let mut execution_script = call_handler.get_executable_call().await.unwrap();
 
-        let result = contract_instance
-            .methods()
-            .get_tx_inputs_count()
-            .call()
+        add_message_input(&mut execution_script, wallet.clone()).await;
+
+        let inputs = execution_script.tx.inputs();
+
+        let receipts = execution_script
+            .execute(&wallet.get_provider().unwrap())
             .await
             .unwrap();
-        assert_eq!(result.value, inputs.len() as u64);
+
+        assert_eq!(inputs.len() as u64, 3u64);
+        assert_eq!(receipts[1].val().unwrap(), inputs.len() as u64);
     }
 
     #[tokio::test]
