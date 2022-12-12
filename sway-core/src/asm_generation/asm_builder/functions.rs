@@ -507,7 +507,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Check if the input type is "message" by comparing the input type to a register
         // containing 2.
-        let input_type_not_message = self.reg_seqr.next();
+        let input_type_is_message = self.reg_seqr.next();
         let two = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::MOVI(
@@ -519,9 +519,20 @@ impl<'ir> AsmBuilder<'ir> {
         });
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::EQ(
-                input_type_not_message.clone(),
+                input_type_is_message.clone(),
                 input_type,
                 two,
+            )),
+            comment: "input type is message(2)".into(),
+            owning_span: None,
+        });
+
+        // Invert `input_type_is_message` to use in `jnzi`
+        let input_type_not_message = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::NOT(
+                input_type_not_message.clone(),
+                input_type_is_message,
             )),
             comment: "input type is not message(2)".into(),
             owning_span: None,

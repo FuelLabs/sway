@@ -19,6 +19,7 @@ fn main(x: u64) -> bool {
 // nextln: ji   $IMM
 // nextln: movi $(r0=$REG) i2
 // nextln: eq   $r0 $r1 $r0
+// nextln: not  $r0 $r0
 // nextln: jnzi $r0 $IMM
 // nextln: gtf  $r3 $r2 i288
 // nextln: ji   $IMM
