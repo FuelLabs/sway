@@ -449,7 +449,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GM(
                 input_index.clone(),
-                VirtualImmediate18 { value: 3 as u32 },
+                VirtualImmediate18 { value: 3_u32 },
             )),
             comment: "get predicate index".into(),
             owning_span: None,
@@ -538,7 +538,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
                 base_reg.clone(),
-                input_index.clone(),
+                input_index,
                 VirtualImmediate12 {
                     value: GTFArgs::InputMessagePredicateData as u16,
                 },
