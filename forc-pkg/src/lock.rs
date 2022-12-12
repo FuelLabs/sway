@@ -8,7 +8,9 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fs,
     path::Path,
+    str::FromStr,
 };
+use sway_core::fuel_prelude::fuel_tx;
 
 /// The graph of pinned packages represented as a toml-serialization-friendly structure.
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -43,7 +45,7 @@ pub struct PkgLock {
 /// dependency. It is formatted like so:
 ///
 /// ```ignore
-/// (<dep_name>) <pkg_name> <source_string>
+/// (<dep_name>) <pkg_name> <source_string> (<salt>)
 /// ```
 ///
 /// The `(<dep_name>)` segment is only included in the uncommon case that the dependency name does
@@ -79,7 +81,13 @@ impl PkgLock {
                 let dep_kind = &dep_edge.kind;
                 let disambiguate = disambiguate.contains(&dep_pkg.name[..]);
                 (
-                    pkg_dep_line(dep_name, &dep_pkg.name, &dep_pkg.source, disambiguate),
+                    pkg_dep_line(
+                        dep_name,
+                        &dep_pkg.name,
+                        &dep_pkg.source,
+                        dep_kind,
+                        disambiguate,
+                    ),
                     dep_kind.clone(),
                 )
             })
@@ -91,7 +99,7 @@ impl PkgLock {
             .collect();
         let mut contract_dependencies: Vec<String> = all_dependencies
             .iter()
-            .filter(|(_, dep_kind)| *dep_kind == DepKind::Contract)
+            .filter(|(_, dep_kind)| matches!(*dep_kind, DepKind::Contract { .. }))
             .map(|(dep_pkg, _)| dep_pkg.clone())
             .collect();
         dependencies.sort();
@@ -133,6 +141,14 @@ impl PkgLock {
         let disambiguate = disambiguate.contains(&self.name[..]);
         pkg_name_disambiguated(&self.name, &self.source, disambiguate)
     }
+}
+
+/// Represents a `DepKind` before getting parsed.
+///
+/// Used to carry on the type of the `DepKind` until parsing. After parsing pkg_dep_line converted into `DepKind`.
+enum UnparsedDepKind {
+    Library,
+    Contract,
 }
 
 impl Lock {
@@ -191,7 +207,7 @@ impl Lock {
                 .as_ref()
                 .into_iter()
                 .flatten()
-                .map(|contract_dep| (contract_dep, DepKind::Contract));
+                .map(|contract_dep| (contract_dep, UnparsedDepKind::Contract));
             // If `pkg.dependencies` is None, we will be collecting an empty list of
             // lib_deps so that we will omit them during edge adding phase
             let lib_deps = pkg
@@ -199,16 +215,23 @@ impl Lock {
                 .as_ref()
                 .into_iter()
                 .flatten()
-                .map(|lib_dep| (lib_dep, DepKind::Library));
+                .map(|lib_dep| (lib_dep, UnparsedDepKind::Library));
             for (dep_line, dep_kind) in lib_deps.chain(contract_deps) {
-                let (dep_name, dep_key) = parse_pkg_dep_line(dep_line)
+                let (dep_name, dep_key, dep_salt) = parse_pkg_dep_line(dep_line)
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
                     .cloned()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
-                let dep_edge = Edge::new(dep_name, dep_kind.to_owned());
+                let dep_kind = match dep_kind {
+                    UnparsedDepKind::Library => DepKind::Library,
+                    UnparsedDepKind::Contract => {
+                        let dep_salt = dep_salt.unwrap_or_default();
+                        DepKind::Contract { salt: dep_salt }
+                    }
+                };
+                let dep_edge = Edge::new(dep_name, dep_kind);
                 graph.update_edge(node, dep_node, dep_edge);
             }
         }
@@ -250,43 +273,69 @@ fn pkg_dep_line(
     dep_name: Option<&str>,
     name: &str,
     source: &pkg::SourcePinned,
+    dep_kind: &DepKind,
     disambiguate: bool,
 ) -> PkgDepLine {
     // Only include the full unique string in the case that this dep requires disambiguation.
     let source_string = source.to_string();
     let pkg_string = pkg_name_disambiguated(name, &source_string, disambiguate);
     // Prefix the dependency name if it differs from the package name.
-    match dep_name {
+    let pkg_string = match dep_name {
         None => pkg_string.into_owned(),
         Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
+    };
+    // Append the salt if dep_kind is DepKind::Contract.
+    match dep_kind {
+        DepKind::Library => pkg_string,
+        DepKind::Contract { salt } => {
+            if *salt == fuel_tx::Salt::zeroed() {
+                pkg_string
+            } else {
+                format!("{} ({})", pkg_string, salt)
+            }
+        }
     }
 }
 
-type ParsedPkgLine<'a> = (Option<&'a str>, &'a str);
+type ParsedPkgLine<'a> = (Option<&'a str>, &'a str, Option<fuel_tx::Salt>);
 // Parse the given `PkgDepLine` into its dependency name and unique string segments.
 //
-// I.e. given "(<dep_name>) <name> <source>", returns ("<dep_name>", "<name> <source>").
+// I.e. given "(<dep_name>) <name> <source> (<salt>)", returns ("<dep_name>", "<name> <source>", "<salt>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
 fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
     let s = pkg_dep_line.trim();
+    let (dep_name, s) = match s.starts_with('(') {
+        false => (None, s),
+        true => {
+            // If we have the open bracket, grab everything until the closing bracket.
+            let s = &s["(".len()..];
+            let mut iter = s.split(')');
+            let dep_name = iter
+                .next()
+                .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+            // The rest is the unique package string and possibly the salt.
+            let s = &s[dep_name.len() + ")".len()..];
+            (Some(dep_name), s)
+        }
+    };
 
-    // Check for the open bracket.
-    if !s.starts_with('(') {
-        return Ok((None, s));
-    }
-
-    // If we have the open bracket, grab everything until the closing bracket.
-    let s = &s["(".len()..];
-    let mut iter = s.split(')');
-    let dep_name = iter
+    // Check for salt.
+    let mut iter = s.split('(');
+    let pkg_str = iter
         .next()
-        .ok_or_else(|| anyhow!("missing closing parenthesis"))?;
+        .ok_or_else(|| anyhow!("missing pkg string"))?
+        .trim();
+    let salt_str = iter.next().map(|s| s.trim()).map(|s| &s[..s.len() - 1]);
+    let salt = match salt_str {
+        Some(salt_str) => Some(
+            fuel_tx::Salt::from_str(salt_str)
+                .map_err(|e| anyhow!("invalid salt in lock file: {e}"))?,
+        ),
+        None => None,
+    };
 
-    // The rest is the unique package string.
-    let s = &s[dep_name.len() + ")".len()..];
-    let pkg_str = s.trim_start();
-    Ok((Some(dep_name), pkg_str))
+    Ok((dep_name, pkg_str, salt))
 }
 
 pub fn print_diff(member_names: &HashSet<String>, diff: &Diff) {
@@ -323,5 +372,56 @@ fn name_or_git_unique_string(pkg: &PkgLock) -> Cow<str> {
     match pkg.source.starts_with(pkg::SourceGitPinned::PREFIX) {
         true => Cow::Owned(pkg.unique_string()),
         false => Cow::Borrowed(&pkg.name),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use sway_core::fuel_prelude::fuel_tx;
+
+    use super::parse_pkg_dep_line;
+
+    #[test]
+    fn test_parse_pkg_line_with_salt_with_dep_name() {
+        let pkg_dep_line = "(std2) std path+from-root (0000000000000000000000000000000000000000000000000000000000000000)";
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        assert_eq!(salt, Some(fuel_tx::Salt::zeroed()));
+        assert_eq!(dep_name, Some("std2"));
+        assert_eq!(pkg_string, "std path+from-root");
+    }
+
+    #[test]
+    fn test_parse_pkg_line_with_salt_without_dep_name() {
+        let pkg_dep_line =
+            "std path+from-root (0000000000000000000000000000000000000000000000000000000000000000)";
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        assert_eq!(salt, Some(fuel_tx::Salt::zeroed()));
+        assert_eq!(dep_name, None);
+        assert_eq!(pkg_string, "std path+from-root");
+    }
+
+    #[test]
+    fn test_parse_pkg_line_without_salt_with_dep_name() {
+        let pkg_dep_line = "(std2) std path+from-root";
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        assert_eq!(salt, None);
+        assert_eq!(dep_name, Some("std2"));
+        assert_eq!(pkg_string, "std path+from-root");
+    }
+
+    #[test]
+    fn test_parse_pkg_line_without_salt_without_dep_name() {
+        let pkg_dep_line = "std path+from-root";
+        let (dep_name, pkg_string, salt) = parse_pkg_dep_line(pkg_dep_line).unwrap();
+        assert_eq!(salt, None);
+        assert_eq!(dep_name, None);
+        assert_eq!(pkg_string, "std path+from-root");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_pkg_line_invalid_salt() {
+        let pkg_dep_line = "std path+from-root (1)";
+        parse_pkg_dep_line(pkg_dep_line).unwrap();
     }
 }
