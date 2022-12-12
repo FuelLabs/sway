@@ -501,7 +501,7 @@ impl<'ir> AsmBuilder<'ir> {
         // execution.
         self.cur_bytecode.push(Op::jump_to_label(success_label));
 
-        // Otherwise, insert the label to jump to if the input type is not "coin".
+        // Otherwise, insert the label to jump to if the input type is not a "coin".
         self.cur_bytecode
             .push(Op::unowned_jump_label(input_type_not_coin_label));
 
