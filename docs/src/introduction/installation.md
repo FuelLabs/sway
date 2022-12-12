@@ -32,28 +32,6 @@ to install the latest Fuel toolchain.
 
 You can run the same command at a later time to update the toolchain.
 
-## Installing from Source
-
-### Dependencies
-
-A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing `rustup` can be found [here](https://www.rust-lang.org/tools/install). Then, install the Rust toolchain with:
-
-```sh
-# Install the latest stable Rust toolchain.
-rustup install stable
-```
-
-Installing `fuel-core` may require installing additional system dependencies. See [here](https://github.com/FuelLabs/fuel-core#building) for instructions.
-
-The Sway toolchain is built and tested against the `stable` Rust toolchain version (<https://github.com/rust-lang/rust/releases/latest>). There is no guarantee it will work with the `nightly` Rust toolchain, or with earlier `stable` versions, so ensure you are using `stable` with:
-
-```sh
-# Update installed Rust toolchain; can be used independently.
-rustup update
-# Set the stable Rust toolchain as default; can be used independently.
-rustup default stable
-```
-
 ### Installing from Cargo
 
 The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:
@@ -85,6 +63,28 @@ cargo install forc-explore
 
 # Sway Language Server
 cargo install forc-lsp
+```
+
+## Installing from Source
+
+### Dependencies
+
+A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing `rustup` can be found [here](https://www.rust-lang.org/tools/install). Then, install the Rust toolchain with:
+
+```sh
+# Install the latest stable Rust toolchain.
+rustup install stable
+```
+
+Installing `fuel-core` may require installing additional system dependencies. See [here](https://github.com/FuelLabs/fuel-core#building) for instructions.
+
+The Sway toolchain is built and tested against the `stable` Rust toolchain version (<https://github.com/rust-lang/rust/releases/latest>). There is no guarantee it will work with the `nightly` Rust toolchain, or with earlier `stable` versions, so ensure you are using `stable` with:
+
+```sh
+# Update installed Rust toolchain; can be used independently.
+rustup update
+# Set the stable Rust toolchain as default; can be used independently.
+rustup default stable
 ```
 
 ### Building from Source
