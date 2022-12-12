@@ -289,7 +289,6 @@ fn insert_after_span(
     } else {
         src_rope.insert(from.end + offset, &comment_str);
     }
-
     formatted_code.clear();
     formatted_code.push_str(&src_rope.to_string());
     Ok(comment_str.len())
