@@ -72,6 +72,8 @@ fn get_full_width_line_style(
             let mut if_expr_str = FormattedCode::new();
             format_if_expr(if_expr, &mut if_expr_str, temp_formatter)?;
 
+            let if_expr_width = if_expr_str.chars().count();
+
             temp_formatter.shape.code_line.update_width(if_expr_width);
             formatter.shape.code_line.update_width(if_expr_width);
             temp_formatter
