@@ -797,11 +797,6 @@ fn collect_type_info_token(
     }
 
     match type_info {
-        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
-            if let Some(type_span) = type_span {
-                tokens.insert(to_ident_key(&Ident::new(type_span)), token);
-            }
-        }
         TypeInfo::Str(length) => {
             tokens.insert(to_ident_key(&Ident::new(length.span())), token);
         }
@@ -827,7 +822,11 @@ fn collect_type_info_token(
                 }
             }
         }
-        _ => (),
+        _ => {
+            if let Some(type_span) = type_span {
+                tokens.insert(to_ident_key(&Ident::new(type_span)), token);
+            }
+        }
     }
 }
 

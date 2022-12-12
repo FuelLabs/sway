@@ -39,7 +39,6 @@ fn handle_declaration(
                 token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
             }
             if let Some(type_ascription_span) = &variable.type_ascription_span {
-                eprintln!("variable = {:#?}", variable);
                 collect_type_id(
                     type_engine,
                     variable.type_ascription,
@@ -548,7 +547,6 @@ fn collect_type_id(
     type_span: Span,
 ) {
     let type_info = type_engine.look_up_type_id(type_id);
-    eprintln!("type_info: {:#?}", type_info);
     let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
     match &type_info {
         TypeInfo::Array(type_arg, ..) => {
@@ -572,16 +570,16 @@ fn collect_type_id(
             }
         }
         TypeInfo::Enum {
-            name,
             type_parameters,
             variant_types,
+            ..
         } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
             }
-            
+
             for param in type_parameters {
                 collect_type_id(
                     type_engine,
@@ -597,9 +595,9 @@ fn collect_type_id(
             }
         }
         TypeInfo::Struct {
-            name,
             type_parameters,
             fields,
+            ..
         } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
                 token.kind = symbol_kind;
@@ -621,10 +619,7 @@ fn collect_type_id(
                 collect_ty_struct_field(type_engine, field, tokens);
             }
         }
-        TypeInfo::Custom {
-            name,
-            type_arguments,
-        } => {
+        TypeInfo::Custom { type_arguments, .. } => {
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
@@ -649,15 +644,10 @@ fn collect_type_id(
             }
         }
         _ => {
-            //eprintln!("TYPE SPAN: {:#?}", type_span);
-
             if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span.clone()))) {
                 token.kind = symbol_kind;
                 token.typed = Some(typed_token.clone());
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
-
-                //eprintln!("TOKEN KEY: {:#?}", token.key());
-                //eprintln!("TOKEN VALUE: {:#?}", token.value());
             }
         }
     }
