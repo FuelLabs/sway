@@ -182,3 +182,12 @@ fn main() {
   let foo_id = foo::CONTRACT_ID;
 }
 ```
+
+Because the ID of a contract is computed deterministically, rebuilding the same contract would always result in the same contract ID. Since two contracts with same contract ID cannot be deployed on the blockchain, a "salt" factor is needed to modify the contract ID. For each contract dependency declared under `[contract-dependencies]`, `salt` can be specified. An example is shown below:
+
+```toml
+[contract-dependencies]
+foo = { path = "../foo", salt = "0x1000000000000000000000000000000000000000000000000000000000000000" }
+```
+
+For contract dependencies that do not specify any value for `salt`, a default of all zeros for `salt` is implicitly applied.

@@ -155,20 +155,30 @@ other_really_long_var
 0  &&   other_really_long_var    !=    0 {  foo();  }else{bar();}"
 );
 
-fmt_test!(  if_else_control_flow_1    "if foo { break; } else { continue; }",
+fmt_test!(  if_else_inline_1    "if foo { break; } else { continue; }",
             intermediate_whitespace "if  foo { \n        break; \n}    else  {\n    continue;    \n}");
 
-fmt_test!(  if_else_control_flow_2
-"if foo {
-    let x = 1;
-} else {
-    bar(y);
-}"
+fmt_test!(  if_else_inline_2
+"if foo { let x = 1; } else { bar(y); }"
  ,
             
             intermediate_whitespace 
 "    if foo    {
         let x = 1;
+    } else    {
+    bar(y)   ;
+}    ");
+
+fmt_test!(  if_else_multiline
+"if foo {
+    let really_long_variable = 1;
+} else {
+    bar(y);
+}",
+            
+            intermediate_whitespace 
+"    if foo    {
+    let    really_long_variable = 1;
     } else    {
     bar(y)   ;
 }    ");
