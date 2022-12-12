@@ -1,7 +1,8 @@
 use crate::{cli::init::Command as InitCommand, ops::forc_init::init};
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use std::path::Path;
+use forc_util::validate_name;
+use std::path::{Path, PathBuf};
 
 /// Create a new Forc project at `<path>`.
 #[derive(Debug, Parser)]
@@ -42,6 +43,20 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         name,
         path,
     } = command;
+
+    match &name {
+        Some(name) => validate_name(name, "project name")?,
+        None => {
+            // If there is no name specified for the project, the last component of the `path` (directory name)
+            // will be used by default so we should also check that.
+            let project_path = PathBuf::from(&path);
+            let directory_name = project_path
+                .file_name()
+                .ok_or_else(|| anyhow!("missing path for new command"))?
+                .to_string_lossy();
+            validate_name(&directory_name, "project_name")?;
+        }
+    }
 
     let dir_path = Path::new(&path);
     if dir_path.exists() {

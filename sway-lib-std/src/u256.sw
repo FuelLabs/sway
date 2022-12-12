@@ -356,26 +356,37 @@ impl core::ops::Add for U256 {
 impl core::ops::Subtract for U256 {
     /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
+        if self == other {
+            return Self::min();
+        } else if other == Self::min() {
+            return self;
+        }
         // If trying to subtract a larger number, panic.
-        assert(!(self < other));
-
+        assert(self > other);
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut result_a = word_1 - other_word_1;
-
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
             result_b = word_2 - other_word_2;
         }
-
         let mut result_c = 0;
         if word_3 < other_word_3 {
             result_c = u64::max() - (other_word_3 - word_3 - 1);
-            result_b -= 1;
+            if result_b > 0 {
+                result_b -= 1;
+            } else {
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // which we ruled out at the beginning of the function.
+                result_a -= 1;
+                result_b = u64::max();
+            }
         } else {
             result_c = word_3 - other_word_3;
         }
@@ -383,7 +394,19 @@ impl core::ops::Subtract for U256 {
         let mut result_d = 0;
         if word_4 < other_word_4 {
             result_d = u64::max() - (other_word_4 - word_4 - 1);
-            result_c -= 1;
+            if result_c > 0 {
+                result_c -= 1;
+            } else {
+                if result_b > 0 {
+                    result_b -= 1;
+                } else {
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // which we ruled out at the beginning of the function.
+                    result_a -= 1;
+                    result_b = u64::max();
+                }
+                result_c = u64::max();
+            }
         } else {
             result_d = word_4 - other_word_4;
         }
@@ -415,7 +438,7 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
                 let result_b_d = self.b.overflowing_mul(other.d);
-                let result_c_c = self.c.overflowing_mul(other.d);
+                let result_c_c = self.c.overflowing_mul(other.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
@@ -432,7 +455,7 @@ impl core::ops::Multiply for U256 {
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
-                let result_c_c = other.c.overflowing_mul(self.d);
+                let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = other.c.overflowing_mul(self.d);
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
@@ -444,7 +467,7 @@ impl core::ops::Multiply for U256 {
                     result_d_d.lower,
                 ))
             } else {
-                let result_c_c = other.c.overflowing_mul(self.d);
+                let result_c_c = other.c.overflowing_mul(self.c);
                 let result_c_d = self.c.overflowing_mul(other.d);
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);

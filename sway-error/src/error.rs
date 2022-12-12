@@ -155,8 +155,9 @@ pub enum CompileError {
     )]
     MultipleImmediates(Span),
     #[error(
-        "Expected: {expected} \n\
-         found:    {given}. The definition of this function must \
+        "expected: {expected} \n\
+         found:    {given} \n\
+         help:     The definition of this function must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
@@ -501,7 +502,7 @@ pub enum CompileError {
     #[error("File {file_path} generates an infinite dependency cycle.")]
     InfiniteDependencies { file_path: String, span: Span },
     #[error("The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.")]
-    GMFromExternalContract { span: Span },
+    GMFromExternalContext { span: Span },
     #[error("The MINT opcode cannot be used in an external context.")]
     MintFromExternalContext { span: Span },
     #[error("The BURN opcode cannot be used in an external context.")]
@@ -812,7 +813,7 @@ impl Spanned for CompileError {
             RecursiveTypeChain { span, .. } => span.clone(),
             TypeWithUnknownSize { span, .. } => span.clone(),
             InfiniteDependencies { span, .. } => span.clone(),
-            GMFromExternalContract { span, .. } => span.clone(),
+            GMFromExternalContext { span, .. } => span.clone(),
             MintFromExternalContext { span, .. } => span.clone(),
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
