@@ -2698,6 +2698,11 @@ fn update_all_types(
             update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
     }
+    if let Some(messages_types) = &mut json_abi_program.messages_types {
+        for logged_type in messages_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
+    }
 }
 
 /// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from

@@ -33,7 +33,7 @@
       "messageId": 0,
       "messageType": {
         "name": "",
-        "type": 60,
+        "type": 2,
         "typeArguments": null
       }
     },
@@ -41,7 +41,7 @@
       "messageId": 1,
       "messageType": {
         "name": "",
-        "type": 67,
+        "type": 11,
         "typeArguments": null
       }
     },
@@ -49,7 +49,7 @@
       "messageId": 2,
       "messageType": {
         "name": "",
-        "type": 75,
+        "type": 10,
         "typeArguments": null
       }
     },
@@ -57,7 +57,7 @@
       "messageId": 3,
       "messageType": {
         "name": "",
-        "type": 83,
+        "type": 9,
         "typeArguments": null
       }
     },
@@ -65,7 +65,7 @@
       "messageId": 4,
       "messageType": {
         "name": "",
-        "type": 91,
+        "type": 12,
         "typeArguments": null
       }
     },
@@ -73,7 +73,7 @@
       "messageId": 5,
       "messageType": {
         "name": "",
-        "type": 41,
+        "type": 7,
         "typeArguments": null
       }
     },
@@ -81,7 +81,7 @@
       "messageId": 6,
       "messageType": {
         "name": "",
-        "type": 103,
+        "type": 1,
         "typeArguments": null
       }
     },
@@ -89,11 +89,11 @@
       "messageId": 7,
       "messageType": {
         "name": "",
-        "type": 52,
+        "type": 8,
         "typeArguments": [
           {
             "name": "",
-            "type": 51,
+            "type": 2,
             "typeArguments": null
           }
         ]
@@ -103,7 +103,7 @@
       "messageId": 8,
       "messageType": {
         "name": "",
-        "type": 58,
+        "type": 5,
         "typeArguments": []
       }
     },
@@ -111,15 +111,15 @@
       "messageId": 9,
       "messageType": {
         "name": "",
-        "type": 131,
+        "type": 4,
         "typeArguments": [
           {
             "name": "",
-            "type": 120,
+            "type": 8,
             "typeArguments": [
               {
                 "name": "",
-                "type": 124,
+                "type": 11,
                 "typeArguments": null
               }
             ]
