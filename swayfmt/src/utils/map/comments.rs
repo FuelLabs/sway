@@ -200,7 +200,9 @@ fn get_comments_between_spans(
                 .lines()
                 .take(2);
 
+            // consume '\n'
             let _ = rest_of_code.next();
+            // actual next line of code that we're interested in
             let next_line = rest_of_code.next().unwrap_or_default();
 
             // In certain cases where comments come in between unusual places,
@@ -214,10 +216,12 @@ fn get_comments_between_spans(
                 let else_token_start = next_line
                     .char_indices()
                     .find(|(_, c)| !c.is_whitespace())
-                    .map(|ci| ci.0)
+                    .map(|(i, _)| i)
                     .unwrap_or_default();
                 unformatted_code[comment_span.end..comment_span.end + else_token_start].to_string()
             } else {
+                // If we don't find anything to format in the context after, we simply
+                // return an empty context.
                 "".to_string()
             };
 
