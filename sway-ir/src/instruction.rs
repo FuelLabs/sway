@@ -124,12 +124,11 @@ pub enum Instruction {
     Ret(Value, Type),
     /// Revert VM execution.
     Revert(Value),
-    /// Sends `message_data` of type `message_ty` and a `coins` amount of the base asset to
-    /// `recipient`.
-    /// - Assume the existence of an `OutputMessage` at `output_index`
-    /// - Also accepts a unique ID describing the `smo` instance.
-    /// - `recipient` must be of type `b256`
-    /// - `output_index`, `coins`, and `message_id` must be of type `U64`.
+    /// - Sends a message to an output via the `smo` FuelVM instruction. The first operand must be
+    /// a struct with the first field being a `B256` representing the recipient. The rest of the
+    /// struct is the message data being sent.
+    /// - Assumes the existence of an `OutputMessage` at `output_index`
+    /// - `message_size`, `output_index`, and `coins` must be of type `U64`.
     Smo {
         recipient_and_message: Value,
         message_size: Value,

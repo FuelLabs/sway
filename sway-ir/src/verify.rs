@@ -711,19 +711,33 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_smo(
         &self,
-        _recipient_and_message: &Value,
+        recipient_and_message: &Value,
         message_size: &Value,
         output_index: &Value,
         coins: &Value,
     ) -> Result<(), IrError> {
+        // Check that the first operand is a struct with the first field being a `b256`
+        // representing the recipient address
+        if let Some(Type::Struct(agg)) = recipient_and_message.get_stripped_ptr_type(self.context) {
+            let fields = self.context.aggregates[agg.0].field_types();
+            if fields.is_empty() || !fields[0].eq(self.context, &Type::B256) {
+                return Err(IrError::VerifySmoRecipientBadType);
+            }
+        } else {
+            return Err(IrError::VerifySmoBadRecipientAndMessageType);
+        }
+
+        // Check that the second operand is a `u64` representing the message size.
         if !matches!(message_size.get_type(self.context), Some(Type::Uint(64))) {
             return Err(IrError::VerifySmoMessageSize);
         }
 
+        // Check that the third operand is a `u64` representing the output index.
         if !matches!(output_index.get_type(self.context), Some(Type::Uint(64))) {
             return Err(IrError::VerifySmoOutputIndex);
         }
 
+        // Check that the fourth operand is a `u64` representing the amount of coins being sent.
         if !matches!(coins.get_type(self.context), Some(Type::Uint(64))) {
             return Err(IrError::VerifySmoCoins);
         }

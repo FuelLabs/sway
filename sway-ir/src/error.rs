@@ -59,6 +59,8 @@ pub enum IrError {
     VerifyLogId,
     VerifyMismatchedLoggedTypes,
     VerifyRevertCodeBadType,
+    VerifySmoRecipientBadType,
+    VerifySmoBadRecipientAndMessageType,
     VerifySmoMessageSize,
     VerifySmoCoins,
     VerifySmoOutputIndex,
@@ -322,6 +324,19 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: error code for revert must be a u64."
+                )
+            }
+            IrError::VerifySmoRecipientBadType => {
+                write!(
+                    f,
+                    "Verification failed: the struct `recipient_and_message` of `smo` must have a `b256` \
+                    as its first field."
+                )
+            }
+            IrError::VerifySmoBadRecipientAndMessageType => {
+                write!(
+                    f,
+                    "Verification failed: `recipient_and_message` of `smo` must have a struct"
                 )
             }
             IrError::VerifySmoMessageSize => {

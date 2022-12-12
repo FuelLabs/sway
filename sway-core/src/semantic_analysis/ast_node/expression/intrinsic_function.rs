@@ -1051,7 +1051,6 @@ fn type_check_ptr_ops(
 /// to address `recipient`. This intrinsic assumes that an OutputMessage is available at index
 /// `output_index`.
 /// Constraints: None.
-///
 fn type_check_smo(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -1082,17 +1081,7 @@ fn type_check_smo(
         return err(warnings, errors);
     }
 
-    // Type check the first argument which is the recipient address, so it has to be a `b256`.
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert_type(TypeInfo::B256));
-    let recipient = check!(
-        ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
+    // Type check the type argument
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
             .by_ref()
@@ -1127,7 +1116,19 @@ fn type_check_smo(
         }
     });
 
-    // Type check the second argument which is the data, which can be anything.
+    // Type check the first argument which is the recipient address, so it has to be a `b256`.
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_engine.insert_type(TypeInfo::B256));
+    let recipient = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Type check the second argument which is the data, which can be anything. If a type
+    // argument is provided, make sure that it matches the type of the data.
     let mut ctx = ctx.by_ref().with_type_annotation(
         type_argument
             .clone()
