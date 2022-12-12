@@ -722,7 +722,7 @@ fn module_dead_code_analysis(
                 module_dead_code_analysis(type_engine, &submodule.module, &tree_type, graph)
             })
         });
-    submodules_res.flat_map(|()| {
+    let res = submodules_res.flat_map(|()| {
         ControlFlowGraph::append_module_to_dead_code_graph(
             type_engine,
             &module.all_nodes,
@@ -731,7 +731,9 @@ fn module_dead_code_analysis(
         )
         .map(|_| ok((), vec![], vec![]))
         .unwrap_or_else(|error| err(vec![], vec![error]))
-    })
+    });
+    graph.connect_pending_entry_edges();
+    res
 }
 
 fn return_path_analysis(type_engine: &TypeEngine, program: &ty::TyProgram) -> Vec<CompileError> {
