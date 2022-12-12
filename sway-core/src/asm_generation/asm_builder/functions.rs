@@ -483,7 +483,7 @@ impl<'ir> AsmBuilder<'ir> {
             input_type_not_coin_label,
         ));
 
-        // If the input is indeed a "message", then use `GTF` to get the "input coin predicate data
+        // If the input is indeed a "coin", then use `GTF` to get the "input coin predicate data
         // pointer" and store in the `base_reg`
         self.cur_bytecode.push(Op {
             opcode: either::Either::Left(VirtualOp::GTF(
