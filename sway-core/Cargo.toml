@@ -14,7 +14,7 @@ derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
 fuel-vm = { version = "0.22", features = ["serde"] }
-fuels-types = { path = "../../fuels-rs/packages/fuels-types" }
+fuels-types = { git = "https://github.com/FuelLabs/fuels-rs" }
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
 im = "15.0"
