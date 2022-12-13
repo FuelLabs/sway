@@ -41,6 +41,7 @@ pub fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKi
         | SymbolKind::StringLiteral
         | SymbolKind::NumericLiteral => Some(CompletionItemKind::VALUE),
         SymbolKind::Variable => Some(CompletionItemKind::VARIABLE),
+        SymbolKind::Keyword => Some(CompletionItemKind::KEYWORD),
         SymbolKind::Unknown => None,
     }
 }
