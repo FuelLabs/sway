@@ -7,7 +7,7 @@ use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
     ExprStructField, ExprTupleDescriptor, FnSignature, IfCondition, IfExpr, ItemAbi, ItemConst,
     ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
-    MatchBranchKind, Pattern, PatternStructField, Statement, StorageField, Ty, TypeField, UseTree,
+    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{Ident, Span, Spanned};
@@ -433,7 +433,7 @@ impl Parse for Statement {
     fn parse(&self, tokens: &TokenMap) {
         match self {
             Statement::Let(let_stmt) => {
-                insert_keyword(tokens, let_stmt.let_token.span());
+                let_stmt.parse(tokens);
             }
             Statement::Expr { expr, .. } => {
                 expr.parse(tokens);
@@ -442,6 +442,17 @@ impl Parse for Statement {
                 item.value.parse(tokens);
             }
         }
+    }
+}
+
+impl Parse for StatementLet {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.let_token.span());
+        self.pattern.parse(tokens);
+        if let Some((.., ty)) = &self.ty_opt {
+            ty.parse(tokens);
+        }
+        self.expr.parse(tokens);
     }
 }
 
