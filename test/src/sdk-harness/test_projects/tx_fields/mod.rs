@@ -328,28 +328,18 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_witness_data() {
-        let (contract_instance, _, _, _) = get_contracts().await;
+        let (contract_instance, _, wallet, _) = get_contracts().await;
 
-        let call_handler = contract_instance.methods().get_tx_witness_data(0);
-        let script = call_handler.get_executable_call().await.unwrap();
-        let witnesses = script.tx.witnesses();
+        let handler = contract_instance.methods().get_tx_witness_data(0);
+        let executable = handler.get_executable_call().await.unwrap();
+        let witnesses = executable.tx.witnesses();
 
-        let result = contract_instance
-            .methods()
-            .get_tx_witness_data(0)
-            .call()
+        let receipts = executable
+            .execute(&wallet.get_provider().unwrap())
             .await
             .unwrap();
 
-        let mut witness_first = witnesses[0].clone().into_inner();
-        let witness_second = witness_first.split_off(32);
-
-        let first_witness_array = witness_first.try_into().unwrap();
-        let second_witness_array = witness_second.try_into().unwrap();
-        let expected_b512 =
-            B512::from((Bits256(first_witness_array), Bits256(second_witness_array)));
-
-        assert_eq!(result.value, expected_b512);
+        assert_eq!(receipts[1].data().unwrap(), witnesses[0].as_vec());
     }
 
     #[tokio::test]
