@@ -216,34 +216,11 @@ fn get_comments_between_spans(
             // actual next line of code that we're interested in
             let next_line = rest_of_code.next().unwrap_or_default();
 
-            // In certain cases where comments come in between unusual places,
-            // ..
-            //     }
-            //     // This is a comment
-            //     else {
-            // ..
-            // We need to know the context after the comment as well.
-            let context_after: Option<String> = if next_line.trim_start().starts_with("else") {
-                let else_token_start = next_line
-                    .char_indices()
-                    .find(|(_, c)| !c.is_whitespace())
-                    .map(|(i, _)| i)
-                    .unwrap_or_default();
-                Some(
-                    unformatted_code[comment_span.end..comment_span.end + else_token_start]
-                        .to_string(),
-                )
-            } else {
-                // If we don't find anything to format in the context after, we simply
-                // return an empty context.
-                None
-            };
-
             comments_with_context.push(CommentWithContext {
                 pre_context: unformatted_code[starting_position_for_context..comment_span.start]
                     .to_string(),
                 comment: comment.clone(),
-                post_context: context_after,
+                post_context: get_post_context(unformatted_code, comment_span, next_line),
             });
         }
     }
@@ -267,6 +244,32 @@ fn format_context(context: &str, threshold: usize) -> String {
         formatted_context.remove(0);
     }
     formatted_context
+}
+
+// In certain cases where comments come in between unusual places,
+// ..
+//     }
+//     // This is a comment
+//     else {
+// ..
+// We need to know the context after the comment as well.
+fn get_post_context(
+    unformatted_code: &Arc<str>,
+    comment_span: &ByteSpan,
+    next_line: &str,
+) -> Option<String> {
+    if next_line.trim_start().starts_with("else") {
+        let else_token_start = next_line
+            .char_indices()
+            .find(|(_, c)| !c.is_whitespace())
+            .map(|(i, _)| i)
+            .unwrap_or_default();
+        Some(unformatted_code[comment_span.end..comment_span.end + else_token_start].to_string())
+    } else {
+        // If we don't find anything to format in the context after, we simply
+        // return an empty context.
+        None
+    }
 }
 
 /// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
