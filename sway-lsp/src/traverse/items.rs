@@ -5,9 +5,10 @@ use crate::core::{
 use std::{ops::ControlFlow, path::PathBuf, sync::Arc};
 use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
-    ExprStructField, ExprTupleDescriptor, FnSignature, IfCondition, IfExpr, ItemAbi, ItemConst,
-    ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
-    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
+    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
+    ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
+    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty,
+    TypeField, UseTree,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{Ident, Span, Spanned};
@@ -44,6 +45,7 @@ pub trait Parse {
 
 impl Parse for ItemKind {
     fn parse(&self, tokens: &TokenMap) {
+        eprintln!("ItemKind: {:#?}", &self);
         match self {
             ItemKind::Dependency(dependency) => {
                 insert_keyword(tokens, dependency.dep_token.span());
@@ -418,6 +420,48 @@ impl Parse for FnSignature {
             insert_keyword(tokens, visibility.span());
         }
         insert_keyword(tokens, self.fn_token.span());
+
+        self.arguments.get().parse(tokens);
+        if let Some((.., ty)) = &self.return_type_opt {
+            ty.parse(tokens);
+        }
+        if let Some(where_clause) = &self.where_clause_opt {
+            insert_keyword(tokens, where_clause.where_token.span());
+        }
+    }
+}
+
+impl Parse for FnArgs {
+    fn parse(&self, tokens: &TokenMap) {
+        match self {
+            FnArgs::Static(punct) => {
+                punct.into_iter().for_each(|fn_arg| fn_arg.parse(tokens));
+            }
+            FnArgs::NonStatic {
+                self_token,
+                ref_self,
+                mutable_self,
+                args_opt,
+            } => {
+                insert_keyword(tokens, self_token.span());
+                if let Some(ref_token) = ref_self {
+                    insert_keyword(tokens, ref_token.span());
+                }
+                if let Some(mut_token) = mutable_self {
+                    insert_keyword(tokens, mut_token.span());
+                }
+                if let Some((.., punct)) = args_opt {
+                    punct.into_iter().for_each(|fn_arg| fn_arg.parse(tokens));
+                }
+            }
+        }
+    }
+}
+
+impl Parse for FnArg {
+    fn parse(&self, tokens: &TokenMap) {
+        self.pattern.parse(tokens);
+        self.ty.parse(tokens);
     }
 }
 
@@ -425,6 +469,9 @@ impl Parse for CodeBlockContents {
     fn parse(&self, tokens: &TokenMap) {
         for statement in self.statements.iter() {
             statement.parse(tokens);
+        }
+        if let Some(expr) = self.final_expr_opt.as_ref() {
+            expr.parse(tokens);
         }
     }
 }
