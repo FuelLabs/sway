@@ -127,6 +127,7 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::new("generic"),
     SemanticTokenType::new("boolean"),
     SemanticTokenType::new("keyword"),
+    SemanticTokenType::new("builtinAttribute"),
     SemanticTokenType::new("builtinType"),
 ];
 
@@ -161,6 +162,7 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
         SymbolKind::StringLiteral => SemanticTokenType::STRING,
         SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
+        SymbolKind::BuiltinAttr => SemanticTokenType::new("builtinAttribute"),
         SymbolKind::Module => SemanticTokenType::NAMESPACE,
         SymbolKind::Keyword => SemanticTokenType::new("keyword"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),

@@ -28,7 +28,7 @@ pub fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKi
         SymbolKind::Field => Some(CompletionItemKind::FIELD),
         SymbolKind::BuiltinType => Some(CompletionItemKind::TYPE_PARAMETER),
         SymbolKind::ValueParam => Some(CompletionItemKind::VALUE),
-        SymbolKind::Function => Some(CompletionItemKind::FUNCTION),
+        SymbolKind::BuiltinAttr | SymbolKind::Function => Some(CompletionItemKind::FUNCTION),
         SymbolKind::Const => Some(CompletionItemKind::CONSTANT),
         SymbolKind::Struct => Some(CompletionItemKind::STRUCT),
         SymbolKind::Trait => Some(CompletionItemKind::INTERFACE),
