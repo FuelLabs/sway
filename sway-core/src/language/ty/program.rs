@@ -374,6 +374,7 @@ impl TyProgram {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
+                    messages_types: None,
                 }
             }
             TyProgramKind::Script { main_function, .. }
@@ -384,12 +385,14 @@ impl TyProgram {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
+                    messages_types: None,
                 }
             }
             _ => fuels_types::ProgramABI {
                 types: vec![],
                 functions: vec![],
                 logged_types: None,
+                messages_types: None,
             },
         }
     }
