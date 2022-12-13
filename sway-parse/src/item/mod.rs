@@ -164,8 +164,7 @@ impl Parse for FnSignature {
 mod tests {
     use super::*;
     use std::sync::Arc;
-    use sway_ast::{AttributeDecl, CommaToken, Item, Punctuated};
-    use sway_types::Ident;
+    use sway_ast::{AttributeDecl, Item};
 
     fn parse_item(input: &str) -> Item {
         let handler = <_>::default();
@@ -175,8 +174,28 @@ mod tests {
             .unwrap_or_else(|_| panic!("Parse error: {:?}", handler.consume().0))
     }
 
-    fn get_attribute_args(attrib: &AttributeDecl) -> &Punctuated<Ident, CommaToken> {
-        attrib.attribute.get().args.as_ref().unwrap().get()
+    // Attribute name and its list of parameters
+    type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
+
+    fn attributes(attribute_list: &[AttributeDecl]) -> Vec<Vec<ParameterizedAttr>> {
+        attribute_list
+            .iter()
+            .map(|attr_decl| {
+                attr_decl
+                    .attribute
+                    .get()
+                    .into_iter()
+                    .map(|att| {
+                        (
+                            att.name.as_str(),
+                            att.args
+                                .as_ref()
+                                .map(|arg| arg.get().into_iter().map(|a| a.as_str()).collect()),
+                        )
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     #[test]
@@ -193,21 +212,11 @@ mod tests {
             }
             "#,
         );
-
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(
-            args.next().map(|arg| arg.as_str()),
-            Some(" This is a doc comment.")
+            attributes(&item.attribute_list),
+            vec![[("doc", Some(vec![" This is a doc comment."]))]]
         );
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 
     #[test]
@@ -230,38 +239,23 @@ mod tests {
             "#,
         );
 
+        /* struct annotations */
         assert!(matches!(item.value, ItemKind::Struct(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(
-            args.next().map(|arg| arg.as_str()),
-            Some(" This is a doc comment.")
+            attributes(&item.attribute_list),
+            vec![[("doc", Some(vec![" This is a doc comment."]))]]
         );
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
 
+        /* struct field annotations */
         let item = match item.value {
             ItemKind::Struct(item) => item.fields.inner.into_iter().next().unwrap(),
             _ => unreachable!(),
         };
 
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "doc");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
         assert_eq!(
-            args.next().map(|arg| arg.as_str()),
-            Some(" This is a doc comment.")
+            attributes(&item.attribute_list),
+            vec![[("doc", Some(vec![" This is a doc comment."]))]]
         );
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
     }
 
     #[test]
@@ -290,12 +284,7 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_none());
+        assert_eq!(attributes(&item.attribute_list), vec![[("foo", None)]]);
     }
 
     #[test]
@@ -312,15 +301,10 @@ mod tests {
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
 
-        assert_eq!(item.attribute_list.len(), 2);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_none());
-
-        let attrib = item.attribute_list.get(1).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-        assert!(attrib.attribute.get().args.is_none());
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("foo", None)], [("bar", None)]]
+        );
     }
 
     #[test]
@@ -335,16 +319,10 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("foo", Some(vec!["one"]))]]
+        );
     }
 
     #[test]
@@ -359,17 +337,10 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-
-        // Args are still parsed as 'some' but with an empty collection.
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("foo", Some(vec![]))]]
+        );
     }
 
     #[test]
@@ -385,20 +356,10 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 2);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-        assert!(attrib.attribute.get().args.is_none());
-
-        let attrib = item.attribute_list.get(1).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("bar", None)], [("foo", Some(vec!["one"]))]]
+        );
     }
 
     #[test]
@@ -414,20 +375,10 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 2);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
-
-        let attrib = item.attribute_list.get(1).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-        assert!(attrib.attribute.get().args.is_none());
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
+        );
     }
 
     #[test]
@@ -442,17 +393,10 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 1);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![[("foo", Some(vec!["one", "two"]))]]
+        );
     }
 
     #[test]
@@ -469,30 +413,14 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 3);
-
-        let attrib = item.attribute_list.get(0).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-        assert!(attrib.attribute.get().args.is_none());
-
-        let attrib = item.attribute_list.get(1).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
-
-        let attrib = item.attribute_list.get(2).unwrap();
-        assert_eq!(attrib.attribute.get().name.as_str(), "baz");
-        assert!(attrib.attribute.get().args.is_some());
-
-        let mut args = get_attribute_args(attrib).into_iter();
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), Some("four"));
-        assert_eq!(args.next().map(|arg| arg.as_str()), None);
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![
+                [("bar", None)],
+                [("foo", Some(vec!["one"]))],
+                [("baz", Some(vec!["two", "three", "four"]))]
+            ]
+        );
     }
 
     #[test]
@@ -521,18 +449,10 @@ mod tests {
 
             let f_sig = decls.next();
             assert!(f_sig.is_some());
-
-            let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-            assert!(attrib.attribute.get().args.is_some());
-            let mut args = get_attribute_args(attrib).into_iter();
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), None);
-
-            let attrib = f_sig.unwrap().0.attribute_list.get(1).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-            assert!(attrib.attribute.get().args.is_none());
-
+            assert_eq!(
+                attributes(&f_sig.unwrap().0.attribute_list),
+                vec![[("foo", Some(vec!["one"]))], [("bar", None)]]
+            );
             assert!(decls.next().is_none());
 
             assert!(item_trait.trait_defs_opt.is_some());
@@ -541,14 +461,10 @@ mod tests {
             let g_sig = defs.next();
             assert!(g_sig.is_some());
 
-            let attrib = g_sig.unwrap().attribute_list.get(0).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-            assert!(attrib.attribute.get().args.is_some());
-            let mut args = get_attribute_args(attrib).into_iter();
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), None);
+            assert_eq!(
+                attributes(&g_sig.unwrap().attribute_list),
+                vec![[("bar", Some(vec!["one", "two", "three"]))],]
+            );
 
             assert!(defs.next().is_none());
         } else {
@@ -585,26 +501,18 @@ mod tests {
             let f_sig = decls.next();
             assert!(f_sig.is_some());
 
-            let attrib = f_sig.unwrap().0.attribute_list.get(0).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "bar");
-            assert!(attrib.attribute.get().args.is_some());
-            let mut args = get_attribute_args(attrib).into_iter();
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("two"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("three"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), None);
-
-            assert!(f_sig.unwrap().0.attribute_list.get(1).is_none());
+            assert_eq!(
+                attributes(&f_sig.unwrap().0.attribute_list),
+                vec![[("bar", Some(vec!["one", "two", "three"]))],]
+            );
 
             let g_sig = decls.next();
             assert!(g_sig.is_some());
 
-            let attrib = g_sig.unwrap().0.attribute_list.get(0).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "foo");
-            assert!(attrib.attribute.get().args.is_none());
-
-            assert!(g_sig.unwrap().0.attribute_list.get(1).is_none());
-
+            assert_eq!(
+                attributes(&g_sig.unwrap().0.attribute_list),
+                vec![[("foo", None)],]
+            );
             assert!(decls.next().is_none());
 
             assert!(item_abi.abi_defs_opt.is_some());
@@ -613,13 +521,10 @@ mod tests {
             let h_sig = defs.next();
             assert!(h_sig.is_some());
 
-            let attrib = h_sig.unwrap().attribute_list.get(0).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "baz");
-            assert!(attrib.attribute.get().args.is_some());
-            let mut args = get_attribute_args(attrib).into_iter();
-            assert_eq!(args.next().map(|arg| arg.as_str()), Some("one"));
-            assert_eq!(args.next().map(|arg| arg.as_str()), None);
-
+            assert_eq!(
+                attributes(&h_sig.unwrap().attribute_list),
+                vec![[("baz", Some(vec!["one"]))],]
+            );
             assert!(defs.next().is_none());
         } else {
             panic!("Parsed ABI is not an ABI.");
@@ -639,24 +544,12 @@ mod tests {
         );
 
         assert!(matches!(item.value, ItemKind::Fn(_)));
-
-        assert_eq!(item.attribute_list.len(), 2);
-
-        for i in 0..2 {
-            let attrib = item.attribute_list.get(i).unwrap();
-            assert_eq!(attrib.attribute.get().name.as_str(), "doc");
-            assert!(attrib.attribute.get().args.is_some());
-
-            let mut args = get_attribute_args(attrib).into_iter();
-            assert_eq!(
-                args.next().map(|arg| arg.as_str()),
-                match i {
-                    0 => Some(" This is a doc comment."),
-                    1 => Some(" This is another doc comment."),
-                    _ => unreachable!(),
-                }
-            );
-            assert_eq!(args.next().map(|arg| arg.as_str()), None);
-        }
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![
+                [("doc", Some(vec![" This is a doc comment."]))],
+                [("doc", Some(vec![" This is another doc comment."]))]
+            ]
+        );
     }
 }
