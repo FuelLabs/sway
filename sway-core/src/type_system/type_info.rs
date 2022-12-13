@@ -63,11 +63,14 @@ impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for VecSet<T> {
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
-// TODO use idents instead of Strings when we have arena spans
 #[derive(Debug, Clone)]
 pub enum TypeInfo {
     Unknown,
-    UnknownGeneric {
+    /// Represents a type parameter.
+    ///
+    /// The equivalent type in the Rust compiler is:
+    /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#190
+    TypeParam {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
@@ -195,7 +198,7 @@ impl HashWithTypeEngine for TypeInfo {
             TypeInfo::SelfType => {
                 state.write_u8(13);
             }
-            TypeInfo::UnknownGeneric {
+            TypeInfo::TypeParam {
                 name,
                 trait_constraints,
             } => {
@@ -245,11 +248,11 @@ impl PartialEqWithTypeEngine for TypeInfo {
             | (Self::Contract, Self::Contract)
             | (Self::ErrorRecovery, Self::ErrorRecovery) => true,
             (
-                Self::UnknownGeneric {
+                Self::TypeParam {
                     name: l,
                     trait_constraints: ltc,
                 },
-                Self::UnknownGeneric {
+                Self::TypeParam {
                     name: r,
                     trait_constraints: rtc,
                 },
@@ -352,7 +355,7 @@ impl DisplayWithTypeEngine for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
+            TypeParam { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -422,7 +425,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
     ) -> bool {
         let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
         match self {
-            TypeInfo::UnknownGeneric {
+            TypeInfo::TypeParam {
                 trait_constraints, ..
             } => {
                 self.eq(&type_parameter_info, type_engine)
@@ -525,7 +528,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
+            TypeParam { name, .. } => name.to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -882,7 +885,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -992,7 +995,7 @@ impl TypeInfo {
                     }
                 }
                 TypeInfo::Unknown
-                | TypeInfo::UnknownGeneric { .. }
+                | TypeInfo::TypeParam { .. }
                 | TypeInfo::Str(_)
                 | TypeInfo::UnsignedInteger(_)
                 | TypeInfo::Boolean
@@ -1057,7 +1060,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -1088,7 +1091,7 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
@@ -1130,7 +1133,7 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::ErrorRecovery
@@ -1248,7 +1251,7 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::UnknownGeneric {
+            TypeInfo::TypeParam {
                 trait_constraints, ..
             } => {
                 for trait_constraint in trait_constraints.iter() {
@@ -1303,7 +1306,7 @@ impl TypeInfo {
         let generics = HashSet::from_iter(
             nested_types
                 .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
+                .filter(|x| matches!(x, TypeInfo::TypeParam { .. }))
                 .map(|thing| WithTypeEngine {
                     thing,
                     engine: type_engine,
@@ -1391,11 +1394,11 @@ impl TypeInfo {
         // handle the generics cases
         match (self, other) {
             (
-                Self::UnknownGeneric {
+                Self::TypeParam {
                     trait_constraints: ltc,
                     ..
                 },
-                Self::UnknownGeneric {
+                Self::TypeParam {
                     trait_constraints: rtc,
                     ..
                 },
@@ -1403,7 +1406,7 @@ impl TypeInfo {
                 return rtc.is_subset(ltc, type_engine);
             }
             // any type is the subset of a generic
-            (_, Self::UnknownGeneric { .. }) => {
+            (_, Self::TypeParam { .. }) => {
                 return true;
             }
             _ => {}
@@ -1615,7 +1618,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType

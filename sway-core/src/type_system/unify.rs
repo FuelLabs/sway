@@ -228,11 +228,11 @@ pub(super) fn unify(
         },
 
         (
-            UnknownGeneric {
+            TypeParam {
                 name: rn,
                 trait_constraints: rtc,
             },
-            UnknownGeneric {
+            TypeParam {
                 name: en,
                 trait_constraints: etc,
             },
@@ -241,7 +241,7 @@ pub(super) fn unify(
             type_engine.insert_unified_type(expected, received);
             (vec![], vec![])
         }
-        (ref r @ UnknownGeneric { .. }, e) => {
+        (ref r @ TypeParam { .. }, e) => {
             match type_engine.slab.replace(received, r, e, type_engine) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
@@ -254,7 +254,7 @@ pub(super) fn unify(
                 ),
             }
         }
-        (r, ref e @ UnknownGeneric { .. }) => {
+        (r, ref e @ TypeParam { .. }) => {
             match type_engine.slab.replace(expected, e, r, type_engine) {
                 None => (vec![], vec![]),
                 Some(_) => unify(
@@ -440,11 +440,11 @@ pub(super) fn unify_right(
         (Unknown, _) => (vec![], vec![]),
 
         (
-            UnknownGeneric {
+            TypeParam {
                 name: rn,
                 trait_constraints: rtc,
             },
-            UnknownGeneric {
+            TypeParam {
                 name: en,
                 trait_constraints: etc,
             },
@@ -452,7 +452,7 @@ pub(super) fn unify_right(
             type_engine.insert_unified_type(received, expected);
             (vec![], vec![])
         }
-        (r, ref e @ UnknownGeneric { .. }) => {
+        (r, ref e @ TypeParam { .. }) => {
             type_engine.insert_unified_type(received, expected);
             match type_engine.slab.replace(expected, e, r, type_engine) {
                 None => (vec![], vec![]),

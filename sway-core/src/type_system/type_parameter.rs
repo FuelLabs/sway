@@ -122,7 +122,7 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
+        let type_id = ctx.type_engine.insert_type(TypeInfo::TypeParam {
             name: name_ident.clone(),
             trait_constraints: VecSet(trait_constraints.clone()),
         });

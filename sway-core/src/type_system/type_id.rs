@@ -29,7 +29,7 @@ impl CollectTypesMetadata for TypeId {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = vec![];
-        if let TypeInfo::UnknownGeneric {
+        if let TypeInfo::TypeParam {
             name,
             trait_constraints,
         } = ctx.type_engine.look_up_type_id(*self)
@@ -103,7 +103,7 @@ impl ReplaceSelfType for TypeId {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::TypeParam { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean

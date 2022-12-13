@@ -64,7 +64,7 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(TypeInfo::UnknownGeneric {
+                    type_engine.insert_type(TypeInfo::TypeParam {
                         name: x.name_ident.clone(),
                         trait_constraints: VecSet(x.trait_constraints.clone()),
                     }),
@@ -130,7 +130,7 @@ impl TypeMapping {
             type_engine.look_up_type_id(superset),
             type_engine.look_up_type_id(subset),
         ) {
-            (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
+            (TypeInfo::TypeParam { .. }, _) => TypeMapping {
                 mapping: vec![(superset, subset)],
             },
             (
@@ -278,7 +278,7 @@ impl TypeMapping {
         let type_info = type_engine.look_up_type_id(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::TypeParam { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Struct {
                 fields,
                 name,
