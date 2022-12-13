@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
 use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
+use pkg::BuiltPackage;
 use rand::{Rng, SeedableRng};
 use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
 use sway_types::{Span, Spanned};
@@ -11,7 +12,7 @@ use sway_types::{Span, Spanned};
 #[derive(Debug)]
 pub enum Tested {
     Package(Box<TestedPackage>),
-    Workspace,
+    Workspace(Vec<TestedPackage>),
 }
 
 /// The result of testing a specific package.
@@ -52,9 +53,10 @@ pub enum TestPassCondition {
     ShouldNotRevert,
 }
 
-/// A package that has been built, ready for test execution.
-pub struct BuiltTests {
-    built_pkg: Box<pkg::BuiltPackage>,
+/// A package or a workspace that has been built, ready for test execution.
+pub enum BuiltTests {
+    Package(Box<pkg::BuiltPackage>),
+    Workspace(Vec<pkg::BuiltPackage>),
 }
 
 /// The set of options provided to the `test` function.
@@ -132,11 +134,13 @@ impl TestResult {
 impl BuiltTests {
     /// The total number of tests.
     pub fn test_count(&self) -> usize {
-        self.built_pkg
-            .entries
-            .iter()
-            .filter(|e| e.is_test())
-            .count()
+        let pkgs: Vec<&BuiltPackage> = match self {
+            BuiltTests::Package(pkg) => vec![pkg],
+            BuiltTests::Workspace(workspace) => workspace.iter().collect(),
+        };
+        pkgs.iter()
+            .map(|pkg| pkg.entries.iter().filter(|e| e.is_test()).count())
+            .sum()
     }
 
     /// Run all built tests, return the result.
@@ -148,11 +152,13 @@ impl BuiltTests {
 /// First builds the package or workspace, ready for execution.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into_build_opts();
-    let built_pkg = match pkg::build_with_options(build_opts)? {
-        pkg::Built::Package(pkg) => pkg,
-        pkg::Built::Workspace(_) => anyhow::bail!("testing workspaces not yet supported"),
+    let built_tests = match pkg::build_with_options(build_opts)? {
+        pkg::Built::Package(pkg) => BuiltTests::Package(pkg),
+        pkg::Built::Workspace(workspace) => {
+            BuiltTests::Workspace(workspace.values().cloned().collect())
+        }
     };
-    Ok(BuiltTests { built_pkg })
+    Ok(built_tests)
 }
 
 fn test_pass_condition(
@@ -177,8 +183,22 @@ fn test_pass_condition(
 
 /// Build the the given package and run its tests, returning the results.
 fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
-    let BuiltTests { built_pkg } = built;
+    match built {
+        BuiltTests::Package(pkg) => {
+            let tested_pkg = run_pkg_tests(*pkg)?;
+            Ok(Tested::Package(Box::new(tested_pkg)))
+        }
+        BuiltTests::Workspace(workspace) => {
+            let tested_pkgs = workspace
+                .into_iter()
+                .map(run_pkg_tests)
+                .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
+            Ok(Tested::Workspace(tested_pkgs))
+        }
+    }
+}
 
+fn run_pkg_tests(built_pkg: BuiltPackage) -> anyhow::Result<TestedPackage> {
     // Run all tests and collect their results.
     // TODO: We can easily parallelise this, but let's wait until testing is stable first.
     let tests = built_pkg
@@ -208,10 +228,12 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
         })
         .collect::<anyhow::Result<_>>()?;
 
-    let built = built_pkg;
-    let tested_pkg = TestedPackage { built, tests };
-    let tested = Tested::Package(Box::new(tested_pkg));
-    Ok(tested)
+    let tested_pkg = TestedPackage {
+        built: Box::new(built_pkg),
+        tests,
+    };
+
+    Ok(tested_pkg)
 }
 
 /// Given some bytecode and an instruction offset for some test's desired entry point, patch the
