@@ -46,19 +46,21 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
 
 /// Sends a message `msg_data` of type T to `recipient` with a `coins` amount of the base asset
 ///
+/// `send_typed_message` is the function to use if the message needs to be indexed
+///
 /// ### Arguments
 ///
 /// * `recipient` - The address of the message recipient
 /// * `msg_data` - Message data of arbitrary type `T`
 /// * `coins` - Amount of base asset to send
-pub fn send_typed_message<T>(recipient: b256, data: T, coins: u64) {
+pub fn send_typed_message<T>(recipient: b256, msg_data: T, coins: u64) {
     let mut output_index = 0;
     let outputs = output_count();
 
     while output_index < outputs {
         let type_of_output = output_type(output_index);
         if let Output::Message = type_of_output {
-            __smo(recipient, data, output_index, coins);
+            __smo(recipient, msg_data, output_index, coins);
             return;
         }
         output_index += 1;
