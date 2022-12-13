@@ -414,22 +414,21 @@ mod tx {
 
     #[tokio::test]
     async fn can_get_tx_id() {
-        let (contract_instance, _, _, _) = get_contracts().await;
+        let (contract_instance, _, wallet, _) = get_contracts().await;
 
-        let call_handler = contract_instance.methods().get_tx_id();
-        let script = call_handler.get_executable_call().await.unwrap();
-        let tx_id = script.tx.id();
+        let handler = contract_instance.methods().get_tx_id();
+        let executable = handler.get_executable_call().await.unwrap();
+        let tx_id = executable.tx.id();
 
-        let result = contract_instance
-            .methods()
-            .get_tx_id()
-            .call()
+
+
+        let receipts = executable
+            .execute(&wallet.get_provider().unwrap())
             .await
             .unwrap();
-
         let byte_array: [u8; 32] = tx_id.into();
 
-        assert_eq!(result.value, Bits256(byte_array));
+        assert_eq!(receipts[1].data().unwrap(), byte_array);
     }
 
     #[tokio::test]
@@ -699,7 +698,6 @@ mod inputs {
                 let (predicate_bytecode, predicate_coin, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
                 let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
-
                 let handler= contract_instance.methods().get_input_predicate(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
                 // add_message_input(&mut executable, wallet.clone()).await;
