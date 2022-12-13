@@ -324,14 +324,6 @@ pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
 
-pub trait BitwiseOr {
-    fn binary_or(self, other: Self) -> Self;
-}
-
-pub trait BitwiseXor {
-    fn binary_xor(self, other: Self) -> Self;
-}
-
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -341,6 +333,10 @@ impl BitwiseAnd for u64 {
     }
 }
 
+pub trait BitwiseOr {
+    fn binary_or(self, other: Self) -> Self;
+}
+
 impl BitwiseOr for u64 {
     fn binary_or(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -348,6 +344,10 @@ impl BitwiseOr for u64 {
             r3: u64
         }
     }
+}
+
+pub trait BitwiseXor {
+    fn binary_xor(self, other: Self) -> Self;
 }
 
 impl BitwiseXor for u64 {
