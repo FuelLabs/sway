@@ -188,7 +188,7 @@ ___
 __smo<T>(recipient: b256, data: T, output_index: u64, coins: u64)
 ```
 
-**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`. This intrinsic assumes that an OutputMessage is available at index
+**Description:** Sends a message `data` of arbitrary type `T` and `coins` amount of the base asset to address `recipient`. This intrinsic assumes that an OutputMessage is available at index `output_index`.
 
 **Constraints:** None.
 
