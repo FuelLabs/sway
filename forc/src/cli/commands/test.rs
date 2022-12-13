@@ -3,6 +3,7 @@ use ansi_term::Colour;
 use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
+use forc_test::TestedPackage;
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -44,55 +45,72 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
     match tested {
-        forc_test::Tested::Workspace => unimplemented!(),
-        forc_test::Tested::Package(pkg) => {
-            let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
-            let failed = pkg.tests.len() - succeeded;
-            let mut failed_test_details = Vec::new();
-            for test in &pkg.tests {
-                let test_passed = test.passed();
-                let (state, color) = match test_passed {
-                    true => ("ok", Colour::Green),
-                    false => ("FAILED", Colour::Red),
-                };
-                info!(
-                    "      test {} ... {} ({:?})",
-                    test.name,
-                    color.paint(state),
-                    test.duration
-                );
+        forc_test::Tested::Workspace(pkgs) => {
+            for pkg in pkgs {
+                let built = &pkg.built.pkg_name;
+                info!("\n   tested -- {built}\n");
+                print_tested_pkg(&pkg)?;
+            }
+            info!("\n   Finished in {:?}", duration);
+        }
+        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg)?,
+    };
 
-                // If the test is failing, save details.
-                if !test_passed {
-                    let details = test.details()?;
-                    failed_test_details.push((test.name.clone(), details));
-                }
-            }
-            let (state, color) = match succeeded == pkg.tests.len() {
-                true => ("OK", Colour::Green),
-                false => ("FAILED", Colour::Red),
-            };
-            if failed != 0 {
-                info!("\n   failures:");
-                for (failed_test_name, failed_test_detail) in failed_test_details {
-                    let path = &*failed_test_detail.file_path;
-                    let line_number = failed_test_detail.line_number;
-                    info!(
-                        "      - test {}, {:?}:{} ",
-                        failed_test_name, path, line_number
-                    );
-                }
-                info!("\n");
-            }
-            info!(
-                "   Result: {}. {} passed. {} failed. Finished in {:?}.",
-                color.paint(state),
-                succeeded,
-                failed,
-                duration
-            );
+    Ok(())
+}
+
+fn print_tested_pkg(pkg: &TestedPackage) -> Result<()> {
+    let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
+    let failed = pkg.tests.len() - succeeded;
+    let mut failed_test_details = Vec::new();
+    for test in &pkg.tests {
+        let test_passed = test.passed();
+        let (state, color) = match test_passed {
+            true => ("ok", Colour::Green),
+            false => ("FAILED", Colour::Red),
+        };
+        info!(
+            "      test {} ... {} ({:?})",
+            test.name,
+            color.paint(state),
+            test.duration
+        );
+
+        // If the test is failing, save details.
+        if !test_passed {
+            let details = test.details()?;
+            failed_test_details.push((test.name.clone(), details));
         }
     }
+    let (state, color) = match succeeded == pkg.tests.len() {
+        true => ("OK", Colour::Green),
+        false => ("FAILED", Colour::Red),
+    };
+    if failed != 0 {
+        info!("\n   failures:");
+        for (failed_test_name, failed_test_detail) in failed_test_details {
+            let path = &*failed_test_detail.file_path;
+            let line_number = failed_test_detail.line_number;
+            info!(
+                "      - test {}, {:?}:{} ",
+                failed_test_name, path, line_number
+            );
+        }
+        info!("\n");
+    }
+
+    let pkg_test_durations: std::time::Duration = pkg
+        .tests
+        .iter()
+        .map(|test_result| test_result.duration)
+        .sum();
+    info!(
+        "   Result: {}. {} passed. {} failed. Finished in {:?}.",
+        color.paint(state),
+        succeeded,
+        failed,
+        pkg_test_durations
+    );
 
     Ok(())
 }

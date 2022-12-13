@@ -110,6 +110,7 @@
       }
     }
   ],
+  "messagesTypes": null,
   "types": [
     {
       "components": [],
