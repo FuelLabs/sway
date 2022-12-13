@@ -2,16 +2,14 @@ use crate::core::{
     token::{to_ident_key, AstToken, SymbolKind, Token},
     token_map::TokenMap,
 };
-use std::ops::ControlFlow;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::{ops::ControlFlow, path::PathBuf, sync::Arc};
 use sway_ast::{
-    Assignable, AttributeDecl, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
-    ExprTupleDescriptor, FnSignature, IfCondition, IfExpr, ItemKind, MatchBranchKind, Pattern,
-    PatternStructField, Statement,
+    ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
+    ExprStructField, ExprTupleDescriptor, FnSignature, IfCondition, IfExpr, ItemAbi, ItemConst,
+    ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
+    MatchBranchKind, Pattern, PatternStructField, Statement, StorageField, Ty, TypeField, UseTree,
 };
-use sway_core::TypeEngine;
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::handler::ErrorEmitted;
 use sway_types::{Ident, Span, Spanned};
 
 pub struct ParsedItems<'a> {
@@ -46,15 +44,231 @@ pub trait Parse {
 
 impl Parse for ItemKind {
     fn parse(&self, tokens: &TokenMap) {
-        //eprintln!("item = {:#?}", self);
         match self {
-            ItemKind::Fn(func) => {
-                func.fn_signature.parse(tokens);
-                func.body.get().parse(tokens);
+            ItemKind::Dependency(dependency) => {
+                insert_keyword(tokens, dependency.dep_token.span());
             }
-            ItemKind::Abi(abi) => for (_fn_sig, _) in &abi.abi_items.inner {},
-            ItemKind::Impl(item_impl) => for _item_fn in &item_impl.contents.inner {},
-            _ => (),
+            ItemKind::Use(item_use) => {
+                item_use.parse(tokens);
+            }
+            ItemKind::Struct(item_struct) => {
+                item_struct.parse(tokens);
+            }
+            ItemKind::Enum(item_enum) => {
+                item_enum.parse(tokens);
+            }
+            ItemKind::Fn(item_func) => {
+                item_func.parse(tokens);
+            }
+            ItemKind::Trait(item_trait) => {
+                item_trait.parse(tokens);
+            }
+            ItemKind::Impl(item_impl) => {
+                item_impl.parse(tokens);
+            }
+            ItemKind::Abi(item_abi) => {
+                item_abi.parse(tokens);
+            }
+            ItemKind::Const(item_const) => {
+                item_const.parse(tokens);
+            }
+            ItemKind::Storage(item_storage) => {
+                item_storage.parse(tokens);
+            }
+        }
+    }
+}
+
+impl Parse for ItemUse {
+    fn parse(&self, tokens: &TokenMap) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(tokens, visibility.span());
+        }
+        insert_keyword(tokens, self.use_token.span());
+        self.tree.parse(tokens);
+    }
+}
+
+impl Parse for ItemStruct {
+    fn parse(&self, tokens: &TokenMap) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(tokens, visibility.span());
+        }
+        insert_keyword(tokens, self.struct_token.span());
+
+        if let Some(where_clause_opt) = &self.where_clause_opt {
+            insert_keyword(tokens, where_clause_opt.where_token.span());
+        }
+
+        self.fields
+            .get()
+            .into_iter()
+            .for_each(|field| field.value.parse(tokens));
+    }
+}
+
+impl Parse for ItemEnum {
+    fn parse(&self, tokens: &TokenMap) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(tokens, visibility.span());
+        }
+        insert_keyword(tokens, self.enum_token.span());
+
+        if let Some(where_clause_opt) = &self.where_clause_opt {
+            insert_keyword(tokens, where_clause_opt.where_token.span());
+        }
+
+        self.fields
+            .get()
+            .into_iter()
+            .for_each(|field| field.value.parse(tokens));
+    }
+}
+
+impl Parse for ItemFn {
+    fn parse(&self, tokens: &TokenMap) {
+        self.fn_signature.parse(tokens);
+        self.body.get().parse(tokens);
+    }
+}
+
+impl Parse for ItemTrait {
+    fn parse(&self, tokens: &TokenMap) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(tokens, visibility.span());
+        }
+        insert_keyword(tokens, self.trait_token.span());
+
+        if let Some(where_clause_opt) = &self.where_clause_opt {
+            insert_keyword(tokens, where_clause_opt.where_token.span());
+        }
+
+        self.trait_items
+            .get()
+            .into_iter()
+            .for_each(|item| item.0.value.parse(tokens));
+
+        if let Some(trait_defs_opt) = &self.trait_defs_opt {
+            trait_defs_opt
+                .get()
+                .into_iter()
+                .for_each(|item| item.value.parse(tokens));
+        }
+    }
+}
+
+impl Parse for ItemImpl {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.impl_token.span());
+
+        if let Some((.., for_token)) = &self.trait_opt {
+            insert_keyword(tokens, for_token.span());
+        }
+
+        self.ty.parse(tokens);
+
+        if let Some(where_clause_opt) = &self.where_clause_opt {
+            insert_keyword(tokens, where_clause_opt.where_token.span());
+        }
+
+        self.contents
+            .get()
+            .iter()
+            .for_each(|item| item.value.parse(tokens));
+    }
+}
+
+impl Parse for ItemAbi {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.abi_token.span());
+
+        self.abi_items.get().iter().for_each(|item| {
+            item.0.value.parse(tokens);
+        });
+
+        if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
+            abi_defs_opt
+                .get()
+                .into_iter()
+                .for_each(|item| item.value.parse(tokens));
+        }
+    }
+}
+
+impl Parse for ItemConst {
+    fn parse(&self, tokens: &TokenMap) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(tokens, visibility.span());
+        }
+        insert_keyword(tokens, self.const_token.span());
+
+        if let Some((.., ty)) = self.ty_opt.as_ref() {
+            ty.parse(tokens);
+        }
+
+        self.expr.parse(tokens);
+    }
+}
+
+impl Parse for ItemStorage {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.storage_token.span());
+
+        self.fields
+            .get()
+            .into_iter()
+            .for_each(|field| field.value.parse(tokens));
+    }
+}
+
+impl Parse for StorageField {
+    fn parse(&self, tokens: &TokenMap) {
+        self.ty.parse(tokens);
+        self.initializer.parse(tokens);
+    }
+}
+
+impl Parse for UseTree {
+    fn parse(&self, tokens: &TokenMap) {
+        match self {
+            UseTree::Group { imports } => {
+                for use_tree in imports.get().into_iter() {
+                    use_tree.parse(tokens);
+                }
+            }
+            UseTree::Rename { as_token, .. } => {
+                insert_keyword(tokens, as_token.span());
+            }
+            UseTree::Path { suffix, .. } => {
+                suffix.parse(tokens);
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Parse for TypeField {
+    fn parse(&self, tokens: &TokenMap) {
+        self.ty.parse(tokens);
+    }
+}
+
+impl Parse for Ty {
+    fn parse(&self, tokens: &TokenMap) {
+        match self {
+            Ty::Tuple(tuple) => {
+                tuple.get().parse(tokens);
+            }
+            Ty::Array(array) => {
+                let inner = array.get();
+                inner.ty.parse(tokens);
+                inner.length.parse(tokens);
+            }
+            Ty::Str { str_token, length } => {
+                insert_keyword(tokens, str_token.span());
+                length.get().parse(tokens);
+            }
+            _ => {}
         }
     }
 }
@@ -348,6 +562,17 @@ impl Parse for ExprStructField {
 impl Parse for ExprTupleDescriptor {
     fn parse(&self, tokens: &TokenMap) {
         if let ExprTupleDescriptor::Cons { head, tail, .. } = self {
+            head.parse(tokens);
+            for expr in tail.into_iter() {
+                expr.parse(tokens);
+            }
+        }
+    }
+}
+
+impl Parse for TyTupleDescriptor {
+    fn parse(&self, tokens: &TokenMap) {
+        if let TyTupleDescriptor::Cons { head, tail, .. } = self {
             head.parse(tokens);
             for expr in tail.into_iter() {
                 expr.parse(tokens);
