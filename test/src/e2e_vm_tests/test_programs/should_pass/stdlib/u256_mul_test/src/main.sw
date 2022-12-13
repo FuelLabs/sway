@@ -2,7 +2,6 @@ script;
 
 use std::assert::assert;
 use std::u256::U256;
-use core::num::*;
 
 fn main() -> bool {
     let zero = U256::from((0, 0, 0, 0));
@@ -23,7 +22,7 @@ fn main() -> bool {
     assert(mul_128_max.d == 1);
 
     let a_2_62_mul_2 = U256::from((1 << 62, 0, 0, 0)) * two;
-    assert(a_2_62_mul_2.a == (1 << 63) );
+    assert(a_2_62_mul_2.a == (1 << 63));
     assert(a_2_62_mul_2.b == 0);
 
     let a_2_61_mul_5 = U256::from((1 << 61, 0, 0, 0)) * U256::from((0, 0, 0, 5));

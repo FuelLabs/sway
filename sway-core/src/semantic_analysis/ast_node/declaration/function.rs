@@ -147,6 +147,7 @@ impl ty::TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
+            implementing_type: None,
             span,
             attributes,
             return_type,
@@ -186,6 +187,7 @@ fn test_function_selector_behavior() {
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
@@ -208,6 +210,7 @@ fn test_function_selector_behavior() {
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
@@ -215,8 +218,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(TypeInfo::Str(5)),
-                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -225,7 +229,8 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: type_engine.insert_type(TypeInfo::Str(5)),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],

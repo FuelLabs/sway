@@ -1,12 +1,10 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{
-        config::{Config, Warnings},
-        session::Session,
-    },
+    config::{Config, Warnings},
+    core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
-    utils::{debug, sync},
+    utils::debug,
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
@@ -159,7 +157,7 @@ impl Backend {
     ) {
         let diagnostics_res = {
             let debug = &self.config.read().debug;
-            let tokens = session.tokens_for_file(uri);
+            let tokens = session.token_map().tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
@@ -585,7 +583,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
     use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
@@ -956,7 +954,7 @@ mod tests {
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
         let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 19, 2).await;
+        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 

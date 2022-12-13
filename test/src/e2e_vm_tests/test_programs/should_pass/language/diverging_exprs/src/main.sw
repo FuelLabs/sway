@@ -225,6 +225,16 @@ fn diverge_in_reassignment() -> u64 {
     123
 }
 
+fn diverge_with_if_else(b: bool) -> u64 {
+    let x: u64 = if b {
+        return 5;
+    } else {
+       return 1;
+    };
+
+    return x;
+}
+
 fn main() -> u64 {
     assert(5 == diverge_in_let_body());
     assert(5 == diverge_in_struct_0());
@@ -244,6 +254,8 @@ fn main() -> u64 {
     assert(5 == diverge_in_func_arg());
     assert(5 == diverge_in_array_index_array());
     assert(5 == diverge_in_array_index_index());
+    assert(5 == diverge_with_if_else(true));
+    assert(1 == diverge_with_if_else(false));
 
     // Disabled due to https://github.com/FuelLabs/sway/issues/3061
     // assert(5 == diverge_in_op_not());

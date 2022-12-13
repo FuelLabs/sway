@@ -4,7 +4,7 @@ use crate::{
         BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
         PackageManifest, PackageManifestFile,
     },
-    WorkspaceManifestFile, CORE, PRELUDE, STD,
+    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -62,7 +62,16 @@ pub enum DepKind {
     /// The dependency is a library and declared under `[dependencies]`.
     Library,
     /// The dependency is a contract and declared under `[contract-dependencies]`.
-    Contract,
+    Contract { salt: fuel_tx::Salt },
+}
+
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract { .. } => write!(f, "contract"),
+        }
+    }
 }
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
@@ -84,7 +93,7 @@ pub struct BuiltPackage {
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
-    pkg_name: String,
+    pub pkg_name: String,
 }
 
 /// The result of successfully compiling a workspace.
@@ -268,6 +277,8 @@ pub struct PkgOpts {
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
+    /// Print the computed Sway DCA (Dead Code Analysis) graph.
+    pub dca_graph: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -326,27 +337,6 @@ impl GitSourceIndex {
 impl Edge {
     pub fn new(name: String, kind: DepKind) -> Edge {
         Edge { name, kind }
-    }
-}
-
-impl FromStr for DepKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "library" => Ok(DepKind::Library),
-            "contract" => Ok(DepKind::Contract),
-            _ => bail!("invalid dep kind"),
-        }
-    }
-}
-
-impl fmt::Display for DepKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            DepKind::Library => write!(f, "library"),
-            DepKind::Contract => write!(f, "contract"),
-        }
     }
 }
 
@@ -730,6 +720,7 @@ fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTre
         .into_iter()
         .flat_map(move |(n, _)| validate_deps(graph, n, manifests, &mut visited))
         .collect();
+
     Ok(edges)
 }
 
@@ -791,7 +782,7 @@ fn validate_dep(
     let dep_entry = node_manifest
         .dep(dep_name)
         .ok_or_else(|| anyhow!("no entry in parent manifest"))?;
-    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry)?;
+    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry, manifests)?;
     let dep_pkg = graph[dep_node].unpinned(&dep_path);
     if dep_pkg.source != dep_source {
         bail!("dependency node's source does not match manifest entry");
@@ -810,7 +801,8 @@ fn validate_dep_manifest(
     let dep_program_type = dep_manifest.program_type()?;
     // Check if the dependency is either a library or a contract declared as a contract dependency
     match (&dep_program_type, &dep_edge.kind) {
-        (TreeType::Contract, DepKind::Contract) | (TreeType::Library { .. }, DepKind::Library) => {}
+        (TreeType::Contract, DepKind::Contract { salt: _ })
+        | (TreeType::Library { .. }, DepKind::Library) => {}
         _ => bail!(
             "\"{}\" is declared as a {} dependency, but is actually a {}",
             dep.name,
@@ -1365,6 +1357,8 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 /// If the given `manifest` is of type ManifestFile::Workspace resulting graph will have multiple
 /// root nodes, each representing a member of the workspace. Otherwise resulting graph will only
 /// have a single root node, representing the package that is described by the ManifestFile::Package
+///
+/// Checks the created graph after fetching for conflicting salt declarations.
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
@@ -1378,8 +1372,10 @@ fn fetch_graph(
             offline,
             graph,
             manifest_map,
+            member_manifests,
         )?);
     }
+    validate_contract_deps(graph)?;
     Ok(added_nodes)
 }
 
@@ -1401,6 +1397,7 @@ fn fetch_pkg_graph(
     offline: bool,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     // Retrieve the project node, or create one if it does not exist.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
@@ -1438,6 +1435,7 @@ fn fetch_pkg_graph(
         manifest_map,
         &mut fetched,
         &mut visited,
+        member_manifests,
     )
 }
 
@@ -1454,6 +1452,7 @@ fn fetch_deps(
     manifest_map: &mut ManifestMap,
     fetched: &mut HashMap<Pkg, NodeIx>,
     visited: &mut HashSet<NodeIx>,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
@@ -1461,7 +1460,13 @@ fn fetch_deps(
     // If the current package is a contract, we need to first get the deployment dependencies
     let deps: Vec<(String, Dependency, DepKind)> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .map(|(n, d)| {
+            (
+                n.clone(),
+                d.dependency.clone(),
+                DepKind::Contract { salt: d.salt },
+            )
+        })
         .chain(
             package_manifest
                 .deps()
@@ -1471,7 +1476,7 @@ fn fetch_deps(
     for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
         let parent_manifest = &manifest_map[&parent_id];
-        let source = dep_to_source_patched(parent_manifest, &name, &dep)
+        let source = dep_to_source_patched(parent_manifest, &name, &dep, member_manifests)
             .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1486,7 +1491,7 @@ fn fetch_deps(
             }
         };
 
-        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind.clone());
         // Ensure we have an edge to the dependency.
         graph.update_edge(node, dep_node, dep_edge.clone());
 
@@ -1522,6 +1527,7 @@ fn fetch_deps(
             manifest_map,
             fetched,
             visited,
+            member_manifests,
         )?);
     }
     Ok(added)
@@ -1968,7 +1974,11 @@ where
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
 /// produce the `Source` for that dependendency.
-fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
+fn dep_to_source(
+    pkg_path: &Path,
+    dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
+) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref ver_str) => {
             bail!(
@@ -1985,15 +1995,13 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                     anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
                 })?;
                 // Check if path is a member of a workspace.
-                let workspace_manifest = canonical_path
-                    .parent()
-                    .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
-
-                match workspace_manifest {
-                    Some(ws) if ws.is_member_path(&canonical_path)? => {
-                        Source::Member(canonical_path)
-                    }
-                    _ => Source::Path(canonical_path),
+                if member_manifests
+                    .values()
+                    .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
+                {
+                    Source::Member(canonical_path)
+                } else {
+                    Source::Path(canonical_path)
                 }
             }
             (_, _, Some(repo)) => {
@@ -2044,9 +2052,10 @@ fn apply_patch(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep_source: &Source,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
     match dep_source_patch(manifest, dep_name, dep_source) {
-        Some(patch) => dep_to_source(manifest.dir(), patch),
+        Some(patch) => dep_to_source(manifest.dir(), patch, member_manifests),
         None => Ok(dep_source.clone()),
     }
 }
@@ -2057,9 +2066,10 @@ fn dep_to_source_patched(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
-    let unpatched = dep_to_source(manifest.dir(), dep)?;
-    apply_patch(manifest, dep_name, &unpatched)
+    let unpatched = dep_to_source(manifest.dir(), dep, member_manifests)?;
+    apply_patch(manifest, dep_name, &unpatched, member_manifests)
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
@@ -2075,6 +2085,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
+    .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
@@ -2112,18 +2123,18 @@ pub fn dependency_namespace(
                 .get(&dep_node)
                 .cloned()
                 .expect("no namespace module"),
-            DepKind::Contract => {
+            DepKind::Contract { salt } => {
                 let mut constants = BTreeMap::default();
                 let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
-                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled, &salt),
                     // On `check` we don't compile contracts, so we use a placeholder.
                     None => ContractId::default(),
                 };
 
                 // Construct namespace with contract id
                 let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
@@ -2318,7 +2329,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, ast_res, &sway_build_config)
+        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value
@@ -2405,6 +2416,7 @@ fn build_profile_from_opts(
             Default::default()
         });
     profile.print_ast |= print.ast;
+    profile.print_dca_graph |= print.dca_graph;
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
     profile.print_intermediate_asm |= print.intermediate_asm;
@@ -2435,6 +2447,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
+    // Check if we have members to build so that we are not trying to build an empty workspace.
+    if member_manifests.is_empty() {
+        bail!("No member found to build")
+    }
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
@@ -2493,14 +2509,38 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage) -> ContractId {
+fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
-    let salt = fuel_tx::Salt::new([0; 32]);
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    contract.id(&salt, &contract.root(), &state_root)
+    contract.id(salt, &contract.root(), &state_root)
+}
+
+/// Checks if there are conficting `Salt` declarations for the contract dependencies in the graph.
+fn validate_contract_deps(graph: &Graph) -> Result<()> {
+    // For each contract dependency node in the graph, check if there are conflicting salt
+    // declarations.
+    for node in graph.node_indices() {
+        let pkg = &graph[node];
+        let name = pkg.name.clone();
+        let salt_declarations: HashSet<fuel_tx::Salt> = graph
+            .edges_directed(node, Direction::Incoming)
+            .filter_map(|e| match e.weight().kind {
+                DepKind::Library => None,
+                DepKind::Contract { salt } => Some(salt),
+            })
+            .collect();
+        if salt_declarations.len() > 1 {
+            bail!(
+                "There are conflicting salt declarations for contract dependency named: {}\nDeclared salts: {:?}",
+                name,
+                salt_declarations,
+            )
+        }
+    }
+    Ok(())
 }
 
 /// Build an entire forc package and return the built_package output.
@@ -2561,7 +2601,7 @@ pub fn build(
         if plan
             .graph()
             .edges_directed(node, Direction::Incoming)
-            .any(|e| e.weight().kind == DepKind::Contract)
+            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
@@ -2744,7 +2784,7 @@ pub fn check(
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace);
+        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 

@@ -131,7 +131,7 @@ pub enum CompileError {
     MutableParameterNotSupported { param_name: Ident },
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
-    #[error("ref mut parameter is not allowed for contract ABI function.")]
+    #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
@@ -155,8 +155,9 @@ pub enum CompileError {
     )]
     MultipleImmediates(Span),
     #[error(
-        "Expected: {expected} \n\
-         found:    {given}. The definition of this function must \
+        "expected: {expected} \n\
+         found:    {given} \n\
+         help:     The definition of this function must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
@@ -249,6 +250,12 @@ pub enum CompileError {
     FieldAccessOnNonStruct { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
     NotATuple {
+        name: String,
+        span: Span,
+        actually: String,
+    },
+    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
+    NotIndexable {
         name: String,
         span: Span,
         actually: String,
@@ -495,7 +502,7 @@ pub enum CompileError {
     #[error("File {file_path} generates an infinite dependency cycle.")]
     InfiniteDependencies { file_path: String, span: Span },
     #[error("The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.")]
-    GMFromExternalContract { span: Span },
+    GMFromExternalContext { span: Span },
     #[error("The MINT opcode cannot be used in an external context.")]
     MintFromExternalContext { span: Span },
     #[error("The BURN opcode cannot be used in an external context.")]
@@ -576,11 +583,9 @@ pub enum CompileError {
         span: Span,
     },
     #[error(
-        "Parameter mutability mismatch between the trait function declaration and its implementation."
+        "Parameter reference type or mutability mismatch between the trait function declaration and its implementation."
     )]
-    ParameterMutabilityMismatch { span: Span },
-    #[error("Ref mutable parameter is not supported for contract ABI function.")]
-    RefMutParameterInContract { span: Span },
+    ParameterRefMutabilityMismatch { span: Span },
     #[error("Literal value is too large for type {ty}.")]
     IntegerTooLarge { span: Span, ty: String },
     #[error("Literal value underflows type {ty}.")]
@@ -687,6 +692,8 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
+    #[error("Using \"while\" in a predicate is not allowed.")]
+    DisallowedWhileInPredicate { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -748,6 +755,7 @@ impl Spanned for CompileError {
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
+            NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             FieldNotFound { field_name, .. } => field_name.span(),
             SymbolNotFound { name, .. } => name.span(),
@@ -803,7 +811,7 @@ impl Spanned for CompileError {
             RecursiveTypeChain { span, .. } => span.clone(),
             TypeWithUnknownSize { span, .. } => span.clone(),
             InfiniteDependencies { span, .. } => span.clone(),
-            GMFromExternalContract { span, .. } => span.clone(),
+            GMFromExternalContext { span, .. } => span.clone(),
             MintFromExternalContext { span, .. } => span.clone(),
             BurnFromExternalContext { span, .. } => span.clone(),
             ContractStorageFromExternalContext { span, .. } => span.clone(),
@@ -831,8 +839,7 @@ impl Spanned for CompileError {
             DeclIsNotAConstant { span, .. } => span.clone(),
             ImpureInNonContract { span, .. } => span.clone(),
             ImpureInPureContext { span, .. } => span.clone(),
-            ParameterMutabilityMismatch { span, .. } => span.clone(),
-            RefMutParameterInContract { span, .. } => span.clone(),
+            ParameterRefMutabilityMismatch { span, .. } => span.clone(),
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
@@ -871,6 +878,7 @@ impl Spanned for CompileError {
             InitializedRegisterReassignment { span, .. } => span.clone(),
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
+            DisallowedWhileInPredicate { span } => span.clone(),
         }
     }
 }
