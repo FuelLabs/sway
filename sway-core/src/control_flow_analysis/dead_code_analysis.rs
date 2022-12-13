@@ -3,12 +3,12 @@ use crate::{
     declaration_engine::{declaration_engine::*, DeclarationId},
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
-    TypeEngine,
+    TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::BTreeSet;
-use sway_error::error::CompileError;
 use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl ControlFlowGraph {
@@ -252,6 +252,7 @@ fn connect_node(
                 expr.span.clone(),
                 options,
             )?;
+
             for leaf in return_contents.clone() {
                 graph.add_edge(this_index, leaf, "".into());
             }
@@ -393,7 +394,7 @@ fn connect_declaration(
         }
         AbiDeclaration(decl_id) => {
             let abi_decl = de_get_abi(decl_id.clone(), &span)?;
-            connect_abi_declaration(&abi_decl, graph, entry_node);
+            connect_abi_declaration(type_engine, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
         StructDeclaration(decl_id) => {
@@ -562,10 +563,11 @@ fn connect_trait_declaration(
 
 /// See [connect_trait_declaration] for implementation details.
 fn connect_abi_declaration(
+    type_engine: &TypeEngine,
     decl: &ty::TyAbiDeclaration,
     graph: &mut ControlFlowGraph,
     entry_node: NodeIndex,
-) {
+) -> Result<(), CompileError> {
     graph.namespace.add_trait(
         CallPath {
             prefixes: vec![],
@@ -574,6 +576,81 @@ fn connect_abi_declaration(
         },
         entry_node,
     );
+
+    // If a struct type is used as a return type in the interface surface
+    // of the contract, then assume that any fields inside the struct can
+    // be used outside of the contract.
+    for fn_decl_id in decl.interface_surface.iter() {
+        let fn_decl = de_get_trait_fn(fn_decl_id.clone(), &decl.span)?;
+        if let Some(TypeInfo::Struct { name, .. }) =
+            get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
+        {
+            if let Some(ns) = graph.namespace.get_struct(&name).cloned() {
+                for (_, field_ix) in ns.fields.iter() {
+                    graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn get_struct_type_info_from_type_id(
+    type_engine: &TypeEngine,
+    type_id: TypeId,
+) -> Result<Option<TypeInfo>, TypeError> {
+    let type_info = type_engine.to_typeinfo(type_id, &Span::dummy())?;
+    match type_info {
+        TypeInfo::Enum {
+            type_parameters,
+            variant_types,
+            ..
+        } => {
+            for param in type_parameters.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, param.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            for var in variant_types.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, var.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Tuple(type_args) => {
+            for arg in type_args.iter() {
+                if let Ok(Some(type_info)) =
+                    get_struct_type_info_from_type_id(type_engine, arg.type_id)
+                {
+                    return Ok(Some(type_info));
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Custom { type_arguments, .. } => {
+            if let Some(type_arguments) = type_arguments {
+                for arg in type_arguments.iter() {
+                    if let Ok(Some(type_info)) =
+                        get_struct_type_info_from_type_id(type_engine, arg.type_id)
+                    {
+                        return Ok(Some(type_info));
+                    }
+                }
+            }
+            Ok(None)
+        }
+        TypeInfo::Struct { .. } => Ok(Some(type_info)),
+        TypeInfo::Array(type_arg, _) => {
+            get_struct_type_info_from_type_id(type_engine, type_arg.type_id)
+        }
+        _ => Ok(None),
+    }
 }
 
 /// For an enum declaration, we want to make a declaration node for every individual enum
