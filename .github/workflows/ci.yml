@@ -254,7 +254,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v0.14.1
+        image: ghcr.io/fuellabs/fuel-core:v0.15.0
         ports:
           - 4000:4000
     steps:
