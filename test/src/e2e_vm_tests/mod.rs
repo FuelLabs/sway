@@ -264,16 +264,23 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(&name, &context.run_config, true).await;
                 *output = out;
 
-                let tested_pkg = result.expect("failed to compile and run unit tests");
-                let failed: Vec<String> = tested_pkg
-                    .tests
+                let tested_pkgs = result.expect("failed to compile and run unit tests");
+                let failed: Vec<String> = tested_pkgs
                     .into_iter()
-                    .enumerate()
-                    .filter_map(|(ix, test)| match test.state {
-                        ProgramState::Revert(code) => {
-                            Some(format!("Test {ix} failed with revert {code}\n"))
-                        }
-                        _ => None,
+                    .flat_map(|tested_pkg| {
+                        tested_pkg
+                            .tests
+                            .into_iter()
+                            .filter(|test| !test.passed())
+                            .map(move |test| {
+                                format!(
+                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                    tested_pkg.built.pkg_name,
+                                    test.name,
+                                    test.state,
+                                    test.condition,
+                                )
+                            })
                     })
                     .collect();
 

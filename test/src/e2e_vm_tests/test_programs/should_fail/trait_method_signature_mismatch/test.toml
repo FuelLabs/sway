@@ -11,7 +11,7 @@ category = "fail"
 # nextln: $()The definition of this function must match the one in the trait "Foo" declaration.
 
 # check: fn bar(ref mut variable: u64) -> bool {
-# check: $()Parameter mutability mismatch between the trait function declaration and its implementation.
+# check: $()Parameter reference type or mutability mismatch between the trait function declaration and its implementation.
 
 # check: fn baz() -> u64 {
 # nextln: $()expected: u32
