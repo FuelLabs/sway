@@ -179,7 +179,7 @@ pub(crate) async fn compile_and_run_unit_tests(
     file_name: &str,
     run_config: &RunConfig,
     capture_output: bool,
-) -> (Result<Box<forc_test::TestedPackage>>, String) {
+) -> (Result<Vec<forc_test::TestedPackage>>, String) {
     run_and_capture_output(|| async {
         tracing::info!("Compiling {} ...", file_name.bold());
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -204,10 +204,8 @@ pub(crate) async fn compile_and_run_unit_tests(
         let tested = built_tests.run()?;
 
         match tested {
-            forc_test::Tested::Package(tested_pkg) => Ok(tested_pkg),
-            forc_test::Tested::Workspace => Err(anyhow::Error::msg(
-                "testing full workspaces not yet implemented",
-            )),
+            forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
+            forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
         }
     })
     .await

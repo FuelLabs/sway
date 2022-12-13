@@ -284,6 +284,8 @@ pub fn parsed_to_ast(
         _ => None,
     }));
 
+    // Check if a non-test function calls `#[test]` function.
+
     ok(
         typed_program_with_storage_slots,
         dedup_unsorted(warnings),
