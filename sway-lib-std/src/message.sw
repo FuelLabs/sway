@@ -6,13 +6,13 @@ use ::revert::revert;
 use ::vec::Vec;
 use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
-/// Sends a message to `recipient` of length `msg_len` through `output` with amount of `coins`
+/// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset
 ///
 /// ### Arguments
 ///
 /// * `recipient` - The address of the message recipient
-/// * `msg_data` - arbitrary length message data
-/// * `coins` - Amount of base asset sent
+/// * `msg_data` - Arbitrary length message data
+/// * `coins` - Amount of base asset to send
 pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
     let mut recipient_heap_buffer = __addr_of(recipient);
     let mut size = 0;
@@ -41,5 +41,28 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
         }
         index += 1;
     }
+    revert(FAILED_SEND_MESSAGE_SIGNAL);
+}
+
+/// Sends a message `msg_data` of type T to `recipient` with a `coins` amount of the base asset
+///
+/// ### Arguments
+///
+/// * `recipient` - The address of the message recipient
+/// * `msg_data` - Message data of arbitrary type `T`
+/// * `coins` - Amount of base asset to send
+pub fn send_typed_message<T>(recipient: b256, data: T, coins: u64) {
+    let mut output_index = 0;
+    let outputs = output_count();
+
+    while output_index < outputs {
+        let type_of_output = output_type(output_index);
+        if let Output::Message = type_of_output {
+            __smo(recipient, data, output_index, coins);
+            return;
+        }
+        output_index += 1;
+    }
+
     revert(FAILED_SEND_MESSAGE_SIGNAL);
 }
