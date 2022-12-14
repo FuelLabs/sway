@@ -1,8 +1,7 @@
 use crate::core::{
     session::Session,
-    token::{SymbolKind, Token},
+    token::{get_range_from_span, SymbolKind, Token},
 };
-use crate::utils::common::get_range_from_span;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
@@ -15,7 +14,7 @@ use tower_lsp::lsp_types::{
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71
 pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<SemanticTokensResult> {
-    let tokens = session.tokens_for_file(url);
+    let tokens = session.token_map().tokens_for_file(url);
 
     // The tokens need sorting by their span so each token is sequential
     // If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
@@ -36,7 +35,7 @@ pub fn semantic_tokens_full(session: Arc<Session>, url: &Url) -> Option<Semantic
 /// Tokens are encoded relative to each other.
 ///
 /// This is taken from rust-analyzer which is also a direct port of <https://github.com/microsoft/vscode-languageserver-node/blob/f425af9de46a0187adb78ec8a46b9b2ce80c5412/server/src/sematicTokens.proposed.ts#L45>
-pub(crate) struct SemanticTokensBuilder {
+struct SemanticTokensBuilder {
     id: String,
     prev_line: u32,
     prev_char: u32,
@@ -44,7 +43,7 @@ pub(crate) struct SemanticTokensBuilder {
 }
 
 impl SemanticTokensBuilder {
-    pub(crate) fn new(id: String) -> Self {
+    pub fn new(id: String) -> Self {
         SemanticTokensBuilder {
             id,
             prev_line: 0,
@@ -54,7 +53,7 @@ impl SemanticTokensBuilder {
     }
 
     /// Push a new token onto the builder
-    pub(crate) fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
+    pub fn push(&mut self, range: Range, token_index: u32, modifier_bitset: u32) {
         let mut push_line = range.start.line as u32;
         let mut push_char = range.start.character as u32;
 
@@ -82,7 +81,7 @@ impl SemanticTokensBuilder {
         self.prev_char = range.start.character as u32;
     }
 
-    pub(crate) fn build(self) -> SemanticTokens {
+    pub fn build(self) -> SemanticTokens {
         SemanticTokens {
             result_id: Some(self.id),
             data: self.data,
@@ -90,7 +89,7 @@ impl SemanticTokensBuilder {
     }
 }
 
-pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
+pub fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens {
     static TOKEN_RESULT_COUNTER: AtomicU32 = AtomicU32::new(1);
     let id = TOKEN_RESULT_COUNTER
         .fetch_add(1, Ordering::SeqCst)
@@ -107,32 +106,6 @@ pub(crate) fn semantic_tokens(tokens_sorted: &[(Span, Token)]) -> SemanticTokens
         builder.push(range, token_index, modifier_bitset);
     }
     builder.build()
-}
-
-/// Get the semantic token type from the symbol kind.
-fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
-    match kind {
-        SymbolKind::Field => SemanticTokenType::PROPERTY,
-        SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
-        SymbolKind::Variable => SemanticTokenType::VARIABLE,
-        SymbolKind::Function => SemanticTokenType::FUNCTION,
-        SymbolKind::Const => SemanticTokenType::VARIABLE,
-        SymbolKind::Struct => SemanticTokenType::STRUCT,
-        SymbolKind::Enum => SemanticTokenType::ENUM,
-        SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
-        SymbolKind::Trait => SemanticTokenType::INTERFACE,
-        SymbolKind::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
-        SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
-        SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
-        SymbolKind::StringLiteral => SemanticTokenType::STRING,
-        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
-        SymbolKind::Module => SemanticTokenType::NAMESPACE,
-        SymbolKind::Unknown => SemanticTokenType::new("generic"),
-    }
-}
-
-pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
 }
 
 pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
@@ -169,3 +142,29 @@ pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
     // for symbols that are part of stdlib
     SemanticTokenModifier::DEFAULT_LIBRARY,
 ];
+
+/// Get the semantic token type from the symbol kind.
+fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
+    match kind {
+        SymbolKind::Field => SemanticTokenType::PROPERTY,
+        SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
+        SymbolKind::Variable => SemanticTokenType::VARIABLE,
+        SymbolKind::Function => SemanticTokenType::FUNCTION,
+        SymbolKind::Const => SemanticTokenType::VARIABLE,
+        SymbolKind::Struct => SemanticTokenType::STRUCT,
+        SymbolKind::Enum => SemanticTokenType::ENUM,
+        SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
+        SymbolKind::Trait => SemanticTokenType::INTERFACE,
+        SymbolKind::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
+        SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
+        SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
+        SymbolKind::StringLiteral => SemanticTokenType::STRING,
+        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
+        SymbolKind::Module => SemanticTokenType::NAMESPACE,
+        SymbolKind::Unknown => SemanticTokenType::new("generic"),
+    }
+}
+
+fn type_index(ty: SemanticTokenType) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
+}

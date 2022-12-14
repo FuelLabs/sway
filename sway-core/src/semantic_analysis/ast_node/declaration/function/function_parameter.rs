@@ -124,6 +124,7 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),
+            return_type: typed_parameter.type_id,
             type_ascription: typed_parameter.type_id,
             type_ascription_span: Some(typed_parameter.type_span.clone()),
         })),

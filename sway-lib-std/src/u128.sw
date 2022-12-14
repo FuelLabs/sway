@@ -329,6 +329,10 @@ impl core::ops::Divide for U128 {
 
         assert(divisor != zero);
 
+        if self.upper == 0 && divisor.upper == 0 {
+            return U128::from((0, self.lower / divisor.lower));
+        }
+
         let mut quotient = U128::new();
         let mut remainder = U128::new();
         let mut i = 128 - 1;

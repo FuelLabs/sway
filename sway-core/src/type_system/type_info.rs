@@ -72,7 +72,7 @@ pub enum TypeInfo {
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
     },
-    Str(u64),
+    Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
         name: Ident,
@@ -109,10 +109,8 @@ pub enum TypeInfo {
     Contract,
     // used for recovering from errors in the ast
     ErrorRecovery,
-    // Static, constant size arrays. The second `TypeId` below contains the initial type ID
-    // which could be generic.
-    // TODO: change this to a struct instead of a tuple
-    Array(TypeId, usize, TypeId),
+    // Static, constant size arrays.
+    Array(TypeArgument, Length),
     /// Represents the entire storage declaration struct
     /// Stored without initializers here, as typed struct fields,
     /// so type checking is able to treat it as a struct with fields.
@@ -217,11 +215,9 @@ impl HashWithTypeEngine for TypeInfo {
                 state.write_u8(16);
                 fields.hash(state, type_engine);
             }
-            TypeInfo::Array(elem_ty, count, _) => {
+            TypeInfo::Array(elem_ty, count) => {
                 state.write_u8(17);
-                type_engine
-                    .look_up_type_id(*elem_ty)
-                    .hash(state, type_engine);
+                elem_ty.hash(state, type_engine);
                 count.hash(state);
             }
             TypeInfo::RawUntypedPtr => {
@@ -273,7 +269,7 @@ impl PartialEqWithTypeEngine for TypeInfo {
                         .as_deref()
                         .eq(&r_type_args.as_deref(), type_engine)
             }
-            (Self::Str(l), Self::Str(r)) => l == r,
+            (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
                 Self::Enum {
@@ -329,11 +325,11 @@ impl PartialEqWithTypeEngine for TypeInfo {
                 l_abi_name == r_abi_name
                     && l_address.as_deref().eq(&r_address.as_deref(), type_engine)
             }
-            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
+            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 type_engine
-                    .look_up_type_id(*l0)
-                    .eq(&type_engine.look_up_type_id(*r0), type_engine)
-                    && l1 == r1
+                    .look_up_type_id(l0.type_id)
+                    .eq(&type_engine.look_up_type_id(r0.type_id), type_engine)
+                    && l1.val() == r1.val()
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, type_engine)
@@ -357,7 +353,7 @@ impl DisplayWithTypeEngine for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Str(x) => format!("str[{}]", x),
+            Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -407,7 +403,9 @@ impl DisplayWithTypeEngine for TypeInfo {
                         .unwrap_or_else(|| "None".into())
                 )
             }
-            Array(elem_ty, count, _) => format!("[{}; {}]", type_engine.help_out(elem_ty), count),
+            Array(elem_ty, count) => {
+                format!("[{}; {}]", type_engine.help_out(elem_ty), count.val())
+            }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
@@ -502,9 +500,9 @@ impl UnconstrainedTypeParameters for TypeInfo {
                         .type_parameter_is_unconstrained(type_engine, type_parameter)
                 })
                 .any(|x| x),
-            TypeInfo::Array(elem, _, _) => {
-                elem.type_parameter_is_unconstrained(type_engine, type_parameter)
-            }
+            TypeInfo::Array(elem, _) => elem
+                .type_id
+                .type_parameter_is_unconstrained(type_engine, type_parameter),
             TypeInfo::Unknown
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
@@ -528,7 +526,7 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Str(x) => format!("str[{}]", x),
+            Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
@@ -559,8 +557,8 @@ impl TypeInfo {
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {}", abi_name)
             }
-            Array(elem_ty, count, _) => {
-                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), count)
+            Array(elem_ty, length) => {
+                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), length.val())
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
@@ -576,7 +574,7 @@ impl TypeInfo {
     ) -> CompileResult<String> {
         use TypeInfo::*;
         let name = match self {
-            Str(len) => format!("str[{}]", len),
+            Str(len) => format!("str[{}]", len.val()),
             UnsignedInteger(bits) => {
                 use IntegerBits::*;
                 match bits {
@@ -722,15 +720,15 @@ impl TypeInfo {
                     )
                 }
             }
-            Array(type_id, size, _) => {
+            Array(elem_ty, length) => {
                 let name = type_engine
-                    .look_up_type_id(*type_id)
+                    .look_up_type_id(elem_ty.type_id)
                     .to_selector_name(type_engine, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
                 };
-                format!("a[{};{}]", name, size)
+                format!("a[{};{}]", name, length.val())
             }
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
@@ -759,7 +757,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
-            TypeInfo::Array(type_id, size, _) => *size > 0 && id_uninhabited(*type_id),
+            TypeInfo::Array(elem_ty, length) => length.val() > 0 && id_uninhabited(elem_ty.type_id),
             _ => false,
         }
     }
@@ -807,10 +805,10 @@ impl TypeInfo {
                 }
                 all_zero_sized
             }
-            TypeInfo::Array(type_id, size, _) => {
-                *size == 0
+            TypeInfo::Array(elem_ty, length) => {
+                length.val() == 0
                     || type_engine
-                        .look_up_type_id(*type_id)
+                        .look_up_type_id(elem_ty.type_id)
                         .is_zero_sized(type_engine)
             }
             _ => false,
@@ -827,10 +825,10 @@ impl TypeInfo {
                     .look_up_type_id(type_argument.type_id)
                     .can_safely_ignore(type_engine)
             }),
-            TypeInfo::Array(type_id, size, _) => {
-                *size == 0
+            TypeInfo::Array(elem_ty, length) => {
+                length.val() == 0
                     || type_engine
-                        .look_up_type_id(*type_id)
+                        .look_up_type_id(elem_ty.type_id)
                         .can_safely_ignore(type_engine)
             }
             TypeInfo::ErrorRecovery => true,
@@ -897,7 +895,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
@@ -965,8 +963,8 @@ impl TypeInfo {
                         }
                     }
                 }
-                TypeInfo::Array(type_id, _, _) => {
-                    inner_types.insert(type_id);
+                TypeInfo::Array(elem_ty, _) => {
+                    inner_types.insert(elem_ty.type_id);
                     inner_types.extend(
                         type_engine
                             .look_up_type_id(type_id)
@@ -1045,8 +1043,8 @@ impl TypeInfo {
                     }
                 }
             }
-            TypeInfo::Array(type_id, _, _) => {
-                inner_types.extend(helper(*type_id));
+            TypeInfo::Array(elem_ty, _) => {
+                inner_types.extend(helper(elem_ty.type_id));
             }
             TypeInfo::Tuple(elems) => {
                 for elem in elems.iter() {
@@ -1101,7 +1099,7 @@ impl TypeInfo {
             | TypeInfo::Str(_)
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. } => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
@@ -1128,7 +1126,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Custom { .. }
             | TypeInfo::Str(_)
-            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
@@ -1226,10 +1224,10 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::Array(type_id, _, _) => {
+            TypeInfo::Array(elem_ty, _) => {
                 let mut nested_types = check!(
                     type_engine
-                        .look_up_type_id(type_id)
+                        .look_up_type_id(elem_ty.type_id)
                         .extract_nested_types(type_engine, span),
                     return err(warnings, errors),
                     warnings,
@@ -1427,11 +1425,11 @@ impl TypeInfo {
 
     fn is_subset_inner(&self, other: &TypeInfo, type_engine: &TypeEngine) -> bool {
         match (self, other) {
-            (Self::Array(l0, l1, _), Self::Array(r0, r1, _)) => {
+            (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 type_engine
-                    .look_up_type_id(*l0)
-                    .is_subset_of(&type_engine.look_up_type_id(*r0), type_engine)
-                    && l1 == r1
+                    .look_up_type_id(l0.type_id)
+                    .is_subset_of(&type_engine.look_up_type_id(r0.type_id), type_engine)
+                    && l1.val() == r1.val()
             }
             (
                 Self::Custom {
@@ -1622,7 +1620,7 @@ impl TypeInfo {
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
             | TypeInfo::Tuple(_)
-            | TypeInfo::Array(_, _, _)
+            | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric => true,

@@ -129,6 +129,7 @@ fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print_ast,
+            dca_graph: cmd.print_dca_graph,
             finalized_asm: cmd.print_finalized_asm,
             intermediate_asm: cmd.print_intermediate_asm,
             ir: cmd.print_ir,

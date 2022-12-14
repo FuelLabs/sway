@@ -28,6 +28,7 @@
       }
     }
   ],
+  "messagesTypes": null,
   "types": [
     {
       "components": [],

@@ -3,13 +3,16 @@
 
 use crate::{
     control_flow_analysis::*,
-    declaration_engine::declaration_engine::{de_get_function, de_get_impl_trait},
+    declaration_engine::{
+        declaration_engine::{de_get_function, de_get_impl_trait},
+        DeclarationId,
+    },
     language::{ty, CallPath},
     type_system::*,
 };
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
 
 impl ControlFlowGraph {
     pub(crate) fn construct_return_path_graph(
@@ -62,7 +65,7 @@ impl ControlFlowGraph {
         type_engine: &TypeEngine,
         entry_point: EntryPoint,
         exit_point: ExitPoint,
-        function_name: &Ident,
+        function_name: &IdentUnique,
         return_ty: &TypeInfo,
     ) -> Vec<CompileError> {
         let mut rovers = vec![entry_point];
@@ -96,6 +99,7 @@ impl ControlFlowGraph {
                             return errors;
                         }
                     };
+                    let function_name: Ident = function_name.into();
                     errors.push(CompileError::PathDoesNotReturn {
                         // TODO: unwrap_to_node is a shortcut. In reality, the graph type should be
                         // different. To save some code duplication,
@@ -212,11 +216,6 @@ fn connect_declaration(
                 graph.add_edge(*leaf, entry_node, "".into());
             }
 
-            let methods = methods
-                .into_iter()
-                .map(|decl_id| de_get_function(decl_id, &trait_name.span()))
-                .collect::<Result<Vec<_>, CompileError>>()?;
-
             connect_impl_trait(type_engine, &trait_name, graph, &methods, entry_node)?;
             Ok(leaves.to_vec())
         }
@@ -233,22 +232,24 @@ fn connect_impl_trait(
     type_engine: &TypeEngine,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph,
-    methods: &[ty::TyFunctionDeclaration],
+    methods: &[DeclarationId],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for fn_decl in methods {
+    for method_decl_id in methods {
+        let fn_decl = de_get_function(method_decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
+            method_decl_id: method_decl_id.clone(),
         });
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());
         // connect the impl declaration node to the functions themselves, as all trait functions are
         // public if the trait is in scope
         connect_typed_fn_decl(
             type_engine,
-            fn_decl,
+            &fn_decl,
             graph,
             fn_decl_entry_node,
             fn_decl.span.clone(),

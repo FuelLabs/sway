@@ -1,8 +1,10 @@
-use crate::core::token::{SymbolKind, TokenMap};
-use crate::utils::token::is_initial_declaration;
+use crate::core::{
+    token::{AstToken, SymbolKind, Token, TypedAstToken},
+    token_map::TokenMap,
+};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
-pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
+pub(crate) fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
 
     for item in token_map.iter() {
@@ -21,7 +23,7 @@ pub fn to_completion_items(token_map: &TokenMap) -> Vec<CompletionItem> {
 }
 
 /// Given a `SymbolKind`, return the `lsp_types::CompletionItemKind` that corresponds to it.
-pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
+pub fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<CompletionItemKind> {
     match symbol_kind {
         SymbolKind::Field => Some(CompletionItemKind::FIELD),
         SymbolKind::BuiltinType => Some(CompletionItemKind::TYPE_PARAMETER),
@@ -40,5 +42,22 @@ pub(crate) fn completion_item_kind(symbol_kind: &SymbolKind) -> Option<Completio
         | SymbolKind::NumericLiteral => Some(CompletionItemKind::VALUE),
         SymbolKind::Variable => Some(CompletionItemKind::VARIABLE),
         SymbolKind::Unknown => None,
+    }
+}
+
+fn is_initial_declaration(token_type: &Token) -> bool {
+    match &token_type.typed {
+        Some(typed_ast_token) => {
+            matches!(
+                typed_ast_token,
+                TypedAstToken::TypedDeclaration(_) | TypedAstToken::TypedFunctionDeclaration(_)
+            )
+        }
+        None => {
+            matches!(
+                token_type.parsed,
+                AstToken::Declaration(_) | AstToken::FunctionDeclaration(_)
+            )
+        }
     }
 }

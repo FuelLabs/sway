@@ -94,7 +94,7 @@ impl TyEnumDeclaration {
                 errors.push(CompileError::UnknownEnumVariant {
                     enum_name: self.name.clone(),
                     variant_name: variant_name.clone(),
-                    span: self.span.clone(),
+                    span: variant_name.span(),
                 });
                 err(warnings, errors)
             }

@@ -518,10 +518,10 @@ impl TypeEngine {
                     }
                 }
             }
-            TypeInfo::Array(type_id, n, initial_type_id) => {
-                let new_type_id = check!(
+            TypeInfo::Array(mut elem_ty, n) => {
+                elem_ty.type_id = check!(
                     self.resolve_type(
-                        type_id,
+                        elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
@@ -532,7 +532,7 @@ impl TypeEngine {
                     warnings,
                     errors
                 );
-                self.insert_type(TypeInfo::Array(new_type_id, n, initial_type_id))
+                self.insert_type(TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {

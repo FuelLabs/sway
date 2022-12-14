@@ -1,0 +1,4 @@
+category = "fail"
+
+# check:  $()let e = MyEnum::C;
+# nextln: $()Variant "C" does not exist on enum "MyEnum"

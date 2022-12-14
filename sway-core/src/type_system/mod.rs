@@ -1,6 +1,7 @@
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
+mod length;
 mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
@@ -17,6 +18,7 @@ mod unify;
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
+pub use length::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use resolved_type::*;
 pub(crate) use trait_constraint::*;

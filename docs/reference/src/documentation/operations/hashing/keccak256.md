@@ -1,0 +1,13 @@
+# keccak256
+
+To use the `keccak256` function we must import it.
+
+```sway
+{{#include ../../../code/operations/hashing/src/lib.sw:import_keccak256}}
+```
+
+To hash multiple values we wrap them into a [`tuple`](../../language/built-ins/tuples.md) however other [`compound types`](../../language/built-ins/index.md#compound-types) may be used.
+
+```sway
+{{#include ../../../code/operations/hashing/src/lib.sw:keccak256}}
+```

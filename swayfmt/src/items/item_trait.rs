@@ -69,7 +69,9 @@ impl Format for ItemTrait {
             writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
         }
         formatted_code.pop(); // pop last ending newline
+        Self::close_curly_brace(formatted_code, formatter)?;
         if let Some(trait_defs) = &self.trait_defs_opt {
+            write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
             for trait_items in trait_defs.get() {
                 write!(
@@ -81,9 +83,7 @@ impl Format for ItemTrait {
                 trait_items.format(formatted_code, formatter)?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
-        }
-        Self::close_curly_brace(formatted_code, formatter)?;
-
+        };
         Ok(())
     }
 }

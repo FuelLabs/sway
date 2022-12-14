@@ -1,12 +1,13 @@
 mod functions;
 
 use super::{
-    compiler_constants, from_ir::*, register_sequencer::RegisterSequencer, AbstractInstructionSet,
-    DataSection, Entry,
+    compiler_constants, from_ir::*, programs::ProgramKind, register_sequencer::RegisterSequencer,
+    AbstractInstructionSet, DataSection, Entry,
 };
 
 use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
+    declaration_engine::DeclarationId,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
@@ -21,6 +22,8 @@ use either::Either;
 use std::{collections::HashMap, sync::Arc};
 
 pub(super) struct AsmBuilder<'ir> {
+    program_kind: ProgramKind,
+
     // Data section is used by the rest of code gen to layout const memory.
     data_section: DataSection,
 
@@ -54,7 +57,7 @@ pub(super) struct AsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    entries: Vec<(Function, Label, Vec<Op>)>,
+    entries: Vec<(Function, Label, Vec<Op>, Option<DeclarationId>)>,
     non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -64,17 +67,24 @@ pub(super) struct AsmBuilder<'ir> {
 type AsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet)>,
+    Vec<(
+        Function,
+        Label,
+        AbstractInstructionSet,
+        Option<DeclarationId>,
+    )>,
     Vec<AbstractInstructionSet>,
 );
 
 impl<'ir> AsmBuilder<'ir> {
     pub(super) fn new(
+        program_kind: ProgramKind,
         data_section: DataSection,
         reg_seqr: RegisterSequencer,
         context: &'ir Context,
     ) -> Self {
         AsmBuilder {
+            program_kind,
             data_section,
             reg_seqr,
             func_label_map: HashMap::new(),
@@ -114,7 +124,9 @@ impl<'ir> AsmBuilder<'ir> {
             self.reg_seqr,
             self.entries
                 .into_iter()
-                .map(|(f, l, ops)| (f, l, AbstractInstructionSet { ops }))
+                .map(|(f, l, ops, test_decl_id)| {
+                    (f, l, AbstractInstructionSet { ops }, test_decl_id)
+                })
                 .collect(),
             self.non_entries
                 .into_iter()

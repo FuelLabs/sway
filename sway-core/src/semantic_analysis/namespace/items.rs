@@ -339,11 +339,11 @@ impl Items {
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (
-                    TypeInfo::Array(elem_ty, _count, _),
+                    TypeInfo::Array(elem_ty, _),
                     ty::ProjectionKind::ArrayIndex { index_span, .. },
                 ) => {
                     parent_rover = symbol;
-                    symbol = elem_ty;
+                    symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
                     full_span_for_error = index_span.clone();
                 }

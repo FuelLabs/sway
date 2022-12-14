@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-98FF531C5C738A40'
+
+[[package]]
+name = 'should_revert'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-98FF531C5C738A40'
+dependencies = ['core']

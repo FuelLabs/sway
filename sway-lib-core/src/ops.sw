@@ -1,6 +1,6 @@
 library ops;
 
-use ::num::*;
+use ::primitives::*;
 
 pub trait Add {
     fn add(self, other: Self) -> Self;

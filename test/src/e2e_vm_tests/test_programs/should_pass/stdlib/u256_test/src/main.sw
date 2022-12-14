@@ -1,6 +1,5 @@
 script;
 
-use core::num::*;
 use std::{assert::assert, result::Result, u128::U128, u256::{U256, U256Error}};
 
 fn main() -> bool {
@@ -15,7 +14,7 @@ fn main() -> bool {
     assert(new == empty);
 
     // test from(() & into()
-    let(l, m, n, o) = new.into();
+    let (l, m, n, o) = new.into();
     assert(l == 0);
     assert(m == 0);
     assert(n == 0);
@@ -37,7 +36,7 @@ fn main() -> bool {
     assert(x.d == d);
     assert(x.d != a);
 
-    let(e, f, g, h) = x.into();
+    let (e, f, g, h) = x.into();
     assert(e == a);
     assert(f == b);
     assert(g == c);
@@ -48,13 +47,13 @@ fn main() -> bool {
     // test min() & max()
     let max = U256::max();
     let min = U256::min();
-    let(one, two, three, four) = max.into();
+    let (one, two, three, four) = max.into();
     assert(one == u64::max());
     assert(two == u64::max());
     assert(three == u64::max());
     assert(four == u64::max());
 
-    let(min_1, min_2, min_3, min_4) = min.into();
+    let (min_1, min_2, min_3, min_4) = min.into();
     assert(min_1 == u64::min());
     assert(min_2 == u64::min());
     assert(min_3 == u64::min());

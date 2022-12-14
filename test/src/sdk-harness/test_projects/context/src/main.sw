@@ -30,7 +30,7 @@ impl ContextTesting for Contract {
 
     #[payable]
     fn get_gas() -> u64 {
-        gas()
+        context_gas()
     }
 
     #[payable]

@@ -46,12 +46,13 @@ impl Document {
     pub(crate) fn from_ty_program(
         compilation: &CompileResult<(ParseProgram, Option<TyProgram>)>,
         no_deps: bool,
+        document_private_items: bool,
     ) -> Result<Documentation> {
         let mut docs: Documentation = Default::default();
         if let Some((_, Some(typed_program))) = &compilation.value {
             for ast_node in &typed_program.root.all_nodes {
                 if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                    let desc = Descriptor::from_typed_decl(decl, vec![])?;
+                    let desc = Descriptor::from_typed_decl(decl, vec![], document_private_items)?;
 
                     if let Descriptor::Documentable {
                         module_prefix,
@@ -70,7 +71,12 @@ impl Document {
                 // this is the same process as before but for dependencies
                 for (_, ref typed_submodule) in &typed_program.root.submodules {
                     let module_prefix = vec![];
-                    Document::from_ty_submodule(typed_submodule, &mut docs, &module_prefix)?;
+                    Document::from_ty_submodule(
+                        typed_submodule,
+                        &mut docs,
+                        &module_prefix,
+                        document_private_items,
+                    )?;
                 }
             }
         }
@@ -81,12 +87,17 @@ impl Document {
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &[String],
+        document_private_items: bool,
     ) -> Result<()> {
         let mut new_submodule_prefix = module_prefix.to_owned();
         new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                let desc = Descriptor::from_typed_decl(decl, new_submodule_prefix.clone())?;
+                let desc = Descriptor::from_typed_decl(
+                    decl,
+                    new_submodule_prefix.clone(),
+                    document_private_items,
+                )?;
 
                 if let Descriptor::Documentable {
                     module_prefix,
@@ -102,7 +113,12 @@ impl Document {
         }
         // if there is another submodule we need to go a level deeper
         if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
-            Document::from_ty_submodule(submodule, docs, &new_submodule_prefix)?;
+            Document::from_ty_submodule(
+                submodule,
+                docs,
+                &new_submodule_prefix,
+                document_private_items,
+            )?;
         }
 
         Ok(())

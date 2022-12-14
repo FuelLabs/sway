@@ -3,7 +3,7 @@ name = 'contract_a'
 source = 'member'
 dependencies = ['std']
 contract-dependencies = [
-    'contract_b',
+    'contract_b (1111111111111111111111111111111111111111111111111111111111111111)',
     'contract_c',
 ]
 

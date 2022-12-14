@@ -94,7 +94,7 @@ impl ReplaceSelfType for TypeId {
                     }
                 }
             }
-            TypeInfo::Array(mut type_id, _, _) => {
+            TypeInfo::Array(mut type_id, _) => {
                 type_id.replace_self_type(type_engine, self_type);
             }
             TypeInfo::Storage { mut fields } => {
@@ -280,35 +280,35 @@ impl TypeId {
                 )
             }
             TypeInfo::Array(..) => {
-                if let TypeInfo::Array(type_id, _, initial_type_id) =
-                    type_engine.look_up_type_id(resolved_type_id)
-                {
+                if let TypeInfo::Array(elem_ty, _) = type_engine.look_up_type_id(resolved_type_id) {
                     // The `fuels_types::TypeDeclaration`s needed for the array element type
-                    let elem_ty = fuels_types::TypeDeclaration {
-                        type_id: initial_type_id.index(),
-                        type_field: initial_type_id.get_json_type_str(type_engine, type_id),
-                        components: initial_type_id.get_json_type_components(
+                    let elem_json_ty = fuels_types::TypeDeclaration {
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_field: elem_ty
+                            .initial_type_id
+                            .get_json_type_str(type_engine, elem_ty.type_id),
+                        components: elem_ty.initial_type_id.get_json_type_components(
                             type_engine,
                             types,
-                            type_id,
+                            elem_ty.type_id,
                         ),
-                        type_parameters: initial_type_id.get_json_type_parameters(
+                        type_parameters: elem_ty.initial_type_id.get_json_type_parameters(
                             type_engine,
                             types,
-                            type_id,
+                            elem_ty.type_id,
                         ),
                     };
-                    types.push(elem_ty);
+                    types.push(elem_json_ty);
 
                     // Generate the JSON data for the array. This is basically a single
                     // `fuels_types::TypeApplication` for the array element type
                     Some(vec![fuels_types::TypeApplication {
                         name: "__array_element".to_string(),
-                        type_id: initial_type_id.index(),
-                        type_arguments: initial_type_id.get_json_type_arguments(
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_arguments: elem_ty.initial_type_id.get_json_type_arguments(
                             type_engine,
                             types,
-                            type_id,
+                            elem_ty.type_id,
                         ),
                     }])
                 } else {
@@ -551,9 +551,9 @@ impl TypeId {
                         .collect::<Vec<String>>();
                     format!("({})", field_strs.join(", "))
                 }
-                (TypeInfo::Array(_, count, _), TypeInfo::Array(_, resolved_count, _)) => {
-                    assert_eq!(count, resolved_count);
-                    format!("[_; {count}]")
+                (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
+                    assert_eq!(count.val(), resolved_count.val());
+                    format!("[_; {}]", count.val())
                 }
                 (TypeInfo::Custom { .. }, _) => {
                     format!(

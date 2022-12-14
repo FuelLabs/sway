@@ -3,6 +3,7 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
+    language::ty::TyDeclaration,
     type_system::{CopyTypes, TypeMapping},
     EqWithTypeEngine, PartialEqWithTypeEngine, ReplaceSelfType, TypeEngine, TypeId,
 };
@@ -10,7 +11,7 @@ use crate::{
 use super::{
     de_find_all_parents, de_insert, de_register_parent,
     declaration_engine::{de_look_up_decl_id, de_replace_decl_id},
-    DeclMapping, ReplaceDecls,
+    DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType,
 };
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
@@ -91,8 +92,16 @@ impl ReplaceDecls for DeclarationId {
     }
 }
 
+impl ReplaceFunctionImplementingType for DeclarationId {
+    fn replace_implementing_type(&mut self, implementing_type: TyDeclaration) {
+        let mut decl = de_look_up_decl_id(self.clone());
+        decl.replace_implementing_type(implementing_type);
+        de_replace_decl_id(self.clone(), decl);
+    }
+}
+
 impl DeclarationId {
-    pub(super) fn new(index: usize, span: Span) -> DeclarationId {
+    pub(crate) fn new(index: usize, span: Span) -> DeclarationId {
         DeclarationId(index, span)
     }
 

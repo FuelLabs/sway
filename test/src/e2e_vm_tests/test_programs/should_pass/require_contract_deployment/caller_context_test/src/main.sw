@@ -1,7 +1,6 @@
 script;
 use std::{assert::assert, constants::BASE_ASSET_ID, contract_id::ContractId};
 use context_testing_abi::*;
-use core::num::*;
 
 fn main() -> bool {
     let zero = b256::min();
@@ -14,29 +13,34 @@ fn main() -> bool {
 
     // test Context::contract_id():
     let returned_contract_id = test_contract.get_id {
-        gas: gas, coins: 0, asset_id: BASE_ASSET_ID.into()
-    }
-    ();
+        gas: gas,
+        coins: 0,
+        asset_id: BASE_ASSET_ID.into(),
+    }();
     assert(returned_contract_id.into() == other_contract_id.into());
 
     // @todo set up a test contract to mint some tokens for testing balances.
     // test Context::this_balance():
     let returned_this_balance = test_contract.get_this_balance {
-        gas: gas, coins: 0, asset_id: BASE_ASSET_ID.into()
-    }
-    (base_asset_id);
+        gas: gas,
+        coins: 0,
+        asset_id: BASE_ASSET_ID.into(),
+    }(base_asset_id);
     assert(returned_this_balance == 0);
 
     // test Context::balance_of_contract():
     let returned_contract_balance = test_contract.get_balance_of_contract {
-        gas: gas, coins: 0, asset_id: BASE_ASSET_ID.into()
-    }
-    (base_asset_id, other_contract_id);
+        gas: gas,
+        coins: 0,
+        asset_id: BASE_ASSET_ID.into(),
+    }(base_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
+
+
+
 
     // The checks below don't work (AssertIdNotFound). The test should be
     // updated to forward coins that are actually available.
-
     // test Context::msg_value():
     /*let returned_amount = test_contract.get_amount {
         gas: gas, coins: amount, asset_id: BASE_ASSET_ID
@@ -66,6 +70,5 @@ fn main() -> bool {
     }
     ();
     assert(global_gas == 1000);*/
-
     true
 }
