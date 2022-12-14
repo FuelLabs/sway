@@ -4,7 +4,6 @@ use crate::{
     error::{err, ok},
     language::{parsed::MatchBranch, ty},
     semantic_analysis::*,
-    type_system::insert_type,
     types::DeterministicallyAborts,
     CompileResult, TypeInfo,
 };
@@ -26,6 +25,8 @@ impl ty::TyMatchBranch {
             span: branch_span,
         } = branch;
 
+        let type_engine = ctx.type_engine;
+
         // type check the scrutinee
         let typed_scrutinee = check!(
             ty::TyScrutinee::type_check(ctx.by_ref(), scrutinee),
@@ -36,7 +37,12 @@ impl ty::TyMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(typed_value, typed_scrutinee.clone(), ctx.namespace),
+            matcher(
+                type_engine,
+                typed_value,
+                typed_scrutinee.clone(),
+                ctx.namespace
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -51,12 +57,14 @@ impl ty::TyMatchBranch {
         let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
             let type_ascription = right_decl.return_type;
+            let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl =
                 ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
                     name: left_decl.clone(),
                     body: right_decl,
                     mutability: ty::VariableMutability::Immutable,
+                    return_type,
                     type_ascription,
                     type_ascription_span: None,
                 }));
@@ -71,7 +79,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
@@ -81,7 +89,7 @@ impl ty::TyMatchBranch {
         };
 
         // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts() {
+        if !typed_result.deterministically_aborts(true) {
             append!(
                 ctx.unify_with_self(typed_result.return_type, &typed_result.span),
                 warnings,

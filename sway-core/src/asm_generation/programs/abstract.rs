@@ -12,6 +12,8 @@ use crate::{
     },
 };
 
+use sway_error::error::CompileError;
+
 use either::Either;
 
 impl AbstractProgram {
@@ -31,7 +33,7 @@ impl AbstractProgram {
         }
     }
 
-    pub(crate) fn into_allocated_program(mut self) -> AllocatedProgram {
+    pub(crate) fn into_allocated_program(mut self) -> Result<AllocatedProgram, CompileError> {
         // Build our bytecode prologue which has a preamble and for contracts is the switch based on
         // function selector.
         let mut prologue = self.build_preamble();
@@ -44,29 +46,42 @@ impl AbstractProgram {
         let entries = self
             .entries
             .iter()
-            .map(|entry| (entry.selector, entry.label, entry.name.clone()))
+            .map(|entry| {
+                (
+                    entry.selector,
+                    entry.label,
+                    entry.name.clone(),
+                    entry.test_decl_id.clone(),
+                )
+            })
             .collect();
 
-        // Allocate the registers for each function.
-        let functions: Vec<_> = self
+        // Gather all the functions together, optimise and then verify the instructions.
+        let abstract_functions = self
             .entries
             .into_iter()
             .map(|entry| entry.ops)
             .chain(self.non_entries.into_iter())
             .map(AbstractInstructionSet::optimize)
+            .map(AbstractInstructionSet::verify)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // Allocate the registers for each function.
+        let functions = abstract_functions
+            .into_iter()
             .map(|fn_ops| fn_ops.allocate_registers(&mut self.reg_seqr))
             .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
-            .collect();
+            .collect::<Vec<_>>();
 
         // XXX need to verify that the stack use for each function is balanced.
 
-        AllocatedProgram {
+        Ok(AllocatedProgram {
             kind: self.kind,
             data_section: self.data_section,
             prologue,
             functions,
             entries,
-        }
+        })
     }
 
     /// Builds the asm preamble, which includes metadata and a jump past the metadata.

@@ -41,7 +41,12 @@ pub fn compile_ir_to_asm(
         println!("{abstract_program}\n");
     }
 
-    let allocated_program = abstract_program.into_allocated_program();
+    let allocated_program = check!(
+        CompileResult::from(abstract_program.into_allocated_program()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     if build_config
         .map(|cfg| cfg.print_intermediate_asm)
@@ -107,10 +112,11 @@ fn compile_module_to_asm(
     let (data_section, reg_seqr, entries, non_entries) = builder.finalize();
     let entries = entries
         .into_iter()
-        .map(|(func, label, ops)| {
+        .map(|(func, label, ops, test_decl_id)| {
             let selector = func.get_selector(context);
             let name = func.get_name(context).to_string();
             AbstractEntry {
+                test_decl_id,
                 selector,
                 label,
                 ops,

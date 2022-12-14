@@ -1,0 +1,29 @@
+script {
+    // check: fn main() -> (), !1 {
+    fn main() -> (), !1 {
+        entry():
+	// check: v0 = const unit ()
+        v0 = const unit ()
+        ret () v0
+    }
+
+    // check: fn my_test_func() -> (), !4 {
+    fn my_test_func() -> (), !4 {
+        entry():
+	// check: v0 = const unit ()
+        v0 = const unit ()
+        ret () v0
+    }
+}
+
+// check: !0 = "a string\\n"
+// check: !1 = span !0
+// check: !2 = span !0
+// check: !3 = decl_index 4
+// check: !4 = (!2 !3)
+
+!0 = "a string\\n"
+!1 = span !0 9 21
+!2 = span !0 307 341
+!3 = decl_index 4
+!4 = (!2 !3)

@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-8222DC735DC134D4'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8222DC735DC134D4'
+dependencies = ['core']
+
+[[package]]
+name = 'tuple_types'
+source = 'member'
+dependencies = ['std']

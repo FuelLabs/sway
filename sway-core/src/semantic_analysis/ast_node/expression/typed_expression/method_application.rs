@@ -23,16 +23,18 @@ pub(crate) fn type_check_method_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
+
     // type check the function arguments
     let mut args_buf = VecDeque::new();
     for arg in &arguments {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
         args_buf.push_back(check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
-            ty::TyExpression::error(span.clone()),
+            ty::TyExpression::error(span.clone(), type_engine),
             warnings,
             errors
         ));
@@ -106,13 +108,15 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
-                    let type_annotation = if param.name.span().as_str()
-                        != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
-                    {
-                        insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour))
-                    } else {
-                        insert_type(TypeInfo::B256)
-                    };
+                    let type_annotation = ctx.type_engine.insert_type(
+                        if param.name.span().as_str()
+                            != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
+                        {
+                            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                        } else {
+                            TypeInfo::B256
+                        },
+                    );
                     let ctx = ctx
                         .by_ref()
                         .with_help_text("")
@@ -121,7 +125,7 @@ pub(crate) fn type_check_method_application(
                         param.name.to_string(),
                         check!(
                             ty::TyExpression::type_check(ctx, param.value),
-                            ty::TyExpression::error(span.clone()),
+                            ty::TyExpression::error(span.clone(), type_engine),
                             warnings,
                             errors
                         ),
@@ -172,8 +176,10 @@ pub(crate) fn type_check_method_application(
 
     // If this function is being called with method call syntax, a.b(c),
     // then make sure the first parameter is self, else issue an error.
+    let mut is_method_call_syntax_used = false;
     if !method.is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
+            is_method_call_syntax_used = true;
             let is_first_param_self = method
                 .parameters
                 .get(0)
@@ -199,33 +205,35 @@ pub(crate) fn type_check_method_application(
         Some(ty::TyFunctionParameter { is_mutable, .. }),
     ) = (args_buf.get(0), method.parameters.get(0))
     {
-        let unknown_decl = check!(
-            ctx.namespace.resolve_symbol(name).cloned(),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
+        if *is_mutable {
+            let unknown_decl = check!(
+                ctx.namespace.resolve_symbol(name).cloned(),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
 
-        let is_decl_mutable = match unknown_decl {
-            ty::TyDeclaration::ConstantDeclaration(_) => false,
-            _ => {
-                let variable_decl = check!(
-                    unknown_decl.expect_variable().cloned(),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                variable_decl.mutability.is_mutable()
+            let is_decl_mutable = match unknown_decl {
+                ty::TyDeclaration::ConstantDeclaration(_) => false,
+                _ => {
+                    let variable_decl = check!(
+                        unknown_decl.expect_variable().cloned(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    variable_decl.mutability.is_mutable()
+                }
+            };
+
+            if !is_decl_mutable {
+                errors.push(CompileError::MethodRequiresMutableSelf {
+                    method_name: method_name_binding.inner.easy_name(),
+                    variable_name: name.clone(),
+                    span,
+                });
+                return err(warnings, errors);
             }
-        };
-
-        if !is_decl_mutable && *is_mutable {
-            errors.push(CompileError::MethodRequiresMutableSelf {
-                method_name: method_name_binding.inner.easy_name(),
-                variable_name: name.clone(),
-                span,
-            });
-            return err(warnings, errors);
         }
     }
 
@@ -258,16 +266,17 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address = match contract_caller.map(|x| look_up_type_id(x.return_type)) {
-            Some(TypeInfo::ContractCaller { address, .. }) => address,
-            _ => {
-                errors.push(CompileError::Internal(
-                    "Attempted to find contract address of non-contract-call.",
-                    span.clone(),
-                ));
-                None
-            }
-        };
+        let contract_address =
+            match contract_caller.map(|x| type_engine.look_up_type_id(x.return_type)) {
+                Some(TypeInfo::ContractCaller { address, .. }) => address,
+                _ => {
+                    errors.push(CompileError::Internal(
+                        "Attempted to find contract address of non-contract-call.",
+                        span.clone(),
+                    ));
+                    None
+                }
+            };
         let contract_address = if let Some(addr) = contract_address {
             addr
         } else {
@@ -276,7 +285,12 @@ pub(crate) fn type_check_method_application(
             });
             return err(warnings, errors);
         };
-        let func_selector = check!(method.to_fn_selector_value(), [0; 4], warnings, errors);
+        let func_selector = check!(
+            method.to_fn_selector_value(type_engine),
+            [0; 4],
+            warnings,
+            errors
+        );
         Some(ty::ContractCallParams {
             func_selector,
             contract_address,
@@ -287,7 +301,12 @@ pub(crate) fn type_check_method_application(
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(args_buf.len(), &method, &call_path),
+        check_function_arguments_arity(
+            args_buf.len(),
+            &method,
+            &call_path,
+            is_method_call_syntax_used
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -295,7 +314,7 @@ pub(crate) fn type_check_method_application(
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let (mut new_warnings, new_errors) = unify_right_with_self(
+        let (mut new_warnings, new_errors) = type_engine.unify_right_with_self(
             arg.return_type,
             param.type_id,
             ctx.self_type(),
@@ -306,8 +325,8 @@ pub(crate) fn type_check_method_application(
         if !new_errors.is_empty() {
             errors.push(CompileError::ArgumentParameterTypeMismatch {
                 span: arg.span.clone(),
-                provided: arg.return_type.to_string(),
-                should_be: param.type_id.to_string(),
+                provided: type_engine.help_out(arg.return_type).to_string(),
+                should_be: type_engine.help_out(param.type_id).to_string(),
             });
         }
     }
@@ -353,7 +372,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = check!(
                 call_path_binding.type_check_with_type_info(&mut ctx),
-                insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -376,7 +395,8 @@ pub(crate) fn resolve_method_name(
                     &type_info_prefix,
                     method_name,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    ctx.type_engine,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -391,7 +411,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -400,7 +420,8 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     &call_path.suffix,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    ctx.type_engine,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -415,7 +436,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -424,7 +445,8 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     method_name,
                     ctx.self_type(),
-                    &arguments
+                    &arguments,
+                    ctx.type_engine,
                 ),
                 return err(warnings, errors),
                 warnings,

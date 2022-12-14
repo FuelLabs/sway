@@ -34,6 +34,8 @@ impl ty::TyFunctionDeclaration {
             purity,
         } = fn_decl;
 
+        let type_engine = ctx.type_engine;
+
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
             warnings.push(CompileWarning {
@@ -75,7 +77,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -83,7 +85,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -102,7 +104,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    insert_type(TypeInfo::ErrorRecovery)
+                    type_engine.insert_type(TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -145,6 +147,7 @@ impl ty::TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
+            implementing_type: None,
             span,
             attributes,
             return_type,
@@ -162,13 +165,13 @@ impl ty::TyFunctionDeclaration {
         let mut return_type_namespace = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(function_decl.return_type);
+            .filter_by_type(function_decl.return_type, type_engine);
         for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(type_param.type_id);
+            return_type_namespace.filter_against_type(type_engine, type_param.type_id);
         }
         ctx.namespace
             .implemented_traits
-            .extend(return_type_namespace);
+            .extend(return_type_namespace, type_engine);
 
         ok(function_decl, warnings, errors)
     }
@@ -178,9 +181,13 @@ impl ty::TyFunctionDeclaration {
 fn test_function_selector_behavior() {
     use crate::language::Visibility;
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
+
+    let type_engine = TypeEngine::default();
+
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
@@ -193,7 +200,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -203,6 +210,7 @@ fn test_function_selector_behavior() {
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {
@@ -210,8 +218,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -219,8 +228,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: crate::type_system::insert_type(TypeInfo::Str(5)),
+                type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
+                initial_type_id: type_engine
+                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],
@@ -234,7 +244,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name().value {
+    let selector_text = match decl.to_selector_name(&type_engine).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

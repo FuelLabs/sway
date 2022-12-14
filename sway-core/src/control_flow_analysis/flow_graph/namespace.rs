@@ -32,7 +32,7 @@ pub(crate) struct StructNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
+    pub(crate) function_namespace: HashMap<IdentUnique, FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
     pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
@@ -46,9 +46,11 @@ pub struct ControlFlowNamespace {
 
 impl ControlFlowNamespace {
     pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
-        self.function_namespace.get(ident)
+        let ident: IdentUnique = ident.into();
+        self.function_namespace.get(&ident)
     }
     pub(crate) fn insert_function(&mut self, ident: Ident, entry: FunctionNamespaceEntry) {
+        let ident: IdentUnique = ident.into();
         self.function_namespace.insert(ident, entry);
     }
     pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
@@ -103,6 +105,16 @@ impl ControlFlowNamespace {
         self.trait_namespace.get(name)
     }
 
+    pub(crate) fn find_trait_method(
+        &self,
+        trait_name: &CallPath,
+        method_name: &Ident,
+    ) -> Option<&NodeIndex> {
+        self.trait_method_namespace
+            .get(trait_name)
+            .and_then(|methods| methods.get(method_name))
+    }
+
     pub(crate) fn insert_trait_methods(
         &mut self,
         trait_name: CallPath,
@@ -130,6 +142,9 @@ impl ControlFlowNamespace {
         }
     }
 
+    pub(crate) fn get_struct(&self, ident: &Ident) -> Option<&StructNamespaceEntry> {
+        self.struct_namespace.get(ident.as_str())
+    }
     pub(crate) fn insert_struct(
         &mut self,
         struct_name: String,

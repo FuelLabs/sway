@@ -1,6 +1,9 @@
 use crate::{
-    core::{config::InlayHintsConfig, session::Session, token::TypedAstToken},
-    utils::common::get_range_from_span,
+    config::InlayHintsConfig,
+    core::{
+        session::Session,
+        token::{get_range_from_span, TypedAstToken},
+    },
 };
 use std::sync::Arc;
 use sway_core::{language::ty::TyDeclaration, type_system::TypeInfo};
@@ -35,7 +38,10 @@ pub(crate) fn inlay_hints(
         return None;
     }
 
+    let type_engine = session.type_engine.read();
+
     let hints: Vec<lsp_types::InlayHint> = session
+        .token_map()
         .tokens_for_file(uri)
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
@@ -56,16 +62,16 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = sway_core::type_system::look_up_type_id(var.type_ascription);
+            let type_info = type_engine.look_up_type_id(var.type_ascription);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),
             }
         })
         .map(|var| {
-            let range = crate::utils::common::get_range_from_span(&var.name.span());
+            let range = get_range_from_span(&var.name.span());
             let kind = InlayKind::TypeHint;
-            let label = format!("{}", var.type_ascription);
+            let label = format!("{}", type_engine.help_out(var.type_ascription));
             let inlay_hint = InlayHint { range, kind, label };
             self::inlay_hint(config.render_colons, inlay_hint)
         })
@@ -74,7 +80,7 @@ pub(crate) fn inlay_hints(
     Some(hints)
 }
 
-pub(crate) fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
+fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHint {
     lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // after annotated thing

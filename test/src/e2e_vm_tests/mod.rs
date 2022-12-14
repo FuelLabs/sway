@@ -141,16 +141,22 @@ impl TestContext {
                     }
                     ProgramState::Revert(v) => TestResult::Revert(v),
                 };
-                assert_eq!(result, res);
-
-                if validate_abi {
-                    let (result, out) =
-                        run_and_capture_output(|| async { harness::test_json_abi(&name, &pkg) })
-                            .await;
-                    result?;
-                    output.push_str(&out);
+                if result != res {
+                    Err(anyhow::Error::msg(format!(
+                        "expected: {:?}\nactual: {:?}",
+                        res, result
+                    )))
+                } else {
+                    if validate_abi {
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_abi(&name, &pkg)
+                        })
+                        .await;
+                        result?;
+                        output.push_str(&out);
+                    }
+                    Ok(())
                 }
-                Ok(())
             }
 
             TestCategory::Compiles => {
@@ -158,6 +164,7 @@ impl TestContext {
                     harness::compile_to_bytes(&name, &context.run_config)
                 })
                 .await;
+                *output = out;
 
                 let compiled_pkgs = match result? {
                     forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
@@ -166,8 +173,6 @@ impl TestContext {
                         .map(|(n, b)| (n.clone(), b.clone()))
                         .collect(),
                 };
-
-                *output = out;
 
                 check_file_checker(checker, &name, output)?;
 
@@ -259,16 +264,23 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(&name, &context.run_config, true).await;
                 *output = out;
 
-                let tested_pkg = result.expect("failed to compile and run unit tests");
-                let failed: Vec<String> = tested_pkg
-                    .tests
+                let tested_pkgs = result.expect("failed to compile and run unit tests");
+                let failed: Vec<String> = tested_pkgs
                     .into_iter()
-                    .enumerate()
-                    .filter_map(|(ix, test)| match test.state {
-                        ProgramState::Revert(code) => {
-                            Some(format!("Test {ix} failed with revert {code}\n"))
-                        }
-                        _ => None,
+                    .flat_map(|tested_pkg| {
+                        tested_pkg
+                            .tests
+                            .into_iter()
+                            .filter(|test| !test.passed())
+                            .map(move |test| {
+                                format!(
+                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                    tested_pkg.built.pkg_name,
+                                    test.name,
+                                    test.state,
+                                    test.condition,
+                                )
+                            })
                     })
                     .collect();
 
@@ -340,9 +352,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     };
     let mut number_of_tests_executed = 0;
     let mut number_of_tests_failed = 0;
+    let mut failed_tests = vec![];
 
     for (i, test) in tests.into_iter().enumerate() {
-        print!("Testing {} ...", test.name.bold());
+        let name = test.name.clone();
+        print!("Testing {} ...", name.clone().bold());
         stdout().flush().unwrap();
 
         let mut output = String::new();
@@ -354,17 +368,20 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         } else {
             context.run(test, &mut output).await
         };
+
         if let Err(err) = result {
             println!(" {}", "failed".red().bold());
-            println!("  {}", err);
+            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+            println!("{}", textwrap::indent(&output, "          "));
             number_of_tests_failed += 1;
+            failed_tests.push(name);
         } else {
             println!(" {}", "ok".green().bold());
-        }
 
-        // If verbosity is requested then print it out.
-        if run_config.verbose {
-            println!("{}", textwrap::indent(&output, "     "));
+            // If verbosity is requested then print it out.
+            if run_config.verbose {
+                println!("{}", textwrap::indent(&output, "     "));
+            }
         }
 
         number_of_tests_executed += 1;
@@ -413,8 +430,23 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             number_of_tests_failed,
             disabled_tests.len()
         );
+        if number_of_tests_failed > 0 {
+            tracing::info!("{}", "Failing tests:".red().bold());
+            tracing::info!(
+                "    {}",
+                failed_tests
+                    .into_iter()
+                    .map(|test_name| format!("{} ... {}", test_name.bold(), "failed".red().bold()))
+                    .collect::<Vec<_>>()
+                    .join("\n    ")
+            );
+        }
     }
-    Ok(())
+    if number_of_tests_failed != 0 {
+        Err(anyhow::Error::msg("Failed tests"))
+    } else {
+        Ok(())
+    }
 }
 
 fn discover_test_configs() -> Result<Vec<TestDescription>> {

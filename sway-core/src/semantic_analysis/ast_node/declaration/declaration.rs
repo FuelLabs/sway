@@ -18,6 +18,8 @@ impl ty::TyDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+
         let decl = match decl {
             parsed::Declaration::VariableDeclaration(parsed::VariableDeclaration {
                 name,
@@ -28,12 +30,12 @@ impl ty::TyDeclaration {
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
-                        insert_type(type_ascription),
+                        type_engine.insert_type(type_ascription),
                         &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    insert_type(TypeInfo::ErrorRecovery),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
@@ -44,15 +46,25 @@ impl ty::TyDeclaration {
                 let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                 let body = check!(
                     result,
-                    ty::TyExpression::error(name.span()),
+                    ty::TyExpression::error(name.span(), type_engine),
                     warnings,
                     errors
                 );
+
+                // Integers are special in the sense that we can't only rely on the type of `body`
+                // to get the type of the variable. The type of the variable *has* to follow
+                // `type_ascription` if `type_ascription` is a concrete integer type that does not
+                // conflict with the type of `body` (i.e. passes the type checking above).
+                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                    _ => body.return_type,
+                };
                 let typed_var_decl =
                     ty::TyDeclaration::VariableDeclaration(Box::new(ty::TyVariableDeclaration {
                         name: name.clone(),
                         body,
                         mutability: ty::VariableMutability::new_from_ref_mut(false, is_mutable),
+                        return_type,
                         type_ascription,
                         type_ascription_span,
                     }));
@@ -68,24 +80,26 @@ impl ty::TyDeclaration {
                 span,
                 ..
             }) => {
-                let result = {
-                    let type_id = check!(
-                        ctx.resolve_type_with_self(
-                            insert_type(type_ascription),
-                            &span,
-                            EnforceTypeArguments::No,
-                            None
-                        ),
-                        insert_type(TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors,
-                    );
-                    let ctx = ctx.by_ref().with_type_annotation(type_id).with_help_text(
+                let type_ascription = check!(
+                    ctx.resolve_type_with_self(
+                        type_engine.insert_type(type_ascription),
+                        &span,
+                        EnforceTypeArguments::No,
+                        None
+                    ),
+                    type_engine.insert_type(TypeInfo::ErrorRecovery),
+                    warnings,
+                    errors,
+                );
+
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(type_ascription)
+                    .with_help_text(
                         "This declaration's type annotation does not match up with the assigned \
-                            expression's type.",
+                        expression's type.",
                     );
-                    ty::TyExpression::type_check(ctx, value)
-                };
+                let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
                 if !is_screaming_snake_case(name.as_str()) {
                     warnings.push(CompileWarning {
@@ -98,14 +112,23 @@ impl ty::TyDeclaration {
 
                 let value = check!(
                     result,
-                    ty::TyExpression::error(name.span()),
+                    ty::TyExpression::error(name.span(), type_engine),
                     warnings,
                     errors
                 );
+                // Integers are special in the sense that we can't only rely on the type of `body`
+                // to get the type of the variable. The type of the variable *has* to follow
+                // `type_ascription` if `type_ascription` is a concrete integer type that does not
+                // conflict with the type of `body` (i.e. passes the type checking above).
+                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                    _ => value.return_type,
+                };
                 let decl = ty::TyConstantDeclaration {
                     name: name.clone(),
                     value,
                     visibility,
+                    return_type,
                     attributes,
                     span,
                 };
@@ -134,7 +157,7 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
-                let mut ctx = ctx.with_type_annotation(insert_type(TypeInfo::Unknown));
+                let mut ctx = ctx.with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
                 let fn_decl = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
@@ -148,21 +171,25 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::TraitDeclaration(trait_decl) => {
                 let span = trait_decl.span.clone();
-                let trait_decl = check!(
+                let mut trait_decl = check!(
                     ty::TyTraitDeclaration::type_check(ctx.by_ref(), trait_decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
                 let name = trait_decl.name.clone();
-                let decl_id = de_insert_trait(trait_decl);
+                let decl_id = de_insert_trait(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+                trait_decl
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
             parsed::Declaration::ImplTrait(impl_trait) => {
                 let span = impl_trait.block_span.clone();
-                let impl_trait = check!(
+                let mut impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -175,17 +202,24 @@ impl ty::TyDeclaration {
                         impl_trait.implementing_for_type_id,
                         &impl_trait.methods,
                         &impl_trait.span,
-                        false
+                        false,
+                        type_engine,
                     ),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
+                let impl_trait_decl =
+                    ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait.clone()));
+                impl_trait
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait_decl
             }
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
-                let impl_trait = check!(
+                let mut impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -198,13 +232,20 @@ impl ty::TyDeclaration {
                         impl_trait.implementing_for_type_id,
                         &impl_trait.methods,
                         &impl_trait.span,
-                        true
+                        true,
+                        type_engine,
                     ),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait))
+                let impl_trait_decl =
+                    ty::TyDeclaration::ImplTrait(de_insert_impl_trait(impl_trait.clone()));
+                impl_trait
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait_decl
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
@@ -228,14 +269,18 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {
                 let span = abi_decl.span.clone();
-                let abi_decl = check!(
+                let mut abi_decl = check!(
                     ty::TyAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl = ty::TyDeclaration::AbiDeclaration(de_insert_abi(abi_decl));
+                let decl = ty::TyDeclaration::AbiDeclaration(de_insert_abi(abi_decl.clone()));
+                abi_decl
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -256,7 +301,11 @@ impl ty::TyDeclaration {
                 } in fields
                 {
                     let type_id = check!(
-                        ctx.resolve_type_without_self(insert_type(type_info), &name.span(), None),
+                        ctx.resolve_type_without_self(
+                            type_engine.insert_type(type_info),
+                            &name.span(),
+                            None
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors

@@ -22,6 +22,7 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
+        ty_engine: &TypeEngine,
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
@@ -34,6 +35,7 @@ impl TyProgram {
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
+                    ty_engine,
                     &submodule.module,
                     parsed::TreeType::Library {
                         name: submodule.library_name.clone(),
@@ -86,7 +88,7 @@ impl TyProgram {
                         errors
                     );
                     if matches!(
-                        look_up_type_id(implementing_for_type_id),
+                        ty_engine.look_up_type_id(implementing_for_type_id),
                         TypeInfo::Contract
                     ) {
                         for method_id in methods {
@@ -107,7 +109,10 @@ impl TyProgram {
 
         for ast_n in &root.all_nodes {
             check!(
-                storage_only_types::validate_decls_for_storage_only_types_in_ast(&ast_n.content),
+                storage_only_types::validate_decls_for_storage_only_types_in_ast(
+                    ty_engine,
+                    &ast_n.content
+                ),
                 continue,
                 warnings,
                 errors
@@ -156,7 +161,7 @@ impl TyProgram {
                     });
                 }
                 let main_func = mains.remove(0);
-                match look_up_type_id(main_func.return_type) {
+                match ty_engine.look_up_type_id(main_func.return_type) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
@@ -181,11 +186,11 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = look_up_type_id(main_func.return_type);
+                let main_return_type_info = ty_engine.look_up_type_id(main_func.return_type);
                 let nested_types = check!(
                     main_return_type_info
                         .clone()
-                        .extract_nested_types(&main_func.return_type_span),
+                        .extract_nested_types(ty_engine, &main_func.return_type_span),
                     vec![],
                     warnings,
                     errors
@@ -248,7 +253,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if public {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if public || is_test {
                         ret.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -268,7 +279,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if is_main {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main || is_test {
                         data.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -288,7 +305,13 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if is_main {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_main || is_test {
                         data.append(&mut check!(
                             node.collect_types_metadata(ctx),
                             return err(warnings, errors),
@@ -301,6 +324,22 @@ impl TyProgram {
             }
             TyProgramKind::Contract { abi_entries, .. } => {
                 let mut data = vec![];
+                for node in self.root.all_nodes.iter() {
+                    let is_test = check!(
+                        node.is_test_function(),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if is_test {
+                        data.append(&mut check!(
+                            node.collect_types_metadata(ctx),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        ));
+                    }
+                }
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
                         TyAstNode::from(entry).collect_types_metadata(ctx),
@@ -321,52 +360,57 @@ impl TyProgram {
 
     pub fn generate_json_abi_program(
         &self,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> JsonABIProgram {
+        type_engine: &TypeEngine,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> fuels_types::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
                     .iter()
-                    .map(|x| x.generate_json_abi_function(types))
+                    .map(|x| x.generate_json_abi_function(type_engine, types))
                     .collect();
-                let logged_types = self.generate_json_logged_types(types);
-                JsonABIProgram {
+                let logged_types = self.generate_json_logged_types(type_engine, types);
+                fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
-                    logged_types,
+                    logged_types: Some(logged_types),
+                    messages_types: None,
                 }
             }
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
-                let functions = vec![main_function.generate_json_abi_function(types)];
-                let logged_types = self.generate_json_logged_types(types);
-                JsonABIProgram {
+                let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
+                let logged_types = self.generate_json_logged_types(type_engine, types);
+                fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
-                    logged_types,
+                    logged_types: Some(logged_types),
+                    messages_types: None,
                 }
             }
-            _ => JsonABIProgram {
+            _ => fuels_types::ProgramABI {
                 types: vec![],
                 functions: vec![],
-                logged_types: vec![],
+                logged_types: None,
+                messages_types: None,
             },
         }
     }
 
     fn generate_json_logged_types(
         &self,
-        types: &mut Vec<JsonTypeDeclaration>,
-    ) -> Vec<JsonLoggedType> {
-        // A list of all `JsonTypeDeclaration`s needed for the logged types
+        type_engine: &TypeEngine,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> Vec<fuels_types::LoggedType> {
+        // A list of all `fuels_types::TypeDeclaration`s needed for the logged types
         let logged_types = self
             .logged_types
             .iter()
-            .map(|(_, type_id)| JsonTypeDeclaration {
-                type_id: **type_id,
-                type_field: type_id.get_json_type_str(*type_id),
-                components: type_id.get_json_type_components(types, *type_id),
-                type_parameters: type_id.get_json_type_parameters(types, *type_id),
+            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+                type_id: type_id.index(),
+                type_field: type_id.get_json_type_str(type_engine, *type_id),
+                components: type_id.get_json_type_components(type_engine, types, *type_id),
+                type_parameters: type_id.get_json_type_parameters(type_engine, types, *type_id),
             })
             .collect::<Vec<_>>();
 
@@ -376,19 +420,19 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|(log_id, type_id)| JsonLoggedType {
-                log_id: **log_id,
-                logged_type: JsonTypeApplication {
+            .map(|(log_id, type_id)| fuels_types::LoggedType {
+                log_id: **log_id as u64,
+                application: fuels_types::TypeApplication {
                     name: "".to_string(),
-                    type_id: **type_id,
-                    type_arguments: type_id.get_json_type_arguments(types, *type_id),
+                    type_id: type_id.index(),
+                    type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
                 },
             })
             .collect()
     }
 
     /// All test function declarations within the program.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = TyFunctionDeclaration> {
+    pub fn test_fns(&self) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns())

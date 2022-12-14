@@ -24,6 +24,8 @@ impl ty::TyTraitFn {
             attributes,
         } = trait_fn;
 
+        let type_engine = ctx.type_engine;
+
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
         let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
@@ -44,12 +46,12 @@ impl ty::TyTraitFn {
         // Type check the return type.
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
-                insert_type(return_type),
+                type_engine.insert_type(return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -65,12 +67,13 @@ impl ty::TyTraitFn {
 
         // Retrieve the implemented traits for the type of the return type and
         // insert them in the broader namespace.
-        ctx.namespace.implemented_traits.extend(
-            fn_ctx
-                .namespace
-                .implemented_traits
-                .filter_by_type(trait_fn.return_type),
-        );
+        let trait_map = fn_ctx
+            .namespace
+            .implemented_traits
+            .filter_by_type(trait_fn.return_type, type_engine);
+        ctx.namespace
+            .implemented_traits
+            .extend(trait_map, type_engine);
 
         ok(trait_fn, warnings, errors)
     }
@@ -84,6 +87,7 @@ impl ty::TyTraitFn {
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
+            implementing_type: None,
             span: self.name.span(),
             attributes: self.attributes.clone(),
             return_type: self.return_type,

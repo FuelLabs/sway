@@ -356,26 +356,37 @@ impl core::ops::Add for U256 {
 impl core::ops::Subtract for U256 {
     /// Subtract a `U256` from a `U256`. Panics of overflow.
     fn subtract(self, other: Self) -> Self {
+        if self == other {
+            return Self::min();
+        } else if other == Self::min() {
+            return self;
+        }
         // If trying to subtract a larger number, panic.
-        assert(!(self < other));
-
+        assert(self > other);
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let (other_word_1, other_word_2, other_word_3, other_word_4) = other.decompose();
 
         let mut result_a = word_1 - other_word_1;
-
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
             result_b = word_2 - other_word_2;
         }
-
         let mut result_c = 0;
         if word_3 < other_word_3 {
             result_c = u64::max() - (other_word_3 - word_3 - 1);
-            result_b -= 1;
+            if result_b > 0 {
+                result_b -= 1;
+            } else {
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // which we ruled out at the beginning of the function.
+                result_a -= 1;
+                result_b = u64::max();
+            }
         } else {
             result_c = word_3 - other_word_3;
         }
@@ -383,7 +394,19 @@ impl core::ops::Subtract for U256 {
         let mut result_d = 0;
         if word_4 < other_word_4 {
             result_d = u64::max() - (other_word_4 - word_4 - 1);
-            result_c -= 1;
+            if result_c > 0 {
+                result_c -= 1;
+            } else {
+                if result_b > 0 {
+                    result_b -= 1;
+                } else {
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // which we ruled out at the beginning of the function.
+                    result_a -= 1;
+                    result_b = u64::max();
+                }
+                result_c = u64::max();
+            }
         } else {
             result_d = word_4 - other_word_4;
         }
@@ -395,21 +418,68 @@ impl core::ops::Subtract for U256 {
 impl core::ops::Multiply for U256 {
     /// Multiply a `U256` with a `U256`. Panics on overflow.
     fn multiply(self, other: Self) -> Self {
-        let zero = U256::from((0, 0, 0, 0));
-        let one = U256::from((0, 0, 0, 1));
+        // Both upper words cannot be non-zero simultaneously. Otherwise, overflow is guaranteed.
+        assert(self.a == 0 || other.a == 0);
 
-        let mut x = self;
-        let mut y = other;
-        let mut result = U256::new();
-        while y != zero {
-            if (y & one).d != 0 {
-                result += x;
+        if self.a != 0 {
+            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero. 
+            // Otherwise, overflow is guaranteed.
+            assert(other.b == 0 && other.c == 0);
+            U256::from((self.a * other.d, 0, 0, 0))
+        } else if other.a != 0 {
+            // If `other.a` is non-zero, all words of `self`, except for `d`, should be zero.
+            // Otherwise, overflow is guaranteed.
+            assert(self.b == 0 && self.c == 0);
+            U256::from((other.a * self.d, 0, 0, 0))
+        } else {
+            if self.b != 0 {
+                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is 
+                // guaranteed because:
+                // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
+                assert(other.b == 0);
+                let result_b_d = self.b.overflowing_mul(other.d);
+                let result_c_c = self.c.overflowing_mul(other.c);
+                let result_c_d = self.c.overflowing_mul(other.d);
+                let result_d_c = self.d.overflowing_mul(other.c);
+                let result_d_d = self.d.overflowing_mul(other.d);
+
+                U256::from((
+                    self.b * other.c + result_b_d.upper,
+                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
+            } else if other.b != 0 {
+                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is 
+                // guaranteed because: 
+                // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
+                assert(self.b == 0);
+                let result_b_d = other.b.overflowing_mul(self.d);
+                let result_c_c = other.c.overflowing_mul(self.c);
+                let result_c_d = other.c.overflowing_mul(self.d);
+                let result_d_c = other.d.overflowing_mul(self.c);
+                let result_d_d = other.d.overflowing_mul(self.d);
+
+                U256::from((
+                    other.b * self.c + result_b_d.upper,
+                    result_b_d.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
+            } else {
+                let result_c_c = other.c.overflowing_mul(self.c);
+                let result_c_d = self.c.overflowing_mul(other.d);
+                let result_d_c = self.d.overflowing_mul(other.c);
+                let result_d_d = self.d.overflowing_mul(other.d);
+
+                U256::from((
+                    result_c_c.upper,
+                    result_c_c.lower + result_c_d.upper + result_d_c.upper,
+                    result_d_d.upper + result_c_d.lower + result_d_c.lower,
+                    result_d_d.lower,
+                ))
             }
-            x <<= 1;
-            y >>= 1;
         }
-
-        result
     }
 }
 
@@ -420,6 +490,11 @@ impl core::ops::Divide for U256 {
         let one = U256::from((0, 0, 0, 1));
 
         assert(divisor != zero);
+
+        if self.a == 0 && self.b == 0 && divisor.a == 0 && divisor.b == 0 {
+            let res = U128::from((self.c, self.d)) / U128::from((divisor.c, divisor.d));
+            return U256::from((0, 0, res.upper, res.lower));
+        }
 
         let mut quotient = U256::from((0, 0, 0, 0));
         let mut remainder = U256::from((0, 0, 0, 0));

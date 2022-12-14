@@ -3,9 +3,10 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
+use crate::PartialEqWithTypeEngine;
 use crate::{error::*, language::Visibility, transform, type_system::*};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -18,40 +19,41 @@ pub struct TyEnumDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyEnumDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyEnumDeclaration {}
+impl PartialEqWithTypeEngine for TyEnumDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_parameters == other.type_parameters
-            && self.variants == other.variants
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
+            && self.variants.eq(&other.variants, type_engine)
             && self.visibility == other.visibility
     }
 }
 
 impl CopyTypes for TyEnumDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TyEnumDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
 impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Enum {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+        type_engine.insert_type(TypeInfo::Enum {
             name: self.name.clone(),
             variant_types: self.variants.clone(),
             type_parameters: self.type_parameters.clone(),
@@ -92,7 +94,7 @@ impl TyEnumDeclaration {
                 errors.push(CompileError::UnknownEnumVariant {
                     enum_name: self.name.clone(),
                     variant_name: variant_name.clone(),
-                    span: self.span.clone(),
+                    span: variant_name.span(),
                 });
                 err(warnings, errors)
             }
@@ -100,7 +102,7 @@ impl TyEnumDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyEnumVariant {
     pub name: Ident,
     pub type_id: TypeId,
@@ -114,10 +116,12 @@ pub struct TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HashWithTypeEngine for TyEnumVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        look_up_type_id(self.type_id).hash(state);
+        type_engine
+            .look_up_type_id(self.type_id)
+            .hash(state, type_engine);
         self.tag.hash(state);
     }
 }
@@ -125,22 +129,25 @@ impl Hash for TyEnumVariant {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyEnumVariant {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyEnumVariant {}
+impl PartialEqWithTypeEngine for TyEnumVariant {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+            && type_engine
+                .look_up_type_id(self.type_id)
+                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
             && self.tag == other.tag
     }
 }
 
 impl CopyTypes for TyEnumVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
     }
 }

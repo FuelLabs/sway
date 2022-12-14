@@ -4,7 +4,7 @@ use crate::{
         BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
         PackageManifest, PackageManifestFile,
     },
-    WorkspaceManifestFile, CORE, PRELUDE, STD,
+    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
@@ -25,9 +25,12 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use sway_core::fuel_prelude::{
-    fuel_crypto,
-    fuel_tx::{self, Contract, ContractId, StorageSlot},
+use sway_core::{
+    fuel_prelude::{
+        fuel_crypto,
+        fuel_tx::{self, Contract, ContractId, StorageSlot},
+    },
+    TypeEngine,
 };
 use sway_core::{
     language::{
@@ -39,7 +42,7 @@ use sway_core::{
     CompileResult, CompiledBytecode, FinalizedEntry,
 };
 use sway_error::error::CompileError;
-use sway_types::{Ident, JsonABIProgram, JsonTypeApplication, JsonTypeDeclaration};
+use sway_types::Ident;
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -59,7 +62,16 @@ pub enum DepKind {
     /// The dependency is a library and declared under `[dependencies]`.
     Library,
     /// The dependency is a contract and declared under `[contract-dependencies]`.
-    Contract,
+    Contract { salt: fuel_tx::Salt },
+}
+
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract { .. } => write!(f, "contract"),
+        }
+    }
 }
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
@@ -75,13 +87,13 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
-    pub json_abi_program: JsonABIProgram,
+    pub json_abi_program: fuels_types::ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
-    pkg_name: String,
+    pub pkg_name: String,
 }
 
 /// The result of successfully compiling a workspace.
@@ -265,6 +277,8 @@ pub struct PkgOpts {
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
+    /// Print the computed Sway DCA (Dead Code Analysis) graph.
+    pub dca_graph: bool,
     /// Print the finalized ASM.
     ///
     /// This is the state of the ASM with registers allocated and optimisations applied.
@@ -323,27 +337,6 @@ impl GitSourceIndex {
 impl Edge {
     pub fn new(name: String, kind: DepKind) -> Edge {
         Edge { name, kind }
-    }
-}
-
-impl FromStr for DepKind {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "library" => Ok(DepKind::Library),
-            "contract" => Ok(DepKind::Contract),
-            _ => bail!("invalid dep kind"),
-        }
-    }
-}
-
-impl fmt::Display for DepKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            DepKind::Library => write!(f, "library"),
-            DepKind::Contract => write!(f, "contract"),
-        }
     }
 }
 
@@ -727,6 +720,7 @@ fn validate_graph(graph: &Graph, manifests: &MemberManifestFiles) -> Result<BTre
         .into_iter()
         .flat_map(move |(n, _)| validate_deps(graph, n, manifests, &mut visited))
         .collect();
+
     Ok(edges)
 }
 
@@ -788,7 +782,7 @@ fn validate_dep(
     let dep_entry = node_manifest
         .dep(dep_name)
         .ok_or_else(|| anyhow!("no entry in parent manifest"))?;
-    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry)?;
+    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry, manifests)?;
     let dep_pkg = graph[dep_node].unpinned(&dep_path);
     if dep_pkg.source != dep_source {
         bail!("dependency node's source does not match manifest entry");
@@ -807,7 +801,8 @@ fn validate_dep_manifest(
     let dep_program_type = dep_manifest.program_type()?;
     // Check if the dependency is either a library or a contract declared as a contract dependency
     match (&dep_program_type, &dep_edge.kind) {
-        (TreeType::Contract, DepKind::Contract) | (TreeType::Library { .. }, DepKind::Library) => {}
+        (TreeType::Contract, DepKind::Contract { salt: _ })
+        | (TreeType::Library { .. }, DepKind::Library) => {}
         _ => bail!(
             "\"{}\" is declared as a {} dependency, but is actually a {}",
             dep.name,
@@ -1362,6 +1357,8 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 /// If the given `manifest` is of type ManifestFile::Workspace resulting graph will have multiple
 /// root nodes, each representing a member of the workspace. Otherwise resulting graph will only
 /// have a single root node, representing the package that is described by the ManifestFile::Package
+///
+/// Checks the created graph after fetching for conflicting salt declarations.
 fn fetch_graph(
     member_manifests: &MemberManifestFiles,
     offline: bool,
@@ -1375,8 +1372,10 @@ fn fetch_graph(
             offline,
             graph,
             manifest_map,
+            member_manifests,
         )?);
     }
+    validate_contract_deps(graph)?;
     Ok(added_nodes)
 }
 
@@ -1398,6 +1397,7 @@ fn fetch_pkg_graph(
     offline: bool,
     graph: &mut Graph,
     manifest_map: &mut ManifestMap,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     // Retrieve the project node, or create one if it does not exist.
     let proj_node = match find_proj_node(graph, &proj_manifest.project.name) {
@@ -1435,6 +1435,7 @@ fn fetch_pkg_graph(
         manifest_map,
         &mut fetched,
         &mut visited,
+        member_manifests,
     )
 }
 
@@ -1451,6 +1452,7 @@ fn fetch_deps(
     manifest_map: &mut ManifestMap,
     fetched: &mut HashMap<Pkg, NodeIx>,
     visited: &mut HashSet<NodeIx>,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<HashSet<NodeIx>> {
     let mut added = HashSet::default();
     let parent_id = graph[node].id();
@@ -1458,7 +1460,13 @@ fn fetch_deps(
     // If the current package is a contract, we need to first get the deployment dependencies
     let deps: Vec<(String, Dependency, DepKind)> = package_manifest
         .contract_deps()
-        .map(|(n, d)| (n.clone(), d.clone(), DepKind::Contract))
+        .map(|(n, d)| {
+            (
+                n.clone(),
+                d.dependency.clone(),
+                DepKind::Contract { salt: d.salt },
+            )
+        })
         .chain(
             package_manifest
                 .deps()
@@ -1468,7 +1476,7 @@ fn fetch_deps(
     for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
         let parent_manifest = &manifest_map[&parent_id];
-        let source = dep_to_source_patched(parent_manifest, &name, &dep)
+        let source = dep_to_source_patched(parent_manifest, &name, &dep, member_manifests)
             .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
@@ -1483,7 +1491,7 @@ fn fetch_deps(
             }
         };
 
-        let dep_edge = Edge::new(dep_name.to_string(), dep_kind);
+        let dep_edge = Edge::new(dep_name.to_string(), dep_kind.clone());
         // Ensure we have an edge to the dependency.
         graph.update_edge(node, dep_node, dep_edge.clone());
 
@@ -1519,6 +1527,7 @@ fn fetch_deps(
             manifest_map,
             fetched,
             visited,
+            member_manifests,
         )?);
     }
     Ok(added)
@@ -1965,7 +1974,11 @@ where
 
 /// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
 /// produce the `Source` for that dependendency.
-fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
+fn dep_to_source(
+    pkg_path: &Path,
+    dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
+) -> Result<Source> {
     let source = match dep {
         Dependency::Simple(ref ver_str) => {
             bail!(
@@ -1982,15 +1995,13 @@ fn dep_to_source(pkg_path: &Path, dep: &Dependency) -> Result<Source> {
                     anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
                 })?;
                 // Check if path is a member of a workspace.
-                let workspace_manifest = canonical_path
-                    .parent()
-                    .and_then(|parent_dir| WorkspaceManifestFile::from_dir(parent_dir).ok());
-
-                match workspace_manifest {
-                    Some(ws) if ws.is_member_path(&canonical_path)? => {
-                        Source::Member(canonical_path)
-                    }
-                    _ => Source::Path(canonical_path),
+                if member_manifests
+                    .values()
+                    .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
+                {
+                    Source::Member(canonical_path)
+                } else {
+                    Source::Path(canonical_path)
                 }
             }
             (_, _, Some(repo)) => {
@@ -2041,9 +2052,10 @@ fn apply_patch(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep_source: &Source,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
     match dep_source_patch(manifest, dep_name, dep_source) {
-        Some(patch) => dep_to_source(manifest.dir(), patch),
+        Some(patch) => dep_to_source(manifest.dir(), patch, member_manifests),
         None => Ok(dep_source.clone()),
     }
 }
@@ -2054,9 +2066,10 @@ fn dep_to_source_patched(
     manifest: &PackageManifestFile,
     dep_name: &str,
     dep: &Dependency,
+    member_manifests: &MemberManifestFiles,
 ) -> Result<Source> {
-    let unpatched = dep_to_source(manifest.dir(), dep)?;
-    apply_patch(manifest, dep_name, &unpatched)
+    let unpatched = dep_to_source(manifest.dir(), dep, member_manifests)?;
+    apply_patch(manifest, dep_name, &unpatched, member_manifests)
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
@@ -2072,6 +2085,7 @@ pub fn sway_build_config(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
     )
+    .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
     .print_intermediate_asm(build_profile.print_intermediate_asm)
     .print_ir(build_profile.print_ir)
@@ -2094,8 +2108,9 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
+    type_engine: &TypeEngine,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(constants)?;
+    let mut namespace = namespace::Module::default_with_constants(type_engine, constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2108,25 +2123,25 @@ pub fn dependency_namespace(
                 .get(&dep_node)
                 .cloned()
                 .expect("no namespace module"),
-            DepKind::Contract => {
+            DepKind::Contract { salt } => {
                 let mut constants = BTreeMap::default();
                 let compiled_dep = compiled_contract_deps.get(&dep_node);
                 let dep_contract_id = match compiled_dep {
-                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled),
+                    Some(dep_contract_compiled) => contract_id(dep_contract_compiled, &salt),
                     // On `check` we don't compile contracts, so we use a placeholder.
                     None => ContractId::default(),
                 };
 
                 // Construct namespace with contract id
                 let contract_dep_constant_name = "CONTRACT_ID";
-                let contract_id_value = format!("\"{dep_contract_id}\"");
+                let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
                     public: true,
                 };
                 constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(constants)?
+                namespace::Module::default_with_constants(type_engine, constants)?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2144,10 +2159,18 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[]);
+    namespace.star_import_with_reexports(
+        &[CORE, PRELUDE].map(Ident::new_no_span),
+        &[],
+        type_engine,
+    );
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[]);
+        namespace.star_import_with_reexports(
+            &[STD, PRELUDE].map(Ident::new_no_span),
+            &[],
+            type_engine,
+        );
     }
 
     Ok(namespace)
@@ -2207,6 +2230,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
+    type_engine: &TypeEngine,
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
@@ -2214,7 +2238,8 @@ pub fn compile_ast(
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res = sway_core::compile_to_ast(source, namespace, Some(&sway_build_config));
+    let ast_res =
+        sway_core::compile_to_ast(type_engine, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
 
@@ -2241,6 +2266,7 @@ pub fn compile(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
+    type_engine: &TypeEngine,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
@@ -2275,7 +2301,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(manifest, build_profile, namespace,)?
+        compile_ast(type_engine, manifest, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2289,7 +2315,7 @@ pub fn compile(
     let mut types = vec![];
     let json_abi_program = time_expr!(
         "generate JSON ABI program",
-        typed_program.generate_json_abi_program(&mut types)
+        typed_program.generate_json_abi_program(type_engine, &mut types)
     );
 
     let storage_slots = typed_program.storage_slots.clone();
@@ -2303,7 +2329,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(ast_res, &sway_build_config)
+        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value
@@ -2390,6 +2416,7 @@ fn build_profile_from_opts(
             Default::default()
         });
     profile.print_ast |= print.ast;
+    profile.print_dca_graph |= print.dca_graph;
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
     profile.print_intermediate_asm |= print.intermediate_asm;
@@ -2420,6 +2447,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
+    // Check if we have members to build so that we are not trying to build an empty workspace.
+    if member_manifests.is_empty() {
+        bail!("No member found to build")
+    }
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
@@ -2478,14 +2509,38 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage) -> ContractId {
+fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
-    let salt = fuel_tx::Salt::new([0; 32]);
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    contract.id(&salt, &contract.root(), &state_root)
+    contract.id(salt, &contract.root(), &state_root)
+}
+
+/// Checks if there are conficting `Salt` declarations for the contract dependencies in the graph.
+fn validate_contract_deps(graph: &Graph) -> Result<()> {
+    // For each contract dependency node in the graph, check if there are conflicting salt
+    // declarations.
+    for node in graph.node_indices() {
+        let pkg = &graph[node];
+        let name = pkg.name.clone();
+        let salt_declarations: HashSet<fuel_tx::Salt> = graph
+            .edges_directed(node, Direction::Incoming)
+            .filter_map(|e| match e.weight().kind {
+                DepKind::Library => None,
+                DepKind::Contract { salt } => Some(salt),
+            })
+            .collect();
+        if salt_declarations.len() > 1 {
+            bail!(
+                "There are conflicting salt declarations for contract dependency named: {}\nDeclared salts: {:?}",
+                name,
+                salt_declarations,
+            )
+        }
+    }
+    Ok(())
 }
 
 /// Build an entire forc package and return the built_package output.
@@ -2507,6 +2562,7 @@ pub fn build(
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
 
+    let type_engine = TypeEngine::default();
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
     for &node in plan
@@ -2524,6 +2580,7 @@ pub fn build(
             &plan.graph,
             node,
             constants,
+            &type_engine,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2531,13 +2588,20 @@ pub fn build(
                 bail!("Failed to compile {}", pkg.name);
             }
         };
-        let res = compile(pkg, manifest, profile, dep_namespace, &mut source_map)?;
+        let res = compile(
+            pkg,
+            manifest,
+            profile,
+            dep_namespace,
+            &type_engine,
+            &mut source_map,
+        )?;
         let (mut built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
         if plan
             .graph()
             .edges_directed(node, Direction::Incoming)
-            .any(|e| e.weight().kind == DepKind::Contract)
+            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
@@ -2556,22 +2620,30 @@ pub fn build(
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
 /// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
+fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
     loop {
         // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // HashSet to eliminate duplicate type declarations.
-        let mut types_set: HashSet<JsonTypeDeclaration> = HashSet::new();
+        // A vector containing unique `fuels_types::TypeDeclaration`s.
+        //
+        // Two `fuels_types::TypeDeclaration` are deemed the same if the have the same
+        // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
+        // different).
+        let mut deduped_types: Vec<fuels_types::TypeDeclaration> = Vec::new();
 
-        // Insert values in the HashSet `types_set` if they haven't been inserted before.
-        // Otherwise, create an appropriate mapping in the HashMap `old_to_new_id`.
-        for decl in json_abi_program.types.iter_mut() {
-            if let Some(ty) = types_set.get(decl) {
+        // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
+        // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
+        for decl in json_abi_program.types.iter() {
+            if let Some(ty) = deduped_types.iter().find(|d| {
+                d.type_field == decl.type_field
+                    && d.components == decl.components
+                    && d.type_parameters == decl.type_parameters
+            }) {
                 old_to_new_id.insert(decl.type_id, ty.type_id);
             } else {
-                types_set.insert(decl.clone());
+                deduped_types.push(decl.clone());
             }
         }
 
@@ -2581,26 +2653,13 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
             break;
         }
 
-        // Convert the set into a vector and store it back in `json_abi_program.types`. We could
-        // convert the HashSet *directly* into a vector using `collect()`, but the order would not
-        // be deterministic. We could use `BTreeSet` instead of `HashSet` but the ordering in the
-        // BTreeSet would have to depend on the original type ID and we're trying to avoid that.
-        let mut filtered_types = vec![];
-        for t in json_abi_program.types.iter() {
-            if let Some(ty) = types_set.get(t) {
-                if ty.type_id == t.type_id {
-                    filtered_types.push((*ty).clone());
-                    types_set.remove(t);
-                }
-            }
-        }
-        json_abi_program.types = filtered_types;
+        json_abi_program.types = deduped_types;
 
-        // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+        // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
-    // Sort the `JsonTypeDeclaration`s
+    // Sort the `fuels_types::TypeDeclaration`s
     json_abi_program
         .types
         .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
@@ -2612,13 +2671,16 @@ fn standardize_json_abi_types(json_abi_program: &mut JsonABIProgram) {
         decl.type_id = ix;
     }
 
-    // Update all `JsonTypeApplication`s and all `JsonTypeDeclaration`s
+    // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
     update_all_types(json_abi_program, &old_to_new_id);
 }
 
-/// Recursively updates the type IDs used in a JsonABIProgram
-fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashMap<usize, usize>) {
-    // Update all `JsonTypeApplication`s in every function
+/// Recursively updates the type IDs used in a fuels_types::ProgramABI
+fn update_all_types(
+    json_abi_program: &mut fuels_types::ProgramABI,
+    old_to_new_id: &HashMap<usize, usize>,
+) {
+    // Update all `fuels_types::TypeApplication`s in every function
     for func in json_abi_program.functions.iter_mut() {
         for input in func.inputs.iter_mut() {
             update_json_type_application(input, old_to_new_id);
@@ -2627,20 +2689,21 @@ fn update_all_types(json_abi_program: &mut JsonABIProgram, old_to_new_id: &HashM
         update_json_type_application(&mut func.output, old_to_new_id);
     }
 
-    // Update all `JsonTypeDeclaration`
+    // Update all `fuels_types::TypeDeclaration`
     for decl in json_abi_program.types.iter_mut() {
         update_json_type_declaration(decl, old_to_new_id);
     }
-
-    for logged_type in json_abi_program.logged_types.iter_mut() {
-        update_json_type_application(&mut logged_type.logged_type, old_to_new_id);
+    if let Some(logged_types) = &mut json_abi_program.logged_types {
+        for logged_type in logged_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
     }
 }
 
-/// Recursively updates the type IDs used in a `JsonTypeApplication` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from
+/// old to new IDs
 fn update_json_type_application(
-    type_application: &mut JsonTypeApplication,
+    type_application: &mut fuels_types::TypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
@@ -2654,10 +2717,10 @@ fn update_json_type_application(
     }
 }
 
-/// Recursively updates the type IDs used in a `JsonTypeDeclaration` given a HashMap from old to
-/// new IDs
+/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from
+/// old to new IDs
 fn update_json_type_declaration(
-    type_declaration: &mut JsonTypeDeclaration,
+    type_declaration: &mut fuels_types::TypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(params) = &mut type_declaration.type_parameters {
@@ -2681,7 +2744,11 @@ type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)
 /// Compile the entire forc package and return the parse and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
-pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
+pub fn check(
+    plan: &BuildPlan,
+    terse_mode: bool,
+    type_engine: &TypeEngine,
+) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
     //TODO remove once type engine isn't global anymore.
     sway_core::clear_lazy_statics();
     let mut lib_namespace_map = Default::default();
@@ -2700,13 +2767,14 @@ pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndT
             &plan.graph,
             node,
             constants,
+            type_engine,
         )
         .expect("failed to create dependency namespace");
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode)?;
+        } = parse(manifest, terse_mode, type_engine)?;
 
         let parse_program = match value {
             None => {
@@ -2716,7 +2784,7 @@ pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndT
             Some(program) => program,
         };
 
-        let ast_result = sway_core::parsed_to_ast(&parse_program, dep_namespace);
+        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
@@ -2750,6 +2818,7 @@ pub fn check(plan: &BuildPlan, terse_mode: bool) -> anyhow::Result<Vec<ParseAndT
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
+    type_engine: &TypeEngine,
 ) -> anyhow::Result<CompileResult<ParseProgram>> {
     let profile = BuildProfile {
         terse: terse_mode,
@@ -2757,7 +2826,11 @@ pub fn parse(
     };
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::parse(source, Some(&sway_build_config)))
+    Ok(sway_core::parse(
+        source,
+        type_engine,
+        Some(&sway_build_config),
+    ))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
