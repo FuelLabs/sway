@@ -15,4 +15,4 @@ fuel-tx = { version = "0.23", features = ["builder"] }
 fuel-vm = { version = "0.22", features = ["random"] }
 rand = "0.8"
 sway-core = { version = "0.32.0", path = "../sway-core" }
-sway-types = { version = "0.32.0", path = "../sway-types/" }
+sway-types = { version = "0.32.0", path = "../sway-types" }
