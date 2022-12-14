@@ -9,7 +9,7 @@ use crate::{
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
-    traverse,
+    traverse::{self, parsed_tree::ParsedTree, typed_tree::TypedTree},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -161,13 +161,14 @@ impl Session {
             if i == results_len - 1 {
                 // First, populate our token_map with un-typed ast nodes.
                 self.parse_ast_to_tokens(parse_program, |an, tm| {
-                    traverse::parsed_tree::traverse_node(type_engine, an, tm)
+                    let parsed_tree = ParsedTree::new(type_engine, tm);
+                    parsed_tree.traverse_node(an)
                 });
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    let typed_tree = traverse::typed_tree::TypedTree::new(type_engine, tm);
+                    let typed_tree = TypedTree::new(type_engine, tm);
                     typed_tree.traverse_node(an)
                 });
 
