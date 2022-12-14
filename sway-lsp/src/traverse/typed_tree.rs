@@ -574,10 +574,16 @@ fn collect_type_id(
             variant_types,
             ..
         } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+            fn make_type_id_token(mut token: dashmap::mapref::one::RefMut<(Ident, Span), crate::core::token::Token>, symbol_kind: crate::core::token::SymbolKind, typed_token: TypedAstToken, type_id: TypeId) {
                 token.kind = symbol_kind;
-                token.typed = Some(typed_token.clone());
+                token.typed = Some(typed_token);
                 token.type_def = Some(TypeDefinition::TypeId(type_id));
+            }
+            if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+                make_type_id_token(token, symbol_kind.clone(), typed_token.clone(), type_id);
+                // token.kind = symbol_kind;
+                // token.typed = Some(typed_token.clone());
+                // token.type_def = Some(TypeDefinition::TypeId(type_id));
             }
 
             for param in type_parameters {
