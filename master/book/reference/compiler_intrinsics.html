@@ -230,6 +230,11 @@
 <p><strong>Description:</strong> Subtracts <code>offset</code> to the raw value of pointer <code>ptr</code>.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
+<pre><code class="language-sway">__smo&lt;T&gt;(recipient: b256, data: T, output_index: u64, coins: u64)
+</code></pre>
+<p><strong>Description:</strong> Sends a message <code>data</code> of arbitrary type <code>T</code> and <code>coins</code> amount of the base asset to address <code>recipient</code>. This intrinsic assumes that an OutputMessage is available at index <code>output_index</code>.</p>
+<p><strong>Constraints:</strong> None.</p>
+<hr />
 
                     </main>
 
