@@ -15,6 +15,35 @@ pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
+/// All necessary components to render the header portion of
+/// the item html doc.
+struct ItemHeader {
+    module_depth: usize,
+    module: String,
+    decl_ty: String,
+    item_name: String,
+}
+/// All necessary components to render the body portion of
+/// the item html doc.
+struct ItemBody {
+    main_content: MainContent,
+    item_context: ItemContext,
+}
+/// The main content of an item, e.g. the name, path, codeblock & attributes.
+struct MainContent {
+    module_depth: usize,
+    decl_ty: String,
+    item_name: String,
+    code_str: String,
+    attrs_str: String,
+}
+// All rendered context of an item, e.g. all fields on a struct.
+struct ItemContext(Box<dyn RenderBox>);
+impl ItemContext {
+    fn inner(self) -> Box<dyn RenderBox> {
+        self.0
+    }
+}
 enum ItemType {
     Struct,
     Enum,
@@ -517,30 +546,7 @@ fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
         }
     }
 }
-struct HTMLHeader {
-    module_depth: usize,
-    module: String,
-    decl_ty: String,
-    item_name: String,
-}
-struct HTMLBody {
-    main_content: MainContent,
-    item_context: ItemContext,
-}
-struct MainContent {
-    module_depth: usize,
-    decl_ty: String,
-    item_name: String,
-    code_str: String,
-    attrs_str: String,
-}
-// All rendered context of an item, e.g. all fields on a struct.
-struct ItemContext(Box<dyn RenderBox>);
-impl ItemContext {
-    fn inner(self) -> Box<dyn RenderBox> {
-        self.0
-    }
-}
+
 trait Renderable {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
 }
@@ -548,13 +554,13 @@ trait Renderable {
 impl Renderable for TyStructDeclaration {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let item_name = self.name.as_str().to_string();
-        let html_header = HTMLHeader {
+        let html_header = ItemHeader {
             module_depth,
             module,
             decl_ty: decl_ty.clone(),
             item_name: item_name.clone(),
         };
-        let html_body = HTMLBody {
+        let html_body = ItemBody {
             main_content: MainContent {
                 module_depth,
                 decl_ty,
