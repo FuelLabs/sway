@@ -21,6 +21,8 @@ dep b512;
 dep address;
 dep identity;
 dep tx;
+dep vec;
+dep bytes;
 dep inputs;
 dep outputs;
 dep auth;
@@ -33,9 +35,7 @@ dep vm/mod;
 dep flags;
 dep u128;
 dep u256;
-dep vec;
 dep message;
-dep bytes;
 dep prelude;
 
 use core::*;
