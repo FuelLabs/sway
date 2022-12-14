@@ -545,7 +545,7 @@ impl Renderable for TyStructDeclaration {
                 module_depth,
                 decl_ty: decl_ty.clone(),
                 item_name: self.name.as_str().to_string(),
-                code_str: parse::parse_format::<sway_ast::ItemStruct>(&self.span.as_str()),
+                code_str: parse::parse_format::<sway_ast::ItemStruct>(self.span.as_str()),
                 attrs_str: attrsmap_to_html_string(&self.attributes),
             },
             item_context: ItemContext(struct_field_section(self.fields.clone())),
