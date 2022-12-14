@@ -45,7 +45,6 @@ pub trait Parse {
 
 impl Parse for ItemKind {
     fn parse(&self, tokens: &TokenMap) {
-        eprintln!("ItemKind: {:#?}", &self);
         match self {
             ItemKind::Dependency(dependency) => {
                 insert_keyword(tokens, dependency.dep_token.span());
@@ -77,6 +76,145 @@ impl Parse for ItemKind {
             ItemKind::Storage(item_storage) => {
                 item_storage.parse(tokens);
             }
+        }
+    }
+}
+
+impl Parse for Expr {
+    fn parse(&self, tokens: &TokenMap) {
+        match self {
+            Expr::AbiCast { abi_token, args } => {
+                insert_keyword(tokens, abi_token.span());
+                args.get().address.parse(tokens);
+            }
+            Expr::Struct { fields, .. } => {
+                for expr in fields.get() {
+                    expr.parse(tokens);
+                }
+            }
+            Expr::Tuple(tuple) => {
+                tuple.get().parse(tokens);
+            }
+            Expr::Parens(parens) => {
+                parens.get().parse(tokens);
+            }
+            Expr::Block(block) => {
+                block.get().parse(tokens);
+            }
+            Expr::Array(array) => {
+                array.get().parse(tokens);
+            }
+            Expr::Return {
+                return_token,
+                expr_opt,
+            } => {
+                insert_keyword(tokens, return_token.span());
+                if let Some(expr) = expr_opt {
+                    expr.parse(tokens);
+                }
+            }
+            Expr::If(if_expr) => {
+                if_expr.parse(tokens);
+            }
+            Expr::Match {
+                match_token,
+                value,
+                branches,
+            } => {
+                insert_keyword(tokens, match_token.span());
+                value.parse(tokens);
+                for branch in branches.get() {
+                    branch.pattern.parse(tokens);
+                    branch.kind.parse(tokens);
+                }
+            }
+            Expr::While {
+                while_token,
+                condition,
+                block,
+            } => {
+                insert_keyword(tokens, while_token.span());
+                condition.parse(tokens);
+                block.get().parse(tokens);
+            }
+            Expr::FuncApp { func, args } => {
+                func.parse(tokens);
+                for expr in args.get().into_iter() {
+                    expr.parse(tokens);
+                }
+            }
+            Expr::Index { target, arg } => {
+                target.parse(tokens);
+                arg.get().parse(tokens);
+            }
+            Expr::MethodCall {
+                target,
+                contract_args_opt,
+                args,
+                ..
+            } => {
+                target.parse(tokens);
+                if let Some(contract_args) = contract_args_opt {
+                    for expr in contract_args.get().into_iter() {
+                        expr.parse(tokens);
+                    }
+                }
+                for expr in args.get().into_iter() {
+                    expr.parse(tokens);
+                }
+            }
+            Expr::FieldProjection { target, .. } => {
+                target.parse(tokens);
+            }
+            Expr::TupleFieldProjection { target, .. } => {
+                target.parse(tokens);
+            }
+            Expr::Ref { ref_token, expr } => {
+                insert_keyword(tokens, ref_token.span());
+                expr.parse(tokens);
+            }
+            Expr::Deref { deref_token, expr } => {
+                insert_keyword(tokens, deref_token.span());
+                expr.parse(tokens);
+            }
+            Expr::Not { expr, .. } => {
+                expr.parse(tokens);
+            }
+            Expr::Mul { lhs, rhs, .. }
+            | Expr::Div { lhs, rhs, .. }
+            | Expr::Pow { lhs, rhs, .. }
+            | Expr::Modulo { lhs, rhs, .. }
+            | Expr::Add { lhs, rhs, .. }
+            | Expr::Sub { lhs, rhs, .. }
+            | Expr::Shl { lhs, rhs, .. }
+            | Expr::Shr { lhs, rhs, .. }
+            | Expr::BitAnd { lhs, rhs, .. }
+            | Expr::BitXor { lhs, rhs, .. }
+            | Expr::BitOr { lhs, rhs, .. }
+            | Expr::Equal { lhs, rhs, .. }
+            | Expr::NotEqual { lhs, rhs, .. }
+            | Expr::LessThan { lhs, rhs, .. }
+            | Expr::GreaterThan { lhs, rhs, .. }
+            | Expr::LessThanEq { lhs, rhs, .. }
+            | Expr::GreaterThanEq { lhs, rhs, .. }
+            | Expr::LogicalAnd { lhs, rhs, .. }
+            | Expr::LogicalOr { lhs, rhs, .. } => {
+                lhs.parse(tokens);
+                rhs.parse(tokens);
+            }
+            Expr::Reassignment {
+                assignable, expr, ..
+            } => {
+                assignable.parse(tokens);
+                expr.parse(tokens);
+            }
+            Expr::Break { break_token } => {
+                insert_keyword(tokens, break_token.span());
+            }
+            Expr::Continue { continue_token } => {
+                insert_keyword(tokens, continue_token.span());
+            }
+            _ => {}
         }
     }
 }
@@ -269,145 +407,6 @@ impl Parse for Ty {
             Ty::Str { str_token, length } => {
                 insert_keyword(tokens, str_token.span());
                 length.get().parse(tokens);
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Parse for Expr {
-    fn parse(&self, tokens: &TokenMap) {
-        match self {
-            Expr::AbiCast { abi_token, args } => {
-                insert_keyword(tokens, abi_token.span());
-                args.get().address.parse(tokens);
-            }
-            Expr::Struct { fields, .. } => {
-                for expr in fields.get() {
-                    expr.parse(tokens);
-                }
-            }
-            Expr::Tuple(tuple) => {
-                tuple.get().parse(tokens);
-            }
-            Expr::Parens(parens) => {
-                parens.get().parse(tokens);
-            }
-            Expr::Block(block) => {
-                block.get().parse(tokens);
-            }
-            Expr::Array(array) => {
-                array.get().parse(tokens);
-            }
-            Expr::Return {
-                return_token,
-                expr_opt,
-            } => {
-                insert_keyword(tokens, return_token.span());
-                if let Some(expr) = expr_opt {
-                    expr.parse(tokens);
-                }
-            }
-            Expr::If(if_expr) => {
-                if_expr.parse(tokens);
-            }
-            Expr::Match {
-                match_token,
-                value,
-                branches,
-            } => {
-                insert_keyword(tokens, match_token.span());
-                value.parse(tokens);
-                for branch in branches.get() {
-                    branch.pattern.parse(tokens);
-                    branch.kind.parse(tokens);
-                }
-            }
-            Expr::While {
-                while_token,
-                condition,
-                block,
-            } => {
-                insert_keyword(tokens, while_token.span());
-                condition.parse(tokens);
-                block.get().parse(tokens);
-            }
-            Expr::FuncApp { func, args } => {
-                func.parse(tokens);
-                for expr in args.get().into_iter() {
-                    expr.parse(tokens);
-                }
-            }
-            Expr::Index { target, arg } => {
-                target.parse(tokens);
-                arg.get().parse(tokens);
-            }
-            Expr::MethodCall {
-                target,
-                contract_args_opt,
-                args,
-                ..
-            } => {
-                target.parse(tokens);
-                if let Some(contract_args) = contract_args_opt {
-                    for expr in contract_args.get().into_iter() {
-                        expr.parse(tokens);
-                    }
-                }
-                for expr in args.get().into_iter() {
-                    expr.parse(tokens);
-                }
-            }
-            Expr::FieldProjection { target, .. } => {
-                target.parse(tokens);
-            }
-            Expr::TupleFieldProjection { target, .. } => {
-                target.parse(tokens);
-            }
-            Expr::Ref { ref_token, expr } => {
-                insert_keyword(tokens, ref_token.span());
-                expr.parse(tokens);
-            }
-            Expr::Deref { deref_token, expr } => {
-                insert_keyword(tokens, deref_token.span());
-                expr.parse(tokens);
-            }
-            Expr::Not { expr, .. } => {
-                expr.parse(tokens);
-            }
-            Expr::Mul { lhs, rhs, .. }
-            | Expr::Div { lhs, rhs, .. }
-            | Expr::Pow { lhs, rhs, .. }
-            | Expr::Modulo { lhs, rhs, .. }
-            | Expr::Add { lhs, rhs, .. }
-            | Expr::Sub { lhs, rhs, .. }
-            | Expr::Shl { lhs, rhs, .. }
-            | Expr::Shr { lhs, rhs, .. }
-            | Expr::BitAnd { lhs, rhs, .. }
-            | Expr::BitXor { lhs, rhs, .. }
-            | Expr::BitOr { lhs, rhs, .. }
-            | Expr::Equal { lhs, rhs, .. }
-            | Expr::NotEqual { lhs, rhs, .. }
-            | Expr::LessThan { lhs, rhs, .. }
-            | Expr::GreaterThan { lhs, rhs, .. }
-            | Expr::LessThanEq { lhs, rhs, .. }
-            | Expr::GreaterThanEq { lhs, rhs, .. }
-            | Expr::LogicalAnd { lhs, rhs, .. }
-            | Expr::LogicalOr { lhs, rhs, .. } => {
-                lhs.parse(tokens);
-                rhs.parse(tokens);
-            }
-            Expr::Reassignment {
-                assignable, expr, ..
-            } => {
-                assignable.parse(tokens);
-                expr.parse(tokens);
-            }
-            Expr::Break { break_token } => {
-                insert_keyword(tokens, break_token.span());
-            }
-            Expr::Continue { continue_token } => {
-                insert_keyword(tokens, continue_token.span());
             }
             _ => {}
         }
