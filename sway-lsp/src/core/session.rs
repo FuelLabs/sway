@@ -167,7 +167,8 @@ impl Session {
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    traverse::typed_tree::traverse_node(type_engine, an, tm)
+                    let typed_tree = traverse::typed_tree::TypedTree::new(type_engine, tm);
+                    typed_tree.traverse_node(an)
                 });
 
                 self.save_parse_program(parse_program.to_owned().clone());
