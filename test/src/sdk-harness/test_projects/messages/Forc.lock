@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-4BF3CFD534621F0F'
+
+[[package]]
+name = 'messages'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-4BF3CFD534621F0F'
+dependencies = ['core']

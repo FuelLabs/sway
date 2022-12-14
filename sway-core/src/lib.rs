@@ -220,6 +220,13 @@ pub fn parsed_to_ast(
             _ => None,
         }));
 
+    typed_program
+        .messages_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+            _ => None,
+        }));
+
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(
         type_engine,
