@@ -15,6 +15,8 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
+use super::unify::Unifier;
+
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
@@ -280,9 +282,7 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            self, received, expected, span, help_text, false,
-        ))
+        normalize_err(Unifier::new(self).unify(received, expected, span, help_text))
     }
 
     /// Replace any instances of the [TypeInfo::SelfType] variant with
@@ -346,9 +346,11 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify_right(
-            self, received, expected, span, help_text,
-        ))
+        normalize_err(
+            Unifier::new(self)
+                .right()
+                .unify(received, expected, span, help_text),
+        )
     }
 
     /// Helper function for making the type of `expected` equivalent to
@@ -402,9 +404,11 @@ impl TypeEngine {
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            self, expected, received, span, help_text, true,
-        ))
+        normalize_err(
+            Unifier::new(self)
+                .flip_arguments()
+                .unify(received, expected, span, help_text),
+        )
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

@@ -70,11 +70,24 @@ pub enum TypeInfo {
     ///
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#190
-    TypeParam {
+    UnknownGeneric {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
     },
+    /// Represents a type that will be inferred by the Sway compiler. This type
+    /// is created when the user writes code that creates a new ADT that has
+    /// type parameters in it's definition, before type inference can determine
+    /// what the type of those type parameters are.
+    ///
+    /// This type would also be created in a case where the user wrote a type
+    /// annotation with a wildcard type, like:
+    /// `let v: Vec<_> = iter.collect();`. However, this is not yet implemented
+    /// in Sway.
+    ///
+    /// The equivalent type in the Rust compiler is:
+    /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
+    Placeholder(TypeArgument),
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
@@ -198,7 +211,7 @@ impl HashWithTypeEngine for TypeInfo {
             TypeInfo::SelfType => {
                 state.write_u8(13);
             }
-            TypeInfo::TypeParam {
+            TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints,
             } => {
@@ -229,6 +242,10 @@ impl HashWithTypeEngine for TypeInfo {
             TypeInfo::RawUntypedSlice => {
                 state.write_u8(19);
             }
+            TypeInfo::Placeholder(ty) => {
+                state.write_u8(20);
+                ty.hash(state, type_engine);
+            }
         }
     }
 }
@@ -248,15 +265,16 @@ impl PartialEqWithTypeEngine for TypeInfo {
             | (Self::Contract, Self::Contract)
             | (Self::ErrorRecovery, Self::ErrorRecovery) => true,
             (
-                Self::TypeParam {
+                Self::UnknownGeneric {
                     name: l,
                     trait_constraints: ltc,
                 },
-                Self::TypeParam {
+                Self::UnknownGeneric {
                     name: r,
                     trait_constraints: rtc,
                 },
             ) => l == r && ltc.eq(rtc, type_engine),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, type_engine),
             (
                 Self::Custom {
                     name: l_name,
@@ -355,7 +373,8 @@ impl DisplayWithTypeEngine for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
-            TypeParam { name, .. } => name.to_string(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(_) => "_".to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -425,7 +444,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
     ) -> bool {
         let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
         match self {
-            TypeInfo::TypeParam {
+            TypeInfo::UnknownGeneric {
                 trait_constraints, ..
             } => {
                 self.eq(&type_parameter_info, type_engine)
@@ -518,7 +537,8 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::ErrorRecovery
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Storage { .. } => false,
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => false,
         }
     }
 }
@@ -528,7 +548,8 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
-            TypeParam { name, .. } => name.to_string(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            TypeInfo::Placeholder(_) => "_".to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -885,7 +906,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -899,7 +920,8 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
             }
@@ -995,7 +1017,7 @@ impl TypeInfo {
                     }
                 }
                 TypeInfo::Unknown
-                | TypeInfo::TypeParam { .. }
+                | TypeInfo::UnknownGeneric { .. }
                 | TypeInfo::Str(_)
                 | TypeInfo::UnsignedInteger(_)
                 | TypeInfo::Boolean
@@ -1005,7 +1027,8 @@ impl TypeInfo {
                 | TypeInfo::Numeric
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::RawUntypedSlice
-                | TypeInfo::Contract => {
+                | TypeInfo::Contract
+                | TypeInfo::Placeholder(_) => {
                     inner_types.insert(type_id);
                 }
                 TypeInfo::ErrorRecovery => {}
@@ -1060,7 +1083,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -1071,7 +1094,8 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Placeholder(_) => {}
         }
         inner_types
     }
@@ -1091,7 +1115,7 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
@@ -1103,7 +1127,8 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
@@ -1133,11 +1158,12 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),
@@ -1251,7 +1277,7 @@ impl TypeInfo {
                     all_nested_types.append(&mut nested_types);
                 }
             }
-            TypeInfo::TypeParam {
+            TypeInfo::UnknownGeneric {
                 trait_constraints, ..
             } => {
                 for trait_constraint in trait_constraints.iter() {
@@ -1279,7 +1305,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery => {}
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+            TypeInfo::Custom { .. } | TypeInfo::SelfType | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Internal(
                     "did not expect to find this type here",
                     span.clone(),
@@ -1306,7 +1332,7 @@ impl TypeInfo {
         let generics = HashSet::from_iter(
             nested_types
                 .into_iter()
-                .filter(|x| matches!(x, TypeInfo::TypeParam { .. }))
+                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
                 .map(|thing| WithTypeEngine {
                     thing,
                     engine: type_engine,
@@ -1394,11 +1420,11 @@ impl TypeInfo {
         // handle the generics cases
         match (self, other) {
             (
-                Self::TypeParam {
+                Self::UnknownGeneric {
                     trait_constraints: ltc,
                     ..
                 },
-                Self::TypeParam {
+                Self::UnknownGeneric {
                     trait_constraints: rtc,
                     ..
                 },
@@ -1406,7 +1432,7 @@ impl TypeInfo {
                 return rtc.is_subset(ltc, type_engine);
             }
             // any type is the subset of a generic
-            (_, Self::TypeParam { .. }) => {
+            (_, Self::UnknownGeneric { .. }) => {
                 return true;
             }
             _ => {}
@@ -1618,7 +1644,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery => false,
             TypeInfo::Unknown
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
             | TypeInfo::SelfType
@@ -1626,7 +1652,8 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
-            | TypeInfo::Numeric => true,
+            | TypeInfo::Numeric
+            | TypeInfo::Placeholder(_) => true,
         }
     }
 

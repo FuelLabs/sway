@@ -29,7 +29,7 @@ impl CollectTypesMetadata for TypeId {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = vec![];
-        if let TypeInfo::TypeParam {
+        if let TypeInfo::UnknownGeneric {
             name,
             trait_constraints,
         } = ctx.type_engine.look_up_type_id(*self)
@@ -103,7 +103,7 @@ impl ReplaceSelfType for TypeId {
                 }
             }
             TypeInfo::Unknown
-            | TypeInfo::TypeParam { .. }
+            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -113,7 +113,8 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Placeholder(_) => {}
         }
     }
 }

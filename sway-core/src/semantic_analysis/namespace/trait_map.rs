@@ -784,7 +784,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
         (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
         (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
-        (TypeInfo::TypeParam { .. }, TypeInfo::TypeParam { .. }) => {
+        (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => {
             // return true if left and right were unified previously
             type_engine.get_unified_types(left).contains(&right)
                 || type_engine.get_unified_types(right).contains(&left)

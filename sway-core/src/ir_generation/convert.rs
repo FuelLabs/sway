@@ -137,7 +137,8 @@ fn convert_resolved_type(
         TypeInfo::Contract => reject_type!("Contract"),
         TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
         TypeInfo::Unknown => reject_type!("Unknown"),
-        TypeInfo::TypeParam { .. } => reject_type!("Generic"),
+        TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
+        TypeInfo::Placeholder(_) => reject_type!("Generic"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

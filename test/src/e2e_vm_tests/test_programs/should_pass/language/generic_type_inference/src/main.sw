@@ -14,11 +14,11 @@ fn main() {
 }
 
 fn sell_product() -> Result<bool, CustomType> {
-    if false {
-        return Result::Err(CustomType {
-            name: "foo"
-        });
-    };
+    // if false {
+    //     return Result::Err(CustomType {
+    //         name: "foo"
+    //     });
+    // };
 
     return Result::Ok(false);
 }

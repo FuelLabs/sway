@@ -44,7 +44,7 @@ fn generic_enum_resolution() {
 
     let sp = Span::dummy();
 
-    let generic_type = engine.insert_type_always(TypeInfo::TypeParam {
+    let generic_type = engine.insert_type_always(TypeInfo::UnknownGeneric {
         name: Ident::new_with_override("T", sp.clone()),
         trait_constraints: VecSet(Vec::new()),
     });

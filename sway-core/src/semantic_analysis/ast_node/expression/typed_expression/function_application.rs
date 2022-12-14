@@ -5,7 +5,7 @@ use crate::{
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::HashMap;
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::Spanned;
 
 #[allow(clippy::too_many_arguments)]
@@ -36,49 +36,19 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    // Type check the arguments from the function application and unify them with
-    // the arguments from the function application.
-    let typed_arguments: Vec<(Ident, ty::TyExpression)> = arguments
-        .into_iter()
-        .zip(function_decl.parameters.iter())
-        .map(|(arg, param)| {
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration.",
-                )
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
-            let exp = check!(
-                ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::TyExpression::error(arg.span(), type_engine),
-                warnings,
-                errors
-            );
-            append!(
-                type_engine.unify_right(
-                    exp.return_type,
-                    param.type_id,
-                    &exp.span,
-                    "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration."
-                ),
-                warnings,
-                errors
-            );
+    let typed_arguments = check!(
+        type_check_arguments(ctx.by_ref(), arguments),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-            // check for matching mutability
-            let param_mutability =
-                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-            if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-                errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
-            }
-
-            (param.name.clone(), exp)
-        })
-        .collect();
+    let typed_arguments = check!(
+        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &function_decl.parameters),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
@@ -112,6 +82,90 @@ pub(crate) fn instantiate_function_application(
     };
 
     ok(exp, warnings, errors)
+}
+
+/// Type checks the arguments.
+fn type_check_arguments(
+    mut ctx: TypeCheckContext,
+    arguments: Vec<parsed::Expression>,
+) -> CompileResult<Vec<ty::TyExpression>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+
+    let typed_arguments = arguments
+        .into_iter()
+        .map(|arg| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            check!(
+                ty::TyExpression::type_check(ctx, arg.clone()),
+                ty::TyExpression::error(arg.span(), type_engine),
+                warnings,
+                errors
+            )
+        })
+        .collect();
+
+    if errors.is_empty() {
+        ok(typed_arguments, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
+/// Unifies the types of the arguments with the types of the parameters. Returns
+/// a list of the arguments with the names of the corresponding parameters.
+fn unify_arguments_and_parameters(
+    ctx: TypeCheckContext,
+    typed_arguments: Vec<ty::TyExpression>,
+    parameters: &[ty::TyFunctionParameter],
+) -> CompileResult<Vec<(Ident, ty::TyExpression)>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+
+    // Type check the arguments from the function application and unify them with
+    // the arguments from the function application.
+    let typed_arguments: Vec<(Ident, ty::TyExpression)> = typed_arguments
+        .into_iter()
+        .zip(parameters.iter())
+        .map(|(arg, param)| {
+            let (mut new_warnings, new_errors) =
+                type_engine.unify_right(arg.return_type, param.type_id, &arg.span, "");
+            warnings.append(&mut new_warnings);
+            if !new_errors.is_empty() {
+                errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                    expected: type_engine.help_out(param.type_id).to_string(),
+                    received: type_engine.help_out(arg.return_type).to_string(),
+                    help_text: "The argument that has been provided to this function's type does \
+                    not match the declared type of the parameter in the function \
+                    declaration."
+                        .to_string(),
+                    span: arg.span.clone(),
+                }));
+            }
+            // check for matching mutability
+            let param_mutability =
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+            if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+                errors.push(CompileError::ImmutableArgumentToMutableParameter {
+                    span: arg.span.clone(),
+                });
+            }
+            (param.name.clone(), arg)
+        })
+        .collect();
+
+    if errors.is_empty() {
+        ok(typed_arguments, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
 
 pub(crate) fn check_function_arguments_arity(

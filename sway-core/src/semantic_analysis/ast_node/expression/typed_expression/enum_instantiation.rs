@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
@@ -54,7 +54,7 @@ pub(crate) fn instantiate_enum(
         ),
         ([single_expr], _) => {
             let ctx = ctx
-                .with_help_text("Enum instantiator must match its declared variant type.")
+                .with_help_text("")
                 .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
@@ -62,16 +62,22 @@ pub(crate) fn instantiate_enum(
                 warnings,
                 errors
             );
-            append!(
-                type_engine.unify_adt(
-                    typed_expr.return_type,
-                    enum_variant.type_id,
-                    &typed_expr.span,
-                    "Enum instantiator must match its declared variant type."
-                ),
-                warnings,
-                errors
+            let (mut new_warnings, new_errors) = type_engine.unify_adt(
+                typed_expr.return_type,
+                enum_variant.type_id,
+                &typed_expr.span,
+                "",
             );
+            warnings.append(&mut new_warnings);
+            if !new_errors.is_empty() {
+                errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                    expected: type_engine.help_out(enum_variant.type_id).to_string(),
+                    received: type_engine.help_out(typed_expr.return_type).to_string(),
+                    help_text: "Enum instantiator must match its declared variant type."
+                        .to_string(),
+                    span: typed_expr.span.clone(),
+                }));
+            }
 
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check

@@ -1,7 +1,11 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    type_error::TypeError,
+    warning::{CompileWarning, Warning},
+};
 
 use crate::{
     error::*,
@@ -118,20 +122,12 @@ impl ty::TyFunctionDeclaration {
             .flat_map(|node| node.gather_return_statements())
             .collect();
 
-        // unify the types of the return statements with the function return type
-        for stmt in return_statements {
-            append!(
-                fn_ctx
-                    .by_ref()
-                    .with_type_annotation(return_type)
-                    .with_help_text(
-                        "Return statement must return the declared function return type."
-                    )
-                    .unify_with_self(stmt.return_type, &stmt.span),
-                warnings,
-                errors
-            );
-        }
+        check!(
+            unify_return_statements(fn_ctx.by_ref(), &return_statements, return_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -174,6 +170,45 @@ impl ty::TyFunctionDeclaration {
             .extend(return_type_namespace, type_engine);
 
         ok(function_decl, warnings, errors)
+    }
+}
+
+/// Unifies the types of the return statements and the return type of the
+/// function declaration.
+fn unify_return_statements(
+    ctx: TypeCheckContext,
+    return_statements: &[&ty::TyExpression],
+    return_type: TypeId,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+
+    for stmt in return_statements.iter() {
+        let (mut new_warnings, new_errors) = type_engine.unify_with_self(
+            stmt.return_type,
+            return_type,
+            ctx.self_type(),
+            &stmt.span,
+            "",
+        );
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                expected: type_engine.help_out(return_type).to_string(),
+                received: type_engine.help_out(stmt.return_type).to_string(),
+                help_text: "Return statement must return the declared function return type."
+                    .to_string(),
+                span: stmt.span.clone(),
+            }));
+        }
+    }
+
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
     }
 }
 
