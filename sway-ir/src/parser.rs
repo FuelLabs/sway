@@ -170,6 +170,7 @@ mod ir_builder {
                 / op_read_register()
                 / op_ret()
                 / op_revert()
+                / op_smo()
                 / op_state_load_quad_word()
                 / op_state_load_word()
                 / op_state_store_quad_word()
@@ -313,6 +314,12 @@ mod ir_builder {
                 = "revert" _ vn:id() {
                     IrAstOperation::Revert(vn)
                 }
+
+            rule op_smo() -> IrAstOperation
+                = "smo" _
+                recipient_and_message:id() comma() message_size:id() comma() output_index:id() comma() coins:id() _ {
+                    IrAstOperation::Smo(recipient_and_message, message_size, output_index, coins)
+            }
 
             rule op_state_load_quad_word() -> IrAstOperation
                 = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() {
@@ -668,6 +675,7 @@ mod ir_builder {
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
+        Smo(String, String, String, String),
         StateLoadQuadWord(String, String),
         StateLoadWord(String),
         StateStoreQuadWord(String, String),
@@ -1222,6 +1230,20 @@ mod ir_builder {
                     IrAstOperation::Revert(ret_val_name) => block
                         .ins(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Smo(
+                        recipient_and_message,
+                        message_size,
+                        output_index,
+                        coins,
+                    ) => block
+                        .ins(context)
+                        .smo(
+                            *val_map.get(&recipient_and_message).unwrap(),
+                            *val_map.get(&message_size).unwrap(),
+                            *val_map.get(&output_index).unwrap(),
+                            *val_map.get(&coins).unwrap(),
+                        )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key) => block
                         .ins(context)
