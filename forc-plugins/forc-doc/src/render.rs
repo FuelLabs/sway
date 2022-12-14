@@ -17,28 +17,28 @@ pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
 /// All necessary components to render the header portion of
 /// the item html doc.
-struct ItemHeader {
-    module_depth: usize,
-    module: String,
-    decl_ty: String,
-    item_name: String,
+pub(crate) struct ItemHeader {
+    pub(crate) module_depth: usize,
+    pub(crate) module: String,
+    pub(crate) decl_ty: String,
+    pub(crate) item_name: String,
 }
 /// All necessary components to render the body portion of
 /// the item html doc.
-struct ItemBody {
-    main_content: MainContent,
-    item_context: ItemContext,
+pub(crate) struct ItemBody {
+    pub(crate) main_content: MainContent,
+    pub(crate) item_context: ItemContext,
 }
 /// The main content of an item, e.g. the name, path, codeblock & attributes.
-struct MainContent {
-    module_depth: usize,
-    decl_ty: String,
-    item_name: String,
-    code_str: String,
-    attrs_str: String,
+pub(crate) struct MainContent {
+    pub(crate) module_depth: usize,
+    pub(crate) decl_ty: String,
+    pub(crate) item_name: String,
+    pub(crate) code_str: String,
+    pub(crate) attrs_str: String,
 }
 // All rendered context of an item, e.g. all fields on a struct.
-struct ItemContext(Box<dyn RenderBox>);
+pub(crate) struct ItemContext(pub(crate) Box<dyn RenderBox>);
 impl ItemContext {
     fn inner(self) -> Box<dyn RenderBox> {
         self.0
@@ -174,7 +174,7 @@ impl RenderedDocument {
         rendered_docs.push(Self {
             module_prefix: vec![],
             file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString(page_from(all_items(project_name.to_string(), &all_doc))),
+            file_contents: HTMLString(page_from(all_items(project_name.clone(), &all_doc))),
         });
         rendered_docs
     }
@@ -309,7 +309,7 @@ fn _crate_index() -> Box<dyn RenderBox> {
     box_html! {}
 }
 /// crate level, all items belonging to a crate
-fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
+fn all_items(project_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
     // TODO: find a better way to do this
     //
     // we need to have a finalized list for the all doc
@@ -369,7 +369,7 @@ fn all_items(crate_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
             link(rel="stylesheet", type="text/css", href="assets/ayu.css");
         }
         body(class="swaydoc mod") {
-            : sidebar(0, format!("Crate {crate_name}"), ALL_DOC_FILENAME.to_string());
+            : sidebar(0, format!("Crate {project_name}"), ALL_DOC_FILENAME.to_string());
             main {
                 div(class="width-limiter") {
                     div(class="sub-container") {
@@ -488,7 +488,7 @@ fn module_depth_to_path_prefix(module_depth: usize) -> String {
     (0..module_depth).map(|_| "../").collect::<String>()
 }
 /// Creates an HTML String from an [AttributesMap]
-fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
+pub(crate) fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::Doc);
     let mut docs = String::new();
 
@@ -519,7 +519,7 @@ fn trim_fn_body(f: String) -> String {
     }
 }
 /// Creates the HTML needed for the Fields section of a Struct document.
-fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
+pub(crate) fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
     box_html! {
         h2(id="fields", class="fields small-section-header") {
             : "Fields";

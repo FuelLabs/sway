@@ -1,12 +1,6 @@
 use crate::descriptor::{Descriptor, DescriptorType};
 use anyhow::Result;
-use sway_core::{
-    language::{
-        ty::{TyAstNodeContent, TySubmodule},
-        {parsed::ParseProgram, ty::TyProgram},
-    },
-    CompileResult,
-};
+use sway_core::language::ty::{TyAstNodeContent, TyProgram, TySubmodule};
 
 pub(crate) type Documentation = Vec<Document>;
 /// A finalized Document ready to be rendered. We want to retain all
@@ -44,40 +38,44 @@ impl Document {
     }
     /// Gather [Documentation] from the [CompileResult].
     pub(crate) fn from_ty_program(
-        compilation: &CompileResult<(ParseProgram, Option<TyProgram>)>,
+        project_name: &String,
+        typed_program: &TyProgram,
         no_deps: bool,
         document_private_items: bool,
     ) -> Result<Documentation> {
+        // the first module prefix will always be the project name
         let mut docs: Documentation = Default::default();
-        if let Some((_, Some(typed_program))) = &compilation.value {
-            for ast_node in &typed_program.root.all_nodes {
-                if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                    let desc = Descriptor::from_typed_decl(decl, vec![], document_private_items)?;
+        for ast_node in &typed_program.root.all_nodes {
+            if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
+                let desc = Descriptor::from_typed_decl(
+                    decl,
+                    vec![project_name.clone()],
+                    document_private_items,
+                )?;
 
-                    if let Descriptor::Documentable {
+                if let Descriptor::Documentable {
+                    module_prefix,
+                    desc_ty,
+                } = desc
+                {
+                    docs.push(Document {
                         module_prefix,
-                        desc_ty,
-                    } = desc
-                    {
-                        docs.push(Document {
-                            module_prefix,
-                            desc_ty: *desc_ty,
-                        })
-                    }
+                        desc_ty: *desc_ty,
+                    })
                 }
             }
+        }
 
-            if !no_deps && !typed_program.root.submodules.is_empty() {
-                // this is the same process as before but for dependencies
-                for (_, ref typed_submodule) in &typed_program.root.submodules {
-                    let module_prefix = vec![];
-                    Document::from_ty_submodule(
-                        typed_submodule,
-                        &mut docs,
-                        &module_prefix,
-                        document_private_items,
-                    )?;
-                }
+        if !no_deps && !typed_program.root.submodules.is_empty() {
+            // this is the same process as before but for dependencies
+            for (_, ref typed_submodule) in &typed_program.root.submodules {
+                let module_prefix = vec![project_name.clone()];
+                Document::from_ty_submodule(
+                    typed_submodule,
+                    &mut docs,
+                    &module_prefix,
+                    document_private_items,
+                )?;
             }
         }
 

@@ -468,6 +468,22 @@ impl TyDeclaration {
         }
     }
 
+    /// name string used in `forc doc` generation that mirrors `cargo doc`.
+    pub fn doc_name(&self) -> &'static str {
+        use TyDeclaration::*;
+        match self {
+            StructDeclaration(_) => "struct",
+            EnumDeclaration(_) => "enum",
+            TraitDeclaration(_) => "trait",
+            AbiDeclaration(_) => "abi",
+            StorageDeclaration(_) => "storage",
+            ImplTrait(_) => "impl_trait",
+            FunctionDeclaration(_) => "fn",
+            ConstantDeclaration(_) => "constant",
+            _ => "", // non-documentable
+        }
+    }
+
     pub(crate) fn return_type(
         &self,
         access_span: &Span,

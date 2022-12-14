@@ -1,4 +1,7 @@
 //! Determine whether a [Declaration] is documentable.
+use crate::render::{
+    attrsmap_to_html_string, struct_field_section, ItemBody, ItemContext, ItemHeader, MainContent,
+};
 use anyhow::Result;
 use sway_core::{
     declaration_engine::*,
@@ -59,6 +62,10 @@ impl Descriptor {
         module_prefix: Vec<String>,
         document_private_items: bool,
     ) -> Result<Self> {
+        let module_depth = module_prefix.len();
+        let module = module_prefix.last().unwrap().to_string(); // There will always be at least the project name
+
+        use swayfmt::parse;
         use TyDeclaration::*;
         match ty_decl {
             StructDeclaration(ref decl_id) => {
@@ -66,6 +73,26 @@ impl Descriptor {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
+                    let decl_ty = ty_decl.doc_name().to_string();
+                    let item_name = struct_decl.name.as_str().to_string();
+                    let html_header = ItemHeader {
+                        module_depth,
+                        module,
+                        decl_ty: decl_ty.clone(),
+                        item_name: item_name.clone(),
+                    };
+                    let html_body = ItemBody {
+                        main_content: MainContent {
+                            module_depth,
+                            decl_ty,
+                            item_name,
+                            code_str: parse::parse_format::<sway_ast::ItemStruct>(
+                                struct_decl.span.as_str(),
+                            ),
+                            attrs_str: attrsmap_to_html_string(&struct_decl.attributes),
+                        },
+                        item_context: ItemContext(struct_field_section(struct_decl.fields.clone())),
+                    };
                     Ok(Descriptor::Documentable {
                         module_prefix,
                         desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
