@@ -45,8 +45,8 @@ pub enum TypedAstToken {
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
-    TypeArgument(TypeArgument),
-    TypeParameter(TypeParameter),
+    TypedArgument(TypeArgument),
+    TypedParameter(TypeParameter),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

@@ -143,7 +143,7 @@ fn handle_declaration(
                     collect_type_id(
                         type_engine,
                         param.type_id,
-                        &TypedAstToken::TypeParameter(param.clone()),
+                        &TypedAstToken::TypedParameter(param.clone()),
                         tokens,
                         param.name_ident.span().clone(),
                     );
@@ -164,7 +164,7 @@ fn handle_declaration(
                     collect_type_id(
                         type_engine,
                         type_arg.type_id,
-                        &TypedAstToken::TypeArgument(type_arg.clone()),
+                        &TypedAstToken::TypedArgument(type_arg.clone()),
                         tokens,
                         type_arg.span().clone(),
                     );
@@ -553,7 +553,7 @@ fn collect_type_id(
             collect_type_id(
                 type_engine,
                 type_arg.type_id,
-                &TypedAstToken::TypeArgument(type_arg.clone()),
+                &TypedAstToken::TypedArgument(type_arg.clone()),
                 tokens,
                 type_arg.span(),
             );
@@ -563,7 +563,7 @@ fn collect_type_id(
                 collect_type_id(
                     type_engine,
                     type_arg.type_id,
-                    &TypedAstToken::TypeArgument(type_arg.clone()),
+                    &TypedAstToken::TypedArgument(type_arg.clone()),
                     tokens,
                     type_arg.span().clone(),
                 );
@@ -584,7 +584,7 @@ fn collect_type_id(
                 collect_type_id(
                     type_engine,
                     param.type_id,
-                    &TypedAstToken::TypeParameter(param.clone()),
+                    &TypedAstToken::TypedParameter(param.clone()),
                     tokens,
                     param.name_ident.span().clone(),
                 );
@@ -609,7 +609,7 @@ fn collect_type_id(
                 collect_type_id(
                     type_engine,
                     param.type_id,
-                    &TypedAstToken::TypeParameter(param.clone()),
+                    &TypedAstToken::TypedParameter(param.clone()),
                     tokens,
                     param.name_ident.span().clone(),
                 );
@@ -631,7 +631,7 @@ fn collect_type_id(
                     collect_type_id(
                         type_engine,
                         type_arg.type_id,
-                        &TypedAstToken::TypeArgument(type_arg.clone()),
+                        &TypedAstToken::TypedArgument(type_arg.clone()),
                         tokens,
                         type_arg.span().clone(),
                     );
