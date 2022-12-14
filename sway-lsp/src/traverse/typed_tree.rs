@@ -1,9 +1,12 @@
 #![allow(dead_code)]
 
 use crate::core::{
-    token::{to_ident_key, type_info_to_symbol_kind, TypeDefinition, TypedAstToken},
+    token::{
+        to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
+    },
     token_map::TokenMap,
 };
+use dashmap::mapref::one::RefMut;
 use sway_core::{
     declaration_engine::{self, de_get_function},
     language::ty::{self, TyEnumVariant},
@@ -574,16 +577,8 @@ fn collect_type_id(
             variant_types,
             ..
         } => {
-            fn make_type_id_token(mut token: dashmap::mapref::one::RefMut<(Ident, Span), crate::core::token::Token>, symbol_kind: crate::core::token::SymbolKind, typed_token: TypedAstToken, type_id: TypeId) {
-                token.kind = symbol_kind;
-                token.typed = Some(typed_token);
-                token.type_def = Some(TypeDefinition::TypeId(type_id));
-            }
             if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
-                make_type_id_token(token, symbol_kind.clone(), typed_token.clone(), type_id);
-                // token.kind = symbol_kind;
-                // token.typed = Some(typed_token.clone());
-                // token.type_def = Some(TypeDefinition::TypeId(type_id));
+                assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
 
             for param in type_parameters {
@@ -605,10 +600,8 @@ fn collect_type_id(
             fields,
             ..
         } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
-                token.kind = symbol_kind;
-                token.typed = Some(typed_token.clone());
-                token.type_def = Some(TypeDefinition::TypeId(type_id));
+            if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+                assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
 
             for param in type_parameters {
@@ -626,10 +619,8 @@ fn collect_type_id(
             }
         }
         TypeInfo::Custom { type_arguments, .. } => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
-                token.kind = symbol_kind;
-                token.typed = Some(typed_token.clone());
-                token.type_def = Some(TypeDefinition::TypeId(type_id));
+            if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+                assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
 
             if let Some(type_arguments) = type_arguments {
@@ -650,10 +641,8 @@ fn collect_type_id(
             }
         }
         _ => {
-            if let Some(mut token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
-                token.kind = symbol_kind;
-                token.typed = Some(typed_token.clone());
-                token.type_def = Some(TypeDefinition::TypeId(type_id));
+            if let Some(token) = tokens.get_mut(&to_ident_key(&Ident::new(type_span))) {
+                assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
             }
         }
     }
@@ -730,4 +719,15 @@ fn collect_ty_struct_field(type_engine: &TypeEngine, field: &ty::TyStructField, 
         tokens,
         field.type_span.clone(),
     );
+}
+
+fn assign_type_to_token(
+    mut token: RefMut<(Ident, Span), Token>,
+    symbol_kind: SymbolKind,
+    typed_token: TypedAstToken,
+    type_id: TypeId,
+) {
+    token.kind = symbol_kind;
+    token.typed = Some(typed_token);
+    token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
