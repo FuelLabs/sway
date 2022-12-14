@@ -37,5 +37,3 @@ pub(crate) fn code_actions(
             })
     })
 }
-
-// todo: tests
