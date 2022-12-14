@@ -1833,7 +1833,7 @@ fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
     let lock_dir = lock_path
         .parent()
         .expect("lock path has no parent directory");
-    std::fs::create_dir_all(&lock_dir).context("failed to create forc advisory lock directory")?;
+    std::fs::create_dir_all(lock_dir).context("failed to create forc advisory lock directory")?;
     let lock_file = File::create(&lock_path).context("failed to create advisory lock file")?;
     Ok(fd_lock::RwLock::new(lock_file))
 }
