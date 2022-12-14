@@ -661,12 +661,12 @@ fn test_pop() {
     let third = bytes.pop();
     assert(third.unwrap() == 180u8);
     assert(bytes.len() == 9);
-    bytes.pop();
-    bytes.pop();
-    bytes.pop();
-    bytes.pop();
-    bytes.pop();
-    bytes.pop();
+    let _ = bytes.pop();
+    let _ = bytes.pop();
+    let _ = bytes.pop();
+    let _ = bytes.pop();
+    let _ = bytes.pop();
+    let _ = bytes.pop();
     assert(bytes.len() == 3);
     assert(bytes.pop().unwrap() == c);
     assert(bytes.pop().unwrap() == b);
