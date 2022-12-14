@@ -500,6 +500,7 @@ fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
         }
     }
 }
+// make this and future kin funtions part of the renderable trait family
 fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
     let field_name = field.name.as_str().to_string();
     let struct_field_id = format!("structfield.{}", &field_name);
@@ -532,31 +533,25 @@ trait Renderable {
 
 impl Renderable for TyStructDeclaration {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyStructDeclaration {
-            name,
-            fields,
-            type_parameters: _,
-            visibility: _,
-            attributes,
-            span,
-        } = &self;
         let html_body = HTMLBody {
             main_content: MainContent {
                 module_depth,
                 decl_ty: decl_ty.clone(),
-                item_name: name.as_str().to_string(),
-                code_str: parse::parse_format::<sway_ast::ItemStruct>(span.as_str()),
-                attrs_str: attrsmap_to_html_string(attributes),
+                item_name: self.name.as_str().to_string(),
+                code_str: parse::parse_format::<sway_ast::ItemStruct>(&self.span.as_str()),
+                attrs_str: attrsmap_to_html_string(&self.attributes),
             },
-            item_context: ItemContext(struct_field_section(fields.clone())),
+            item_context: ItemContext(struct_field_section(self.fields.clone())),
         };
-        let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
-        let struct_attributes = attrsmap_to_html_string(attributes);
-
         box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, struct_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), html_body.main_content.item_name.clone());
+            : to_item_body(
+                html_body.main_content.module_depth,
+                html_body.main_content.decl_ty,
+                html_body.main_content.item_name,
+                html_body.main_content.code_str,
+                html_body.main_content.attrs_str,
+            );
         }
     }
 }
