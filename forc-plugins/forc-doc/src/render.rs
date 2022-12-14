@@ -517,6 +517,12 @@ fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
         }
     }
 }
+struct HTMLHeader {
+    module_depth: usize,
+    module: String,
+    decl_ty: String,
+    item_name: String,
+}
 struct HTMLBody {
     main_content: MainContent,
     item_context: ItemContext,
@@ -528,6 +534,7 @@ struct MainContent {
     code_str: String,
     attrs_str: String,
 }
+// All rendered context of an item, e.g. all fields on a struct.
 struct ItemContext(Box<dyn RenderBox>);
 impl ItemContext {
     fn inner(self) -> Box<dyn RenderBox> {
@@ -540,18 +547,25 @@ trait Renderable {
 
 impl Renderable for TyStructDeclaration {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
+        let item_name = self.name.as_str().to_string();
+        let html_header = HTMLHeader {
+            module_depth,
+            module,
+            decl_ty: decl_ty.clone(),
+            item_name: item_name.clone(),
+        };
         let html_body = HTMLBody {
             main_content: MainContent {
                 module_depth,
-                decl_ty: decl_ty.clone(),
-                item_name: self.name.as_str().to_string(),
+                decl_ty,
+                item_name,
                 code_str: parse::parse_format::<sway_ast::ItemStruct>(self.span.as_str()),
                 attrs_str: attrsmap_to_html_string(&self.attributes),
             },
             item_context: ItemContext(struct_field_section(self.fields.clone())),
         };
         box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), html_body.main_content.item_name.clone());
+            : to_item_header(html_header.module_depth, html_header.module, html_header.decl_ty, html_header.item_name);
             : to_item_body(
                 html_body.main_content.module_depth,
                 html_body.main_content.decl_ty,
