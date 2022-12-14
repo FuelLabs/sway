@@ -5,7 +5,7 @@ use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use sway_core::language::ty::{
     TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
-    TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration,
+    TyStorageDeclaration, TyStructDeclaration, TyStructField, TyTraitDeclaration,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
@@ -163,7 +163,7 @@ fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 }
 
 /// Basic HTML header component
-fn html_head(
+fn to_item_header(
     module_depth: usize,
     location: String,
     decl_ty: String,
@@ -199,7 +199,7 @@ fn html_head(
     }
 }
 /// HTML body component
-fn html_body(
+fn to_item_body(
     module_depth: usize,
     decl_ty: String,
     decl_name: String,
@@ -487,7 +487,45 @@ fn trim_fn_body(f: String) -> String {
         None => f,
     }
 }
-
+/// Creates the HTML needed for the Fields section of a Struct document.
+fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
+    box_html! {
+        h2(id="fields", class="fields small-section-header") {
+            : "Fields";
+            a(class="anchor", href="#fields");
+        }
+        @ for field in fields {
+            // TODO: Check for visibility of the field itself
+            : struct_field(field);
+        }
+    }
+}
+fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
+    let field_name = field.name.as_str().to_string();
+    let struct_field_id = format!("structfield.{}", &field_name);
+    box_html! {
+        span(id=&struct_field_id, class="structfield small-section-header") {
+            a(class="anchor field", href=format!("#{}", struct_field_id));
+            code {
+                : format!("{}: ", field_name);
+                // TODO: Add links to types based on visibility
+                : field.type_span.as_str().to_string();
+            }
+        }
+    }
+}
+struct HTMLBody {
+    main_content: MainContent,
+    item_context: ItemContext,
+}
+struct MainContent {
+    module_depth: usize,
+    decl_ty: String,
+    item_name: String,
+    code_str: String,
+    attrs_str: String,
+}
+struct ItemContext(Box<dyn RenderBox>);
 trait Renderable {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
 }
@@ -496,18 +534,29 @@ impl Renderable for TyStructDeclaration {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
         let TyStructDeclaration {
             name,
-            fields: _,
+            fields,
             type_parameters: _,
             visibility: _,
             attributes,
             span,
         } = &self;
+        let html_body = HTMLBody {
+            main_content: MainContent {
+                module_depth,
+                decl_ty: decl_ty.clone(),
+                item_name: name.as_str().to_string(),
+                code_str: parse::parse_format::<sway_ast::ItemStruct>(span.as_str()),
+                attrs_str: attrsmap_to_html_string(attributes),
+            },
+            item_context: ItemContext(struct_field_section(fields.clone())),
+        };
         let name = name.as_str().to_string();
         let code_str = parse::parse_format::<sway_ast::ItemStruct>(span.as_str());
         let struct_attributes = attrsmap_to_html_string(attributes);
+
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, struct_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, struct_attributes);
         }
     }
 }
@@ -525,8 +574,8 @@ impl Renderable for TyEnumDeclaration {
         let code_str = parse::parse_format::<sway_ast::ItemEnum>(span.as_str());
         let enum_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes);
         }
     }
 }
@@ -546,8 +595,8 @@ impl Renderable for TyTraitDeclaration {
         let code_str = parse::parse_format::<sway_ast::ItemTrait>(span.as_str());
         let trait_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes);
         }
     }
 }
@@ -564,8 +613,8 @@ impl Renderable for TyAbiDeclaration {
         let code_str = parse::parse_format::<sway_ast::ItemAbi>(span.as_str());
         let abi_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes);
         }
     }
 }
@@ -580,8 +629,8 @@ impl Renderable for TyStorageDeclaration {
         let code_str = parse::parse_format::<sway_ast::ItemStorage>(span.as_str());
         let storage_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes);
         }
     }
 }
@@ -600,8 +649,8 @@ impl Renderable for TyImplTrait {
         let code_str = parse::parse_format::<sway_ast::ItemImpl>(span.as_str());
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, "".to_string());
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, "".to_string());
         }
     }
 }
@@ -626,8 +675,8 @@ impl Renderable for TyFunctionDeclaration {
         let code_str = trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(span.as_str()));
         let function_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes);
         }
     }
 }
@@ -645,8 +694,8 @@ impl Renderable for TyConstantDeclaration {
         let code_str = parse::parse_format::<sway_ast::ItemConst>(span.as_str());
         let const_attributes = attrsmap_to_html_string(attributes);
         box_html! {
-            : html_head(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : html_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes);
+            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes);
         }
     }
 }
