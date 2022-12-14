@@ -33,9 +33,13 @@ pub(crate) fn code_actions(
                 _ => None,
             })
             .and_then(|result| {
-                result
-                    .ok()
-                    .map(|abi_decl| vec![abi_impl_code_action(abi_decl, text_document.uri)])
+                result.ok().map(|abi_decl| {
+                    vec![abi_impl_code_action(
+                        &session.type_engine.read(),
+                        abi_decl,
+                        text_document.uri,
+                    )]
+                })
             })
     })
 }

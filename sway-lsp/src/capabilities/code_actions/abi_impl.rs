@@ -4,6 +4,7 @@ use serde_json::Value;
 use sway_core::{
     declaration_engine,
     language::ty::{TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
+    TypeEngine,
 };
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
@@ -13,7 +14,11 @@ use tower_lsp::lsp_types::{
 const CODE_ACTION_DESCRIPTION: &str = "Generate impl for contract";
 const TAB: &str = "    ";
 
-pub(crate) fn abi_impl_code_action(abi_decl: TyAbiDeclaration, uri: Url) -> CodeActionOrCommand {
+pub(crate) fn abi_impl_code_action(
+    type_engine: &TypeEngine,
+    abi_decl: TyAbiDeclaration,
+    uri: Url,
+) -> CodeActionOrCommand {
     let (last_line, _) = abi_decl.span.end_pos().line_col();
     let insertion_position = Position {
         line: last_line as u32,
@@ -24,7 +29,7 @@ pub(crate) fn abi_impl_code_action(abi_decl: TyAbiDeclaration, uri: Url) -> Code
             start: insertion_position,
             end: insertion_position,
         },
-        new_text: get_contract_impl_string(abi_decl),
+        new_text: get_contract_impl_string(type_engine, abi_decl),
     };
     let mut text_edit_map = HashMap::new();
     text_edit_map.insert(uri.clone(), vec![text_edit]);
@@ -45,19 +50,19 @@ fn get_param_string(param: &TyFunctionParameter) -> String {
     format!("{}: {}", param.name, param.type_span.as_str())
 }
 
-fn get_return_type_string(function_decl: TyTraitFn) -> String {
-    // When the method is missing a return type, the compiler sets the return type span
-    // to the full function signature. This is a hacky way of checking whether the
-    // actual return type is provided.
-    let return_type_span = function_decl.return_type_span.as_str();
-    if return_type_span.contains("fn ") {
+fn get_return_type_string(type_engine: &TypeEngine, function_decl: TyTraitFn) -> String {
+    // Unit is the implicit return type for ABI functions.
+    if type_engine
+        .look_up_type_id(function_decl.return_type)
+        .is_unit()
+    {
         String::from("")
     } else {
-        format!(" -> {}", return_type_span)
+        format!(" -> {}", function_decl.return_type_span.as_str())
     }
 }
 
-fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
+fn get_function_signatures(type_engine: &TypeEngine, abi_decl: TyAbiDeclaration) -> String {
     abi_decl
         .interface_surface
         .iter()
@@ -94,7 +99,7 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
                         TAB,
                         function_decl.name.clone(),
                         param_string,
-                        get_return_type_string(function_decl)
+                        get_return_type_string(type_engine, function_decl)
                     )
                 })
         })
@@ -102,11 +107,11 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
         .join("\n")
 }
 
-fn get_contract_impl_string(abi_decl: TyAbiDeclaration) -> String {
+fn get_contract_impl_string(type_engine: &TypeEngine, abi_decl: TyAbiDeclaration) -> String {
     let contract_name = abi_decl.name.to_string();
     format!(
         "\nimpl {} for Contract {{{}\n}}\n",
         contract_name,
-        get_function_signatures(abi_decl).as_str()
+        get_function_signatures(type_engine, abi_decl).as_str()
     )
 }
