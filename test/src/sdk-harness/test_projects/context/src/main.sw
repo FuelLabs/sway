@@ -25,7 +25,7 @@ impl ContextTesting for Contract {
     }
 
     fn get_gas() -> u64 {
-        gas()
+        context_gas()
     }
 
     fn get_global_gas() -> u64 {
