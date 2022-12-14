@@ -11,7 +11,7 @@ pub fn add(
 
     // type of the variable
     let AddCommand {
-        crates: _,     // whatever library the user is trying to add to the toml
+        crates,     // whatever library the user is trying to add to the toml
         manifest_path, // the path to forc.toml
     } = command; // variable that we got from the add function
 
@@ -20,14 +20,17 @@ pub fn add(
         Some(ref path) => PathBuf::from(path), // if manifest_path, then manifest_path
         None => std::env::current_dir()?,      // if not, then current directory
     };
-    let manifest = ManifestFile::from_dir(&dir)?;
+    let manifest = ManifestFile::from_dir(&dir)?; //stores the forc.toml in a varible, and checks if it is a package or a workspace
     let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
         pkg_manifest
     } else {
         bail!("forc-doc does not support workspaces.")
     };
+    
     // 2. How will we find the dependency block in the forc.toml?
-
+    if let Some(deps) = pkg_manifest.dependencies {
+        deps.insert(key, value)
+    }
     // 3. Write new dependency to that block (name and version)
     Ok(())
 }
