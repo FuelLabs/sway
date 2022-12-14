@@ -10,7 +10,7 @@ use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
     token::{Delimiter, PunctKind},
 };
-use sway_types::Spanned;
+use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
 impl<T: Format> Format for Annotated<T> {
     fn format(
@@ -40,41 +40,52 @@ impl Format for AttributeDecl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let (doc_comment_attrs, regular_attrs): (Vec<_>, _) = self
+            .attribute
+            .get()
+            .into_iter()
+            .partition(|a| a.name.as_str() == DOC_COMMENT_ATTRIBUTE_NAME);
+
+        // invariant: doc comment attributes are singleton lists
+        if let Some(attr) = doc_comment_attrs.into_iter().next() {
+            if let Some(Some(doc_comment)) = attr
+                .args
+                .as_ref()
+                .map(|args| args.inner.final_value_opt.as_ref())
+            {
+                writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
+            }
+            return Ok(());
+        }
+
+        // invariant: attribute lists cannot be empty
         // `#`
         write!(formatted_code, "{}", self.hash_token.span().as_str())?;
         // `[`
         Self::open_square_bracket(formatted_code, formatter)?;
-        for attr in self.attribute.get().into_iter() {
-            if attr.name.as_str() == "doc" {
-                if let Some(Some(doc_comment)) = attr
-                    .args
-                    .as_ref()
-                    .map(|args| args.inner.final_value_opt.as_ref())
-                {
-                    writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
-                }
-            } else {
-                formatter.with_shape(
-                    formatter.shape.with_default_code_line(),
-                    |formatter| -> Result<(), FormatterError> {
-                        // name e.g. `storage`
-                        write!(formatted_code, "{}", attr.name.span().as_str())?;
-                        if let Some(args) = &attr.args {
-                            // `(`
-                            Self::open_parenthesis(formatted_code, formatter)?;
-                            // format and add args e.g. `read, write`
-                            args.get().format(formatted_code, formatter)?;
-                            // ')'
-                            Self::close_parenthesis(formatted_code, formatter)?;
-                        };
-                        write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
-                        Ok(())
-                    },
-                )?;
+        let mut regular_attrs = regular_attrs.iter().peekable();
+        while let Some(attr) = regular_attrs.next() {
+            formatter.with_shape(
+                formatter.shape.with_default_code_line(),
+                |formatter| -> Result<(), FormatterError> {
+                    // name e.g. `storage`
+                    write!(formatted_code, "{}", attr.name.span().as_str())?;
+                    if let Some(args) = &attr.args {
+                        // `(`
+                        Self::open_parenthesis(formatted_code, formatter)?;
+                        // format and add args e.g. `read, write`
+                        args.get().format(formatted_code, formatter)?;
+                        // ')'
+                        Self::close_parenthesis(formatted_code, formatter)?;
+                    };
+                    Ok(())
+                },
+            )?;
+            // do not put a separator after the last attribute
+            if regular_attrs.peek().is_some() {
+                write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
             }
         }
-        formatted_code.pop();
-        formatted_code.pop();
         // `]\n`
         Self::close_square_bracket(formatted_code, formatter)?;
         Ok(())

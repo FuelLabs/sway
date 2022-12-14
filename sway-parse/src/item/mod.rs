@@ -215,7 +215,7 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc", Some(vec![" This is a doc comment."]))]]
+            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
         );
     }
 
@@ -243,7 +243,7 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Struct(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc", Some(vec![" This is a doc comment."]))]]
+            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
         );
 
         /* struct field annotations */
@@ -254,7 +254,7 @@ mod tests {
 
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc", Some(vec![" This is a doc comment."]))]]
+            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
         );
     }
 
@@ -437,12 +437,11 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![
-                [("bar", None),
-                 ("foo", Some(vec!["one"])),
-                 ("baz", Some(vec!["two", "three", "four"]))
-                ]
-            ]
+            vec![[
+                ("bar", None),
+                ("foo", Some(vec!["one"])),
+                ("baz", Some(vec!["two", "three", "four"]))
+            ]]
         );
     }
 
@@ -570,8 +569,8 @@ mod tests {
         assert_eq!(
             attributes(&item.attribute_list),
             vec![
-                [("doc", Some(vec![" This is a doc comment."]))],
-                [("doc", Some(vec![" This is another doc comment."]))]
+                [("doc-comment", Some(vec![" This is a doc comment."]))],
+                [("doc-comment", Some(vec![" This is another doc comment."]))]
             ]
         );
     }
