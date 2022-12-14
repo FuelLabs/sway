@@ -170,8 +170,19 @@ fn add_comments(
     Ok(())
 }
 
-// A CommentWithContext is the Comment and the offset before it. The offset can be between the (from) item we searched for this comment or from the last comment inside range
-type CommentWithContext = (Comment, String);
+// A `CommentWithContext` is the `Comment` and the offset before and after it.
+// A context is simply the chars between two points around a comment.
+//
+// The pre-context can be from the item we searched for this comment or from the last comment inside range.
+//
+// The post-context is an Option<String> that gets populated only if there is an "else" token following the `Comment`.
+// It starts from end of the `Comment` and goes until the beginning of the `else` token.
+// There may be other tokens we might need to look-ahead for in future.
+struct CommentWithContext {
+    pre_context: String,
+    comment: Comment,
+    post_context: Option<String>,
+}
 
 /// Returns a list of comments between given spans. For each comment returns the Context
 /// Context of a comment is basically the offset (the characters between the last item/comment) to the current comment
@@ -191,12 +202,26 @@ fn get_comments_between_spans(
                 from.end
             } else {
                 // There is a comment before this one, so we should get the context starting from the last comment's end to the beginning of the current comment
-                comments_with_context[index - 1].0.span.end()
+                comments_with_context[index - 1].comment.span.end()
             };
-            comments_with_context.push((
-                comment.clone(),
-                unformatted_code[starting_position_for_context..comment_span.start].to_string(),
-            ));
+
+            let mut rest_of_code = unformatted_code
+                .get(comment_span.end..)
+                .unwrap_or_default()
+                .lines()
+                .take(2);
+
+            // consume '\n'
+            let _ = rest_of_code.next();
+            // actual next line of code that we're interested in
+            let next_line = rest_of_code.next().unwrap_or_default();
+
+            comments_with_context.push(CommentWithContext {
+                pre_context: unformatted_code[starting_position_for_context..comment_span.start]
+                    .to_string(),
+                comment: comment.clone(),
+                post_context: get_post_context(unformatted_code, comment_span, next_line),
+            });
         }
     }
     comments_with_context
@@ -221,7 +246,33 @@ fn format_context(context: &str, threshold: usize) -> String {
     formatted_context
 }
 
-/// Inserts after given span and returns the offset. While inserting comments this also inserts Context of the comments so that the alignment whitespaces/newlines are intact
+// In certain cases where comments come in between unusual places,
+// ..
+//     }
+//     // This is a comment
+//     else {
+// ..
+// We need to know the context after the comment as well.
+fn get_post_context(
+    unformatted_code: &Arc<str>,
+    comment_span: &ByteSpan,
+    next_line: &str,
+) -> Option<String> {
+    if next_line.trim_start().starts_with("else") {
+        let else_token_start = next_line
+            .char_indices()
+            .find(|(_, c)| !c.is_whitespace())
+            .map(|(i, _)| i)
+            .unwrap_or_default();
+        Some(unformatted_code[comment_span.end..comment_span.end + else_token_start].to_string())
+    } else {
+        // If we don't find anything to format in the context after, we simply
+        // return an empty context.
+        None
+    }
+}
+
+/// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
 fn insert_after_span(
     from: &ByteSpan,
     comments_to_insert: Vec<CommentWithContext>,
@@ -233,15 +284,27 @@ fn insert_after_span(
     let mut comment_str = String::new();
     let mut pre_module_comment = false;
     for comment_with_context in iter {
-        let (comment_value, comment_context) = comment_with_context;
-        if comment_value.span.start() == from.start {
+        let CommentWithContext {
+            pre_context,
+            comment,
+            post_context,
+        } = comment_with_context;
+        if comment.span.start() == from.start {
             pre_module_comment = true;
         }
+
         write!(
             comment_str,
-            "{}{}",
-            format_context(comment_context, 2),
-            &format_comment(comment_value)
+            "{}{}{}",
+            format_context(pre_context, 2),
+            &format_comment(comment),
+            format_context(
+                post_context
+                    .as_ref()
+                    .map(|s| s.as_str())
+                    .unwrap_or_default(),
+                2
+            )
         )?;
     }
     let mut src_rope = Rope::from_str(formatted_code);

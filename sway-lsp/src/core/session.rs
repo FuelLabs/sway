@@ -161,7 +161,7 @@ impl Session {
             if i == results_len - 1 {
                 // First, populate our token_map with un-typed ast nodes.
                 self.parse_ast_to_tokens(parse_program, |an, tm| {
-                    traverse::parse_tree::traverse_node(type_engine, an, tm)
+                    traverse::parsed_tree::traverse_node(type_engine, an, tm)
                 });
 
                 // Next, create runnables and populate our token_map with typed ast nodes.

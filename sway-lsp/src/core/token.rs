@@ -7,8 +7,8 @@ use sway_core::{
         },
         ty,
     },
-    type_system::{TypeId, TypeInfo},
-    TypeEngine,
+    type_system::{TypeId, TypeInfo, TypeParameter},
+    TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -45,6 +45,8 @@ pub enum TypedAstToken {
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
+    TypedArgument(TypeArgument),
+    TypedParameter(TypeParameter),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
@@ -150,10 +152,10 @@ pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Id
 /// We can then use the [TypeInfo] to infer the semantic type of the token before type-checking.
 pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) -> SymbolKind {
     match type_info {
-        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::Str(..) | TypeInfo::B256 => {
+        TypeInfo::UnsignedInteger(..) | TypeInfo::Boolean | TypeInfo::B256 => {
             SymbolKind::BuiltinType
         }
-        TypeInfo::Numeric => SymbolKind::NumericLiteral,
+        TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
