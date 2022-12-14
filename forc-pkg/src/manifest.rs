@@ -191,13 +191,13 @@ pub enum Dependency {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
-    pub(crate) version: Option<String>,
+    pub version: Option<String>,
     pub path: Option<String>,
-    pub(crate) git: Option<String>,
-    pub(crate) branch: Option<String>,
-    pub(crate) tag: Option<String>,
-    pub(crate) package: Option<String>,
-    pub(crate) rev: Option<String>,
+    pub git: Option<String>,
+    pub branch: Option<String>,
+    pub tag: Option<String>,
+    pub package: Option<String>,
+    pub rev: Option<String>,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.

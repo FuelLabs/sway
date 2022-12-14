@@ -23,7 +23,7 @@ pub struct Command {
     /// - `<path>`, like `forc add ./crates/parser/` or `forc remove ./crates/parser/`
     ///
     #[clap(value_name = "DEP_ID")]
-    pub crates: Vec<String>,
+    pub dependency: String,
 
     /// Path to `Forc.toml`
     #[clap(long, value_name = "PATH", parse(from_os_str))]
