@@ -1,9 +1,9 @@
 library message;
 
 use ::alloc::alloc;
+use ::bytes::Bytes;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
-use ::vec::Vec;
 use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
 /// Sends a message to `recipient` of length `msg_len` through `output` with amount of `coins`
@@ -13,7 +13,7 @@ use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 /// * `recipient` - The address of the message recipient
 /// * `msg_data` - arbitrary length message data
 /// * `coins` - Amount of base asset sent
-pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
+pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     let mut recipient_heap_buffer = __addr_of(recipient);
     let mut size = 0;
 
@@ -25,7 +25,7 @@ pub fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
         recipient_heap_buffer = alloc::<u64>(4 + size);
         recipient_heap_buffer.write(recipient);
         let data_heap_buffer = recipient_heap_buffer.add::<b256>(1);
-        msg_data.buf.ptr.copy_to::<u64>(data_heap_buffer, size);
+        msg_data.buf.ptr.copy_bytes_to(data_heap_buffer, size);
     };
 
     let mut index = 0;
