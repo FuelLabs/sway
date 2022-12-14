@@ -297,7 +297,7 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-        root_nodes.chain(sub_nodes).for_each(|node| f(node));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
@@ -309,7 +309,7 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.all_nodes);
 
-        root_nodes.chain(sub_nodes).for_each(|node| f(node));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Get a reference to the [ParseProgram] AST.
