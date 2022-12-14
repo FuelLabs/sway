@@ -96,12 +96,22 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
             ));
         }
 
-        if matches!(self.kind, Intrinsic::Log) {
-            types_metadata.push(TypeMetadata::LoggedType(
-                LogId::new(ctx.log_id_counter()),
-                self.arguments[0].return_type,
-            ));
-            *ctx.log_id_counter_mut() += 1;
+        match self.kind {
+            Intrinsic::Log => {
+                types_metadata.push(TypeMetadata::LoggedType(
+                    LogId::new(ctx.log_id_counter()),
+                    self.arguments[0].return_type,
+                ));
+                *ctx.log_id_counter_mut() += 1;
+            }
+            Intrinsic::Smo => {
+                types_metadata.push(TypeMetadata::MessageType(
+                    MessageId::new(ctx.message_id_counter()),
+                    self.arguments[1].return_type,
+                ));
+                *ctx.message_id_counter_mut() += 1;
+            }
+            _ => {}
         }
 
         ok(types_metadata, warnings, errors)
