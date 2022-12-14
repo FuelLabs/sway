@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use serde_json::Value;
-use sway_core::{declaration_engine, language::ty::TyAbiDeclaration};
+use sway_core::{
+    declaration_engine,
+    language::ty::{TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
+};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit, Url, WorkspaceEdit,
@@ -38,6 +41,22 @@ pub(crate) fn abi_impl_code_action(abi_decl: TyAbiDeclaration, uri: Url) -> Code
     })
 }
 
+fn get_param_string(param: &TyFunctionParameter) -> String {
+    format!("{}: {}", param.name.to_string(), param.type_span.as_str())
+}
+
+fn get_return_type_string(function_decl: TyTraitFn) -> String {
+    // When the method is missing a return type, the compiler sets the return type span
+    // to the full function signature. This is a hacky way of checking whether the
+    // actual return type is provided.
+    let return_type_span = function_decl.return_type_span.as_str();
+    if return_type_span.contains("fn ") {
+        String::from("")
+    } else {
+        format!(" -> {}", return_type_span)
+    }
+}
+
 fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
     abi_decl
         .interface_surface
@@ -49,9 +68,7 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
                     let param_string: String = function_decl
                         .parameters
                         .iter()
-                        .map(|param| {
-                            format!("{}: {}", param.name.to_string(), param.type_id.to_string())
-                        })
+                        .map(get_param_string)
                         .collect::<Vec<String>>()
                         .join(", ");
                     let attribute_string = function_decl
@@ -71,13 +88,13 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
                         false => "",
                     };
                     let signature = format!(
-                        "{}{}\n{}fn {}({}) -> {} {{}}",
+                        "{}{}\n{}fn {}({}){} {{}}",
                         attribute_prefix,
                         attribute_string,
                         TAB,
                         function_decl.name.clone().to_string(),
                         param_string,
-                        function_decl.return_type.to_string()
+                        get_return_type_string(function_decl)
                     );
                     Some(signature)
                 })

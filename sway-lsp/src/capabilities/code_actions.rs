@@ -14,7 +14,9 @@ pub(crate) fn code_actions(
     text_document: TextDocumentIdentifier,
     temp_uri: &Url,
 ) -> Option<CodeActionResponse> {
-    let (_, token) = session.token_at_position(temp_uri, range.start.clone())?;
+    let (_, token) = session
+        .token_map()
+        .token_at_position(temp_uri, range.start.clone())?;
     token.typed.and_then(|typed_token| {
         let maybe_decl = match typed_token {
             TypedAstToken::TypedDeclaration(decl) => Some(decl),
