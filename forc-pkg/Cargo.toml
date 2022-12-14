@@ -10,9 +10,10 @@ description = "Building, locking, fetching and updating Sway projects as Forc pa
 
 [dependencies]
 anyhow = "1"
+fd-lock = "3.0"
 forc-tracing = { version = "0.31.3", path = "../forc-tracing" }
 forc-util = { version = "0.31.3", path = "../forc-util" }
-fuels-types = "0.32" 
+fuels-types = "0.32"
 git2 = { version = "0.14", features = ["vendored-libgit2", "vendored-openssl"] }
 hex = "0.4.3"
 petgraph = { version = "0.6", features = ["serde-1"] }
