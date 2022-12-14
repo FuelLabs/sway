@@ -2,6 +2,7 @@ contract;
 
 use std::{
     b512::B512,
+    bytes::Bytes,
     inputs::{
         Input,
         input_amount,
@@ -21,6 +22,7 @@ use std::{
         input_type,
         input_witness_index,
     },
+    logging::log,
     outputs::{
         Output,
         output_amount,
@@ -80,7 +82,7 @@ abi TxContractTest {
     fn get_input_message_data_length(index: u64) -> u16;
     fn get_input_predicate_length(index: u64) -> u16;
     fn get_input_predicate_data_length(index: u64) -> u16;
-    fn get_input_message_data(index: u64, offset: u64) -> [u8; 3];
+    fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
     fn get_input_predicate(index: u64) -> b256;
 
     fn get_tx_output_pointer(index: u64) -> u64;
@@ -179,8 +181,30 @@ impl TxContractTest for Contract {
     fn get_input_predicate_data_length(index: u64) -> u16 {
         input_predicate_data_length(index).unwrap()
     }
-    fn get_input_message_data(index: u64, offset: u64) -> [u8; 3] {
-        input_message_data::<[u8; 3]>(index, offset)
+    fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
+        let data = input_message_data::<[u8; 3]>(index, offset);
+        let mut data_bytes = Bytes::new();
+        let mut expected_data_bytes = Bytes::new();
+        log(data);
+        log(data[0]);
+        log(expected[0]);
+        log(data[1]);
+        log(expected[1]);
+        log(data[2]);
+        log(expected[2]);
+
+        // data_bytes.push(data[0]);
+        // data_bytes.push(data[1]);
+        // data_bytes.push(data[2]);
+        // expected_data_bytes.push(expected[0]);
+        // expected_data_bytes.push(expected[1]);
+        // expected_data_bytes.push(expected[2]);
+        // log(data);
+        // log(data_bytes);
+        // log(expected);
+        // log(expected_data_bytes);
+        // data_bytes == expected_data_bytes
+        data[0] == expected[0] && data[1] == expected[1] && data[2] == expected[2]
     }
     fn get_input_predicate(index: u64) -> b256 {
         input_predicate(index)
