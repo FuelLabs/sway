@@ -7,8 +7,8 @@ version = "0.0.0"
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.14", default-features = false }
-fuel-gql-client = { version = "0.14", default-features = false }
+fuel-core = { version = "0.15", default-features = false }
+fuel-gql-client = { version = "0.15", default-features = false }
 fuel-types = "0.5"
 fuel-vm = "0.22"
 fuels = { version = "0.32", features = ["fuel-core-lib"] }
