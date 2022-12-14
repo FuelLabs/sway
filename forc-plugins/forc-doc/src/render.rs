@@ -205,6 +205,7 @@ fn to_item_body(
     decl_name: String,
     code_str: String,
     item_attrs: String,
+    item_context: ItemContext,
 ) -> Box<dyn RenderBox> {
     let mut all_path = module_depth_to_path_prefix(module_depth);
     all_path.push_str(ALL_DOC_FILENAME);
@@ -267,6 +268,7 @@ fn to_item_body(
                                 }
                             }
                         }
+                        : item_context.inner();
                     }
                 }
             }
@@ -527,6 +529,11 @@ struct MainContent {
     attrs_str: String,
 }
 struct ItemContext(Box<dyn RenderBox>);
+impl ItemContext {
+    fn inner(self) -> Box<dyn RenderBox> {
+        self.0
+    }
+}
 trait Renderable {
     fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
 }
@@ -551,6 +558,7 @@ impl Renderable for TyStructDeclaration {
                 html_body.main_content.item_name,
                 html_body.main_content.code_str,
                 html_body.main_content.attrs_str,
+                html_body.item_context,
             );
         }
     }
@@ -570,7 +578,7 @@ impl Renderable for TyEnumDeclaration {
         let enum_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes, ItemContext(box_html! {}));
         }
     }
 }
@@ -591,7 +599,7 @@ impl Renderable for TyTraitDeclaration {
         let trait_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes, ItemContext(box_html! {}));
         }
     }
 }
@@ -609,7 +617,7 @@ impl Renderable for TyAbiDeclaration {
         let abi_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes, ItemContext(box_html! {}));
         }
     }
 }
@@ -625,7 +633,7 @@ impl Renderable for TyStorageDeclaration {
         let storage_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes, ItemContext(box_html! {}));
         }
     }
 }
@@ -645,7 +653,7 @@ impl Renderable for TyImplTrait {
         // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, "".to_string());
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, "".to_string(), ItemContext(box_html! {}));
         }
     }
 }
@@ -671,7 +679,7 @@ impl Renderable for TyFunctionDeclaration {
         let function_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes, ItemContext(box_html! {}));
         }
     }
 }
@@ -690,7 +698,7 @@ impl Renderable for TyConstantDeclaration {
         let const_attributes = attrsmap_to_html_string(attributes);
         box_html! {
             : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes);
+            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes, ItemContext(box_html! {}));
         }
     }
 }
