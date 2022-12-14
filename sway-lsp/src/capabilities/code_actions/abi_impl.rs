@@ -14,7 +14,7 @@ const CODE_ACTION_DESCRIPTION: &str = "Generate impl for contract";
 const TAB: &str = "    ";
 
 pub(crate) fn abi_impl_code_action(abi_decl: TyAbiDeclaration, uri: Url) -> CodeActionOrCommand {
-    let (last_line, _) = abi_decl.clone().span.end_pos().line_col();
+    let (last_line, _) = abi_decl.span.end_pos().line_col();
     let insertion_position = Position {
         line: last_line as u32,
         character: 0,
@@ -42,7 +42,7 @@ pub(crate) fn abi_impl_code_action(abi_decl: TyAbiDeclaration, uri: Url) -> Code
 }
 
 fn get_param_string(param: &TyFunctionParameter) -> String {
-    format!("{}: {}", param.name.to_string(), param.type_span.as_str())
+    format!("{}: {}", param.name, param.type_span.as_str())
 }
 
 fn get_return_type_string(function_decl: TyTraitFn) -> String {
@@ -64,7 +64,7 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
         .filter_map(|function_decl_id| {
             declaration_engine::de_get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
                 .ok()
-                .and_then(|function_decl| {
+                .map(|function_decl| {
                     let param_string: String = function_decl
                         .parameters
                         .iter()
@@ -77,7 +77,7 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
                         .map(|(_, attrs)| {
                             attrs
                                 .iter()
-                                .map(|attr| format!("{}{}", TAB, attr.span.as_str().to_string()))
+                                .map(|attr| format!("{}{}", TAB, attr.span.as_str()))
                                 .collect::<Vec<String>>()
                                 .join("\n")
                         })
@@ -87,16 +87,15 @@ fn get_function_signatures(abi_decl: TyAbiDeclaration) -> String {
                         true => "\n",
                         false => "",
                     };
-                    let signature = format!(
+                    format!(
                         "{}{}\n{}fn {}({}){} {{}}",
                         attribute_prefix,
                         attribute_string,
                         TAB,
-                        function_decl.name.clone().to_string(),
+                        function_decl.name.clone(),
                         param_string,
                         get_return_type_string(function_decl)
-                    );
-                    Some(signature)
+                    )
                 })
         })
         .collect::<Vec<String>>()

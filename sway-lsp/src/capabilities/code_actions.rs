@@ -16,7 +16,7 @@ pub(crate) fn code_actions(
 ) -> Option<CodeActionResponse> {
     let (_, token) = session
         .token_map()
-        .token_at_position(temp_uri, range.start.clone())?;
+        .token_at_position(temp_uri, range.start)?;
     token.typed.and_then(|typed_token| {
         let maybe_decl = match typed_token {
             TypedAstToken::TypedDeclaration(decl) => Some(decl),
@@ -33,9 +33,9 @@ pub(crate) fn code_actions(
                 _ => None,
             })
             .and_then(|result| {
-                result.ok().and_then(|abi_decl| {
-                    Some(vec![abi_impl_code_action(abi_decl, text_document.uri)])
-                })
+                result
+                    .ok()
+                    .map(|abi_decl| vec![abi_impl_code_action(abi_decl, text_document.uri)])
             })
     })
 }
