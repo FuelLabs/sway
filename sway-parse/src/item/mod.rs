@@ -424,6 +424,29 @@ mod tests {
     }
 
     #[test]
+    fn parse_attributes_fn_zero_one_and_three_args_in_one_attribute_decl() {
+        let item = parse_item(
+            r#"
+            #[bar, foo(one), baz(two,three,four)]
+            fn f() -> bool {
+                false
+            }
+            "#,
+        );
+
+        assert!(matches!(item.value, ItemKind::Fn(_)));
+        assert_eq!(
+            attributes(&item.attribute_list),
+            vec![
+                [("bar", None),
+                 ("foo", Some(vec!["one"])),
+                 ("baz", Some(vec!["two", "three", "four"]))
+                ]
+            ]
+        );
+    }
+
+    #[test]
     fn parse_attributes_trait() {
         let item = parse_item(
             r#"
