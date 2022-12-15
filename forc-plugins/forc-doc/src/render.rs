@@ -232,10 +232,7 @@ fn to_item_body(
         }
     }
 }
-/// crate level index.html
-fn _crate_index() -> Box<dyn RenderBox> {
-    box_html! {}
-}
+
 /// crate level, all items belonging to a crate
 fn all_items(project_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
     // TODO: find a better way to do this
