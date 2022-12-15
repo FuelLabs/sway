@@ -341,7 +341,7 @@ jobs:
           command: udeps
           args: --locked --all-targets
 
-  cargo-publish-dry-run:
+  cargo-package:
     strategy:
       matrix:
         # Include all workspace members we want to publish to crates.io.
@@ -376,8 +376,8 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
-          command: publish
-          args: --locked --dry-run -p ${{ matrix.pkg }}
+          command: package
+          args: --locked -p ${{ matrix.pkg }}
 
   notify-slack-on-failure:
     needs:
