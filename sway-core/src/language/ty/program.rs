@@ -187,14 +187,9 @@ impl TyProgram {
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
                 let main_return_type_info = ty_engine.look_up_type_id(main_func.return_type);
-                let nested_types = check!(
-                    main_return_type_info
-                        .clone()
-                        .extract_nested_types(ty_engine, &main_func.return_type_span),
-                    vec![],
-                    warnings,
-                    errors
-                );
+                let nested_types = main_return_type_info
+                    .clone()
+                    .extract_nested_types(ty_engine);
                 if nested_types
                     .iter()
                     .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))

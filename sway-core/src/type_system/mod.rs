@@ -1,3 +1,4 @@
+mod coercion;
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;

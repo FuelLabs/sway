@@ -15,6 +15,7 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
+use super::coercion::Coercion;
 use super::unify::Unifier;
 
 #[derive(Debug, Default)]
@@ -252,6 +253,11 @@ impl TypeEngine {
         }
     }
 
+    /// Checks to see if two types can be coerced together.
+    pub(crate) fn check_if_types_can_be_coerced(&self, received: TypeId, expected: TypeId) -> bool {
+        Coercion::new(self).check(received, expected)
+    }
+
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify `received` and
     /// `expected`.
@@ -407,15 +413,18 @@ impl TypeEngine {
         normalize_err(
             Unifier::new(self)
                 .flip_arguments()
-                .unify(received, expected, span, help_text),
+                .unify(expected, received, span, help_text),
         )
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
-            TypeInfo::Unknown => Err(TypeError::UnknownType {
-                span: error_span.clone(),
-            }),
+            TypeInfo::Unknown => {
+                //panic!();
+                Err(TypeError::UnknownType {
+                    span: error_span.clone(),
+                })
+            }
             ty => Ok(ty),
         }
     }

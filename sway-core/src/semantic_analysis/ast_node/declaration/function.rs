@@ -185,7 +185,22 @@ fn unify_return_statements(
 
     let type_engine = ctx.type_engine;
 
+    let create_err = |stmt: &&ty::TyExpression| {
+        CompileError::TypeError(TypeError::MismatchedType {
+            expected: type_engine.help_out(return_type).to_string(),
+            received: type_engine.help_out(stmt.return_type).to_string(),
+            help_text: "Return statement must return the declared function return type."
+                .to_string(),
+            span: stmt.span.clone(),
+        })
+    };
+
     for stmt in return_statements.iter() {
+        if !type_engine.check_if_types_can_be_coerced(stmt.return_type, return_type) {
+            errors.push(create_err(stmt));
+            continue;
+        }
+
         let (mut new_warnings, new_errors) = type_engine.unify_with_self(
             stmt.return_type,
             return_type,
@@ -195,13 +210,7 @@ fn unify_return_statements(
         );
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
-            errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                expected: type_engine.help_out(return_type).to_string(),
-                received: type_engine.help_out(stmt.return_type).to_string(),
-                help_text: "Return statement must return the declared function return type."
-                    .to_string(),
-                span: stmt.span.clone(),
-            }));
+            errors.push(create_err(stmt));
         }
     }
 

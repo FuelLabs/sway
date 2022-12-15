@@ -789,6 +789,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
             type_engine.get_unified_types(left).contains(&right)
                 || type_engine.get_unified_types(right).contains(&left)
         }
+        (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
 
         // these cases may contain dynamic types
         (

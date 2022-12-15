@@ -230,19 +230,6 @@ impl<'a> Unifier<'a> {
                 (vec![], vec![])
             }
 
-            (r @ Placeholder(_), e @ Placeholder(_)) => {
-                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
-            }
-            (r @ Placeholder(_), e) => {
-                if let UnifierKind::OnlyUnifyRight = self.kind {
-                    return (vec![], vec![]);
-                }
-                self.replace_received_with_expected(received, expected, &r, e, span, help_text)
-            }
-            (r, e @ Placeholder(_)) => {
-                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
-            }
-
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about.
@@ -257,6 +244,19 @@ impl<'a> Unifier<'a> {
             }
             (r, Unknown) => self
                 .replace_expected_with_received(received, expected, r, &Unknown, span, help_text),
+
+            (r @ Placeholder(_), e @ Placeholder(_)) => {
+                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
+            }
+            (r @ Placeholder(_), e) => {
+                if let UnifierKind::OnlyUnifyRight = self.kind {
+                    return (vec![], vec![]);
+                }
+                self.replace_received_with_expected(received, expected, &r, e, span, help_text)
+            }
+            (r, e @ Placeholder(_)) => {
+                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
+            }
 
             // Generics are handled similarly to the case for unknowns, except
             // we take more careful consideration for the type/purpose for the

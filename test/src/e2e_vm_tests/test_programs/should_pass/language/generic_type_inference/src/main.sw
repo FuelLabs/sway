@@ -4,21 +4,21 @@ struct CustomType {
     name: str[3],
 }
 
-enum Result<T, E> {
+enum MyResult<T, E> {
     Ok: T,
     Err: E,
 }
 
 fn main() {
-  sell_product();
+    sell_product();
 }
 
-fn sell_product() -> Result<bool, CustomType> {
-    // if false {
-    //     return Result::Err(CustomType {
-    //         name: "foo"
-    //     });
-    // };
+fn sell_product() -> MyResult<bool, CustomType> {
+    if false {
+        return MyResult::Err(CustomType {
+            name: "foo"
+        });
+    };
 
-    return Result::Ok(false);
+    return MyResult::Ok(false);
 }

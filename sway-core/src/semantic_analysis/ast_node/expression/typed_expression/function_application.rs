@@ -129,40 +129,49 @@ fn unify_arguments_and_parameters(
 
     let type_engine = ctx.type_engine;
 
-    // Type check the arguments from the function application and unify them with
-    // the arguments from the function application.
-    let typed_arguments: Vec<(Ident, ty::TyExpression)> = typed_arguments
-        .into_iter()
-        .zip(parameters.iter())
-        .map(|(arg, param)| {
-            let (mut new_warnings, new_errors) =
-                type_engine.unify_right(arg.return_type, param.type_id, &arg.span, "");
-            warnings.append(&mut new_warnings);
-            if !new_errors.is_empty() {
-                errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                    expected: type_engine.help_out(param.type_id).to_string(),
-                    received: type_engine.help_out(arg.return_type).to_string(),
-                    help_text: "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration."
-                        .to_string(),
-                    span: arg.span.clone(),
-                }));
-            }
-            // check for matching mutability
-            let param_mutability =
-                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-            if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-                errors.push(CompileError::ImmutableArgumentToMutableParameter {
-                    span: arg.span.clone(),
-                });
-            }
-            (param.name.clone(), arg)
+    let create_err = |arg: &ty::TyExpression, param: &ty::TyFunctionParameter| {
+        CompileError::TypeError(TypeError::MismatchedType {
+            expected: type_engine.help_out(param.type_id).to_string(),
+            received: type_engine.help_out(arg.return_type).to_string(),
+            help_text: "The argument that has been provided to this function's type does \
+            not match the declared type of the parameter in the function \
+            declaration."
+                .to_string(),
+            span: arg.span.clone(),
         })
-        .collect();
+    };
+
+    let mut typed_arguments_and_names = vec![];
+
+    for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
+        // type check the argument to ensure that it is a valid argument
+        if !type_engine.check_if_types_can_be_coerced(arg.return_type, param.type_id) {
+            errors.push(create_err(&arg, param));
+            continue;
+        }
+
+        // unify it with the parameter from the function declaration
+        let (mut new_warnings, new_errors) =
+            type_engine.unify(arg.return_type, param.type_id, &arg.span, "");
+        warnings.append(&mut new_warnings);
+        if !new_errors.is_empty() {
+            errors.push(create_err(&arg, param));
+        }
+
+        // check for matching mutability
+        let param_mutability =
+            ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+        if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+            errors.push(CompileError::ImmutableArgumentToMutableParameter {
+                span: arg.span.clone(),
+            });
+        }
+
+        typed_arguments_and_names.push((param.name.clone(), arg));
+    }
 
     if errors.is_empty() {
-        ok(typed_arguments, warnings, errors)
+        ok(typed_arguments_and_names, warnings, errors)
     } else {
         err(warnings, errors)
     }

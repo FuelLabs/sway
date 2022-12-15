@@ -5,13 +5,15 @@ mod if_expression;
 mod lazy_operator;
 mod method_application;
 mod struct_field_access;
+mod struct_instantiation;
 mod tuple_index_access;
 mod unsafe_downcast;
 
 use self::constant_declaration::instantiate_constant_decl;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
-    method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
+    method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
+    unsafe_downcast::*,
 };
 
 use crate::{
@@ -28,6 +30,7 @@ use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
     error::CompileError,
+    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
@@ -170,7 +173,7 @@ impl ty::TyExpression {
                     call_path_binding,
                     fields,
                 } = *struct_expression;
-                Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span)
+                struct_instantiation(ctx.by_ref(), call_path_binding, fields, span)
             }
             ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
@@ -299,11 +302,34 @@ impl ty::TyExpression {
         let mut errors = res.errors;
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        append!(
-            ctx.unify_with_self(typed_expression.return_type, &expr_span),
-            warnings,
-            errors
-        );
+        typed_expression
+            .return_type
+            .replace_self_type(type_engine, ctx.self_type());
+        ctx.type_annotation()
+            .replace_self_type(type_engine, ctx.self_type());
+        if !type_engine
+            .check_if_types_can_be_coerced(typed_expression.return_type, ctx.type_annotation())
+        {
+            errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                expected: type_engine.help_out(ctx.type_annotation()).to_string(),
+                received: type_engine
+                    .help_out(typed_expression.return_type)
+                    .to_string(),
+                help_text: ctx.help_text().to_string(),
+                span: expr_span.clone(),
+            }));
+        } else {
+            append!(
+                type_engine.unify(
+                    typed_expression.return_type,
+                    ctx.type_annotation(),
+                    &expr_span,
+                    ctx.help_text()
+                ),
+                warnings,
+                errors
+            );
+        }
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
@@ -759,151 +785,6 @@ impl ty::TyExpression {
                 returns: asm.returns,
             },
             return_type,
-            span,
-        };
-        ok(exp, warnings, errors)
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn type_check_struct_expression(
-        mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath>,
-        fields: Vec<StructExpressionField>,
-        span: Span,
-    ) -> CompileResult<ty::TyExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let type_engine = ctx.type_engine;
-
-        let TypeBinding {
-            inner: CallPath {
-                prefixes, suffix, ..
-            },
-            type_arguments,
-            span: inner_span,
-        } = call_path_binding;
-        let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
-            ("Self", true) => TypeInfo::SelfType,
-            ("Self", false) => {
-                errors.push(CompileError::TypeArgumentsNotAllowed {
-                    span: suffix.span(),
-                });
-                return err(warnings, errors);
-            }
-            (_, true) => TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            },
-            (_, false) => TypeInfo::Custom {
-                name: suffix,
-                type_arguments: Some(type_arguments),
-            },
-        };
-
-        // find the module that the struct decl is in
-        let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
-        check!(
-            ctx.namespace.root().check_submodule(&type_info_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // resolve the type of the struct decl
-        let type_id = check!(
-            ctx.resolve_type_with_self(
-                type_engine.insert_type(type_info),
-                &inner_span,
-                EnforceTypeArguments::No,
-                Some(&type_info_prefix)
-            ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
-
-        // extract the struct name and fields from the type info
-        let type_info = type_engine.look_up_type_id(type_id);
-        let (struct_name, struct_fields) = check!(
-            type_info.expect_struct(type_engine, &span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut struct_fields = struct_fields.clone();
-
-        // match up the names with their type annotations from the declaration
-        let mut typed_fields_buf = vec![];
-        for def_field in struct_fields.iter_mut() {
-            let expr_field: StructExpressionField =
-                match fields.iter().find(|x| x.name == def_field.name) {
-                    Some(val) => val.clone(),
-                    None => {
-                        errors.push(CompileError::StructMissingField {
-                            field_name: def_field.name.clone(),
-                            struct_name: struct_name.clone(),
-                            span: span.clone(),
-                        });
-                        typed_fields_buf.push(ty::TyStructExpressionField {
-                            name: def_field.name.clone(),
-                            value: ty::TyExpression {
-                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                                return_type: type_engine.insert_type(TypeInfo::ErrorRecovery),
-                                span: span.clone(),
-                            },
-                        });
-                        continue;
-                    }
-                };
-
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "Struct field's type must match up with the type specified in its declaration.",
-                )
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
-            let typed_field = check!(
-                ty::TyExpression::type_check(ctx, expr_field.value),
-                continue,
-                warnings,
-                errors
-            );
-            append!(
-                type_engine.unify_adt(
-                    typed_field.return_type,
-                    def_field.type_id,
-                    &typed_field.span,
-                    "Struct field's type must match up with the type specified in its declaration.",
-                ),
-                warnings,
-                errors
-            );
-
-            def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(ty::TyStructExpressionField {
-                value: typed_field,
-                name: expr_field.name.clone(),
-            });
-        }
-
-        // check that there are no extra fields
-        for field in fields {
-            if !struct_fields.iter().any(|x| x.name == field.name) {
-                errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: field.name.clone(),
-                    struct_name: struct_name.clone(),
-                    span: field.span,
-                });
-            }
-        }
-        let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::StructExpression {
-                struct_name: struct_name.clone(),
-                fields: typed_fields_buf,
-                span: inner_span,
-            },
-            return_type: type_id,
             span,
         };
         ok(exp, warnings, errors)

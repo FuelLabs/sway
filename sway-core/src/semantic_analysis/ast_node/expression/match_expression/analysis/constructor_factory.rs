@@ -16,23 +16,11 @@ pub(crate) struct ConstructorFactory {
 }
 
 impl ConstructorFactory {
-    pub(crate) fn new(
-        type_engine: &TypeEngine,
-        type_id: TypeId,
-        span: &Span,
-    ) -> CompileResult<Self> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        let possible_types = check!(
-            type_engine
-                .look_up_type_id(type_id)
-                .extract_nested_types(type_engine, span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let factory = ConstructorFactory { possible_types };
-        ok(factory, warnings, errors)
+    pub(crate) fn new(type_engine: &TypeEngine, type_id: TypeId) -> ConstructorFactory {
+        let possible_types = type_engine
+            .look_up_type_id(type_id)
+            .extract_nested_types(type_engine);
+        ConstructorFactory { possible_types }
     }
 
     /// Given Σ, computes a `Pattern` not present in Σ from the type of the

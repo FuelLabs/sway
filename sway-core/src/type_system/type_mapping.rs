@@ -1,7 +1,5 @@
 use std::fmt;
 
-use sway_types::Spanned;
-
 use super::*;
 
 type SourceType = TypeId;
@@ -66,11 +64,7 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(TypeInfo::Placeholder(TypeArgument {
-                        type_id: type_engine.insert_type(TypeInfo::Unknown),
-                        initial_type_id: x.type_id,
-                        span: x.name_ident.span(),
-                    })),
+                    type_engine.insert_type(TypeInfo::Placeholder(x.clone())),
                     // type_engine.insert_type(TypeInfo::TypeParam {
                     //     name: x.name_ident.clone(),
                     //     trait_constraints: VecSet(x.trait_constraints.clone()),
