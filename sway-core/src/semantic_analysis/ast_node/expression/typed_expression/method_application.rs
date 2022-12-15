@@ -372,7 +372,7 @@ fn unify_arguments_and_parameters(
         }
 
         // unify it with the parameter from the function declaration
-        let (mut new_warnings, new_errors) = type_engine.unify_right_with_self(
+        let (mut new_warnings, new_errors) = type_engine.unify_with_self(
             arg.return_type,
             param.type_id,
             ctx.self_type(),
