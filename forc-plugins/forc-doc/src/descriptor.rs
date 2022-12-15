@@ -7,47 +7,8 @@ use crate::{
     },
 };
 use anyhow::Result;
-use sway_core::{
-    declaration_engine::*,
-    language::ty::{
-        TyAbiDeclaration, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
-        TyFunctionDeclaration, TyImplTrait, TyStorageDeclaration, TyStructDeclaration,
-        TyTraitDeclaration,
-    },
-};
+use sway_core::{declaration_engine::*, language::ty::TyDeclaration};
 use sway_types::Spanned;
-
-// TODO: See if there's a way we can use the TyDeclarations directly
-//
-/// The type of [TyDeclaration] documented by the [Descriptor].
-#[derive(Debug)]
-pub(crate) enum DescriptorType {
-    Struct(TyStructDeclaration),
-    Enum(TyEnumDeclaration),
-    Trait(TyTraitDeclaration),
-    Abi(TyAbiDeclaration),
-    Storage(TyStorageDeclaration),
-    ImplTraitDesc(TyImplTrait),
-    Function(TyFunctionDeclaration),
-    Const(Box<TyConstantDeclaration>),
-}
-
-impl DescriptorType {
-    /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
-    pub fn as_str(&self) -> &'static str {
-        use DescriptorType::*;
-        match self {
-            Struct(_) => "struct",
-            Enum(_) => "enum",
-            Trait(_) => "trait",
-            Abi(_) => "abi",
-            Storage(_) => "storage",
-            ImplTraitDesc(_) => "impl_trait",
-            Function(_) => "fn",
-            Const(_) => "constant",
-        }
-    }
-}
 
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {

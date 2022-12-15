@@ -1,6 +1,6 @@
 use std::{fmt::Write, path::PathBuf};
 
-use crate::{descriptor::DescriptorType, doc::Documentation};
+use crate::doc::Documentation;
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use sway_core::language::ty::{
@@ -13,17 +13,13 @@ use sway_lsp::utils::markdown::format_docs;
 use swayfmt::parse;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
+trait Renderable {
+    fn render(&self) -> Box<dyn RenderBox>;
+}
 
 pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
-/// All necessary components to render the header portion of
-/// the item html doc.
-pub(crate) struct ItemHeader {
-    pub(crate) module_depth: usize,
-    pub(crate) module: String,
-    pub(crate) ty_decl: TyDeclaration,
-    pub(crate) item_name: String,
-}
+
 /// All necessary components to render the body portion of
 /// the item html doc.
 pub(crate) struct ItemBody {
@@ -45,16 +41,14 @@ impl ItemContext {
         self.0
     }
 }
-enum ItemType {
-    Struct,
-    Enum,
-    Trait,
-    Abi,
-    Storage,
-    Function,
-    Constant,
+struct AllDocItem {
+    ty_decl: TyDeclaration,
+    path_str: String,
+    module_prefix: Vec<String>,
+    file_name: String,
 }
-type AllDoc = Vec<(ItemType, (String, Vec<String>, String))>;
+#[derive(Default)]
+struct AllDoc(Vec<AllDocItem>);
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
@@ -68,109 +62,25 @@ impl RenderedDocument {
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
             let module_prefix = doc.module_prefix.clone();
-            let module_depth = module_prefix.len();
-            let module = if module_prefix.last().is_some() {
-                module_prefix.last().unwrap().to_string()
-            } else {
-                project_name.to_string()
-            };
             let file_name = doc.file_name();
-            let decl_ty = doc.item_header.ty_decl.doc_name().to_string();
-            // see if there's a way to reduce the number of matches for the declaration type
-            let rendered_content = match &doc.item_header.ty_decl {
-                DescriptorType::Struct(struct_decl) => {
-                    let path_str = if module_depth == 0 {
-                        struct_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &struct_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Struct,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    struct_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Enum(enum_decl) => {
-                    let path_str = if module_depth == 0 {
-                        enum_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &enum_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Enum,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    enum_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Trait(trait_decl) => {
-                    let path_str = if module_depth == 0 {
-                        trait_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &trait_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Trait,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    trait_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Abi(abi_decl) => {
-                    let path_str = if module_depth == 0 {
-                        abi_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &abi_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Abi,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    abi_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Storage(storage_decl) => {
-                    all_doc.push((
-                        ItemType::Storage,
-                        (
-                            format!("{}::ContractStorage", &module),
-                            module_prefix.clone(),
-                            file_name.clone(),
-                        ),
-                    ));
-                    storage_decl.render(module, module_depth, decl_ty)
-                }
-                // TODO: Figure out how to represent impl traits
-                DescriptorType::ImplTraitDesc(impl_trait_decl) => {
-                    impl_trait_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Function(fn_decl) => {
-                    let path_str = if module_depth == 0 {
-                        fn_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &fn_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Function,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    fn_decl.render(module, module_depth, decl_ty)
-                }
-                DescriptorType::Const(const_decl) => {
-                    let path_str = if module_depth == 0 {
-                        const_decl.name.as_str().to_string()
-                    } else {
-                        format!("{}::{}", &module, &const_decl.name)
-                    };
-                    all_doc.push((
-                        ItemType::Constant,
-                        (path_str, module_prefix.clone(), file_name.clone()),
-                    ));
-                    const_decl.render(module, module_depth, decl_ty)
-                }
-            };
             rendered_docs.push(Self {
                 module_prefix,
+                file_name: file_name.clone(),
+                file_contents: HTMLString(page_from(doc.render())),
+            });
+
+            let item_name = doc.item_header.item_name.as_str().to_string();
+            let path_str = if doc.item_header.module_depth == 0 {
+                item_name
+            } else {
+                format!("{}::{}", &doc.item_header.module, &item_name)
+            };
+            all_doc.0.push(AllDocItem {
+                ty_decl: doc.item_header.ty_decl,
+                path_str,
+                module_prefix: module_prefix.clone(),
                 file_name,
-                file_contents: HTMLString(page_from(rendered_content)),
-            })
+            });
         }
         // All Doc
         rendered_docs.push(Self {
@@ -182,6 +92,7 @@ impl RenderedDocument {
     }
 }
 
+/// Final rendering of a [Document].
 fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
     let markup = html! {
         : doctype::HTML;
@@ -192,43 +103,49 @@ fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
 
     markup.into_string().unwrap()
 }
+/// All necessary components to render the header portion of
+/// the item html doc.
+pub(crate) struct ItemHeader {
+    pub(crate) module_depth: usize,
+    pub(crate) module: String,
+    pub(crate) ty_decl: TyDeclaration,
+    pub(crate) item_name: String,
+}
+impl Renderable for ItemHeader {
+    /// Basic HTML header component
+    fn render(&self) -> Box<dyn RenderBox> {
+        let prefix = module_depth_to_path_prefix(self.module_depth);
+        let decl_name = self.item_name;
+        let mut favicon = prefix.clone();
+        let mut normalize = prefix.clone();
+        let mut swaydoc = prefix.clone();
+        let mut ayu = prefix;
+        favicon.push_str("assets/sway-logo.svg");
+        normalize.push_str("assets/normalize.css");
+        swaydoc.push_str("assets/swaydoc.css");
+        ayu.push_str("assets/ayu.css");
 
-/// Basic HTML header component
-fn to_item_header(
-    module_depth: usize,
-    location: String,
-    decl_ty: String,
-    decl_name: String,
-) -> Box<dyn RenderBox> {
-    let prefix = module_depth_to_path_prefix(module_depth);
-    let mut favicon = prefix.clone();
-    let mut normalize = prefix.clone();
-    let mut swaydoc = prefix.clone();
-    let mut ayu = prefix;
-    favicon.push_str("assets/sway-logo.svg");
-    normalize.push_str("assets/normalize.css");
-    swaydoc.push_str("assets/swaydoc.css");
-    ayu.push_str("assets/ayu.css");
-
-    box_html! {
-        head {
-            meta(charset="utf-8");
-            meta(name="viewport", content="width=device-width, initial-scale=1.0");
-            meta(name="generator", content="swaydoc");
-            meta(
-                name="description",
-                content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
-            );
-            meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
-            link(rel="icon", href=favicon);
-            title: format!("{decl_name} in {location} - Sway");
-            link(rel="stylesheet", type="text/css", href=normalize);
-            link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
-            link(rel="stylesheet", type="text/css", href=ayu);
-            // TODO: Add links for fonts
+        box_html! {
+            head {
+                meta(charset="utf-8");
+                meta(name="viewport", content="width=device-width, initial-scale=1.0");
+                meta(name="generator", content="swaydoc");
+                meta(
+                    name="description",
+                    content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
+                );
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
+                link(rel="icon", href=favicon);
+                title: format!("{decl_name} in {location} - Sway");
+                link(rel="stylesheet", type="text/css", href=normalize);
+                link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href=ayu);
+                // TODO: Add links for fonts
+            }
         }
     }
 }
+
 /// HTML body component
 fn to_item_body(
     module_depth: usize,
@@ -545,182 +462,6 @@ fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
                 // TODO: Add links to types based on visibility
                 : field.type_span.as_str().to_string();
             }
-        }
-    }
-}
-
-trait Renderable {
-    fn render(&self, module: String, module_depth: usize, ty_decl: String) -> Box<dyn RenderBox>;
-}
-
-impl Renderable for TyStructDeclaration {
-    fn render(&self, module: String, module_depth: usize, ty_decl: String) -> Box<dyn RenderBox> {
-        let item_name = self.name.as_str().to_string();
-        let html_header = ItemHeader {
-            module_depth,
-            module,
-            ty_decl,
-            item_name: item_name.clone(),
-        };
-        let html_body = ItemBody {
-            main_content: MainContent {
-                module_depth,
-                ty_decl,
-                item_name,
-                code_str: parse::parse_format::<sway_ast::ItemStruct>(self.span.as_str()),
-                attrs_str: attrsmap_to_html_string(&self.attributes),
-            },
-            item_context: ItemContext(struct_field_section(self.fields.clone())),
-        };
-        box_html! {
-            : to_item_header(html_header.module_depth, html_header.module, html_header.ty_decl, html_header.item_name);
-            : to_item_body(
-                html_body.main_content.module_depth,
-                html_body.main_content.ty_decl,
-                html_body.main_content.item_name,
-                html_body.main_content.code_str,
-                html_body.main_content.attrs_str,
-                html_body.item_context,
-            );
-        }
-    }
-}
-impl Renderable for TyEnumDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyEnumDeclaration {
-            name,
-            type_parameters: _,
-            attributes,
-            variants: _,
-            visibility: _,
-            span,
-        } = &self;
-        let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemEnum>(span.as_str());
-        let enum_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, enum_attributes, ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyTraitDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyTraitDeclaration {
-            name,
-            interface_surface: _,
-            methods: _,
-            visibility: _,
-            attributes,
-            supertraits: _,
-            span,
-            type_parameters: _,
-        } = &self;
-        let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemTrait>(span.as_str());
-        let trait_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, trait_attributes, ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyAbiDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyAbiDeclaration {
-            name,
-            interface_surface: _,
-            methods: _,
-            attributes,
-            span,
-        } = &self;
-        let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemAbi>(span.as_str());
-        let abi_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, abi_attributes, ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyStorageDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyStorageDeclaration {
-            fields: _,
-            span,
-            attributes,
-        } = &self;
-        let name = "Contract Storage".to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemStorage>(span.as_str());
-        let storage_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, storage_attributes, ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyImplTrait {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyImplTrait {
-            impl_type_parameters: _,
-            trait_name,
-            trait_type_arguments: _,
-            methods: _,
-            implementing_for_type_id: _,
-            type_implementing_for_span: _,
-            span,
-        } = &self;
-        let name = trait_name.suffix.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemImpl>(span.as_str());
-        // let impl_trait_attributes = doc_attributes_to_string_vec(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, "".to_string(), ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyFunctionDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyFunctionDeclaration {
-            name,
-            body: _,
-            parameters: _,
-            implementing_type: _,
-            span,
-            attributes,
-            return_type: _,
-            initial_return_type: _,
-            type_parameters: _,
-            return_type_span: _,
-            purity: _,
-            is_contract_call: _,
-            visibility: _,
-        } = &self;
-        let name = name.as_str().to_string();
-        let code_str = trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(span.as_str()));
-        let function_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, function_attributes, ItemContext(box_html! {}));
-        }
-    }
-}
-impl Renderable for TyConstantDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
-        let TyConstantDeclaration {
-            name,
-            value: _,
-            attributes,
-            visibility: _,
-            return_type: _,
-            span,
-        } = &self;
-        let name = name.as_str().to_string();
-        let code_str = parse::parse_format::<sway_ast::ItemConst>(span.as_str());
-        let const_attributes = attrsmap_to_html_string(attributes);
-        box_html! {
-            : to_item_header(module_depth, module.clone(), decl_ty.clone(), name.clone());
-            : to_item_body(module_depth, decl_ty.clone(), name.clone(), code_str, const_attributes, ItemContext(box_html! {}));
         }
     }
 }

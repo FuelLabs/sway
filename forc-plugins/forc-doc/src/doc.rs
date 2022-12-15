@@ -14,7 +14,7 @@ pub(crate) struct Document {
     pub(crate) item_body: ItemBody,
 }
 impl Document {
-    // Creates an HTML file name from the [Document].
+    /// Creates an HTML file name from the [Document].
     pub(crate) fn file_name(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
         let name = match &self.item_header.ty_decl {
@@ -34,7 +34,7 @@ impl Document {
             }
         }
     }
-    /// Gather [Documentation] from the [CompileResult].
+    /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
         project_name: &String,
         typed_program: &TyProgram,

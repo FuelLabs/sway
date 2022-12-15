@@ -480,7 +480,7 @@ impl TyDeclaration {
             ImplTrait(_) => "impl_trait",
             FunctionDeclaration(_) => "fn",
             ConstantDeclaration(_) => "constant",
-            _ => "", // non-documentable
+            _ => "", // non-documentable items, this arm is unreachable
         }
     }
 
