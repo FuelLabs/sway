@@ -342,6 +342,11 @@ jobs:
           args: --locked --all-targets
 
   cargo-package:
+    # We can only run `cargo package` for CI jobs that do not involve
+    # releasing/publishing new versions. This is because `cargo package` will
+    # always fail if any dependencies point to unpublished versions, even if
+    # those are local packages.
+    if: github.event_name != 'release' && github.event.action != 'published'
     strategy:
       matrix:
         # Include all workspace members we want to publish to crates.io.
