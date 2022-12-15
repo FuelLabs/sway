@@ -17,30 +17,8 @@ trait Renderable {
     fn render(&self) -> Box<dyn RenderBox>;
 }
 
-pub(crate) struct HTMLString(pub(crate) String);
 pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
 
-/// All necessary components to render the body portion of
-/// the item html doc.
-pub(crate) struct ItemBody {
-    pub(crate) main_content: MainContent,
-    pub(crate) item_context: ItemContext,
-}
-/// The main content of an item, e.g. the name, path, codeblock & attributes.
-pub(crate) struct MainContent {
-    pub(crate) module_depth: usize,
-    pub(crate) ty_decl: TyDeclaration,
-    pub(crate) item_name: String,
-    pub(crate) code_str: String,
-    pub(crate) attrs_str: String,
-}
-// All rendered context of an item, e.g. all fields on a struct.
-pub(crate) struct ItemContext(pub(crate) Box<dyn RenderBox>);
-impl ItemContext {
-    fn inner(self) -> Box<dyn RenderBox> {
-        self.0
-    }
-}
 struct AllDocItem {
     ty_decl: TyDeclaration,
     path_str: String,
@@ -66,7 +44,7 @@ impl RenderedDocument {
             rendered_docs.push(Self {
                 module_prefix,
                 file_name: file_name.clone(),
-                file_contents: HTMLString(page_from(doc.render())),
+                file_contents: HTMLString::from(doc.render()),
             });
 
             let item_name = doc.item_header.item_name.as_str().to_string();
@@ -86,23 +64,28 @@ impl RenderedDocument {
         rendered_docs.push(Self {
             module_prefix: vec![],
             file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString(page_from(all_items(project_name.clone(), &all_doc))),
+            file_contents: HTMLString::from(all_items(project_name.clone(), &all_doc)),
+            // file_contents: HTMLString(page_from(all_items(project_name.clone(), &all_doc))),
         });
         rendered_docs
     }
 }
+/// The finalized HTML file contents.
+pub(crate) struct HTMLString(pub(crate) String);
+impl HTMLString {
+    /// Final rendering of a [Document] HTML page to String.
+    fn from(rendered_content: Box<dyn RenderBox>) -> Self {
+        let markup = html! {
+            : doctype::HTML;
+            html {
+                : rendered_content
+            }
+        };
 
-/// Final rendering of a [Document].
-fn page_from(rendered_content: Box<dyn RenderBox>) -> String {
-    let markup = html! {
-        : doctype::HTML;
-        html {
-            : rendered_content
-        }
-    };
-
-    markup.into_string().unwrap()
+        Self(markup.into_string().unwrap())
+    }
 }
+
 /// All necessary components to render the header portion of
 /// the item html doc.
 pub(crate) struct ItemHeader {
@@ -114,8 +97,14 @@ pub(crate) struct ItemHeader {
 impl Renderable for ItemHeader {
     /// Basic HTML header component
     fn render(&self) -> Box<dyn RenderBox> {
-        let prefix = module_depth_to_path_prefix(self.module_depth);
-        let decl_name = self.item_name;
+        let ItemHeader {
+            module_depth,
+            module: location,
+            ty_decl,
+            item_name,
+        } = *self;
+
+        let prefix = module_depth_to_path_prefix(module_depth);
         let mut favicon = prefix.clone();
         let mut normalize = prefix.clone();
         let mut swaydoc = prefix.clone();
@@ -132,11 +121,11 @@ impl Renderable for ItemHeader {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content=format!("API documentation for the Sway `{decl_name}` {decl_ty} in `{location}`.")
+                    content=format!("API documentation for the Sway `{}` {} in `{location}`.", &item_name, ty_decl.friendly_name())
                 );
-                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {decl_name}"));
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", &item_name));
                 link(rel="icon", href=favicon);
-                title: format!("{decl_name} in {location} - Sway");
+                title: format!("{} in {location} - Sway", item_name);
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -145,7 +134,27 @@ impl Renderable for ItemHeader {
         }
     }
 }
-
+/// All necessary components to render the body portion of
+/// the item html doc.
+pub(crate) struct ItemBody {
+    pub(crate) main_content: MainContent,
+    pub(crate) item_context: ItemContext,
+}
+/// The main content of an item, e.g. the name, path, codeblock & attributes.
+pub(crate) struct MainContent {
+    pub(crate) module_depth: usize,
+    pub(crate) ty_decl: TyDeclaration,
+    pub(crate) item_name: String,
+    pub(crate) code_str: String,
+    pub(crate) attrs_str: String,
+}
+// All rendered context of an item, e.g. all fields on a struct.
+pub(crate) struct ItemContext(pub(crate) Box<dyn RenderBox>);
+impl ItemContext {
+    fn inner(self) -> Box<dyn RenderBox> {
+        self.0
+    }
+}
 /// HTML body component
 fn to_item_body(
     module_depth: usize,
