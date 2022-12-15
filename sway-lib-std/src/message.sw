@@ -1,6 +1,6 @@
 library message;
 
-use ::alloc::alloc;
+use ::alloc::alloc_bytes;
 use ::bytes::Bytes;
 use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
@@ -19,7 +19,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
 
     if !msg_data.is_empty() {
         size = msg_data.len();
-        recipient_heap_buffer = alloc::<u64>(4 + size);
+        recipient_heap_buffer = alloc_bytes(32 + size);
         recipient_heap_buffer.write(recipient);
         let data_heap_buffer = recipient_heap_buffer.add::<b256>(1);
         msg_data.buf.ptr.copy_bytes_to(data_heap_buffer, size);
