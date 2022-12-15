@@ -177,7 +177,7 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 > You will require the plugin [forc-wallet](https://github.com/FuelLabs/forc-wallet) in order to sign your transactions.
 
 ```sh
-forc deploy --url localhost:4000 --unsigned
+forc deploy --unsigned
 ```
 
 where `--url` parameter is the URL where your local node is hosted.
