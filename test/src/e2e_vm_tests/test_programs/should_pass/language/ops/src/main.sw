@@ -235,7 +235,76 @@ fn u16_ops() -> bool {
 }
 
 fn u8_ops() -> bool {
-    // TODO: thistbh
+    let max = 255_u8; // 0b11111111
+    let A = 129_u8; // 0b10000001
+    let B = 126_u8; // 0b01111110
+    let C = 2_u8; // 0b00000010
+    let D = 64_u8; // 0b01000000
+    let E = 128_u8; // 0b10000000
+
+    assert(0_u8 & 0_u8 == 0_u8);
+    assert(0_u8 & 1_u8 == 0_u8);
+    assert(1_u8 & 1_u8 == 1_u8);
+    assert(15_u8 & 255_u8 == 15_u8);
+    assert(15_u8 & 85_u8 == 5_u8);
+    assert(240_u8 & 255_u8 == 240_u8);
+    assert(85_u8 & 170_u8 == 0_u8);
+    assert(0_u8 & max == 0_u8);
+    assert(max & max == max);
+    assert(max & A == A);
+    assert(max & B == B);
+    assert(A & B == 0_u8);
+
+    assert(0_u8 | 0_u8 == 0_u8);
+    assert(0_u8 | 1_u8 == 1_u8);
+    assert(1_u8 | 1_u8 == 1_u8);
+    assert(15_u8 | 240_u8 == 255_u8);
+    assert(240_u8 | 170_u8 == 250_u8);
+    assert(15_u8 | 170_u8 == 175_u8);
+    assert(15_u8 | 255_u8 == 255_u8);
+    assert(max | 0_u8 == max);
+    assert(A | B == max);
+    assert(A | 0_u8 == A);
+    assert(B | 0_u8 == B);
+
+    assert(0_u8 ^ 0_u8 == 0_u8);
+    assert(0_u8 ^ 1_u8 == 1_u8);
+    assert(1_u8 ^ 1_u8 == 0_u8);
+    assert(15_u8 ^ 240_u8 == 255_u8);
+    assert(85_u8 ^ 170_u8 == 255_u8);
+    assert(85_u8 ^ 85_u8 == 0_u8);
+    assert(240_u8 ^ 255_u8 == 15_u8);
+    assert(max ^ 0_u8 == max);
+    assert(max ^ A == B);
+    assert(max ^ B == A);
+    assert(A ^ B == max);
+
+    assert(0_u8 << 0 == 0_u8);
+    assert(0_u8 << 1 == 0_u8);
+    assert(1_u8 << 1 == 2_u8);
+    assert(1_u8 << 1 == 2_u8);
+    assert(2_u8 << 1 == 4_u8);
+    assert(31_u8 << 2 == 124_u8);
+    assert(max << 1 & max == 254_u8);
+    assert(max << 2 & max == 252_u8);
+    assert(A << 1 & max == C);
+    assert(max << 7 & max == E);
+    assert(max << 8 & max == 0_u8);
+
+    assert(0_u8 >> 0 == 0_u8);
+    assert(0_u8 >> 1 == 0_u8);
+    assert(1_u8 >> 1 == 0_u8);
+    assert(1_u8 >> 2 == 0_u8);
+    assert(2_u8 >> 1 == 1_u8);
+    assert(2_u8 >> 2 == 0_u8);
+    assert(8_u8 >> 2 == 2_u8);
+    assert(255_u8 >> 1 == 127_u8);
+    assert(255_u8 >> 3 == 31_u8);
+    assert(A >> 1 == D);
+    assert(A >> 4 == 8_u8);
+    assert(max >> 1 == 127_u8);
+    assert(max >> 7 & max == 1_u8);
+    assert(max >> 8 & max == 0_u8);
 
     true
 }
