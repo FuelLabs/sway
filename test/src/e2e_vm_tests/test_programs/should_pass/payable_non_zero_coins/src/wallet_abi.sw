@@ -1,8 +1,7 @@
 library wallet_abi;
 
 abi Wallet {
-    #[payable]
-    #[storage(read, write)]
+    #[payable, storage(read, write)]
     fn receive_funds();
 
     // non-payable method

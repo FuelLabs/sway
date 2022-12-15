@@ -21,8 +21,7 @@ storage {
 }
 
 impl Wallet for Contract {
-    #[payable]
-    #[storage(read, write)]
+    #[payable, storage(read, write)]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             storage.balance += msg_amount();
