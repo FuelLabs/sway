@@ -348,6 +348,7 @@ jobs:
     # those are local packages.
     if: github.event_name != 'release' && github.event.action != 'published'
     strategy:
+      fail-fast: false
       matrix:
         # Include all workspace members we want to publish to crates.io.
         pkg: [
