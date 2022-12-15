@@ -351,7 +351,7 @@ impl BuiltPackage {
     pub fn write_debug_info(&self, path: &Path) -> Result<()> {
         let source_map_json =
             serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
-        fs::write(path, &source_map_json)?;
+        fs::write(path, source_map_json)?;
         Ok(())
     }
 
@@ -373,7 +373,7 @@ impl BuiltPackage {
         if !self.json_abi_program.functions.is_empty() {
             let json_abi_program_stem = format!("{}-abi", pkg_name);
             let json_abi_program_path = output_dir
-                .join(&json_abi_program_stem)
+                .join(json_abi_program_stem)
                 .with_extension("json");
             let file = File::create(json_abi_program_path)?;
             let res = if minify.json_abi {
@@ -390,7 +390,7 @@ impl BuiltPackage {
                 // For contracts, emit a JSON file with all the initialized storage slots.
                 let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
                 let json_storage_slots_path = output_dir
-                    .join(&json_storage_slots_stem)
+                    .join(json_storage_slots_stem)
                     .with_extension("json");
                 let storage_slots_file = File::create(json_storage_slots_path)?;
                 let res = if minify.json_storage_slots {
@@ -578,7 +578,7 @@ impl BuildPlan {
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-            fs::write(lock_path, &string)
+            fs::write(lock_path, string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
             info!("   Created new lock file at {}", lock_path.display());
         }
