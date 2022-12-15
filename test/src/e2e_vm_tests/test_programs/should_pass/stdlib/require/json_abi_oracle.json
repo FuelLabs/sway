@@ -60,7 +60,7 @@
       }
     }
   ],
-  "messagesTypes": null,
+  "messagesTypes": [],
   "types": [
     {
       "components": null,
