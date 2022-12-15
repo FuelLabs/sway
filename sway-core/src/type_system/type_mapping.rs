@@ -65,10 +65,6 @@ impl TypeMapping {
                 (
                     x.type_id,
                     type_engine.insert_type(TypeInfo::Placeholder(x.clone())),
-                    // type_engine.insert_type(TypeInfo::TypeParam {
-                    //     name: x.name_ident.clone(),
-                    //     trait_constraints: VecSet(x.trait_constraints.clone()),
-                    // }),
                 )
             })
             .collect();

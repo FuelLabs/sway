@@ -12,10 +12,6 @@ impl ty::TyCodeBlock {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
-        // let type_annotation = ctx.type_annotation();
-        // let mut ctx = ctx
-        //     .by_ref()
-        //     .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
 
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
