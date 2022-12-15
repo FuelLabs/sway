@@ -1,4 +1,7 @@
-use crate::descriptor::{Descriptor, DescriptorType};
+use crate::{
+    descriptor::Descriptor,
+    render::{ItemBody, ItemHeader},
+};
 use anyhow::Result;
 use sway_core::language::ty::{TyAstNodeContent, TyProgram, TySubmodule};
 
@@ -7,26 +10,21 @@ pub(crate) type Documentation = Vec<Document>;
 /// information including spans, fields on structs, variants on enums etc.
 pub(crate) struct Document {
     pub(crate) module_prefix: Vec<String>,
-    pub(crate) desc_ty: DescriptorType,
+    pub(crate) item_header: ItemHeader,
+    pub(crate) item_body: ItemBody,
 }
 impl Document {
     // Creates an HTML file name from the [Document].
-    pub fn file_name(&self) -> String {
-        use DescriptorType::*;
-        let name = match &self.desc_ty {
-            Struct(ty_struct_decl) => Some(ty_struct_decl.name.as_str()),
-            Enum(ty_enum_decl) => Some(ty_enum_decl.name.as_str()),
-            Trait(ty_trait_decl) => Some(ty_trait_decl.name.as_str()),
-            Abi(ty_abi_decl) => Some(ty_abi_decl.name.as_str()),
-            Storage(_) => None, // storage does not have an Ident
-            ImplTraitDesc(ty_impl_trait) => Some(ty_impl_trait.trait_name.suffix.as_str()), // TODO: check validity
-            Function(ty_fn_decl) => Some(ty_fn_decl.name.as_str()),
-            Const(ty_const_decl) => Some(ty_const_decl.name.as_str()),
+    pub(crate) fn file_name(&self) -> String {
+        use sway_core::language::ty::TyDeclaration::StorageDeclaration;
+        let name = match &self.item_header.ty_decl {
+            StorageDeclaration(_) => None,
+            _ => Some(&self.item_header.item_name),
         };
 
-        Document::create_html_file_name(self.desc_ty.as_str(), name)
+        Document::create_html_file_name(self.item_header.ty_decl.doc_name(), name)
     }
-    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
+    fn create_html_file_name(ty: &str, name: Option<&String>) -> String {
         match name {
             Some(name) => {
                 format!("{ty}.{name}.html")
@@ -53,15 +51,8 @@ impl Document {
                     document_private_items,
                 )?;
 
-                if let Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty,
-                } = desc
-                {
-                    docs.push(Document {
-                        module_prefix,
-                        desc_ty: *desc_ty,
-                    })
+                if let Descriptor::Documentable(doc) = desc {
+                    docs.push(doc)
                 }
             }
         }
@@ -97,15 +88,8 @@ impl Document {
                     document_private_items,
                 )?;
 
-                if let Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty,
-                } = desc
-                {
-                    docs.push(Document {
-                        module_prefix,
-                        desc_ty: *desc_ty,
-                    })
+                if let Descriptor::Documentable(doc) = desc {
+                    docs.push(doc)
                 }
             }
         }

@@ -1,6 +1,10 @@
 //! Determine whether a [Declaration] is documentable.
-use crate::render::{
-    attrsmap_to_html_string, struct_field_section, ItemBody, ItemContext, ItemHeader, MainContent,
+use crate::{
+    doc::Document,
+    render::{
+        attrsmap_to_html_string, struct_field_section, ItemBody, ItemContext, ItemHeader,
+        MainContent,
+    },
 };
 use anyhow::Result;
 use sway_core::{
@@ -47,23 +51,19 @@ impl DescriptorType {
 
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
-    Documentable {
-        // If empty, this is the root.
-        module_prefix: Vec<String>,
-        // We want _all_ of the TyDeclaration information.
-        desc_ty: Box<DescriptorType>,
-    },
+    Documentable(Document),
     NonDocumentable,
 }
 
 impl Descriptor {
+    /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
         ty_decl: &TyDeclaration,
         module_prefix: Vec<String>,
         document_private_items: bool,
     ) -> Result<Self> {
         let module_depth = module_prefix.len();
-        let module = module_prefix.last().unwrap().to_string(); // There will always be at least the project name
+        let module = *module_prefix.last().unwrap(); // There will always be at least the project name
 
         use swayfmt::parse;
         use TyDeclaration::*;
@@ -73,18 +73,17 @@ impl Descriptor {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let decl_ty = ty_decl.doc_name().to_string();
                     let item_name = struct_decl.name.as_str().to_string();
-                    let html_header = ItemHeader {
+                    let item_header = ItemHeader {
                         module_depth,
                         module,
-                        decl_ty: decl_ty.clone(),
+                        ty_decl: ty_decl.clone(),
                         item_name: item_name.clone(),
                     };
-                    let html_body = ItemBody {
+                    let item_body = ItemBody {
                         main_content: MainContent {
                             module_depth,
-                            decl_ty,
+                            ty_decl: ty_decl.clone(),
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
@@ -93,10 +92,11 @@ impl Descriptor {
                         },
                         item_context: ItemContext(struct_field_section(struct_decl.fields.clone())),
                     };
-                    Ok(Descriptor::Documentable {
+                    Ok(Descriptor::Documentable(Document {
                         module_prefix,
-                        desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
-                    })
+                        item_header,
+                        item_body,
+                    }))
                 }
             }
             EnumDeclaration(ref decl_id) => {

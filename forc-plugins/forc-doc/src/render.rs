@@ -4,8 +4,9 @@ use crate::{descriptor::DescriptorType, doc::Documentation};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use sway_core::language::ty::{
-    TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration, TyImplTrait,
-    TyStorageDeclaration, TyStructDeclaration, TyStructField, TyTraitDeclaration,
+    TyAbiDeclaration, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
+    TyFunctionDeclaration, TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyStructField,
+    TyTraitDeclaration,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
@@ -20,7 +21,7 @@ pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
 pub(crate) struct ItemHeader {
     pub(crate) module_depth: usize,
     pub(crate) module: String,
-    pub(crate) decl_ty: String,
+    pub(crate) ty_decl: TyDeclaration,
     pub(crate) item_name: String,
 }
 /// All necessary components to render the body portion of
@@ -32,7 +33,7 @@ pub(crate) struct ItemBody {
 /// The main content of an item, e.g. the name, path, codeblock & attributes.
 pub(crate) struct MainContent {
     pub(crate) module_depth: usize,
-    pub(crate) decl_ty: String,
+    pub(crate) ty_decl: TyDeclaration,
     pub(crate) item_name: String,
     pub(crate) code_str: String,
     pub(crate) attrs_str: String,
@@ -74,8 +75,9 @@ impl RenderedDocument {
                 project_name.to_string()
             };
             let file_name = doc.file_name();
-            let decl_ty = doc.desc_ty.as_str().to_string();
-            let rendered_content = match &doc.desc_ty {
+            let decl_ty = doc.item_header.ty_decl.doc_name().to_string();
+            // see if there's a way to reduce the number of matches for the declaration type
+            let rendered_content = match &doc.item_header.ty_decl {
                 DescriptorType::Struct(struct_decl) => {
                     let path_str = if module_depth == 0 {
                         struct_decl.name.as_str().to_string()
@@ -548,22 +550,22 @@ fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
 }
 
 trait Renderable {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox>;
+    fn render(&self, module: String, module_depth: usize, ty_decl: String) -> Box<dyn RenderBox>;
 }
 
 impl Renderable for TyStructDeclaration {
-    fn render(&self, module: String, module_depth: usize, decl_ty: String) -> Box<dyn RenderBox> {
+    fn render(&self, module: String, module_depth: usize, ty_decl: String) -> Box<dyn RenderBox> {
         let item_name = self.name.as_str().to_string();
         let html_header = ItemHeader {
             module_depth,
             module,
-            decl_ty: decl_ty.clone(),
+            ty_decl,
             item_name: item_name.clone(),
         };
         let html_body = ItemBody {
             main_content: MainContent {
                 module_depth,
-                decl_ty,
+                ty_decl,
                 item_name,
                 code_str: parse::parse_format::<sway_ast::ItemStruct>(self.span.as_str()),
                 attrs_str: attrsmap_to_html_string(&self.attributes),
@@ -571,10 +573,10 @@ impl Renderable for TyStructDeclaration {
             item_context: ItemContext(struct_field_section(self.fields.clone())),
         };
         box_html! {
-            : to_item_header(html_header.module_depth, html_header.module, html_header.decl_ty, html_header.item_name);
+            : to_item_header(html_header.module_depth, html_header.module, html_header.ty_decl, html_header.item_name);
             : to_item_body(
                 html_body.main_content.module_depth,
-                html_body.main_content.decl_ty,
+                html_body.main_content.ty_decl,
                 html_body.main_content.item_name,
                 html_body.main_content.code_str,
                 html_body.main_content.attrs_str,

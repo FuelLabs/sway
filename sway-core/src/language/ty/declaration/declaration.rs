@@ -468,7 +468,7 @@ impl TyDeclaration {
         }
     }
 
-    /// name string used in `forc doc` generation that mirrors `cargo doc`.
+    /// name string used in `forc doc` file path generation that mirrors `cargo doc`.
     pub fn doc_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
