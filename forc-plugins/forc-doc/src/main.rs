@@ -87,7 +87,7 @@ pub fn main() -> Result<()> {
             fs::create_dir_all(&assets_path)?;
             for file in ASSETS_DIR.files() {
                 let asset_path = assets_path.join(file.path());
-                fs::write(&asset_path, file.contents())?;
+                fs::write(asset_path, file.contents())?;
             }
             // Sway syntax highlighting file
             const SWAY_HJS_FILENAME: &str = "sway.js";

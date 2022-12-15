@@ -22,7 +22,7 @@ pub(crate) fn execute_external_subcommand(args: Vec<String>) -> Result<process::
         Some(command) => command,
         None => bail!("no such subcommand: `{}`", cmd),
     };
-    let output = process::Command::new(&command)
+    let output = process::Command::new(command)
         .stdin(process::Stdio::inherit())
         .stdout(process::Stdio::inherit())
         .stderr(process::Stdio::inherit())
