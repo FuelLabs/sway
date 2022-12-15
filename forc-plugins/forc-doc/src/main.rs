@@ -91,7 +91,7 @@ pub fn main() -> Result<()> {
             }
             // Sway syntax highlighting file
             const SWAY_HJS_FILENAME: &str = "sway.js";
-            let sway_hjs = std::include_bytes!("../../../scripts/highlightjs/sway.js");
+            let sway_hjs = std::include_bytes!("assets/sway.js");
             fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
 
             // check if the user wants to open the doc in the browser

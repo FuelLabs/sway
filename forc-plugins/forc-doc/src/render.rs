@@ -442,7 +442,7 @@ fn module_depth_to_path_prefix(module_depth: usize) -> String {
 }
 /// Creates an HTML String from an [AttributesMap]
 pub(crate) fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
-    let attributes = attributes.get(&AttributeKind::Doc);
+    let attributes = attributes.get(&AttributeKind::DocComment);
     let mut docs = String::new();
 
     if let Some(vec_attrs) = attributes {
