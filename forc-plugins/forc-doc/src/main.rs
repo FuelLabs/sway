@@ -70,7 +70,7 @@ pub fn main() -> Result<()> {
             let rendered_docs = RenderedDocumentation::from(&raw_docs);
 
             // write contents to outfile
-            for doc in rendered_docs.inner() {
+            for doc in rendered_docs.0 {
                 let mut doc_path = doc_path.clone();
                 for prefix in doc.module_prefix {
                     doc_path.push(prefix);
@@ -78,7 +78,7 @@ pub fn main() -> Result<()> {
 
                 fs::create_dir_all(&doc_path)?;
                 doc_path.push(doc.file_name);
-                fs::write(&doc_path, doc.file_contents.inner().as_bytes())?;
+                fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
             }
             // CSS, icons and logos
             static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");

@@ -18,12 +18,8 @@ pub(crate) struct RenderedDocument {
     pub(crate) file_contents: HTMLString,
 }
 #[derive(Default)]
-pub(crate) struct RenderedDocumentation(Vec<RenderedDocument>);
-impl RenderedDocumentation {
-    pub(crate) fn inner(&self) -> Vec<RenderedDocument> {
-        self.0
-    }
-}
+pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
+
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
     pub fn from(raw: &Documentation) -> Self {
@@ -32,7 +28,7 @@ impl RenderedDocumentation {
         for doc in raw {
             let module_prefix = doc.module_prefix;
             let file_name = doc.file_name();
-            rendered_docs.inner().push(RenderedDocument {
+            rendered_docs.0.push(RenderedDocument {
                 module_prefix: module_prefix.clone(),
                 file_name: file_name.clone(),
                 file_contents: HTMLString::from(doc.render()),
@@ -45,7 +41,7 @@ impl RenderedDocumentation {
             } else {
                 format!("{}::{}", &doc.item_header.module, &item_name)
             };
-            all_doc.inner().push(AllDocItem {
+            all_doc.0.push(AllDocItem {
                 ty_decl: doc.item_header.ty_decl,
                 path_str,
                 module_prefix,
@@ -53,7 +49,7 @@ impl RenderedDocumentation {
             });
         }
         // All Doc
-        rendered_docs.inner().push(RenderedDocument {
+        rendered_docs.0.push(RenderedDocument {
             module_prefix: vec![],
             file_name: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(all_doc.render()),
@@ -75,9 +71,6 @@ impl HTMLString {
 
         Self(markup.into_string().unwrap())
     }
-    pub(crate) fn inner(&self) -> String {
-        self.0
-    }
 }
 
 /// All necessary components to render the header portion of
@@ -93,12 +86,16 @@ impl Renderable for ItemHeader {
     fn render(&self) -> Box<dyn RenderBox> {
         let ItemHeader {
             module_depth,
-            module: location,
+            module,
             ty_decl,
             item_name,
-        } = *self;
+        } = self;
 
-        let prefix = module_depth_to_path_prefix(module_depth);
+        let location = module.to_string();
+        let item_name = item_name.to_string();
+        let ty_decl = ty_decl.friendly_name().to_string();
+
+        let prefix = module_depth_to_path_prefix(*module_depth);
         let mut favicon = prefix.clone();
         let mut normalize = prefix.clone();
         let mut swaydoc = prefix.clone();
@@ -115,11 +112,14 @@ impl Renderable for ItemHeader {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content=format!("API documentation for the Sway `{}` {} in `{location}`.", &item_name, ty_decl.friendly_name())
+                    content=format!(
+                        "API documentation for the Sway `{}` {} in `{}`.",
+                        item_name.clone(), ty_decl, location,
+                    )
                 );
-                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", &item_name));
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name));
                 link(rel="icon", href=favicon);
-                title: format!("{} in {location} - Sway", item_name);
+                title: format!("{} in {} - Sway", item_name, location);
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -246,15 +246,11 @@ struct ItemPath {
 }
 #[derive(Default)]
 struct AllDoc(Vec<AllDocItem>);
-impl AllDoc {
-    fn inner(&self) -> Vec<AllDocItem> {
-        self.0
-    }
-}
+
 impl Renderable for AllDoc {
     /// crate level, all items belonging to a crate
     fn render(&self) -> Box<dyn RenderBox> {
-        let AllDoc(all_doc) = *self;
+        let AllDoc(all_doc) = self;
         // TODO: find a better way to do this
         //
         // we need to have a finalized list for the all doc
@@ -269,39 +265,39 @@ impl Renderable for AllDoc {
         for doc_item in all_doc {
             let AllDocItem {
                 ty_decl,
-                path_str: path_literal_str,
+                path_str,
                 module_prefix,
                 file_name,
             } = doc_item;
             use TyDeclaration::*;
-            match doc_item.ty_decl {
+            match ty_decl {
                 StructDeclaration(_) => struct_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 EnumDeclaration(_) => enum_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 TraitDeclaration(_) => trait_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 AbiDeclaration(_) => abi_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 StorageDeclaration(_) => storage_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 FunctionDeclaration(_) => fn_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 ConstantDeclaration(_) => const_items.push(ItemPath {
-                    path_literal_str,
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                    path_literal_str: path_str.to_string(),
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
                 _ => {}
             }
