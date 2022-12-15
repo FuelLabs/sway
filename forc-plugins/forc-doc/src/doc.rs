@@ -3,6 +3,7 @@ use crate::{
     render::{ItemBody, ItemHeader},
 };
 use anyhow::Result;
+use horrorshow::{box_html, RenderBox};
 use sway_core::language::ty::{TyAstNodeContent, TyProgram, TySubmodule};
 
 pub(crate) type Documentation = Vec<Document>;
@@ -104,5 +105,13 @@ impl Document {
         }
 
         Ok(())
+    }
+}
+impl crate::render::Renderable for Document {
+    fn render(&self) -> Box<dyn RenderBox> {
+        box_html! {
+            : self.item_header.render();
+            : self.item_body.render();
+        }
     }
 }

@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocument, RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, ALL_DOC_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -67,11 +67,10 @@ pub fn main() -> Result<()> {
                 document_private_items,
             )?;
             // render docs to HTML
-            let rendered_docs: RenderedDocumentation =
-                RenderedDocument::from_raw_docs(&raw_docs, project_name);
+            let rendered_docs = RenderedDocumentation::from(&raw_docs);
 
             // write contents to outfile
-            for doc in rendered_docs {
+            for doc in rendered_docs.inner() {
                 let mut doc_path = doc_path.clone();
                 for prefix in doc.module_prefix {
                     doc_path.push(prefix);
@@ -79,7 +78,7 @@ pub fn main() -> Result<()> {
 
                 fs::create_dir_all(&doc_path)?;
                 doc_path.push(doc.file_name);
-                fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
+                fs::write(&doc_path, doc.file_contents.inner().as_bytes())?;
             }
             // CSS, icons and logos
             static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/assets");

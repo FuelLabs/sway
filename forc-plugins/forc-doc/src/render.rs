@@ -3,69 +3,60 @@ use std::{fmt::Write, path::PathBuf};
 use crate::doc::Documentation;
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use sway_core::language::ty::{
-    TyAbiDeclaration, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration,
-    TyFunctionDeclaration, TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyStructField,
-    TyTraitDeclaration,
-};
+use sway_core::language::ty::{TyDeclaration, TyStructField};
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
-use swayfmt::parse;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
-trait Renderable {
+pub(crate) trait Renderable {
     fn render(&self) -> Box<dyn RenderBox>;
 }
-
-pub(crate) type RenderedDocumentation = Vec<RenderedDocument>;
-
-struct AllDocItem {
-    ty_decl: TyDeclaration,
-    path_str: String,
-    module_prefix: Vec<String>,
-    file_name: String,
-}
-#[derive(Default)]
-struct AllDoc(Vec<AllDocItem>);
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_prefix: Vec<String>,
     pub(crate) file_name: String,
     pub(crate) file_contents: HTMLString,
 }
-impl RenderedDocument {
+#[derive(Default)]
+pub(crate) struct RenderedDocumentation(Vec<RenderedDocument>);
+impl RenderedDocumentation {
+    pub(crate) fn inner(&self) -> Vec<RenderedDocument> {
+        self.0
+    }
+}
+impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from_raw_docs(raw: &Documentation, project_name: &String) -> RenderedDocumentation {
+    pub fn from(raw: &Documentation) -> Self {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
-            let module_prefix = doc.module_prefix.clone();
+            let module_prefix = doc.module_prefix;
             let file_name = doc.file_name();
-            rendered_docs.push(Self {
-                module_prefix,
+            rendered_docs.inner().push(RenderedDocument {
+                module_prefix: module_prefix.clone(),
                 file_name: file_name.clone(),
                 file_contents: HTMLString::from(doc.render()),
             });
 
             let item_name = doc.item_header.item_name.as_str().to_string();
+            // need to think about how to do this for larger paths
             let path_str = if doc.item_header.module_depth == 0 {
                 item_name
             } else {
                 format!("{}::{}", &doc.item_header.module, &item_name)
             };
-            all_doc.0.push(AllDocItem {
+            all_doc.inner().push(AllDocItem {
                 ty_decl: doc.item_header.ty_decl,
                 path_str,
-                module_prefix: module_prefix.clone(),
+                module_prefix,
                 file_name,
             });
         }
         // All Doc
-        rendered_docs.push(Self {
+        rendered_docs.inner().push(RenderedDocument {
             module_prefix: vec![],
             file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString::from(all_items(project_name.clone(), &all_doc)),
-            // file_contents: HTMLString(page_from(all_items(project_name.clone(), &all_doc))),
+            file_contents: HTMLString::from(all_doc.render()),
         });
         rendered_docs
     }
@@ -83,6 +74,9 @@ impl HTMLString {
         };
 
         Self(markup.into_string().unwrap())
+    }
+    pub(crate) fn inner(&self) -> String {
+        self.0
     }
 }
 
@@ -155,77 +149,231 @@ impl ItemContext {
         self.0
     }
 }
-/// HTML body component
-fn to_item_body(
-    module_depth: usize,
-    decl_ty: String,
-    decl_name: String,
-    code_str: String,
-    item_attrs: String,
-    item_context: ItemContext,
-) -> Box<dyn RenderBox> {
-    let mut all_path = module_depth_to_path_prefix(module_depth);
-    all_path.push_str(ALL_DOC_FILENAME);
+impl Renderable for ItemBody {
+    /// HTML body component
+    fn render(&self) -> Box<dyn RenderBox> {
+        let ItemBody {
+            main_content:
+                MainContent {
+                    module_depth,
+                    ty_decl,
+                    item_name: decl_name,
+                    code_str,
+                    attrs_str: item_attrs,
+                },
+            item_context,
+        } = *self;
 
-    box_html! {
-        body(class=format!("swaydoc {decl_ty}")) {
-            : sidebar(module_depth, decl_name.clone(), all_path);
-            // this is the main code block
-            main {
-                div(class="width-limiter") {
-                    div(class="sub-container") {
-                        nav(class="sub") {
-                            form(class="search-form") {
-                                div(class="search-container") {
-                                    span;
-                                    input(
-                                        class="search-input",
-                                        name="search",
-                                        autocomplete="off",
-                                        spellcheck="false",
-                                        // TODO: https://github.com/FuelLabs/sway/issues/3480
-                                        placeholder="Searchbar unimplemented, see issue #3480...",
-                                        type="search"
-                                    );
-                                    div(id="help-button", title="help", tabindex="-1") {
-                                        button(type="button") { : "?" }
+        let decl_ty = ty_decl.doc_name();
+        let mut all_path = module_depth_to_path_prefix(module_depth);
+        all_path.push_str(ALL_DOC_FILENAME);
+
+        box_html! {
+            body(class=format!("swaydoc {decl_ty}")) {
+                : sidebar(module_depth, decl_name.clone(), all_path);
+                // this is the main code block
+                main {
+                    div(class="width-limiter") {
+                        div(class="sub-container") {
+                            nav(class="sub") {
+                                form(class="search-form") {
+                                    div(class="search-container") {
+                                        span;
+                                        input(
+                                            class="search-input",
+                                            name="search",
+                                            autocomplete="off",
+                                            spellcheck="false",
+                                            // TODO: https://github.com/FuelLabs/sway/issues/3480
+                                            placeholder="Searchbar unimplemented, see issue #3480...",
+                                            type="search"
+                                        );
+                                        div(id="help-button", title="help", tabindex="-1") {
+                                            button(type="button") { : "?" }
+                                        }
                                     }
                                 }
                             }
                         }
+                        section(id="main-content", class="content") {
+                            div(class="main-heading") {
+                                h1(class="fqn") {
+                                    span(class="in-band") {
+                                        // TODO: pass the decl ty info or match
+                                        // for uppercase naming like: "Enum"
+                                        : format!("{} ", ty_decl.friendly_name());
+                                        // TODO: add qualified path anchors
+                                        a(class=&decl_ty, href="#") {
+                                            : &decl_name;
+                                        }
+                                    }
+                                }
+                            }
+                            div(class="docblock item-decl") {
+                                pre(class=format!("sway {}", &decl_ty)) {
+                                    code { : code_str; }
+                                }
+                            }
+                            @ if !item_attrs.is_empty() {
+                                // expand or hide description of main code block
+                                details(class="swaydoc-toggle top-doc", open) {
+                                    summary(class="hideme") {
+                                        span { : "Expand description" }
+                                    }
+                                    // this is the description
+                                    div(class="docblock") {
+                                        : Raw(item_attrs)
+                                    }
+                                }
+                            }
+                            : item_context.inner();
+                        }
                     }
-                    section(id="main-content", class="content") {
-                        div(class="main-heading") {
+                }
+            }
+        }
+    }
+}
+struct AllDocItem {
+    ty_decl: TyDeclaration,
+    path_str: String,
+    module_prefix: Vec<String>,
+    file_name: String,
+}
+struct ItemPath {
+    path_literal_str: String,
+    qualified_file_path: String,
+}
+#[derive(Default)]
+struct AllDoc(Vec<AllDocItem>);
+impl AllDoc {
+    fn inner(&self) -> Vec<AllDocItem> {
+        self.0
+    }
+}
+impl Renderable for AllDoc {
+    /// crate level, all items belonging to a crate
+    fn render(&self) -> Box<dyn RenderBox> {
+        let AllDoc(all_doc) = *self;
+        // TODO: find a better way to do this
+        //
+        // we need to have a finalized list for the all doc
+        let mut struct_items: Vec<ItemPath> = Vec::new();
+        let mut enum_items: Vec<ItemPath> = Vec::new();
+        let mut trait_items: Vec<ItemPath> = Vec::new();
+        let mut abi_items: Vec<ItemPath> = Vec::new();
+        let mut storage_items: Vec<ItemPath> = Vec::new();
+        let mut fn_items: Vec<ItemPath> = Vec::new();
+        let mut const_items: Vec<ItemPath> = Vec::new();
+        // for (ty, (path_str, module_prefix, file_name)) in all_doc {
+        for doc_item in all_doc {
+            let AllDocItem {
+                ty_decl,
+                path_str: path_literal_str,
+                module_prefix,
+                file_name,
+            } = doc_item;
+            use TyDeclaration::*;
+            match doc_item.ty_decl {
+                StructDeclaration(_) => struct_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                EnumDeclaration(_) => enum_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                TraitDeclaration(_) => trait_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                AbiDeclaration(_) => abi_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                StorageDeclaration(_) => storage_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                FunctionDeclaration(_) => fn_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                ConstantDeclaration(_) => const_items.push(ItemPath {
+                    path_literal_str,
+                    qualified_file_path: qualified_file_path(&module_prefix, file_name),
+                }),
+                _ => {}
+            }
+        }
+        let project_name = all_doc.first().unwrap().module_prefix.first().unwrap();
+        box_html! {
+            head {
+                meta(charset="utf-8");
+                meta(name="viewport", content="width=device-width, initial-scale=1.0");
+                meta(name="generator", content="swaydoc");
+                meta(
+                    name="description",
+                    content="List of all items in this crate"
+                );
+                meta(name="keywords", content="sway, swaylang, sway-lang");
+                link(rel="icon", href="assets/sway-logo.svg");
+                title: "List of all items in this crate";
+                link(rel="stylesheet", type="text/css", href="assets/normalize.css");
+                link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href="assets/ayu.css");
+            }
+            body(class="swaydoc mod") {
+                : sidebar(0, format!("Crate {project_name}"), ALL_DOC_FILENAME.to_string());
+                main {
+                    div(class="width-limiter") {
+                        div(class="sub-container") {
+                            nav(class="sub") {
+                                form(class="search-form") {
+                                    div(class="search-container") {
+                                        span;
+                                        input(
+                                            class="search-input",
+                                            name="search",
+                                            autocomplete="off",
+                                            spellcheck="false",
+                                            // TODO: Add functionality.
+                                            placeholder="Search...",
+                                            type="search"
+                                        );
+                                        div(id="help-button", title="help", tabindex="-1") {
+                                            button(type="button") { : "?" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        section(id="main-content", class="content") {
                             h1(class="fqn") {
-                                span(class="in-band") {
-                                    // TODO: pass the decl ty info or match
-                                    // for uppercase naming like: "Enum"
-                                    : format!("{} ", &decl_ty);
-                                    // TODO: add qualified path anchors
-                                    a(class=&decl_ty, href="#") {
-                                        : &decl_name;
-                                    }
-                                }
+                                span(class="in-band") { : "List of all items" }
+                            }
+                            @ if !storage_items.is_empty() {
+                                : all_items_list("Contract Storage".to_string(), storage_items);
+                            }
+                            @ if !abi_items.is_empty() {
+                                : all_items_list("Abi".to_string(), abi_items);
+                            }
+                            @ if !trait_items.is_empty() {
+                                : all_items_list("Traits".to_string(), trait_items);
+                            }
+                            @ if !struct_items.is_empty() {
+                                : all_items_list("Structs".to_string(), struct_items);
+                            }
+                            @ if !enum_items.is_empty() {
+                                : all_items_list("Enums".to_string(), enum_items);
+                            }
+                            @ if !fn_items.is_empty() {
+                                : all_items_list("Functions".to_string(), fn_items);
+                            }
+                            @ if !const_items.is_empty() {
+                                : all_items_list("Constants".to_string(), const_items);
                             }
                         }
-                        div(class="docblock item-decl") {
-                            pre(class=format!("sway {}", &decl_ty)) {
-                                code { : code_str; }
-                            }
-                        }
-                        @ if !item_attrs.is_empty() {
-                            // expand or hide description of main code block
-                            details(class="swaydoc-toggle top-doc", open) {
-                                summary(class="hideme") {
-                                    span { : "Expand description" }
-                                }
-                                // this is the description
-                                div(class="docblock") {
-                                    : Raw(item_attrs)
-                                }
-                            }
-                        }
-                        : item_context.inner();
                     }
                 }
             }
@@ -233,130 +381,14 @@ fn to_item_body(
     }
 }
 
-/// crate level, all items belonging to a crate
-fn all_items(project_name: String, all_doc: &AllDoc) -> Box<dyn RenderBox> {
-    // TODO: find a better way to do this
-    //
-    // we need to have a finalized list for the all doc
-    let mut struct_items: Vec<(String, String)> = Vec::new();
-    let mut enum_items: Vec<(String, String)> = Vec::new();
-    let mut trait_items: Vec<(String, String)> = Vec::new();
-    let mut abi_items: Vec<(String, String)> = Vec::new();
-    let mut storage_items: Vec<(String, String)> = Vec::new();
-    let mut fn_items: Vec<(String, String)> = Vec::new();
-    let mut const_items: Vec<(String, String)> = Vec::new();
-    for (ty, (path_str, module_prefix, file_name)) in all_doc {
-        match ty {
-            ItemType::Struct => struct_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Enum => enum_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Trait => trait_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Abi => abi_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Storage => storage_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Function => fn_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-            ItemType::Constant => const_items.push((
-                path_str.clone(),
-                qualified_file_path(module_prefix, file_name.clone()),
-            )),
-        }
-    }
-    box_html! {
-        head {
-            meta(charset="utf-8");
-            meta(name="viewport", content="width=device-width, initial-scale=1.0");
-            meta(name="generator", content="swaydoc");
-            meta(
-                name="description",
-                content="List of all items in this crate"
-            );
-            meta(name="keywords", content="sway, swaylang, sway-lang");
-            link(rel="icon", href="assets/sway-logo.svg");
-            title: "List of all items in this crate";
-            link(rel="stylesheet", type="text/css", href="assets/normalize.css");
-            link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
-            link(rel="stylesheet", type="text/css", href="assets/ayu.css");
-        }
-        body(class="swaydoc mod") {
-            : sidebar(0, format!("Crate {project_name}"), ALL_DOC_FILENAME.to_string());
-            main {
-                div(class="width-limiter") {
-                    div(class="sub-container") {
-                        nav(class="sub") {
-                            form(class="search-form") {
-                                div(class="search-container") {
-                                    span;
-                                    input(
-                                        class="search-input",
-                                        name="search",
-                                        autocomplete="off",
-                                        spellcheck="false",
-                                        // TODO: Add functionality.
-                                        placeholder="Search...",
-                                        type="search"
-                                    );
-                                    div(id="help-button", title="help", tabindex="-1") {
-                                        button(type="button") { : "?" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    section(id="main-content", class="content") {
-                        h1(class="fqn") {
-                            span(class="in-band") { : "List of all items" }
-                        }
-                        @ if !storage_items.is_empty() {
-                            : all_items_list("Contract Storage".to_string(), storage_items);
-                        }
-                        @ if !abi_items.is_empty() {
-                            : all_items_list("Abi".to_string(), abi_items);
-                        }
-                        @ if !trait_items.is_empty() {
-                            : all_items_list("Traits".to_string(), trait_items);
-                        }
-                        @ if !struct_items.is_empty() {
-                            : all_items_list("Structs".to_string(), struct_items);
-                        }
-                        @ if !enum_items.is_empty() {
-                            : all_items_list("Enums".to_string(), enum_items);
-                        }
-                        @ if !fn_items.is_empty() {
-                            : all_items_list("Functions".to_string(), fn_items);
-                        }
-                        @ if !const_items.is_empty() {
-                            : all_items_list("Constants".to_string(), const_items);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 /// Renders the items list from each item kind and adds the links to each file path
-fn all_items_list(title: String, list_items: Vec<(String, String)>) -> Box<dyn RenderBox> {
+fn all_items_list(title: String, list_items: Vec<ItemPath>) -> Box<dyn RenderBox> {
     box_html! {
         h3(id=format!("{title}")) { : title.clone(); }
         ul(class=format!("{} docblock", title.to_lowercase())) {
-            @ for (path_str, file_path) in list_items {
+            @ for item in list_items {
                 li {
-                    a(href=file_path) { : path_str; }
+                    a(href=item.qualified_file_path) { : item.path_literal_str; }
                 }
             }
         }
