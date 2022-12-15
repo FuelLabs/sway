@@ -341,7 +341,31 @@ jobs:
           command: udeps
           args: --locked --all-targets
 
-  cargo-package-workspace:
+  cargo-publish-dry-run:
+    strategy:
+      matrix:
+        # Include all workspace members we want to publish to crates.io.
+        pkg: [
+          "forc",
+          "forc-pkg",
+          "forc-client",
+          "forc-doc",
+          "forc-fmt",
+          "forc-lsp",
+          "forc-test",
+          "forc-tracing",
+          "forc-util",
+          "sway-ast",
+          "sway-core",
+          "sway-error",
+          "sway-ir",
+          "sway-ir-macros",
+          "sway-lsp",
+          "sway-parse",
+          "sway-types",
+          "sway-utils",
+          "swayfmt",
+        ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -352,8 +376,8 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
-          command: package
-          args: --locked
+          command: publish
+          args: --locked --dry-run -p ${{ matrix.pkg }}
 
   notify-slack-on-failure:
     needs:
