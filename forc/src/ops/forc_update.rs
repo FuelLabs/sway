@@ -42,8 +42,8 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     let new_lock = Lock::from_graph(new_plan.graph());
     let diff = new_lock.diff(&old_lock);
     let member_names = member_manifests
-        .iter()
-        .map(|(_, manifest)| manifest.project.name.clone())
+        .values()
+        .map(|manifest| manifest.project.name.clone())
         .collect();
     lock::print_diff(&member_names, &diff);
 
@@ -51,7 +51,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     if !check {
         let string = toml::ser::to_string_pretty(&new_lock)
             .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-        fs::write(&lock_path, &string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
+        fs::write(&lock_path, string).map_err(|e| anyhow!("failed to write lock file: {}", e))?;
         info!("   Created new lock file at {}", lock_path.display());
     } else {
         info!(" `--check` enabled: `Forc.lock` was not changed");
