@@ -3,7 +3,7 @@ use crate::{
         session::Session,
         token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
     },
-    utils::{attributes::doc_attributes, markdown, markup::Markup},
+    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use std::sync::Arc;
 use sway_core::{
@@ -53,7 +53,7 @@ fn extract_fn_signature(span: &Span) -> String {
 
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
-    if let Some(attributes) = doc_attributes(token) {
+    if let Some(attributes) = doc_comment_attributes(token) {
         doc_comment = attributes
             .iter()
             .map(|attribute| {

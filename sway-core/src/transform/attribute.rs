@@ -37,6 +37,7 @@ pub struct Attribute {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AttributeKind {
     Doc,
+    DocComment,
     Storage,
     Inline,
     Test,
