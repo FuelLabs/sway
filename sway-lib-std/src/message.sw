@@ -14,13 +14,16 @@ use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 /// * `msg_data` - arbitrary length message data
 /// * `coins` - Amount of base asset sent
 pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
+    let mut recipient_heap_buffer = __addr_of(recipient);
+    let mut size = 0; 
+
     if !msg_data.is_empty() {
         size = msg_data.len();
         recipient_heap_buffer = alloc::<u64>(4 + size);
         recipient_heap_buffer.write(recipient);
         let data_heap_buffer = recipient_heap_buffer.add::<b256>(1);
         msg_data.buf.ptr.copy_bytes_to(data_heap_buffer, size);
-    };
+    }
 
     let mut index = 0;
     let outputs = output_count();
@@ -28,18 +31,14 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     while index < outputs {
         let type_of_output = output_type(index);
         if let Output::Message = type_of_output {
-            asm(r1: recipient_heap_buffer, r2: size * 8, r3: index, r4: coins) {
+            asm(r1: recipient_heap_buffer, r2: size, r3: index, r4: coins) {
                 smo r1 r2 r3 r4;
             };
             return;
         }
         index += 1;
     }
-    revert(FAILED_SEND_MESSAGE_SIGNAL);
-}
-        }
-        index += 1;
-    }
+
     revert(FAILED_SEND_MESSAGE_SIGNAL);
 }
 
