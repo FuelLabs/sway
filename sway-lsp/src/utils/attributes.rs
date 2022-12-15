@@ -21,9 +21,9 @@ pub fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
     }
 }
 
-pub fn doc_attributes(token: &Token) -> Option<&[transform::Attribute]> {
+pub fn doc_comment_attributes(token: &Token) -> Option<&[transform::Attribute]> {
     attributes_map(token)
-        .and_then(|attributes| attributes.get(&transform::AttributeKind::Doc))
+        .and_then(|attributes| attributes.get(&transform::AttributeKind::DocComment))
         .map(Vec::as_slice)
 }
 
