@@ -1,0 +1,3 @@
+[[package]]
+name = 'test_multiple_attributes'
+source = 'member'
