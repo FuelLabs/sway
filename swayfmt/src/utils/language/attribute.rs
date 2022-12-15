@@ -59,14 +59,14 @@ impl Format for AttributeDecl {
                     Self::open_square_bracket(formatted_code, formatter)?;
                     // name e.g. `storage`
                     write!(formatted_code, "{}", attr.name.span().as_str())?;
-                    // `(`
-                    Self::open_parenthesis(formatted_code, formatter)?;
-                    // format and add args e.g. `read, write`
                     if let Some(args) = &attr.args {
+                        // `(`
+                        Self::open_parenthesis(formatted_code, formatter)?;
+                        // format and add args e.g. `read, write`
                         args.get().format(formatted_code, formatter)?;
-                    }
-                    // ')'
-                    Self::close_parenthesis(formatted_code, formatter)?;
+                        // ')'
+                        Self::close_parenthesis(formatted_code, formatter)?;
+                    };
                     // `]\n`
                     Self::close_square_bracket(formatted_code, formatter)?;
 

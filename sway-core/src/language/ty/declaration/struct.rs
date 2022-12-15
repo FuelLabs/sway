@@ -5,7 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{error::*, language::Visibility, transform, type_system::*};
 
-#[derive(Clone, Debug, Eq)]
+#[derive(Clone, Debug)]
 pub struct TyStructDeclaration {
     pub name: Ident,
     pub fields: Vec<TyStructField>,
@@ -18,40 +18,41 @@ pub struct TyStructDeclaration {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStructDeclaration {
-    fn eq(&self, other: &Self) -> bool {
+impl EqWithTypeEngine for TyStructDeclaration {}
+impl PartialEqWithTypeEngine for TyStructDeclaration {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.fields == other.fields
-            && self.type_parameters == other.type_parameters
+            && self.fields.eq(&other.fields, type_engine)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.visibility == other.visibility
     }
 }
 
 impl CopyTypes for TyStructDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TyStructDeclaration {
-    fn replace_self_type(&mut self, self_type: TypeId) {
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
 impl CreateTypeId for TyStructDeclaration {
-    fn create_type_id(&self) -> TypeId {
-        insert_type(TypeInfo::Struct {
+    fn create_type_id(&self, type_engine: &TypeEngine) -> TypeId {
+        type_engine.insert_type(TypeInfo::Struct {
             name: self.name.clone(),
             fields: self.fields.clone(),
             type_parameters: self.type_parameters.clone(),
@@ -102,7 +103,7 @@ impl TyStructDeclaration {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone)]
 pub struct TyStructField {
     pub name: Ident,
     pub type_id: TypeId,
@@ -115,30 +116,36 @@ pub struct TyStructField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl HashWithTypeEngine for TyStructField {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        look_up_type_id(self.type_id).hash(state);
+        type_engine
+            .look_up_type_id(self.type_id)
+            .hash(state, type_engine);
     }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TyStructField {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+impl EqWithTypeEngine for TyStructField {}
+impl PartialEqWithTypeEngine for TyStructField {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.name == other.name
+            && type_engine
+                .look_up_type_id(self.type_id)
+                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
     }
 }
 
 impl CopyTypes for TyStructField {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
     }
 }

@@ -4,7 +4,6 @@ library outputs;
 
 use ::contract_id::ContractId;
 use ::revert::revert;
-use ::logging::log;
 use ::tx::{
     GTF_CREATE_OUTPUT_AT_INDEX,
     GTF_CREATE_OUTPUTS_COUNT,

@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_if_statement-2'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-CFB5A7C521AD2AFD'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CFB5A7C521AD2AFD'
+dependencies = ['core']

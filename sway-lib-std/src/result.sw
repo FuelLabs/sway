@@ -25,7 +25,7 @@ impl<T, E> Result<T, E> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
     /// Returns `true` if the result is [`Ok`].
-    fn is_ok(self) -> bool {
+    pub fn is_ok(self) -> bool {
         match self {
             Result::Ok(_) => true,
             _ => false,
@@ -33,7 +33,7 @@ impl<T, E> Result<T, E> {
     }
 
     /// Returns `true` if the result is [`Err`].
-    fn is_err(self) -> bool {
+    pub fn is_err(self) -> bool {
         match self {
             Result::Ok(_) => false,
             _ => true,
@@ -45,7 +45,7 @@ impl<T, E> Result<T, E> {
     /// Because this function may revert, its use is generally discouraged.
     /// Instead, prefer to use pattern matching and handle the [`Err`]
     /// case explicitly.
-    fn unwrap(self) -> T {
+    pub fn unwrap(self) -> T {
         match self {
             Result::Ok(inner_value) => inner_value,
             _ => revert(0),

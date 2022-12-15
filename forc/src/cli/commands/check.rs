@@ -1,6 +1,7 @@
 use crate::ops::forc_check;
 use anyhow::Result;
 use clap::Parser;
+use sway_core::TypeEngine;
 
 /// Check the current or target project and all of its dependencies for errors.
 ///
@@ -25,7 +26,8 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
-    let res = forc_check::check(command)?;
+    let type_engine = TypeEngine::default();
+    let res = forc_check::check(command, &type_engine)?;
     if !res.is_ok() {
         anyhow::bail!("unable to type check");
     }

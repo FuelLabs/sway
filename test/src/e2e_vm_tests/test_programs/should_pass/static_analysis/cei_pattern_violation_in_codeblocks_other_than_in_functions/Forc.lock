@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_codeblocks_other_than_in_functions'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-374ED50208B00A57'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-374ED50208B00A57'
+dependencies = ['core']

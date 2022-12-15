@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "left_to_right_arg_evaluation"
+entry = "main.sw"
+
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

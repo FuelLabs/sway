@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_func_app-1'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-CC4CE5C392D95953'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CC4CE5C392D95953'
+dependencies = ['core']

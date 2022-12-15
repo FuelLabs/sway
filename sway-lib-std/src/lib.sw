@@ -6,8 +6,8 @@ dep error_signals;
 dep logging;
 dep revert;
 dep assert;
-dep option;
 dep result;
+dep option;
 dep alloc;
 dep contract_id;
 dep constants;
@@ -35,6 +35,7 @@ dep u128;
 dep u256;
 dep vec;
 dep message;
+dep bytes;
 dep prelude;
 
 use core::*;

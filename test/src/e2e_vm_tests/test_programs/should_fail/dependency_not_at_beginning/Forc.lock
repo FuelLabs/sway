@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-3C5982067AB5C64D'
+
+[[package]]
+name = 'dependency_not_at_beginning'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-3C5982067AB5C64D'
+dependencies = ['core']

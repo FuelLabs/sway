@@ -1,0 +1,8 @@
+[project]
+name = "storage_annotations_unused_read"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
+std = { path = "../../../../../../../sway-lib-std" }

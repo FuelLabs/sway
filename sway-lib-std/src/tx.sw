@@ -1,9 +1,7 @@
 //! Transaction field getters.
 library tx;
 
-use ::address::Address;
 use ::constants::ZERO_B256;
-use ::option::Option;
 use ::revert::revert;
 
 ////////////////////////////////////////

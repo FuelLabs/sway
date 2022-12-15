@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: MyStruct { x: 42 }.foo();
+# nextln: $()Calling private library method foo is not allowed.
+
+# check: MyStruct::bar();
+# nextln: $()Calling private library method bar is not allowed.

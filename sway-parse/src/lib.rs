@@ -24,7 +24,7 @@ pub use crate::{
     token::{lex, lex_commented},
 };
 
-use sway_ast::Module;
+use sway_ast::{Module, ModuleKind};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use std::{path::PathBuf, sync::Arc};
@@ -36,4 +36,13 @@ pub fn parse_file(
 ) -> Result<Module, ErrorEmitted> {
     let ts = lex(handler, &src, 0, src.len(), path)?;
     Parser::new(handler, &ts).parse_to_end().map(|(m, _)| m)
+}
+
+pub fn parse_module_kind(
+    handler: &Handler,
+    src: Arc<str>,
+    path: Option<Arc<PathBuf>>,
+) -> Result<ModuleKind, ErrorEmitted> {
+    let ts = lex(handler, &src, 0, src.len(), path)?;
+    Parser::new(handler, &ts).parse()
 }

@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "evm_ec_recover"
 
 [dependencies]
+std = { path = "../../../../../sway-lib-std" }

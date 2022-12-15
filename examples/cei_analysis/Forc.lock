@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_analysis'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-52AF21993C880521'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-52AF21993C880521'
+dependencies = ['core']

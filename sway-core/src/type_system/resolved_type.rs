@@ -1,7 +1,5 @@
-use crate::language::{ty, CallPath};
 use derivative::Derivative;
 use sway_types::integer_bits::IntegerBits;
-use sway_types::Ident;
 
 #[derive(Derivative)]
 #[derivative(Debug, Clone, Eq, PartialEq, Hash)]
@@ -12,6 +10,7 @@ pub enum ResolvedType {
     Boolean,
     Unit,
     B256,
+    /*
     #[allow(dead_code)]
     Struct {
         name: Ident,
@@ -42,6 +41,7 @@ pub enum ResolvedType {
     /// used for recovering from errors in the ast
     #[allow(dead_code)]
     ErrorRecovery,
+    */
 }
 
 impl Default for ResolvedType {

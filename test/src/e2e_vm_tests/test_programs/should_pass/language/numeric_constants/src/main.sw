@@ -1,10 +1,8 @@
 script;
 
 use std::assert::assert;
-use core::num::*;
 
 fn main() -> bool {
-
     assert(u64::max() == 18446744073709551615);
     assert(u64::min() == 0u64);
     assert(u64::bits() == 64u32);

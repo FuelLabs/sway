@@ -13,7 +13,7 @@ use super::{module::Module, namespace::Namespace, Path};
 /// canonical paths, or that use canonical paths internally, are *only* called from the root. This
 /// normally includes methods that first lookup some canonical path via `use_synonyms` before using
 /// that canonical path to look up the symbol declaration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Root {
     pub(crate) module: Module,
 }

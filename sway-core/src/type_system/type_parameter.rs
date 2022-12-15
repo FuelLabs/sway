@@ -7,7 +7,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, JsonTypeDeclaration, Spanned};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     collections::BTreeMap,
@@ -15,7 +15,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone, Eq)]
+#[derive(Clone)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
@@ -27,40 +27,47 @@ pub struct TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl Hash for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        look_up_type_id(self.type_id).hash(state);
+impl HashWithTypeEngine for TypeParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        type_engine
+            .look_up_type_id(self.type_id)
+            .hash(state, type_engine);
         self.name_ident.hash(state);
-        self.trait_constraints.hash(state);
+        self.trait_constraints.hash(state, type_engine);
     }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEq for TypeParameter {
-    fn eq(&self, other: &Self) -> bool {
-        look_up_type_id(self.type_id) == look_up_type_id(other.type_id)
+impl EqWithTypeEngine for TypeParameter {}
+impl PartialEqWithTypeEngine for TypeParameter {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        type_engine
+            .look_up_type_id(self.type_id)
+            .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
             && self.name_ident == other.name_ident
-            && self.trait_constraints == other.trait_constraints
+            && self
+                .trait_constraints
+                .eq(&other.trait_constraints, type_engine)
     }
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping) {
-        self.type_id.copy_types(type_mapping);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+        self.type_id.copy_types(type_mapping, type_engine);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping));
+            .for_each(|x| x.copy_types(type_mapping, type_engine));
     }
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, self_type: TypeId) {
-        self.type_id.replace_self_type(self_type);
+    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+        self.type_id.replace_self_type(type_engine, self_type);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.replace_self_type(self_type));
+            .for_each(|x| x.replace_self_type(type_engine, self_type));
     }
 }
 
@@ -70,9 +77,14 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl fmt::Display for TypeParameter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.name_ident, self.type_id)
+impl DisplayWithTypeEngine for TypeParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.name_ident,
+            type_engine.help_out(self.type_id)
+        )
     }
 }
 
@@ -110,9 +122,9 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = insert_type(TypeInfo::UnknownGeneric {
+        let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
             name: name_ident.clone(),
-            trait_constraints: trait_constraints.clone().into_iter().collect(),
+            trait_constraints: VecSet(trait_constraints.clone()),
         });
 
         // Insert the trait constraints into the namespace.
@@ -146,18 +158,26 @@ impl TypeParameter {
     }
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `JsonTypeDeclaration`.
-    pub(crate) fn get_json_type_parameter(&self, types: &mut Vec<JsonTypeDeclaration>) -> usize {
-        let type_parameter = JsonTypeDeclaration {
-            type_id: *self.initial_type_id,
-            type_field: self.initial_type_id.get_json_type_str(self.type_id),
-            components: self
+    /// append the current TypeParameter as a `fuels_types::TypeDeclaration`.
+    pub(crate) fn get_json_type_parameter(
+        &self,
+        type_engine: &TypeEngine,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> usize {
+        let type_parameter = fuels_types::TypeDeclaration {
+            type_id: self.initial_type_id.index(),
+            type_field: self
                 .initial_type_id
-                .get_json_type_components(types, self.type_id),
+                .get_json_type_str(type_engine, self.type_id),
+            components: self.initial_type_id.get_json_type_components(
+                type_engine,
+                types,
+                self.type_id,
+            ),
             type_parameters: None,
         };
         types.push(type_parameter);
-        *self.initial_type_id
+        self.initial_type_id.index()
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
@@ -186,7 +206,8 @@ impl TypeParameter {
                     .check_if_trait_constraints_are_satisfied_for_type(
                         *type_id,
                         trait_constraints,
-                        access_span
+                        access_span,
+                        ctx.type_engine,
                     ),
                 continue,
                 warnings,
@@ -199,8 +220,34 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
+                // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
+                let mut full_trait_name = trait_name.clone();
+                if trait_name.prefixes.is_empty() {
+                    if let Some(use_synonym) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
+                        let mut prefixes = use_synonym.0.clone();
+                        for mod_path in ctx.namespace.mod_path() {
+                            if prefixes[0].as_str() == mod_path.as_str() {
+                                prefixes.drain(0..1);
+                            } else {
+                                prefixes = use_synonym.0.clone();
+                                break;
+                            }
+                        }
+                        full_trait_name = CallPath {
+                            prefixes,
+                            suffix: trait_name.suffix.clone(),
+                            is_absolute: false,
+                        }
+                    }
+                }
+
                 let (trait_original_method_ids, trait_impld_method_ids) = check!(
-                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
+                    handle_trait(
+                        ctx.by_ref(),
+                        *type_id,
+                        &full_trait_name,
+                        trait_type_arguments
+                    ),
                     continue,
                     warnings,
                     errors
@@ -243,7 +290,7 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                CompileResult::from(de_get_trait(decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

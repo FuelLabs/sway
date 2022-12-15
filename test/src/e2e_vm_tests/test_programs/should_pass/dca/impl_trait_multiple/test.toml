@@ -1,0 +1,7 @@
+category = "compile"
+
+# check: $()struct Data2 {
+# check: $()This struct field is never accessed.
+
+# check: $()impl Get2 for Data2 {
+# check: $()This method is never called.

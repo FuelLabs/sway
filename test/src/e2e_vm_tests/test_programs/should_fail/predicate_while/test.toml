@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: while true { x += 1; }
+# nextln: $()Using "while" in a predicate is not allowed.

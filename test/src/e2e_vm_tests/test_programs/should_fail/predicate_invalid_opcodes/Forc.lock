@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-F08197B3E2311E95'
+
+[[package]]
+name = 'predicate_invalid_opcodes'
+source = 'member'
+dependencies = ['core']

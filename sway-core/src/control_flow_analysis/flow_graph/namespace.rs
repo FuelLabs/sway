@@ -6,6 +6,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
+use sway_types::IdentUnique;
 
 #[derive(Default, Clone)]
 /// Represents a single entry in the [ControlFlowNamespace]'s function namespace. Contains various
@@ -31,8 +32,8 @@ pub(crate) struct StructNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<Ident, FunctionNamespaceEntry>,
-    pub(crate) enum_namespace: HashMap<Ident, (NodeIndex, HashMap<Ident, NodeIndex>)>,
+    pub(crate) function_namespace: HashMap<IdentUnique, FunctionNamespaceEntry>,
+    pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
     pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
     pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
@@ -45,9 +46,11 @@ pub struct ControlFlowNamespace {
 
 impl ControlFlowNamespace {
     pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
-        self.function_namespace.get(ident)
+        let ident: IdentUnique = ident.into();
+        self.function_namespace.get(&ident)
     }
     pub(crate) fn insert_function(&mut self, ident: Ident, entry: FunctionNamespaceEntry) {
+        let ident: IdentUnique = ident.into();
         self.function_namespace.insert(ident, entry);
     }
     pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
@@ -58,7 +61,7 @@ impl ControlFlowNamespace {
     }
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
         self.enum_namespace
-            .insert(enum_name, (enum_decl_index, HashMap::new()));
+            .insert(enum_name.into(), (enum_decl_index, HashMap::new()));
     }
     pub(crate) fn insert_enum_variant(
         &mut self,
@@ -67,7 +70,7 @@ impl ControlFlowNamespace {
         variant_name: Ident,
         variant_index: NodeIndex,
     ) {
-        match self.enum_namespace.get_mut(&enum_name) {
+        match self.enum_namespace.get_mut(&enum_name.clone().into()) {
             Some((_ix, variants)) => {
                 variants.insert(variant_name, variant_index);
             }
@@ -78,19 +81,19 @@ impl ControlFlowNamespace {
                     map
                 };
                 self.enum_namespace
-                    .insert(enum_name, (enum_decl_index, variant_space));
+                    .insert(enum_name.into(), (enum_decl_index, variant_space));
             }
         }
     }
     pub(crate) fn find_enum(&self, enum_name: &Ident) -> Option<&NodeIndex> {
-        self.enum_namespace.get(enum_name).map(|f| &f.0)
+        self.enum_namespace.get(&enum_name.into()).map(|f| &f.0)
     }
     pub(crate) fn find_enum_variant_index(
         &self,
         enum_name: &Ident,
         variant_name: &Ident,
     ) -> Option<(NodeIndex, NodeIndex)> {
-        let (enum_ix, enum_decl) = self.enum_namespace.get(enum_name)?;
+        let (enum_ix, enum_decl) = self.enum_namespace.get(&enum_name.into())?;
         Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
@@ -100,6 +103,16 @@ impl ControlFlowNamespace {
 
     pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&NodeIndex> {
         self.trait_namespace.get(name)
+    }
+
+    pub(crate) fn find_trait_method(
+        &self,
+        trait_name: &CallPath,
+        method_name: &Ident,
+    ) -> Option<&NodeIndex> {
+        self.trait_method_namespace
+            .get(trait_name)
+            .and_then(|methods| methods.get(method_name))
     }
 
     pub(crate) fn insert_trait_methods(
@@ -129,6 +142,9 @@ impl ControlFlowNamespace {
         }
     }
 
+    pub(crate) fn get_struct(&self, ident: &Ident) -> Option<&StructNamespaceEntry> {
+        self.struct_namespace.get(ident.as_str())
+    }
     pub(crate) fn insert_struct(
         &mut self,
         struct_name: String,

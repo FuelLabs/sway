@@ -43,7 +43,7 @@ impl ty::TyAbiDeclaration {
                 errors
             );
             for param in &method.parameters {
-                if param.is_reference && param.is_mutable {
+                if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })
@@ -56,13 +56,13 @@ impl ty::TyAbiDeclaration {
         let mut new_methods = vec![];
         for method in methods.into_iter() {
             let method = check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true),
-                ty::TyFunctionDeclaration::error(method.clone()),
+                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
+                ty::TyFunctionDeclaration::error(method.clone(), ctx.type_engine),
                 warnings,
                 errors
             );
             for param in &method.parameters {
-                if param.is_reference && param.is_mutable {
+                if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })

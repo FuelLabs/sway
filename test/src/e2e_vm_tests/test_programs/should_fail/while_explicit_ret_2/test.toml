@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()This path must return a value of type "u64" from function "main", but it does not.

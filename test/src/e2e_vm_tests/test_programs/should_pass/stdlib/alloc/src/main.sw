@@ -1,6 +1,5 @@
 script;
 
-use core::num::*;
 use std::alloc::*;
 use std::intrinsics::*;
 use std::assert::assert;

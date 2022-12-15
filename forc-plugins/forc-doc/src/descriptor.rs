@@ -10,10 +10,10 @@ use sway_core::{
 };
 use sway_types::Spanned;
 
-#[derive(Eq, PartialEq, Debug)]
 // TODO: See if there's a way we can use the TyDeclarations directly
 //
 /// The type of [TyDeclaration] documented by the [Descriptor].
+#[derive(Debug)]
 pub(crate) enum DescriptorType {
     Struct(TyStructDeclaration),
     Enum(TyEnumDeclaration),
@@ -24,6 +24,7 @@ pub(crate) enum DescriptorType {
     Function(TyFunctionDeclaration),
     Const(Box<TyConstantDeclaration>),
 }
+
 impl DescriptorType {
     /// Converts the [DescriptorType] to a `&str` name for HTML file name creation.
     pub fn as_str(&self) -> &'static str {
@@ -35,13 +36,12 @@ impl DescriptorType {
             Abi(_) => "abi",
             Storage(_) => "storage",
             ImplTraitDesc(_) => "impl_trait",
-            Function(_) => "function",
-            Const(_) => "const",
+            Function(_) => "fn",
+            Const(_) => "constant",
         }
     }
 }
 
-#[derive(Eq, PartialEq)]
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
     Documentable {
@@ -52,30 +52,47 @@ pub(crate) enum Descriptor {
     },
     NonDocumentable,
 }
+
 impl Descriptor {
-    pub(crate) fn from_typed_decl(d: &TyDeclaration, module_prefix: Vec<String>) -> Result<Self> {
+    pub(crate) fn from_typed_decl(
+        ty_decl: &TyDeclaration,
+        module_prefix: Vec<String>,
+        document_private_items: bool,
+    ) -> Result<Self> {
         use TyDeclaration::*;
-        match d {
+        match ty_decl {
             StructDeclaration(ref decl_id) => {
                 let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
-                Ok(Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
-                })
+                if !document_private_items && struct_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    Ok(Descriptor::Documentable {
+                        module_prefix,
+                        desc_ty: Box::new(DescriptorType::Struct(struct_decl)),
+                    })
+                }
             }
             EnumDeclaration(ref decl_id) => {
                 let enum_decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
-                Ok(Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty: Box::new(DescriptorType::Enum(enum_decl)),
-                })
+                if !document_private_items && enum_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    Ok(Descriptor::Documentable {
+                        module_prefix,
+                        desc_ty: Box::new(DescriptorType::Enum(enum_decl)),
+                    })
+                }
             }
             TraitDeclaration(ref decl_id) => {
                 let trait_decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
-                Ok(Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty: Box::new(DescriptorType::Trait(trait_decl)),
-                })
+                if !document_private_items && trait_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    Ok(Descriptor::Documentable {
+                        module_prefix,
+                        desc_ty: Box::new(DescriptorType::Trait(trait_decl)),
+                    })
+                }
             }
             AbiDeclaration(ref decl_id) => {
                 let abi_decl = de_get_abi(decl_id.clone(), &decl_id.span())?;
@@ -100,17 +117,25 @@ impl Descriptor {
             }
             FunctionDeclaration(ref decl_id) => {
                 let fn_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
-                Ok(Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty: Box::new(DescriptorType::Function(fn_decl)),
-                })
+                if !document_private_items && fn_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    Ok(Descriptor::Documentable {
+                        module_prefix,
+                        desc_ty: Box::new(DescriptorType::Function(fn_decl)),
+                    })
+                }
             }
             ConstantDeclaration(ref decl_id) => {
                 let const_decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
-                Ok(Descriptor::Documentable {
-                    module_prefix,
-                    desc_ty: Box::new(DescriptorType::Const(Box::new(const_decl))),
-                })
+                if !document_private_items && const_decl.visibility.is_private() {
+                    Ok(Descriptor::NonDocumentable)
+                } else {
+                    Ok(Descriptor::Documentable {
+                        module_prefix,
+                        desc_ty: Box::new(DescriptorType::Const(Box::new(const_decl))),
+                    })
+                }
             }
             _ => Ok(Descriptor::NonDocumentable),
         }

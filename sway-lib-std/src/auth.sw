@@ -2,8 +2,6 @@
 library auth;
 
 use ::address::Address;
-use ::assert::assert;
-use ::b512::B512;
 use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option;

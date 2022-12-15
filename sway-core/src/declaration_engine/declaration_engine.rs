@@ -8,7 +8,11 @@ use lazy_static::lazy_static;
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
-use crate::{concurrent_slab::ConcurrentSlab, language::ty};
+use crate::{
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    language::ty,
+    PartialEqWithTypeEngine, TypeEngine,
+};
 
 use super::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper};
 
@@ -25,7 +29,10 @@ pub struct DeclarationEngine {
 
 impl fmt::Display for DeclarationEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DeclarationEngine {{\n{}\n}}", self.slab)
+        self.slab.with_slice(|elems| {
+            let list = ListDisplay { list: elems.iter() };
+            write!(f, "DeclarationEngine {{\n{}\n}}", list)
+        })
     }
 }
 
@@ -53,7 +60,11 @@ impl DeclarationEngine {
     /// duplicated computation---if the parents of a [DeclarationId] have
     /// already been found, we do not find them again.
     #[allow(clippy::map_entry)]
-    fn find_all_parents(&self, index: DeclarationId) -> Vec<DeclarationId> {
+    fn find_all_parents(
+        &self,
+        index: DeclarationId,
+        type_engine: &TypeEngine,
+    ) -> Vec<DeclarationId> {
         let parents = self.parents.read().unwrap();
         let mut acc_parents: HashMap<usize, DeclarationId> = HashMap::new();
         let mut already_checked: HashSet<usize> = HashSet::new();
@@ -67,7 +78,7 @@ impl DeclarationEngine {
                     if !acc_parents.contains_key(&**curr_parent) {
                         acc_parents.insert(**curr_parent, curr_parent.clone());
                     }
-                    if !left_to_check.contains(curr_parent) {
+                    if !left_to_check.iter().any(|x| x.eq(curr_parent, type_engine)) {
                         left_to_check.push_back(curr_parent.clone());
                     }
                 }
@@ -227,8 +238,11 @@ pub(crate) fn de_insert(declaration_wrapper: DeclarationWrapper, span: Span) -> 
     DECLARATION_ENGINE.insert(declaration_wrapper, span)
 }
 
-pub(super) fn de_find_all_parents(index: DeclarationId) -> Vec<DeclarationId> {
-    DECLARATION_ENGINE.find_all_parents(index)
+pub(super) fn de_find_all_parents(
+    index: DeclarationId,
+    type_engine: &TypeEngine,
+) -> Vec<DeclarationId> {
+    DECLARATION_ENGINE.find_all_parents(index, type_engine)
 }
 
 pub(super) fn de_register_parent(index: &DeclarationId, parent: DeclarationId) {

@@ -88,9 +88,12 @@ fn hash_array(arr: [u8; 16], algorithm: Hash) -> [u8; 32] {
 
 fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
     /*
-        An enum consists of 2 parts in the 16 byte array
-        The first 8 bytes are for the values that the enum can have
-        Idk what the second 8 bytes are for
+        Enums are encoded in the following format:
+        1. Encode the discriminant (the variant tag)
+        2. Encode the type of the enum variant
+
+        If all the variants are of type (), or unit,
+        then only the discriminant needs to be encoded.
 
         enum Test {
             A,
@@ -99,13 +102,13 @@ fn hash_enum(arr: [u8; 8], algorithm: Hash) -> [u8; 32] {
         }
 
         arr of Test::A will be
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        [0, 0, 0, 0, 0, 0, 0, 0]
 
         arr of Test::B will be
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        [0, 0, 0, 0, 0, 0, 0, 1]
 
         arr of Test::C will be
-        [0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+        [0, 0, 0, 0, 0, 0, 0, 2]
     */
     match algorithm {
         Hash::Sha256 => Sha256::digest(arr).into(),

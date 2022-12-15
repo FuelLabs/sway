@@ -75,7 +75,7 @@ impl ty::TyEnumVariant {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let initial_type_id = insert_type(variant.type_info);
+        let initial_type_id = ctx.type_engine.insert_type(variant.type_info);
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -83,7 +83,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            insert_type(TypeInfo::ErrorRecovery),
+            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

@@ -3,11 +3,11 @@ use sway_types::{integer_bits::IntegerBits, Span};
 use crate::{
     language::{ty, Literal},
     semantic_analysis::ast_node::expression::match_expression::MatchReqMap,
-    type_system::insert_type,
-    TypeInfo,
+    TypeEngine, TypeInfo,
 };
 // currently the unsafe downcast expr is only used for enums, so this method is specialized for enums
 pub(crate) fn instantiate_unsafe_downcast(
+    type_engine: &TypeEngine,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
     span: Span,
@@ -17,12 +17,12 @@ pub(crate) fn instantiate_unsafe_downcast(
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             span: exp.span.clone(),
         },
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+            return_type: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
             span: exp.span.clone(),
         },
     )];

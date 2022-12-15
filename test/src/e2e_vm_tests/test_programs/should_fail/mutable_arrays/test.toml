@@ -1,0 +1,11 @@
+category = "fail"
+
+# check: $()"b" is a bool, which is not an indexable expression.
+
+# check: $()Assignment to immutable variable. Variable my_array is not declared as mutable.
+
+# check: $()Cannot pass immutable argument to mutable parameter.
+
+# check: $()Mismatched types.
+
+# check: $()"my_array_2" is a u64, which is not an indexable expression.

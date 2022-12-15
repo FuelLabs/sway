@@ -5,6 +5,9 @@ implicit-std = false
 license = "Apache-2.0"
 name = "contract_a"
 
+[dependencies]
+std = { path = "../../../../../../../../sway-lib-std/" }
+
 [contract-dependencies]
-contract_b = { path = "../contract_b" }
+contract_b = { path = "../contract_b", salt = "0x11111111111111111111111111111111111111111111111111111111111111111" }
 contract_c = { path = "../contract_c" }

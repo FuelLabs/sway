@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     language::ty,
     type_system::TypeId,
-    CompileResult,
+    CompileResult, TypeEngine,
 };
 
 use super::{
@@ -198,6 +198,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
+    type_engine: &TypeEngine,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
@@ -207,7 +208,7 @@ pub(crate) fn check_match_expression_usefulness(
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
     let factory = check!(
-        ConstructorFactory::new(type_id, &span),
+        ConstructorFactory::new(type_engine, type_id, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -221,7 +222,7 @@ pub(crate) fn check_match_expression_usefulness(
         );
         let v = PatStack::from_pattern(pat);
         let witness_report = check!(
-            is_useful(&factory, &matrix, &v, &span),
+            is_useful(type_engine, &factory, &matrix, &v, &span),
             return err(warnings, errors),
             warnings,
             errors
@@ -235,7 +236,7 @@ pub(crate) fn check_match_expression_usefulness(
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(
-        is_useful(&factory, &matrix, &v, &span),
+        is_useful(type_engine, &factory, &matrix, &v, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -258,6 +259,7 @@ pub(crate) fn check_match_expression_usefulness(
 /// pattern, or-pattern, or constructed pattern we do something different. Each
 /// case returns a witness report that we propogate through the recursive steps.
 fn is_useful(
+    type_engine: &TypeEngine,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -282,19 +284,19 @@ fn is_useful(
             );
             let witness_report = match c {
                 Pattern::Wildcard => check!(
-                    is_useful_wildcard(factory, p, q, span),
+                    is_useful_wildcard(type_engine, factory, p, q, span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
                 Pattern::Or(pats) => check!(
-                    is_useful_or(factory, p, q, pats, span),
+                    is_useful_or(type_engine, factory, p, q, pats, span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
                 c => check!(
-                    is_useful_constructed(factory, p, q, c, span),
+                    is_useful_constructed(type_engine, factory, p, q, c, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -343,6 +345,7 @@ fn is_useful(
 ///     5. Add this new pattern to the resulting witness report
 ///     6. Return the witness report
 fn is_useful_wildcard(
+    type_engine: &TypeEngine,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -362,7 +365,7 @@ fn is_useful_wildcard(
 
     // 2. Determine if Σ is a complete signature.
     let is_complete_signature = check!(
-        factory.is_complete_signature(&sigma, span),
+        factory.is_complete_signature(type_engine, &sigma, span),
         return err(warnings, errors),
         warnings,
         errors
@@ -399,7 +402,7 @@ fn is_useful_wildcard(
 
             //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
             let wr = check!(
-                is_useful(factory, &s_c_k_p, &s_c_k_q, span),
+                is_useful(type_engine, factory, &s_c_k_p, &s_c_k_q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -482,7 +485,7 @@ fn is_useful_wildcard(
 
         //     4.3. Recursively compute *U(D(P), q')*.
         let mut witness_report = check!(
-            is_useful(factory, &d_p, &q_rest, span),
+            is_useful(type_engine, factory, &d_p, &q_rest, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -493,7 +496,7 @@ fn is_useful_wildcard(
             Pattern::Wildcard
         } else {
             check!(
-                factory.create_pattern_not_present(sigma, span),
+                factory.create_pattern_not_present(type_engine, sigma, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -529,6 +532,7 @@ fn is_useful_wildcard(
 /// 2. Extract the specialized `Matrix` *S(c, q)*
 /// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
+    type_engine: &TypeEngine,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -574,7 +578,7 @@ fn is_useful_constructed(
     );
 
     // 3. Recursively compute *U(S(c, P), S(c, q))*
-    is_useful(factory, &s_c_p, &s_c_q, span)
+    is_useful(type_engine, factory, &s_c_p, &s_c_q, span)
 }
 
 /// Computes a witness report from *U(P, q)* when *q* is an or-pattern
@@ -589,6 +593,7 @@ fn is_useful_constructed(
 /// 2. Compute the witnesses from *U(P, q')*
 /// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
+    type_engine: &TypeEngine,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -612,7 +617,7 @@ fn is_useful_or(
 
         // 2. Compute the witnesses from *U(P, q')*
         let wr = check!(
-            is_useful(factory, &p, &v, span),
+            is_useful(type_engine, factory, &p, &v, span),
             return err(warnings, errors),
             warnings,
             errors
