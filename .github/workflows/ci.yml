@@ -341,6 +341,20 @@ jobs:
           command: udeps
           args: --locked --all-targets
 
+  cargo-package-workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - uses: actions-rs/cargo@v1
+        with:
+          command: package
+          args: --locked
+
   notify-slack-on-failure:
     needs:
       [
