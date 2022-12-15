@@ -9,7 +9,7 @@ use crate::{
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
-    traverse,
+    traverse::{dependency::Dependency, parsed_tree::ParsedTree, typed_tree::TypedTree},
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -160,15 +160,14 @@ impl Session {
             // The final element in the results is the main program.
             if i == results_len - 1 {
                 // First, populate our token_map with un-typed ast nodes.
-                self.parse_ast_to_tokens(parse_program, |an, tm| {
-                    traverse::parse_tree::traverse_node(type_engine, an, tm)
-                });
+                let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
 
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |an, tm| {
-                    traverse::typed_tree::traverse_node(type_engine, an, tm)
-                });
+
+                let typed_tree = TypedTree::new(type_engine, &self.token_map);
+                self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
 
                 self.save_parse_program(parse_program.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
@@ -177,15 +176,14 @@ impl Session {
                     capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
-                self.parse_ast_to_tokens(
-                    parse_program,
-                    traverse::dependency::collect_parsed_declaration,
-                );
+                let dependency = Dependency::new(&self.token_map);
+                self.parse_ast_to_tokens(parse_program, |an| {
+                    dependency.collect_parsed_declaration(an)
+                });
 
-                self.parse_ast_to_typed_tokens(
-                    typed_program,
-                    traverse::dependency::collect_typed_declaration,
-                );
+                self.parse_ast_to_typed_tokens(typed_program, |an| {
+                    dependency.collect_typed_declaration(an)
+                });
             }
         }
         Ok(diagnostics)
@@ -291,7 +289,7 @@ impl Session {
     }
 
     /// Parse the [ParseProgram] AST to populate the [TokenMap] with parsed AST nodes.
-    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode, &TokenMap)) {
+    fn parse_ast_to_tokens(&self, parse_program: &ParseProgram, f: impl Fn(&AstNode)) {
         let root_nodes = parse_program.root.tree.root_nodes.iter();
         let sub_nodes = parse_program
             .root
@@ -299,17 +297,11 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.tree.root_nodes);
 
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node, &self.token_map));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode, &TokenMap),
-    ) {
+    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
         let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root
@@ -317,9 +309,7 @@ impl Session {
             .iter()
             .flat_map(|(_, submodule)| &submodule.module.all_nodes);
 
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node, &self.token_map));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Get a reference to the [ParseProgram] AST.
