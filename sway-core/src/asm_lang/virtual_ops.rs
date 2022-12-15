@@ -882,7 +882,7 @@ impl VirtualOp {
                 VirtualImmediate24::new(
                     *offset_map
                         .get(&(i.value as u64))
-                        .expect("new offset should be valid") as u64,
+                        .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
@@ -893,7 +893,7 @@ impl VirtualOp {
                 VirtualImmediate12::new(
                     *offset_map
                         .get(&(i.value as u64))
-                        .expect("new offset should be valid") as u64,
+                        .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
@@ -903,7 +903,7 @@ impl VirtualOp {
                 VirtualImmediate18::new(
                     *offset_map
                         .get(&(i.value as u64))
-                        .expect("new offset should be valid") as u64,
+                        .expect("new offset should be valid"),
                     crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
                 )
                 .unwrap(),
