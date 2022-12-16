@@ -23,9 +23,15 @@ pub struct Command {
     /// Adding this flag creates an empty workspace.
     #[clap(long)]
     pub workspace: bool,
-    /// Set the package name. Defaults to the directory name
+    /// Set the package name. Defaults to the directory name.
     #[clap(long)]
     pub name: Option<String>,
+    /// The path at which the standard library is located.
+    /// Does not override the std dependency if missing.
+    /// If the path is relative, forc makes it relative w.r.t. the project directory.
+    /// If the path is absolute, forc uses it as is.
+    #[clap(long)]
+    pub stdlib: Option<String>,
     /// The path at which the project directory will be created.
     pub path: String,
 }
@@ -41,6 +47,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         library,
         workspace,
         name,
+        stdlib,
         path,
     } = command;
 
@@ -77,6 +84,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         predicate,
         library,
         workspace,
+        stdlib,
         name,
     };
 

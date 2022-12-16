@@ -1,7 +1,15 @@
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
-pub(crate) fn default_pkg_manifest(project_name: &str, entry_type: &str) -> String {
+pub(crate) fn default_pkg_manifest(
+    project_name: &str,
+    entry_type: &str,
+    stdlib: &Option<String>,
+) -> String {
     let author = get_author();
+    let stdlib_override = match stdlib {
+        Some(stdlib) => format!("std = {{ path = \"{stdlib}\" }}\n"),
+        None => String::new(),
+    };
 
     format!(
         r#"[project]
@@ -11,7 +19,7 @@ license = "Apache-2.0"
 name = "{project_name}"
 
 [dependencies]
-"#
+{stdlib_override}"#
     )
 }
 
@@ -82,8 +90,12 @@ fn parse_default_pkg_manifest() {
     use sway_utils::constants::MAIN_ENTRY;
     tracing::info!(
         "{:#?}",
-        toml::from_str::<forc_pkg::PackageManifest>(&default_pkg_manifest("test_proj", MAIN_ENTRY))
-            .unwrap()
+        toml::from_str::<forc_pkg::PackageManifest>(&default_pkg_manifest(
+            "test_proj",
+            MAIN_ENTRY,
+            &None
+        ))
+        .unwrap()
     )
 }
 #[test]

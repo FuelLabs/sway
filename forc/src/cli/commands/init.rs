@@ -23,6 +23,12 @@ pub struct Command {
     /// Adding this flag creates an empty workspace.
     #[clap(long)]
     pub workspace: bool,
+    /// The path at which the standard library is located.
+    /// Does not override the std dependency if missing.
+    /// If the path is relative, forc makes it relative w.r.t. the project directory.
+    /// If the path is absolute, forc uses it as is.
+    #[clap(long)]
+    pub stdlib: Option<String>,
     /// Set the package name. Defaults to the directory name
     #[clap(long)]
     pub name: Option<String>,

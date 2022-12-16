@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use forc_util::validate_name;
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use sway_utils::constants;
 use tracing::{debug, info};
 
@@ -94,6 +94,20 @@ pub fn init(command: InitCommand) -> Result<()> {
         ),
     };
 
+    let stdlib_dir_path: Option<String> = match &command.stdlib {
+        Some(stdlib) => {
+            let stdlib_path = PathBuf::from(stdlib);
+            if !stdlib_path.is_dir() {
+                anyhow::bail!(
+                        "Directory \"{}\" does not exist. Please pick an existing Sway stdlib directory.",
+                        stdlib_path.display()
+                    )
+            }
+            Some(relativized_stdlib_path(&stdlib_path, &project_dir))
+        }
+        None => None,
+    };
+
     // Make a new directory for the project
     let dir_to_create = match init_type {
         InitType::Package(_) => project_dir.join("src"),
@@ -109,11 +123,11 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
         InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
+            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY, &stdlib_dir_path),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY),
+            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY, &stdlib_dir_path),
         )?,
     }
 
@@ -165,4 +179,39 @@ pub fn init(command: InitCommand) -> Result<()> {
     print_welcome_message();
 
     Ok(())
+}
+
+// If the path user specified is relative, make it relative w.r.t the project directory.
+// If the path is absolute, use it as is.
+pub fn relativized_stdlib_path(stdlib_path: &Path, project_dir: &Path) -> String {
+    let relativized_path = if stdlib_path.is_relative() {
+        // compute the new stdlib path:
+        // - remove the common prefix from both paths (and work with the suffixes next)
+        // - add .. for each subdirectory of the project root path suffix
+        // - join to it the stdlib suffix
+        let stdlib_path = stdlib_path.canonicalize().unwrap();
+        let mut stdlib_comps = stdlib_path.components().peekable();
+        let project_dir = project_dir.canonicalize().unwrap();
+        let mut project_dir_comps = project_dir.components().peekable();
+
+        // skip the common prefix
+        while let (Some(s), Some(p)) = (stdlib_comps.peek(), project_dir_comps.peek()) {
+            if *s != *p {
+                break;
+            } else {
+                stdlib_comps.next();
+                project_dir_comps.next();
+            }
+        }
+        // get the stdlib suffix
+        let stdlib_suff: PathBuf = stdlib_comps.collect();
+
+        // - add .. for each subdirectory of the project root path suffix
+        let proj_dir_suff: PathBuf = project_dir_comps.map(|_| Component::ParentDir).collect();
+
+        proj_dir_suff.join(stdlib_suff)
+    } else {
+        stdlib_path.to_path_buf()
+    };
+    relativized_path.to_str().unwrap().to_string()
 }
