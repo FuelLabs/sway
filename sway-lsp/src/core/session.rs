@@ -265,16 +265,13 @@ impl Session {
                 path: uri.path().to_string(),
             }
         })?;
-
         let mut file =
             File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
                 err: err.to_string(),
             })?;
-
         writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
             err: err.to_string(),
         })?;
-
         Ok(())
     }
 
