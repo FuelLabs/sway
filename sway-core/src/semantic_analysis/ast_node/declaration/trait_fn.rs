@@ -87,6 +87,7 @@ impl ty::TyTraitFn {
             name: self.name.clone(),
             body: ty::TyCodeBlock { contents: vec![] },
             parameters: self.parameters.clone(),
+            implementing_type: None,
             span: self.name.span(),
             attributes: self.attributes.clone(),
             return_type: self.return_type,

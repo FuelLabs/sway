@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{bail, Result};
 use clap::Parser;
 use cli::Command;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
@@ -24,6 +24,7 @@ use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
 pub fn main() -> Result<()> {
     let Command {
         manifest_path,
+        document_private_items,
         open: open_result,
         offline,
         silent,
@@ -62,8 +63,12 @@ pub fn main() -> Result<()> {
     let compilation = pkg::check(&plan, silent, engines)?
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector");
-    let raw_docs: Documentation =
-        Document::from_ty_program(&declaration_engine, &compilation, no_deps)?;
+    let raw_docs: Documentation = Document::from_ty_program(
+        &declaration_engine,
+        &compilation,
+        no_deps,
+        document_private_items,
+    )?;
     // render docs to HTML
     let rendered_docs: RenderedDocumentation =
         RenderedDocument::from_raw_docs(&raw_docs, project_name);
@@ -86,11 +91,11 @@ pub fn main() -> Result<()> {
     fs::create_dir_all(&assets_path)?;
     for file in ASSETS_DIR.files() {
         let asset_path = assets_path.join(file.path());
-        fs::write(&asset_path, file.contents())?;
+        fs::write(asset_path, file.contents())?;
     }
     // Sway syntax highlighting file
     const SWAY_HJS_FILENAME: &str = "sway.js";
-    let sway_hjs = std::include_bytes!("../../../scripts/highlightjs/sway.js");
+    let sway_hjs = std::include_bytes!("assets/sway.js");
     fs::write(assets_path.join(SWAY_HJS_FILENAME), sway_hjs)?;
 
     // check if the user wants to open the doc in the browser

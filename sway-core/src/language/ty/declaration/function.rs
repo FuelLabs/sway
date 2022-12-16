@@ -17,6 +17,7 @@ pub struct TyFunctionDeclaration {
     pub name: Ident,
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
+    pub implementing_type: Option<TyDeclaration>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
     pub return_type: TypeId,
@@ -177,6 +178,10 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
 }
 
 impl TyFunctionDeclaration {
+    pub(crate) fn set_implementing_type(&mut self, decl: TyDeclaration) {
+        self.implementing_type = Some(decl);
+    }
+
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
     pub(crate) fn error(
@@ -201,6 +206,7 @@ impl TyFunctionDeclaration {
             body: TyCodeBlock {
                 contents: Default::default(),
             },
+            implementing_type: None,
             span,
             attributes: Default::default(),
             is_contract_call: false,

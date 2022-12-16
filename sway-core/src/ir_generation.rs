@@ -31,6 +31,7 @@ pub fn compile_program(
         kind,
         root,
         logged_types,
+        messages_types,
         declarations,
         ..
     } = program;
@@ -38,6 +39,11 @@ pub fn compile_program(
     let logged_types = logged_types
         .iter()
         .map(|(log_id, type_id)| (*type_id, *log_id))
+        .collect();
+
+    let messages_types = messages_types
+        .iter()
+        .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
     let mut ctx = Context::default();
@@ -51,6 +57,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
+            &messages_types,
             &test_fns,
         ),
         ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
@@ -60,6 +67,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
+            &messages_types,
             &test_fns,
         ),
         ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
@@ -68,6 +76,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
+            &messages_types,
             &test_fns,
             engines,
         ),
@@ -77,6 +86,7 @@ pub fn compile_program(
             &root.namespace,
             declarations,
             &logged_types,
+            &messages_types,
             &test_fns,
         ),
     }?;

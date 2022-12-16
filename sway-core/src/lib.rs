@@ -223,6 +223,13 @@ pub fn parsed_to_ast(
             _ => None,
         }));
 
+    typed_program
+        .messages_types
+        .extend(types_metadata.iter().filter_map(|m| match m {
+            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+            _ => None,
+        }));
+
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(
         engines,
@@ -279,6 +286,8 @@ pub fn parsed_to_ast(
         }
         _ => None,
     }));
+
+    // Check if a non-test function calls `#[test]` function.
 
     ok(
         typed_program_with_storage_slots,
@@ -721,7 +730,7 @@ fn module_dead_code_analysis(
                 module_dead_code_analysis(engines, &submodule.module, &tree_type, graph)
             })
         });
-    submodules_res.flat_map(|()| {
+    let res = submodules_res.flat_map(|()| {
         ControlFlowGraph::append_module_to_dead_code_graph(
             engines,
             &module.all_nodes,
@@ -730,7 +739,9 @@ fn module_dead_code_analysis(
         )
         .map(|_| ok((), vec![], vec![]))
         .unwrap_or_else(|error| err(vec![], vec![error]))
-    })
+    });
+    graph.connect_pending_entry_edges();
+    res
 }
 
 fn return_path_analysis(engines: Engines<'_>, program: &ty::TyProgram) -> Vec<CompileError> {

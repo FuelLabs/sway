@@ -1,4 +1,4 @@
-use crate::engine_threading::Engines;
+use crate::{engine_threading::Engines, language::ty};
 
 use super::DeclMapping;
 
@@ -10,4 +10,12 @@ pub(crate) trait ReplaceDecls {
             self.replace_decls_inner(decl_mapping, engines);
         }
     }
+}
+
+pub(crate) trait ReplaceFunctionImplementingType {
+    fn replace_implementing_type(
+        &mut self,
+        engines: Engines<'_>,
+        implementing_type: ty::TyDeclaration,
+    );
 }

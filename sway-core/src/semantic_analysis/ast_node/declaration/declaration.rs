@@ -134,7 +134,7 @@ impl ty::TyDeclaration {
                     span,
                 };
                 let typed_const_decl = ty::TyDeclaration::ConstantDeclaration(
-                    ctx.declaration_engine.insert_constant(decl),
+                    declaration_engine.insert_constant(decl),
                 );
                 ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                 typed_const_decl
@@ -148,9 +148,8 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = enum_decl.name.clone();
-                let decl = ty::TyDeclaration::EnumDeclaration(
-                    ctx.declaration_engine.insert_enum(enum_decl),
-                );
+                let decl =
+                    ty::TyDeclaration::EnumDeclaration(declaration_engine.insert_enum(enum_decl));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -172,28 +171,32 @@ impl ty::TyDeclaration {
                 );
                 let name = fn_decl.name.clone();
                 let decl = ty::TyDeclaration::FunctionDeclaration(
-                    ctx.declaration_engine.insert_function(fn_decl),
+                    declaration_engine.insert_function(fn_decl),
                 );
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
             parsed::Declaration::TraitDeclaration(trait_decl) => {
                 let span = trait_decl.span.clone();
-                let trait_decl = check!(
+                let mut trait_decl = check!(
                     ty::TyTraitDeclaration::type_check(ctx.by_ref(), trait_decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
                 let name = trait_decl.name.clone();
-                let decl_id = ctx.declaration_engine.insert_trait(trait_decl);
+                let decl_id = declaration_engine.insert_trait(trait_decl);
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+                trait_decl
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
             parsed::Declaration::ImplTrait(impl_trait) => {
                 let span = impl_trait.block_span.clone();
-                let impl_trait = check!(
+                let mut impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_trait(ctx.by_ref(), impl_trait),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -213,11 +216,18 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::ImplTrait(ctx.declaration_engine.insert_impl_trait(impl_trait))
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait(
+                    declaration_engine.insert_impl_trait(impl_trait.clone()),
+                );
+                impl_trait
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait_decl
             }
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
-                let impl_trait = check!(
+                let mut impl_trait = check!(
                     ty::TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
@@ -237,7 +247,14 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::ImplTrait(ctx.declaration_engine.insert_impl_trait(impl_trait))
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait(
+                    declaration_engine.insert_impl_trait(impl_trait.clone()),
+                );
+                impl_trait
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait_decl
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
@@ -248,7 +265,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = decl.name.clone();
-                let decl_id = ctx.declaration_engine.insert_struct(decl);
+                let decl_id = declaration_engine.insert_struct(decl);
                 let decl = ty::TyDeclaration::StructDeclaration(decl_id);
                 // insert the struct decl into namespace
                 check!(
@@ -261,15 +278,20 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::AbiDeclaration(abi_decl) => {
                 let span = abi_decl.span.clone();
-                let abi_decl = check!(
+                let mut abi_decl = check!(
                     ty::TyAbiDeclaration::type_check(ctx.by_ref(), abi_decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl =
-                    ty::TyDeclaration::AbiDeclaration(ctx.declaration_engine.insert_abi(abi_decl));
+                let decl = ty::TyDeclaration::AbiDeclaration(
+                    declaration_engine.insert_abi(abi_decl.clone()),
+                );
+                abi_decl
+                    .methods
+                    .iter_mut()
+                    .for_each(|method| method.replace_implementing_type(decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -318,7 +340,7 @@ impl ty::TyDeclaration {
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_id = ctx.declaration_engine.insert_storage(decl);
+                let decl_id = declaration_engine.insert_storage(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 

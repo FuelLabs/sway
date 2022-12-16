@@ -10,7 +10,7 @@ use crate::{
     ReplaceSelfType, TypeId,
 };
 
-use super::{DeclMapping, ReplaceDecls};
+use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
@@ -102,6 +102,27 @@ impl ReplaceDecls for DeclarationWrapper {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         if let DeclarationWrapper::Function(decl) = self {
             decl.replace_decls(decl_mapping, engines);
+        }
+    }
+}
+
+impl ReplaceFunctionImplementingType for DeclarationWrapper {
+    fn replace_implementing_type(
+        &mut self,
+        engines: Engines<'_>,
+        implementing_type: ty::TyDeclaration,
+    ) {
+        match self {
+            DeclarationWrapper::Function(decl) => decl.set_implementing_type(implementing_type),
+            DeclarationWrapper::Unknown
+            | DeclarationWrapper::Trait(_)
+            | DeclarationWrapper::TraitFn(_)
+            | DeclarationWrapper::ImplTrait(_)
+            | DeclarationWrapper::Struct(_)
+            | DeclarationWrapper::Storage(_)
+            | DeclarationWrapper::Abi(_)
+            | DeclarationWrapper::Constant(_)
+            | DeclarationWrapper::Enum(_) => {}
         }
     }
 }

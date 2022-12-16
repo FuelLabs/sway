@@ -64,7 +64,7 @@ impl Format for Expr {
                             get_field_width(fields.get(), &mut formatter.clone())?;
 
                         // changes to the actual formatter
-                        let expr_width = buf.chars().count() as usize;
+                        let expr_width = buf.chars().count();
                         formatter.shape.code_line.update_width(expr_width);
                         formatter.shape.get_line_style(
                             Some(field_width),
@@ -89,7 +89,7 @@ impl Format for Expr {
                         let mut temp_formatter = Formatter::default();
                         let tuple_descriptor = tuple_descriptor.get();
                         tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
-                        let body_width = buf.chars().count() as usize;
+                        let body_width = buf.chars().count();
 
                         formatter.shape.code_line.update_width(body_width);
                         formatter
@@ -123,7 +123,7 @@ impl Format for Expr {
                         let mut temp_formatter = Formatter::default();
                         let array_descriptor = array_descriptor.get();
                         array_descriptor.format(&mut buf, &mut temp_formatter)?;
-                        let body_width = buf.chars().count() as usize;
+                        let body_width = buf.chars().count();
 
                         formatter.shape.code_line.add_width(body_width);
                         formatter
@@ -242,7 +242,7 @@ impl Format for Expr {
                         }
 
                         // changes to the actual formatter
-                        let expr_width = buf.chars().count() as usize;
+                        let expr_width = buf.chars().count();
                         formatter.shape.code_line.add_width(expr_width);
                         formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
                         formatter.shape.get_line_style(
@@ -682,14 +682,14 @@ fn get_field_width(
     let mut largest_field: usize = 0;
     let mut body_width: usize = 3; // this is taking into account the opening brace, the following space and the ending brace.
     for (field, comma_token) in &fields.value_separator_pairs {
-        let mut field_length = field.field_name.as_str().chars().count() as usize;
+        let mut field_length = field.field_name.as_str().chars().count();
         if let Some((colon_token, expr)) = &field.expr_opt {
             let mut buf = String::new();
             write!(buf, "{} ", colon_token.span().as_str())?;
             expr.format(&mut buf, formatter)?;
-            field_length += buf.chars().count() as usize;
+            field_length += buf.chars().count();
         }
-        field_length += comma_token.span().as_str().chars().count() as usize;
+        field_length += comma_token.span().as_str().chars().count();
         body_width += &field_length + 1; // accounting for the following space
 
         if field_length > largest_field {
@@ -697,12 +697,12 @@ fn get_field_width(
         }
     }
     if let Some(final_value) = &fields.final_value_opt {
-        let mut field_length = final_value.field_name.as_str().chars().count() as usize;
+        let mut field_length = final_value.field_name.as_str().chars().count();
         if let Some((colon_token, expr)) = &final_value.expr_opt {
             let mut buf = String::new();
             write!(buf, "{} ", colon_token.span().as_str())?;
             expr.format(&mut buf, formatter)?;
-            field_length += buf.chars().count() as usize;
+            field_length += buf.chars().count();
         }
         body_width += &field_length + 1; // accounting for the following space
 

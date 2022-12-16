@@ -48,12 +48,18 @@ impl Document {
         declaration_engine: &DeclarationEngine,
         compilation: &CompileResult<(ParseProgram, Option<TyProgram>)>,
         no_deps: bool,
+        document_private_items: bool,
     ) -> Result<Documentation> {
         let mut docs: Documentation = Default::default();
         if let Some((_, Some(typed_program))) = &compilation.value {
             for ast_node in &typed_program.root.all_nodes {
                 if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
-                    let desc = Descriptor::from_typed_decl(declaration_engine, decl, vec![])?;
+                    let desc = Descriptor::from_typed_decl(
+                        declaration_engine,
+                        decl,
+                        vec![],
+                        document_private_items,
+                    )?;
 
                     if let Descriptor::Documentable {
                         module_prefix,
@@ -77,6 +83,7 @@ impl Document {
                         typed_submodule,
                         &mut docs,
                         &module_prefix,
+                        document_private_items,
                     )?;
                 }
             }
@@ -89,6 +96,7 @@ impl Document {
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &[String],
+        document_private_items: bool,
     ) -> Result<()> {
         let mut new_submodule_prefix = module_prefix.to_owned();
         new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
@@ -98,6 +106,7 @@ impl Document {
                     declaration_engine,
                     decl,
                     new_submodule_prefix.clone(),
+                    document_private_items,
                 )?;
 
                 if let Descriptor::Documentable {
@@ -119,6 +128,7 @@ impl Document {
                 submodule,
                 docs,
                 &new_submodule_prefix,
+                document_private_items,
             )?;
         }
 

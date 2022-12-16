@@ -2,11 +2,12 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     engine_threading::*,
+    language::ty,
     type_system::{CopyTypes, TypeMapping},
     ReplaceSelfType, TypeId,
 };
 
-use super::{DeclMapping, DeclarationEngine, ReplaceDecls};
+use super::{DeclMapping, DeclarationEngine, ReplaceDecls, ReplaceFunctionImplementingType};
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
 #[derive(Debug)]
@@ -83,6 +84,19 @@ impl ReplaceDecls for DeclarationId {
                 return;
             }
         }
+    }
+}
+
+impl ReplaceFunctionImplementingType for DeclarationId {
+    fn replace_implementing_type(
+        &mut self,
+        engines: Engines<'_>,
+        implementing_type: ty::TyDeclaration,
+    ) {
+        let declaration_engine = engines.de();
+        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        decl.replace_implementing_type(engines, implementing_type);
+        declaration_engine.replace_decl_id(self.clone(), decl);
     }
 }
 

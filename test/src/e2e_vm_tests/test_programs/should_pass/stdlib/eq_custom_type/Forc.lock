@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-33945E385D757681'
+
+[[package]]
+name = 'eq_custom_type'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-33945E385D757681'
+dependencies = ['core']
