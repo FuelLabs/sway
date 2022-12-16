@@ -30,4 +30,4 @@ mod storage_vec;
 mod token_ops;
 mod tx_fields;
 mod vec_in_abi;
-//mod low_level_call;
+mod low_level_call;
