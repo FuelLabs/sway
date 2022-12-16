@@ -52,11 +52,11 @@ pub use engine_threading::Engines;
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
-///     let result = parse(input.into(), &<_>::default(), None);
+///     let result = parse(input.into(), <_>::default(), None);
 /// # }
 /// ```
 ///
