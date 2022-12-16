@@ -249,7 +249,7 @@ async fn can_get_tx_input_coin_owner() {
 
     let owner_result = contract_instance
         .methods() // @review "InputNotFound" !
-        .get_input_owner(1)
+        .get_tx_input_coin_owner(1)
         .call()
         .await
         .unwrap();
@@ -262,7 +262,7 @@ async fn can_get_tx_output_type() {
     let (contract_instance, _, _) = get_contracts().await;
     let result = contract_instance
         .methods()
-        .get_output_type(0)
+        .get_tx_output_type(0)
         .call()
         .await
         .unwrap();
@@ -270,7 +270,7 @@ async fn can_get_tx_output_type() {
 
     let result = contract_instance
         .methods()
-        .get_output_type(1)
+        .get_tx_output_type(1)
         .call()
         .await
         .unwrap();
