@@ -33,6 +33,10 @@ pub enum DocumentError {
     ManifestsLockPathFailed { dir: String },
     #[error("Document is already stored at {:?}", path)]
     DocumentAlreadyStored { path: String },
+    #[error("File wasn't able to be created: {:?}", err)]
+    UnableToCreateFile { err: String },
+    #[error("Unable to write string to file: {:?}", err)]
+    UnableToWriteFile { err: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
