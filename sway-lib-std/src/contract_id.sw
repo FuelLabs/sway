@@ -3,7 +3,6 @@ library contract_id;
 use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::From;
-use ::intrinsics::size_of_val;
 use ::option::Option;
 use ::packable::Packable;
 
