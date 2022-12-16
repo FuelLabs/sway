@@ -887,8 +887,8 @@ fn type_check_trait_implementation(
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
             span: block_span.clone(),
             missing_functions: method_checklist
-                .into_iter()
-                .map(|(ident, _)| ident.as_str().to_string())
+                .into_keys()
+                .map(|ident| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });
