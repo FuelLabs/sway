@@ -20,7 +20,7 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
             Some(1),             /* Single wallet */
-            Some(1),             /* Single coin (UTXO) */
+            Some(1),               /* Single coin (UTXO) */
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,

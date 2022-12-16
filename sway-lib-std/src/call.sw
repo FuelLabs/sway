@@ -3,8 +3,6 @@ library call;
 use ::bytes::Bytes;
 use ::revert::require;
 use ::contract_id::ContractId;
-use ::assert::assert;
-use ::logging::log;
 
 pub fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     // Artificially create target bytes with capacity and len
@@ -18,13 +16,12 @@ pub fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 
 
     // TEMP DEBUG -----
-    // Do conversion in reverse to check that it works... 
+    // Do conversion in reverse to check that we get the same value back... 
     let contract_id_from_bytes = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
     asm(r1: target_bytes.buf.ptr, r2: contract_id_from_bytes){
         mcpi r2 r1 i32;
     };
-    assert(contract_id_from_bytes == contract_id);
-    log(contract_id_from_bytes);
+    require(contract_id_from_bytes == contract_id, "Bug in contract to bytes cast");
     // -----------------
 
     target_bytes
