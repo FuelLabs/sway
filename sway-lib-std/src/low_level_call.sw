@@ -18,12 +18,12 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
-fn memory_address_as_bytes<T>(ref_type: T) -> Bytes {
+fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 
     let mut bytes = Bytes::with_capacity(8);
     bytes.len = 8;
 
-    let address_as_u64 = asm(r1: __addr_of(ref_type)) {r1: u64};
+    let address_as_u64 = asm(r1: ptr) {r1: u64};
 
     asm(r1: bytes.buf.ptr, r2: address_as_u64){
         mcpi r1 r2 i8;
@@ -58,7 +58,7 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
     let mut payload = Bytes::new()
     .join(contract_id_to_bytes(target))
     .join(function_selector)
-    .join(memory_address_as_bytes(calldata));
+    .join(ptr_as_bytes(calldata.buf.ptr));
 
     
     // TODO DEBUG
@@ -69,7 +69,6 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
         i = i + 1;
     };
     
-
     payload
 }
 
