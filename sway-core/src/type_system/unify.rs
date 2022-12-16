@@ -8,20 +8,9 @@ use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 use crate::{language::ty, type_system::*};
 
-/// Indicates the kind or purpose of unification.
-#[derive(PartialEq)]
-enum UnifierKind {
-    /// Indicates that we want to unify both arguments together.
-    UnifyBoth,
-    /// Indicates that we want to unify the right argument to match the left
-    /// argument.
-    OnlyUnifyRight,
-}
-
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
     type_engine: &'a TypeEngine,
-    kind: UnifierKind,
     arguments_are_flipped: bool,
 }
 
@@ -30,17 +19,7 @@ impl<'a> Unifier<'a> {
     pub(super) fn new(type_engine: &'a TypeEngine) -> Unifier<'a> {
         Unifier {
             type_engine,
-            kind: UnifierKind::UnifyBoth,
             arguments_are_flipped: false,
-        }
-    }
-
-    /// Takes `self` and returns a new [Unifier] with the contents of self and
-    /// a new [UnifierKind::OnlyUnifyRight].
-    pub(super) fn right(self) -> Unifier<'a> {
-        Unifier {
-            kind: UnifierKind::OnlyUnifyRight,
-            ..self
         }
     }
 
@@ -169,14 +148,8 @@ impl<'a> Unifier<'a> {
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
             (UnsignedInteger(r), UnsignedInteger(e)) => self.unify_unsigned_ints(span, r, e),
-            (Numeric, e @ UnsignedInteger(_)) => {
-                if let UnifierKind::OnlyUnifyRight = self.kind {
-                    return (vec![], vec![]);
-                }
-                self.replace_received_with_expected(
-                    received, expected, &Numeric, e, span, help_text,
-                )
-            }
+            (Numeric, e @ UnsignedInteger(_)) => self
+                .replace_received_with_expected(received, expected, &Numeric, e, span, help_text),
             (r @ UnsignedInteger(_), Numeric) => self
                 .replace_expected_with_received(received, expected, r, &Numeric, span, help_text),
 
@@ -191,9 +164,6 @@ impl<'a> Unifier<'a> {
                     abi_name: ref ean, ..
                 },
             ) if (ran == ean && rra.is_none()) || matches!(ran, AbiName::Deferred) => {
-                if let UnifierKind::OnlyUnifyRight = self.kind {
-                    return (vec![], vec![]);
-                }
                 // if one address is empty, coerce to the other one
                 self.replace_received_with_expected(
                     received,
@@ -234,14 +204,8 @@ impl<'a> Unifier<'a> {
             // they match and make the one we know nothing about reference the
             // one we may know something about.
             (Unknown, Unknown) => (vec![], vec![]),
-            (Unknown, e) => {
-                if let UnifierKind::OnlyUnifyRight = self.kind {
-                    return (vec![], vec![]);
-                }
-                self.replace_received_with_expected(
-                    received, expected, &Unknown, e, span, help_text,
-                )
-            }
+            (Unknown, e) => self
+                .replace_received_with_expected(received, expected, &Unknown, e, span, help_text),
             (r, Unknown) => self
                 .replace_expected_with_received(received, expected, r, &Unknown, span, help_text),
 
@@ -249,9 +213,6 @@ impl<'a> Unifier<'a> {
                 self.replace_expected_with_received(received, expected, r, &e, span, help_text)
             }
             (r @ Placeholder(_), e) => {
-                if let UnifierKind::OnlyUnifyRight = self.kind {
-                    return (vec![], vec![]);
-                }
                 self.replace_received_with_expected(received, expected, &r, e, span, help_text)
             }
             (r, e @ Placeholder(_)) => {
@@ -271,18 +232,11 @@ impl<'a> Unifier<'a> {
                     trait_constraints: etc,
                 },
             ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.type_engine) => {
-                match self.kind {
-                    UnifierKind::UnifyBoth => {
-                        self.type_engine.insert_unified_type(received, expected);
-                        self.type_engine.insert_unified_type(expected, received);
-                    }
-                    UnifierKind::OnlyUnifyRight => {
-                        self.type_engine.insert_unified_type(received, expected);
-                    }
-                }
+                self.type_engine.insert_unified_type(received, expected);
+                self.type_engine.insert_unified_type(expected, received);
                 (vec![], vec![])
             }
-            (r @ UnknownGeneric { .. }, e) if self.kind != UnifierKind::OnlyUnifyRight => {
+            (r @ UnknownGeneric { .. }, e) => {
                 self.type_engine.insert_unified_type(expected, received);
                 self.replace_received_with_expected(received, expected, &r, e, span, help_text)
             }
