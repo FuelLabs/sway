@@ -15,7 +15,7 @@ use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 /// * `coins` - Amount of base asset sent
 pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     let mut recipient_heap_buffer = __addr_of(recipient);
-    let mut size = 0; 
+    let mut size = 0;
 
     if !msg_data.is_empty() {
         size = msg_data.len();

@@ -12,7 +12,7 @@ abi TestFuelCoin {
     fn mint_and_send_to_address(amount: u64, to: Address);
     fn generic_mint_to(amount: u64, to: Identity);
     fn generic_transfer(amount: u64, asset_id: ContractId, to: Identity);
-    fn send_message(recipient: b256, msg_data: Bytes, coins: u64);
+    fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64);
 }
 
 impl TestFuelCoin for Contract {
@@ -52,7 +52,14 @@ impl TestFuelCoin for Contract {
         transfer(amount, asset_id, to)
     }
 
-    fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
-        send_message(recipient, msg_data, coins);
+    fn send_message(recipient: b256, msg_data: Vec<u64>, coins: u64) {
+        let mut data = Bytes::new();
+        if msg_data.len() > 0 {
+            data.push(msg_data.get(0).unwrap());
+            data.push(msg_data.get(1).unwrap());
+            data.push(msg_data.get(2).unwrap());
+        }
+
+        send_message(recipient, data, coins);
     }
 }
