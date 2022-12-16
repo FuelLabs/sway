@@ -9,7 +9,7 @@ abi CalledContract {
     fn get_value() -> u8;
 }
 
-fn main(target: ContractId) -> u8 {
+fn main(target: ContractId) -> bool {
     let mut function_selector = Bytes::new();
     let mut calldata = Bytes::new();
 
@@ -43,5 +43,7 @@ fn main(target: ContractId) -> u8 {
 
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
-    called_contract.get_value()
+    let return_value = called_contract.get_value();
+
+    return_value == 42u8
 }

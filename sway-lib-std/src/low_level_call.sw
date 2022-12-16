@@ -35,7 +35,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 
 // Call a target contract with an already-encoded payload
 fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, gas: u64) {
-    asm(r1: __addr_of(payload), r2: coins, r3: asset_id, r4: gas) {
+    asm(r1: payload.buf.ptr, r2: coins, r3: asset_id, r4: gas) {
         call r1 r2 r3 r4;
     };
     // TODO : Should return the value return from the call ? 
@@ -59,15 +59,6 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
     .join(contract_id_to_bytes(target))
     .join(function_selector)
     .join(ptr_as_bytes(calldata.buf.ptr));
-
-    
-    // TODO DEBUG
-    // Log each byte to check packing
-    let mut i = 0;
-    while i < payload.len() {
-        log(payload.get(i).unwrap());
-        i = i + 1;
-    };
     
     payload
 }

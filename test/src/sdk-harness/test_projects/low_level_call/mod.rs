@@ -83,8 +83,6 @@ async fn can_call_contract_with_generic_call() {
 
     let result = tx.call().await.unwrap();
 
-    dbg!(&result);
+    assert!(result.value);
 
-    // Display return value
-    //println!("Result: {}", result.value);
 }
