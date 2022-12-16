@@ -267,9 +267,11 @@ impl Session {
         })?;
         let mut file =
             File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
+                path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
         writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+            path: uri.path().to_string(),
             err: err.to_string(),
         })?;
         Ok(())
