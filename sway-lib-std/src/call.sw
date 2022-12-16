@@ -3,6 +3,8 @@ library call;
 use ::bytes::Bytes;
 use ::revert::require;
 use ::contract_id::ContractId;
+use ::assert::assert;
+use ::logging::log;
 
 pub fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     // Artificially create target bytes with capacity and len
@@ -10,9 +12,20 @@ pub fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes.len = 32;
 
     // Copy bytes from contract_id into the buffer of the target bytes
-    asm(r1: target_bytes.buf, r2: contract_id){
+    asm(r1: target_bytes.buf.ptr, r2: contract_id){
         mcpi r1 r2 i32;
     };
+
+
+    // TEMP DEBUG -----
+    // Do conversion in reverse to check that it works... 
+    let contract_id_from_bytes = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000);
+    asm(r1: target_bytes.buf.ptr, r2: contract_id_from_bytes){
+        mcpi r2 r1 i32;
+    };
+    assert(contract_id_from_bytes == contract_id);
+    log(contract_id_from_bytes);
+    // -----------------
 
     target_bytes
 }
@@ -28,7 +41,7 @@ pub fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, g
 
 
 // Enocode a payload from the function selection and calldata, and call the target contract
-pub fn create_payload(target:ContractId, function_selector: Bytes, calldata: Bytes, coins: u64, asset_id: ContractId, gas: u64) -> Bytes {
+pub fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes, coins: u64, asset_id: ContractId, gas: u64) -> Bytes {
 
     // packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
     /*
