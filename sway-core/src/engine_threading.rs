@@ -62,6 +62,12 @@ impl<T: DisplayWithEngines> fmt::Display for WithEngines<'_, T> {
     }
 }
 
+impl<T: DebugWithEngines> fmt::Debug for WithEngines<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.thing.fmt(f, self.engines)
+    }
+}
+
 impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.thing.hash(state, self.engines.te())
@@ -81,6 +87,16 @@ pub(crate) trait DisplayWithEngines {
 }
 
 impl<T: DisplayWithEngines> DisplayWithEngines for &T {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        (*self).fmt(f, engines)
+    }
+}
+
+pub(crate) trait DebugWithEngines {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result;
+}
+
+impl<T: DebugWithEngines> DebugWithEngines for &T {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         (*self).fmt(f, engines)
     }

@@ -109,7 +109,7 @@ impl ReplaceDecls for DeclarationWrapper {
 impl ReplaceFunctionImplementingType for DeclarationWrapper {
     fn replace_implementing_type(
         &mut self,
-        engines: Engines<'_>,
+        _engines: Engines<'_>,
         implementing_type: ty::TyDeclaration,
     ) {
         match self {

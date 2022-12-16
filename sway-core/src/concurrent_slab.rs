@@ -12,6 +12,18 @@ pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Vec<T>>,
 }
 
+impl<T> Clone for ConcurrentSlab<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        let inner = self.inner.read().unwrap();
+        Self {
+            inner: RwLock::new(inner.clone()),
+        }
+    }
+}
+
 impl<T> Default for ConcurrentSlab<T>
 where
     T: Default,

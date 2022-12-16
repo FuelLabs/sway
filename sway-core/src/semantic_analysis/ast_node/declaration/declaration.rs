@@ -2,6 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
+    declaration_engine::ReplaceFunctionImplementingType,
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -185,12 +186,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
-                let decl_id = declaration_engine.insert_trait(trait_decl);
+                let decl_id = declaration_engine.insert_trait(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
                 trait_decl
                     .methods
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(decl.clone()));
+                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -219,10 +220,9 @@ impl ty::TyDeclaration {
                 let impl_trait_decl = ty::TyDeclaration::ImplTrait(
                     declaration_engine.insert_impl_trait(impl_trait.clone()),
                 );
-                impl_trait
-                    .methods
-                    .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait.methods.iter_mut().for_each(|method| {
+                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                });
                 impl_trait_decl
             }
             parsed::Declaration::ImplSelf(impl_self) => {
@@ -250,10 +250,9 @@ impl ty::TyDeclaration {
                 let impl_trait_decl = ty::TyDeclaration::ImplTrait(
                     declaration_engine.insert_impl_trait(impl_trait.clone()),
                 );
-                impl_trait
-                    .methods
-                    .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(impl_trait_decl.clone()));
+                impl_trait.methods.iter_mut().for_each(|method| {
+                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                });
                 impl_trait_decl
             }
             parsed::Declaration::StructDeclaration(decl) => {
@@ -291,7 +290,7 @@ impl ty::TyDeclaration {
                 abi_decl
                     .methods
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(decl.clone()));
+                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }

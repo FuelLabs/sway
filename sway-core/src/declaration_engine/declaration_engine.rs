@@ -22,6 +22,16 @@ pub struct DeclarationEngine {
     parents: RwLock<HashMap<usize, Vec<DeclarationId>>>,
 }
 
+impl Clone for DeclarationEngine {
+    fn clone(&self) -> Self {
+        let parents = self.parents.read().unwrap();
+        DeclarationEngine {
+            slab: self.slab.clone(),
+            parents: RwLock::new(parents.clone()),
+        }
+    }
+}
+
 impl fmt::Display for DeclarationEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.slab.with_slice(|elems| {

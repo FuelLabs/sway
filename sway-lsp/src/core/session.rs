@@ -189,7 +189,7 @@ impl Session {
                 });
 
                 self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(engines, an)
+                    dependency.collect_typed_declaration(declaration_engine, an)
                 });
             }
         }

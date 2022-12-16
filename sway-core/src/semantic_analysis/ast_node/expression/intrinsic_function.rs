@@ -1084,6 +1084,7 @@ fn type_check_smo(
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
 
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -1111,7 +1112,7 @@ fn type_check_smo(
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
         let initial_type_info = check!(
             CompileResult::from(
                 type_engine
@@ -1122,7 +1123,7 @@ fn type_check_smo(
             warnings,
             errors
         );
-        let initial_type_id = type_engine.insert_type(initial_type_info);
+        let initial_type_id = type_engine.insert_type(declaration_engine, initial_type_info);
         let type_id = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -1130,7 +1131,7 @@ fn type_check_smo(
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -1144,7 +1145,7 @@ fn type_check_smo(
     // Type check the first argument which is the recipient address, so it has to be a `b256`.
     let mut ctx = ctx
         .by_ref()
-        .with_type_annotation(type_engine.insert_type(TypeInfo::B256));
+        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::B256));
     let recipient = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
         return err(warnings, errors),
@@ -1154,11 +1155,12 @@ fn type_check_smo(
 
     // Type check the second argument which is the data, which can be anything. If a type
     // argument is provided, make sure that it matches the type of the data.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_argument
-            .clone()
-            .map_or(type_engine.insert_type(TypeInfo::Unknown), |ta| ta.type_id),
-    );
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(type_argument.clone().map_or(
+            type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+            |ta| ta.type_id,
+        ));
     let data = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
@@ -1167,9 +1169,10 @@ fn type_check_smo(
     );
 
     // Type check the third argument which is the output index, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
     let output_index = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
         return err(warnings, errors),
@@ -1178,9 +1181,10 @@ fn type_check_smo(
     );
 
     // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
     let coins = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[3].clone()),
         return err(warnings, errors),
@@ -1196,7 +1200,7 @@ fn type_check_smo(
                 type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
                 span,
             },
-            type_engine.insert_type(TypeInfo::Tuple(vec![])),
+            type_engine.insert_type(declaration_engine, TypeInfo::Tuple(vec![])),
         ),
         warnings,
         errors,

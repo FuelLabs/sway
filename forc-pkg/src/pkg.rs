@@ -95,6 +95,7 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
+    pub declaration_engine: DeclarationEngine,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2406,6 +2407,7 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
+                declaration_engine: engines.de().clone(),
             };
             Ok((built_package, namespace))
         }

@@ -64,7 +64,7 @@ impl Descriptor {
         match ty_decl {
             StructDeclaration(ref decl_id) => {
                 let struct_decl =
-                    declaration_engine.get_get_struct(decl_id.clone(), &decl_id.span())?;
+                    declaration_engine.get_struct(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -75,8 +75,7 @@ impl Descriptor {
                 }
             }
             EnumDeclaration(ref decl_id) => {
-                let enum_decl =
-                    declaration_engine.get_get_enum(decl_id.clone(), &decl_id.span())?;
+                let enum_decl = declaration_engine.get_enum(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -87,8 +86,7 @@ impl Descriptor {
                 }
             }
             TraitDeclaration(ref decl_id) => {
-                let trait_decl =
-                    declaration_engine.get_get_trait(decl_id.clone(), &decl_id.span())?;
+                let trait_decl = declaration_engine.get_trait(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -122,8 +120,7 @@ impl Descriptor {
                 })
             }
             FunctionDeclaration(ref decl_id) => {
-                let fn_decl =
-                    declaration_engine.get_get_function(decl_id.clone(), &decl_id.span())?;
+                let fn_decl = declaration_engine.get_function(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -135,7 +132,7 @@ impl Descriptor {
             }
             ConstantDeclaration(ref decl_id) => {
                 let const_decl =
-                    declaration_engine.get_get_constant(decl_id.clone(), &decl_id.span())?;
+                    declaration_engine.get_constant(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {

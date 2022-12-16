@@ -697,10 +697,10 @@ fn perform_control_flow_analysis(
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(
-    engines: Engines<'_>,
+fn dead_code_analysis<'a>(
+    engines: Engines<'a>,
     program: &ty::TyProgram,
-) -> CompileResult<ControlFlowGraph> {
+) -> CompileResult<ControlFlowGraph<'a>> {
     let declaration_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
@@ -713,11 +713,11 @@ fn dead_code_analysis(
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
-fn module_dead_code_analysis(
-    engines: Engines<'_>,
+fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
+    engines: Engines<'eng>,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
-    graph: &mut ControlFlowGraph,
+    graph: &mut ControlFlowGraph<'cfg>,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
     let submodules_res = module
