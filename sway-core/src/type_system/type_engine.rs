@@ -553,7 +553,7 @@ impl TypeEngine {
                 elem_ty.type_id = check!(
                     self.resolve_type(
                         declaration_engine,
-                        type_id,
+                        elem_ty.type_id,
                         span,
                         enforce_type_arguments,
                         None,
