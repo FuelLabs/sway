@@ -78,13 +78,13 @@ async fn can_call_contract_with_generic_call() {
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output]);
 
-    println!("Inputs: \n{:?}\n", tx.script_call.inputs);
-    println!("Outputs: \n{:?}\n", tx.script_call.outputs);
+    // TODO : Sanity check that correct contract input is present
+    assert_eq!(tx.script_call.inputs[0].contract_id().unwrap(), &id);
 
     let result = tx.call().await.unwrap();
 
-    println!("Result: {:?}", result);
+    dbg!(&result);
 
     // Display return value
-    println!("Result: {}", result.value);
+    //println!("Result: {}", result.value);
 }
