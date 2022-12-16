@@ -1,4 +1,4 @@
-library call;
+library low_level_call;
 
 use ::bytes::Bytes;
 use ::revert::require;

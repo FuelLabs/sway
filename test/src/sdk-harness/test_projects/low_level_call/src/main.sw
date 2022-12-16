@@ -1,6 +1,6 @@
 script;
 
-use std::call::call_with_function_selector;
+use std::low_level_call::call_with_function_selector;
 use std::bytes::Bytes;
 use std::constants::BASE_ASSET_ID;
 
