@@ -164,8 +164,8 @@ impl<T, E> Result<T, E> {
     /// assert(x.unwrap_or(69) == 69);
     pub fn unwrap_or(self, default: T) -> T {
         match self {
-            Result::Ok(x) => x,
-            _ => default,
+            Result::Ok(inner_value) => inner_value,
+            Result::Err(_) => default,
         }
     }
 
