@@ -444,7 +444,7 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let decl_index = test_decl_id.map(|decl_id| *decl_id as usize);
+    let decl_index = test_decl_id.map(|decl_id| *decl_id);
     if let Some(decl_index) = decl_index {
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);
