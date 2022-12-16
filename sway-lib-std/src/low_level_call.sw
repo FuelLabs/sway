@@ -6,8 +6,10 @@ use ::contract_id::ContractId;
 use ::logging::log;
 use ::option::Option;
 
+
+// TODO : Replace with `pack` when implemented
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
-    // Artificially create target bytes with capacity and len
+
     let mut target_bytes = Bytes::with_capacity(32);
     target_bytes.len = 32;
 
@@ -53,13 +55,12 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
 
     require(function_selector.len() == 8, "function selector must be 8 bytes");
 
-    let mut payload = Bytes::new();
+    let mut payload = Bytes::new()
+    .join(contract_id_to_bytes(target))
+    .join(function_selector)
+    .join(memory_address_as_bytes(calldata));
 
-    payload = payload.join(contract_id_to_bytes(target)); 
-    payload = payload.join(function_selector);
-    payload = payload.join(memory_address_as_bytes(calldata));
-
-    /*
+    
     // TODO DEBUG
     // Log each byte to check packing
     let mut i = 0;
@@ -67,7 +68,7 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
         log(payload.get(i).unwrap());
         i = i + 1;
     };
-    */
+    
 
     payload
 }
