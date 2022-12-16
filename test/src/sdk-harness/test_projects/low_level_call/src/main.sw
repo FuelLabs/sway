@@ -10,16 +10,13 @@ abi CalledContract {
 }
 
 fn main(target: ContractId) -> u8 {
-
-
     let mut function_selector = Bytes::new();
     let mut calldata = Bytes::new();
 
     // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/fn_selector_encoding.md#function-selector-encoding=
     // function selector is calculated as the first 4 bytes of sha256("set_value(u8)"), left padded to 8 bytes
-    // : 00 00 00 00 8c  e9  59 49
-    // : 00 00 00 00 140 233 89 73
-
+    // hex : 00 00 00 00 8c  e9  59 49
+    // dec : 00 00 00 00 140 233 89 73
     function_selector.push(0u8);
     function_selector.push(0u8);
     function_selector.push(0u8);
@@ -31,8 +28,7 @@ fn main(target: ContractId) -> u8 {
 
     // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/argument_encoding.md
     // calldata is 42u8, left padded to 8 bytes
-    // : 00 00 00 00 00 00 00 2a
-    // : 00 00 00 00 00 00 00 42
+    // dec : 00 00 00 00 00 00 00 42
     calldata.push(0u8);
     calldata.push(0u8);
     calldata.push(0u8);
@@ -48,5 +44,4 @@ fn main(target: ContractId) -> u8 {
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
     called_contract.get_value()
-    
-    }
+}
