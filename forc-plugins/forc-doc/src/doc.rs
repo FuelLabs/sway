@@ -9,6 +9,7 @@ use sway_core::language::ty::{TyAstNodeContent, TyProgram, TySubmodule};
 pub(crate) type Documentation = Vec<Document>;
 /// A finalized Document ready to be rendered. We want to retain all
 /// information including spans, fields on structs, variants on enums etc.
+#[derive(Clone)]
 pub(crate) struct Document {
     pub(crate) module_prefix: Vec<String>,
     pub(crate) item_header: ItemHeader,
@@ -18,12 +19,12 @@ impl Document {
     /// Creates an HTML file name from the [Document].
     pub(crate) fn file_name(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
-        let name = match &self.item_header.ty_decl {
+        let name = match &self.item_body.ty_decl {
             StorageDeclaration(_) => None,
             _ => Some(&self.item_header.item_name),
         };
 
-        Document::create_html_file_name(self.item_header.ty_decl.doc_name(), name)
+        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
     }
     fn create_html_file_name(ty: &str, name: Option<&String>) -> String {
         match name {
@@ -108,11 +109,10 @@ impl Document {
     }
 }
 impl crate::render::Renderable for Document {
-    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
-        let item = self.clone();
+    fn render(self) -> Box<dyn RenderBox> {
         box_html! {
-            : item.item_header.render();
-            : item.item_body.render();
+            : self.item_header.render();
+            : self.item_body.render();
         }
     }
 }

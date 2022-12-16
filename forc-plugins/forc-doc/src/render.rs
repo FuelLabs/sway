@@ -9,7 +9,7 @@ use sway_lsp::utils::markdown::format_docs;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
-    fn render(&'_ self) -> Box<dyn RenderBox + '_>;
+    fn render(self) -> Box<dyn RenderBox>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -22,7 +22,7 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: &Documentation) -> Self {
+    pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
@@ -31,7 +31,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_prefix: module_prefix.clone(),
                 file_name: file_name.clone(),
-                file_contents: HTMLString::from(doc.render()),
+                file_contents: HTMLString::from(doc.clone().render()),
             });
 
             let item_name = doc.item_header.item_name.as_str().to_string();
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
                 format!("{}::{}", &doc.item_header.module, &item_name)
             };
             all_doc.0.push(AllDocItem {
-                ty_decl: doc.item_header.ty_decl.clone(),
+                ty_decl: doc.item_body.ty_decl.clone(),
                 path_str,
                 module_prefix,
                 file_name,
@@ -75,27 +75,28 @@ impl HTMLString {
 
 /// All necessary components to render the header portion of
 /// the item html doc.
+#[derive(Clone)]
 pub(crate) struct ItemHeader {
     pub(crate) module_depth: usize,
     pub(crate) module: String,
-    pub(crate) ty_decl: TyDeclaration,
+    pub(crate) friendly_name: String,
     pub(crate) item_name: String,
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
+    fn render(self) -> Box<dyn RenderBox> {
         let ItemHeader {
             module_depth,
             module,
-            ty_decl,
+            friendly_name,
             item_name,
         } = self;
 
         let location = module.to_string();
         let item_name = item_name.to_string();
-        let ty_decl = ty_decl.friendly_name().to_string();
+        let ty_decl = friendly_name;
 
-        let prefix = module_depth_to_path_prefix(*module_depth);
+        let prefix = module_depth_to_path_prefix(module_depth);
         let mut favicon = prefix.clone();
         let mut normalize = prefix.clone();
         let mut swaydoc = prefix.clone();
@@ -129,47 +130,40 @@ impl Renderable for ItemHeader {
     }
 }
 /// All necessary components to render the body portion of
-/// the item html doc.
+/// the item html doc. Many parts of the HTML body structure will be the same
+/// for each item, but things like struct fields vs trait methods will be different.
+#[derive(Clone)]
 pub(crate) struct ItemBody {
-    pub(crate) main_content: MainContent,
-    pub(crate) item_context: ItemContext,
-}
-/// The main content of an item, e.g. the name, path, codeblock & attributes.
-pub(crate) struct MainContent {
     pub(crate) module_depth: usize,
     pub(crate) ty_decl: TyDeclaration,
+    /// The item name varies depending on type.
+    /// We store it during info gathering to avoid
+    /// multiple match statements.
     pub(crate) item_name: String,
     pub(crate) code_str: String,
-    pub(crate) attrs_str: String,
+    pub(crate) attrs_opt: Option<String>,
 }
-// All rendered context of an item, e.g. all fields on a struct.
-pub(crate) struct ItemContext(pub(crate) Box<dyn RenderBox>);
 
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
+    fn render(self) -> Box<dyn RenderBox> {
         let ItemBody {
-            main_content:
-                MainContent {
-                    module_depth,
-                    ty_decl,
-                    item_name,
-                    code_str,
-                    attrs_str,
-                },
-            item_context,
-        } = self.clone();
+            module_depth,
+            ty_decl,
+            item_name,
+            code_str,
+            attrs_opt,
+        } = self;
 
         let decl_ty = ty_decl.doc_name().to_string();
         let decl_name = item_name.to_string();
         let friendly_name = ty_decl.friendly_name().to_string();
-        let item_attrs = attrs_str.to_string();
-        let mut all_path = module_depth_to_path_prefix(*module_depth);
+        let mut all_path = module_depth_to_path_prefix(module_depth);
         all_path.push_str(ALL_DOC_FILENAME);
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar(*module_depth, decl_name.clone(), all_path);
+                : sidebar(module_depth, decl_name.clone(), all_path);
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -213,7 +207,7 @@ impl Renderable for ItemBody {
                                     code { : code_str; }
                                 }
                             }
-                            @ if !item_attrs.is_empty() {
+                            @ if attrs_opt.is_some() {
                                 // expand or hide description of main code block
                                 details(class="swaydoc-toggle top-doc", open) {
                                     summary(class="hideme") {
@@ -221,11 +215,11 @@ impl Renderable for ItemBody {
                                     }
                                     // this is the description
                                     div(class="docblock") {
-                                        : Raw(item_attrs)
+                                        : Raw(attrs_opt.unwrap())
                                     }
                                 }
                             }
-                            : item_context.0;
+                            // : item_context.0;
                         }
                     }
                 }
@@ -233,6 +227,7 @@ impl Renderable for ItemBody {
         }
     }
 }
+#[derive(Clone)]
 struct AllDocItem {
     ty_decl: TyDeclaration,
     path_str: String,
@@ -243,12 +238,12 @@ struct ItemPath {
     path_literal_str: String,
     qualified_file_path: String,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct AllDoc(Vec<AllDocItem>);
 
 impl Renderable for AllDoc {
     /// crate level, all items belonging to a crate
-    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
+    fn render(self) -> Box<dyn RenderBox> {
         let AllDoc(all_doc) = self;
         // TODO: find a better way to do this
         //
@@ -261,7 +256,7 @@ impl Renderable for AllDoc {
         let mut fn_items: Vec<ItemPath> = Vec::new();
         let mut const_items: Vec<ItemPath> = Vec::new();
 
-        for doc_item in all_doc {
+        for doc_item in all_doc.clone() {
             let AllDocItem {
                 ty_decl,
                 path_str,
@@ -301,7 +296,13 @@ impl Renderable for AllDoc {
                 _ => {}
             }
         }
-        let project_name = all_doc.first().unwrap().module_prefix.first().unwrap();
+        let project_name = all_doc
+            .first()
+            .unwrap()
+            .module_prefix
+            .first()
+            .unwrap()
+            .clone();
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -464,14 +465,14 @@ pub(crate) fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
     markdown_to_html(&format_docs(&docs), &options)
 }
 /// Takes a formatted String fn and returns only the function signature.
-fn trim_fn_body(f: String) -> String {
+fn _trim_fn_body(f: String) -> String {
     match f.find('{') {
         Some(index) => f.split_at(index).0.to_string(),
         None => f,
     }
 }
 /// Creates the HTML needed for the Fields section of a Struct document.
-pub(crate) fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
+pub(crate) fn _struct_field_section(fields: Vec<TyStructField>) -> Box<dyn RenderBox> {
     box_html! {
         h2(id="fields", class="fields small-section-header") {
             : "Fields";
@@ -479,12 +480,12 @@ pub(crate) fn struct_field_section(fields: Vec<TyStructField>) -> Box<dyn Render
         }
         @ for field in fields {
             // TODO: Check for visibility of the field itself
-            : struct_field(field);
+            : _struct_field(field);
         }
     }
 }
 // make this and future kin funtions part of the renderable trait family
-fn struct_field(field: TyStructField) -> Box<dyn RenderBox> {
+fn _struct_field(field: TyStructField) -> Box<dyn RenderBox> {
     let field_name = field.name.as_str().to_string();
     let struct_field_id = format!("structfield.{}", &field_name);
     box_html! {
