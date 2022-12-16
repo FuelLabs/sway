@@ -329,7 +329,7 @@ impl Renderable for AllDoc {
                                             autocomplete="off",
                                             spellcheck="false",
                                             // TODO: Add functionality.
-                                            placeholder="Search...",
+                                            placeholder="Searchbar unimplemented, see issue #3480...",
                                             type="search"
                                         );
                                         div(id="help-button", title="help", tabindex="-1") {
@@ -425,7 +425,9 @@ fn sidebar(
 fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String {
     let mut file_path = PathBuf::new();
     for prefix in module_prefix {
-        file_path.push(prefix)
+        if prefix != &module_prefix[0] {
+            file_path.push(prefix)
+        }
     }
     file_path.push(file_name);
 
@@ -433,7 +435,7 @@ fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String
 }
 /// Create a path prefix string for navigation from the `module_depth`
 fn module_depth_to_path_prefix(module_depth: usize) -> String {
-    (0..module_depth).map(|_| "../").collect::<String>()
+    (1..module_depth).map(|_| "../").collect::<String>()
 }
 /// Creates an HTML String from an [AttributesMap]
 pub(crate) fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {

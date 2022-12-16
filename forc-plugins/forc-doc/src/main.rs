@@ -73,7 +73,9 @@ pub fn main() -> Result<()> {
             for doc in rendered_docs.0 {
                 let mut doc_path = doc_path.clone();
                 for prefix in doc.module_prefix {
-                    doc_path.push(prefix);
+                    if &prefix != project_name {
+                        doc_path.push(prefix);
+                    }
                 }
 
                 fs::create_dir_all(&doc_path)?;
