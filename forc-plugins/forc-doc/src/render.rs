@@ -87,14 +87,10 @@ impl Renderable for ItemHeader {
     fn render(self) -> Box<dyn RenderBox> {
         let ItemHeader {
             module_depth,
-            module,
+            module: location,
             friendly_name,
             item_name,
         } = self;
-
-        let location = module.to_string();
-        let item_name = item_name.to_string();
-        let ty_decl = friendly_name;
 
         let prefix = module_depth_to_path_prefix(module_depth);
         let mut favicon = prefix.clone();
@@ -115,7 +111,7 @@ impl Renderable for ItemHeader {
                     name="description",
                     content=format!(
                         "API documentation for the Sway `{}` {} in `{}`.",
-                        item_name.clone(), ty_decl, location,
+                        item_name.clone(), friendly_name, location,
                     )
                 );
                 meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name));
@@ -150,14 +146,13 @@ impl Renderable for ItemBody {
         let ItemBody {
             module_depth,
             ty_decl,
-            item_name,
+            item_name: decl_name,
             code_str,
             attrs_opt,
         } = self;
 
-        let decl_ty = ty_decl.doc_name().to_string();
-        let decl_name = item_name.to_string();
-        let friendly_name = ty_decl.friendly_name().to_string();
+        let decl_ty = ty_decl.doc_name();
+        let friendly_name = ty_decl.friendly_name();
         let mut all_path = module_depth_to_path_prefix(module_depth);
         all_path.push_str(ALL_DOC_FILENAME);
 

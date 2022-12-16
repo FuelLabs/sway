@@ -20,7 +20,7 @@ impl Descriptor {
         module_prefix: Vec<String>,
         document_private_items: bool,
     ) -> Result<Self> {
-        const CONTRACT_STORAGE: &'static str = "Contract Storage";
+        const CONTRACT_STORAGE: &str = "Contract Storage";
         let module_depth = module_prefix.len();
         let module = module_prefix.last().unwrap().to_owned(); // There will always be at least the project name
 

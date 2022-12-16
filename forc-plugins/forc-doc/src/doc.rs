@@ -38,7 +38,7 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        project_name: &String,
+        project_name: &str,
         typed_program: &TyProgram,
         no_deps: bool,
         document_private_items: bool,
@@ -49,7 +49,7 @@ impl Document {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
                     decl,
-                    vec![project_name.clone()],
+                    vec![project_name.to_owned()],
                     document_private_items,
                 )?;
 
@@ -62,7 +62,7 @@ impl Document {
         if !no_deps && !typed_program.root.submodules.is_empty() {
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
-                let module_prefix = vec![project_name.clone()];
+                let module_prefix = vec![project_name.to_owned()];
                 Document::from_ty_submodule(
                     typed_submodule,
                     &mut docs,
