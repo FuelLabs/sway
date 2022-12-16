@@ -38,7 +38,6 @@ fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, gas: 
     asm(r1: payload.buf.ptr, r2: coins, r3: asset_id, r4: gas) {
         call r1 r2 r3 r4;
     };
-    // TODO : Should return the value return from the call ? 
 }
 
 

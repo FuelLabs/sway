@@ -20,7 +20,7 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
             Some(1),             /* Single wallet */
-            Some(1),               /* Single coin (UTXO) */
+            Some(1),             /* Single coin (UTXO) */
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
@@ -78,11 +78,7 @@ async fn can_call_contract_with_generic_call() {
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output]);
 
-    // TODO : Sanity check that correct contract input is present
-    assert_eq!(tx.script_call.inputs[0].contract_id().unwrap(), &id);
-
     let result = tx.call().await.unwrap();
 
     assert!(result.value);
-
 }
