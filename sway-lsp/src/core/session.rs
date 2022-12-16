@@ -15,7 +15,7 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::manifest::ManifestFile;
-use std::{path::PathBuf, sync::Arc};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     language::{
         parsed::{AstNode, ParseProgram},
@@ -252,6 +252,29 @@ impl Session {
                 let _ = self.store_document(text_document);
             }
         }
+    }
+
+    /// Writes the changes to the file and updates the document.
+    pub fn write_changes_to_file(
+        &self,
+        uri: &Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Result<(), LanguageServerError> {
+        let src = self.update_text_document(uri, changes).ok_or_else(|| {
+            DocumentError::DocumentNotFound {
+                path: uri.path().to_string(),
+            }
+        })?;
+        let mut file =
+            File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
+                path: uri.path().to_string(),
+                err: err.to_string(),
+            })?;
+        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?;
+        Ok(())
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
