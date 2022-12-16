@@ -273,7 +273,7 @@ impl AllocatedAbstractInstructionSet {
             if let Either::Right(ControlFlowOp::Label(ref cur_label)) = op.opcode {
                 if let Some(count) = blocks_to_move.get(cur_label) {
                     // The count in the set includes the label.
-                    let count = *count as usize - 1;
+                    let count = *count - 1;
 
                     // We want to move this block.  First add a new label to the moved list for us
                     // to jump to.
