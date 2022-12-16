@@ -37,5 +37,6 @@ dep vec;
 dep message;
 dep bytes;
 dep prelude;
+dep call;
 
 use core::*;
