@@ -1,10 +1,10 @@
 library contract_id;
 //! A wrapper around the `b256` type to help enhance type-safety.
-
 use ::assert::assert;
-use ::intrinsics::size_of_val;
-use ::convert::From;
 use ::bytes::Bytes;
+use ::convert::From;
+use ::intrinsics::size_of_val;
+use ::option::Option;
 use ::packable::Packable;
 
 /// The `ContractId` type, a struct wrappper around the inner `b256` value.
@@ -42,9 +42,13 @@ impl Packable for ContractId {
         bytes
     }
 
-    // fn unpack(bytes: Bytes) -> Self {
-        
-    // }
+    fn unpack(bytes: Bytes) -> Self {
+        let mut new_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(new_id);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        ContractId::from(new_id)
+    }
 }
 
 #[test]
@@ -90,3 +94,45 @@ fn test_pack() {
     assert(packed == control_bytes);
 }
 
+#[test]
+fn test_unpack() {
+    let mut initial_bytes = Bytes::with_capacity(32);
+    // 0x33 is 51 in decimal
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+
+    let resulting_id = ContractId::unpack(initial_bytes);
+    let expected_id = ContractId::from(0x3333333333333333333333333333333333333333333333333333333333333333);
+
+    assert(resulting_id == expected_id);
+}
