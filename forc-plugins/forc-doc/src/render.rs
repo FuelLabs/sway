@@ -9,7 +9,7 @@ use sway_lsp::utils::markdown::format_docs;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
-    fn render(&self) -> Box<dyn RenderBox>;
+    fn render(&'_ self) -> Box<dyn RenderBox + '_>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -26,7 +26,7 @@ impl RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
-            let module_prefix = doc.module_prefix;
+            let module_prefix = doc.module_prefix.clone();
             let file_name = doc.file_name();
             rendered_docs.0.push(RenderedDocument {
                 module_prefix: module_prefix.clone(),
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
                 format!("{}::{}", &doc.item_header.module, &item_name)
             };
             all_doc.0.push(AllDocItem {
-                ty_decl: doc.item_header.ty_decl,
+                ty_decl: doc.item_header.ty_decl.clone(),
                 path_str,
                 module_prefix,
                 file_name,
@@ -83,7 +83,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(&self) -> Box<dyn RenderBox> {
+    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
         let ItemHeader {
             module_depth,
             module,
@@ -144,33 +144,32 @@ pub(crate) struct MainContent {
 }
 // All rendered context of an item, e.g. all fields on a struct.
 pub(crate) struct ItemContext(pub(crate) Box<dyn RenderBox>);
-impl ItemContext {
-    fn inner(self) -> Box<dyn RenderBox> {
-        self.0
-    }
-}
+
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(&self) -> Box<dyn RenderBox> {
+    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
         let ItemBody {
             main_content:
                 MainContent {
                     module_depth,
                     ty_decl,
-                    item_name: decl_name,
+                    item_name,
                     code_str,
-                    attrs_str: item_attrs,
+                    attrs_str,
                 },
             item_context,
-        } = *self;
+        } = self.clone();
 
-        let decl_ty = ty_decl.doc_name();
-        let mut all_path = module_depth_to_path_prefix(module_depth);
+        let decl_ty = ty_decl.doc_name().to_string();
+        let decl_name = item_name.to_string();
+        let friendly_name = ty_decl.friendly_name().to_string();
+        let item_attrs = attrs_str.to_string();
+        let mut all_path = module_depth_to_path_prefix(*module_depth);
         all_path.push_str(ALL_DOC_FILENAME);
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar(module_depth, decl_name.clone(), all_path);
+                : sidebar(*module_depth, decl_name.clone(), all_path);
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -201,10 +200,10 @@ impl Renderable for ItemBody {
                                     span(class="in-band") {
                                         // TODO: pass the decl ty info or match
                                         // for uppercase naming like: "Enum"
-                                        : format!("{} ", ty_decl.friendly_name());
+                                        : format!("{} ", friendly_name);
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href="#") {
-                                            : &decl_name;
+                                            : decl_name;
                                         }
                                     }
                                 }
@@ -226,7 +225,7 @@ impl Renderable for ItemBody {
                                     }
                                 }
                             }
-                            : item_context.inner();
+                            : item_context.0;
                         }
                     }
                 }
@@ -249,7 +248,7 @@ struct AllDoc(Vec<AllDocItem>);
 
 impl Renderable for AllDoc {
     /// crate level, all items belonging to a crate
-    fn render(&self) -> Box<dyn RenderBox> {
+    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
         let AllDoc(all_doc) = self;
         // TODO: find a better way to do this
         //
@@ -261,7 +260,7 @@ impl Renderable for AllDoc {
         let mut storage_items: Vec<ItemPath> = Vec::new();
         let mut fn_items: Vec<ItemPath> = Vec::new();
         let mut const_items: Vec<ItemPath> = Vec::new();
-        // for (ty, (path_str, module_prefix, file_name)) in all_doc {
+
         for doc_item in all_doc {
             let AllDocItem {
                 ty_decl,

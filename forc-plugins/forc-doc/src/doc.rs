@@ -108,10 +108,11 @@ impl Document {
     }
 }
 impl crate::render::Renderable for Document {
-    fn render(&self) -> Box<dyn RenderBox> {
+    fn render(&'_ self) -> Box<dyn RenderBox + '_> {
+        let item = self.clone();
         box_html! {
-            : self.item_header.render();
-            : self.item_body.render();
+            : item.item_header.render();
+            : item.item_body.render();
         }
     }
 }
