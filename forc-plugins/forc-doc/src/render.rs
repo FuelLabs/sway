@@ -35,7 +35,11 @@ impl RenderedDocumentation {
             });
 
             let item_name = doc.item_header.item_name.as_str().to_string();
-            // need to think about how to do this for larger paths
+            // TODO: need to think about how to do this for larger paths
+            //
+            // after some thought we could probably have this passed as
+            // another field on Document, something like:
+            // qualified_path_str: String,
             let path_str = if doc.item_header.module_depth == 0 {
                 item_name
             } else {
