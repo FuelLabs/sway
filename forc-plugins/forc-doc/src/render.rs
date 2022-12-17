@@ -279,7 +279,7 @@ fn context_section<'title, S: Renderable + 'static>(
     list: Vec<S>,
     title: &'title str,
 ) -> Box<dyn RenderBox + 'title> {
-    let lct = html_title_str(&title);
+    let lct = html_title_str(title);
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title;
@@ -292,7 +292,7 @@ fn context_section<'title, S: Renderable + 'static>(
     }
 }
 fn html_title_str(title: &str) -> String {
-    if title.contains(" ") {
+    if title.contains(' ') {
         title
             .to_lowercase()
             .split_whitespace()
