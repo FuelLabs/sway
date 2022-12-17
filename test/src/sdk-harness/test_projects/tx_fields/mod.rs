@@ -521,17 +521,22 @@ mod inputs {
             let provider = wallet.get_provider().unwrap();
             let (predicate_bytecode, predicate_coin, predicate_message) =
                 generate_predicate_inputs(100, vec![], &wallet).await;
-            let predicate_bytes: [u8; 32] = predicate_bytecode.try_into().unwrap();
+            let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
+            println!("length: {:?}", predicate_bytes.len());
 
             // Add predicate coin to inputs and call contract
-            let call_handler = contract_instance.methods().get_input_predicate(2);
-            let mut executable = call_handler.get_executable_call().await.unwrap();
+            let handler = contract_instance.methods().get_input_predicate(2, predicate_bytes.clone());
+            let mut executable = handler.get_executable_call().await.unwrap();
 
             executable.tx.inputs_mut().push(predicate_coin);
-            let result = call_handler
-                .get_response(executable.execute(provider).await.unwrap())
+
+            let receipts = executable
+                .execute(&wallet.get_provider().unwrap())
+                .await
                 .unwrap();
-            assert_eq!(result.value, Bits256(predicate_bytes));
+
+            println!("receipts: {:#?}", receipts);
+            assert_eq!(receipts[1].val().unwrap(), 1);
         }
 
         mod message {
@@ -552,7 +557,7 @@ mod inputs {
 
                 let messages = wallet.get_messages().await?;
                 let message_id: [u8; 32] = *messages[0].message_id();
-                ();
+                
 
                 assert_eq!(receipts[1].data().unwrap(), message_id);
                 Ok(())
@@ -693,7 +698,7 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
-                let handler = contract_instance.methods().get_input_predicate(2);
+                let handler = contract_instance.methods().get_input_predicate(2, predicate_bytecode.clone());
                 let mut executable = handler.get_executable_call().await.unwrap();
 
                 executable.tx.inputs_mut().push(predicate_message);

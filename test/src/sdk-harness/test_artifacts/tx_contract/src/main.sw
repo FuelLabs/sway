@@ -83,7 +83,7 @@ abi TxContractTest {
     fn get_input_predicate_length(index: u64) -> u16;
     fn get_input_predicate_data_length(index: u64) -> u16;
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
-    fn get_input_predicate(index: u64) -> b256;
+    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
     fn get_tx_output_pointer(index: u64) -> u64;
     fn get_output_type(ptr: u64) -> Output;
@@ -206,8 +206,16 @@ impl TxContractTest for Contract {
         // data_bytes == expected_data_bytes
         data[0] == expected[0] && data[1] == expected[1] && data[2] == expected[2]
     }
-    fn get_input_predicate(index: u64) -> b256 {
-        input_predicate(index)
+    fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
+        let code = input_predicate::<Vec<u8>>(index);
+        assert(input_predicate_length(index).unwrap() == bytecode.len());
+        let mut i = 0;
+        while i < bytecode.len() {
+            assert(bytecode.get(i).unwrap() == code.get(i).unwrap());
+            i += 1;
+        }
+        true
+
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
         output_pointer(index)
