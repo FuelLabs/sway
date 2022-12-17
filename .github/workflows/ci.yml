@@ -167,10 +167,8 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
-      - name: Initialize test project
-        run: forc new test-proj
-      - name: Update project forc manifest to use local sway-lib-std
-        run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
+      - name: Initialize test project (use local sway-lib-std)
+        run: forc new test-proj --stdlib sway-lib-std
       - name: Build test project
         run: forc build --path test-proj
       # TODO: Re-add this upon landing unit test support: #1832
