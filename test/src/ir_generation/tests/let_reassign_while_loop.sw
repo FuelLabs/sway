@@ -13,13 +13,16 @@ fn main() -> bool {
 // check: $while():
 // check: cbr $VAL, $(while_body=$ID)(), $(end_while=$ID)()
 
+// check: $(while_break=$ID)():
+// check: br $end_while()
+
 // check: $while_body():
 // check: cbr $VAL, $(block0=$ID)(), $(block1=$ID)($VAL)
 
-// check: $end_while():
-
 // check: $block0():
-// check: br $(block1=$ID)
+// check: br $(block1=$ID)($VAL)
 
 // check: $block1($VAL: bool):
 // check: br $while
+
+// check: $end_while():
