@@ -102,6 +102,7 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -239,13 +240,13 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // update this file with the new changes and write to disk
-                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
-                    if let Ok(mut file) = File::create(uri.path()) {
-                        let _ = writeln!(&mut file, "{}", src);
+                match session.write_changes_to_file(&uri, params.content_changes) {
+                    Ok(_) => {
+                        self.parse_project(uri, params.text_document.uri, session.clone())
+                            .await;
                     }
+                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
-                self.parse_project(uri, params.text_document.uri, session.clone())
-                    .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
         }
@@ -295,6 +296,24 @@ impl LanguageServer for Backend {
                 let position = params.text_document_position_params.position;
                 Ok(capabilities::hover::hover_data(session, uri, position))
             }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
+    async fn code_action(
+        &self,
+        params: CodeActionParams,
+    ) -> jsonrpc::Result<Option<CodeActionResponse>> {
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((temp_uri, session)) => Ok(capabilities::code_actions(
+                session,
+                &params.range,
+                params.text_document,
+                &temp_uri,
+            )),
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
