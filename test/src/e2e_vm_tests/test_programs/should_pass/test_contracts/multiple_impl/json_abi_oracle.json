@@ -28,7 +28,7 @@
       }
     }
   ],
-  "messagesTypes": null,
+  "messagesTypes": [],
   "types": [
     {
       "components": [],

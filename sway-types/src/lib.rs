@@ -61,7 +61,7 @@ impl Instruction {
 
         // Always convert to `u64` to avoid architectural variants of the bytes representation that
         // could lead to arch-dependent unique IDs
-        bytes[..8].copy_from_slice(&(self.pc as u64).to_be_bytes());
+        bytes[..8].copy_from_slice(&(self.pc).to_be_bytes());
         bytes[8..16].copy_from_slice(&(self.range.start.line as u64).to_be_bytes());
         bytes[16..24].copy_from_slice(&(self.range.start.col as u64).to_be_bytes());
         bytes[24..32].copy_from_slice(&(self.range.end.line as u64).to_be_bytes());

@@ -9,7 +9,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success,
+    print_on_failure, print_on_success, user_forc_directory,
 };
 use petgraph::{
     self,
@@ -351,7 +351,7 @@ impl BuiltPackage {
     pub fn write_debug_info(&self, path: &Path) -> Result<()> {
         let source_map_json =
             serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
-        fs::write(path, &source_map_json)?;
+        fs::write(path, source_map_json)?;
         Ok(())
     }
 
@@ -373,7 +373,7 @@ impl BuiltPackage {
         if !self.json_abi_program.functions.is_empty() {
             let json_abi_program_stem = format!("{}-abi", pkg_name);
             let json_abi_program_path = output_dir
-                .join(&json_abi_program_stem)
+                .join(json_abi_program_stem)
                 .with_extension("json");
             let file = File::create(json_abi_program_path)?;
             let res = if minify.json_abi {
@@ -390,7 +390,7 @@ impl BuiltPackage {
                 // For contracts, emit a JSON file with all the initialized storage slots.
                 let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
                 let json_storage_slots_path = output_dir
-                    .join(&json_storage_slots_stem)
+                    .join(json_storage_slots_stem)
                     .with_extension("json");
                 let storage_slots_file = File::create(json_storage_slots_path)?;
                 let res = if minify.json_storage_slots {
@@ -578,7 +578,7 @@ impl BuildPlan {
             crate::lock::print_diff(&member_names, &lock_diff);
             let string = toml::ser::to_string_pretty(&new_lock)
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
-            fs::write(lock_path, &string)
+            fs::write(lock_path, string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
             info!("   Created new lock file at {}", lock_path.display());
         }
@@ -839,6 +839,9 @@ fn dep_path(
     match &dep.source {
         SourcePinned::Git(git) => {
             let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
+            // Co-ordinate access to the git checkout directory using an advisory file lock.
+            let lock = path_lock(&repo_path)?;
+            let _guard = lock.read()?;
             find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
                 anyhow!(
                     "failed to find package `{}` in {}",
@@ -1750,23 +1753,32 @@ fn pin_pkg(
             let pinned = Pinned { name, source };
             let id = pinned.id();
             if let hash_map::Entry::Vacant(entry) = manifest_map.entry(id) {
+                // Co-ordinate access to the git checkout directory using an advisory file lock.
+                let mut lock = path_lock(&repo_path)?;
+
                 // TODO: Here we assume that if the local path already exists, that it contains the
                 // full and correct source for that commit and hasn't been tampered with. This is
                 // probably fine for most cases as users should never be touching these
                 // directories, however we should add some code to validate this. E.g. can we
                 // recreate the git hash by hashing the directory or something along these lines
                 // using git?
-                if !repo_path.exists() {
-                    info!("  Fetching {}", pinned_git.to_string());
-                    fetch_git(fetch_id, &pinned.name, &pinned_git)?;
+                {
+                    let _guard = lock.write()?;
+                    if !repo_path.exists() {
+                        info!("  Fetching {}", pinned_git.to_string());
+                        fetch_git(fetch_id, &pinned.name, &pinned_git)?;
+                    }
                 }
-                let path = find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
-                    anyhow!(
-                        "failed to find package `{}` in {}",
-                        pinned.name,
-                        pinned_git.to_string()
-                    )
-                })?;
+                let path = {
+                    let _guard = lock.read()?;
+                    find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
+                        anyhow!(
+                            "failed to find package `{}` in {}",
+                            pinned.name,
+                            pinned_git.to_string()
+                        )
+                    })?
+                };
                 let manifest = PackageManifestFile::from_dir(&path)?;
                 entry.insert(manifest);
             }
@@ -1782,6 +1794,48 @@ fn pin_pkg(
         }
     };
     Ok(pinned)
+}
+
+/// Given a path to a directory we wish to lock, produce a path for an associated lock file.
+///
+/// Note that the lock file itself is simply a placeholder for co-ordinating access. As a result,
+/// we want to create the lock file if it doesn't exist, but we can never reliably remove it
+/// without risking invalidation of an existing lock. As a result, we use a dedicated, hidden
+/// directory with a lock file named after the checkout path.
+///
+/// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
+/// coordinating access to particular paths (e.g. git checkout directories).
+fn fd_lock_path(path: &Path) -> PathBuf {
+    const LOCKS_DIR_NAME: &str = ".locks";
+    const LOCK_EXT: &str = "forc-lock";
+
+    // Hash the path to produce a file-system friendly lock file name.
+    // Append the file stem for improved readability.
+    let mut hasher = hash_map::DefaultHasher::default();
+    path.hash(&mut hasher);
+    let hash = hasher.finish();
+    let file_name = match path.file_stem().and_then(|s| s.to_str()) {
+        None => format!("{:X}", hash),
+        Some(stem) => format!("{:X}-{}", hash, stem),
+    };
+
+    user_forc_directory()
+        .join(LOCKS_DIR_NAME)
+        .join(file_name)
+        .with_extension(LOCK_EXT)
+}
+
+/// Create an advisory lock over the given path.
+///
+/// See [fd_lock_path] for details.
+fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+    let lock_path = fd_lock_path(path);
+    let lock_dir = lock_path
+        .parent()
+        .expect("lock path has no parent directory");
+    std::fs::create_dir_all(lock_dir).context("failed to create forc advisory lock directory")?;
+    let lock_file = File::create(&lock_path).context("failed to create advisory lock file")?;
+    Ok(fd_lock::RwLock::new(lock_file))
 }
 
 /// The path to which a git package commit should be checked out.
@@ -1803,6 +1857,9 @@ pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// Fetch the repo at the given git package's URL and checkout the pinned commit.
 ///
 /// Returns the location of the checked out commit.
+///
+/// NOTE: This function assumes that the caller has aquired an advisory lock to co-ordinate access
+/// to the git repository checkout path.
 pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
     let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
     // Checkout the pinned hash to the path.
@@ -1810,10 +1867,13 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
         // Change HEAD to point to the pinned commit.
         let id = git2::Oid::from_str(&pinned.commit_hash)?;
         repo.set_head_detached(id)?;
+
+        // If the directory exists, remove it. Note that we already check for an existing,
+        // cached checkout directory for re-use prior to reaching the `fetch_git` function.
         if path.exists() {
-            let _ = std::fs::remove_dir_all(&path);
+            let _ = fs::remove_dir_all(&path);
         }
-        std::fs::create_dir_all(&path)?;
+        fs::create_dir_all(&path)?;
 
         // Checkout HEAD to the target directory.
         let mut checkout = git2::build::CheckoutBuilder::new();
@@ -1831,6 +1891,7 @@ pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<
             pinned.source.reference.clone(),
             pinned.commit_hash.clone(),
         );
+
         // Write the index file
         fs::write(
             path.join(".forc_index"),
@@ -2695,6 +2756,11 @@ fn update_all_types(
     }
     if let Some(logged_types) = &mut json_abi_program.logged_types {
         for logged_type in logged_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
+    }
+    if let Some(messages_types) = &mut json_abi_program.messages_types {
+        for logged_type in messages_types.iter_mut() {
             update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
     }

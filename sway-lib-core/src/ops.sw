@@ -324,14 +324,6 @@ pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
 
-pub trait BitwiseOr {
-    fn binary_or(self, other: Self) -> Self;
-}
-
-pub trait BitwiseXor {
-    fn binary_xor(self, other: Self) -> Self;
-}
-
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -339,6 +331,37 @@ impl BitwiseAnd for u64 {
             r3: u64
         }
     }
+}
+
+impl BitwiseAnd for u32 {
+    fn binary_and(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            and r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl BitwiseAnd for u16 {
+    fn binary_and(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            and r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl BitwiseAnd for u8 {
+    fn binary_and(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            and r3 r1 r2;
+            r3: u8
+        }
+    }
+}
+
+pub trait BitwiseOr {
+    fn binary_or(self, other: Self) -> Self;
 }
 
 impl BitwiseOr for u64 {
@@ -350,11 +373,69 @@ impl BitwiseOr for u64 {
     }
 }
 
+impl BitwiseOr for u32 {
+    fn binary_or(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            or r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl BitwiseOr for u16 {
+    fn binary_or(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            or r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl BitwiseOr for u8 {
+    fn binary_or(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            or r3 r1 r2;
+            r3: u8
+        }
+    }
+}
+
+pub trait BitwiseXor {
+    fn binary_xor(self, other: Self) -> Self;
+}
+
 impl BitwiseXor for u64 {
     fn binary_xor(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
             xor r3 r1 r2;
             r3: u64
+        }
+    }
+}
+
+impl BitwiseXor for u32 {
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u32
+        }
+    }
+}
+
+impl BitwiseXor for u16 {
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u16
+        }
+    }
+}
+
+impl BitwiseXor for u8 {
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u8
         }
     }
 }
