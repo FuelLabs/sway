@@ -1,7 +1,9 @@
 //! Determine whether a [Declaration] is documentable.
 use crate::{
     doc::Document,
-    render::{attrsmap_to_html_string, ItemBody, ItemHeader},
+    render::{
+        attrsmap_to_html_string, trim_fn_body, ContextType, ItemBody, ItemContext, ItemHeader,
+    },
 };
 use anyhow::Result;
 use sway_core::{declaration_engine::*, language::ty::TyDeclaration};
@@ -38,6 +40,11 @@ impl Descriptor {
                     } else {
                         None
                     };
+                    let context = if !struct_decl.fields.is_empty() {
+                        Some(ContextType::StructFields(struct_decl.fields))
+                    } else {
+                        None
+                    };
                     let item_header = ItemHeader {
                         module_depth,
                         module,
@@ -52,6 +59,7 @@ impl Descriptor {
                             struct_decl.span.as_str(),
                         ),
                         attrs_opt,
+                        item_context: ItemContext { context },
                     };
                     Ok(Descriptor::Documentable(Document {
                         module_prefix,
@@ -71,6 +79,11 @@ impl Descriptor {
                     } else {
                         None
                     };
+                    let context = if !enum_decl.variants.is_empty() {
+                        Some(ContextType::EnumVariants(enum_decl.variants))
+                    } else {
+                        None
+                    };
                     let item_header = ItemHeader {
                         module_depth,
                         module,
@@ -85,6 +98,7 @@ impl Descriptor {
                             enum_decl.span.as_str(),
                         ),
                         attrs_opt,
+                        item_context: ItemContext { context },
                     };
                     Ok(Descriptor::Documentable(Document {
                         module_prefix,
@@ -104,6 +118,11 @@ impl Descriptor {
                     } else {
                         None
                     };
+                    let context = if !trait_decl.interface_surface.is_empty() {
+                        Some(ContextType::RequiredMethods(trait_decl.interface_surface))
+                    } else {
+                        None
+                    };
                     let item_header = ItemHeader {
                         module_depth,
                         module,
@@ -118,6 +137,7 @@ impl Descriptor {
                             trait_decl.span.as_str(),
                         ),
                         attrs_opt,
+                        item_context: ItemContext { context },
                     };
                     Ok(Descriptor::Documentable(Document {
                         module_prefix,
@@ -134,6 +154,11 @@ impl Descriptor {
                 } else {
                     None
                 };
+                let context = if !abi_decl.interface_surface.is_empty() {
+                    Some(ContextType::RequiredMethods(abi_decl.interface_surface))
+                } else {
+                    None
+                };
                 let item_header = ItemHeader {
                     module_depth,
                     module,
@@ -146,6 +171,7 @@ impl Descriptor {
                     item_name,
                     code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str()),
                     attrs_opt,
+                    item_context: ItemContext { context },
                 };
                 Ok(Descriptor::Documentable(Document {
                     module_prefix,
@@ -158,6 +184,11 @@ impl Descriptor {
                 let item_name = CONTRACT_STORAGE.to_string();
                 let attrs_opt = if !storage_decl.attributes.is_empty() {
                     Some(attrsmap_to_html_string(&storage_decl.attributes))
+                } else {
+                    None
+                };
+                let context = if !storage_decl.fields.is_empty() {
+                    Some(ContextType::StorageFields(storage_decl.fields))
                 } else {
                     None
                 };
@@ -175,6 +206,7 @@ impl Descriptor {
                         storage_decl.span.as_str(),
                     ),
                     attrs_opt,
+                    item_context: ItemContext { context },
                 };
                 Ok(Descriptor::Documentable(Document {
                     module_prefix,
@@ -184,6 +216,9 @@ impl Descriptor {
             }
             ImplTrait(ref decl_id) => {
                 // TODO: figure out how to use this, likely we don't want to document this directly.
+                //
+                // This declaration type may make more sense to document as part of another declaration
+                // much like how we document method functions for traits or fields on structs.
                 let impl_trait = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
                 let item_name = impl_trait.trait_name.suffix.as_str().to_string();
                 let item_header = ItemHeader {
@@ -198,6 +233,7 @@ impl Descriptor {
                     item_name,
                     code_str: parse::parse_format::<sway_ast::ItemImpl>(impl_trait.span.as_str()),
                     attrs_opt: None, // no attributes field
+                    item_context: ItemContext { context: None },
                 };
                 Ok(Descriptor::Documentable(Document {
                     module_prefix,
@@ -226,8 +262,11 @@ impl Descriptor {
                         module_depth,
                         ty_decl: ty_decl.clone(),
                         item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemFn>(fn_decl.span.as_str()),
+                        code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
+                            fn_decl.span.as_str(),
+                        )),
                         attrs_opt,
+                        item_context: ItemContext { context: None },
                     };
                     Ok(Descriptor::Documentable(Document {
                         module_prefix,
@@ -261,6 +300,7 @@ impl Descriptor {
                             const_decl.span.as_str(),
                         ),
                         attrs_opt,
+                        item_context: ItemContext { context: None },
                     };
                     Ok(Descriptor::Documentable(Document {
                         module_prefix,
