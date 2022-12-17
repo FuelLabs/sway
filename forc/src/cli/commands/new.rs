@@ -27,7 +27,8 @@ pub struct Command {
     #[clap(long)]
     pub name: Option<String>,
     /// The path at which the standard library is located.
-    /// Does not override the std dependency if missing.
+    /// If unspecified, the std will be implicitly included as a git dependency
+    /// via the git tag that matches `forc`'s version.
     /// If the path is relative, forc makes it relative w.r.t. the project directory.
     /// If the path is absolute, forc uses it as is.
     #[clap(long)]
