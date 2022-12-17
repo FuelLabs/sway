@@ -23,11 +23,11 @@ pub struct Command {
     /// Adding this flag creates an empty workspace.
     #[clap(long)]
     pub workspace: bool,
-    /// The path at which the standard library is located.
+    /// The local directory path or URL at which the standard library is located.
     /// If unspecified, the std will be implicitly included as a git dependency
     /// via the git tag that matches `forc`'s version.
-    /// If the path is relative, forc makes it relative w.r.t. the project directory.
-    /// If the path is absolute, forc uses it as is.
+    /// `forc` uses absolute directory paths and URLs as is.
+    /// Relative directory paths are made relative w.r.t. the project directory.
     #[clap(long)]
     pub stdlib: Option<String>,
     /// Set the package name. Defaults to the directory name

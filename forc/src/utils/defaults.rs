@@ -1,14 +1,17 @@
+use forc_util::StdlibPath;
+
 /// We intentionally don't construct this using [serde]'s default deserialization so we get
 /// the chance to insert some helpful comments and nicer formatting.
 pub(crate) fn default_pkg_manifest(
     project_name: &str,
     entry_type: &str,
-    stdlib: &Option<String>,
+    stdlib: &StdlibPath,
 ) -> String {
     let author = get_author();
     let stdlib_override = match stdlib {
-        Some(stdlib) => format!("std = {{ path = \"{stdlib}\" }}\n"),
-        None => String::new(),
+        StdlibPath::Dir(stdlib) => format!("std = {{ path = \"{stdlib}\" }}\n"),
+        StdlibPath::Git(stdlib) => format!("std = {{ git = \"{stdlib}\" }}\n"),
+        StdlibPath::Unspecified => String::new(),
     };
 
     format!(
@@ -93,7 +96,7 @@ fn parse_default_pkg_manifest() {
         toml::from_str::<forc_pkg::PackageManifest>(&default_pkg_manifest(
             "test_proj",
             MAIN_ENTRY,
-            &None
+            &StdlibPath::Unspecified
         ))
         .unwrap()
     )

@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::{Context, Result};
-use forc_util::validate_name;
+use forc_util::{validate_name, StdlibPath};
 use std::fs;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
@@ -94,18 +94,24 @@ pub fn init(command: InitCommand) -> Result<()> {
         ),
     };
 
-    let stdlib_dir_path: Option<String> = match &command.stdlib {
+    let stdlib_path: StdlibPath = match command.stdlib {
         Some(stdlib) => {
-            let stdlib_path = PathBuf::from(stdlib);
-            if !stdlib_path.is_dir() {
-                anyhow::bail!(
-                        "Directory \"{}\" does not exist. Please pick an existing Sway stdlib directory.",
-                        stdlib_path.display()
-                    )
+            // if it's a URL then use it as it is
+            if url::Url::parse(&stdlib).is_ok() {
+                StdlibPath::Git(stdlib)
+            } else {
+                // otherwise it's supposed to be a directory path
+                let stdlib_path = PathBuf::from(stdlib);
+                if !stdlib_path.is_dir() {
+                    anyhow::bail!(
+                            "Directory \"{}\" does not exist. Please pick an existing Sway stdlib directory.",
+                            stdlib_path.display()
+                        )
+                }
+                StdlibPath::Dir(relativized_stdlib_path(&stdlib_path, &project_dir))
             }
-            Some(relativized_stdlib_path(&stdlib_path, &project_dir))
         }
-        None => None,
+        None => StdlibPath::Unspecified,
     };
 
     // Make a new directory for the project
@@ -123,11 +129,11 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
         InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY, &stdlib_dir_path),
+            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY, &stdlib_path),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY, &stdlib_dir_path),
+            defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY, &stdlib_path),
         )?,
     }
 

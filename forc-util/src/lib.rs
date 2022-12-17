@@ -19,6 +19,12 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
+pub enum StdlibPath {
+    Dir(String),
+    Git(String),
+    Unspecified,
+}
+
 /// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
