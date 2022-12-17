@@ -1,8 +1,8 @@
-library packable;
+library pack;
 
 use ::bytes::Bytes;
 
-pub trait Packable {
+pub trait Pack {
     fn pack(self) -> Bytes;
     fn unpack(bytes: Bytes) -> Self;
 }

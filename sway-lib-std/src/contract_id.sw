@@ -4,7 +4,7 @@ use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::From;
 use ::option::Option;
-use ::packable::Packable;
+use ::pack::Pack;
 
 /// The `ContractId` type, a struct wrappper around the inner `b256` value.
 pub struct ContractId {
@@ -29,7 +29,7 @@ impl From<b256> for ContractId {
 }
 
 /// functions for converting between the ContractId and Bytes types.
-impl Packable for ContractId {
+impl Pack for ContractId {
     fn pack(self) -> Bytes {
         // Artificially create bytes with capacity and len
         let mut bytes = Bytes::with_capacity(32);

@@ -11,7 +11,7 @@ dep option;
 dep alloc;
 dep vec;
 dep bytes;
-dep packable;
+dep pack;
 dep contract_id;
 dep constants;
 dep external;
