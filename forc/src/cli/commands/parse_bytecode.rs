@@ -22,7 +22,6 @@ pub(crate) fn exec(command: Command) -> Result<()> {
     let mut instructions = vec![];
 
     for i in (0..buffer.len()).step_by(4) {
-        let i = i as usize;
         let raw = &buffer[i..i + 4];
         unsafe {
             let op = fuel_asm::Opcode::from_bytes_unchecked(raw);
