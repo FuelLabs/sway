@@ -13,40 +13,46 @@ fn main() {
 }
 
 
-// check: br $(while=$ID)()
+// OUTER LOOP
+// check: br $(outer_while_cond=$ID)()
 
-// OUTER LOOP: while / while_body / end_while
-// Jump to first inner loop in body, return when done.
+// check: $outer_while_cond():
+// check: cbr $VAL, $(outer_while_body=$ID)(), $(outer_while_end=$ID)()
 
-// check: $while():
-// check: cbr $VAL, $(while_body=$ID)(), $(end_while=$ID)()
+// check: $(outer_while_break=$ID)():
+// check: br $outer_while_end()
 
-// check: $while_body():
-// check: br $(while0=$ID)
+// check: $outer_while_body():
+// check: br $(inner1_while_cond=$ID)()
 
-// check: $end_while():
+
+// FIRST INNER LOOP
+// check: $inner1_while_cond():
+// check: cbr $VAL, $(inner1_while_body=$ID)(), $(inner1_while_end=$ID)()
+
+// check: $(inner1_while_break=$ID)():
+// check: br $inner1_while_end()
+
+// check: $inner1_while_body():
+// check: br $inner1_while_cond()
+
+// check: $inner1_while_end():
+// check: br $(inner2_while_cond=$ID)()
+
+
+// SECOND INNER LOOP
+// check: $inner2_while_cond():
+// check: cbr $VAL, $(inner_while_body=$ID)(), $(inner2_while_end=$ID)()
+
+// check: $(inner2_while_break=$ID)():
+// check: br $inner2_while_end()
+
+// check: $inner_while_body():
+// check: br $inner2_while_cond()
+
+// check: $inner2_while_end():
+// check: br $outer_while_cond()
+
+
+// check: $outer_while_end():
 // check: ret () $VAL
-
-// FIRST INNER LOOP: while0 / while_body1 / end_while2
-// `continue` forces jump to `while0` in body, branch to second inner loop when done.
-
-// check: $while0():
-// check: cbr $VAL, $(while_body1=$ID)(), $(end_while2=$ID)()
-
-// check: $while_body1():
-// check: br $while0()
-
-// check: $end_while2():
-// check: br $(while3=$ID)
-
-// SECOND INNER LOOP: while3 / while_body4 / end_while5
-// `continue` forces jump to `while3` in body, branch to outer loop when done.
-
-// check: $while3():
-// check: cbr $VAL, $(while_body4=$ID)(), $(end_while5=$ID)()
-
-// check: $while_body4():
-// check: br $while3()
-
-// check: $end_while5():
-// check: br $while()
