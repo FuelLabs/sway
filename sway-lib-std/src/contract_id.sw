@@ -4,7 +4,6 @@ use ::assert::assert;
 use ::bytes::Bytes;
 use ::convert::From;
 use ::option::Option;
-use ::pack::Pack;
 
 /// The `ContractId` type, a struct wrappper around the inner `b256` value.
 pub struct ContractId {
@@ -29,8 +28,16 @@ impl From<b256> for ContractId {
 }
 
 /// functions for converting between the ContractId and Bytes types.
-impl Pack for ContractId {
-    fn pack(self) -> Bytes {
+impl From<Bytes> for ContractId {
+    fn from(bytes: Bytes) -> ContractId {
+        let mut new_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(new_id);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        ContractId::from(new_id)
+    }
+
+    fn into(self) -> Bytes {
         // Artificially create bytes with capacity and len
         let mut bytes = Bytes::with_capacity(32);
         bytes.len = 32;
@@ -40,21 +47,13 @@ impl Pack for ContractId {
 
         bytes
     }
-
-    fn unpack(bytes: Bytes) -> Self {
-        let mut new_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        let ptr = __addr_of(new_id);
-        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
-
-        ContractId::from(new_id)
-    }
 }
 
 #[test]
 fn test_pack() {
     let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
     let id = ContractId::from(initial);
-    let packed = id.pack();
+    let packed: Bytes = id.into();
     let mut control_bytes = Bytes::with_capacity(32);
     // 0x33 is 51 in decimal
     control_bytes.push(51u8);
@@ -130,7 +129,7 @@ fn test_unpack() {
     initial_bytes.push(51u8);
     initial_bytes.push(51u8);
 
-    let resulting_id = ContractId::unpack(initial_bytes);
+    let resulting_id = ContractId::from(initial_bytes);
     let expected_id = ContractId::from(0x3333333333333333333333333333333333333333333333333333333333333333);
 
     assert(resulting_id == expected_id);
