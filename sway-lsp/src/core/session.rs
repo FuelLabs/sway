@@ -15,7 +15,7 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::manifest::ManifestFile;
-use std::{path::PathBuf, sync::Arc};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     language::{
         parsed::{AstNode, ParseProgram},
@@ -235,12 +235,13 @@ impl Session {
     }
 
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
-        let document =
-            self.documents
-                .get(url.path())
-                .ok_or_else(|| DocumentError::DocumentNotFound {
-                    path: url.path().to_string(),
-                })?;
+        let document = self
+            .documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })?;
 
         get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
             .map(|page_text_edit| vec![page_text_edit])
@@ -254,18 +255,44 @@ impl Session {
         }
     }
 
+    /// Writes the changes to the file and updates the document.
+    pub fn write_changes_to_file(
+        &self,
+        uri: &Url,
+        changes: Vec<TextDocumentContentChangeEvent>,
+    ) -> Result<(), LanguageServerError> {
+        let src = self.update_text_document(uri, changes).ok_or_else(|| {
+            DocumentError::DocumentNotFound {
+                path: uri.path().to_string(),
+            }
+        })?;
+        let mut file =
+            File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
+                path: uri.path().to_string(),
+                err: err.to_string(),
+            })?;
+        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?;
+        Ok(())
+    }
+
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
         &self,
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Option<String> {
-        self.documents.get_mut(url.path()).map(|mut document| {
-            changes.iter().for_each(|change| {
-                document.apply_change(change);
-            });
-            document.get_text()
-        })
+        self.documents
+            .try_get_mut(url.path())
+            .try_unwrap()
+            .map(|mut document| {
+                changes.iter().for_each(|change| {
+                    document.apply_change(change);
+                });
+                document.get_text()
+            })
     }
 
     /// Remove the text document from the session.

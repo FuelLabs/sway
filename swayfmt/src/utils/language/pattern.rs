@@ -75,7 +75,7 @@ impl Format for Pattern {
                             get_field_width(fields.get(), &mut formatter.clone())?;
 
                         // changes to the actual formatter
-                        let expr_width = buf.chars().count() as usize;
+                        let expr_width = buf.chars().count();
                         formatter.shape.code_line.update_width(expr_width);
                         formatter.shape.get_line_style(
                             Some(field_width),
@@ -100,7 +100,7 @@ impl Format for Pattern {
                         let mut temp_formatter = Formatter::default();
                         let tuple_descriptor = args.get();
                         tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
-                        let body_width = buf.chars().count() as usize;
+                        let body_width = buf.chars().count();
 
                         formatter.shape.code_line.update_width(body_width);
                         formatter
@@ -213,9 +213,9 @@ fn get_field_width(
     for (field, comma_token) in &fields.value_separator_pairs {
         let mut field_str = FormattedCode::new();
         field.format(&mut field_str, formatter)?;
-        let mut field_length = field_str.chars().count() as usize;
+        let mut field_length = field_str.chars().count();
 
-        field_length += comma_token.span().as_str().chars().count() as usize;
+        field_length += comma_token.span().as_str().chars().count();
         body_width += &field_length + 1; // accounting for the following space
 
         if field_length > largest_field {
@@ -225,7 +225,7 @@ fn get_field_width(
     if let Some(final_value) = &fields.final_value_opt {
         let mut field_str = FormattedCode::new();
         final_value.format(&mut field_str, formatter)?;
-        let field_length = field_str.chars().count() as usize;
+        let field_length = field_str.chars().count();
 
         body_width += &field_length + 1; // accounting for the following space
 

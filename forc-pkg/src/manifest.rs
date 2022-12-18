@@ -300,7 +300,7 @@ impl PackageManifestFile {
     /// Produces the string of the entry point file.
     pub fn entry_string(&self) -> Result<Arc<str>> {
         let entry_path = self.entry_path();
-        let entry_string = std::fs::read_to_string(&entry_path)?;
+        let entry_string = std::fs::read_to_string(entry_path)?;
         Ok(Arc::from(entry_string))
     }
 
