@@ -695,7 +695,7 @@ pub enum CompileError {
     #[error("Using \"while\" in a predicate is not allowed.")]
     DisallowedWhileInPredicate { span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
-    PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod { fn_name: Ident, span: Span },
+    CoinsPassedToNonPayableMethod { fn_name: Ident, span: Span },
     #[error(
         "Payable attribute mismatch. The \"{fn_name}\" method implementation \
          {} in its signature in {interface_name}.",
@@ -896,9 +896,7 @@ impl Spanned for CompileError {
             DisallowedControlFlowInstruction { span, .. } => span.clone(),
             CallingPrivateLibraryMethod { span, .. } => span.clone(),
             DisallowedWhileInPredicate { span } => span.clone(),
-            PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod { span, .. } => {
-                span.clone()
-            }
+            CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
         }
     }

@@ -150,12 +150,10 @@ pub(crate) fn type_check_method_application(
                     .attributes
                     .contains_key(&crate::transform::AttributeKind::Payable)
             {
-                errors.push(
-                    CompileError::PossiblyNonZeroAmountOfCoinsPassedToNonPayableContractMethod {
-                        fn_name: method.name,
-                        span,
-                    },
-                );
+                errors.push(CompileError::CoinsPassedToNonPayableMethod {
+                    fn_name: method.name,
+                    span,
+                });
                 return err(warnings, errors);
             }
         }
