@@ -322,7 +322,7 @@ mod ir_builder {
             }
 
             rule op_state_load_quad_word() -> IrAstOperation
-                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() _ number_of_slots:id() {
+                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
                 }
 
@@ -332,7 +332,7 @@ mod ir_builder {
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
-                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() _ number_of_slots:id() {
+                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateStoreQuadWord(src, key, number_of_slots)
                 }
 

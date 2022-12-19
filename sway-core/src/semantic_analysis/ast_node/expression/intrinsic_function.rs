@@ -701,17 +701,18 @@ fn type_check_state_store_word(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert_type(TypeInfo::Boolean);
+    let return_type = type_engine.insert_type(TypeInfo::Tuple(vec![]));
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
 /// Signature: `__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)`
-/// Description: Reads a `b256` from storage at key `key` and stores it in memory at address
-///              `raw_ptr`
+/// Description: Reads `slots` number of slots (`b256` each) from storage starting at key `key` and
+///              stores them in memory starting at address `ptr`
 /// Constraints: None.
 ///
 /// Signature: `__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool`
-/// Description: Stores a `b256` from address `ptr` in memory into storage at key `key`.
+/// Description: Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory
+///              into storage starting at key `key`.
 /// Constraints: None.
 fn type_check_state_quad(
     ctx: TypeCheckContext,
@@ -824,7 +825,7 @@ fn type_check_state_quad(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert_type(TypeInfo::Boolean);
+    let return_type = type_engine.insert_type(TypeInfo::Tuple(vec![]));
     ok((intrinsic_function, return_type), warnings, errors)
 }
 

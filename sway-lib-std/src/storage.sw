@@ -32,7 +32,7 @@ pub fn store<T>(key: b256, value: T) {
         // If `T` is a reference type, then `value` can be larger than a word, so we need to use
         // `__state_store_quad`.
 
-        // Get the number of storage slots needed.
+        // Get the number of storage slots needed based on the size of `T`
         let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
         // Cast the pointer to `value` to a `raw_ptr`.
@@ -77,10 +77,10 @@ pub fn get<T>(key: b256) -> T {
         // might be larger than a word.
         // NOTE: we are leaking this value on the heap.
         
-        // Get the number of storage slots needed.
+        // Get the number of storage slots needed based on the size of `T`
         let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
-        // Allocate a buffer for the result. It's size needs to be a multiple of 32 bytes so we can 
+        // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
         // make the 'quad' storage instruction read without overflowing.
         let result_ptr = alloc::<u64>(number_of_slots * 32);
 
