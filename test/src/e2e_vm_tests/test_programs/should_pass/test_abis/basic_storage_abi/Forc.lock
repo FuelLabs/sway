@@ -1,9 +1,8 @@
 [[package]]
 name = 'basic_storage_abi'
-source = 'root'
+source = 'member'
 dependencies = ['core']
 
 [[package]]
 name = 'core'
 source = 'path+from-root-3777C332FD2E3D7A'
-dependencies = []

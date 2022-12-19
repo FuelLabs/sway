@@ -656,7 +656,7 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_mem_copy(
         &self,
-        _dst_val: &Value,
+        dst_val: &Value,
         _src_val: &Value,
         _byte_len: &u64,
     ) -> Result<(), IrError> {
@@ -666,18 +666,17 @@ impl<'a> InstructionVerifier<'a> {
         //| XXX Pointers are broken, pending https://github.com/FuelLabs/sway/issues/2819
         //| So here we may still get non-pointers, but still ref-types, passed as the source for
         //| mem_copy, especially when dealing with constant b256s or similar.
-        //|if !dst_val.get_pointer(self.context).is_some()
+        if dst_val.get_pointer(self.context).is_none()
         //|    || !(src_val.get_pointer(self.context).is_some()
         //|        || matches!(
         //|            src_val.get_instruction(self.context),
         //|            Some(Instruction::GetStorageKey) | Some(Instruction::IntToPtr(..))
         //|        ))
-        //|{
-        //|    Err(IrError::VerifyGetNonExistentPointer)
-        //|} else {
-        //|    Ok(())
-        //|}
-        Ok(())
+        {
+            Err(IrError::VerifyMemcopyNonExistentPointer)
+        } else {
+            Ok(())
+        }
     }
 
     fn verify_ret(&self, val: &Value, ty: &Type) -> Result<(), IrError> {

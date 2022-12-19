@@ -3,7 +3,7 @@ use crate::{
         session::Session,
         token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
     },
-    utils::{attributes::doc_attributes, markdown, markup::Markup},
+    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use std::sync::Arc;
 use sway_core::{
@@ -22,7 +22,8 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .get(&to_ident_key(&decl_ident))
+                .try_get(&to_ident_key(&decl_ident))
+                .try_unwrap()
                 .map(|item| item.value().clone())?;
             (decl_ident, decl_token)
         }
@@ -53,7 +54,7 @@ fn extract_fn_signature(span: &Span) -> String {
 
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
-    if let Some(attributes) = doc_attributes(token) {
+    if let Some(attributes) = doc_comment_attributes(token) {
         doc_comment = attributes
             .iter()
             .map(|attribute| {

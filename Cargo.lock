@@ -1266,6 +1266,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fd-lock"
+version = "3.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb21c69b9fea5e15dbc1049e4b77145dd0ba1c84019c488102de0dc4ea4b0a27"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rustix",
+ "windows-sys 0.42.0",
+]
+
+[[package]]
 name = "ff"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1332,7 +1343,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1364,7 +1375,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1390,7 +1401,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "clap 4.0.29",
@@ -1409,7 +1420,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1425,7 +1436,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1435,9 +1446,10 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
+ "fd-lock",
  "forc-tracing",
  "forc-util",
  "fuels-types",
@@ -1461,7 +1473,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -1474,7 +1486,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -1483,7 +1495,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1701,9 +1713,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.32.2"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce2349a66d10d6e9f214a78572a4470b9fc2e805e49327c3c1ac6870951020b9"
+checksum = "147fc4f999eb2367467b09390d991811ca8d951ccc704246f3ddcea9e413a435"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -1728,9 +1740,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.32.2"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07d6769758c5718026d03bf55557c1cea78ab6672e4c5d8efcfef853d6162cdb"
+checksum = "18b2d832fbf4115a139981ad5a3823bc579505274faa1c74cdef1e90fc4a4b1d"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1753,9 +1765,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.32.2"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c6b7ec28dbf349bbc097e7e45ee711046088fe0365261f16105c842a4db354d"
+checksum = "b44b707a20ce7b4fd7cd3451e672552e9851fd9024422d68a875f6b12ab184e5"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
@@ -4047,7 +4059,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "sway-ast"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4057,7 +4069,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "clap 3.2.23",
  "derivative",
@@ -4089,7 +4101,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4101,7 +4113,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -4115,7 +4127,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4125,7 +4137,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4156,7 +4168,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4172,7 +4184,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4183,11 +4195,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.32.1"
+version = "0.32.2"
 
 [[package]]
 name = "swayfmt"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "anyhow",
  "forc-tracing",

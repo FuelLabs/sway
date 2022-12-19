@@ -755,6 +755,35 @@ fn type_check_trait_implementation(
             });
         }
 
+        // check there is no mismatch of payability attributes
+        // between the method signature and the method implementation
+        use crate::transform::AttributeKind::Payable;
+        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
+        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+        match (impl_method_signature_payable, impl_method_payable) {
+            (true, false) =>
+            // implementation does not have payable attribute
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: true,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (false, true) =>
+            // implementation has extra payable attribute, not mentioned by signature
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: false,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (true, true) | (false, false) => (), // no payability mismatch
+        }
+
         impl_method
             .return_type
             .replace_self_type(type_engine, self_type);
@@ -858,8 +887,8 @@ fn type_check_trait_implementation(
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
             span: block_span.clone(),
             missing_functions: method_checklist
-                .into_iter()
-                .map(|(ident, _)| ident.as_str().to_string())
+                .into_keys()
+                .map(|ident| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });

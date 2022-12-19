@@ -1229,6 +1229,7 @@ abi MyContract {
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
+
     #[test]
     fn test_traits_with_def_block() {
         let sway_code_to_format = r#"script;
@@ -1305,6 +1306,75 @@ fn main() {
         bar(y);
     }
 }
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn test_multiple_comma_separated_attributes() {
+        let sway_code_to_format = r#"library my_lib;
+
+#[test, inline(always), storage(read, write), payable]
+fn foo() {}
+"#;
+        let correct_sway_code = r#"library my_lib;
+
+#[test, inline(always), storage(read, write), payable]
+fn foo() {}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn test_stack_of_comma_separated_attributes1() {
+        let sway_code_to_format = r#"library my_lib;
+
+/// this is a doc comment
+#[storage(read, write), payable]
+#[test, inline(always)]
+fn foo() {}
+"#;
+        let correct_sway_code = r#"library my_lib;
+
+/// this is a doc comment
+#[storage(read, write), payable]
+#[test, inline(always)]
+fn foo() {}
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn test_stack_of_comma_separated_attributes2() {
+        let sway_code_to_format = r#"library my_lib;
+
+/// this is a doc comment
+#[storage(read, write)]
+#[payable]
+#[test]
+#[inline(always)]
+fn foo() {}
+"#;
+        let correct_sway_code = r#"library my_lib;
+
+/// this is a doc comment
+#[storage(read, write)]
+#[payable]
+#[test]
+#[inline(always)]
+fn foo() {}
 "#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =

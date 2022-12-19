@@ -381,8 +381,8 @@ impl<'ir> AsmBuilder<'ir> {
                         CompileError::UnknownRegister {
                             span: reg_name.span(),
                             initialized_registers: inline_reg_map
-                                .iter()
-                                .map(|(name, _)| *name)
+                                .keys()
+                                .copied()
                                 .collect::<Vec<_>>()
                                 .join("\n"),
                         }
@@ -430,8 +430,8 @@ impl<'ir> AsmBuilder<'ir> {
                 None => {
                     errors.push(CompileError::UnknownRegister {
                         initialized_registers: inline_reg_map
-                            .iter()
-                            .map(|(name, _)| name.to_string())
+                            .keys()
+                            .map(|name| name.to_string())
                             .collect::<Vec<_>>()
                             .join("\n"),
                         span: ret_reg_name.span(),

@@ -180,7 +180,7 @@ pub fn inline_function_call(
         context,
         call_site,
         post_block.get_arg(context, 0).unwrap(),
-        Some(post_block),
+        None,
     );
 
     // Take the locals from the inlined function and add them to this function.  `value_map` is a

@@ -1,9 +1,8 @@
 script;
-use basic_storage_abi::{Quad, StoreU64};
-use std::assert::assert;
+use basic_storage_abi::{Quad, BasicStorage};
 
 fn main() -> u64 {
-    let addr = abi(StoreU64, 0xaa23c5d1bd21290d5c76911cc19c33b12e0b347f82cabbce5d9cbae0a41c8aec);
+    let addr = abi(BasicStorage, 0xaa23c5d1bd21290d5c76911cc19c33b12e0b347f82cabbce5d9cbae0a41c8aec);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 

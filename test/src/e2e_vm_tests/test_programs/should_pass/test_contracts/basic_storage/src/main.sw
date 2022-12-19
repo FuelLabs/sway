@@ -1,5 +1,5 @@
 contract;
-use std::{assert::assert, hash::sha256, storage::*};
+use std::{hash::sha256, storage::*};
 use basic_storage_abi::*;
 
 const C1 = 1;
@@ -20,7 +20,7 @@ storage {
     str10: str[10] = "aaaaaaaaaa",
 }
 
-impl StoreU64 for Contract {
+impl BasicStorage for Contract {
     #[storage(read)]
     fn get_u64(storage_key: b256) -> u64 {
         get(storage_key)

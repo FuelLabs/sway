@@ -7,7 +7,7 @@ pub struct Quad {
     v4: u64,
 }
 
-abi StoreU64 {
+abi BasicStorage {
     #[storage(write)]
     fn store_u64(key: b256, value: u64);
     #[storage(read)]
