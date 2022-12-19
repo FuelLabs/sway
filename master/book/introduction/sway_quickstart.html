@@ -253,8 +253,13 @@ $ tree .
 If you want to deploy your contract to the testnet instead of to a local Fuel node, check out the <a href="https://fuellabs.github.io/fuel-docs/master/developer-quickstart.html">Developer Quickstart Guide</a>.</p>
 </blockquote>
 <p>To deploy <code>counter_contract</code> on your local Fuel node, open a new terminal tab and run the following command from the root of the <code>wallet_contract</code> directory:</p>
+<blockquote>
+<p><strong>Note</strong>
+You will require the plugin <a href="https://github.com/FuelLabs/forc-wallet">forc-wallet</a> in order to sign your transactions.</p>
+</blockquote>
 <pre><code class="language-sh">forc deploy --unsigned
 </code></pre>
+<p>where <code>--url</code> parameter is the URL where your local node is hosted.</p>
 <blockquote>
 <p><strong>Note</strong>
 You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.</p>
@@ -270,6 +275,7 @@ Logs:
 TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b272090d99f96a))
 </code></pre>
 <p>Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.</p>
+<p>If <code>forc-deploy</code> emits a <code>no such subcommand</code> error, try to install it with <a href="../introduction/installation.html">fuelup</a> or <a href="https://github.com/FuelLabs/sway/releases">manually</a>.</p>
 <h2 id="testing-your-contract"><a class="header" href="#testing-your-contract">Testing Your Contract</a></h2>
 <p>We will cover how to test your contract later but, if you are eager to take a look, see <a href="../testing/unit-testing.html">Unit Testing</a> and <a href="../testing/testing-with-rust.html">Testing with Rust</a>.</p>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>

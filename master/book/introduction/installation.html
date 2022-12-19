@@ -155,19 +155,6 @@
 </code></pre>
 <p>to install the latest Fuel toolchain.</p>
 <p>You can run the same command at a later time to update the toolchain.</p>
-<h2 id="installing-from-source"><a class="header" href="#installing-from-source">Installing from Source</a></h2>
-<h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
-<p>A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing <code>rustup</code> can be found <a href="https://www.rust-lang.org/tools/install">here</a>. Then, install the Rust toolchain with:</p>
-<pre><code class="language-sh"># Install the latest stable Rust toolchain.
-rustup install stable
-</code></pre>
-<p>Installing <code>fuel-core</code> may require installing additional system dependencies. See <a href="https://github.com/FuelLabs/fuel-core#building">here</a> for instructions.</p>
-<p>The Sway toolchain is built and tested against the <code>stable</code> Rust toolchain version (<a href="https://github.com/rust-lang/rust/releases/latest">https://github.com/rust-lang/rust/releases/latest</a>). There is no guarantee it will work with the <code>nightly</code> Rust toolchain, or with earlier <code>stable</code> versions, so ensure you are using <code>stable</code> with:</p>
-<pre><code class="language-sh"># Update installed Rust toolchain; can be used independently.
-rustup update
-# Set the stable Rust toolchain as default; can be used independently.
-rustup default stable
-</code></pre>
 <h3 id="installing-from-cargo"><a class="header" href="#installing-from-cargo">Installing from Cargo</a></h3>
 <p>The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:</p>
 <pre><code class="language-sh">cargo install forc fuel-core
@@ -189,6 +176,19 @@ cargo install forc-explore
 
 # Sway Language Server
 cargo install forc-lsp
+</code></pre>
+<h2 id="installing-from-source"><a class="header" href="#installing-from-source">Installing from Source</a></h2>
+<h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
+<p>A prerequisite for installing and using Sway is the Rust toolchain. Platform-specific instructions for installing <code>rustup</code> can be found <a href="https://www.rust-lang.org/tools/install">here</a>. Then, install the Rust toolchain with:</p>
+<pre><code class="language-sh"># Install the latest stable Rust toolchain.
+rustup install stable
+</code></pre>
+<p>Installing <code>fuel-core</code> may require installing additional system dependencies. See <a href="https://github.com/FuelLabs/fuel-core#building">here</a> for instructions.</p>
+<p>The Sway toolchain is built and tested against the <code>stable</code> Rust toolchain version (<a href="https://github.com/rust-lang/rust/releases/latest">https://github.com/rust-lang/rust/releases/latest</a>). There is no guarantee it will work with the <code>nightly</code> Rust toolchain, or with earlier <code>stable</code> versions, so ensure you are using <code>stable</code> with:</p>
+<pre><code class="language-sh"># Update installed Rust toolchain; can be used independently.
+rustup update
+# Set the stable Rust toolchain as default; can be used independently.
+rustup default stable
 </code></pre>
 <h3 id="building-from-source"><a class="header" href="#building-from-source">Building from Source</a></h3>
 <p>Rather than installing from <code>cargo</code>, the Sway toolchain can be built from a local source checkout by following instructions at <a href="https://github.com/FuelLabs/sway">https://github.com/FuelLabs/sway</a>. The Fuel Core full node implementation can be built from source by following instructions at <a href="https://github.com/FuelLabs/fuel-core">https://github.com/FuelLabs/fuel-core</a>.</p>
