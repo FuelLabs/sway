@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "storage_key",
@@ -16,6 +17,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "key",
@@ -36,6 +38,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "key",
@@ -51,6 +54,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "key",
@@ -71,6 +75,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "key",
@@ -86,6 +91,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "key",
@@ -106,6 +112,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [],
       "name": "test_storage_exhaustive",
       "output": {
