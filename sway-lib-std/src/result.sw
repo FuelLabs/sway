@@ -9,7 +9,7 @@
 //! the `std` crate, [`Result`] is most prominently used for `Identity`
 //! interactions and cryptographic operations.
 //! 
-//! A simple function returning Result might be defined and used like so:
+//! A simple function returning [`Result`] might be defined and used like so:
 //! 
 //! ```
 //! enum Version {
