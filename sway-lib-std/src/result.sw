@@ -88,6 +88,7 @@ impl<T, E> Result<T, E> {
     /// 
     /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
     /// assert(!x.is_ok());
+    /// ```
     pub fn is_ok(self) -> bool {
         match self {
             Result::Ok(_) => true,
@@ -110,6 +111,7 @@ impl<T, E> Result<T, E> {
     /// 
     /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
     /// assert(x.is_err());
+    /// ```
     pub fn is_err(self) -> bool {
         match self {
             Result::Ok(_) => false,
@@ -140,6 +142,7 @@ impl<T, E> Result<T, E> {
     /// 
     /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
     /// assert(x.unwrap() == 42); // reverts
+    /// ```
     pub fn unwrap(self) -> T {
         match self {
             Result::Ok(inner_value) => inner_value,
@@ -162,6 +165,7 @@ impl<T, E> Result<T, E> {
     /// 
     /// let y: Result<u64, Error> = Result::Err(Error::NotFound));
     /// assert(x.unwrap_or(69) == 69);
+    /// ```
     pub fn unwrap_or(self, default: T) -> T {
         match self {
             Result::Ok(inner_value) => inner_value,
