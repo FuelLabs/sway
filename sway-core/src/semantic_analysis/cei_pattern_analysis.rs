@@ -5,6 +5,8 @@
 // for more detail on vulnerabilities in case of storage modification after interaction
 // and this [blog post](https://chainsecurity.com/curve-lp-oracle-manipulation-post-mortem)
 // for more information on storage reads after interaction.
+// We also treat the balance tree reads and writes separately,
+// as well as modifying output messages.
 
 use crate::{
     declaration_engine::{DeclarationEngine, DeclarationId},
@@ -15,6 +17,7 @@ use crate::{
     Engines,
 };
 use std::collections::HashSet;
+use std::fmt;
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Span, Spanned};
 
@@ -23,6 +26,24 @@ enum Effect {
     Interaction,  // interaction with external contracts
     StorageWrite, // storage modification
     StorageRead,  // storage read
+    // Note: there are no operations that only write to the balance tree
+    BalanceTreeRead,      // balance tree read operation
+    BalanceTreeReadWrite, // balance tree read and write operation
+    OutputMessage,        // operation creates a new `Output::Message`
+}
+
+impl fmt::Display for Effect {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Effect::*;
+        match self {
+            Interaction => write!(f, "Interaction"),
+            StorageWrite => write!(f, "Storage write"),
+            StorageRead => write!(f, "Storage read"),
+            BalanceTreeRead => write!(f, "Balance tree read"),
+            BalanceTreeReadWrite => write!(f, "Balance tree update"),
+            OutputMessage => write!(f, "Output messages modification"),
+        }
+    }
 }
 
 // The algorithm that searches for storage operations after interaction
@@ -31,7 +52,7 @@ enum Effect {
 // storage reads or writes.
 enum CEIAnalysisState {
     LookingForInteraction, // initial state of the automaton
-    LookingForStorageReadOrWrite,
+    LookingForEffect,
 }
 
 pub(crate) fn analyze_program(engines: Engines<'_>, prog: &ty::TyProgram) -> Vec<CompileWarning> {
@@ -100,7 +121,7 @@ fn impl_trait_methods<'a>(
 }
 
 // This is the main part of the analysis algorithm:
-// we are looking for state effects after contract interaction
+// we are looking for various effects after contract interaction
 fn analyze_code_block(
     engines: Engines<'_>,
     codeblock: &ty::TyCodeBlock,
@@ -117,11 +138,11 @@ fn analyze_code_block(
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if codeblock_entry_effects.contains(&Effect::Interaction) {
-                    analysis_state = CEIAnalysisState::LookingForStorageReadOrWrite;
+                    analysis_state = CEIAnalysisState::LookingForEffect;
                     interaction_span = ast_node.span.clone();
                 }
             }
-            CEIAnalysisState::LookingForStorageReadOrWrite => warn_after_interaction(
+            CEIAnalysisState::LookingForEffect => warn_after_interaction(
                 &codeblock_entry_effects,
                 &interaction_span,
                 &ast_node.span,
@@ -306,27 +327,17 @@ fn analyze_expression(
             set_union(cond_then_effs, cond_else_effs)
         }
         WhileLoop { condition, body } => {
-            // if the loop (condition + body) contains both interaction and storage operations
+            // if the loop (condition + body) contains both interaction and state effects
             // in _any_ order, we report CEI pattern violation
             let cond_effs = analyze_expression(engines, condition, block_name, warnings);
             let body_effs = analyze_code_block(engines, body, block_name, warnings);
             let res_effs = set_union(cond_effs, body_effs);
-            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageRead])) {
-                warnings.push(CompileWarning {
-                    span: expr.span.clone(),
-                    warning_content: Warning::StorageReadAfterInteraction {
-                        block_name: block_name.clone(),
-                    },
-                });
-            };
-            if res_effs.is_superset(&HashSet::from([Effect::Interaction, Effect::StorageWrite])) {
-                warnings.push(CompileWarning {
-                    span: expr.span.clone(),
-                    warning_content: Warning::StorageWriteAfterInteraction {
-                        block_name: block_name.clone(),
-                    },
-                });
-            };
+            if res_effs.contains(&Effect::Interaction) {
+                // TODO: the span is not very precise, we can do better here, but this
+                // will need a bit of refactoring of the CEI analysis
+                let span = expr.span.clone();
+                warn_after_interaction(&res_effs, &span, &span, &block_name.clone(), warnings)
+            }
             res_effs
         }
         AsmExpression {
@@ -386,11 +397,11 @@ fn analyze_expressions(
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if expr_effs.contains(&Effect::Interaction) {
-                    analysis_state = CEIAnalysisState::LookingForStorageReadOrWrite;
+                    analysis_state = CEIAnalysisState::LookingForEffect;
                     interaction_span = expr.span.clone();
                 }
             }
-            CEIAnalysisState::LookingForStorageReadOrWrite => warn_after_interaction(
+            CEIAnalysisState::LookingForEffect => warn_after_interaction(
                 &expr_effs,
                 &interaction_span,
                 &expr.span,
@@ -418,11 +429,11 @@ fn analyze_asm_block(
         match analysis_state {
             CEIAnalysisState::LookingForInteraction => {
                 if asm_op_effs.contains(&Effect::Interaction) {
-                    analysis_state = CEIAnalysisState::LookingForStorageReadOrWrite;
+                    analysis_state = CEIAnalysisState::LookingForEffect;
                     interaction_span = asm_op.span.clone();
                 }
             }
-            CEIAnalysisState::LookingForStorageReadOrWrite => warn_after_interaction(
+            CEIAnalysisState::LookingForEffect => warn_after_interaction(
                 &asm_op_effs,
                 &interaction_span,
                 &asm_op.span,
@@ -442,18 +453,13 @@ fn warn_after_interaction(
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) {
-    if ast_node_effects.contains(&Effect::StorageRead) {
+    let interaction_singleton = HashSet::from([Effect::Interaction]);
+    let state_effects = ast_node_effects.difference(&interaction_singleton);
+    for eff in state_effects {
         warnings.push(CompileWarning {
             span: Span::join(interaction_span.clone(), effect_span.clone()),
-            warning_content: Warning::StorageReadAfterInteraction {
-                block_name: block_name.clone(),
-            },
-        });
-    };
-    if ast_node_effects.contains(&Effect::StorageWrite) {
-        warnings.push(CompileWarning {
-            span: Span::join(interaction_span.clone(), effect_span.clone()),
-            warning_content: Warning::StorageWriteAfterInteraction {
+            warning_content: Warning::EffectAfterInteraction {
+                effect: eff.to_string(),
                 block_name: block_name.clone(),
             },
         });
@@ -593,15 +599,19 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     match intr {
         StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
+        Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
-        | Mul | Div | PtrAdd | PtrSub | GetStorageKey | Smo => HashSet::new(),
+        | Mul | Div | PtrAdd | PtrSub | GetStorageKey => HashSet::new(),
     }
 }
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
         "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
-        "srw" | "srwq" | "bal" => HashSet::from([Effect::StorageRead]),
+        "srw" | "srwq" => HashSet::from([Effect::StorageRead]),
+        "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
+        "bal" => HashSet::from([Effect::BalanceTreeRead]),
+        "smo" => HashSet::from([Effect::OutputMessage]),
         "call" => HashSet::from([Effect::Interaction]),
         // the rest of the assembly instructions are considered to not have effects
         _ => HashSet::new(),
