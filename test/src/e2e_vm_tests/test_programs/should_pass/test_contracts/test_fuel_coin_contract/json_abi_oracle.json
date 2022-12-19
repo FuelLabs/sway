@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "burn_amount",
@@ -16,6 +17,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "coins",
@@ -41,6 +43,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "mint_amount",

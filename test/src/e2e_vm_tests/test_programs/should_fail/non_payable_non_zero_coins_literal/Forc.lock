@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-43D8DE4CD0332A21'
+
+[[package]]
+name = 'non_payable_non_zero_coins_literal'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-43D8DE4CD0332A21'
+dependencies = ['core']
