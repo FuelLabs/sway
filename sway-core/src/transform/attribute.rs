@@ -41,7 +41,28 @@ pub enum AttributeKind {
     Storage,
     Inline,
     Test,
+    Payable,
 }
 
 /// Stores the attributes associated with the type.
 pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
+
+pub(crate) fn generate_json_abi_attributes_map(
+    attr_map: &AttributesMap,
+) -> Option<Vec<fuels_types::Attribute>> {
+    if attr_map.is_empty() {
+        None
+    } else {
+        Some(
+            attr_map
+                .iter()
+                .flat_map(|(_attr_kind, attrs)| {
+                    attrs.iter().map(|attr| fuels_types::Attribute {
+                        name: attr.name.to_string(),
+                        arguments: attr.args.iter().map(|arg| arg.to_string()).collect(),
+                    })
+                })
+                .collect(),
+        )
+    }
+}
