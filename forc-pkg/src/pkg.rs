@@ -2207,6 +2207,8 @@ pub fn dependency_namespace(
                 namespace::Module::default_with_constants(engines, constants)?
             }
         };
+        let node_idx = &graph[node];
+        namespace.name = node_idx.name.clone();
         namespace.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {

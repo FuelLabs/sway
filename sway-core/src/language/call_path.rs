@@ -71,35 +71,40 @@ impl CallPath {
     }
 
     pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
+        if self.is_absolute {
+            return self.clone();
+        }
+
         let mut full_trait_name = self.clone();
         if self.prefixes.is_empty() {
             let mut synonym_prefixes = vec![];
+            let mut submodule_name_in_synonym_prefixes = false;
+
             if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
                 synonym_prefixes = use_synonym.0.clone();
-                for mod_path in namespace.mod_path() {
-                    if synonym_prefixes[0].as_str() == mod_path.as_str() {
-                        synonym_prefixes.drain(0..1);
-                    } else {
-                        synonym_prefixes = use_synonym.0.clone();
-                        break;
-                    }
+                let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
+                if let Some(submodule) = submodule {
+                    submodule_name_in_synonym_prefixes =
+                        submodule.name.clone() == synonym_prefixes[0].as_str();
                 }
             }
 
-            let mut prefixes: Vec<Ident> = match &namespace.root().pkg_name {
-                Some(pkg_name) if synonym_prefixes.is_empty() => vec![pkg_name.clone()],
-                _ => vec![],
-            };
+            let mut prefixes: Vec<Ident> = vec![];
 
-            for mod_path in namespace.mod_path() {
-                prefixes.push(mod_path.clone());
+            if synonym_prefixes.is_empty() || !submodule_name_in_synonym_prefixes {
+                if let Some(pkg_name) = &namespace.root().pkg_name {
+                    prefixes.push(pkg_name.clone());
+                }
+                for mod_path in namespace.mod_path() {
+                    prefixes.push(mod_path.clone());
+                }
             }
             prefixes.extend(synonym_prefixes);
 
             full_trait_name = CallPath {
                 prefixes,
                 suffix: self.suffix.clone(),
-                is_absolute: false,
+                is_absolute: true,
             }
         }
         full_trait_name
