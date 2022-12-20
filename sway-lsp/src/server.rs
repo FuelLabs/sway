@@ -1,12 +1,10 @@
 pub use crate::error::DocumentError;
 use crate::{
     capabilities,
-    core::{
-        config::{Config, Warnings},
-        session::Session,
-    },
+    config::{Config, Warnings},
+    core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
-    utils::{debug, sync},
+    utils::debug,
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
@@ -104,6 +102,7 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -125,7 +124,7 @@ impl Backend {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.sessions.get(&manifest_dir) {
+        let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
             Some(item) => item.value().clone(),
             None => {
                 // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
@@ -141,7 +140,8 @@ impl Backend {
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir)
+                    .try_get(&manifest_dir)
+                    .try_unwrap()
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
@@ -159,7 +159,7 @@ impl Backend {
     ) {
         let diagnostics_res = {
             let debug = &self.config.read().debug;
-            let tokens = session.tokens_for_file(uri);
+            let tokens = session.token_map().tokens_for_file(uri);
             match debug.show_collected_tokens_as_warnings {
                 Warnings::Default => diagnostics,
                 // If collected_tokens_as_warnings is Parsed or Typed,
@@ -241,13 +241,13 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // update this file with the new changes and write to disk
-                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
-                    if let Ok(mut file) = File::create(uri.path()) {
-                        let _ = writeln!(&mut file, "{}", src);
+                match session.write_changes_to_file(&uri, params.content_changes) {
+                    Ok(_) => {
+                        self.parse_project(uri, params.text_document.uri, session.clone())
+                            .await;
                     }
+                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
-                self.parse_project(uri, params.text_document.uri, session.clone())
-                    .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
         }
@@ -297,6 +297,24 @@ impl LanguageServer for Backend {
                 let position = params.text_document_position_params.position;
                 Ok(capabilities::hover::hover_data(session, uri, position))
             }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
+    async fn code_action(
+        &self,
+        params: CodeActionParams,
+    ) -> jsonrpc::Result<Option<CodeActionResponse>> {
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((temp_uri, session)) => Ok(capabilities::code_actions(
+                session,
+                &params.range,
+                params.text_document,
+                &temp_uri,
+            )),
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
@@ -474,7 +492,8 @@ impl Backend {
             Ok((_, session)) => {
                 let ranges = session
                     .runnables
-                    .get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_unwrap()
                     .map(|item| {
                         let runnable = item.value();
                         vec![(runnable.range, format!("{}", runnable.tree_type))]
@@ -585,7 +604,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
     use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};

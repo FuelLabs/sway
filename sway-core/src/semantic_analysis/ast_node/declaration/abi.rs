@@ -43,7 +43,7 @@ impl ty::TyAbiDeclaration {
                 errors
             );
             for param in &method.parameters {
-                if param.is_reference && param.is_mutable {
+                if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })
@@ -62,7 +62,7 @@ impl ty::TyAbiDeclaration {
                 errors
             );
             for param in &method.parameters {
-                if param.is_reference && param.is_mutable {
+                if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
                     })

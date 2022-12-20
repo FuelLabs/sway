@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "baba",
@@ -17,6 +18,7 @@
     }
   ],
   "loggedTypes": [],
+  "messagesTypes": [],
   "types": [
     {
       "components": [

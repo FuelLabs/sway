@@ -45,6 +45,7 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
+    VerifyMemcopyNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
     VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
@@ -59,6 +60,11 @@ pub enum IrError {
     VerifyLogId,
     VerifyMismatchedLoggedTypes,
     VerifyRevertCodeBadType,
+    VerifySmoRecipientBadType,
+    VerifySmoBadRecipientAndMessageType,
+    VerifySmoMessageSize,
+    VerifySmoCoins,
+    VerifySmoOutputIndex,
 }
 
 impl std::error::Error for IrError {}
@@ -248,6 +254,12 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
+            IrError::VerifyMemcopyNonExistentPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to use non pointer with `mem_copy`."
+                )
+            }
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
                 "Verification failed: Function {fn_str} return type must match its RET \
@@ -320,6 +332,34 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: error code for revert must be a u64."
                 )
+            }
+            IrError::VerifySmoRecipientBadType => {
+                write!(
+                    f,
+                    "Verification failed: the struct `recipient_and_message` of `smo` must have a `b256` \
+                    as its first field."
+                )
+            }
+            IrError::VerifySmoBadRecipientAndMessageType => {
+                write!(
+                    f,
+                    "Verification failed: `recipient_and_message` of `smo` must have a struct"
+                )
+            }
+            IrError::VerifySmoMessageSize => {
+                write!(
+                    f,
+                    "Verification failed: smo message size must be an integer."
+                )
+            }
+            IrError::VerifySmoOutputIndex => {
+                write!(
+                    f,
+                    "Verification failed: smo output index value must be an integer"
+                )
+            }
+            IrError::VerifySmoCoins => {
+                write!(f, "Verification failed: smo coins value must be an integer")
             }
         }
     }

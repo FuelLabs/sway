@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [],
       "name": "foo",
       "output": {
@@ -28,6 +29,7 @@
       }
     }
   ],
+  "messagesTypes": [],
   "types": [
     {
       "components": [],

@@ -147,6 +147,7 @@ impl ty::TyFunctionDeclaration {
             name,
             body,
             parameters: new_parameters,
+            implementing_type: None,
             span,
             attributes,
             return_type,
@@ -186,6 +187,7 @@ fn test_function_selector_behavior() {
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_no_span("foo"),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![],
         span: Span::dummy(),
@@ -208,6 +210,7 @@ fn test_function_selector_behavior() {
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
         name: Ident::new_with_override("bar", Span::dummy()),
+        implementing_type: None,
         body: ty::TyCodeBlock { contents: vec![] },
         parameters: vec![
             ty::TyFunctionParameter {

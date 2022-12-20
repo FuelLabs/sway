@@ -1,6 +1,14 @@
 {
   "functions": [
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "storage_key",
@@ -16,6 +24,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -31,6 +47,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -46,6 +70,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -66,6 +98,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -86,6 +126,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -106,6 +154,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "test_storage_exhaustive",
       "output": {
@@ -116,6 +173,7 @@
     }
   ],
   "loggedTypes": [],
+  "messagesTypes": [],
   "types": [
     {
       "components": [],

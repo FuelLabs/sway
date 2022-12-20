@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [],
       "name": "main",
       "output": {
@@ -11,6 +12,7 @@
     }
   ],
   "loggedTypes": [],
+  "messagesTypes": [],
   "types": [
     {
       "components": [],

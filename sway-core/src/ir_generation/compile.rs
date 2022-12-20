@@ -3,7 +3,7 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    type_system::{LogId, TypeId},
+    type_system::{LogId, MessageId, TypeId},
     TypeEngine,
 };
 
@@ -19,6 +19,7 @@ use sway_types::{span::Span, Spanned};
 
 use std::collections::HashMap;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -26,6 +27,7 @@ pub(super) fn compile_script(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
@@ -47,6 +49,7 @@ pub(super) fn compile_script(
         module,
         main_function,
         logged_types_map,
+        messages_types_map,
         None,
     )?;
     compile_tests(
@@ -55,12 +58,14 @@ pub(super) fn compile_script(
         &mut md_mgr,
         module,
         logged_types_map,
+        messages_types_map,
         test_fns,
     )?;
 
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_predicate(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -68,6 +73,7 @@ pub(super) fn compile_predicate(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types: &HashMap<TypeId, LogId>,
+    messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
@@ -89,6 +95,7 @@ pub(super) fn compile_predicate(
         module,
         main_function,
         &HashMap::new(),
+        &HashMap::new(),
         None,
     )?;
     compile_tests(
@@ -97,18 +104,21 @@ pub(super) fn compile_predicate(
         &mut md_mgr,
         module,
         logged_types,
+        messages_types,
         test_fns,
     )?;
 
     Ok(module)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
     abi_entries: &[ty::TyFunctionDeclaration],
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
     type_engine: &TypeEngine,
 ) -> Result<Module, CompileError> {
@@ -131,6 +141,7 @@ pub(super) fn compile_contract(
             module,
             decl,
             logged_types_map,
+            messages_types_map,
             type_engine,
         )?;
     }
@@ -140,6 +151,7 @@ pub(super) fn compile_contract(
         &mut md_mgr,
         module,
         logged_types_map,
+        messages_types_map,
         test_fns,
     )?;
 
@@ -152,6 +164,7 @@ pub(super) fn compile_library(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
@@ -172,6 +185,7 @@ pub(super) fn compile_library(
         &mut md_mgr,
         module,
         logged_types_map,
+        messages_types_map,
         test_fns,
     )?;
 
@@ -281,6 +295,7 @@ pub(super) fn compile_function(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
     test_decl_id: Option<DeclarationId>,
 ) -> Result<Option<Function>, CompileError> {
@@ -305,12 +320,14 @@ pub(super) fn compile_function(
             args,
             None,
             logged_types_map,
+            messages_types_map,
             test_decl_id,
         )
         .map(Some)
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_entry_function(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -318,6 +335,7 @@ pub(super) fn compile_entry_function(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_id: Option<DeclarationId>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
@@ -328,6 +346,7 @@ pub(super) fn compile_entry_function(
         module,
         ast_fn_decl,
         logged_types_map,
+        messages_types_map,
         is_entry,
         test_decl_id,
     )
@@ -340,6 +359,7 @@ pub(super) fn compile_tests(
     md_mgr: &mut MetadataManager,
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(ty::TyFunctionDeclaration, DeclarationId)],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
@@ -352,6 +372,7 @@ pub(super) fn compile_tests(
                 module,
                 ast_fn_decl,
                 logged_types_map,
+                messages_types_map,
                 Some(decl_id.clone()),
             )
         })
@@ -387,6 +408,7 @@ fn compile_fn_with_args(
     args: Vec<(String, Type, Span)>,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_id: Option<DeclarationId>,
 ) -> Result<Function, CompileError> {
     let inline_opt = ast_fn_decl.inline();
@@ -422,7 +444,7 @@ fn compile_fn_with_args(
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
     let mut metadata = md_combine(context, &span_md_idx, &storage_md_idx);
 
-    let decl_index = test_decl_id.map(|decl_id| *decl_id as usize);
+    let decl_index = test_decl_id.map(|decl_id| *decl_id);
     if let Some(decl_index) = decl_index {
         let test_decl_index_md_idx = md_mgr.test_decl_index_to_md(context, decl_index);
         metadata = md_combine(context, &metadata, &test_decl_index_md_idx);
@@ -451,6 +473,7 @@ fn compile_fn_with_args(
         func,
         returns_by_ref,
         logged_types_map,
+        messages_types_map,
     );
     let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
 
@@ -529,6 +552,7 @@ fn compile_abi_method(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
     type_engine: &TypeEngine,
 ) -> Result<Function, CompileError> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
@@ -574,6 +598,7 @@ fn compile_abi_method(
         args,
         Some(selector),
         logged_types_map,
+        messages_types_map,
         None,
     )
 }

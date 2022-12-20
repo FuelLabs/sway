@@ -1,4 +1,4 @@
-use crate::TypeEngine;
+use crate::{language::ty::TyDeclaration, TypeEngine};
 
 use super::DeclMapping;
 
@@ -10,4 +10,8 @@ pub(crate) trait ReplaceDecls {
             self.replace_decls_inner(decl_mapping, type_engine);
         }
     }
+}
+
+pub(crate) trait ReplaceFunctionImplementingType {
+    fn replace_implementing_type(&mut self, implementing_type: TyDeclaration);
 }

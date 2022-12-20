@@ -241,17 +241,24 @@ impl TestContext {
                     output.push_str(&out);
                     contract_ids.push(result);
                 }
-                let contract_ids: Result<Vec<ContractId>, anyhow::Error> =
-                    contract_ids.into_iter().collect();
+                let contract_ids = contract_ids.into_iter().collect::<Result<Vec<_>, _>>()?;
                 let (result, out) =
-                    harness::runs_on_node(&name, &context.run_config, &contract_ids?).await;
+                    harness::runs_on_node(&name, &context.run_config, &contract_ids).await;
                 output.push_str(&out);
 
                 let receipt = result?;
-                assert!(receipt.iter().all(|res| !matches!(
-                    res,
-                    fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
-                )));
+                if !receipt.iter().all(|res| {
+                    !matches!(
+                        res,
+                        fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+                    )
+                }) {
+                    println!();
+                    for cid in contract_ids {
+                        println!("Deployed contract: 0x{cid}");
+                    }
+                    panic!("Receipts contain reverts or panics: {receipt:?}");
+                }
                 assert!(receipt.len() >= 2);
                 assert_matches!(receipt[receipt.len() - 2], fuel_tx::Receipt::Return { .. });
                 assert_eq!(receipt[receipt.len() - 2].val().unwrap(), val);
@@ -264,16 +271,23 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(&name, &context.run_config, true).await;
                 *output = out;
 
-                let tested_pkg = result.expect("failed to compile and run unit tests");
-                let failed: Vec<String> = tested_pkg
-                    .tests
+                let tested_pkgs = result.expect("failed to compile and run unit tests");
+                let failed: Vec<String> = tested_pkgs
                     .into_iter()
-                    .enumerate()
-                    .filter_map(|(ix, test)| match test.state {
-                        ProgramState::Revert(code) => {
-                            Some(format!("Test {ix} failed with revert {code}\n"))
-                        }
-                        _ => None,
+                    .flat_map(|tested_pkg| {
+                        tested_pkg
+                            .tests
+                            .into_iter()
+                            .filter(|test| !test.passed())
+                            .map(move |test| {
+                                format!(
+                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                    tested_pkg.built.pkg_name,
+                                    test.name,
+                                    test.state,
+                                    test.condition,
+                                )
+                            })
                     })
                     .collect();
 
@@ -345,9 +359,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     };
     let mut number_of_tests_executed = 0;
     let mut number_of_tests_failed = 0;
+    let mut failed_tests = vec![];
 
     for (i, test) in tests.into_iter().enumerate() {
-        print!("Testing {} ...", test.name.bold());
+        let name = test.name.clone();
+        print!("Testing {} ...", name.clone().bold());
         stdout().flush().unwrap();
 
         let mut output = String::new();
@@ -365,6 +381,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
             println!("{}", textwrap::indent(&output, "          "));
             number_of_tests_failed += 1;
+            failed_tests.push(name);
         } else {
             println!(" {}", "ok".green().bold());
 
@@ -420,6 +437,17 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             number_of_tests_failed,
             disabled_tests.len()
         );
+        if number_of_tests_failed > 0 {
+            tracing::info!("{}", "Failing tests:".red().bold());
+            tracing::info!(
+                "    {}",
+                failed_tests
+                    .into_iter()
+                    .map(|test_name| format!("{} ... {}", test_name.bold(), "failed".red().bold()))
+                    .collect::<Vec<_>>()
+                    .join("\n    ")
+            );
+        }
     }
     if number_of_tests_failed != 0 {
         Err(anyhow::Error::msg("Failed tests"))
