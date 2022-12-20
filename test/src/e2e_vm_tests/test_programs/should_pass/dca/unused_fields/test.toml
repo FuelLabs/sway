@@ -1,0 +1,7 @@
+category = "compile"
+
+# check: $()struct Bar {
+# check: $()This struct field is never accessed.
+
+# not: $()value: u64
+# not: $()This struct field is never accessed.

@@ -200,7 +200,7 @@ async fn can_get_script_bytecode_hash() {
     let tx = contract_instance
         .methods()
         .get_tx_script_bytecode_hash()
-        .get_call_execution_script()
+        .get_executable_call()
         .await
         .unwrap()
         .tx;
@@ -282,7 +282,7 @@ async fn can_get_tx_id() {
     let (contract_instance, _, _) = get_contracts().await;
 
     let call_handler = contract_instance.methods().get_tx_id();
-    let script = call_handler.get_call_execution_script().await.unwrap();
+    let script = call_handler.get_executable_call().await.unwrap();
     let tx_id = script.tx.id();
 
     let result = contract_instance

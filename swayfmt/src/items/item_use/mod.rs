@@ -39,7 +39,7 @@ impl Format for ItemUse {
                     .update_line_style(LineStyle::Normal);
                 format_use_stmt(self, &mut buf, &mut temp_formatter)?;
 
-                let expr_width = buf.chars().count() as usize;
+                let expr_width = buf.chars().count();
                 formatter.shape.code_line.add_width(expr_width);
                 formatter
                     .shape

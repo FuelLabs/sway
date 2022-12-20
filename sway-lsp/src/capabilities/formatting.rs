@@ -1,8 +1,7 @@
+use crate::error::LanguageServerError;
 use std::sync::Arc;
 use swayfmt::Formatter;
 use tower_lsp::lsp_types::{Position, Range, TextEdit};
-
-use crate::error::LanguageServerError;
 
 pub fn get_page_text_edit(
     text: Arc<str>,
@@ -18,7 +17,7 @@ pub fn get_page_text_edit(
     let line_end = std::cmp::max(num_of_lines, text_lines_count) as u32;
 
     Ok(TextEdit {
-        range: Range::new(Position::new(0, 0), Position::new(line_end as u32, 0)),
+        range: Range::new(Position::new(0, 0), Position::new(line_end, 0)),
         new_text: formatted_code,
     })
 }

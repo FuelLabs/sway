@@ -1,12 +1,9 @@
 use crate::{
     core::{
         session::Session,
-        token::{Token, TypedAstToken},
+        token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
     },
-    utils::{
-        attributes::doc_attributes, common::get_range_from_span, markdown, markup::Markup,
-        token::to_ident_key,
-    },
+    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
 };
 use std::sync::Arc;
 use sway_core::{
@@ -19,13 +16,14 @@ use tower_lsp::lsp_types::{self, Position, Url};
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
-    let (ident, token) = session.token_at_position(&url, position)?;
+    let (ident, token) = session.token_map().token_at_position(&url, position)?;
     let range = get_range_from_span(&ident.span());
-    let (decl_ident, decl_token) = match session.declared_token_ident(&token) {
+    let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .get(&to_ident_key(&decl_ident))
+                .try_get(&to_ident_key(&decl_ident))
+                .try_unwrap()
                 .map(|item| item.value().clone())?;
             (decl_ident, decl_token)
         }
@@ -56,7 +54,7 @@ fn extract_fn_signature(span: &Span) -> String {
 
 fn format_doc_attributes(token: &Token) -> String {
     let mut doc_comment = String::new();
-    if let Some(attributes) = doc_attributes(token) {
+    if let Some(attributes) = doc_comment_attributes(token) {
         doc_comment = attributes
             .iter()
             .map(|attribute| {

@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [],
       "name": "returns_gm_one",
       "output": {
@@ -11,6 +12,7 @@
     }
   ],
   "loggedTypes": [],
+  "messagesTypes": [],
   "types": [
     {
       "components": null,

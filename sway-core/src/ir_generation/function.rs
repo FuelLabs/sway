@@ -17,7 +17,7 @@ use crate::{
         *,
     },
     metadata::MetadataManager,
-    type_system::{LogId, TypeId, TypeInfo},
+    type_system::{LogId, MessageId, TypeId, TypeInfo},
     types::DeterministicallyAborts,
     PartialEqWithTypeEngine, TypeEngine,
 };
@@ -47,6 +47,8 @@ pub(crate) struct FnCompiler<'te> {
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
     logged_types_map: HashMap<TypeId, LogId>,
+    // This is a map from the type IDs of a message data type and the ID of the corresponding smo
+    messages_types_map: HashMap<TypeId, MessageId>,
 }
 
 impl<'te> FnCompiler<'te> {
@@ -57,6 +59,7 @@ impl<'te> FnCompiler<'te> {
         function: Function,
         returns_by_ref: bool,
         logged_types_map: &HashMap<TypeId, LogId>,
+        messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -75,6 +78,7 @@ impl<'te> FnCompiler<'te> {
             recreated_fns: HashMap::new(),
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
+            messages_types_map: messages_types_map.clone(),
         }
     }
 
@@ -737,6 +741,120 @@ impl<'te> FnCompiler<'te> {
                     .ins(context)
                     .binary_op(op, lhs_value, rhs_value))
             }
+            Intrinsic::Smo => {
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                /* First operand: recipient + message data */
+                // Step 1: compile the user data and get its type
+                let user_message = self.compile_expression(context, md_mgr, &arguments[1])?;
+                let user_message_type = match user_message.get_stripped_ptr_type(context) {
+                    Some(user_message_type) => user_message_type,
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine type for message data.",
+                            span,
+                        ))
+                    }
+                };
+
+                // Step 2: build a struct with two fields:
+                // - The first field is a `b256` that contains the `recipient`
+                // - The second field is a `u64` that contains the message ID
+                // - The third field contains the actual user data
+                let field_types = [Type::B256, Type::Uint(64), user_message_type];
+                let recipient_and_message_aggregate =
+                    Aggregate::new_struct(context, field_types.to_vec());
+
+                // Step 3: construct a local pointer for the recipient and message data struct
+                let recipient_and_message_aggregate_local_name = self.lexical_map.insert_anon();
+                let recipient_and_message_ptr = self
+                    .function
+                    .new_local_ptr(
+                        context,
+                        recipient_and_message_aggregate_local_name,
+                        Type::Struct(recipient_and_message_aggregate),
+                        false,
+                        None,
+                    )
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+
+                // Step 4: Convert the local pointer into a value via `get_ptr`
+                let recipient_and_message_ptr_ty = *recipient_and_message_ptr.get_type(context);
+                let mut recipient_and_message = self
+                    .current_block
+                    .ins(context)
+                    .get_ptr(recipient_and_message_ptr, recipient_and_message_ptr_ty, 0)
+                    .add_metadatum(context, span_md_idx);
+
+                // Step 5: compile the `recipient` and insert it as the first field of the struct
+                let recipient = self.compile_expression(context, md_mgr, &arguments[0])?;
+                recipient_and_message = self
+                    .current_block
+                    .ins(context)
+                    .insert_value(
+                        recipient_and_message,
+                        recipient_and_message_aggregate,
+                        recipient,
+                        vec![0],
+                    )
+                    .add_metadatum(context, span_md_idx);
+
+                // Step 6: Grab the message ID from `messages_types_map` and insert it as the
+                // second field of the struct
+                let message_id = match self.messages_types_map.get(&arguments[1].return_type) {
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Unable to determine ID for smo instance.",
+                            span,
+                        ))
+                    }
+                    Some(message_id) => {
+                        convert_literal_to_value(context, &Literal::U64(**message_id as u64))
+                    }
+                };
+                recipient_and_message = self
+                    .current_block
+                    .ins(context)
+                    .insert_value(
+                        recipient_and_message,
+                        recipient_and_message_aggregate,
+                        message_id,
+                        vec![1],
+                    )
+                    .add_metadatum(context, span_md_idx);
+
+                // Step 7: Insert the user message data as the third field of the struct
+                recipient_and_message = self
+                    .current_block
+                    .ins(context)
+                    .insert_value(
+                        recipient_and_message,
+                        recipient_and_message_aggregate,
+                        user_message,
+                        vec![2],
+                    )
+                    .add_metadatum(context, span_md_idx);
+
+                /* Second operand: the size of the message data */
+                let message_size = convert_literal_to_value(
+                    context,
+                    &Literal::U64(8 + ir_type_size_in_bytes(context, &user_message_type)),
+                );
+
+                /* Third operand: the output index */
+                let output_index = self.compile_expression(context, md_mgr, &arguments[2])?;
+
+                /* Fourth operand: the amount of coins to send */
+                let coins = self.compile_expression(context, md_mgr, &arguments[3])?;
+
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .smo(recipient_and_message, message_size, output_index, coins)
+                    .add_metadatum(context, span_md_idx))
+            }
         }
     }
 
@@ -1127,6 +1245,7 @@ impl<'te> FnCompiler<'te> {
                     self.module,
                     &callee_fn_decl,
                     &self.logged_types_map,
+                    &self.messages_types_map,
                     is_entry,
                     None,
                 )?
@@ -1342,23 +1461,25 @@ impl<'te> FnCompiler<'te> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
+        //
+        // NOTE: This is currently very important!  There is a limitation in the register allocator
+        // which requires that all value uses are after the value definitions, where 'after' means
+        // later in the list of instructions, as opposed to in the control flow sense.
+        //
+        // Hence the need for a 'break' block which does nothing more than jump to the final block,
+        // as we need to construct the final block after the body block, but we need somewhere to
+        // break to during the body block construction.
 
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
-
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, vec![]);
         }
 
-        // Fill in the body block now, jump unconditionally to the cond block at its end.
-        let body_block = self
+        // Create the break block.
+        let break_block = self
             .function
-            .create_block(context, Some("while_body".into()));
-
-        // Create the final block after we're finished with the body.
-        let final_block = self
-            .function
-            .create_block(context, Some("end_while".into()));
+            .create_block(context, Some("while_break".into()));
 
         // Keep track of the previous blocks we have to jump to in case of a break or a continue.
         // This should be `None` if we're not in a loop already or the previous break or continue
@@ -1367,11 +1488,13 @@ impl<'te> FnCompiler<'te> {
         let prev_block_to_continue_to = self.block_to_continue_to;
 
         // Keep track of the current blocks to jump to in case of a break or continue.
-        self.block_to_break_to = Some(final_block);
+        self.block_to_break_to = Some(break_block);
         self.block_to_continue_to = Some(cond_block);
 
-        // Compile the body and a branch to the condition block if no branch is already present in
-        // the body block
+        // Fill in the body block now, jump unconditionally to the cond block at its end.
+        let body_block = self
+            .function
+            .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
         self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
@@ -1382,7 +1505,16 @@ impl<'te> FnCompiler<'te> {
         self.block_to_break_to = prev_block_to_break_to;
         self.block_to_continue_to = prev_block_to_continue_to;
 
-        // Add the conditional which jumps into the body or out to the final block.
+        // Create the final block now we're finished with the body.
+        let final_block = self
+            .function
+            .create_block(context, Some("end_while".into()));
+
+        // Add an unconditional jump from the break block to the final block.
+        break_block.ins(context).branch(final_block, vec![]);
+
+        // Add the conditional in the cond block which jumps into the body or out to the final
+        // block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {

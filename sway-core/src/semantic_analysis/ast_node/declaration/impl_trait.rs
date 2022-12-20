@@ -674,7 +674,7 @@ fn type_check_trait_implementation(
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
         // declaration
-        impl_method_signature.replace_self_type(type_engine, ctx.self_type());
+        impl_method_signature.replace_self_type(type_engine, self_type);
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -695,34 +695,34 @@ fn type_check_trait_implementation(
         // with the parameters of the function signature
         for (impl_method_signature_param, impl_method_param) in impl_method_signature
             .parameters
-            .iter()
-            .zip(&impl_method.parameters)
+            .iter_mut()
+            .zip(&mut impl_method.parameters)
         {
             // TODO use trait constraints as part of the type here to
             // implement trait constraint solver */
-            // check if the mutability of the parameters is incompatible
-            if impl_method_param.is_mutable != impl_method_signature_param.is_mutable {
-                errors.push(CompileError::ParameterMutabilityMismatch {
-                    span: impl_method_param.mutability_span.clone(),
-                });
+            // Check if we have a non-ref mutable argument. That's not allowed.
+            if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
+                errors.push(CompileError::MutableParameterNotSupported {
+                    param_name: impl_method_signature.name.clone(),
+                })
             }
 
-            if (impl_method_param.is_reference || impl_method_signature_param.is_reference)
-                && is_contract
+            // check if reference / mutability of the parameters is incompatible
+            if impl_method_param.is_mutable != impl_method_signature_param.is_mutable
+                || impl_method_param.is_reference != impl_method_signature_param.is_reference
             {
-                errors.push(CompileError::RefMutParameterInContract {
+                errors.push(CompileError::ParameterRefMutabilityMismatch {
                     span: impl_method_param.mutability_span.clone(),
                 });
             }
 
-            let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-                impl_method_param.type_id,
-                impl_method_signature_param.type_id,
-                ctx.self_type(),
-                &impl_method_signature_param.type_span,
-                ctx.help_text(),
-            );
-            if !new_warnings.is_empty() || !new_errors.is_empty() {
+            impl_method_param
+                .type_id
+                .replace_self_type(type_engine, self_type);
+            if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
+                &type_engine.look_up_type_id(impl_method_signature_param.type_id),
+                type_engine,
+            ) {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
@@ -755,16 +755,42 @@ fn type_check_trait_implementation(
             });
         }
 
-        // unify the return type of the implemented function and the return
-        // type of the signature
-        let (new_warnings, new_errors) = type_engine.unify_right_with_self(
-            impl_method.return_type,
-            impl_method_signature.return_type,
-            ctx.self_type(),
-            &impl_method.return_type_span,
-            ctx.help_text(),
-        );
-        if !new_warnings.is_empty() || !new_errors.is_empty() {
+        // check there is no mismatch of payability attributes
+        // between the method signature and the method implementation
+        use crate::transform::AttributeKind::Payable;
+        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
+        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+        match (impl_method_signature_payable, impl_method_payable) {
+            (true, false) =>
+            // implementation does not have payable attribute
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: true,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (false, true) =>
+            // implementation has extra payable attribute, not mentioned by signature
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: false,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (true, true) | (false, false) => (), // no payability mismatch
+        }
+
+        impl_method
+            .return_type
+            .replace_self_type(type_engine, self_type);
+        if !type_engine.look_up_type_id(impl_method.return_type).eq(
+            &type_engine.look_up_type_id(impl_method_signature.return_type),
+            type_engine,
+        ) {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
@@ -861,8 +887,8 @@ fn type_check_trait_implementation(
         errors.push(CompileError::MissingInterfaceSurfaceMethods {
             span: block_span.clone(),
             missing_functions: method_checklist
-                .into_iter()
-                .map(|(ident, _)| ident.as_str().to_string())
+                .into_keys()
+                .map(|ident| ident.as_str().to_string())
                 .collect::<Vec<_>>()
                 .join("\n"),
         });

@@ -8,9 +8,9 @@ use crate::{
 use std::fmt::Write;
 use sway_ast::{
     attribute::{Annotated, Attribute, AttributeDecl},
-    token::Delimiter,
+    token::{Delimiter, PunctKind},
 };
-use sway_types::Spanned;
+use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
 impl<T: Format> Format for Annotated<T> {
     fn format(
@@ -40,8 +40,14 @@ impl Format for AttributeDecl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let attr = self.attribute.get();
-        if attr.name.as_str() == "doc" {
+        let (doc_comment_attrs, regular_attrs): (Vec<_>, _) = self
+            .attribute
+            .get()
+            .into_iter()
+            .partition(|a| a.name.as_str() == DOC_COMMENT_ATTRIBUTE_NAME);
+
+        // invariant: doc comment attributes are singleton lists
+        if let Some(attr) = doc_comment_attrs.into_iter().next() {
             if let Some(Some(doc_comment)) = attr
                 .args
                 .as_ref()
@@ -49,14 +55,19 @@ impl Format for AttributeDecl {
             {
                 writeln!(formatted_code, "///{}", doc_comment.as_str().trim_end())?;
             }
-        } else {
+            return Ok(());
+        }
+
+        // invariant: attribute lists cannot be empty
+        // `#`
+        write!(formatted_code, "{}", self.hash_token.span().as_str())?;
+        // `[`
+        Self::open_square_bracket(formatted_code, formatter)?;
+        let mut regular_attrs = regular_attrs.iter().peekable();
+        while let Some(attr) = regular_attrs.next() {
             formatter.with_shape(
                 formatter.shape.with_default_code_line(),
                 |formatter| -> Result<(), FormatterError> {
-                    // `#`
-                    write!(formatted_code, "{}", self.hash_token.span().as_str())?;
-                    // `[`
-                    Self::open_square_bracket(formatted_code, formatter)?;
                     // name e.g. `storage`
                     write!(formatted_code, "{}", attr.name.span().as_str())?;
                     if let Some(args) = &attr.args {
@@ -67,14 +78,16 @@ impl Format for AttributeDecl {
                         // ')'
                         Self::close_parenthesis(formatted_code, formatter)?;
                     };
-                    // `]\n`
-                    Self::close_square_bracket(formatted_code, formatter)?;
-
                     Ok(())
                 },
             )?;
+            // do not put a separator after the last attribute
+            if regular_attrs.peek().is_some() {
+                write!(formatted_code, "{} ", PunctKind::Comma.as_char())?;
+            }
         }
-
+        // `]\n`
+        Self::close_square_bracket(formatted_code, formatter)?;
         Ok(())
     }
 }

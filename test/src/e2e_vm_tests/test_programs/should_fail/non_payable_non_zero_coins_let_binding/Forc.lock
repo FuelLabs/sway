@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-94CE374EBE3C9FB5'
+
+[[package]]
+name = 'non_payable_non_zero_coins_let_binding'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-94CE374EBE3C9FB5'
+dependencies = ['core']
