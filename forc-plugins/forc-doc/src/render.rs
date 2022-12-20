@@ -521,7 +521,7 @@ impl Renderable for AllDoc {
                     path_literal_str: path_str.to_string(),
                     qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
                 }),
-                _ => {}
+                _ => unreachable!("these items are non-documentable"),
             }
         }
         let project_name = all_doc
