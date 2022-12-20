@@ -24,9 +24,9 @@ impl Document {
             _ => Some(&self.item_header.item_name),
         };
 
-        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
+        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name.map(|s| &**s))
     }
-    fn create_html_file_name(ty: &str, name: Option<&String>) -> String {
+    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
         match name {
             Some(name) => {
                 format!("{ty}.{name}.html")
