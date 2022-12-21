@@ -404,7 +404,7 @@ fn item_fn_to_function_declaration(
     let span = item_fn.span();
     let return_type_span = match &item_fn.fn_signature.return_type_opt {
         Some((_right_arrow_token, ty)) => ty.span(),
-        None => item_fn.fn_signature.span(),
+        None => sway_types::span::Span::from_string("()".to_owned()),
     };
     Ok(FunctionDeclaration {
         purity: get_attributed_purity(handler, &attributes)?,
@@ -827,7 +827,7 @@ fn type_field_to_enum_variant(
     let type_span = if let Ty::Path(path_type) = &type_field.ty {
         path_type.prefix.name.span()
     } else {
-        span.clone()
+        sway_types::span::Span::from_string("()".to_owned())
     };
 
     let enum_variant = EnumVariant {
@@ -989,7 +989,7 @@ fn fn_signature_to_trait_fn(
 ) -> Result<TraitFn, ErrorEmitted> {
     let return_type_span = match &fn_signature.return_type_opt {
         Some((_right_arrow_token, ty)) => ty.span(),
-        None => fn_signature.span(),
+        None => sway_types::span::Span::from_string("()".to_owned()),
     };
     let trait_fn = TraitFn {
         name: fn_signature.name,
