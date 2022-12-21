@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocument, RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, ALL_DOC_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -58,20 +58,29 @@ pub fn main() -> Result<()> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
-    let compilation = pkg::check(&plan, silent, &type_engine)?
+    let typed_program = match pkg::check(&plan, silent, &type_engine)?
         .pop()
-        .expect("there is guaranteed to be at least one elem in the vector");
-    let raw_docs: Documentation =
-        Document::from_ty_program(&compilation, no_deps, document_private_items)?;
+        .and_then(|compilation| compilation.value)
+    {
+        Some((_, Some(typed_program))) => typed_program,
+        _ => bail!("CompileResult returned None"),
+    };
+    let raw_docs: Documentation = Document::from_ty_program(
+        project_name,
+        &typed_program,
+        no_deps,
+        document_private_items,
+    )?;
     // render docs to HTML
-    let rendered_docs: RenderedDocumentation =
-        RenderedDocument::from_raw_docs(&raw_docs, project_name);
+    let rendered_docs = RenderedDocumentation::from(raw_docs);
 
     // write contents to outfile
-    for doc in rendered_docs {
+    for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
         for prefix in doc.module_prefix {
-            doc_path.push(prefix);
+            if &prefix != project_name {
+                doc_path.push(prefix);
+            }
         }
 
         fs::create_dir_all(&doc_path)?;
