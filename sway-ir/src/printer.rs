@@ -275,6 +275,19 @@ fn constant_to_doc(
             ))
             .append(md_namer.md_idx_to_doc(context, metadata)),
         )
+    } else if let ValueContent {
+        value: ValueDatum::Configurable(configurable),
+        metadata,
+    } = &context.values[const_val.0]
+    {
+        Doc::line(
+            Doc::text(format!(
+                "{} = config {}",
+                namer.name(context, const_val),
+                configurable.as_lit_string(context)
+            ))
+            .append(md_namer.md_idx_to_doc(context, metadata)),
+        )
     } else {
         unreachable!("Not a constant value.")
     }
@@ -287,7 +300,9 @@ fn maybe_constant_to_doc(
     maybe_const_val: &Value,
 ) -> Doc {
     // Create a new doc only if value is new and unknown, and is a constant.
-    if !namer.is_known(maybe_const_val) && maybe_const_val.is_constant(context) {
+    if !namer.is_known(maybe_const_val)
+        && (maybe_const_val.is_constant(context) || maybe_const_val.is_configurable(context))
+    {
         constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty
@@ -893,6 +908,7 @@ struct Namer {
 
     names: HashMap<Value, String>,
     next_value_idx: u64,
+    next_configurable_idx: u64,
 }
 
 impl Namer {
@@ -901,6 +917,7 @@ impl Namer {
             function,
             names: HashMap::new(),
             next_value_idx: 0,
+            next_configurable_idx: 0,
         }
     }
 
@@ -911,9 +928,19 @@ impl Namer {
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
+            ValueDatum::Configurable(_) => self.default_configurable_name(value),
             ValueDatum::Constant(_) => self.default_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
         }
+    }
+
+    fn default_configurable_name(&mut self, value: &Value) -> String {
+        self.names.get(value).cloned().unwrap_or_else(|| {
+            let new_name = format!("c{}", self.next_configurable_idx);
+            self.next_configurable_idx += 1;
+            self.names.insert(*value, new_name.clone());
+            new_name
+        })
     }
 
     fn default_name(&mut self, value: &Value) -> String {

@@ -1585,6 +1585,8 @@ impl<'te> FnCompiler<'te> {
             }
         } else if let Some(const_val) = self.module.get_global_constant(context, name) {
             Ok(const_val)
+        } else if let Some(config_val) = self.module.get_global_configurable(context, name) {
+            Ok(config_val)
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{name}'."),
@@ -1669,7 +1671,13 @@ impl<'te> FnCompiler<'te> {
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
-        let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
+        // `is_configurable` should be `false` here.
+        let ty::TyConstantDeclaration {
+            name,
+            value,
+            is_configurable,
+            ..
+        } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
             self.type_engine,
             context,
@@ -1678,6 +1686,7 @@ impl<'te> FnCompiler<'te> {
             None,
             Some(self),
             &value,
+            is_configurable,
         )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let return_type =

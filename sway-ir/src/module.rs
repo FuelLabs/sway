@@ -19,7 +19,8 @@ pub struct Module(pub generational_arena::Index);
 pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
-    pub globals: HashMap<String, Value>,
+    pub global_constants: HashMap<String, Value>,
+    pub global_configurable: HashMap<String, Value>,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -37,7 +38,8 @@ impl Module {
         let content = ModuleContent {
             kind,
             functions: Vec::new(),
-            globals: HashMap::new(),
+            global_constants: HashMap::new(),
+            global_configurable: HashMap::new(),
         };
         Module(context.modules.insert(content))
     }
@@ -54,12 +56,29 @@ impl Module {
 
     /// Add a global value to this module.
     pub fn add_global_constant(&self, context: &mut Context, name: String, const_val: Value) {
-        context.modules[self.0].globals.insert(name, const_val);
+        context.modules[self.0]
+            .global_constants
+            .insert(name, const_val);
     }
 
     /// Get a named global value from this module, if found.
     pub fn get_global_constant(&self, context: &Context, name: &str) -> Option<Value> {
-        context.modules[self.0].globals.get(name).copied()
+        context.modules[self.0].global_constants.get(name).copied()
+    }
+
+    /// Add a global value to this module.
+    pub fn add_global_configurable(&self, context: &mut Context, name: String, config_val: Value) {
+        context.modules[self.0]
+            .global_configurable
+            .insert(name, config_val);
+    }
+
+    /// Get a named global value from this module, if found.
+    pub fn get_global_configurable(&self, context: &Context, name: &str) -> Option<Value> {
+        context.modules[self.0]
+            .global_configurable
+            .get(name)
+            .copied()
     }
 
     /// Removed a function from the module.  Returns true if function was found and removed.

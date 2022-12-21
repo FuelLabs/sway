@@ -9,6 +9,12 @@ use crate::{
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
 #[derive(Debug, Clone, DebugWithContext)]
+pub struct Configurable {
+    pub value: Constant,
+}
+
+/// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
+#[derive(Debug, Clone, DebugWithContext)]
 pub struct Constant {
     pub ty: Type,
     pub value: ConstantValue,
