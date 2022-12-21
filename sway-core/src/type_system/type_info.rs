@@ -1181,7 +1181,13 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all nested
     /// `TypeInfo`'s found in `self`, including `self`.
-    pub(crate) fn extract_nested_types(self, type_engine: &TypeEngine) -> Vec<TypeInfo> {
+    pub(crate) fn extract_nested_types(
+        self,
+        type_engine: &TypeEngine,
+        span: &Span,
+    ) -> CompileResult<Vec<TypeInfo>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
         let mut all_nested_types = vec![self.clone()];
         match self {
             TypeInfo::Enum {
@@ -1190,18 +1196,26 @@ impl TypeInfo {
                 ..
             } => {
                 for type_parameter in type_parameters.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(type_parameter.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
                 for variant_type in variant_types.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(variant_type.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
             }
             TypeInfo::Struct {
@@ -1210,43 +1224,63 @@ impl TypeInfo {
                 ..
             } => {
                 for type_parameter in type_parameters.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(type_parameter.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
                 for field in fields.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(field.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
             }
             TypeInfo::Tuple(type_arguments) => {
                 for type_argument in type_arguments.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(type_argument.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
             }
             TypeInfo::Array(elem_ty, _) => {
-                all_nested_types.append(
-                    &mut type_engine
+                let mut nested_types = check!(
+                    type_engine
                         .look_up_type_id(elem_ty.type_id)
-                        .extract_nested_types(type_engine),
+                        .extract_nested_types(type_engine, span),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
                 );
+                all_nested_types.append(&mut nested_types);
             }
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
-                    all_nested_types.append(
-                        &mut type_engine
+                    let mut nested_types = check!(
+                        type_engine
                             .look_up_type_id(field.type_id)
-                            .extract_nested_types(type_engine),
+                            .extract_nested_types(type_engine, span),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
+                    all_nested_types.append(&mut nested_types);
                 }
             }
             TypeInfo::UnknownGeneric {
@@ -1254,11 +1288,15 @@ impl TypeInfo {
             } => {
                 for trait_constraint in trait_constraints.iter() {
                     for type_arg in trait_constraint.type_arguments.iter() {
-                        all_nested_types.append(
-                            &mut type_engine
+                        let mut nested_types = check!(
+                            type_engine
                                 .look_up_type_id(type_arg.type_id)
-                                .extract_nested_types(type_engine),
+                                .extract_nested_types(type_engine, span),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
                         );
+                        all_nested_types.append(&mut nested_types);
                     }
                 }
             }
@@ -1272,20 +1310,36 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Placeholder(_) => {}
-        };
-        all_nested_types
+            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+                errors.push(CompileError::Internal(
+                    "did not expect to find this type here",
+                    span.clone(),
+                ));
+                return err(warnings, errors);
+            }
+            TypeInfo::ErrorRecovery => {
+                // return an error but don't create a new error message
+                return err(warnings, errors);
+            }
+        }
+        ok(all_nested_types, warnings, errors)
     }
 
     pub(crate) fn extract_nested_generics<'a>(
         &self,
         type_engine: &'a TypeEngine,
-    ) -> HashSet<WithTypeEngine<'a, TypeInfo>> {
-        let nested_types = self.clone().extract_nested_types(type_engine);
-        HashSet::from_iter(
+        span: &Span,
+    ) -> CompileResult<HashSet<WithTypeEngine<'a, TypeInfo>>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let nested_types = check!(
+            self.clone().extract_nested_types(type_engine, span),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+        let generics = HashSet::from_iter(
             nested_types
                 .into_iter()
                 .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
@@ -1293,7 +1347,8 @@ impl TypeInfo {
                     thing,
                     engine: type_engine,
                 }),
-        )
+        );
+        ok(generics, warnings, errors)
     }
 
     /// Given two `TypeInfo`'s `self` and `other`, check to see if `self` is

@@ -91,6 +91,7 @@ impl ty::TyImplTrait {
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for_type_id,
+                &type_implementing_for_span
             ),
             return err(warnings, errors),
             warnings,
@@ -481,6 +482,7 @@ impl ty::TyImplTrait {
                 &new_impl_type_parameters,
                 &[],
                 implementing_for_type_id,
+                &type_implementing_for_span
             ),
             return err(warnings, errors),
             warnings,
@@ -938,8 +940,9 @@ fn check_for_unconstrained_type_parameters(
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
+    self_type_span: &Span,
 ) -> CompileResult<()> {
-    let warnings = vec![];
+    let mut warnings = vec![];
     let mut errors = vec![];
 
     // create a list of defined generics, with the generic and a span
@@ -953,17 +956,23 @@ fn check_for_unconstrained_type_parameters(
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
-        generics_in_use.extend(
+        generics_in_use.extend(check!(
             type_engine
                 .look_up_type_id(type_arg.type_id)
-                .extract_nested_generics(type_engine),
-        );
+                .extract_nested_generics(type_engine, &type_arg.span),
+            HashSet::new(),
+            warnings,
+            errors
+        ));
     }
-    generics_in_use.extend(
+    generics_in_use.extend(check!(
         type_engine
             .look_up_type_id(self_type)
-            .extract_nested_generics(type_engine),
-    );
+            .extract_nested_generics(type_engine, self_type_span),
+        HashSet::new(),
+        warnings,
+        errors
+    ));
 
     // TODO: add a lookup in the trait constraints here and add it to
     // generics_in_use
