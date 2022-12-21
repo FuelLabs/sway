@@ -5,10 +5,12 @@ use forc_pkg::{
 };
 use forc_util::validate_name;
 use fs_extra::dir::{copy, CopyOptions};
-use std::env;
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    fs::File,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+};
 use sway_utils::constants;
 use tracing::info;
 use url::Url;
@@ -54,7 +56,11 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         })?,
         None => {
             let manifest_path = repo_path.join(constants::MANIFEST_FILE_NAME);
-            if PackageManifest::from_file(&manifest_path).is_err() {
+            // TODO: Remove old `OLD_MANIFEST_FILE_NAME` once deprecation period over.
+            let old_manifest_path = repo_path.join(constants::OLD_MANIFEST_FILE_NAME);
+            if PackageManifest::from_file(&manifest_path).is_err()
+                && PackageManifest::from_file(&old_manifest_path).is_err()
+            {
                 anyhow::bail!("failed to find a template in {}", command.url);
             }
             repo_path
@@ -63,90 +69,102 @@ pub fn init(command: TemplateCommand) -> Result<()> {
 
     // Create the target dir
     let target_dir = current_dir.join(&command.project_name);
+    let forc_manifest_path: PathBuf = forc_util::find_manifest_file(&target_dir)
+        .ok_or_else(|| anyhow!("target directory missing forc manifest"))?;
 
     info!("Creating {} from template", &command.project_name);
     // Copy contents from template to target dir
     copy_template_to_target(&from_path, &target_dir)?;
 
-    // Edit forc.toml
-    edit_forc_toml(&target_dir, &command.project_name, &whoami::realname())?;
+    // Edit `forc.toml
+    let realname = whoami::realname();
+    edit_forc_toml(&forc_manifest_path, &command.project_name, &realname)?;
     if target_dir.join("test").exists() {
-        edit_cargo_toml(&target_dir, &command.project_name, &whoami::realname())?;
+        let cargo_manifest_path = target_dir.join(constants::TEST_MANIFEST_FILE_NAME);
+        edit_cargo_toml(&cargo_manifest_path, &command.project_name, &realname)?;
     }
     Ok(())
 }
 
-fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
-    let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
+const PACKAGE: &str = "package";
+const PROJECT: &str = "project";
+const AUTHORS: &str = "authors";
+const NAME: &str = "name";
+const DEPENDENCIES: &str = "dependencies";
+
+fn edit_toml<F, O>(toml_path: &Path, mut edit: F) -> Result<O>
+where
+    F: FnMut(&mut toml_edit::Document) -> Result<O>,
+{
+    let mut file = File::open(toml_path)?;
     let mut toml = String::new();
     file.read_to_string(&mut toml)?;
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
-
-    let mut authors = Vec::new();
-    let forc_toml: toml::Value = toml::de::from_str(&toml)?;
-    if let Some(table) = forc_toml.as_table() {
-        if let Some(package) = table.get("project") {
-            // If authors Vec is currently populated use that
-            if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
-                for author in authors_vec {
-                    if let toml::value::Value::String(name) = &author {
-                        authors.push(name.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    // Only append the users name to the authors field if it isn't already in the list
-    if authors.iter().any(|e| e != real_name) {
-        authors.push(real_name.to_string());
-    }
-
-    let authors: toml_edit::Array = authors.iter().collect();
-    manifest_toml["project"]["authors"] = toml_edit::value(authors);
-    manifest_toml["project"]["name"] = toml_edit::value(project_name);
-
-    // Remove explicit std entry from copied template
-    if let Some(project) = manifest_toml.get_mut("dependencies") {
-        let _ = project
-            .as_table_mut()
-            .context("Unable to get forc manifest as table")?
-            .remove("std");
-    }
-
-    let mut file = File::create(out_dir.join(constants::MANIFEST_FILE_NAME))?;
-    file.write_all(manifest_toml.to_string().as_bytes())?;
-    Ok(())
+    let mut toml_doc = toml.parse::<toml_edit::Document>()?;
+    let res = edit(&mut toml_doc)?;
+    file.write_all(toml_doc.to_string().as_bytes())?;
+    Ok(res)
 }
 
-fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result<()> {
-    let mut file = File::open(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
-    let mut toml = String::new();
-    file.read_to_string(&mut toml)?;
+fn edit_forc_toml(manifest_path: &Path, project_name: &str, real_name: &str) -> Result<()> {
+    edit_toml(manifest_path, |manifest_toml| {
+        use toml_edit::{Item, Value};
 
-    let mut updated_authors = toml_edit::Array::default();
-
-    let cargo_toml: toml::Value = toml::de::from_str(&toml)?;
-    if let Some(table) = cargo_toml.as_table() {
-        if let Some(package) = table.get("package") {
-            if let Some(toml::Value::Array(authors_vec)) = package.get("authors") {
-                for author in authors_vec {
-                    if let toml::value::Value::String(name) = &author {
-                        updated_authors.push(name);
+        // If authors Vec is populated use that.
+        let mut new_authors = Vec::new();
+        let table = manifest_toml.as_table();
+        if let Some(Item::Table(project)) = table.get(PROJECT) {
+            if let Some(Item::Value(Value::Array(authors))) = project.get(AUTHORS) {
+                for author in authors {
+                    if let Value::String(name) = &author {
+                        new_authors.push(name.to_string());
                     }
                 }
             }
         }
-    }
-    updated_authors.push(real_name);
 
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
-    manifest_toml["package"]["authors"] = toml_edit::value(updated_authors);
-    manifest_toml["package"]["name"] = toml_edit::value(project_name);
+        // Only append the users name to the authors field if it isn't already in the list
+        if new_authors.iter().any(|e| e != real_name) {
+            new_authors.push(real_name.to_string());
+        }
 
-    let mut file = File::create(out_dir.join(constants::TEST_MANIFEST_FILE_NAME))?;
-    file.write_all(manifest_toml.to_string().as_bytes())?;
-    Ok(())
+        let authors: toml_edit::Array = new_authors.iter().collect();
+        manifest_toml[PROJECT][AUTHORS] = toml_edit::value(authors);
+        manifest_toml[PROJECT][NAME] = toml_edit::value(project_name);
+
+        // Remove explicit std entry from copied template
+        if let Some(project) = manifest_toml.get_mut(DEPENDENCIES) {
+            let _ = project
+                .as_table_mut()
+                .context("Unable to get forc manifest as table")?
+                .remove("std");
+        }
+        Ok(())
+    })
+}
+
+fn edit_cargo_toml(manifest_path: &Path, project_name: &str, real_name: &str) -> Result<()> {
+    edit_toml(manifest_path, |manifest_toml| {
+        use toml_edit::{Item, Value};
+
+        // If authors Vec is populated use that.
+        let mut new_authors = Vec::new();
+        let table = manifest_toml.as_table();
+        if let Some(Item::Table(project)) = table.get(PACKAGE) {
+            if let Some(Item::Value(Value::Array(authors))) = project.get(AUTHORS) {
+                for author in authors {
+                    if let Value::String(name) = &author {
+                        new_authors.push(name.to_string());
+                    }
+                }
+            }
+        }
+        new_authors.push(real_name.to_string());
+
+        let authors: toml_edit::Array = new_authors.iter().collect();
+        manifest_toml[PACKAGE][AUTHORS] = toml_edit::value(authors);
+        manifest_toml[PACKAGE][NAME] = toml_edit::value(project_name);
+        Ok(())
+    })
 }
 
 fn copy_template_to_target(from: &PathBuf, to: &PathBuf) -> Result<()> {

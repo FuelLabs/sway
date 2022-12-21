@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_yellow_err;
-use forc_util::{find_manifest_dir, validate_name};
+use forc_util::{find_manifest_file, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -244,10 +244,8 @@ impl PackageManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
-            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
-        let path = dir.join(constants::MANIFEST_FILE_NAME);
+    pub fn from_dir(dir: &Path) -> Result<Self> {
+        let path = find_manifest_file(dir).ok_or_else(|| manifest_file_missing(dir))?;
         Self::from_file(path)
     }
 
@@ -444,8 +442,7 @@ impl PackageManifest {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(dir: &Path) -> Result<Self> {
-        let manifest_dir = find_manifest_dir(dir).ok_or_else(|| manifest_file_missing(dir))?;
-        let file_path = manifest_dir.join(constants::MANIFEST_FILE_NAME);
+        let file_path = find_manifest_file(dir).ok_or_else(|| manifest_file_missing(dir))?;
         Self::from_file(&file_path)
     }
 
@@ -721,10 +718,8 @@ impl WorkspaceManifestFile {
     ///
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
-    pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
-            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
-        let path = dir.join(constants::MANIFEST_FILE_NAME);
+    pub fn from_dir(dir: &Path) -> Result<Self> {
+        let path = find_manifest_file(dir).ok_or_else(|| manifest_file_missing(dir))?;
         Self::from_file(path)
     }
 

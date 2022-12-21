@@ -19,15 +19,15 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
-/// Continually go up in the file tree until a specified file is found.
-#[allow(clippy::branches_sharing_code)]
-pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+/// The first parent directory visited that meets the given condition is returned.
+pub fn find_parent_dir_with<F>(starter_path: &Path, mut condition: F) -> Option<PathBuf>
+where
+    F: FnMut(&Path) -> bool,
+{
     let mut path = std::fs::canonicalize(starter_path).ok()?;
     let empty_path = PathBuf::from("/");
     while path != empty_path {
-        path.push(file_name);
-        if path.exists() {
-            path.pop();
+        if condition(&path) {
             return Some(path);
         } else {
             path.pop();
@@ -36,9 +36,64 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     }
     None
 }
+
+/// Continually go up in the file tree until a specified file is found.
+#[allow(clippy::branches_sharing_code)]
+pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
+    find_parent_dir_with(starter_path, |dir| dir.join(file_name).exists())
+}
+
 /// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+// TODO: Once the old manifest file name deprecation period is over, simplify this function to not
+// check for the old manifest.
+pub fn find_manifest_file(starter_path: &Path) -> Option<PathBuf> {
+    let mut found_new = false;
+    find_parent_dir_with(starter_path, |dir| {
+        found_new = dir.join(constants::MANIFEST_FILE_NAME).exists();
+        found_new || dir.join(constants::OLD_MANIFEST_FILE_NAME).exists()
+    })
+    .map(|dir| {
+        if found_new {
+            dir.join(constants::MANIFEST_FILE_NAME)
+        } else {
+            dir.join(constants::OLD_MANIFEST_FILE_NAME)
+        }
+    })
+}
+
+/// Warn the user to update their manifest file to the new name.
+pub fn warn_if_old_manifest_name(path: &Path) {
+    if path.ends_with(constants::OLD_MANIFEST_FILE_NAME) {
+        let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        tracing::warn!(
+            "
+  WARNING: Forc manifest at {:?} uses the old file name '{}'.
+           Please change the file name to '{}' (all lowercase).
+           This change was made to improve file naming consistency throughout forc.
+           For more details, see: https://github.com/FuelLabs/sway/issues/3438\n",
+            path,
+            constants::OLD_MANIFEST_FILE_NAME,
+            constants::MANIFEST_FILE_NAME,
+        );
+    }
+}
+
+/// Whether or not the given path points to a file with a name that matches the expected forc
+/// manifest name.
+pub fn is_manifest(path: &Path) -> bool {
+    path.is_file()
+        && (path.ends_with(constants::MANIFEST_FILE_NAME)
+            || path.ends_with(constants::OLD_MANIFEST_FILE_NAME))
+}
+
+/// Whether or not the given directory contains a manifest at the top level.
+// TODO: Simplify this upon removal of OLD_MANIFEST_FILE_NAME.
+pub fn dir_contains_manifest(path: &Path) -> bool {
+    if !path.is_dir() {
+        return false;
+    }
+    path.join(constants::MANIFEST_FILE_NAME).exists()
+        || path.join(constants::OLD_MANIFEST_FILE_NAME).exists()
 }
 
 pub fn is_sway_file(file: &Path) -> bool {

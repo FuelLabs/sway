@@ -34,6 +34,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     };
 
     let manifest = ManifestFile::from_dir(&this_dir)?;
+    forc_util::warn_if_old_manifest_name(manifest.path());
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;

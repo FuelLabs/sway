@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use forc_util::validate_name;
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use sway_utils::constants;
 use tracing::{debug, info};
 
@@ -53,9 +53,9 @@ pub fn init(command: InitCommand) -> Result<()> {
         anyhow::bail!("'{}' is not a valid directory.", project_dir.display());
     }
 
-    if project_dir.join(constants::MANIFEST_FILE_NAME).exists() {
+    if forc_util::dir_contains_manifest(&project_dir) {
         anyhow::bail!(
-            "'{}' already includes a Forc.toml file.",
+            "'{}' already includes a Forc manifest.",
             project_dir.display()
         );
     }
@@ -101,52 +101,44 @@ pub fn init(command: InitCommand) -> Result<()> {
     };
     fs::create_dir_all(dir_to_create)?;
 
-    // Insert default manifest file
+    // Insert default manifest file.
+    let manifest_path = project_dir.join(constants::MANIFEST_FILE_NAME);
     match init_type {
-        InitType::Workspace => fs::write(
-            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_workspace_manifest(),
-        )?,
+        InitType::Workspace => fs::write(manifest_path, defaults::default_workspace_manifest())?,
         InitType::Package(ProgramType::Library) => fs::write(
-            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            manifest_path,
             defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
         )?,
         _ => fs::write(
-            Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
+            manifest_path,
             defaults::default_pkg_manifest(&project_name, constants::MAIN_ENTRY),
         )?,
     }
 
+    // Create the default entry point src file.
+    let project_src = project_dir.join("src");
     match init_type {
         InitType::Package(ProgramType::Contract) => fs::write(
-            Path::new(&project_dir)
-                .join("src")
-                .join(constants::MAIN_ENTRY),
+            project_src.join(constants::MAIN_ENTRY),
             defaults::default_contract(),
         )?,
         InitType::Package(ProgramType::Script) => fs::write(
-            Path::new(&project_dir)
-                .join("src")
-                .join(constants::MAIN_ENTRY),
+            project_src.join(constants::MAIN_ENTRY),
             defaults::default_script(),
         )?,
         InitType::Package(ProgramType::Library) => fs::write(
-            Path::new(&project_dir)
-                .join("src")
-                .join(constants::LIB_ENTRY),
+            project_src.join(constants::LIB_ENTRY),
             defaults::default_library(&project_name),
         )?,
         InitType::Package(ProgramType::Predicate) => fs::write(
-            Path::new(&project_dir)
-                .join("src")
-                .join(constants::MAIN_ENTRY),
+            project_src.join(constants::MAIN_ENTRY),
             defaults::default_predicate(),
         )?,
         _ => {}
     }
 
     // Ignore default `out` and `target` directories created by forc and cargo.
-    let gitignore_path = Path::new(&project_dir).join(".gitignore");
+    let gitignore_path = project_dir.join(".gitignore");
     // Append to existing gitignore if it exists otherwise create a new one.
     let mut gitignore_file = fs::OpenOptions::new()
         .write(true)

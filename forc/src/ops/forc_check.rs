@@ -22,6 +22,7 @@ pub fn check(
         std::env::current_dir()?
     };
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    forc_util::warn_if_old_manifest_name(manifest_file.path());
     let member_manifests = manifest_file.member_manifests()?;
     let lock_path = manifest_file.lock_path()?;
     let plan =

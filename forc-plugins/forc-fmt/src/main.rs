@@ -13,9 +13,9 @@ use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
-use forc_util::find_manifest_dir;
+use forc_util::find_manifest_file;
 use sway_core::BuildConfig;
-use sway_utils::{constants, get_sway_files};
+use sway_utils::get_sway_files;
 use swayfmt::Formatter;
 
 #[derive(Debug, Parser)]
@@ -56,11 +56,10 @@ fn run() -> Result<()> {
 
 /// Format the package at the given directory.
 fn format_pkg_at_dir(app: App, dir: &Path, formatter: &mut Formatter) -> Result<()> {
-    match find_manifest_dir(dir) {
-        Some(path) => {
-            let manifest_path = path.clone();
-            let manifest_file = manifest_path.join(constants::MANIFEST_FILE_NAME);
-            let files = get_sway_files(path);
+    match find_manifest_file(dir) {
+        Some(manifest_file) => {
+            let manifest_dir = manifest_file.parent().expect("manifest has no parent");
+            let files = get_sway_files(manifest_dir.to_path_buf());
             let mut contains_edits = false;
 
             for file in files {
@@ -68,7 +67,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, formatter: &mut Formatter) -> Result<
                     let file_content: Arc<str> = Arc::from(file_content);
                     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
                         file.clone(),
-                        manifest_path.clone(),
+                        manifest_dir.to_owned(),
                     );
                     match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {

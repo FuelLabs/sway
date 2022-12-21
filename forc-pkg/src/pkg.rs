@@ -2507,11 +2507,15 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     } = &build_options;
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    forc_util::warn_if_old_manifest_name(manifest_file.path());
     let member_manifests = manifest_file.member_manifests()?;
     // Check if we have members to build so that we are not trying to build an empty workspace.
     if member_manifests.is_empty() {
         bail!("No member found to build")
     }
+
+    todo!("Check for old lock file and rename it");
+
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
@@ -2906,15 +2910,11 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(Result::ok)
-        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .filter(|entry| forc_util::is_manifest(entry.path()))
         .find_map(|entry| {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;
-            if manifest.project.name == pkg_name {
-                Some(path.to_path_buf())
-            } else {
-                None
-            }
+            (manifest.project.name == pkg_name).then(|| path.to_path_buf())
         })
 }
 
