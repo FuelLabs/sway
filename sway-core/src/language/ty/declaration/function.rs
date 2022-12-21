@@ -363,6 +363,7 @@ impl TyFunctionDeclaration {
                     self.return_type,
                 ),
             },
+            attributes: transform::generate_json_abi_attributes_map(&self.attributes),
         }
     }
 

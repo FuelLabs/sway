@@ -242,12 +242,13 @@ impl Session {
     }
 
     pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
-        let document =
-            self.documents
-                .get(url.path())
-                .ok_or_else(|| DocumentError::DocumentNotFound {
-                    path: url.path().to_string(),
-                })?;
+        let document = self
+            .documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })?;
 
         get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
             .map(|page_text_edit| vec![page_text_edit])
@@ -267,12 +268,15 @@ impl Session {
         url: &Url,
         changes: Vec<TextDocumentContentChangeEvent>,
     ) -> Option<String> {
-        self.documents.get_mut(url.path()).map(|mut document| {
-            changes.iter().for_each(|change| {
-                document.apply_change(change);
-            });
-            document.get_text()
-        })
+        self.documents
+            .try_get_mut(url.path())
+            .try_unwrap()
+            .map(|mut document| {
+                changes.iter().for_each(|change| {
+                    document.apply_change(change);
+                });
+                document.get_text()
+            })
     }
 
     /// Remove the text document from the session.

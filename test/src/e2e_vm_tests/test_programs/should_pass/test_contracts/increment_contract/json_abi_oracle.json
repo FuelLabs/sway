@@ -1,6 +1,14 @@
 {
   "functions": [
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get",
       "output": {
@@ -10,6 +18,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "increment_by",

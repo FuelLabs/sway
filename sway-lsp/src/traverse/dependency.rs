@@ -72,7 +72,7 @@ impl<'a> Dependency<'a> {
                 _ => return,
             } {
                 let ident = token::to_ident_key(&ident);
-                if let Some(mut token) = self.tokens.get_mut(&ident) {
+                if let Some(mut token) = self.tokens.try_get_mut(&ident).try_unwrap() {
                     token.typed = Some(typed_token);
                     token.type_def = Some(TypeDefinition::Ident(ident.0));
                 }

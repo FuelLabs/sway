@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocument, RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, ALL_DOC_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -16,6 +16,7 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
+    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
@@ -60,24 +61,30 @@ pub fn main() -> Result<()> {
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
-    let compilation = pkg::check(&plan, silent, engines)?
+    let typed_program = match pkg::check(&plan, silent, engines)?
         .pop()
-        .expect("there is guaranteed to be at least one elem in the vector");
+        .and_then(|compilation| compilation.value)
+    {
+        Some((_, Some(typed_program))) => typed_program,
+        _ => bail!("CompileResult returned None"),
+    };
     let raw_docs: Documentation = Document::from_ty_program(
         &declaration_engine,
-        &compilation,
+        project_name,
+        &typed_program,
         no_deps,
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs: RenderedDocumentation =
-        RenderedDocument::from_raw_docs(&raw_docs, project_name);
+    let rendered_docs = RenderedDocumentation::from(Arc::new(declaration_engine), raw_docs);
 
     // write contents to outfile
-    for doc in rendered_docs {
+    for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
         for prefix in doc.module_prefix {
-            doc_path.push(prefix);
+            if &prefix != project_name {
+                doc_path.push(prefix);
+            }
         }
 
         fs::create_dir_all(&doc_path)?;

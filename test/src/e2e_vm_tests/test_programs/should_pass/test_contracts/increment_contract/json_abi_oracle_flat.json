@@ -1,6 +1,7 @@
 {
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "increment_by",
@@ -16,6 +17,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [],
       "name": "get",
       "output": {

@@ -1472,23 +1472,25 @@ impl<'eng> FnCompiler<'eng> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
+        //
+        // NOTE: This is currently very important!  There is a limitation in the register allocator
+        // which requires that all value uses are after the value definitions, where 'after' means
+        // later in the list of instructions, as opposed to in the control flow sense.
+        //
+        // Hence the need for a 'break' block which does nothing more than jump to the final block,
+        // as we need to construct the final block after the body block, but we need somewhere to
+        // break to during the body block construction.
 
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
-
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, vec![]);
         }
 
-        // Fill in the body block now, jump unconditionally to the cond block at its end.
-        let body_block = self
+        // Create the break block.
+        let break_block = self
             .function
-            .create_block(context, Some("while_body".into()));
-
-        // Create the final block after we're finished with the body.
-        let final_block = self
-            .function
-            .create_block(context, Some("end_while".into()));
+            .create_block(context, Some("while_break".into()));
 
         // Keep track of the previous blocks we have to jump to in case of a break or a continue.
         // This should be `None` if we're not in a loop already or the previous break or continue
@@ -1497,11 +1499,13 @@ impl<'eng> FnCompiler<'eng> {
         let prev_block_to_continue_to = self.block_to_continue_to;
 
         // Keep track of the current blocks to jump to in case of a break or continue.
-        self.block_to_break_to = Some(final_block);
+        self.block_to_break_to = Some(break_block);
         self.block_to_continue_to = Some(cond_block);
 
-        // Compile the body and a branch to the condition block if no branch is already present in
-        // the body block
+        // Fill in the body block now, jump unconditionally to the cond block at its end.
+        let body_block = self
+            .function
+            .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
         self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
@@ -1512,7 +1516,16 @@ impl<'eng> FnCompiler<'eng> {
         self.block_to_break_to = prev_block_to_break_to;
         self.block_to_continue_to = prev_block_to_continue_to;
 
-        // Add the conditional which jumps into the body or out to the final block.
+        // Create the final block now we're finished with the body.
+        let final_block = self
+            .function
+            .create_block(context, Some("end_while".into()));
+
+        // Add an unconditional jump from the break block to the final block.
+        break_block.ins(context).branch(final_block, vec![]);
+
+        // Add the conditional in the cond block which jumps into the body or out to the final
+        // block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {

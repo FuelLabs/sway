@@ -21,7 +21,8 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
-                .get(&to_ident_key(&decl_ident))
+                .try_get(&to_ident_key(&decl_ident))
+                .try_unwrap()
                 .map(|item| item.value().clone())?;
             (decl_ident, decl_token)
         }
