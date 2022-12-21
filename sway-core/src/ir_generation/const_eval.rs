@@ -91,7 +91,7 @@ pub(crate) fn compile_const_decl(
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let ty::TyConstantDeclaration { name, value, is_configurable, .. } =
+                    let ty::TyConstantDeclaration { name, value, .. } =
                         de_get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }
@@ -106,7 +106,6 @@ pub(crate) fn compile_const_decl(
                     env.module_ns,
                     env.function_compiler,
                     &value,
-                    is_configurable,
                 )?;
                 env.module
                     .add_global_constant(env.context, name.as_str().to_owned(), const_val);
@@ -127,7 +126,6 @@ pub(super) fn compile_constant_expression(
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
-    is_configurable: bool,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
@@ -140,11 +138,7 @@ pub(super) fn compile_constant_expression(
         function_compiler,
         const_expr,
     )?;
-    if !is_configurable {
-        Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
-    } else {
-        Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, span_id_idx))
-    }
+    Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
 }
 
 pub(crate) fn compile_constant_expression_to_constant(
