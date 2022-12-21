@@ -702,18 +702,17 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let mut impl_method_signature =
-            match method_checklist.remove(&impl_method.name.clone().into()) {
-                Some(trait_fn) => trait_fn,
-                None => {
-                    errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                        name: impl_method.name.clone(),
-                        interface_name: interface_name(),
-                        span: impl_method.name.span(),
-                    });
-                    continue;
-                }
-            };
+        let mut impl_method_signature = match method_checklist.remove(&impl_method.name.clone()) {
+            Some(trait_fn) => trait_fn,
+            None => {
+                errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                    name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    span: impl_method.name.span(),
+                });
+                continue;
+            }
+        };
 
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait

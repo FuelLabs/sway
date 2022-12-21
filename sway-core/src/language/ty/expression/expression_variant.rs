@@ -636,11 +636,11 @@ impl ReplaceDecls for TyExpressionVariant {
                         if fn_decl.parameters.len() != arguments.len() {
                             continue;
                         }
-                        for i in 0..arguments.len() {
-                            if !engines.te().are_equal_minus_dynamic_types(
-                                arguments[i].1.return_type,
-                                fn_decl.parameters[i].type_id,
-                            ) {
+                        for (arg, param) in arguments.iter().zip(fn_decl.parameters) {
+                            if !engines
+                                .te()
+                                .are_equal_minus_dynamic_types(arg.1.return_type, param.type_id)
+                            {
                                 continue 'decls;
                             }
                         }
