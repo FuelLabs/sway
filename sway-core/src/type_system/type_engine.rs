@@ -629,6 +629,146 @@ impl TypeEngine {
         });
         builder
     }
+
+    pub fn are_equal_minus_dynamic_types(&self, left: TypeId, right: TypeId) -> bool {
+        if left.index() == right.index() {
+            return true;
+        }
+        match (self.look_up_type_id(left), self.look_up_type_id(right)) {
+            // these cases are false because, unless left and right have the same
+            // TypeId, they may later resolve to be different types in the type
+            // engine
+            (TypeInfo::Unknown, TypeInfo::Unknown) => false,
+            (TypeInfo::SelfType, TypeInfo::SelfType) => false,
+            (TypeInfo::Numeric, TypeInfo::Numeric) => false,
+            (TypeInfo::Contract, TypeInfo::Contract) => false,
+            (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
+
+            // these cases are able to be directly compared
+            (TypeInfo::Boolean, TypeInfo::Boolean) => true,
+            (TypeInfo::B256, TypeInfo::B256) => true,
+            (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,
+            (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
+            (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
+            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
+            (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
+            (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => {
+                // return true if left and right were unified previously
+                self.get_unified_types(left).contains(&right)
+                    || self.get_unified_types(right).contains(&left)
+            }
+
+            // these cases may contain dynamic types
+            (
+                TypeInfo::Custom {
+                    name: l_name,
+                    type_arguments: l_type_args,
+                },
+                TypeInfo::Custom {
+                    name: r_name,
+                    type_arguments: r_type_args,
+                },
+            ) => {
+                l_name == r_name
+                    && l_type_args
+                        .unwrap_or_default()
+                        .iter()
+                        .zip(r_type_args.unwrap_or_default().iter())
+                        .fold(true, |acc, (left, right)| {
+                            acc && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                        })
+            }
+            (
+                TypeInfo::Enum {
+                    name: l_name,
+                    variant_types: l_variant_types,
+                    type_parameters: l_type_parameters,
+                },
+                TypeInfo::Enum {
+                    name: r_name,
+                    variant_types: r_variant_types,
+                    type_parameters: r_type_parameters,
+                },
+            ) => {
+                l_name == r_name
+                    && l_variant_types.iter().zip(r_variant_types.iter()).fold(
+                        true,
+                        |acc, (left, right)| {
+                            acc && left.name == right.name
+                                && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                        },
+                    )
+                    && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
+                        true,
+                        |acc, (left, right)| {
+                            acc && left.name_ident == right.name_ident
+                                && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                        },
+                    )
+            }
+            (
+                TypeInfo::Struct {
+                    name: l_name,
+                    fields: l_fields,
+                    type_parameters: l_type_parameters,
+                },
+                TypeInfo::Struct {
+                    name: r_name,
+                    fields: r_fields,
+                    type_parameters: r_type_parameters,
+                },
+            ) => {
+                l_name == r_name
+                    && l_fields
+                        .iter()
+                        .zip(r_fields.iter())
+                        .fold(true, |acc, (left, right)| {
+                            acc && left.name == right.name
+                                && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                        })
+                    && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
+                        true,
+                        |acc, (left, right)| {
+                            acc && left.name_ident == right.name_ident
+                                && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                        },
+                    )
+            }
+            (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
+                if l.len() != r.len() {
+                    false
+                } else {
+                    l.iter().zip(r.iter()).fold(true, |acc, (left, right)| {
+                        acc && self.are_equal_minus_dynamic_types(left.type_id, right.type_id)
+                    })
+                }
+            }
+            (
+                TypeInfo::ContractCaller {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                },
+                TypeInfo::ContractCaller {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                },
+            ) => {
+                l_abi_name == r_abi_name
+                    && Option::zip(l_address, r_address)
+                        .map(|(l_address, r_address)| {
+                            self.are_equal_minus_dynamic_types(
+                                l_address.return_type,
+                                r_address.return_type,
+                            )
+                        })
+                        .unwrap_or(true)
+            }
+            (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
+                l1.val() == r1.val() && self.are_equal_minus_dynamic_types(l0.type_id, r0.type_id)
+            }
+            _ => false,
+        }
+    }
 }
 
 fn normalize_err(

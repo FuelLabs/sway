@@ -218,6 +218,7 @@ fn main() -> u64 {
     assert(m.y == 20u64);
 
     test_ok_or(true, 0);
+    test_ok_or(0, true);
 
     42
 }

@@ -6,7 +6,9 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
+    declaration_engine::{
+        declaration_wrapper::DeclarationWrapper, DeclMapping, DeclarationId, ReplaceDecls,
+    },
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,
@@ -615,7 +617,49 @@ impl ReplaceDecls for TyExpressionVariant {
                 ref mut arguments,
                 ..
             } => {
-                function_decl_id.replace_decls(decl_mapping, engines);
+                // Filter decl mapping so function declaration is replaced by another
+                // function declaration that matches argument types
+                // This is needed for when multiple trait constraints are used that replace the same trait function
+                let mut decl_mapping_filtered = vec![];
+                'decls: for (orig_decl_id, dest_decl_id) in decl_mapping.mapping.clone() {
+                    let all_parents = engines
+                        .de()
+                        .find_all_parents(engines, function_decl_id.clone());
+                    if **function_decl_id != *orig_decl_id
+                        && !all_parents.iter().any(|f| **f == *orig_decl_id)
+                    {
+                        continue;
+                    }
+
+                    let decl = engines.de().look_up_decl_id(dest_decl_id.clone());
+                    if let DeclarationWrapper::Function(fn_decl) = decl.clone() {
+                        if fn_decl.parameters.len() != arguments.len() {
+                            continue;
+                        }
+                        for i in 0..arguments.len() {
+                            if !engines.te().are_equal_minus_dynamic_types(
+                                arguments[i].1.return_type,
+                                fn_decl.parameters[i].type_id,
+                            ) {
+                                continue 'decls;
+                            }
+                        }
+                        decl_mapping_filtered.push((orig_decl_id, dest_decl_id))
+                    }
+                }
+
+                // No function with same arguemnt type were found so we try to replace decls as usual
+                if decl_mapping_filtered.is_empty() {
+                    decl_mapping_filtered = decl_mapping.mapping.clone();
+                }
+
+                function_decl_id.replace_decls(
+                    &DeclMapping {
+                        mapping: decl_mapping_filtered,
+                    },
+                    engines,
+                );
+
                 let new_decl_id = function_decl_id
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);

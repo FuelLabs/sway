@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, IdentUnique, Span, Spanned};
 
 use crate::{
     declaration_engine::{declaration_engine::*, DeclMapping, DeclarationId, ReplaceDecls},
@@ -658,11 +658,11 @@ fn type_check_trait_implementation(
 
     // This map keeps track of the original declaration id's of the original
     // interface surface.
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
 
     // This map keeps track of the new declaration ids of the implemented
     // interface surface.
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
@@ -673,7 +673,7 @@ fn type_check_trait_implementation(
         );
         let name = method.name.clone();
         method_checklist.insert(name.clone(), method);
-        original_method_ids.insert(name, decl_id.clone());
+        original_method_ids.insert(name.into(), decl_id.clone());
     }
 
     for impl_method in impl_methods {
@@ -691,7 +691,10 @@ fn type_check_trait_implementation(
         );
 
         // Ensure that there aren't multiple definitions of this function impl'd
-        if impld_method_ids.contains_key(&impl_method.name.clone()) {
+        if impld_method_ids
+            .keys()
+            .any(|k| k.as_str() == impl_method.name.clone().as_str())
+        {
             errors.push(CompileError::MultipleDefinitionsOfFunction {
                 name: impl_method.name.clone(),
             });
@@ -699,17 +702,18 @@ fn type_check_trait_implementation(
         }
 
         // remove this function from the "checklist"
-        let mut impl_method_signature = match method_checklist.remove(&impl_method.name) {
-            Some(trait_fn) => trait_fn,
-            None => {
-                errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    span: impl_method.name.span(),
-                });
-                continue;
-            }
-        };
+        let mut impl_method_signature =
+            match method_checklist.remove(&impl_method.name.clone().into()) {
+                Some(trait_fn) => trait_fn,
+                None => {
+                    errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                        name: impl_method.name.clone(),
+                        interface_name: interface_name(),
+                        span: impl_method.name.span(),
+                    });
+                    continue;
+                }
+            };
 
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
@@ -884,7 +888,7 @@ fn type_check_trait_implementation(
 
         let name = impl_method.name.clone();
         let decl_id = declaration_engine.insert_function(impl_method);
-        impld_method_ids.insert(name, decl_id);
+        impld_method_ids.insert(name.into(), decl_id);
     }
 
     let mut all_method_ids: Vec<DeclarationId> = impld_method_ids.values().cloned().collect();
@@ -1047,16 +1051,16 @@ fn handle_supertraits(
     mut ctx: TypeCheckContext,
     supertraits: &[Supertrait],
 ) -> CompileResult<(
-    BTreeMap<Ident, DeclarationId>,
-    BTreeMap<Ident, DeclarationId>,
+    BTreeMap<IdentUnique, DeclarationId>,
+    BTreeMap<IdentUnique, DeclarationId>,
 )> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
     let declaration_engine = ctx.declaration_engine;
 
-    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut interface_surface_methods_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {

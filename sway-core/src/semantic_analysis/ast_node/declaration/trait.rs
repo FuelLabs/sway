@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{style::is_upper_camel_case, Ident, Spanned};
+use sway_types::{style::is_upper_camel_case, IdentUnique, Spanned};
 
 use crate::{
     declaration_engine::*,
@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-type MethodMap = BTreeMap<Ident, DeclarationId>;
+type MethodMap = BTreeMap<IdentUnique, DeclarationId>;
 
 impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
@@ -165,7 +165,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+            interface_surface_method_ids.insert(method.name.into(), decl_id.clone());
         }
 
         // Retrieve the implemented methods for this type.
@@ -180,7 +180,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            impld_method_ids.insert(method.name, decl_id);
+            impld_method_ids.insert(method.name.into(), decl_id);
         }
 
         ok(
@@ -226,7 +226,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+            interface_surface_method_ids.insert(method.name.into(), decl_id.clone());
         }
 
         // Retrieve the trait methods for this trait.
@@ -239,7 +239,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method_ids.insert(method.name, decl_id.clone());
+            method_ids.insert(method.name.into(), decl_id.clone());
         }
 
         // Retrieve the implemented methods for this type.
@@ -268,7 +268,7 @@ impl ty::TyTraitDeclaration {
             );
             method.copy_types(&type_mapping, engines);
             impld_method_ids.insert(
-                method.name.clone(),
+                method.name.clone().into(),
                 declaration_engine
                     .insert_function(method)
                     .with_parent(declaration_engine, decl_id),

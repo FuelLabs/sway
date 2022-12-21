@@ -8,7 +8,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
 
 use std::{
     collections::BTreeMap,
@@ -221,8 +221,8 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+        let mut original_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
+        let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -279,16 +279,16 @@ fn handle_trait(
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
 ) -> CompileResult<(
-    BTreeMap<Ident, DeclarationId>,
-    BTreeMap<Ident, DeclarationId>,
+    BTreeMap<IdentUnique, DeclarationId>,
+    BTreeMap<IdentUnique, DeclarationId>,
 )> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let declaration_engine = ctx.declaration_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
 
     match ctx
         .namespace
