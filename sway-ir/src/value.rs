@@ -180,6 +180,15 @@ impl Value {
     }
 
     /// Get a reference to this value as a constant, iff it is one.
+    pub fn get_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Configurable(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
+        } else {
+            None
+        }
+    }
+
+    /// Get a reference to this value as a constant, iff it is one.
     pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
         if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
             Some(cn)

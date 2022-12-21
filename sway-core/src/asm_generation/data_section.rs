@@ -196,18 +196,18 @@ impl DataSection {
     /// in question.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
-        self.insert_data_value(Entry::new_word(pointer_value, None))
+        self.insert_data_value(Entry::new_word(pointer_value, None), false)
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type
     /// information and debug spans), insert it into the data section and return its offset as a
     /// [DataId].
-    pub(crate) fn insert_data_value(&mut self, new_entry: Entry) -> DataId {
+    pub(crate) fn insert_data_value(&mut self, new_entry: Entry, is_configurable: bool) -> DataId {
         // if there is an identical data value, use the same id
         match self
             .value_pairs
             .iter()
-            .position(|entry| entry.equiv(&new_entry))
+            .position(|entry| entry.equiv(&new_entry) && !is_configurable)
         {
             Some(num) => DataId(num as u32),
             None => {

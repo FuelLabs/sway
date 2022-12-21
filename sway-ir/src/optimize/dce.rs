@@ -31,7 +31,6 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                         .or_insert((block, 1));
                 }
                 ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                    ()
                 }
             }
         }
@@ -61,7 +60,6 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
                     }
                 }
                 ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                    ()
                 }
             }
         }

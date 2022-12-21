@@ -593,7 +593,7 @@ impl<'ir> AsmBuilder<'ir> {
                 let constant = ptr.get_initializer(self.context).unwrap();
                 let data_id = self
                     .data_section
-                    .insert_data_value(Entry::from_constant(self.context, constant));
+                    .insert_data_value(Entry::from_constant(self.context, constant), false);
                 self.ptr_map.insert(*ptr, Storage::Data(data_id));
             } else {
                 match ptr.get_type(self.context) {
