@@ -8,7 +8,7 @@ use crate::{
 
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, handler::Handler};
-use sway_ir::{Context, Function, Instruction};
+use sway_ir::{Context, FuelVmInstruction, Function, Instruction};
 use sway_types::span::Span;
 
 use std::collections::HashMap;
@@ -43,12 +43,15 @@ pub(crate) fn check_function_purity(
                 .get_instruction(context)
                 .map(|instruction| {
                     match instruction {
-                        Instruction::StateLoadQuadWord { .. } | Instruction::StateLoadWord(_) => {
+                        Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
+                        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_)) => {
                             (true, writes)
                         }
 
-                        Instruction::StateStoreQuadWord { .. }
-                        | Instruction::StateStoreWord { .. } => (reads, true),
+                        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
+                        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
+                            (reads, true)
+                        }
 
                         // Iterate for and check each instruction in the ASM block.
                         Instruction::AsmBlock(asm_block, _args) => {

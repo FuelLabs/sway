@@ -241,17 +241,24 @@ impl TestContext {
                     output.push_str(&out);
                     contract_ids.push(result);
                 }
-                let contract_ids: Result<Vec<ContractId>, anyhow::Error> =
-                    contract_ids.into_iter().collect();
+                let contract_ids = contract_ids.into_iter().collect::<Result<Vec<_>, _>>()?;
                 let (result, out) =
-                    harness::runs_on_node(&name, &context.run_config, &contract_ids?).await;
+                    harness::runs_on_node(&name, &context.run_config, &contract_ids).await;
                 output.push_str(&out);
 
                 let receipt = result?;
-                assert!(receipt.iter().all(|res| !matches!(
-                    res,
-                    fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
-                )));
+                if !receipt.iter().all(|res| {
+                    !matches!(
+                        res,
+                        fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+                    )
+                }) {
+                    println!();
+                    for cid in contract_ids {
+                        println!("Deployed contract: 0x{cid}");
+                    }
+                    panic!("Receipts contain reverts or panics: {receipt:?}");
+                }
                 assert!(receipt.len() >= 2);
                 assert_matches!(receipt[receipt.len() - 2], fuel_tx::Receipt::Return { .. });
                 assert_eq!(receipt[receipt.len() - 2].val().unwrap(), val);

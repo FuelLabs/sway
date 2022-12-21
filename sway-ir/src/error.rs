@@ -45,6 +45,7 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
+    VerifyMemcopyNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
     VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
@@ -252,6 +253,12 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
+            }
+            IrError::VerifyMemcopyNonExistentPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to use non pointer with `mem_copy`."
+                )
             }
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,

@@ -173,9 +173,14 @@ This starts a Fuel node with a volatile database that will be cleared when shut 
 
 To deploy `counter_contract` on your local Fuel node, open a new terminal tab and run the following command from the root of the `wallet_contract` directory:
 
+> **Note**
+> You will require the plugin [forc-wallet](https://github.com/FuelLabs/forc-wallet) in order to sign your transactions.
+
 ```sh
 forc deploy --unsigned
 ```
+
+where `--url` parameter is the URL where your local node is hosted.
 
 > **Note**
 > You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
@@ -194,6 +199,8 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 ```
 
 Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
+
+If `forc-deploy` emits a `no such subcommand` error, try to install it with [fuelup](../introduction/installation.md) or [manually](https://github.com/FuelLabs/sway/releases).
 
 ## Testing Your Contract
 
