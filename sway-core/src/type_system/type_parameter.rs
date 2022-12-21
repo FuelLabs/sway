@@ -221,7 +221,7 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
+        let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
         let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
@@ -259,13 +259,17 @@ impl TypeParameter {
                     errors
                 );
                 original_method_ids.extend(trait_original_method_ids);
-                impld_method_ids.extend(trait_impld_method_ids);
+                for (key, value) in trait_impld_method_ids {
+                    impld_method_ids.insert(key.into(), value);
+                }
             }
         }
 
         if errors.is_empty() {
-            let decl_mapping =
-                DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
+            let decl_mapping = DeclMapping::from_original_and_new_decl_ids_unique(
+                original_method_ids,
+                impld_method_ids,
+            );
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -279,16 +283,16 @@ fn handle_trait(
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
 ) -> CompileResult<(
-    BTreeMap<IdentUnique, DeclarationId>,
-    BTreeMap<IdentUnique, DeclarationId>,
+    BTreeMap<Ident, DeclarationId>,
+    BTreeMap<Ident, DeclarationId>,
 )> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let declaration_engine = ctx.declaration_engine;
 
-    let mut original_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<IdentUnique, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
 
     match ctx
         .namespace

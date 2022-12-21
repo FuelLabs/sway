@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
-use sway_types::IdentUnique;
+use sway_types::{Ident, IdentUnique};
 
 use super::DeclarationId;
 
@@ -47,7 +47,20 @@ impl DeclMapping {
     }
 
     pub(crate) fn from_original_and_new_decl_ids(
-        original_decl_ids: BTreeMap<IdentUnique, DeclarationId>,
+        original_decl_ids: BTreeMap<Ident, DeclarationId>,
+        new_decl_ids: BTreeMap<Ident, DeclarationId>,
+    ) -> DeclMapping {
+        let mut mapping = vec![];
+        for (original_decl_name, original_decl_id) in original_decl_ids.into_iter() {
+            if let Some(new_decl_id) = new_decl_ids.get(&original_decl_name) {
+                mapping.push((original_decl_id, new_decl_id.clone()));
+            }
+        }
+        DeclMapping { mapping }
+    }
+
+    pub(crate) fn from_original_and_new_decl_ids_unique(
+        original_decl_ids: BTreeMap<Ident, DeclarationId>,
         new_decl_ids: BTreeMap<IdentUnique, DeclarationId>,
     ) -> DeclMapping {
         let mut mapping = vec![];
