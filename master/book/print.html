@@ -3139,9 +3139,9 @@ ABI.</p>
 <p><strong>Description:</strong> Reads and returns a single word from storage at key <code>key</code>.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
-<pre><code class="language-sway">__state_load_quad(key: b256, ptr: raw_ptr)
+<pre><code class="language-sway">__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)
 </code></pre>
-<p><strong>Description:</strong> Reads a <code>b256</code> from storage at key <code>key</code> and stores it in memory at address <code>raw_ptr</code></p>
+<p><strong>Description:</strong> Reads <code>slots</code> number of slots (<code>b256</code> each) from storage starting at key <code>key</code> and stores them in memory starting at address <code>ptr</code></p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
 <pre><code class="language-sway">__state_store_word(key: b256, val: u64)
@@ -3149,9 +3149,9 @@ ABI.</p>
 <p><strong>Description:</strong> Stores a single word <code>val</code> into storage at key <code>key</code>.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
-<pre><code class="language-sway">__state_store_quad(key: b256, ptr: raw_ptr)
+<pre><code class="language-sway">__state_store_quad(key: b256, ptr: raw_ptr, slots: u64)
 </code></pre>
-<p><strong>Description:</strong> Stores a <code>b256</code> from address <code>ptr</code> in memory into storage at key <code>key</code>.</p>
+<p><strong>Description:</strong> Stores <code>slots</code> number of slots (<code>b256</code> each) starting at address <code>ptr</code> in memory into storage starting at key <code>key</code>.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
 <pre><code class="language-sway">__log&lt;T&gt;(val: T)
