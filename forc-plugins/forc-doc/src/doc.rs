@@ -141,8 +141,10 @@ impl ModuleInfo<'_> {
     pub(crate) fn to_file_path_str(&self, file_name: &str) -> &str {
         let mut iter = self.0.iter();
         iter.next(); // skip the project_name
-        iter.map(|s| *s)
-            .collect::<PathBuf>()
+        let file_path = iter.map(|s| *s).collect::<PathBuf>();
+        file_path.push(file_name);
+
+        file_path
             .to_str()
             .expect("There will always be at least the item name")
     }

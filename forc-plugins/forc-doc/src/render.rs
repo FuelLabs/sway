@@ -34,13 +34,12 @@ impl RenderedDocumentation<'_> {
         for doc in raw {
             let module_prefix = doc.module_info.0.clone();
             let html_file_name = doc.html_file_name();
+
             rendered_docs.0.push(RenderedDocument {
                 module_prefix: module_prefix.clone(),
                 html_file_name: html_file_name.clone(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
-
-            let item_name = doc.item_header.item_name;
             all_doc.0.push(AllDocItem {
                 ty_decl: doc.item_body.ty_decl.clone(),
                 path_literal_str: doc.module_info.to_path_literal_str(),
@@ -54,6 +53,7 @@ impl RenderedDocumentation<'_> {
             html_file_name: ALL_DOC_FILENAME,
             file_contents: HTMLString::from(all_doc.render()),
         });
+
         rendered_docs
     }
 }
