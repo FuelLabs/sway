@@ -1,7 +1,6 @@
 use sway_error::error::CompileError;
 
 use crate::{
-    declaration_engine::{de_insert_function, de_insert_trait_fn},
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -49,7 +48,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_interface_surface.push(de_insert_trait_fn(method));
+            new_interface_surface.push(ctx.declaration_engine.insert_trait_fn(method));
         }
 
         // Type check the methods.
@@ -57,7 +56,7 @@ impl ty::TyAbiDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone(), ctx.type_engine),
+                ty::TyFunctionDeclaration::error(method.clone(), ctx.engines()),
                 warnings,
                 errors
             );
@@ -68,7 +67,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(de_insert_function(method));
+            new_methods.push(ctx.declaration_engine.insert_function(method));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

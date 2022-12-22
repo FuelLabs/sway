@@ -40,12 +40,15 @@ use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{language::ty, span::Span, transform, Ident};
-    let engine = TypeEngine::default();
+    use crate::{
+        declaration_engine::DeclarationEngine, language::ty, span::Span, transform, Ident,
+    };
+    let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
 
     let sp = Span::dummy();
 
-    let generic_type = engine.insert_type_always(TypeInfo::UnknownGeneric {
+    let generic_type = type_engine.insert_type_always(TypeInfo::UnknownGeneric {
         name: Ident::new_with_override("T", sp.clone()),
         trait_constraints: VecSet(Vec::new()),
     });
@@ -58,7 +61,7 @@ fn generic_enum_resolution() {
         type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_1 = engine.insert_type_always(TypeInfo::Enum {
+    let ty_1 = type_engine.insert_type_always(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
         type_parameters: vec![TypeParameter {
@@ -70,7 +73,7 @@ fn generic_enum_resolution() {
         }],
     });
 
-    let boolean_type = engine.insert_type_always(TypeInfo::Boolean);
+    let boolean_type = type_engine.insert_type_always(TypeInfo::Boolean);
     let variant_types = vec![ty::TyEnumVariant {
         name: Ident::new_with_override("a", sp.clone()),
         tag: 0,
@@ -80,7 +83,7 @@ fn generic_enum_resolution() {
         type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_2 = engine.insert_type_always(TypeInfo::Enum {
+    let ty_2 = type_engine.insert_type_always(TypeInfo::Enum {
         name: Ident::new_with_override("Result", sp.clone()),
         variant_types,
         type_parameters: vec![TypeParameter {
@@ -93,18 +96,18 @@ fn generic_enum_resolution() {
     });
 
     // Unify them together...
-    let (_, errors) = engine.unify(ty_1, ty_2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, ty_1, ty_2, &sp, "");
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
         name,
         variant_types,
         ..
-    } = engine.look_up_type_id(ty_1)
+    } = type_engine.look_up_type_id(ty_1)
     {
         assert_eq!(name.as_str(), "Result");
         assert!(matches!(
-            engine.look_up_type_id(variant_types[0].type_id),
+            type_engine.look_up_type_id(variant_types[0].type_id),
             TypeInfo::Boolean
         ));
     } else {
@@ -114,57 +117,63 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    let engine = TypeEngine::default();
+    use crate::declaration_engine::DeclarationEngine;
+    let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
 
     let sp = Span::dummy();
     // numerics
-    let id = engine.insert_type_always(TypeInfo::Numeric);
-    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engine.unify(id, id2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "");
     assert!(errors.is_empty());
 
     assert!(matches!(
-        engine.to_typeinfo(id, &Span::dummy()).unwrap(),
+        type_engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     ));
 }
 
 #[test]
 fn unify_numerics() {
-    let engine = TypeEngine::default();
+    use crate::declaration_engine::DeclarationEngine;
+    let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
     let sp = Span::dummy();
 
     // numerics
-    let id = engine.insert_type_always(TypeInfo::Numeric);
-    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engine.unify(id2, id, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id2, id, &sp, "");
     assert!(errors.is_empty());
 
     assert!(matches!(
-        engine.to_typeinfo(id, &Span::dummy()).unwrap(),
+        type_engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     ));
 }
 
 #[test]
 fn unify_numerics_2() {
-    let engine = TypeEngine::default();
+    use crate::declaration_engine::DeclarationEngine;
+    let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
     let sp = Span::dummy();
 
     // numerics
-    let id = engine.insert_type_always(TypeInfo::Numeric);
-    let id2 = engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
+    let id = type_engine.insert_type_always(TypeInfo::Numeric);
+    let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = engine.unify(id, id2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "");
     assert!(errors.is_empty());
 
     assert!(matches!(
-        engine.to_typeinfo(id, &Span::dummy()).unwrap(),
+        type_engine.to_typeinfo(id, &Span::dummy()).unwrap(),
         TypeInfo::UnsignedInteger(IntegerBits::Eight)
     ));
 }

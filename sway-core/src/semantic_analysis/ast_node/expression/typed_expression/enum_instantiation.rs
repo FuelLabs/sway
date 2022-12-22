@@ -22,6 +22,8 @@ pub(crate) fn instantiate_enum(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     let enum_variant = check!(
         enum_decl
@@ -38,7 +40,7 @@ pub(crate) fn instantiate_enum(
     match (&args[..], type_engine.look_up_type_id(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: enum_decl.create_type_id(ctx.type_engine),
+                return_type: enum_decl.create_type_id(engines),
                 expression: ty::TyExpressionVariant::EnumInstantiation {
                     tag: enum_variant.tag,
                     contents: None,
@@ -53,9 +55,9 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
-            let mut ctx = ctx
-                .with_help_text("")
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            let mut ctx = ctx.with_help_text("").with_type_annotation(
+                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+            );
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx.by_ref(), single_expr.clone()),
                 return err(warnings, errors),
@@ -76,7 +78,7 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 ty::TyExpression {
-                    return_type: enum_decl.create_type_id(type_engine),
+                    return_type: enum_decl.create_type_id(engines),
                     expression: ty::TyExpressionVariant::EnumInstantiation {
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
@@ -106,7 +108,7 @@ pub(crate) fn instantiate_enum(
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
                 span: enum_variant_name.span(),
-                ty: type_engine.help_out(ty).to_string(),
+                ty: engines.help_out(ty).to_string(),
             });
             err(warnings, errors)
         }
@@ -122,11 +124,17 @@ fn unify_argument(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
-    if !type_engine.check_if_types_can_be_coerced(typed_expr.return_type, enum_variant_type_id) {
+    if !type_engine.check_if_types_can_be_coerced(
+        declaration_engine,
+        typed_expr.return_type,
+        enum_variant_type_id,
+    ) {
         errors.push(CompileError::TypeError(TypeError::MismatchedType {
-            expected: type_engine.help_out(enum_variant_type_id).to_string(),
-            received: type_engine.help_out(typed_expr.return_type).to_string(),
+            expected: engines.help_out(enum_variant_type_id).to_string(),
+            received: engines.help_out(typed_expr.return_type).to_string(),
             help_text: "Enum instantiator must match its declared variant type.".to_string(),
             span: typed_expr.span.clone(),
         }));
@@ -134,6 +142,7 @@ fn unify_argument(
     }
 
     let (mut new_warnings, new_errors) = type_engine.unify_adt(
+        declaration_engine,
         typed_expr.return_type,
         enum_variant_type_id,
         &typed_expr.span,
@@ -142,8 +151,8 @@ fn unify_argument(
     warnings.append(&mut new_warnings);
     if !new_errors.is_empty() {
         errors.push(CompileError::TypeError(TypeError::MismatchedType {
-            expected: type_engine.help_out(enum_variant_type_id).to_string(),
-            received: type_engine.help_out(typed_expr.return_type).to_string(),
+            expected: engines.help_out(enum_variant_type_id).to_string(),
+            received: engines.help_out(typed_expr.return_type).to_string(),
             help_text: "Enum instantiator must match its declared variant type.".to_string(),
             span: typed_expr.span.clone(),
         }));

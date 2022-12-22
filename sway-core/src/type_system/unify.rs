@@ -6,19 +6,19 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use crate::{language::ty, type_system::*};
+use crate::{engine_threading::*, language::ty, type_system::*, Engines};
 
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
-    type_engine: &'a TypeEngine,
+    engines: Engines<'a>,
     arguments_are_flipped: bool,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(super) fn new(type_engine: &'a TypeEngine) -> Unifier<'a> {
+    pub(super) fn new(engines: Engines<'a>) -> Unifier<'a> {
         Unifier {
-            type_engine,
+            engines,
             arguments_are_flipped: false,
         }
     }
@@ -42,11 +42,11 @@ impl<'a> Unifier<'a> {
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        match self.type_engine.slab.replace(
+        match self.engines.te().slab.replace(
             received,
             received_type_info,
             expected_type_info,
-            self.type_engine,
+            self.engines,
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span, help_text),
@@ -63,11 +63,11 @@ impl<'a> Unifier<'a> {
         span: &Span,
         help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        match self.type_engine.slab.replace(
+        match self.engines.te().slab.replace(
             expected,
             expected_type_info,
             received_type_info,
-            self.type_engine,
+            self.engines,
         ) {
             None => (vec![], vec![]),
             Some(_) => self.unify(received, expected, span, help_text),
@@ -85,8 +85,8 @@ impl<'a> Unifier<'a> {
         use TypeInfo::*;
 
         match (
-            self.type_engine.slab.get(received.index()),
-            self.type_engine.slab.get(expected.index()),
+            self.engines.te().slab.get(received.index()),
+            self.engines.te().slab.get(expected.index()),
         ) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
@@ -169,7 +169,7 @@ impl<'a> Unifier<'a> {
                     received,
                     expected,
                     r,
-                    self.type_engine.slab.get(expected.index()),
+                    self.engines.te().slab.get(expected.index()),
                     span,
                     help_text,
                 )
@@ -187,14 +187,14 @@ impl<'a> Unifier<'a> {
                 self.replace_expected_with_received(
                     received,
                     expected,
-                    self.type_engine.slab.get(received.index()),
+                    self.engines.te().slab.get(received.index()),
                     e,
                     span,
                     help_text,
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.type_engine) =>
+                if r.eq(e, self.engines) =>
             {
                 // if they are the same, then it's ok
                 (vec![], vec![])
@@ -231,17 +231,17 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.type_engine) => {
-                self.type_engine.insert_unified_type(received, expected);
-                self.type_engine.insert_unified_type(expected, received);
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => {
+                self.engines.te().insert_unified_type(received, expected);
+                self.engines.te().insert_unified_type(expected, received);
                 (vec![], vec![])
             }
             (r @ UnknownGeneric { .. }, e) => {
-                self.type_engine.insert_unified_type(expected, received);
+                self.engines.te().insert_unified_type(expected, received);
                 self.replace_received_with_expected(received, expected, &r, e, span, help_text)
             }
             (r, e @ UnknownGeneric { .. }) => {
-                self.type_engine.insert_unified_type(received, expected);
+                self.engines.te().insert_unified_type(received, expected);
                 self.replace_expected_with_received(received, expected, r, &e, span, help_text)
             }
 
@@ -440,10 +440,10 @@ impl<'a> Unifier<'a> {
 
     fn assign_args<T>(&self, r: T, e: T) -> (String, String)
     where
-        WithTypeEngine<'a, T>: fmt::Display,
+        WithEngines<'a, T>: fmt::Display,
     {
-        let r = self.type_engine.help_out(r).to_string();
-        let e = self.type_engine.help_out(e).to_string();
+        let r = self.engines.help_out_with_self(r).to_string();
+        let e = self.engines.help_out_with_self(e).to_string();
         if self.arguments_are_flipped {
             (e, r)
         } else {

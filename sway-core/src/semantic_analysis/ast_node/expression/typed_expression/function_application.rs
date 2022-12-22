@@ -18,7 +18,8 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
@@ -43,7 +44,7 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    let typed_arguments = check!(
+    let typed_arguments_with_names = check!(
         unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &function_decl.parameters),
         return err(warnings, errors),
         warnings,
@@ -63,16 +64,16 @@ pub(crate) fn instantiate_function_application(
         warnings,
         errors
     );
-    function_decl.replace_decls(&decl_mapping, type_engine);
+    function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
-    let new_decl_id = de_insert_function(function_decl);
+    let new_decl_id = declaration_engine.insert_function(function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: HashMap::new(),
-            arguments: typed_arguments,
+            arguments: typed_arguments_with_names,
             function_decl_id: new_decl_id,
             self_state_idx: None,
             selector: None,
@@ -93,17 +94,18 @@ fn type_check_arguments(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     let typed_arguments = arguments
         .into_iter()
         .map(|arg| {
-            let ctx = ctx
-                .by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
+                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+            );
             check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::TyExpression::error(arg.span(), type_engine),
+                ty::TyExpression::error(arg.span(), engines),
                 warnings,
                 errors
             )
@@ -128,11 +130,13 @@ fn unify_arguments_and_parameters(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engines = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     let create_err = |arg: &ty::TyExpression, param: &ty::TyFunctionParameter| {
         CompileError::TypeError(TypeError::MismatchedType {
-            expected: type_engine.help_out(param.type_id).to_string(),
-            received: type_engine.help_out(arg.return_type).to_string(),
+            expected: engines.help_out(param.type_id).to_string(),
+            received: engines.help_out(arg.return_type).to_string(),
             help_text: "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \
             declaration."
@@ -145,14 +149,23 @@ fn unify_arguments_and_parameters(
 
     for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
         // type check the argument to ensure that it is a valid argument
-        if !type_engine.check_if_types_can_be_coerced(arg.return_type, param.type_id) {
+        if !type_engine.check_if_types_can_be_coerced(
+            declaration_engines,
+            arg.return_type,
+            param.type_id,
+        ) {
             errors.push(create_err(&arg, param));
             continue;
         }
 
         // unify it with the parameter from the function declaration
-        let (mut new_warnings, new_errors) =
-            type_engine.unify(arg.return_type, param.type_id, &arg.span, "");
+        let (mut new_warnings, new_errors) = type_engine.unify(
+            declaration_engines,
+            arg.return_type,
+            param.type_id,
+            &arg.span,
+            "",
+        );
         warnings.append(&mut new_warnings);
         if !new_errors.is_empty() {
             errors.push(create_err(&arg, param));

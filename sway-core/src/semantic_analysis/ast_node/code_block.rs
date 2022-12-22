@@ -12,6 +12,8 @@ impl ty::TyCodeBlock {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
@@ -40,9 +42,8 @@ impl ty::TyCodeBlock {
         let block_type = evaluated_contents
             .iter()
             .find_map(|node| {
-                if node.deterministically_aborts(true) {
-                    //println!("##### {}", type_engine.help_out(node));
-                    Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
+                if node.deterministically_aborts(declaration_engine, true) {
+                    Some(type_engine.insert_type(declaration_engine, TypeInfo::Unknown))
                 } else {
                     match node {
                         ty::TyAstNode {
@@ -53,14 +54,14 @@ impl ty::TyCodeBlock {
                                 }),
                             ..
                         } => {
-                            if !type_engine
-                                .check_if_types_can_be_coerced(*return_type, ctx.type_annotation())
-                            {
+                            if !type_engine.check_if_types_can_be_coerced(
+                                declaration_engine,
+                                *return_type,
+                                ctx.type_annotation(),
+                            ) {
                                 errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                                    expected: type_engine
-                                        .help_out(ctx.type_annotation())
-                                        .to_string(),
-                                    received: type_engine.help_out(return_type).to_string(),
+                                    expected: engines.help_out(ctx.type_annotation()).to_string(),
+                                    received: engines.help_out(return_type).to_string(),
                                     help_text: "Implicit return must match up with block's type."
                                         .to_string(),
                                     span: span.clone(),
@@ -72,10 +73,13 @@ impl ty::TyCodeBlock {
                     }
                 }
             })
-            .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
+            .unwrap_or_else(|| {
+                type_engine.insert_type(declaration_engine, TypeInfo::Tuple(Vec::new()))
+            });
 
         append!(
             type_engine.unify_with_self(
+                declaration_engine,
                 block_type,
                 ctx.type_annotation(),
                 ctx.self_type(),

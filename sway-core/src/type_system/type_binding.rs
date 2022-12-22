@@ -1,7 +1,6 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::declaration_engine::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
@@ -91,6 +90,9 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+
         let (type_info, type_info_span) = self.inner.suffix.clone();
 
         // find the module that the symbol is in
@@ -113,12 +115,12 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         // resolve the type of the type info object
         let type_id = check!(
             ctx.resolve_type_with_self(
-                ctx.type_engine.insert_type(type_info),
+                type_engine.insert_type(declaration_engine, type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix)
             ),
-            ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -134,6 +136,10 @@ impl TypeBinding<CallPath> {
     ) -> CompileResult<ty::TyDeclaration> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         // grab the declaration
         let unknown_decl = check!(
@@ -152,7 +158,7 @@ impl TypeBinding<CallPath> {
                     EnforceTypeArguments::Yes,
                     None
                 ),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors,
             );
@@ -167,7 +173,9 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_function(original_id.clone(), &self.span())),
+                    CompileResult::from(
+                        declaration_engine.get_function(original_id.clone(), &self.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -187,14 +195,17 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_function(new_copy).with_parent(original_id);
+                let new_id = ctx
+                    .declaration_engine
+                    .insert_function(new_copy)
+                    .with_parent(ctx.declaration_engine, original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }
             ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_enum(original_id, &self.span())),
+                    CompileResult::from(declaration_engine.get_enum(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -215,19 +226,19 @@ impl TypeBinding<CallPath> {
 
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
-                    ctx.type_engine,
-                    new_copy.create_type_id(ctx.type_engine),
+                    engines,
+                    new_copy.create_type_id(engines),
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_enum(new_copy);
+                let new_id = ctx.declaration_engine.insert_enum(new_copy);
 
                 ty::TyDeclaration::EnumDeclaration(new_id)
             }
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(de_get_struct(original_id, &self.span())),
+                    CompileResult::from(declaration_engine.get_struct(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -248,12 +259,12 @@ impl TypeBinding<CallPath> {
 
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
-                    ctx.type_engine,
-                    new_copy.create_type_id(ctx.type_engine),
+                    engines,
+                    new_copy.create_type_id(engines),
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = de_insert_struct(new_copy);
+                let new_id = ctx.declaration_engine.insert_struct(new_copy);
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }
