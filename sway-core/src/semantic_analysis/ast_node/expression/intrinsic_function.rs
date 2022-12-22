@@ -680,9 +680,12 @@ fn type_check_state_store_word(
         warnings,
         errors
     );
-    let ctx = ctx.with_help_text("").with_type_annotation(
-        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let ctx = ctx
+        .with_help_text("")
+        .with_type_annotation(type_engine.insert_type(
+            declaration_engine,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        ));
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
             .with_help_text("")
@@ -742,6 +745,7 @@ fn type_check_state_quad(
     span: Span,
 ) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
 
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -764,7 +768,7 @@ fn type_check_state_quad(
     }
     let mut ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
     let key_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
         return err(warnings, errors),
@@ -781,7 +785,7 @@ fn type_check_state_quad(
         warnings,
         errors
     );
-    if !key_ty.eq(&TypeInfo::B256, type_engine) {
+    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
         errors.push(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -791,16 +795,19 @@ fn type_check_state_quad(
     }
     let mut ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
     let val_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut ctx = ctx.with_help_text("").with_type_annotation(
-        type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx
+        .with_help_text("")
+        .with_type_annotation(type_engine.insert_type(
+            declaration_engine,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        ));
     let number_of_slots_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
         return err(warnings, errors),
@@ -810,7 +817,7 @@ fn type_check_state_quad(
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
         let initial_type_info = check!(
             CompileResult::from(
                 type_engine
@@ -821,7 +828,7 @@ fn type_check_state_quad(
             warnings,
             errors
         );
-        let initial_type_id = type_engine.insert_type(initial_type_info);
+        let initial_type_id = type_engine.insert_type(declaration_engine, initial_type_info);
         let type_id = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -829,7 +836,7 @@ fn type_check_state_quad(
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -845,7 +852,7 @@ fn type_check_state_quad(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert_type(TypeInfo::Tuple(vec![]));
+    let return_type = type_engine.insert_type(declaration_engine, TypeInfo::Tuple(vec![]));
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
