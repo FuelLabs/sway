@@ -1,13 +1,14 @@
-use crate::{
-    language::ty::{self, TyExpression},
-    Namespace,
-};
+use crate::{declaration_engine::DeclarationEngine, language::ty, Namespace};
 
 // This analysis checks if an expression is known statically to evaluate
 // to a non-zero value at runtime.
 // It's intended to be used in the payability analysis to check if a non-payable
 // method gets called with a non-zero amount of `coins`
-pub fn possibly_nonzero_u64_expression(namespace: &Namespace, expr: &TyExpression) -> bool {
+pub fn possibly_nonzero_u64_expression(
+    namespace: &Namespace,
+    declaration_engine: &DeclarationEngine,
+    expr: &ty::TyExpression,
+) -> bool {
     use ty::TyExpressionVariant::*;
     match &expr.expression {
         Literal(crate::language::Literal::U64(value)) => *value != 0,
@@ -18,16 +19,19 @@ pub fn possibly_nonzero_u64_expression(namespace: &Namespace, expr: &TyExpressio
                 Some(ty_decl) => {
                     match ty_decl {
                         ty::TyDeclaration::VariableDeclaration(var_decl) => {
-                            possibly_nonzero_u64_expression(namespace, &var_decl.body)
+                            possibly_nonzero_u64_expression(
+                                namespace,
+                                declaration_engine,
+                                &var_decl.body,
+                            )
                         }
                         ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                            match crate::declaration_engine::de_get_constant(
-                                decl_id.clone(),
-                                &expr.span,
-                            ) {
-                                Ok(const_decl) => {
-                                    possibly_nonzero_u64_expression(namespace, &const_decl.value)
-                                }
+                            match declaration_engine.get_constant(decl_id.clone(), &expr.span) {
+                                Ok(const_decl) => possibly_nonzero_u64_expression(
+                                    namespace,
+                                    declaration_engine,
+                                    &const_decl.value,
+                                ),
                                 Err(_) => true,
                             }
                         }

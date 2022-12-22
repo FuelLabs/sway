@@ -35,6 +35,8 @@ impl ty::TyFunctionDeclaration {
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
@@ -77,7 +79,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -85,7 +87,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -104,7 +106,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert_type(TypeInfo::ErrorRecovery)
+                    type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -165,13 +167,13 @@ impl ty::TyFunctionDeclaration {
         let mut return_type_namespace = fn_ctx
             .namespace
             .implemented_traits
-            .filter_by_type(function_decl.return_type, type_engine);
+            .filter_by_type(function_decl.return_type, fn_ctx.engines());
         for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(type_engine, type_param.type_id);
+            return_type_namespace.filter_against_type(engines, type_param.type_id);
         }
         ctx.namespace
             .implemented_traits
-            .extend(return_type_namespace, type_engine);
+            .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
     }
@@ -179,10 +181,11 @@ impl ty::TyFunctionDeclaration {
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::language::Visibility;
+    use crate::{declaration_engine::DeclarationEngine, language::Visibility};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
@@ -218,9 +221,14 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
-                initial_type_id: type_engine
-                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
+                type_id: type_engine.insert_type(
+                    &declaration_engine,
+                    TypeInfo::Str(Length::new(5, Span::dummy())),
+                ),
+                initial_type_id: type_engine.insert_type(
+                    &declaration_engine,
+                    TypeInfo::Str(Length::new(5, Span::dummy())),
+                ),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -228,9 +236,14 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
-                initial_type_id: type_engine
-                    .insert_type(TypeInfo::Str(Length::new(5, Span::dummy()))),
+                type_id: type_engine.insert_type(
+                    &declaration_engine,
+                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                ),
+                initial_type_id: type_engine.insert_type(
+                    &declaration_engine,
+                    TypeInfo::Str(Length::new(5, Span::dummy())),
+                ),
                 type_span: Span::dummy(),
             },
         ],

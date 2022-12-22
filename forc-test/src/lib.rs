@@ -214,9 +214,10 @@ fn run_pkg_tests(built_pkg: BuiltPackage) -> anyhow::Result<TestedPackage> {
                 .clone()
                 .expect("test entry point is missing declaration id");
             let span = test_decl_id.span();
-            let test_function_decl =
-                sway_core::declaration_engine::de_get_function(test_decl_id, &span)
-                    .expect("declaration engine is missing function declaration for test");
+            let test_function_decl = built_pkg
+                .declaration_engine
+                .get_function(test_decl_id, &span)
+                .expect("declaration engine is missing function declaration for test");
             let condition = test_pass_condition(&test_function_decl)?;
             Ok(TestResult {
                 name,
