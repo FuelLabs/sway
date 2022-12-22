@@ -241,13 +241,13 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // update this file with the new changes and write to disk
-                match session.write_changes_to_file(&uri, params.content_changes) {
-                    Ok(_) => {
-                        self.parse_project(uri, params.text_document.uri, session.clone())
-                            .await;
+                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
+                    if let Ok(mut file) = File::create(uri.path()) {
+                        let _ = writeln!(&mut file, "{}", src);
                     }
-                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
+                self.parse_project(uri, params.text_document.uri, session.clone())
+                    .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
         }

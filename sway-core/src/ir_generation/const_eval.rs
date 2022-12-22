@@ -1,9 +1,6 @@
 use crate::{
-    declaration_engine::{de_get_function, declaration_engine::de_get_constant},
-    language::ty,
-    metadata::MetadataManager,
-    semantic_analysis::*,
-    PartialEqWithTypeEngine, TypeEngine,
+    declaration_engine::DeclarationEngine, engine_threading::*, language::ty,
+    metadata::MetadataManager, semantic_analysis::*, TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -25,6 +22,7 @@ use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
+    pub(crate) declaration_engine: &'a DeclarationEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -103,14 +101,16 @@ pub(crate) fn compile_const_decl(
                         value,
                         is_configurable,
                         ..
-                    } = de_get_constant(decl_id.clone(), &name.span())?;
+                    } = env
+                        .declaration_engine
+                        .get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value, is_configurable))
                 }
                 _otherwise => None,
             };
             if let Some((name, value, is_configurable)) = decl_name_value {
                 let const_val = compile_constant_expression(
-                    env.type_engine,
+                    Engines::new(env.type_engine, env.declaration_engine),
                     env.context,
                     env.md_mgr,
                     env.module,
@@ -144,7 +144,7 @@ pub(crate) fn compile_const_decl(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -157,7 +157,7 @@ pub(super) fn compile_constant_expression(
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
     let constant_evaluated = compile_constant_expression_to_constant(
-        type_engine,
+        engines,
         context,
         md_mgr,
         module,
@@ -175,8 +175,9 @@ pub(super) fn compile_constant_expression(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_constant_expression_to_constant(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
@@ -184,8 +185,10 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
+    let (type_engine, declaration_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
         type_engine,
+        declaration_engine,
         context,
         md_mgr,
         module,
@@ -244,7 +247,9 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = de_get_function(function_decl_id.clone(), &expr.span)?;
+            let function_decl = lookup
+                .declaration_engine
+                .get_function(function_decl_id.clone(), &expr.span)?;
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
@@ -326,7 +331,7 @@ fn const_eval_typed_expr(
             if !element_iter.all(|tid| {
                 lookup.type_engine.look_up_type_id(*tid).eq(
                     &lookup.type_engine.look_up_type_id(element_type_id),
-                    lookup.type_engine,
+                    Engines::new(lookup.type_engine, lookup.declaration_engine),
                 )
             }) {
                 // This shouldn't happen if the type checker did its job.
