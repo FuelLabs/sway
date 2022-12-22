@@ -9,7 +9,7 @@ dependencies = [
 [[package]]
 name = 'basic_storage_abi'
 source = 'path+from-root-E723F3A4C3992EF1'
-dependencies = ['core']
+dependencies = ['std']
 
 [[package]]
 name = 'core'
