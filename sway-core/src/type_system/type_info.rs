@@ -48,7 +48,7 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn is_subset(&self, other: &Self, engines: Engines<'_>) -> bool {
+    pub fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.0.len() <= other.0.len()
             && self
                 .0
@@ -59,7 +59,7 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.is_subset(other, engines) && other.is_subset(self, engines)
+        self.eq(other, engines) && other.eq(self, engines)
     }
 }
 
