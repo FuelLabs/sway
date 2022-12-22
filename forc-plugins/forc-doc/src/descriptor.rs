@@ -8,12 +8,12 @@ use sway_core::{declaration_engine::*, language::ty::TyDeclaration};
 use sway_types::Spanned;
 
 /// Used in deciding whether or not a [Declaration] is documentable.
-pub(crate) enum Descriptor<'dir, 'mdl_info> {
-    Documentable(Document<'dir, 'mdl_info>),
+pub(crate) enum Descriptor {
+    Documentable(Document),
     NonDocumentable,
 }
 
-impl<'dir> Descriptor<'_, 'dir> {
+impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
         ty_decl: &TyDeclaration,
@@ -30,18 +30,18 @@ impl<'dir> Descriptor<'_, 'dir> {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = struct_decl.name.as_str();
+                    let item_name = struct_decl.name;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(&struct_decl.attributes));
+                        .then(|| attrsmap_to_html_str(struct_decl.attributes));
                     let context = (!struct_decl.fields.is_empty())
                         .then_some(ContextType::StructFields(struct_decl.fields));
 
                     Ok(Descriptor::Documentable(Document {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         item_header: ItemHeader {
-                            module_info: &module_info,
+                            module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_name(),
-                            item_name,
+                            item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -61,18 +61,18 @@ impl<'dir> Descriptor<'_, 'dir> {
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = enum_decl.name.as_str();
+                    let item_name = enum_decl.name;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(&enum_decl.attributes));
+                        .then(|| attrsmap_to_html_str(enum_decl.attributes));
                     let context = (!enum_decl.variants.is_empty())
                         .then_some(ContextType::EnumVariants(enum_decl.variants));
 
                     Ok(Descriptor::Documentable(Document {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         item_header: ItemHeader {
-                            module_info: &module_info,
+                            module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_name(),
-                            item_name,
+                            item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -92,18 +92,18 @@ impl<'dir> Descriptor<'_, 'dir> {
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = trait_decl.name.as_str();
+                    let item_name = trait_decl.name;
                     let attrs_opt = (!trait_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(&trait_decl.attributes));
+                        .then(|| attrsmap_to_html_str(trait_decl.attributes));
                     let context = (!trait_decl.interface_surface.is_empty())
                         .then_some(ContextType::RequiredMethods(trait_decl.interface_surface));
 
                     Ok(Descriptor::Documentable(Document {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         item_header: ItemHeader {
-                            module_info: &module_info,
+                            module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_name(),
-                            item_name,
+                            item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -120,18 +120,18 @@ impl<'dir> Descriptor<'_, 'dir> {
             }
             AbiDeclaration(ref decl_id) => {
                 let abi_decl = de_get_abi(decl_id.clone(), &decl_id.span())?;
-                let item_name = abi_decl.name.as_str();
+                let item_name = abi_decl.name;
                 let attrs_opt = (!abi_decl.attributes.is_empty())
-                    .then(|| attrsmap_to_html_str(&abi_decl.attributes));
+                    .then(|| attrsmap_to_html_str(abi_decl.attributes));
                 let context = (!abi_decl.interface_surface.is_empty())
                     .then_some(ContextType::RequiredMethods(abi_decl.interface_surface));
 
                 Ok(Descriptor::Documentable(Document {
-                    module_info: &module_info,
+                    module_info: module_info.clone(),
                     item_header: ItemHeader {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         friendly_name: ty_decl.friendly_name(),
-                        item_name,
+                        item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
                         module_info,
@@ -145,18 +145,20 @@ impl<'dir> Descriptor<'_, 'dir> {
             }
             StorageDeclaration(ref decl_id) => {
                 let storage_decl = de_get_storage(decl_id.clone(), &decl_id.span())?;
-                let item_name = CONTRACT_STORAGE;
+                let item_name = sway_types::BaseIdent::new_no_trim(
+                    sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
+                );
                 let attrs_opt = (!storage_decl.attributes.is_empty())
-                    .then(|| attrsmap_to_html_str(&storage_decl.attributes));
+                    .then(|| attrsmap_to_html_str(storage_decl.attributes));
                 let context = (!storage_decl.fields.is_empty())
                     .then_some(ContextType::StorageFields(storage_decl.fields));
 
                 Ok(Descriptor::Documentable(Document {
-                    module_info: &module_info,
+                    module_info: module_info.clone(),
                     item_header: ItemHeader {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         friendly_name: ty_decl.friendly_name(),
-                        item_name,
+                        item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
                         module_info,
@@ -176,14 +178,14 @@ impl<'dir> Descriptor<'_, 'dir> {
                 // This declaration type may make more sense to document as part of another declaration
                 // much like how we document method functions for traits or fields on structs.
                 let impl_trait = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
-                let item_name = impl_trait.trait_name.suffix.as_str();
+                let item_name = impl_trait.trait_name.suffix;
 
                 Ok(Descriptor::Documentable(Document {
-                    module_info: &module_info,
+                    module_info: module_info.clone(),
                     item_header: ItemHeader {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         friendly_name: ty_decl.friendly_name(),
-                        item_name,
+                        item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
                         module_info,
@@ -202,16 +204,16 @@ impl<'dir> Descriptor<'_, 'dir> {
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = fn_decl.name.as_str();
+                    let item_name = fn_decl.name;
                     let attrs_opt = (!fn_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(&fn_decl.attributes));
+                        .then(|| attrsmap_to_html_str(fn_decl.attributes));
 
                     Ok(Descriptor::Documentable(Document {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         item_header: ItemHeader {
-                            module_info: &module_info,
+                            module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_name(),
-                            item_name,
+                            item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
                             module_info,
@@ -231,16 +233,16 @@ impl<'dir> Descriptor<'_, 'dir> {
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = const_decl.name.as_str();
+                    let item_name = const_decl.name;
                     let attrs_opt = (!const_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(&const_decl.attributes));
+                        .then(|| attrsmap_to_html_str(const_decl.attributes));
 
                     Ok(Descriptor::Documentable(Document {
-                        module_info: &module_info,
+                        module_info: module_info.clone(),
                         item_header: ItemHeader {
-                            module_info: &module_info,
+                            module_info: module_info.clone(),
                             friendly_name: ty_decl.friendly_name(),
-                            item_name,
+                            item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
                             module_info,

@@ -9,48 +9,44 @@ use sway_core::language::ty::{
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
-use sway_types::Spanned;
+use sway_types::{BaseIdent, Spanned};
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
     fn render(self) -> Box<dyn RenderBox>;
 }
 /// A [Document] rendered to HTML.
-pub(crate) struct RenderedDocument<'rend> {
-    pub(crate) module_prefix: Vec<&'rend str>,
-    pub(crate) html_file_name: &'rend str,
+pub(crate) struct RenderedDocument {
+    pub(crate) module_info: Vec<String>,
+    pub(crate) html_file_name: String,
     pub(crate) file_contents: HTMLString,
 }
 #[derive(Default)]
-pub(crate) struct RenderedDocumentation<'rend>(pub(crate) Vec<RenderedDocument<'rend>>);
+pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
-impl RenderedDocumentation<'_> {
+impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from<'raw, 'mdl_info>(
-        raw: Documentation<'raw, 'mdl_info>,
-    ) -> RenderedDocumentation<'raw> {
+    pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
-            let module_prefix = doc.module_info.0.clone();
             let html_file_name = doc.html_file_name();
 
             rendered_docs.0.push(RenderedDocument {
-                module_prefix: module_prefix.clone(),
+                module_info: doc.module_info.0.clone(),
                 html_file_name: html_file_name.clone(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
             all_doc.0.push(AllDocItem {
                 ty_decl: doc.item_body.ty_decl.clone(),
-                path_literal_str: doc.module_info.to_path_literal_str(),
                 module_info: doc.module_info,
                 html_file_name,
             });
         }
         // All Doc
         rendered_docs.0.push(RenderedDocument {
-            module_prefix: vec![],
-            html_file_name: ALL_DOC_FILENAME,
+            module_info: vec![],
+            html_file_name: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(all_doc.render()),
         });
 
@@ -76,12 +72,12 @@ impl HTMLString {
 /// All necessary components to render the header portion of
 /// the item html doc.
 #[derive(Clone)]
-pub(crate) struct ItemHeader<'header> {
-    pub(crate) module_info: &'header ModuleInfo<'header>,
+pub(crate) struct ItemHeader {
+    pub(crate) module_info: ModuleInfo,
     pub(crate) friendly_name: &'static str,
-    pub(crate) item_name: &'header str,
+    pub(crate) item_name: BaseIdent,
 }
-impl Renderable for ItemHeader<'_> {
+impl Renderable for ItemHeader {
     /// Basic HTML header component
     fn render(self) -> Box<dyn RenderBox> {
         let ItemHeader {
@@ -90,10 +86,10 @@ impl Renderable for ItemHeader<'_> {
             item_name,
         } = self;
 
-        let mut favicon = module_info.to_html_shorthand_path_str("assets/sway-logo.svg");
-        let mut normalize = module_info.to_html_shorthand_path_str("assets/normalize.css");
-        let mut swaydoc = module_info.to_html_shorthand_path_str("assets/swaydoc.css");
-        let mut ayu = module_info.to_html_shorthand_path_str("assets/ayu.css");
+        let favicon = module_info.to_html_shorthand_path_str("assets/sway-logo.svg");
+        let normalize = module_info.to_html_shorthand_path_str("assets/normalize.css");
+        let swaydoc = module_info.to_html_shorthand_path_str("assets/swaydoc.css");
+        let ayu = module_info.to_html_shorthand_path_str("assets/ayu.css");
 
         box_html! {
             head {
@@ -104,12 +100,12 @@ impl Renderable for ItemHeader<'_> {
                     name="description",
                     content=format!(
                         "API documentation for the Sway `{}` {} in `{}`.",
-                        item_name.clone(), friendly_name, module_info.location(),
+                        item_name.as_str(), friendly_name, module_info.location(),
                     )
                 );
-                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name));
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name.as_str()));
                 link(rel="icon", href=favicon);
-                title: format!("{} in {} - Sway", item_name, module_info.location());
+                title: format!("{} in {} - Sway", item_name.as_str(), module_info.location());
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -122,22 +118,24 @@ impl Renderable for ItemHeader<'_> {
 /// the item html doc. Many parts of the HTML body structure will be the same
 /// for each item, but things like struct fields vs trait methods will be different.
 #[derive(Clone)]
-pub(crate) struct ItemBody<'body> {
-    pub(crate) module_info: ModuleInfo<'body>,
+pub(crate) struct ItemBody {
+    pub(crate) module_info: ModuleInfo,
     pub(crate) ty_decl: TyDeclaration,
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
-    pub(crate) item_name: &'body str,
+    pub(crate) item_name: BaseIdent,
     pub(crate) code_str: String,
-    pub(crate) attrs_opt: Option<&'body str>,
+    pub(crate) attrs_opt: Option<String>,
     pub(crate) item_context: ItemContext,
 }
-impl SidebarNav for ItemBody<'_> {
+impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
-            module_info: &self.module_info,
-            href_path: ALL_DOC_FILENAME,
+            module_info: self.module_info.clone(),
+            href_path: self
+                .module_info
+                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
             /*
                 The href_path will be the path to the parent module of the current module.
                 Currently we will use the All Doc path since the parent module index has yet to be created.
@@ -151,11 +149,12 @@ impl SidebarNav for ItemBody<'_> {
         }
     }
 }
-impl Renderable for ItemBody<'_> {
+impl Renderable for ItemBody {
     /// HTML body component
     fn render(self) -> Box<dyn RenderBox> {
+        let sidebar = self.sidebar();
         let ItemBody {
-            module_info,
+            module_info: _,
             ty_decl,
             item_name,
             code_str,
@@ -165,11 +164,10 @@ impl Renderable for ItemBody<'_> {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
-        let mut all_path = module_info.to_html_shorthand_path_str(ALL_DOC_FILENAME);
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : self.sidebar().render();
+                : sidebar.render();
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -203,7 +201,7 @@ impl Renderable for ItemBody<'_> {
                                         : format!("{} ", friendly_name);
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href="#") {
-                                            : item_name;
+                                            : item_name.as_str();
                                         }
                                     }
                                 }
@@ -317,7 +315,7 @@ impl Renderable for TyStructField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
@@ -337,7 +335,7 @@ impl Renderable for TyStorageField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
@@ -356,7 +354,7 @@ impl Renderable for TyEnumVariant {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
@@ -457,25 +455,26 @@ impl Renderable for TyTraitFn {
     }
 }
 #[derive(Clone)]
-struct AllDocItem<'all, 'mdl_info> {
+struct AllDocItem {
     ty_decl: TyDeclaration,
-    path_literal_str: &'all str,
-    module_info: &'all ModuleInfo<'mdl_info>,
-    html_file_name: &'all str,
+    module_info: ModuleInfo,
+    html_file_name: String,
 }
-impl<'all> AllDocItem<'_, 'all> {
+impl AllDocItem {
     fn to_item_link(&self) -> ItemLink {
         ItemLink {
-            name: self.path_literal_str,
-            hyperlink: self.module_info.to_file_path_str(self.html_file_name),
+            name: self.module_info.to_path_literal_str(),
+            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
         }
     }
 }
-impl<'all> SidebarNav for AllDocItem<'_, 'all> {
+impl SidebarNav for AllDocItem {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
-            module_info: &self.module_info,
-            href_path: ALL_DOC_FILENAME,
+            module_info: self.module_info.clone(),
+            href_path: self
+                .module_info
+                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
         }
     }
 }
@@ -483,14 +482,14 @@ impl<'all> SidebarNav for AllDocItem<'_, 'all> {
 ///
 /// This could be a path literal with a link e.g `proj_name::foo::Foo`,
 /// or just the item name: `Foo`.
-struct ItemLink<'link> {
-    name: &'link str,
-    hyperlink: &'link str,
+struct ItemLink {
+    name: String,
+    hyperlink: String,
 }
 #[derive(Default, Clone)]
-struct AllDoc<'all, 'mdl_info>(Vec<AllDocItem<'all, 'mdl_info>>);
+struct AllDoc(Vec<AllDocItem>);
 
-impl<'mdl_info> Renderable for AllDoc<'_, 'mdl_info> {
+impl Renderable for AllDoc {
     /// crate level, all items belonging to a crate
     fn render(self) -> Box<dyn RenderBox> {
         let AllDoc(all_doc) = self;
@@ -611,13 +610,13 @@ trait SidebarNav {
     fn sidebar(&self) -> Sidebar;
 }
 /// Sidebar component for quick navigation.
-struct Sidebar<'href, 'sidebar> {
-    module_info: &'sidebar ModuleInfo<'sidebar>,
-    href_path: &'href str,
+struct Sidebar {
+    module_info: ModuleInfo,
+    href_path: String,
 }
-impl<'href> Renderable for Sidebar<'_, 'href> {
+impl Renderable for Sidebar {
     fn render(self) -> Box<dyn RenderBox> {
-        let mut logo_path = self
+        let logo_path = self
             .module_info
             .to_html_shorthand_path_str("assets/sway-logo.svg");
 
@@ -643,7 +642,7 @@ impl<'href> Renderable for Sidebar<'_, 'href> {
     }
 }
 /// Creates an HTML String from an [AttributesMap]
-pub(crate) fn attrsmap_to_html_str(attributes: &AttributesMap) -> &str {
+pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::DocComment);
     let mut docs = String::new();
 
@@ -664,7 +663,7 @@ pub(crate) fn attrsmap_to_html_str(attributes: &AttributesMap) -> &str {
     options.extension.footnotes = true;
     options.parse.smart = true;
     options.parse.default_info_string = Some("sway".into());
-    &markdown_to_html(&format_docs(&docs), &options)
+    markdown_to_html(&format_docs(&docs), &options)
 }
 /// Takes a formatted String fn and returns only the function signature.
 pub(crate) fn trim_fn_body(f: String) -> String {
