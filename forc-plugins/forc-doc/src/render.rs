@@ -467,7 +467,7 @@ impl<'all> AllDocItem<'_, 'all> {
     fn to_item_link(&self) -> ItemLink {
         ItemLink {
             name: self.path_literal_str,
-            hyperlink: self.html_file_name,
+            hyperlink: self.module_info.to_file_path_str(self.html_file_name),
         }
     }
 }
