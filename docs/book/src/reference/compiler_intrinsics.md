@@ -75,7 +75,7 @@ __state_load_word(key: b256) -> u64
 ___
 
 ```sway
-__state_load_quad(key: b256, ptr: raw_ptr)
+__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)
 ```
 
 **Description:** Reads `slots` number of slots (`b256` each) from storage starting at key `key` and stores them in memory starting at address `ptr`
@@ -85,7 +85,7 @@ __state_load_quad(key: b256, ptr: raw_ptr)
 ___
 
 ```sway
-__state_store_word(key: b256, val: u64, slots: u64)
+__state_store_word(key: b256, val: u64)
 ```
 
 **Description:** Stores a single word `val` into storage at key `key`.

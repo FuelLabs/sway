@@ -122,7 +122,9 @@ fn test_storage() {
     };
     store(key, s);
     let s_ = get::<S>(key);
-    assert(s.x == s_.x && s.y == s_.y && s.z == s_.z && s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean && s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
+    assert(s.x == s_.x && s.y == s_.y && s.z == s_.z);
+    assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean); 
+    assert(s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
 
     let boolean: bool = true;
     store(key, boolean);
@@ -173,7 +175,8 @@ fn test_storage() {
                 int32: int322,
             }),
         ) => {
-            assert(x1 == x2 && y1 == y2 && z1 == z2 && boolean1 == boolean2 && int81 == int82 && int161 == int162 && int321 == int322);
+            assert(x1 == x2 && y1 == y2 && z1 == z2 && boolean1 == boolean2);
+            assert(int81 == int82 && int161 == int162 && int321 == int322);
         }
         _ => assert(false),
     }

@@ -671,24 +671,20 @@ fn type_check_state_store_word(
         });
         return err(warnings, errors);
     }
-    let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+    let mut ctx =
+        ctx.with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
     let val_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(
-            declaration_engine,
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-        ));
+    let ctx = ctx.with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
-            .with_help_text("")
             .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
         let initial_type_info = check!(
             CompileResult::from(
@@ -793,21 +789,18 @@ fn type_check_state_quad(
         });
         return err(warnings, errors);
     }
-    let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+    let mut ctx =
+        ctx.with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
     let val_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(
-            declaration_engine,
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-        ));
+    let mut ctx = ctx.with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
     let number_of_slots_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
         return err(warnings, errors),
@@ -816,7 +809,6 @@ fn type_check_state_quad(
     );
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
-            .with_help_text("")
             .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
         let initial_type_info = check!(
             CompileResult::from(
