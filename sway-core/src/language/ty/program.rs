@@ -376,34 +376,38 @@ impl TyProgram {
 
     pub fn generate_json_abi_program(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         types: &mut Vec<fuels_types::TypeDeclaration>,
     ) -> fuels_types::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
                     .iter()
-                    .map(|x| x.generate_json_abi_function(type_engine, types))
+                    .map(|x| x.generate_json_abi_function(engines.te(), types))
                     .collect();
-                let logged_types = self.generate_json_logged_types(type_engine, types);
-                let messages_types = self.generate_json_messages_types(type_engine, types);
+                let logged_types = self.generate_json_logged_types(engines.te(), types);
+                let messages_types = self.generate_json_messages_types(engines.te(), types);
+                let configurables = self.generate_json_configurables(engines, types);
                 fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
-                let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
-                let logged_types = self.generate_json_logged_types(type_engine, types);
-                let messages_types = self.generate_json_messages_types(type_engine, types);
+                let functions = vec![main_function.generate_json_abi_function(engines.te(), types)];
+                let logged_types = self.generate_json_logged_types(engines.te(), types);
+                let messages_types = self.generate_json_messages_types(engines.te(), types);
+                let configurables = self.generate_json_configurables(engines, types);
                 fuels_types::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
             _ => fuels_types::ProgramABI {
@@ -411,6 +415,7 @@ impl TyProgram {
                 functions: vec![],
                 logged_types: None,
                 messages_types: None,
+                configurables: None,
             },
         }
     }
@@ -480,6 +485,73 @@ impl TyProgram {
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
                 },
             })
+            .collect()
+    }
+
+    fn generate_json_configurables(
+        &self,
+        engines: Engines<'_>,
+        types: &mut Vec<fuels_types::TypeDeclaration>,
+    ) -> Vec<fuels_types::Configurable> {
+        let type_engine = engines.te();
+        let configurables = self
+            .declarations
+            .iter()
+            .filter_map(|decl| match decl {
+                TyDeclaration::ConstantDeclaration(decl_id) => {
+                    match engines.de().get_constant(decl_id.clone(), &decl.span()) {
+                        Ok(config_decl) if config_decl.is_configurable => Some(config_decl),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        // A list of all `fuels_types::TypeDeclaration`s needed for the configurables types
+        let configurables_types = configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration { return_type, .. }| fuels_types::TypeDeclaration {
+                    type_id: return_type.index(),
+                    type_field: return_type.get_json_type_str(type_engine, *return_type),
+                    components: return_type.get_json_type_components(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                    type_parameters: return_type.get_json_type_parameters(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                },
+            )
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(configurables_types);
+
+        // Generate the JSON data for the configurables types
+        configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration {
+                     name, return_type, ..
+                 }| fuels_types::Configurable {
+                    name: name.to_string(),
+                    application: fuels_types::TypeApplication {
+                        name: "".to_string(),
+                        type_id: return_type.index(),
+                        type_arguments: return_type.get_json_type_arguments(
+                            type_engine,
+                            types,
+                            *return_type,
+                        ),
+                    },
+                    offset: 0,
+                },
+            )
             .collect()
     }
 

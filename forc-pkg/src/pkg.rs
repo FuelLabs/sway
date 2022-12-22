@@ -2367,9 +2367,9 @@ pub fn compile(
     }
 
     let mut types = vec![];
-    let json_abi_program = time_expr!(
+    let mut json_abi_program = time_expr!(
         "generate JSON ABI program",
-        typed_program.generate_json_abi_program(engines.te(), &mut types)
+        typed_program.generate_json_abi_program(engines, &mut types)
     );
 
     let storage_slots = typed_program.storage_slots.clone();
@@ -2398,7 +2398,15 @@ pub fn compile(
     match bc_res.value {
         Some(CompiledBytecode((bytes, config_offsets))) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
-            dbg!(config_offsets);
+
+            for (config, offset) in config_offsets {
+                if let Some(ref mut configurables) = json_abi_program.configurables {
+                    if let Some(idx) = configurables.iter().position(|c| c.name == config) {
+                        configurables[idx].offset = offset
+                    }
+                }
+            }
+
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 json_abi_program,
@@ -2757,6 +2765,11 @@ fn update_all_types(
     }
     if let Some(messages_types) = &mut json_abi_program.messages_types {
         for logged_type in messages_types.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
+    }
+    if let Some(configurables) = &mut json_abi_program.configurables {
+        for logged_type in configurables.iter_mut() {
             update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
     }

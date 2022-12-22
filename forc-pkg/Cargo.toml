@@ -13,7 +13,7 @@ anyhow = "1"
 fd-lock = "3.0"
 forc-tracing = { version = "0.32.2", path = "../forc-tracing" }
 forc-util = { version = "0.32.2", path = "../forc-util" }
-fuels-types = "0.33"
+fuels-types = { path = "../../fuels-rs/packages/fuels-types" }
 git2 = { version = "0.14", features = ["vendored-libgit2", "vendored-openssl"] }
 hex = "0.4.3"
 petgraph = { version = "0.6", features = ["serde-1"] }
