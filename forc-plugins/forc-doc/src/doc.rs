@@ -1,10 +1,15 @@
+use std::sync::Arc;
+
 use crate::{
     descriptor::Descriptor,
     render::{ItemBody, ItemHeader},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use sway_core::language::ty::{TyAstNodeContent, TyProgram, TySubmodule};
+use sway_core::{
+    declaration_engine::DeclarationEngine,
+    language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
+};
 
 pub(crate) type Documentation = Vec<Document>;
 /// A finalized Document ready to be rendered. We want to retain all
@@ -38,6 +43,7 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
+        declaration_engine: &DeclarationEngine,
         project_name: &str,
         typed_program: &TyProgram,
         no_deps: bool,
@@ -48,6 +54,7 @@ impl Document {
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
+                    declaration_engine,
                     decl,
                     vec![project_name.to_owned()],
                     document_private_items,
@@ -64,6 +71,7 @@ impl Document {
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = vec![project_name.to_owned()];
                 Document::from_ty_submodule(
+                    declaration_engine,
                     typed_submodule,
                     &mut docs,
                     &module_prefix,
@@ -75,6 +83,7 @@ impl Document {
         Ok(docs)
     }
     fn from_ty_submodule(
+        declaration_engine: &DeclarationEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &[String],
@@ -85,6 +94,7 @@ impl Document {
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
+                    declaration_engine,
                     decl,
                     new_submodule_prefix.clone(),
                     document_private_items,
@@ -98,6 +108,7 @@ impl Document {
         // if there is another submodule we need to go a level deeper
         if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
             Document::from_ty_submodule(
+                declaration_engine,
                 submodule,
                 docs,
                 &new_submodule_prefix,
@@ -109,10 +120,10 @@ impl Document {
     }
 }
 impl crate::render::Renderable for Document {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
         box_html! {
-            : self.item_header.render();
-            : self.item_body.render();
+            : self.item_header.render(declaration_engine.clone());
+            : self.item_body.render(declaration_engine);
         }
     }
 }

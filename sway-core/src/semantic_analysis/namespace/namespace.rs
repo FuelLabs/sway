@@ -1,5 +1,6 @@
 use crate::{
-    declaration_engine::{de_get_function, DeclarationId},
+    declaration_engine::DeclarationId,
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     type_system::*,
@@ -104,7 +105,7 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_with_self] on `root` with the `mod_path`.
     pub(crate) fn resolve_type_with_self(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -112,7 +113,8 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        type_engine.resolve_type_with_self(
+        engines.te().resolve_type_with_self(
+            engines.de(),
             type_id,
             self_type,
             span,
@@ -126,13 +128,14 @@ impl Namespace {
     /// Short-hand for calling [Root::resolve_type_without_self] on `root` and with the `mod_path`.
     pub(crate) fn resolve_type_without_self(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         span: &Span,
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        type_engine.resolve_type(
+        engines.te().resolve_type(
+            engines.de(),
             type_id,
             span,
             EnforceTypeArguments::Yes,
@@ -156,10 +159,13 @@ impl Namespace {
         method_name: &Ident,
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<DeclarationId> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
 
         // grab the local module
         let local_module = check!(
@@ -170,13 +176,14 @@ impl Namespace {
         );
 
         // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(type_engine, type_id);
+        let local_methods = local_module.get_methods_for_type(engines, type_id);
 
-        type_id.replace_self_type(type_engine, self_type);
+        type_id.replace_self_type(engines, self_type);
 
         // resolve the type
         let type_id = check!(
             type_engine.resolve_type(
+                declaration_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
@@ -184,7 +191,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -198,14 +205,16 @@ impl Namespace {
         );
 
         // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(type_engine, type_id);
+        let mut type_methods = type_module.get_methods_for_type(engines, type_id);
 
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
         for decl_id in methods.into_iter() {
             let method = check!(
-                CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(
+                    declaration_engine.get_function(decl_id.clone(), &decl_id.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -214,7 +223,7 @@ impl Namespace {
                 // if we find the method that we are looking for, we also need
                 // to retrieve the impl definitions for the return type so that
                 // the user can string together method calls
-                self.insert_trait_implementation_for_type(type_engine, method.return_type);
+                self.insert_trait_implementation_for_type(engines, method.return_type);
                 return ok(decl_id, warnings, errors);
             }
         }
@@ -222,11 +231,11 @@ impl Namespace {
         if !args_buf
             .get(0)
             .map(|x| type_engine.look_up_type_id(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), type_engine)
+            .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {
                 method_name: method_name.clone(),
-                type_name: type_engine.help_out(type_id).to_string(),
+                type_name: engines.help_out(type_id).to_string(),
                 span: method_name.span(),
             });
         }
@@ -234,35 +243,30 @@ impl Namespace {
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
-    pub(crate) fn star_import(
-        &mut self,
-        src: &Path,
-        type_engine: &TypeEngine,
-    ) -> CompileResult<()> {
-        self.root.star_import(src, &self.mod_path, type_engine)
+    pub(crate) fn star_import(&mut self, src: &Path, engines: Engines<'_>) -> CompileResult<()> {
+        self.root.star_import(src, &self.mod_path, engines)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
     pub(crate) fn self_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
-        self.root
-            .self_import(type_engine, src, &self.mod_path, alias)
+        self.root.self_import(engines, src, &self.mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
     pub(crate) fn item_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         self.root
-            .item_import(type_engine, src, item, &self.mod_path, alias)
+            .item_import(engines, src, item, &self.mod_path, alias)
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

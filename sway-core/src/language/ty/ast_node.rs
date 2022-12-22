@@ -3,7 +3,8 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{de_get_function, DeclMapping, ReplaceDecls},
+    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
+    engine_threading::*,
     error::*,
     language::{parsed, ty::*},
     transform::AttributeKind,
@@ -12,7 +13,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self) -> Option<Ident>;
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -21,53 +22,49 @@ pub struct TyAstNode {
     pub(crate) span: Span,
 }
 
-impl EqWithTypeEngine for TyAstNode {}
-impl PartialEqWithTypeEngine for TyAstNode {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.content.eq(&rhs.content, type_engine)
+impl EqWithEngines for TyAstNode {}
+impl PartialEqWithEngines for TyAstNode {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.content.eq(&other.content, engines)
     }
 }
 
-impl DisplayWithTypeEngine for TyAstNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+impl DisplayWithEngines for TyAstNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TyAstNodeContent::*;
         match &self.content {
-            Declaration(typed_decl) => DisplayWithTypeEngine::fmt(typed_decl, f, type_engine),
-            Expression(exp) => DisplayWithTypeEngine::fmt(exp, f, type_engine),
-            ImplicitReturnExpression(exp) => write!(f, "return {}", type_engine.help_out(exp)),
+            Declaration(typed_decl) => DisplayWithEngines::fmt(typed_decl, f, engines),
+            Expression(exp) => DisplayWithEngines::fmt(exp, f, engines),
+            ImplicitReturnExpression(exp) => write!(f, "return {}", engines.help_out(exp)),
             SideEffect => f.write_str(""),
         }
     }
 }
 
 impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping, type_engine)
+                exp.copy_types(type_mapping, engines)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => {
-                decl.copy_types(type_mapping, type_engine)
-            }
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.copy_types(type_mapping, type_engine)
-            }
+            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping, engines),
+            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }
 }
 
 impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_self_type(type_engine, self_type)
+                exp.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::Declaration(ref mut decl) => {
-                decl.replace_self_type(type_engine, self_type)
+                decl.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_self_type(type_engine, self_type)
+                expr.replace_self_type(engines, self_type)
             }
             TyAstNodeContent::SideEffect => (),
         }
@@ -75,15 +72,13 @@ impl ReplaceSelfType for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_decls(decl_mapping, type_engine)
+                exp.replace_decls(decl_mapping, engines)
             }
             TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_decls(decl_mapping, type_engine)
-            }
+            TyAstNodeContent::Expression(ref mut expr) => expr.replace_decls(decl_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }
@@ -99,12 +94,16 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
+    fn deterministically_aborts(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        check_call_body: bool,
+    ) -> bool {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(check_call_body)
+                exp.deterministically_aborts(declaration_engine, check_call_body)
             }
             SideEffect => false,
         }
@@ -112,8 +111,8 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self) -> Option<Ident> {
-        self.content.get_decl_ident()
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+        self.content.get_decl_ident(declaration_engine)
     }
 }
 
@@ -135,13 +134,13 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self) -> CompileResult<bool> {
+    pub(crate) fn is_public(&self, declaration_engine: &DeclarationEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let public = match &self.content {
             TyAstNodeContent::Declaration(decl) => {
                 let visibility = check!(
-                    decl.visibility(),
+                    decl.visibility(declaration_engine),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -157,7 +156,11 @@ impl TyAstNode {
 
     /// Naive check to see if this node is a function declaration of a function called `main` if
     /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(&self, tree_type: parsed::TreeType) -> CompileResult<bool> {
+    pub(crate) fn is_main_function(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        tree_type: parsed::TreeType,
+    ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -167,7 +170,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { name, .. } = check!(
-                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -184,7 +187,10 @@ impl TyAstNode {
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(&self) -> CompileResult<bool> {
+    pub(crate) fn is_test_function(
+        &self,
+        declaration_engine: &DeclarationEngine,
+    ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -194,7 +200,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(de_get_function(decl_id.clone(), span)),
+                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -233,14 +239,14 @@ pub enum TyAstNodeContent {
     SideEffect,
 }
 
-impl EqWithTypeEngine for TyAstNodeContent {}
-impl PartialEqWithTypeEngine for TyAstNodeContent {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        match (self, rhs) {
-            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, type_engine),
-            (Self::Expression(x), Self::Expression(y)) => x.eq(y, type_engine),
+impl EqWithEngines for TyAstNodeContent {}
+impl PartialEqWithEngines for TyAstNodeContent {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
             (Self::ImplicitReturnExpression(x), Self::ImplicitReturnExpression(y)) => {
-                x.eq(y, type_engine)
+                x.eq(y, engines)
             }
             (Self::SideEffect, Self::SideEffect) => true,
             _ => false,
@@ -264,9 +270,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(declaration_engine),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect => None,

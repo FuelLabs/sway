@@ -15,13 +15,14 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::manifest::ManifestFile;
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use sway_core::{
+    declaration_engine::DeclarationEngine,
     language::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, TypeEngine,
+    CompileResult, Engines, TypeEngine,
 };
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
@@ -50,6 +51,7 @@ pub struct Session {
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
+    pub declaration_engine: RwLock<DeclarationEngine>,
     pub sync: SyncWorkspace,
 }
 
@@ -61,12 +63,15 @@ impl Session {
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),
+            declaration_engine: <_>::default(),
             sync: SyncWorkspace::new(),
         }
     }
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
+
+        *self.declaration_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
@@ -133,8 +138,10 @@ impl Session {
 
         let mut diagnostics = Vec::new();
         let type_engine = &*self.type_engine.read();
+        let declaration_engine = &*self.declaration_engine.read();
+        let engines = Engines::new(type_engine, declaration_engine);
         let results =
-            pkg::check(&plan, true, type_engine).map_err(LanguageServerError::FailedToCompile)?;
+            pkg::check(&plan, true, engines).map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -166,7 +173,7 @@ impl Session {
                 // Next, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree = TypedTree::new(type_engine, &self.token_map);
+                let typed_tree = TypedTree::new(engines, &self.token_map);
                 self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
 
                 self.save_parse_program(parse_program.to_owned().clone());
@@ -182,7 +189,7 @@ impl Session {
                 });
 
                 self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(an)
+                    dependency.collect_typed_declaration(declaration_engine, an)
                 });
             }
         }
@@ -253,29 +260,6 @@ impl Session {
                 let _ = self.store_document(text_document);
             }
         }
-    }
-
-    /// Writes the changes to the file and updates the document.
-    pub fn write_changes_to_file(
-        &self,
-        uri: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
-    ) -> Result<(), LanguageServerError> {
-        let src = self.update_text_document(uri, changes).ok_or_else(|| {
-            DocumentError::DocumentNotFound {
-                path: uri.path().to_string(),
-            }
-        })?;
-        let mut file =
-            File::create(uri.path()).map_err(|err| DocumentError::UnableToCreateFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
-        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?;
-        Ok(())
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.

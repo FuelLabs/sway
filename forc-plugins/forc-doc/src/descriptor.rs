@@ -18,6 +18,7 @@ pub(crate) enum Descriptor {
 impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
+        declaration_engine: &DeclarationEngine,
         ty_decl: &TyDeclaration,
         module_prefix: Vec<String>,
         document_private_items: bool,
@@ -33,7 +34,8 @@ impl Descriptor {
         use TyDeclaration::*;
         match ty_decl {
             StructDeclaration(ref decl_id) => {
-                let struct_decl = de_get_struct(decl_id.clone(), &decl_id.span())?;
+                let struct_decl =
+                    declaration_engine.get_struct(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -65,7 +67,7 @@ impl Descriptor {
                 }
             }
             EnumDeclaration(ref decl_id) => {
-                let enum_decl = de_get_enum(decl_id.clone(), &decl_id.span())?;
+                let enum_decl = declaration_engine.get_enum(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -97,7 +99,7 @@ impl Descriptor {
                 }
             }
             TraitDeclaration(ref decl_id) => {
-                let trait_decl = de_get_trait(decl_id.clone(), &decl_id.span())?;
+                let trait_decl = declaration_engine.get_trait(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -129,7 +131,7 @@ impl Descriptor {
                 }
             }
             AbiDeclaration(ref decl_id) => {
-                let abi_decl = de_get_abi(decl_id.clone(), &decl_id.span())?;
+                let abi_decl = declaration_engine.get_abi(decl_id.clone(), &decl_id.span())?;
                 let item_name = abi_decl.name.as_str().to_string();
                 let attrs_opt = (!abi_decl.attributes.is_empty())
                     .then(|| attrsmap_to_html_string(&abi_decl.attributes));
@@ -155,7 +157,8 @@ impl Descriptor {
                 }))
             }
             StorageDeclaration(ref decl_id) => {
-                let storage_decl = de_get_storage(decl_id.clone(), &decl_id.span())?;
+                let storage_decl =
+                    declaration_engine.get_storage(decl_id.clone(), &decl_id.span())?;
                 let item_name = CONTRACT_STORAGE.to_string();
                 let attrs_opt = (!storage_decl.attributes.is_empty())
                     .then(|| attrsmap_to_html_string(&storage_decl.attributes));
@@ -183,11 +186,8 @@ impl Descriptor {
                 }))
             }
             ImplTrait(ref decl_id) => {
-                // TODO: figure out how to use this, likely we don't want to document this directly.
-                //
-                // This declaration type may make more sense to document as part of another declaration
-                // much like how we document method functions for traits or fields on structs.
-                let impl_trait = de_get_impl_trait(decl_id.clone(), &decl_id.span())?;
+                let impl_trait =
+                    declaration_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
                 let item_name = impl_trait.trait_name.suffix.as_str().to_string();
 
                 Ok(Descriptor::Documentable(Document {
@@ -211,7 +211,7 @@ impl Descriptor {
                 }))
             }
             FunctionDeclaration(ref decl_id) => {
-                let fn_decl = de_get_function(decl_id.clone(), &decl_id.span())?;
+                let fn_decl = declaration_engine.get_function(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -241,7 +241,8 @@ impl Descriptor {
                 }
             }
             ConstantDeclaration(ref decl_id) => {
-                let const_decl = de_get_constant(decl_id.clone(), &decl_id.span())?;
+                let const_decl =
+                    declaration_engine.get_constant(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {

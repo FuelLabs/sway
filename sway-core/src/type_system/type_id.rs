@@ -1,16 +1,17 @@
 use super::*;
+use crate::engine_threading::*;
 use std::fmt;
 
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
 
-impl DisplayWithTypeEngine for TypeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+impl DisplayWithEngines for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
-            type_engine.help_out(type_engine.look_up_type_id(*self))
+            engines.help_out(engines.te().look_up_type_id(*self))
         )
     }
 }
@@ -53,8 +54,8 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl ReplaceSelfType for TypeId {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        match type_engine.look_up_type_id(*self) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        match engines.te().look_up_type_id(*self) {
             TypeInfo::SelfType => {
                 *self = self_type;
             }
@@ -64,10 +65,10 @@ impl ReplaceSelfType for TypeId {
                 ..
             } => {
                 for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(type_engine, self_type);
+                    type_parameter.replace_self_type(engines, self_type);
                 }
                 for variant_type in variant_types.iter_mut() {
-                    variant_type.replace_self_type(type_engine, self_type);
+                    variant_type.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Struct {
@@ -76,30 +77,30 @@ impl ReplaceSelfType for TypeId {
                 ..
             } => {
                 for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(type_engine, self_type);
+                    type_parameter.replace_self_type(engines, self_type);
                 }
                 for field in fields.iter_mut() {
-                    field.replace_self_type(type_engine, self_type);
+                    field.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
-                    type_argument.replace_self_type(type_engine, self_type);
+                    type_argument.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
                 if let Some(mut type_arguments) = type_arguments {
                     for type_argument in type_arguments.iter_mut() {
-                        type_argument.replace_self_type(type_engine, self_type);
+                        type_argument.replace_self_type(engines, self_type);
                     }
                 }
             }
             TypeInfo::Array(mut type_id, _) => {
-                type_id.replace_self_type(type_engine, self_type);
+                type_id.replace_self_type(engines, self_type);
             }
             TypeInfo::Storage { mut fields } => {
                 for field in fields.iter_mut() {
-                    field.replace_self_type(type_engine, self_type);
+                    field.replace_self_type(engines, self_type);
                 }
             }
             TypeInfo::Unknown
@@ -119,8 +120,8 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl CopyTypes for TypeId {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        if let Some(matching_id) = type_mapping.find_match(*self, type_engine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             *self = matching_id;
         }
     }
@@ -129,12 +130,13 @@ impl CopyTypes for TypeId {
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_parameter: &TypeParameter,
     ) -> bool {
+        let type_engine = engines.te();
         type_engine
             .look_up_type_id(*self)
-            .type_parameter_is_unconstrained(type_engine, type_parameter)
+            .type_parameter_is_unconstrained(engines, type_parameter)
     }
 }
 
