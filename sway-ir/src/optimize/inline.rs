@@ -412,15 +412,27 @@ fn inline_instruction(
                     map_value(output_index),
                     map_value(coins),
                 ),
-                FuelVmInstruction::StateLoadQuadWord { load_val, key } => new_block
-                    .ins(context)
-                    .state_load_quad_word(map_value(load_val), map_value(key)),
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_load_quad_word(
+                    map_value(load_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
                 FuelVmInstruction::StateLoadWord(key) => {
                     new_block.ins(context).state_load_word(map_value(key))
                 }
-                FuelVmInstruction::StateStoreQuadWord { stored_val, key } => new_block
-                    .ins(context)
-                    .state_store_quad_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_store_quad_word(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),

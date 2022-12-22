@@ -629,8 +629,9 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
-                let key_exp = &arguments[0];
-                let val_exp = &arguments[1];
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                let number_of_slots_exp = arguments[2].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
@@ -641,8 +642,10 @@ impl<'eng> FnCompiler<'eng> {
                         hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
-                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
-                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, &val_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 // For quad word, the IR instructions take in a pointer rather than a raw u64.
@@ -655,12 +658,12 @@ impl<'eng> FnCompiler<'eng> {
                     Intrinsic::StateLoadQuad => Ok(self
                         .current_block
                         .ins(context)
-                        .state_load_quad_word(val_ptr, key_ptr_val)
+                        .state_load_quad_word(val_ptr, key_ptr_val, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     Intrinsic::StateStoreQuad => Ok(self
                         .current_block
                         .ins(context)
-                        .state_store_quad_word(val_ptr, key_ptr_val)
+                        .state_store_quad_word(val_ptr, key_ptr_val, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     _ => unreachable!(),
                 }
@@ -2681,9 +2684,10 @@ impl<'eng> FnCompiler<'eng> {
             .get_ptr(value_ptr, Type::B256, 0)
             .add_metadatum(context, span_md_idx);
 
+        let one_value = convert_literal_to_value(context, &Literal::U64(1));
         self.current_block
             .ins(context)
-            .state_load_quad_word(value_ptr_val, *key_ptr_val)
+            .state_load_quad_word(value_ptr_val, *key_ptr_val, one_value)
             .add_metadatum(context, span_md_idx);
         Ok(value_ptr_val)
     }
@@ -2725,9 +2729,10 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Finally, just call state_load_quad_word/state_store_quad_word
+        let one_value = convert_literal_to_value(context, &Literal::U64(1));
         self.current_block
             .ins(context)
-            .state_store_quad_word(value_ptr_val, *key_ptr_val)
+            .state_store_quad_word(value_ptr_val, *key_ptr_val, one_value)
             .add_metadatum(context, span_md_idx);
         Ok(())
     }
@@ -2815,9 +2820,10 @@ impl<'eng> FnCompiler<'eng> {
                 .get_ptr(value_ptr, Type::B256, array_index)
                 .add_metadatum(context, span_md_idx);
 
+            let one_value = convert_literal_to_value(context, &Literal::U64(1));
             self.current_block
                 .ins(context)
-                .state_load_quad_word(value_ptr_val_b256, *key_ptr_val)
+                .state_load_quad_word(value_ptr_val_b256, *key_ptr_val, one_value)
                 .add_metadatum(context, span_md_idx);
         }
         Ok(value_ptr_val)
@@ -2914,9 +2920,10 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx);
 
             // Finally, just call state_load_quad_word/state_store_quad_word
+            let one_value = convert_literal_to_value(context, &Literal::U64(1));
             self.current_block
                 .ins(context)
-                .state_store_quad_word(value_ptr_val_b256, *key_ptr_val)
+                .state_store_quad_word(value_ptr_val_b256, *key_ptr_val, one_value)
                 .add_metadatum(context, span_md_idx);
         }
 

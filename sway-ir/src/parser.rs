@@ -322,8 +322,8 @@ mod ir_builder {
             }
 
             rule op_state_load_quad_word() -> IrAstOperation
-                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() {
-                    IrAstOperation::StateLoadQuadWord(dst, key)
+                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
                 }
 
             rule op_state_load_word() -> IrAstOperation
@@ -332,8 +332,8 @@ mod ir_builder {
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
-                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() {
-                    IrAstOperation::StateStoreQuadWord(src, key)
+                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateStoreQuadWord(src, key, number_of_slots)
                 }
 
             rule op_state_store_word() -> IrAstOperation
@@ -676,9 +676,9 @@ mod ir_builder {
         Ret(IrAstTy, String),
         Revert(String),
         Smo(String, String, String, String),
-        StateLoadQuadWord(String, String),
+        StateLoadQuadWord(String, String, String),
         StateLoadWord(String),
-        StateStoreQuadWord(String, String),
+        StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
     }
@@ -1245,22 +1245,24 @@ mod ir_builder {
                             *val_map.get(&coins).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateLoadQuadWord(dst, key) => block
+                    IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots) => block
                         .ins(context)
                         .state_load_quad_word(
                             *val_map.get(&dst).unwrap(),
                             *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadWord(key) => block
                         .ins(context)
                         .state_load_word(*val_map.get(&key).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateStoreQuadWord(src, key) => block
+                    IrAstOperation::StateStoreQuadWord(src, key, number_of_slots) => block
                         .ins(context)
                         .state_store_quad_word(
                             *val_map.get(&src).unwrap(),
                             *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreWord(src, key) => block

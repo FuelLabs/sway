@@ -197,11 +197,18 @@ impl<'a> InstructionVerifier<'a> {
                         FuelVmInstruction::StateLoadQuadWord {
                             load_val: dst_val,
                             key,
+                            number_of_slots,
                         }
                         | FuelVmInstruction::StateStoreQuadWord {
                             stored_val: dst_val,
                             key,
-                        } => self.verify_state_load_store(dst_val, &Type::B256, key)?,
+                            number_of_slots,
+                        } => self.verify_state_load_store(
+                            dst_val,
+                            &Type::B256,
+                            key,
+                            number_of_slots,
+                        )?,
                         FuelVmInstruction::StateStoreWord {
                             stored_val: dst_val,
                             key,
@@ -756,6 +763,7 @@ impl<'a> InstructionVerifier<'a> {
         dst_val: &Value,
         val_type: &Type,
         key: &Value,
+        number_of_slots: &Value,
     ) -> Result<(), IrError> {
         if !matches!(self.get_pointer_type(dst_val), Some(ty) if ty.eq(self.context, val_type)) {
             Err(IrError::VerifyStateDestBadType(
@@ -763,6 +771,8 @@ impl<'a> InstructionVerifier<'a> {
             ))
         } else if !matches!(self.get_pointer_type(key), Some(Type::B256)) {
             Err(IrError::VerifyStateKeyBadType)
+        } else if !matches!(number_of_slots.get_type(self.context), Some(Type::Uint(_))) {
+            Err(IrError::VerifyStateAccessNumOfSlots)
         } else {
             Ok(())
         }

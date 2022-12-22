@@ -41,8 +41,11 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Gtf => type_check_gtf(ctx, kind, arguments, type_arguments, span),
             Intrinsic::AddrOf => type_check_addr_of(ctx, kind, arguments, span),
             Intrinsic::StateLoadWord => type_check_state_load_word(ctx, kind, arguments, span),
-            Intrinsic::StateStoreWord | Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
-                type_check_state_store_or_quad(ctx, kind, arguments, type_arguments, span)
+            Intrinsic::StateStoreWord => {
+                type_check_state_store_word(ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
+                type_check_state_quad(ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Log => type_check_log(ctx, kind, arguments, span),
             Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div => {
@@ -610,19 +613,10 @@ fn type_check_state_load_word(
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
-/// Signature: `__state_load_quad(key: b256, ptr: raw_ptr)`
-/// Description: Reads a `b256` from storage at key `key` and stores it in memory at address
-///              `raw_ptr`
-/// Constraints: None.
-///
-/// Signature: `__state_store_word(key: b256, val: u64)`
+/// Signature: `__state_store_word(key: b256, val: u64) -> bool`
 /// Description: Stores a single word `val` into storage at key `key`.
 /// Constraints: None.
-///
-/// Signature: `__state_store_quad(key: b256, ptr: raw_ptr)`
-/// Description: Stores a `b256` from address `ptr` in memory into storage at key `key`.
-/// Constraints: None.
-fn type_check_state_store_or_quad(
+fn type_check_state_store_word(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
@@ -677,18 +671,20 @@ fn type_check_state_store_or_quad(
         });
         return err(warnings, errors);
     }
-    let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+    let mut ctx =
+        ctx.with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
     let val_exp = check!(
         ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
+    let ctx = ctx.with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
     let type_argument = type_arguments.get(0).map(|targ| {
         let mut ctx = ctx
-            .with_help_text("")
             .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
         let initial_type_info = check!(
             CompileResult::from(
@@ -721,6 +717,130 @@ fn type_check_state_store_or_quad(
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![key_exp, val_exp],
+        type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+        span,
+    };
+    let return_type = type_engine.insert_type(declaration_engine, TypeInfo::Tuple(vec![]));
+    ok((intrinsic_function, return_type), warnings, errors)
+}
+
+/// Signature: `__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)`
+/// Description: Reads `slots` number of slots (`b256` each) from storage starting at key `key` and
+///              stores them in memory starting at address `ptr`
+/// Constraints: None.
+///
+/// Signature: `__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool`
+/// Description: Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory
+///              into storage starting at key `key`.
+/// Constraints: None.
+fn type_check_state_quad(
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> CompileResult<(ty::TyIntrinsicFunctionKind, TypeId)> {
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    if arguments.len() != 3 {
+        errors.push(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 3,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    if type_arguments.len() > 1 {
+        errors.push(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        });
+        return err(warnings, errors);
+    }
+    let mut ctx = ctx
+        .with_help_text("")
+        .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+    let key_exp = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[0].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let key_ty = check!(
+        CompileResult::from(
+            type_engine
+                .to_typeinfo(key_exp.return_type, &span)
+                .map_err(CompileError::from)
+        ),
+        TypeInfo::ErrorRecovery,
+        warnings,
+        errors
+    );
+    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+        errors.push(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span,
+            hint: Hint::new("Argument type must be B256, a key into the state storage".to_string()),
+        });
+        return err(warnings, errors);
+    }
+    let mut ctx =
+        ctx.with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+    let val_exp = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[1].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let mut ctx = ctx.with_type_annotation(type_engine.insert_type(
+        declaration_engine,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+    ));
+    let number_of_slots_exp = check!(
+        ty::TyExpression::type_check(ctx.by_ref(), arguments[2].clone()),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    let type_argument = type_arguments.get(0).map(|targ| {
+        let mut ctx = ctx
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+        let initial_type_info = check!(
+            CompileResult::from(
+                type_engine
+                    .to_typeinfo(targ.type_id, &targ.span)
+                    .map_err(CompileError::from)
+            ),
+            TypeInfo::ErrorRecovery,
+            warnings,
+            errors
+        );
+        let initial_type_id = type_engine.insert_type(declaration_engine, initial_type_info);
+        let type_id = check!(
+            ctx.resolve_type_with_self(
+                initial_type_id,
+                &targ.span,
+                EnforceTypeArguments::Yes,
+                None
+            ),
+            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            warnings,
+            errors,
+        );
+        TypeArgument {
+            type_id,
+            initial_type_id,
+            span: span.clone(),
+        }
+    });
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![key_exp, val_exp, number_of_slots_exp],
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };

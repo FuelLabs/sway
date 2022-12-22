@@ -26,13 +26,14 @@ script {
         v8 = const b256 0xa15d6d36b54df993ed1fbe4544a45d4c4f70d81b4229861dfde0e20eb652202c
         store v8, ptr v7
         v9 = get_ptr mut ptr b256 value_for_y, ptr b256, 0
-//check: state_load_quad_word ptr $VAR, key ptr $VAR
-        state_load_quad_word ptr v9, key ptr v7
-        v10 = get_ptr mut ptr b256 value_for_y, ptr b256, 0
-        v11 = load ptr v10
-        v12 = get_ptr ptr b256 y, ptr b256, 0
-        store v11, ptr v12
-        v13 = const unit ()
-        ret () v13
+        v10 = const u64 1
+//check: state_load_quad_word ptr $VAR, key ptr $VAR, $VAR
+        state_load_quad_word ptr v9, key ptr v7, v10
+        v11 = get_ptr mut ptr b256 value_for_y, ptr b256, 0
+        v12 = load ptr v11
+        v13 = get_ptr ptr b256 y, ptr b256, 0
+        store v12, ptr v13
+        v14 = const unit ()
+        ret () v14
     }
 }
