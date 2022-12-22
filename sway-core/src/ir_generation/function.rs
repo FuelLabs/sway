@@ -1685,6 +1685,7 @@ impl<'te> FnCompiler<'te> {
             self.module,
             None,
             Some(self),
+            &name,
             &value,
             is_configurable,
         )?;

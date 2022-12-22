@@ -40,7 +40,7 @@ pub(super) struct AsmBuilder<'ir> {
     reg_map: HashMap<Value, VirtualRegister>,
     ptr_map: HashMap<Pointer, Storage>,
 
-    config_map: HashMap<Value, DataId>,
+    config_map: HashMap<String, DataId>,
 
     // The currently compiled function has an end label which is at the end of the function body
     // but before the call cleanup, and a copy of the $retv for when the return value is a reference
@@ -1904,10 +1904,16 @@ impl<'ir> AsmBuilder<'ir> {
             .or_else(|| {
                 value.get_configurable(self.context).map(|constant| {
                     let span = self.md_mgr.val_to_span(self.context, *value);
+                    let config_name = self
+                        .md_mgr
+                        .md_to_config_const_name(self.context, value.get_metadata(self.context));
+
                     let initialized = self.initialise_constant(constant, true, span);
                     if let Some(data_id) = initialized.1 {
-                        self.config_map.insert(*value, data_id);
+                        self.config_map
+                            .insert(config_name.unwrap().to_string(), data_id);
                     }
+                    dbg!(&self.config_map);
                     initialized.0
                 })
             })

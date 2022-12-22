@@ -12,11 +12,15 @@ use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
+    metadata::combine as md_combine,
     module::Module,
     value::Value,
     Instruction,
 };
-use sway_types::{ident::Ident, span::Spanned};
+use sway_types::{
+    ident::{BaseIdent, Ident},
+    span::Spanned,
+};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
@@ -112,6 +116,7 @@ pub(crate) fn compile_const_decl(
                     env.module,
                     env.module_ns,
                     env.function_compiler,
+                    &name,
                     &value,
                     is_configurable,
                 )?;
@@ -137,6 +142,7 @@ pub(crate) fn compile_const_decl(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_constant_expression(
     type_engine: &TypeEngine,
     context: &mut Context,
@@ -144,6 +150,7 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
+    name: &BaseIdent,
     const_expr: &ty::TyExpression,
     is_configurable: bool,
 ) -> Result<Value, CompileError> {
@@ -161,10 +168,10 @@ pub(super) fn compile_constant_expression(
     if !is_configurable {
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
-        Ok(
-            Value::new_configurable(context, constant_evaluated)
-                .add_metadatum(context, span_id_idx),
-        )
+        let config_const_name =
+            md_mgr.config_const_name_to_md(context, &std::sync::Arc::from(name.as_str()));
+        let metadata = md_combine(context, &span_id_idx, &config_const_name);
+        Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
     }
 }
 

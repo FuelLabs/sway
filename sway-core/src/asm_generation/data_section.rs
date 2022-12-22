@@ -159,6 +159,7 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
+    pub config_map: HashMap<String, Entry>,
 }
 
 impl DataSection {
