@@ -40,8 +40,6 @@ pub(super) struct AsmBuilder<'ir> {
     reg_map: HashMap<Value, VirtualRegister>,
     ptr_map: HashMap<Pointer, Storage>,
 
-    config_map: HashMap<String, DataId>,
-
     // The currently compiled function has an end label which is at the end of the function body
     // but before the call cleanup, and a copy of the $retv for when the return value is a reference
     // type and must be copied in memory.  Unless we have nested function declarations this vector
@@ -93,7 +91,6 @@ impl<'ir> AsmBuilder<'ir> {
             block_label_map: HashMap::new(),
             reg_map: HashMap::new(),
             ptr_map: HashMap::new(),
-            config_map: HashMap::new(),
             return_ctxs: Vec::new(),
             locals_ctxs: Vec::new(),
             context,
@@ -1910,10 +1907,11 @@ impl<'ir> AsmBuilder<'ir> {
 
                     let initialized = self.initialise_constant(constant, true, span);
                     if let Some(data_id) = initialized.1 {
-                        self.config_map
-                            .insert(config_name.unwrap().to_string(), data_id);
+                        self.data_section
+                            .config_map
+                            .insert(config_name.unwrap().to_string(), data_id.0 as u32);
                     }
-                    dbg!(&self.config_map);
+                    dbg!(&self.data_section.config_map);
                     initialized.0
                 })
             })

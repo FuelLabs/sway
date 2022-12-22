@@ -25,7 +25,7 @@ pub use asm_generation::FinalizedEntry;
 pub use build_config::BuildConfig;
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -184,7 +184,7 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
 pub struct CompiledAsm(pub FinalizedAsm);
 
 /// The bytecode for a sway program.
-pub struct CompiledBytecode(pub Vec<u8>);
+pub struct CompiledBytecode(pub (Vec<u8>, BTreeMap<String, u64>));
 
 pub fn parsed_to_ast(
     engines: Engines<'_>,

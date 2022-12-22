@@ -8,8 +8,7 @@ use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
-use std::fmt;
-use std::io::Read;
+use std::{collections::BTreeMap, fmt, io::Read};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
@@ -35,7 +34,10 @@ pub struct FinalizedEntry {
 }
 
 impl FinalizedAsm {
-    pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
+    pub(crate) fn to_bytecode_mut(
+        &mut self,
+        source_map: &mut SourceMap,
+    ) -> CompileResult<(Vec<u8>, BTreeMap<String, u64>)> {
         to_bytecode_mut(&self.program_section, &mut self.data_section, source_map)
     }
 }
@@ -59,8 +61,9 @@ fn to_bytecode_mut(
     program_section: &InstructionSet,
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
-) -> CompileResult<Vec<u8>> {
+) -> CompileResult<(Vec<u8>, BTreeMap<String, u64>)> {
     let mut errors = vec![];
+    dbg!(&data_section);
     if program_section.ops.len() & 1 != 0 {
         tracing::info!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(
@@ -124,9 +127,20 @@ fn to_bytecode_mut(
         }
     }
 
+    let config_offsets = data_section
+        .config_map
+        .iter()
+        .map(|(name, id)| {
+            (
+                name.clone(),
+                offset_to_data_section_in_bytes + data_section.offset_to_id_raw(*id) as u64,
+            )
+        })
+        .collect::<BTreeMap<String, u64>>();
+
     let mut data_section = data_section.serialize_to_bytes();
 
     buf.append(&mut data_section);
 
-    ok(buf, vec![], errors)
+    ok((buf, config_offsets), vec![], errors)
 }

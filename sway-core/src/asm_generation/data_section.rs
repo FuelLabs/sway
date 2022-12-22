@@ -2,7 +2,10 @@ use crate::asm_generation::from_ir::ir_type_size_in_bytes;
 
 use sway_ir::{AggregateContent, Constant, ConstantValue, Context, Type};
 
-use std::fmt::{self, Write};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Write},
+};
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
@@ -159,7 +162,7 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
-    pub config_map: HashMap<String, Entry>,
+    pub config_map: BTreeMap<String, u32>,
 }
 
 impl DataSection {
@@ -169,6 +172,16 @@ impl DataSection {
         self.value_pairs
             .iter()
             .take(id.0 as usize)
+            .map(|x| x.to_bytes().len())
+            .sum()
+    }
+
+    /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
+    /// in bytes.
+    pub(crate) fn offset_to_id_raw(&self, id: u32) -> usize {
+        self.value_pairs
+            .iter()
+            .take(id as usize)
             .map(|x| x.to_bytes().len())
             .sum()
     }

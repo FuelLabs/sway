@@ -188,7 +188,7 @@ fn item_to_ast_nodes(
         )),
         ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
             handler,
-            type_engine,
+            engines,
             item_configurable,
             attributes,
         )?
@@ -726,7 +726,7 @@ fn item_storage_to_storage_declaration(
 
 fn item_configurable_to_constant_declarations(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
@@ -739,7 +739,7 @@ fn item_configurable_to_constant_declarations(
             let attributes = item_attrs_to_map(handler, &configurable_field.attribute_list)?;
             configurable_field_to_constant_declaration(
                 handler,
-                type_engine,
+                engines,
                 configurable_field.value,
                 attributes,
             )
@@ -1883,7 +1883,7 @@ fn storage_field_to_storage_field(
 
 fn configurable_field_to_constant_declaration(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
@@ -1896,9 +1896,9 @@ fn configurable_field_to_constant_declaration(
 
     Ok(ConstantDeclaration {
         name: configurable_field.name,
-        type_ascription: ty_to_type_info(handler, type_engine, configurable_field.ty)?,
+        type_ascription: ty_to_type_info(handler, engines, configurable_field.ty)?,
         type_ascription_span: Some(type_ascription_span),
-        value: expr_to_expression(handler, type_engine, configurable_field.initializer)?,
+        value: expr_to_expression(handler, engines, configurable_field.initializer)?,
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,

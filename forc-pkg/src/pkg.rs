@@ -2396,8 +2396,9 @@ pub fn compile(
     );
 
     match bc_res.value {
-        Some(CompiledBytecode(bytes)) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode((bytes, config_offsets))) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            dbg!(config_offsets);
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 json_abi_program,
