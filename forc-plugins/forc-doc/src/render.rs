@@ -133,12 +133,13 @@ pub(crate) struct ItemBody<'body> {
     pub(crate) attrs_opt: Option<&'body str>,
     pub(crate) item_context: ItemContext,
 }
-impl ItemBody<'_> {
-    fn to_sidebar(&self) -> Sidebar {
+impl SidebarNav for ItemBody<'_> {
+    fn sidebar(&self) -> Sidebar {
         Sidebar {
             module_info: &self.module_info,
             href_path: ALL_DOC_FILENAME,
-            /*  The href_path will be the path to the parent module of the current module.
+            /*
+                The href_path will be the path to the parent module of the current module.
                 Currently we will use the All Doc path since the parent module index has yet to be created.
 
                 TODO: make a method for getting the parent path e.g:
@@ -168,7 +169,7 @@ impl Renderable for ItemBody<'_> {
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar(module_depth, item_name.clone(), all_path);
+                : self.sidebar().render();
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -470,6 +471,14 @@ impl<'all> AllDocItem<'_, 'all> {
         }
     }
 }
+impl<'all> SidebarNav for AllDocItem<'_, 'all> {
+    fn sidebar(&self) -> Sidebar {
+        Sidebar {
+            module_info: &self.module_info,
+            href_path: ALL_DOC_FILENAME,
+        }
+    }
+}
 /// Used for creating links.
 ///
 /// This could be a path literal with a link e.g `proj_name::foo::Foo`,
@@ -509,7 +518,7 @@ impl<'mdl_info> Renderable for AllDoc<'_, 'mdl_info> {
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
-        let project_name = all_doc.first().unwrap().module_info.project_name();
+        let sidebar = all_doc.first().unwrap().sidebar();
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -527,7 +536,7 @@ impl<'mdl_info> Renderable for AllDoc<'_, 'mdl_info> {
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
             }
             body(class="swaydoc mod") {
-                : sidebar(0, format!("Crate {project_name}"), ALL_DOC_FILENAME.to_string());
+                : sidebar.render();
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -596,6 +605,10 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
             }
         }
     }
+}
+trait SidebarNav {
+    /// Create sidebar component.
+    fn sidebar(&self) -> Sidebar;
 }
 /// Sidebar component for quick navigation.
 struct Sidebar<'href, 'sidebar> {
