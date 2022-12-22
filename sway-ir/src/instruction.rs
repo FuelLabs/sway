@@ -147,6 +147,7 @@ pub enum FuelVmInstruction {
     StateLoadQuadWord {
         load_val: Value,
         key: Value,
+        number_of_slots: Value,
     },
     /// Read a single word from a storage slot.
     StateLoadWord(Value),
@@ -155,6 +156,7 @@ pub enum FuelVmInstruction {
     StateStoreQuadWord {
         stored_val: Value,
         key: Value,
+        number_of_slots: Value,
     },
     /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
     /// Uint(64) value.
@@ -362,10 +364,18 @@ impl Instruction {
                     output_index,
                     coins,
                 } => vec![*recipient_and_message, *message_size, *output_index, *coins],
-                FuelVmInstruction::StateLoadQuadWord { load_val, key } => vec![*load_val, *key],
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => vec![*load_val, *key, *number_of_slots],
                 FuelVmInstruction::StateLoadWord(key) => vec![*key],
-                FuelVmInstruction::StateStoreQuadWord { stored_val, key } => {
-                    vec![*stored_val, *key]
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => {
+                    vec![*stored_val, *key, *number_of_slots]
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
             },
@@ -498,16 +508,26 @@ impl Instruction {
                     replace(output_index);
                     replace(coins);
                 }
-                FuelVmInstruction::StateLoadQuadWord { load_val, key } => {
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => {
                     replace(load_val);
                     replace(key);
+                    replace(number_of_slots);
                 }
                 FuelVmInstruction::StateLoadWord(key) => {
                     replace(key);
                 }
-                FuelVmInstruction::StateStoreQuadWord { stored_val, key } => {
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => {
                     replace(key);
                     replace(stored_val);
+                    replace(number_of_slots);
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
                     replace(key);
@@ -913,10 +933,19 @@ impl<'a> InstructionInserter<'a> {
         )
     }
 
-    pub fn state_load_quad_word(self, load_val: Value, key: Value) -> Value {
+    pub fn state_load_quad_word(
+        self,
+        load_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Value {
         make_instruction!(
             self,
-            Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { load_val, key })
+            Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord {
+                load_val,
+                key,
+                number_of_slots
+            })
         )
     }
 
@@ -927,10 +956,19 @@ impl<'a> InstructionInserter<'a> {
         )
     }
 
-    pub fn state_store_quad_word(self, stored_val: Value, key: Value) -> Value {
+    pub fn state_store_quad_word(
+        self,
+        stored_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Value {
         make_instruction!(
             self,
-            Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { stored_val, key })
+            Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
+                stored_val,
+                key,
+                number_of_slots
+            })
         )
     }
 

@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "basic_storage_abi"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }
