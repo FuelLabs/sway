@@ -30,7 +30,7 @@ impl AbstractInstructionSet {
             .remove_unused_ops()
     }
 
-    /// Removes any jumps that jump to the subsequent line
+    /// Removes any jumps to the subsequent line.
     fn remove_sequential_jumps(mut self) -> AbstractInstructionSet {
         let dead_jumps: Vec<_> = self
             .ops
@@ -145,8 +145,16 @@ impl AbstractInstructionSet {
         if def_regs.is_superset(&use_regs) {
             Ok(self)
         } else {
-            Err(CompileError::Internal(
-                "Program erroneously uses uninitialized virtual registers.",
+            let bad_regs = use_regs
+                .difference(&def_regs)
+                .map(|reg| match reg {
+                    VirtualRegister::Virtual(name) => format!("$r{name}"),
+                    VirtualRegister::Constant(creg) => creg.to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(CompileError::InternalOwned(
+                format!("Program erroneously uses uninitialized virtual registers: {bad_regs}"),
                 Span::dummy(),
             ))
         }

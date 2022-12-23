@@ -7,7 +7,8 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    declaration_engine::declaration_engine,
+    declaration_engine::DeclarationEngine,
+    engine_threading::*,
     fuel_prelude::fuel_types,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -19,9 +20,8 @@ use crate::{
     metadata::MetadataManager,
     type_system::{LogId, MessageId, TypeId, TypeInfo},
     types::DeterministicallyAborts,
-    PartialEqWithTypeEngine, TypeEngine,
+    TypeEngine,
 };
-use declaration_engine::de_get_function;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
 use sway_ir::{Context, *};
@@ -34,8 +34,9 @@ use sway_types::{
 
 use std::collections::HashMap;
 
-pub(crate) struct FnCompiler<'te> {
-    type_engine: &'te TypeEngine,
+pub(crate) struct FnCompiler<'eng> {
+    type_engine: &'eng TypeEngine,
+    declaration_engine: &'eng DeclarationEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -51,9 +52,9 @@ pub(crate) struct FnCompiler<'te> {
     messages_types_map: HashMap<TypeId, MessageId>,
 }
 
-impl<'te> FnCompiler<'te> {
+impl<'eng> FnCompiler<'eng> {
     pub(super) fn new(
-        type_engine: &'te TypeEngine,
+        engines: Engines<'eng>,
         context: &mut Context,
         module: Module,
         function: Function,
@@ -61,6 +62,7 @@ impl<'te> FnCompiler<'te> {
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -68,6 +70,7 @@ impl<'te> FnCompiler<'te> {
         );
         FnCompiler {
             type_engine,
+            declaration_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -141,7 +144,9 @@ impl<'te> FnCompiler<'te> {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = declaration_engine::de_get_constant(decl_id.clone(), &ast_node.span)?;
+                    let tcd = self
+                        .declaration_engine
+                        .get_constant(decl_id.clone(), &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -164,7 +169,9 @@ impl<'te> FnCompiler<'te> {
                     })
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = declaration_engine::de_get_enum(decl_id.clone(), &ast_node.span)?;
+                    let ted = self
+                        .declaration_engine
+                        .get_enum(decl_id.clone(), &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
@@ -248,7 +255,9 @@ impl<'te> FnCompiler<'te> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = de_get_function(function_decl_id.clone(), &ast_expr.span)?;
+                    let function_decl = self
+                        .declaration_engine
+                        .get_function(function_decl_id.clone(), &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -464,6 +473,8 @@ impl<'te> FnCompiler<'te> {
             Ok(key_ptr_val)
         }
 
+        let engines = Engines::new(self.type_engine, self.declaration_engine);
+
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
         match kind {
@@ -524,7 +535,7 @@ impl<'te> FnCompiler<'te> {
                 // The tx field ID has to be a compile-time constant because it becomes an
                 // immediate
                 let tx_field_id_constant = compile_constant_expression_to_constant(
-                    self.type_engine,
+                    engines,
                     context,
                     md_mgr,
                     self.module,
@@ -618,20 +629,23 @@ impl<'te> FnCompiler<'te> {
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
-                let key_exp = &arguments[0];
-                let val_exp = &arguments[1];
+                let key_exp = arguments[0].clone();
+                let val_exp = arguments[1].clone();
+                let number_of_slots_exp = arguments[2].clone();
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = self.type_engine.to_typeinfo(val_exp.return_type, &span)?;
-                if !val_ty.eq(&TypeInfo::RawUntypedPtr, self.type_engine) {
+                if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,
                         hint: Hint::new("This argument must be raw_ptr".to_string()),
                     });
                 }
-                let key_value = self.compile_expression(context, md_mgr, key_exp)?;
-                let val_value = self.compile_expression(context, md_mgr, val_exp)?;
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let val_value = self.compile_expression(context, md_mgr, &val_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_ptr_val = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
                 // For quad word, the IR instructions take in a pointer rather than a raw u64.
@@ -644,12 +658,12 @@ impl<'te> FnCompiler<'te> {
                     Intrinsic::StateLoadQuad => Ok(self
                         .current_block
                         .ins(context)
-                        .state_load_quad_word(val_ptr, key_ptr_val)
+                        .state_load_quad_word(val_ptr, key_ptr_val, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     Intrinsic::StateStoreQuad => Ok(self
                         .current_block
                         .ins(context)
-                        .state_store_quad_word(val_ptr, key_ptr_val)
+                        .state_store_quad_word(val_ptr, key_ptr_val, number_of_slots_value)
                         .add_metadatum(context, span_md_idx)),
                     _ => unreachable!(),
                 }
@@ -1239,7 +1253,7 @@ impl<'te> FnCompiler<'te> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    self.type_engine,
+                    Engines::new(self.type_engine, self.declaration_engine),
                     context,
                     md_mgr,
                     self.module,
@@ -1461,23 +1475,25 @@ impl<'te> FnCompiler<'te> {
         // We're dancing around a bit here to make the blocks sit in the right order.  Ideally we
         // have the cond block, followed by the body block which may contain other blocks, and the
         // final block comes after any body block(s).
+        //
+        // NOTE: This is currently very important!  There is a limitation in the register allocator
+        // which requires that all value uses are after the value definitions, where 'after' means
+        // later in the list of instructions, as opposed to in the control flow sense.
+        //
+        // Hence the need for a 'break' block which does nothing more than jump to the final block,
+        // as we need to construct the final block after the body block, but we need somewhere to
+        // break to during the body block construction.
 
         // Jump to the while cond block.
         let cond_block = self.function.create_block(context, Some("while".into()));
-
         if !self.current_block.is_terminated(context) {
             self.current_block.ins(context).branch(cond_block, vec![]);
         }
 
-        // Fill in the body block now, jump unconditionally to the cond block at its end.
-        let body_block = self
+        // Create the break block.
+        let break_block = self
             .function
-            .create_block(context, Some("while_body".into()));
-
-        // Create the final block after we're finished with the body.
-        let final_block = self
-            .function
-            .create_block(context, Some("end_while".into()));
+            .create_block(context, Some("while_break".into()));
 
         // Keep track of the previous blocks we have to jump to in case of a break or a continue.
         // This should be `None` if we're not in a loop already or the previous break or continue
@@ -1486,11 +1502,13 @@ impl<'te> FnCompiler<'te> {
         let prev_block_to_continue_to = self.block_to_continue_to;
 
         // Keep track of the current blocks to jump to in case of a break or continue.
-        self.block_to_break_to = Some(final_block);
+        self.block_to_break_to = Some(break_block);
         self.block_to_continue_to = Some(cond_block);
 
-        // Compile the body and a branch to the condition block if no branch is already present in
-        // the body block
+        // Fill in the body block now, jump unconditionally to the cond block at its end.
+        let body_block = self
+            .function
+            .create_block(context, Some("while_body".into()));
         self.current_block = body_block;
         self.compile_code_block(context, md_mgr, body)?;
         if !self.current_block.is_terminated(context) {
@@ -1501,7 +1519,16 @@ impl<'te> FnCompiler<'te> {
         self.block_to_break_to = prev_block_to_break_to;
         self.block_to_continue_to = prev_block_to_continue_to;
 
-        // Add the conditional which jumps into the body or out to the final block.
+        // Create the final block now we're finished with the body.
+        let final_block = self
+            .function
+            .create_block(context, Some("end_while".into()));
+
+        // Add an unconditional jump from the break block to the final block.
+        break_block.ins(context).branch(final_block, vec![]);
+
+        // Add the conditional in the cond block which jumps into the body or out to the final
+        // block.
         self.current_block = cond_block;
         let cond_value = self.compile_expression(context, md_mgr, condition)?;
         if !self.current_block.is_terminated(context) {
@@ -1613,7 +1640,8 @@ impl<'te> FnCompiler<'te> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let body_deterministically_aborts = body.deterministically_aborts(false);
+        let body_deterministically_aborts =
+            body.deterministically_aborts(self.declaration_engine, false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
@@ -1658,7 +1686,7 @@ impl<'te> FnCompiler<'te> {
         // globals like other const decls.
         let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
-            self.type_engine,
+            Engines::new(self.type_engine, self.declaration_engine),
             context,
             md_mgr,
             self.module,
@@ -1957,7 +1985,7 @@ impl<'te> FnCompiler<'te> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            self.type_engine,
+            Engines::new(self.type_engine, self.declaration_engine),
             context,
             md_mgr,
             self.module,
@@ -2656,9 +2684,10 @@ impl<'te> FnCompiler<'te> {
             .get_ptr(value_ptr, Type::B256, 0)
             .add_metadatum(context, span_md_idx);
 
+        let one_value = convert_literal_to_value(context, &Literal::U64(1));
         self.current_block
             .ins(context)
-            .state_load_quad_word(value_ptr_val, *key_ptr_val)
+            .state_load_quad_word(value_ptr_val, *key_ptr_val, one_value)
             .add_metadatum(context, span_md_idx);
         Ok(value_ptr_val)
     }
@@ -2700,9 +2729,10 @@ impl<'te> FnCompiler<'te> {
             .add_metadatum(context, span_md_idx);
 
         // Finally, just call state_load_quad_word/state_store_quad_word
+        let one_value = convert_literal_to_value(context, &Literal::U64(1));
         self.current_block
             .ins(context)
-            .state_store_quad_word(value_ptr_val, *key_ptr_val)
+            .state_store_quad_word(value_ptr_val, *key_ptr_val, one_value)
             .add_metadatum(context, span_md_idx);
         Ok(())
     }
@@ -2790,9 +2820,10 @@ impl<'te> FnCompiler<'te> {
                 .get_ptr(value_ptr, Type::B256, array_index)
                 .add_metadatum(context, span_md_idx);
 
+            let one_value = convert_literal_to_value(context, &Literal::U64(1));
             self.current_block
                 .ins(context)
-                .state_load_quad_word(value_ptr_val_b256, *key_ptr_val)
+                .state_load_quad_word(value_ptr_val_b256, *key_ptr_val, one_value)
                 .add_metadatum(context, span_md_idx);
         }
         Ok(value_ptr_val)
@@ -2889,9 +2920,10 @@ impl<'te> FnCompiler<'te> {
                 .add_metadatum(context, span_md_idx);
 
             // Finally, just call state_load_quad_word/state_store_quad_word
+            let one_value = convert_literal_to_value(context, &Literal::U64(1));
             self.current_block
                 .ins(context)
-                .state_store_quad_word(value_ptr_val_b256, *key_ptr_val)
+                .state_store_quad_word(value_ptr_val_b256, *key_ptr_val, one_value)
                 .add_metadatum(context, span_md_idx);
         }
 

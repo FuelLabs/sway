@@ -183,22 +183,91 @@ impl<'ir> AsmBuilder<'ir> {
                 Instruction::ExtractValue {
                     aggregate, indices, ..
                 } => self.compile_extract_value(instr_val, aggregate, indices),
-                Instruction::GetStorageKey => {
-                    check!(
-                        self.compile_get_storage_key(instr_val),
+                Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                    FuelVmInstruction::GetStorageKey => {
+                        check!(
+                            self.compile_get_storage_key(instr_val),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    }
+                    FuelVmInstruction::Gtf { index, tx_field_id } => {
+                        self.compile_gtf(instr_val, index, *tx_field_id)
+                    }
+                    FuelVmInstruction::Log {
+                        log_val,
+                        log_ty,
+                        log_id,
+                    } => self.compile_log(instr_val, log_val, log_ty, log_id),
+                    FuelVmInstruction::ReadRegister(reg) => {
+                        self.compile_read_register(instr_val, reg)
+                    }
+                    FuelVmInstruction::Revert(revert_val) => {
+                        self.compile_revert(instr_val, revert_val)
+                    }
+                    FuelVmInstruction::Smo {
+                        recipient_and_message,
+                        message_size,
+                        output_index,
+                        coins,
+                    } => self.compile_smo(
+                        instr_val,
+                        recipient_and_message,
+                        message_size,
+                        output_index,
+                        coins,
+                    ),
+                    FuelVmInstruction::StateLoadQuadWord {
+                        load_val,
+                        key,
+                        number_of_slots,
+                    } => check!(
+                        self.compile_state_access_quad_word(
+                            instr_val,
+                            load_val,
+                            key,
+                            number_of_slots,
+                            StateAccessType::Read
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    )
-                }
+                    ),
+                    FuelVmInstruction::StateLoadWord(key) => check!(
+                        self.compile_state_load_word(instr_val, key),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                    FuelVmInstruction::StateStoreQuadWord {
+                        stored_val,
+                        key,
+                        number_of_slots,
+                    } => check!(
+                        self.compile_state_access_quad_word(
+                            instr_val,
+                            stored_val,
+                            key,
+                            number_of_slots,
+                            StateAccessType::Write
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                    FuelVmInstruction::StateStoreWord { stored_val, key } => check!(
+                        self.compile_state_store_word(instr_val, stored_val, key),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
+                },
                 Instruction::GetPointer {
                     base_ptr,
                     ptr_ty,
                     offset,
                 } => self.compile_get_pointer(instr_val, base_ptr, ptr_ty, *offset),
-                Instruction::Gtf { index, tx_field_id } => {
-                    self.compile_gtf(instr_val, index, *tx_field_id)
-                }
                 Instruction::InsertElement {
                     array,
                     ty,
@@ -218,18 +287,12 @@ impl<'ir> AsmBuilder<'ir> {
                     warnings,
                     errors
                 ),
-                Instruction::Log {
-                    log_val,
-                    log_ty,
-                    log_id,
-                } => self.compile_log(instr_val, log_val, log_ty, log_id),
                 Instruction::MemCopy {
                     dst_val,
                     src_val,
                     byte_len,
                 } => self.compile_mem_copy(instr_val, dst_val, src_val, *byte_len),
                 Instruction::Nop => (),
-                Instruction::ReadRegister(reg) => self.compile_read_register(instr_val, reg),
                 Instruction::Ret(ret_val, ty) => {
                     if func_is_entry {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
@@ -237,53 +300,6 @@ impl<'ir> AsmBuilder<'ir> {
                         self.compile_ret_from_call(instr_val, ret_val)
                     }
                 }
-                Instruction::Revert(revert_val) => self.compile_revert(instr_val, revert_val),
-                Instruction::Smo {
-                    recipient_and_message,
-                    message_size,
-                    output_index,
-                    coins,
-                } => self.compile_smo(
-                    instr_val,
-                    recipient_and_message,
-                    message_size,
-                    output_index,
-                    coins,
-                ),
-                Instruction::StateLoadQuadWord { load_val, key } => check!(
-                    self.compile_state_access_quad_word(
-                        instr_val,
-                        load_val,
-                        key,
-                        StateAccessType::Read
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                Instruction::StateLoadWord(key) => check!(
-                    self.compile_state_load_word(instr_val, key),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                Instruction::StateStoreQuadWord { stored_val, key } => check!(
-                    self.compile_state_access_quad_word(
-                        instr_val,
-                        stored_val,
-                        key,
-                        StateAccessType::Write
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
-                Instruction::StateStoreWord { stored_val, key } => check!(
-                    self.compile_state_store_word(instr_val, stored_val, key),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                ),
                 Instruction::Store {
                     dst_val,
                     stored_val,
@@ -1478,6 +1494,7 @@ impl<'ir> AsmBuilder<'ir> {
         instr_val: &Value,
         val: &Value,
         key: &Value,
+        number_of_slots: &Value,
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
@@ -1540,24 +1557,22 @@ impl<'ir> AsmBuilder<'ir> {
         // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
+        // Number of slots to be read or written
+        let number_of_slots_reg = self.value_to_register(number_of_slots);
+
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => VirtualOp::SRWQ(
-                    val_reg,
-                    was_slot_set_reg,
-                    key_reg,
-                    ConstantRegister::One.into(),
-                ),
-                StateAccessType::Write => VirtualOp::SWWQ(
-                    key_reg,
-                    was_slot_set_reg,
-                    val_reg,
-                    ConstantRegister::One.into(),
-                ),
+                StateAccessType::Read => {
+                    VirtualOp::SRWQ(val_reg, was_slot_set_reg, key_reg, number_of_slots_reg)
+                }
+                StateAccessType::Write => {
+                    VirtualOp::SWWQ(key_reg, was_slot_set_reg, val_reg, number_of_slots_reg)
+                }
             }),
             comment: "quad word state access".into(),
             owning_span,
         });
+
         ok((), Vec::new(), Vec::new())
     }
 

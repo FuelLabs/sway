@@ -12,7 +12,7 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::Instruction,
+    instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pointer::Pointer,
@@ -180,7 +180,7 @@ pub fn inline_function_call(
         context,
         call_site,
         post_block.get_arg(context, 0).unwrap(),
-        Some(post_block),
+        None,
     );
 
     // Take the locals from the inlined function and add them to this function.  `value_map` is a
@@ -387,7 +387,56 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .extract_value(map_value(aggregate), ty, indices),
-            Instruction::GetStorageKey => new_block.ins(context).get_storage_key(),
+            Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                FuelVmInstruction::GetStorageKey => new_block.ins(context).get_storage_key(),
+                FuelVmInstruction::Gtf { index, tx_field_id } => {
+                    new_block.ins(context).gtf(map_value(index), tx_field_id)
+                }
+                FuelVmInstruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => new_block
+                    .ins(context)
+                    .log(map_value(log_val), log_ty, map_value(log_id)),
+                FuelVmInstruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
+                FuelVmInstruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
+                FuelVmInstruction::Smo {
+                    recipient_and_message,
+                    message_size,
+                    output_index,
+                    coins,
+                } => new_block.ins(context).smo(
+                    map_value(recipient_and_message),
+                    map_value(message_size),
+                    map_value(output_index),
+                    map_value(coins),
+                ),
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_load_quad_word(
+                    map_value(load_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
+                FuelVmInstruction::StateLoadWord(key) => {
+                    new_block.ins(context).state_load_word(map_value(key))
+                }
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_store_quad_word(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
+                FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
+                    .ins(context)
+                    .state_store_word(map_value(stored_val), map_value(key)),
+            },
             Instruction::GetPointer {
                 base_ptr,
                 ptr_ty,
@@ -397,9 +446,6 @@ fn inline_instruction(
                 new_block
                     .ins(context)
                     .get_ptr(map_ptr(base_ptr), ty, offset)
-            }
-            Instruction::Gtf { index, tx_field_id } => {
-                new_block.ins(context).gtf(map_value(index), tx_field_id)
             }
             Instruction::InsertElement {
                 array,
@@ -427,13 +473,6 @@ fn inline_instruction(
                 new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
             Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
-            Instruction::Log {
-                log_val,
-                log_ty,
-                log_id,
-            } => new_block
-                .ins(context)
-                .log(map_value(log_val), log_ty, map_value(log_id)),
             Instruction::MemCopy {
                 dst_val,
                 src_val,
@@ -442,35 +481,10 @@ fn inline_instruction(
                 .ins(context)
                 .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => new_block
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
-            Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
-            Instruction::Smo {
-                recipient_and_message,
-                message_size,
-                output_index,
-                coins,
-            } => new_block.ins(context).smo(
-                map_value(recipient_and_message),
-                map_value(message_size),
-                map_value(output_index),
-                map_value(coins),
-            ),
-            Instruction::StateLoadQuadWord { load_val, key } => new_block
-                .ins(context)
-                .state_load_quad_word(map_value(load_val), map_value(key)),
-            Instruction::StateLoadWord(key) => {
-                new_block.ins(context).state_load_word(map_value(key))
-            }
-            Instruction::StateStoreQuadWord { stored_val, key } => new_block
-                .ins(context)
-                .state_store_quad_word(map_value(stored_val), map_value(key)),
-            Instruction::StateStoreWord { stored_val, key } => new_block
-                .ins(context)
-                .state_store_word(map_value(stored_val), map_value(key)),
             Instruction::Store {
                 dst_val,
                 stored_val,

@@ -124,7 +124,7 @@ impl Backend {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.sessions.get(&manifest_dir) {
+        let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
             Some(item) => item.value().clone(),
             None => {
                 // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
@@ -140,7 +140,8 @@ impl Backend {
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir)
+                    .try_get(&manifest_dir)
+                    .try_unwrap()
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
@@ -240,13 +241,13 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // update this file with the new changes and write to disk
-                match session.write_changes_to_file(&uri, params.content_changes) {
-                    Ok(_) => {
-                        self.parse_project(uri, params.text_document.uri, session.clone())
-                            .await;
+                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
+                    if let Ok(mut file) = File::create(uri.path()) {
+                        let _ = writeln!(&mut file, "{}", src);
                     }
-                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
+                self.parse_project(uri, params.text_document.uri, session.clone())
+                    .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
         }
@@ -491,7 +492,8 @@ impl Backend {
             Ok((_, session)) => {
                 let ranges = session
                     .runnables
-                    .get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_unwrap()
                     .map(|item| {
                         let runnable = item.value();
                         vec![(runnable.range, format!("{}", runnable.tree_type))]

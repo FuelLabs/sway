@@ -1,6 +1,6 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{declaration_engine, language::ty, type_system::TypeId, TypeEngine};
+use sway_core::{language::ty, type_system::TypeId, Engines, TypeEngine};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
@@ -75,13 +75,14 @@ impl TokenMap {
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
-        match self.ident_at_position(position, tokens) {
-            Some(ident) => self.get(&token::to_ident_key(&ident)).map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            }),
-            None => None,
-        }
+        self.ident_at_position(position, tokens).and_then(|ident| {
+            self.try_get(&token::to_ident_key(&ident))
+                .try_unwrap()
+                .map(|item| {
+                    let ((ident, _), token) = item.pair();
+                    (ident.clone(), token.clone())
+                })
+        })
     }
 
     /// Uses the [TypeId] to find the associated [ty::TyDeclaration] in the TokenMap.
@@ -107,14 +108,16 @@ impl TokenMap {
     /// exists within the TokenMap.
     pub fn struct_declaration_of_type_id(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: &TypeId,
     ) -> Option<ty::TyStructDeclaration> {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         self.declaration_of_type_id(type_engine, type_id)
             .and_then(|decl| match decl {
-                ty::TyDeclaration::StructDeclaration(ref decl_id) => {
-                    declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
-                }
+                ty::TyDeclaration::StructDeclaration(ref decl_id) => declaration_engine
+                    .get_struct(decl_id.clone(), &decl_id.span())
+                    .ok(),
                 _ => None,
             })
     }

@@ -8,7 +8,7 @@ use crate::{
     context::Context,
     error::IrError,
     function::{Function, FunctionContent},
-    instruction::{Instruction, Predicate},
+    instruction::{FuelVmInstruction, Instruction, Predicate},
     irtype::{Aggregate, Type},
     metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
@@ -168,15 +168,57 @@ impl<'a> InstructionVerifier<'a> {
                         ty,
                         indices,
                     } => self.verify_extract_value(aggregate, ty, indices)?,
-                    Instruction::GetStorageKey => (),
+                    Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                        FuelVmInstruction::GetStorageKey => (),
+                        FuelVmInstruction::Gtf { index, tx_field_id } => {
+                            self.verify_gtf(index, tx_field_id)?
+                        }
+                        FuelVmInstruction::Log {
+                            log_val,
+                            log_ty,
+                            log_id,
+                        } => self.verify_log(log_val, log_ty, log_id)?,
+                        FuelVmInstruction::ReadRegister(_) => (),
+                        FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
+                        FuelVmInstruction::Smo {
+                            recipient_and_message,
+                            message_size,
+                            output_index,
+                            coins,
+                        } => self.verify_smo(
+                            recipient_and_message,
+                            message_size,
+                            output_index,
+                            coins,
+                        )?,
+                        FuelVmInstruction::StateLoadWord(key) => {
+                            self.verify_state_load_word(key)?
+                        }
+                        FuelVmInstruction::StateLoadQuadWord {
+                            load_val: dst_val,
+                            key,
+                            number_of_slots,
+                        }
+                        | FuelVmInstruction::StateStoreQuadWord {
+                            stored_val: dst_val,
+                            key,
+                            number_of_slots,
+                        } => self.verify_state_load_store(
+                            dst_val,
+                            &Type::B256,
+                            key,
+                            number_of_slots,
+                        )?,
+                        FuelVmInstruction::StateStoreWord {
+                            stored_val: dst_val,
+                            key,
+                        } => self.verify_state_store_word(dst_val, key)?,
+                    },
                     Instruction::GetPointer {
                         base_ptr,
                         ptr_ty,
                         offset,
                     } => self.verify_get_ptr(base_ptr, ptr_ty, offset)?,
-                    Instruction::Gtf { index, tx_field_id } => {
-                        self.verify_gtf(index, tx_field_id)?
-                    }
                     Instruction::InsertElement {
                         array,
                         ty,
@@ -191,41 +233,13 @@ impl<'a> InstructionVerifier<'a> {
                     } => self.verify_insert_value(aggregate, ty, value, indices)?,
                     Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     Instruction::Load(ptr) => self.verify_load(ptr)?,
-                    Instruction::Log {
-                        log_val,
-                        log_ty,
-                        log_id,
-                    } => self.verify_log(log_val, log_ty, log_id)?,
                     Instruction::MemCopy {
                         dst_val,
                         src_val,
                         byte_len,
                     } => self.verify_mem_copy(dst_val, src_val, byte_len)?,
                     Instruction::Nop => (),
-                    Instruction::ReadRegister(_) => (),
                     Instruction::Ret(val, ty) => self.verify_ret(val, ty)?,
-                    Instruction::Revert(val) => self.verify_revert(val)?,
-                    Instruction::Smo {
-                        recipient_and_message,
-                        message_size,
-                        output_index,
-                        coins,
-                    } => {
-                        self.verify_smo(recipient_and_message, message_size, output_index, coins)?
-                    }
-                    Instruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
-                    Instruction::StateLoadQuadWord {
-                        load_val: dst_val,
-                        key,
-                    }
-                    | Instruction::StateStoreQuadWord {
-                        stored_val: dst_val,
-                        key,
-                    } => self.verify_state_load_store(dst_val, &Type::B256, key)?,
-                    Instruction::StateStoreWord {
-                        stored_val: dst_val,
-                        key,
-                    } => self.verify_state_store_word(dst_val, key)?,
                     Instruction::Store {
                         dst_val,
                         stored_val,
@@ -652,7 +666,7 @@ impl<'a> InstructionVerifier<'a> {
 
     fn verify_mem_copy(
         &self,
-        _dst_val: &Value,
+        dst_val: &Value,
         _src_val: &Value,
         _byte_len: &u64,
     ) -> Result<(), IrError> {
@@ -662,18 +676,17 @@ impl<'a> InstructionVerifier<'a> {
         //| XXX Pointers are broken, pending https://github.com/FuelLabs/sway/issues/2819
         //| So here we may still get non-pointers, but still ref-types, passed as the source for
         //| mem_copy, especially when dealing with constant b256s or similar.
-        //|if !dst_val.get_pointer(self.context).is_some()
+        if dst_val.get_pointer(self.context).is_none()
         //|    || !(src_val.get_pointer(self.context).is_some()
         //|        || matches!(
         //|            src_val.get_instruction(self.context),
         //|            Some(Instruction::GetStorageKey) | Some(Instruction::IntToPtr(..))
         //|        ))
-        //|{
-        //|    Err(IrError::VerifyGetNonExistentPointer)
-        //|} else {
-        //|    Ok(())
-        //|}
-        Ok(())
+        {
+            Err(IrError::VerifyMemcopyNonExistentPointer)
+        } else {
+            Ok(())
+        }
     }
 
     fn verify_ret(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
@@ -750,6 +763,7 @@ impl<'a> InstructionVerifier<'a> {
         dst_val: &Value,
         val_type: &Type,
         key: &Value,
+        number_of_slots: &Value,
     ) -> Result<(), IrError> {
         if !matches!(self.get_pointer_type(dst_val), Some(ty) if ty.eq(self.context, val_type)) {
             Err(IrError::VerifyStateDestBadType(
@@ -757,6 +771,8 @@ impl<'a> InstructionVerifier<'a> {
             ))
         } else if !matches!(self.get_pointer_type(key), Some(Type::B256)) {
             Err(IrError::VerifyStateKeyBadType)
+        } else if !matches!(number_of_slots.get_type(self.context), Some(Type::Uint(_))) {
+            Err(IrError::VerifyStateAccessNumOfSlots)
         } else {
             Ok(())
         }
