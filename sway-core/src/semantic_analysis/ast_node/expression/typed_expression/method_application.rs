@@ -369,7 +369,7 @@ pub(crate) fn type_check_method_application(
 }
 
 /// Unifies the types of the arguments with the types of the parameters from the
-/// function declaration
+/// function declaration.
 fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
     arguments: &VecDeque<ty::TyExpression>,

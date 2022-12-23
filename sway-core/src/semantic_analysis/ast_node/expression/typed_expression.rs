@@ -310,15 +310,7 @@ impl ty::TyExpression {
 
         // if the return type cannot be cast into the annotation type then it is a type error
         append!(
-            type_engine.unify_with_self(
-                declaration_engine,
-                typed_expression.return_type,
-                ctx.type_annotation(),
-                ctx.self_type(),
-                &expr_span,
-                ctx.help_text(),
-                None
-            ),
+            ctx.unify_with_self(typed_expression.return_type, &expr_span),
             warnings,
             errors
         );
