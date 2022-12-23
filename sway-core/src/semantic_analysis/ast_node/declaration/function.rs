@@ -183,41 +183,8 @@ fn unify_return_statements(
 
     let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
-    // let engines = ctx.engines();
-
-    // let create_err = |stmt: &&ty::TyExpression| {
-    //     CompileError::TypeError(TypeError::MismatchedType {
-    //         expected: engines.help_out(return_type).to_string(),
-    //         received: engines.help_out(stmt.return_type).to_string(),
-    //         help_text: "Return statement must return the declared function return type."
-    //             .to_string(),
-    //         span: stmt.span.clone(),
-    //     })
-    // };
 
     for stmt in return_statements.iter() {
-        // if !type_engine.check_if_types_can_be_coerced(
-        //     declaration_engine,
-        //     stmt.return_type,
-        //     return_type,
-        // ) {
-        //     errors.push(create_err(stmt));
-        //     continue;
-        // }
-
-        // let (mut new_warnings, new_errors) = type_engine.unify_with_self(
-        //     declaration_engine,
-        //     stmt.return_type,
-        //     return_type,
-        //     ctx.self_type(),
-        //     &stmt.span,
-        //     "",
-        // );
-        // warnings.append(&mut new_warnings);
-        // if !new_errors.is_empty() {
-        //     errors.push(create_err(stmt));
-        // }
-
         check!(
             CompileResult::from(type_engine.unify_with_self(
                 declaration_engine,

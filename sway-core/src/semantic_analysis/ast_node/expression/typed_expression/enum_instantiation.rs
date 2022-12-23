@@ -55,11 +55,13 @@ pub(crate) fn instantiate_enum(
             errors,
         ),
         ([single_expr], _) => {
-            let mut ctx = ctx.with_help_text("").with_type_annotation(
-                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-            );
+            let ctx = ctx
+                .with_help_text("Enum instantiator must match its declared variant type.")
+                .with_type_annotation(
+                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                );
             let typed_expr = check!(
-                ty::TyExpression::type_check(ctx.by_ref(), single_expr.clone()),
+                ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -67,7 +69,14 @@ pub(crate) fn instantiate_enum(
 
             // unify the value of the argument with the variant
             check!(
-                unify_argument(ctx.by_ref(), &typed_expr, enum_variant.type_id),
+                CompileResult::from(type_engine.unify_adt(
+                    declaration_engine,
+                    typed_expr.return_type,
+                    enum_variant.type_id,
+                    &typed_expr.span,
+                    "Enum instantiator must match its declared variant type.",
+                    None
+                )),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -112,69 +121,5 @@ pub(crate) fn instantiate_enum(
             });
             err(warnings, errors)
         }
-    }
-}
-
-fn unify_argument(
-    ctx: TypeCheckContext,
-    typed_expr: &ty::TyExpression,
-    enum_variant_type_id: TypeId,
-) -> CompileResult<()> {
-    let mut warnings = vec![];
-    let mut errors = vec![];
-
-    let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
-    // let engines = ctx.engines();
-
-    // if !type_engine.check_if_types_can_be_coerced(
-    //     declaration_engine,
-    //     typed_expr.return_type,
-    //     enum_variant_type_id,
-    // ) {
-    //     errors.push(CompileError::TypeError(TypeError::MismatchedType {
-    //         expected: engines.help_out(enum_variant_type_id).to_string(),
-    //         received: engines.help_out(typed_expr.return_type).to_string(),
-    //         help_text: "Enum instantiator must match its declared variant type.".to_string(),
-    //         span: typed_expr.span.clone(),
-    //     }));
-    //     return err(warnings, errors);
-    // }
-
-    // let (mut new_warnings, new_errors) = type_engine.unify_adt(
-    //     declaration_engine,
-    //     typed_expr.return_type,
-    //     enum_variant_type_id,
-    //     &typed_expr.span,
-    //     "",
-    // );
-    // warnings.append(&mut new_warnings);
-    // if !new_errors.is_empty() {
-    //     errors.push(CompileError::TypeError(TypeError::MismatchedType {
-    //         expected: engines.help_out(enum_variant_type_id).to_string(),
-    //         received: engines.help_out(typed_expr.return_type).to_string(),
-    //         help_text: "Enum instantiator must match its declared variant type.".to_string(),
-    //         span: typed_expr.span.clone(),
-    //     }));
-    // }
-
-    check!(
-        CompileResult::from(type_engine.unify_adt(
-            declaration_engine,
-            typed_expr.return_type,
-            enum_variant_type_id,
-            &typed_expr.span,
-            "Enum instantiator must match its declared variant type.",
-            None
-        )),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if errors.is_empty() {
-        ok((), warnings, errors)
-    } else {
-        err(warnings, errors)
     }
 }

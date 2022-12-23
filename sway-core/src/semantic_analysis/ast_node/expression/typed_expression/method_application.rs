@@ -382,62 +382,8 @@ fn unify_arguments_and_parameters(
     let declaration_engine = ctx.declaration_engine;
     let engines = ctx.engines();
 
-    // let create_err = |arg: &ty::TyExpression, param: &ty::TyFunctionParameter| {
-    // CompileError::ArgumentParameterTypeMismatch {
-    //     span: arg.span.clone(),
-    //     provided: engines.help_out(arg.return_type).to_string(),
-    //     should_be: engines.help_out(param.type_id).to_string(),
-    // }
-    // };
-
     for (arg, param) in arguments.iter().zip(parameters.iter()) {
-        // // type check the argument to ensure that it is a valid argument
-        // if !type_engine.check_if_types_can_be_coerced(
-        //     declaration_engine,
-        //     arg.return_type,
-        //     param.type_id,
-        // ) {
-        //     errors.push(create_err(arg, param));
-        //     continue;
-        // }
-
-        // unify it with the parameter from the function declaration
-        // let (mut new_warnings, new_errors) = type_engine.unify_with_self(
-        //     declaration_engine,
-        //     arg.return_type,
-        //     param.type_id,
-        //     ctx.self_type(),
-        //     &arg.span,
-        //     "This argument's type is not castable to the declared parameter type.",
-        //     Some(CompileError::ArgumentParameterTypeMismatch {
-        //         span: arg.span.clone(),
-        //         provided: engines.help_out(arg.return_type).to_string(),
-        //         should_be: engines.help_out(param.type_id).to_string(),
-        //     })
-        // );
-        // warnings.append(&mut new_warnings);
-        // if !new_errors.is_empty() {
-        //     errors.push(CompileError::ArgumentParameterTypeMismatch {
-        //         span: arg.span.clone(),
-        //         provided: engines.help_out(arg.return_type).to_string(),
-        //         should_be: engines.help_out(param.type_id).to_string(),
-        //     });
-        // }
-
-        // check!(
-        //     CompileResult::from(type_engine.unify_with_self(
-        //         declaration_engine,
-        //         arg.return_type,
-        //         param.type_id,
-        //         ctx.self_type(),
-        //         &arg.span,
-        //         "This argument's type is not castable to the declared parameter type.",
-        //     )),
-        //     continue,
-        //     warnings,
-        //     errors
-        // );
-
+        // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify_with_self(
                 declaration_engine,

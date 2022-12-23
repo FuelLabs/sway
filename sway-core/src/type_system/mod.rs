@@ -131,9 +131,6 @@ fn generic_enum_resolution() {
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&declaration_engine, ty_1, ty_2, &sp, "", None);
-    for err in errors.iter() {
-        println!("{}", err);
-    }
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
