@@ -30,7 +30,6 @@ use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
     error::CompileError,
-    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
@@ -310,35 +309,19 @@ impl ty::TyExpression {
         let mut errors = res.errors;
 
         // if the return type cannot be cast into the annotation type then it is a type error
-        typed_expression
-            .return_type
-            .replace_self_type(engines, ctx.self_type());
-        ctx.type_annotation()
-            .replace_self_type(engines, ctx.self_type());
-        if !type_engine.check_if_types_can_be_coerced(
-            declaration_engine,
-            typed_expression.return_type,
-            ctx.type_annotation(),
-        ) {
-            errors.push(CompileError::TypeError(TypeError::MismatchedType {
-                expected: engines.help_out(ctx.type_annotation()).to_string(),
-                received: engines.help_out(typed_expression.return_type).to_string(),
-                help_text: ctx.help_text().to_string(),
-                span: expr_span.clone(),
-            }));
-        } else {
-            append!(
-                type_engine.unify(
-                    declaration_engine,
-                    typed_expression.return_type,
-                    ctx.type_annotation(),
-                    &expr_span,
-                    ctx.help_text()
-                ),
-                warnings,
-                errors
-            );
-        }
+        append!(
+            type_engine.unify_with_self(
+                declaration_engine,
+                typed_expression.return_type,
+                ctx.type_annotation(),
+                ctx.self_type(),
+                &expr_span,
+                ctx.help_text(),
+                None
+            ),
+            warnings,
+            errors
+        );
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(

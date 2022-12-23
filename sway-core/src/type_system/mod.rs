@@ -1,4 +1,3 @@
-mod coercion;
 mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
@@ -15,6 +14,7 @@ mod type_mapping;
 mod type_parameter;
 mod unconstrained_type_parameters;
 mod unify;
+mod unify_check;
 
 pub(crate) use collect_types_metadata::*;
 pub(crate) use copy_types::*;
@@ -96,7 +96,7 @@ fn generic_enum_resolution() {
     });
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, ty_1, ty_2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
@@ -127,7 +127,7 @@ fn basic_numeric_unknown() {
     let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -148,7 +148,7 @@ fn unify_numerics() {
     let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id2, id, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id2, id, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -169,7 +169,7 @@ fn unify_numerics_2() {
     let id2 = type_engine.insert_type_always(TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "");
+    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(

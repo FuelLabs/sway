@@ -14,8 +14,8 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
-use super::coercion::Coercion;
 use super::unify::Unifier;
+use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
@@ -256,20 +256,10 @@ impl TypeEngine {
         }
     }
 
-    /// Checks to see if two types can be coerced together.
-    pub(crate) fn check_if_types_can_be_coerced(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        received: TypeId,
-        expected: TypeId,
-    ) -> bool {
-        let engines = Engines::new(self, declaration_engine);
-        Coercion::new(engines).check(received, expected)
-    }
-
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify `received` and
     /// `expected`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
         declaration_engine: &DeclarationEngine,
@@ -278,10 +268,18 @@ impl TypeEngine {
         self_type: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         received.replace_self_type(Engines::new(self, declaration_engine), self_type);
         expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        self.unify(declaration_engine, received, expected, span, help_text)
+        self.unify(
+            declaration_engine,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+        )
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -298,9 +296,39 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, declaration_engine);
-        normalize_err(Unifier::new(engines).unify(received, expected, span, help_text))
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) =
+            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     /// Helper function for making the type of `expected` equivalent to
@@ -354,13 +382,42 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, declaration_engine);
-        normalize_err(
-            Unifier::new(engines)
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) = normalize_err(
+            Unifier::new(engines, help_text)
                 .flip_arguments()
-                .unify(expected, received, span, help_text),
-        )
+                .unify(expected, received, span),
+        );
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {

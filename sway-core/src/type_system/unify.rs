@@ -12,14 +12,16 @@ use crate::{engine_threading::*, language::ty, type_system::*, Engines};
 pub(super) struct Unifier<'a> {
     engines: Engines<'a>,
     arguments_are_flipped: bool,
+    help_text: String,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(super) fn new(engines: Engines<'a>) -> Unifier<'a> {
+    pub(super) fn new(engines: Engines<'a>, help_text: &str) -> Unifier<'a> {
         Unifier {
             engines,
             arguments_are_flipped: false,
+            help_text: help_text.to_string(),
         }
     }
 
@@ -40,7 +42,6 @@ impl<'a> Unifier<'a> {
         received_type_info: &TypeInfo,
         expected_type_info: TypeInfo,
         span: &Span,
-        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         match self.engines.te().slab.replace(
             received,
@@ -49,7 +50,7 @@ impl<'a> Unifier<'a> {
             self.engines,
         ) {
             None => (vec![], vec![]),
-            Some(_) => self.unify(received, expected, span, help_text),
+            Some(_) => self.unify(received, expected, span),
         }
     }
 
@@ -61,7 +62,6 @@ impl<'a> Unifier<'a> {
         received_type_info: TypeInfo,
         expected_type_info: &TypeInfo,
         span: &Span,
-        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         match self.engines.te().slab.replace(
             expected,
@@ -70,7 +70,7 @@ impl<'a> Unifier<'a> {
             self.engines,
         ) {
             None => (vec![], vec![]),
-            Some(_) => self.unify(received, expected, span, help_text),
+            Some(_) => self.unify(received, expected, span),
         }
     }
 
@@ -80,9 +80,12 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: &str,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         use TypeInfo::*;
+
+        if received == expected {
+            return (vec![], vec![]);
+        }
 
         match (
             self.engines.te().slab.get(received.index()),
@@ -97,14 +100,10 @@ impl<'a> Unifier<'a> {
             (Contract, Contract) => (vec![], vec![]),
             (RawUntypedPtr, RawUntypedPtr) => (vec![], vec![]),
             (RawUntypedSlice, RawUntypedSlice) => (vec![], vec![]),
-            (Str(l), Str(r)) => {
-                self.unify_strs(received, expected, span, help_text, l.val(), r.val())
-            }
-            (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
-                self.unify_tuples(help_text, rfs, efs)
-            }
+            (Str(l), Str(r)) => self.unify_strs(received, expected, span, l.val(), r.val()),
+            (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => self.unify_tuples(rfs, efs),
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
-                self.unify_arrays(received, expected, span, help_text, re.type_id, ee.type_id)
+                self.unify_arrays(received, expected, span, re.type_id, ee.type_id)
             }
             (
                 Struct {
@@ -117,14 +116,7 @@ impl<'a> Unifier<'a> {
                     type_parameters: etps,
                     fields: efs,
                 },
-            ) => self.unify_structs(
-                received,
-                expected,
-                span,
-                help_text,
-                (rn, rpts, rfs),
-                (en, etps, efs),
-            ),
+            ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
             (
                 Enum {
                     name: rn,
@@ -136,22 +128,17 @@ impl<'a> Unifier<'a> {
                     type_parameters: etps,
                     variant_types: evs,
                 },
-            ) => self.unify_enums(
-                received,
-                expected,
-                span,
-                help_text,
-                (rn, rtps, rvs),
-                (en, etps, evs),
-            ),
+            ) => self.unify_enums(received, expected, span, (rn, rtps, rvs), (en, etps, evs)),
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
             (UnsignedInteger(r), UnsignedInteger(e)) => self.unify_unsigned_ints(span, r, e),
-            (Numeric, e @ UnsignedInteger(_)) => self
-                .replace_received_with_expected(received, expected, &Numeric, e, span, help_text),
-            (r @ UnsignedInteger(_), Numeric) => self
-                .replace_expected_with_received(received, expected, r, &Numeric, span, help_text),
+            (Numeric, e @ UnsignedInteger(_)) => {
+                self.replace_received_with_expected(received, expected, &Numeric, e, span)
+            }
+            (r @ UnsignedInteger(_), Numeric) => {
+                self.replace_expected_with_received(received, expected, r, &Numeric, span)
+            }
 
             // For contract callers, we (potentially) unify them if they have
             // the same name and their address is `None`
@@ -171,7 +158,6 @@ impl<'a> Unifier<'a> {
                     r,
                     self.engines.te().slab.get(expected.index()),
                     span,
-                    help_text,
                 )
             }
             (
@@ -190,7 +176,6 @@ impl<'a> Unifier<'a> {
                     self.engines.te().slab.get(received.index()),
                     e,
                     span,
-                    help_text,
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
@@ -204,19 +189,21 @@ impl<'a> Unifier<'a> {
             // they match and make the one we know nothing about reference the
             // one we may know something about.
             (Unknown, Unknown) => (vec![], vec![]),
-            (Unknown, e) => self
-                .replace_received_with_expected(received, expected, &Unknown, e, span, help_text),
-            (r, Unknown) => self
-                .replace_expected_with_received(received, expected, r, &Unknown, span, help_text),
+            (Unknown, e) => {
+                self.replace_received_with_expected(received, expected, &Unknown, e, span)
+            }
+            (r, Unknown) => {
+                self.replace_expected_with_received(received, expected, r, &Unknown, span)
+            }
 
             (r @ Placeholder(_), e @ Placeholder(_)) => {
-                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
+                self.replace_expected_with_received(received, expected, r, &e, span)
             }
             (r @ Placeholder(_), e) => {
-                self.replace_received_with_expected(received, expected, &r, e, span, help_text)
+                self.replace_received_with_expected(received, expected, &r, e, span)
             }
             (r, e @ Placeholder(_)) => {
-                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
+                self.replace_expected_with_received(received, expected, r, &e, span)
             }
 
             // Generics are handled similarly to the case for unknowns, except
@@ -238,11 +225,11 @@ impl<'a> Unifier<'a> {
             }
             (r @ UnknownGeneric { .. }, e) => {
                 self.engines.te().insert_unified_type(expected, received);
-                self.replace_received_with_expected(received, expected, &r, e, span, help_text)
+                self.replace_received_with_expected(received, expected, &r, e, span)
             }
             (r, e @ UnknownGeneric { .. }) => {
                 self.engines.te().insert_unified_type(received, expected);
-                self.replace_expected_with_received(received, expected, r, &e, span, help_text)
+                self.replace_expected_with_received(received, expected, r, &e, span)
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -253,7 +240,7 @@ impl<'a> Unifier<'a> {
                 let errors = vec![TypeError::MismatchedType {
                     expected,
                     received,
-                    help_text: help_text.to_string(),
+                    help_text: self.help_text.clone(),
                     span: span.clone(),
                 }];
                 (vec![], errors)
@@ -266,7 +253,6 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: &str,
         r: usize,
         e: usize,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
@@ -277,7 +263,7 @@ impl<'a> Unifier<'a> {
             errors.push(TypeError::MismatchedType {
                 expected,
                 received,
-                help_text: help_text.to_string(),
+                help_text: self.help_text.clone(),
                 span: span.clone(),
             });
         }
@@ -286,15 +272,19 @@ impl<'a> Unifier<'a> {
 
     fn unify_tuples(
         &self,
-        help_text: &str,
         rfs: Vec<TypeArgument>,
         efs: Vec<TypeArgument>,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
+            let new_span = if self.arguments_are_flipped {
+                &ef.span
+            } else {
+                &rf.span
+            };
             append!(
-                self.unify(rf.type_id, ef.type_id, &rf.span, help_text),
+                self.unify(rf.type_id, ef.type_id, new_span),
                 warnings,
                 errors
             );
@@ -337,7 +327,6 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: &str,
         r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
         e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
@@ -347,15 +336,25 @@ impl<'a> Unifier<'a> {
         let (en, etps, efs) = e;
         if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
+                let new_span = if self.arguments_are_flipped {
+                    &ef.span
+                } else {
+                    &rf.span
+                };
                 append!(
-                    self.unify(rf.type_id, ef.type_id, &rf.span, help_text),
+                    self.unify(rf.type_id, ef.type_id, new_span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let new_span = if self.arguments_are_flipped {
+                    etp.name_ident.span()
+                } else {
+                    rtp.name_ident.span()
+                };
                 append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span(), help_text,),
+                    self.unify(rtp.type_id, etp.type_id, &new_span),
                     warnings,
                     errors
                 );
@@ -365,7 +364,7 @@ impl<'a> Unifier<'a> {
             errors.push(TypeError::MismatchedType {
                 expected,
                 received,
-                help_text: help_text.to_string(),
+                help_text: self.help_text.clone(),
                 span: span.clone(),
             });
         }
@@ -377,7 +376,6 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: &str,
         r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
         e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
@@ -387,15 +385,25 @@ impl<'a> Unifier<'a> {
         let (en, etps, evs) = e;
         if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
+                let new_span = if self.arguments_are_flipped {
+                    &ev.span
+                } else {
+                    &rv.span
+                };
                 append!(
-                    self.unify(rv.type_id, ev.type_id, &rv.span, help_text),
+                    self.unify(rv.type_id, ev.type_id, new_span),
                     warnings,
                     errors
                 );
             });
             rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
+                let new_span = if self.arguments_are_flipped {
+                    etp.name_ident.span()
+                } else {
+                    rtp.name_ident.span()
+                };
                 append!(
-                    self.unify(rtp.type_id, etp.type_id, &rtp.name_ident.span(), help_text,),
+                    self.unify(rtp.type_id, etp.type_id, &new_span),
                     warnings,
                     errors
                 );
@@ -405,7 +413,7 @@ impl<'a> Unifier<'a> {
             errors.push(TypeError::MismatchedType {
                 expected,
                 received,
-                help_text: help_text.to_string(),
+                help_text: self.help_text.clone(),
                 span: span.clone(),
             });
         }
@@ -417,11 +425,10 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        help_text: &str,
         r: TypeId,
         e: TypeId,
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
-        let (warnings, new_errors) = self.unify(r, e, span, help_text);
+        let (warnings, new_errors) = self.unify(r, e, span);
 
         // If there was an error then we want to report the array types as mismatching, not
         // the elem types.
@@ -431,7 +438,7 @@ impl<'a> Unifier<'a> {
             errors.push(TypeError::MismatchedType {
                 expected,
                 received,
-                help_text: help_text.to_string(),
+                help_text: self.help_text.clone(),
                 span: span.clone(),
             });
         }

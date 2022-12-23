@@ -5,7 +5,7 @@ use crate::{
     type_system::*,
 };
 
-use sway_error::{error::CompileError, type_error::TypeError};
+use sway_error::error::CompileError;
 use sway_types::{Ident, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
@@ -125,38 +125,52 @@ fn unify_argument(
 
     let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
-    let engines = ctx.engines();
+    // let engines = ctx.engines();
 
-    if !type_engine.check_if_types_can_be_coerced(
-        declaration_engine,
-        typed_expr.return_type,
-        enum_variant_type_id,
-    ) {
-        errors.push(CompileError::TypeError(TypeError::MismatchedType {
-            expected: engines.help_out(enum_variant_type_id).to_string(),
-            received: engines.help_out(typed_expr.return_type).to_string(),
-            help_text: "Enum instantiator must match its declared variant type.".to_string(),
-            span: typed_expr.span.clone(),
-        }));
-        return err(warnings, errors);
-    }
+    // if !type_engine.check_if_types_can_be_coerced(
+    //     declaration_engine,
+    //     typed_expr.return_type,
+    //     enum_variant_type_id,
+    // ) {
+    //     errors.push(CompileError::TypeError(TypeError::MismatchedType {
+    //         expected: engines.help_out(enum_variant_type_id).to_string(),
+    //         received: engines.help_out(typed_expr.return_type).to_string(),
+    //         help_text: "Enum instantiator must match its declared variant type.".to_string(),
+    //         span: typed_expr.span.clone(),
+    //     }));
+    //     return err(warnings, errors);
+    // }
 
-    let (mut new_warnings, new_errors) = type_engine.unify_adt(
-        declaration_engine,
-        typed_expr.return_type,
-        enum_variant_type_id,
-        &typed_expr.span,
-        "",
+    // let (mut new_warnings, new_errors) = type_engine.unify_adt(
+    //     declaration_engine,
+    //     typed_expr.return_type,
+    //     enum_variant_type_id,
+    //     &typed_expr.span,
+    //     "",
+    // );
+    // warnings.append(&mut new_warnings);
+    // if !new_errors.is_empty() {
+    //     errors.push(CompileError::TypeError(TypeError::MismatchedType {
+    //         expected: engines.help_out(enum_variant_type_id).to_string(),
+    //         received: engines.help_out(typed_expr.return_type).to_string(),
+    //         help_text: "Enum instantiator must match its declared variant type.".to_string(),
+    //         span: typed_expr.span.clone(),
+    //     }));
+    // }
+
+    check!(
+        CompileResult::from(type_engine.unify_adt(
+            declaration_engine,
+            typed_expr.return_type,
+            enum_variant_type_id,
+            &typed_expr.span,
+            "Enum instantiator must match its declared variant type.",
+            None
+        )),
+        return err(warnings, errors),
+        warnings,
+        errors
     );
-    warnings.append(&mut new_warnings);
-    if !new_errors.is_empty() {
-        errors.push(CompileError::TypeError(TypeError::MismatchedType {
-            expected: engines.help_out(enum_variant_type_id).to_string(),
-            received: engines.help_out(typed_expr.return_type).to_string(),
-            help_text: "Enum instantiator must match its declared variant type.".to_string(),
-            span: typed_expr.span.clone(),
-        }));
-    }
 
     if errors.is_empty() {
         ok((), warnings, errors)

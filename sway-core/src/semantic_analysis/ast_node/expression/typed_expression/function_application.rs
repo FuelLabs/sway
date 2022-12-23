@@ -5,7 +5,7 @@ use crate::{
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use std::collections::HashMap;
-use sway_error::{error::CompileError, type_error::TypeError};
+use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 #[allow(clippy::too_many_arguments)]
@@ -130,46 +130,62 @@ fn unify_arguments_and_parameters(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engines = ctx.declaration_engine;
-    let engines = ctx.engines();
+    let declaration_engine = ctx.declaration_engine;
+    // let engines = ctx.engines();
 
-    let create_err = |arg: &ty::TyExpression, param: &ty::TyFunctionParameter| {
-        CompileError::TypeError(TypeError::MismatchedType {
-            expected: engines.help_out(param.type_id).to_string(),
-            received: engines.help_out(arg.return_type).to_string(),
-            help_text: "The argument that has been provided to this function's type does \
-            not match the declared type of the parameter in the function \
-            declaration."
-                .to_string(),
-            span: arg.span.clone(),
-        })
-    };
+    // let create_err = |arg: &ty::TyExpression, param: &ty::TyFunctionParameter| {
+    //     CompileError::TypeError(TypeError::MismatchedType {
+    //         expected: engines.help_out(param.type_id).to_string(),
+    //         received: engines.help_out(arg.return_type).to_string(),
+    //         help_text: "The argument that has been provided to this function's type does \
+    //         not match the declared type of the parameter in the function \
+    //         declaration."
+    //             .to_string(),
+    //         span: arg.span.clone(),
+    //     })
+    // };
 
     let mut typed_arguments_and_names = vec![];
 
     for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
-        // type check the argument to ensure that it is a valid argument
-        if !type_engine.check_if_types_can_be_coerced(
-            declaration_engines,
-            arg.return_type,
-            param.type_id,
-        ) {
-            errors.push(create_err(&arg, param));
-            continue;
-        }
+        // // type check the argument to ensure that it is a valid argument
+        // if !type_engine.check_if_types_can_be_coerced(
+        //     declaration_engine,
+        //     arg.return_type,
+        //     param.type_id,
+        // ) {
+        //     errors.push(create_err(&arg, param));
+        //     continue;
+        // }
 
-        // unify it with the parameter from the function declaration
-        let (mut new_warnings, new_errors) = type_engine.unify(
-            declaration_engines,
-            arg.return_type,
-            param.type_id,
-            &arg.span,
-            "",
+        // // unify it with the parameter from the function declaration
+        // let (mut new_warnings, new_errors) = type_engine.unify(
+        //     declaration_engines,
+        //     arg.return_type,
+        //     param.type_id,
+        //     &arg.span,
+        //     "",
+        // );
+        // warnings.append(&mut new_warnings);
+        // if !new_errors.is_empty() {
+        //     errors.push(create_err(&arg, param));
+        // }
+
+        check!(
+            CompileResult::from(type_engine.unify(
+                declaration_engine,
+                arg.return_type,
+                param.type_id,
+                &arg.span,
+                "The argument that has been provided to this function's type does \
+            not match the declared type of the parameter in the function \
+            declaration.",
+                None
+            )),
+            continue,
+            warnings,
+            errors
         );
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(create_err(&arg, param));
-        }
 
         // check for matching mutability
         let param_mutability =

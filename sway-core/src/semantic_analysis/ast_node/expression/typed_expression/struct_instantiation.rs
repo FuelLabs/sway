@@ -197,14 +197,16 @@ fn unify_field_arguments_and_struct_fields(
 
     for struct_field in struct_fields.iter() {
         if let Some(typed_field) = typed_fields.iter().find(|x| x.name == struct_field.name) {
-            append!(
-                type_engine.unify_adt(
+            check!(
+                CompileResult::from(type_engine.unify_adt(
                     declaration_engine,
                     typed_field.value.return_type,
                     struct_field.type_id,
                     &typed_field.value.span,
                     "Struct field's type must match up with the type specified in its declaration.",
-                ),
+                    None,
+                )),
+                continue,
                 warnings,
                 errors
             );

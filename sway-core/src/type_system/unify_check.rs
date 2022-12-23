@@ -1,14 +1,14 @@
 use crate::{engine_threading::*, type_system::*};
 
 /// Helper struct to aid in type coercion.
-pub(super) struct Coercion<'a> {
+pub(super) struct UnifyCheck<'a> {
     engines: Engines<'a>,
 }
 
-impl<'a> Coercion<'a> {
+impl<'a> UnifyCheck<'a> {
     /// Creates a new [Coercion].
-    pub(super) fn new(engines: Engines<'a>) -> Coercion<'a> {
-        Coercion { engines }
+    pub(super) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
+        UnifyCheck { engines }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -90,20 +90,26 @@ impl<'a> Coercion<'a> {
     /// the trait constraints of `left`, then we know that `right` has unique
     /// methods.
     pub(super) fn check(&self, left: TypeId, right: TypeId) -> bool {
+        use TypeInfo::*;
+
+        if left == right {
+            return true;
+        }
+
         let left = self.engines.te().look_up_type_id(left);
         let right = self.engines.te().look_up_type_id(right);
         match (left, right) {
             // the placeholder type can be coerced into any type
-            (TypeInfo::Placeholder(_), _) => true,
+            (Placeholder(_), _) => true,
             // any type can be coerced into the placeholder type
-            (_, TypeInfo::Placeholder(_)) => true,
+            (_, Placeholder(_)) => true,
 
             (
-                TypeInfo::UnknownGeneric {
+                UnknownGeneric {
                     name: ln,
                     trait_constraints: ltc,
                 },
-                TypeInfo::UnknownGeneric {
+                UnknownGeneric {
                     name: rn,
                     trait_constraints: rtc,
                 },
@@ -113,38 +119,38 @@ impl<'a> Coercion<'a> {
                 ln == rn && rtc.eq(&ltc, self.engines)
             }
             // any type can be coerced into generic
-            (_, TypeInfo::UnknownGeneric { .. }) => true,
+            (_, UnknownGeneric { .. }) => true,
 
-            (TypeInfo::Unknown, _) => true,
-            (_, TypeInfo::Unknown) => true,
+            (Unknown, _) => true,
+            (_, Unknown) => true,
 
-            (TypeInfo::Boolean, TypeInfo::Boolean) => true,
-            (TypeInfo::SelfType, TypeInfo::SelfType) => true,
-            (TypeInfo::B256, TypeInfo::B256) => true,
-            (TypeInfo::Numeric, TypeInfo::Numeric) => true,
-            (TypeInfo::Contract, TypeInfo::Contract) => true,
-            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
-            (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
-            (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_)) => true,
-            (TypeInfo::Numeric, TypeInfo::UnsignedInteger(_)) => true,
-            (TypeInfo::UnsignedInteger(_), TypeInfo::Numeric) => true,
-            (TypeInfo::Str(l), TypeInfo::Str(r)) => l.val() == r.val(),
+            (Boolean, Boolean) => true,
+            (SelfType, SelfType) => true,
+            (B256, B256) => true,
+            (Numeric, Numeric) => true,
+            (Contract, Contract) => true,
+            (RawUntypedPtr, RawUntypedPtr) => true,
+            (RawUntypedSlice, RawUntypedSlice) => true,
+            (UnsignedInteger(_), UnsignedInteger(_)) => true,
+            (Numeric, UnsignedInteger(_)) => true,
+            (UnsignedInteger(_), Numeric) => true,
+            (Str(l), Str(r)) => l.val() == r.val(),
 
-            (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
+            (Array(l0, l1), Array(r0, r1)) => {
                 self.check(l0.type_id, r0.type_id) && l1.val() == r1.val()
             }
-            (TypeInfo::Tuple(l_types), TypeInfo::Tuple(r_types)) => {
+            (Tuple(l_types), Tuple(r_types)) => {
                 let l_types = l_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
                 let r_types = r_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
                 self.check_multiple(&l_types, &r_types)
             }
 
             (
-                TypeInfo::Custom {
+                Custom {
                     name: l_name,
                     type_arguments: l_type_args,
                 },
-                TypeInfo::Custom {
+                Custom {
                     name: r_name,
                     type_arguments: r_type_args,
                 },
@@ -164,12 +170,12 @@ impl<'a> Coercion<'a> {
                 l_name == r_name && self.check_multiple(&l_types, &r_types)
             }
             (
-                TypeInfo::Enum {
+                Enum {
                     name: l_name,
                     variant_types: l_variant_types,
                     type_parameters: l_type_parameters,
                 },
-                TypeInfo::Enum {
+                Enum {
                     name: r_name,
                     variant_types: r_variant_types,
                     type_parameters: r_type_parameters,
@@ -194,12 +200,12 @@ impl<'a> Coercion<'a> {
                 l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
             }
             (
-                TypeInfo::Struct {
+                Struct {
                     name: l_name,
                     fields: l_fields,
                     type_parameters: l_type_parameters,
                 },
-                TypeInfo::Struct {
+                Struct {
                     name: r_name,
                     fields: r_fields,
                     type_parameters: r_type_parameters,
@@ -221,11 +227,11 @@ impl<'a> Coercion<'a> {
             // For contract callers, they can be coerced if they have the same
             // name and at least one has an address of `None`
             (
-                ref r @ TypeInfo::ContractCaller {
+                ref r @ ContractCaller {
                     abi_name: ref ran,
                     address: ref ra,
                 },
-                ref e @ TypeInfo::ContractCaller {
+                ref e @ ContractCaller {
                     abi_name: ref ean,
                     address: ref ea,
                 },
@@ -238,8 +244,8 @@ impl<'a> Coercion<'a> {
             }
 
             // this is kinda a hack
-            (TypeInfo::ErrorRecovery, _) => true,
-            (_, TypeInfo::ErrorRecovery) => true,
+            (ErrorRecovery, _) => true,
+            (_, ErrorRecovery) => true,
 
             (a, b) => a.eq(&b, self.engines),
         }
@@ -311,6 +317,8 @@ impl<'a> Coercion<'a> {
     /// `left` can be coerced into `right`.
     ///
     fn check_multiple(&self, left: &[TypeId], right: &[TypeId]) -> bool {
+        use TypeInfo::*;
+
         // invariant 1. `left` and and `right` are of the same length _n_
         if left.len() != right.len() {
             return false;
@@ -352,7 +360,7 @@ impl<'a> Coercion<'a> {
         for (i, j) in constraints.into_iter() {
             let a = left_types.get(i).unwrap();
             let b = left_types.get(j).unwrap();
-            if matches!(a, TypeInfo::Placeholder(_)) && matches!(b, TypeInfo::Placeholder(_)) {
+            if matches!(a, Placeholder(_)) || matches!(b, Placeholder(_)) {
                 continue;
             }
             if !a.eq(b, self.engines) {
