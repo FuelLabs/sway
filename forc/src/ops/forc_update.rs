@@ -1,7 +1,6 @@
 use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
 use forc_pkg::{self as pkg, lock, Lock};
-use forc_util::lock_path;
 use pkg::manifest::ManifestFile;
 use std::{fs, path::PathBuf};
 use tracing::info;
@@ -34,8 +33,9 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
     };
 
     let manifest = ManifestFile::from_dir(&this_dir)?;
+    let lock_path = manifest.lock_path()?;
     forc_util::warn_if_old_manifest_name(manifest.path());
-    let lock_path = lock_path(manifest.dir());
+    forc_util::rename_lock_file_if_old(&lock_path)?;
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
     let member_manifests = manifest.member_manifests()?;

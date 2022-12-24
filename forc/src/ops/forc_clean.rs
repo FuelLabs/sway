@@ -29,7 +29,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
     let manifest_dir = manifest_path
         .parent()
         .expect("manifest file has no parent directory");
-    let out_dir = default_output_directory(&manifest_dir);
+    let out_dir = default_output_directory(manifest_dir);
     let _ = std::fs::remove_dir_all(out_dir);
 
     Ok(())

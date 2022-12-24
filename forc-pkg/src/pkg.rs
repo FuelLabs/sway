@@ -2507,16 +2507,17 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     } = &build_options;
 
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let lock_path = manifest_file.lock_path()?;
+
     forc_util::warn_if_old_manifest_name(manifest_file.path());
+    forc_util::rename_lock_file_if_old(&lock_path)?;
+
     let member_manifests = manifest_file.member_manifests()?;
     // Check if we have members to build so that we are not trying to build an empty workspace.
     if member_manifests.is_empty() {
         bail!("No member found to build")
     }
 
-    todo!("Check for old lock file and rename it");
-
-    let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
         &lock_path,
         &member_manifests,

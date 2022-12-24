@@ -4,7 +4,7 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -62,6 +62,7 @@ pub fn find_manifest_file(starter_path: &Path) -> Option<PathBuf> {
 }
 
 /// Warn the user to update their manifest file to the new name.
+// TODO: Remove once old manifest name deprecation period is over.
 pub fn warn_if_old_manifest_name(path: &Path) {
     if path.ends_with(constants::OLD_MANIFEST_FILE_NAME) {
         let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
@@ -78,8 +79,35 @@ pub fn warn_if_old_manifest_name(path: &Path) {
     }
 }
 
+/// Given a path to the expected location of the lock file with the new name, check for an old lock
+/// file name. If the old one exists and the new one doesn't, rename the old to the new.
+// TODO: Remove once old lock name deprecation period is over.
+pub fn rename_lock_file_if_old(new_lock_path: &Path) -> Result<bool> {
+    let old_lock_path = new_lock_path
+        .parent()
+        .expect("lock file has no parent")
+        .join(constants::OLD_LOCK_FILE_NAME);
+    let renamed = if !new_lock_path.exists() && old_lock_path.exists() {
+        std::fs::rename(&old_lock_path, new_lock_path)
+            .context("failed to rename old `Forc.lock` to `forc.lock`")?;
+        tracing::warn!(
+            "
+  WARNING: {:?} was renamed to '{}'.
+           This change was made to improve file naming consistency throughout forc.
+           For more details, see: https://github.com/FuelLabs/sway/issues/3438\n",
+            old_lock_path,
+            constants::LOCK_FILE_NAME,
+        );
+        true
+    } else {
+        false
+    };
+    Ok(renamed)
+}
+
 /// Whether or not the given path points to a file with a name that matches the expected forc
 /// manifest name.
+// TODO: Remove once old manifest name deprecation period is over.
 pub fn is_manifest(path: &Path) -> bool {
     path.is_file()
         && (path.ends_with(constants::MANIFEST_FILE_NAME)

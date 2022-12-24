@@ -22,9 +22,10 @@ pub fn check(
         std::env::current_dir()?
     };
     let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    forc_util::warn_if_old_manifest_name(manifest_file.path());
-    let member_manifests = manifest_file.member_manifests()?;
     let lock_path = manifest_file.lock_path()?;
+    forc_util::warn_if_old_manifest_name(manifest_file.path());
+    forc_util::rename_lock_file_if_old(&lock_path)?;
+    let member_manifests = manifest_file.member_manifests()?;
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
 
