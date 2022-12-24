@@ -272,6 +272,9 @@ impl Renderable for ItemContext {
                 context_section(declaration_engine, variants, VARIANT_NAME)
             }
             ContextType::RequiredMethods(methods) => {
+                // This is the only section we need the decl engine for, at this time.
+                // I believe we can move this portion to descriptor and avoid unnecessary
+                // use of the decl engine in render.
                 let methods = methods
                     .iter()
                     .map(|decl_id| {
