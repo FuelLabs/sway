@@ -6,7 +6,7 @@ use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
 use std::{path::PathBuf, sync::Arc};
 use sway_core::{
-    declaration_engine::{self, DeclarationEngine},
+    declaration_engine::DeclarationEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
 };
 
@@ -137,7 +137,7 @@ impl ModuleInfo {
             .expect("There will always be at least the project name")
     }
     /// The name of the project.
-    pub(crate) fn project_name(&self) -> &str {
+    pub(crate) fn _project_name(&self) -> &str {
         self.0.first().expect("Project name missing")
     }
     /// Create a qualified path that represents the full path to an item.
