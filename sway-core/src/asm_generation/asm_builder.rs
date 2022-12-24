@@ -218,11 +218,16 @@ impl<'ir> AsmBuilder<'ir> {
                         output_index,
                         coins,
                     ),
-                    FuelVmInstruction::StateLoadQuadWord { load_val, key } => check!(
+                    FuelVmInstruction::StateLoadQuadWord {
+                        load_val,
+                        key,
+                        number_of_slots,
+                    } => check!(
                         self.compile_state_access_quad_word(
                             instr_val,
                             load_val,
                             key,
+                            number_of_slots,
                             StateAccessType::Read
                         ),
                         return err(warnings, errors),
@@ -235,11 +240,16 @@ impl<'ir> AsmBuilder<'ir> {
                         warnings,
                         errors
                     ),
-                    FuelVmInstruction::StateStoreQuadWord { stored_val, key } => check!(
+                    FuelVmInstruction::StateStoreQuadWord {
+                        stored_val,
+                        key,
+                        number_of_slots,
+                    } => check!(
                         self.compile_state_access_quad_word(
                             instr_val,
                             stored_val,
                             key,
+                            number_of_slots,
                             StateAccessType::Write
                         ),
                         return err(warnings, errors),
@@ -1485,6 +1495,7 @@ impl<'ir> AsmBuilder<'ir> {
         instr_val: &Value,
         val: &Value,
         key: &Value,
+        number_of_slots: &Value,
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
@@ -1547,24 +1558,22 @@ impl<'ir> AsmBuilder<'ir> {
         // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
+        // Number of slots to be read or written
+        let number_of_slots_reg = self.value_to_register(number_of_slots);
+
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => VirtualOp::SRWQ(
-                    val_reg,
-                    was_slot_set_reg,
-                    key_reg,
-                    ConstantRegister::One.into(),
-                ),
-                StateAccessType::Write => VirtualOp::SWWQ(
-                    key_reg,
-                    was_slot_set_reg,
-                    val_reg,
-                    ConstantRegister::One.into(),
-                ),
+                StateAccessType::Read => {
+                    VirtualOp::SRWQ(val_reg, was_slot_set_reg, key_reg, number_of_slots_reg)
+                }
+                StateAccessType::Write => {
+                    VirtualOp::SWWQ(key_reg, was_slot_set_reg, val_reg, number_of_slots_reg)
+                }
             }),
             comment: "quad word state access".into(),
             owning_span,
         });
+
         ok((), Vec::new(), Vec::new())
     }
 

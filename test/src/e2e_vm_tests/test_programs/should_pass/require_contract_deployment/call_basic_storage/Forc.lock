@@ -1,7 +1,7 @@
 [[package]]
 name = 'basic_storage_abi'
 source = 'path+from-root-B0443BE7AC0A62F9'
-dependencies = ['core']
+dependencies = ['std']
 
 [[package]]
 name = 'call_basic_storage'

@@ -7,7 +7,7 @@ pub struct Quad {
     v4: u64,
 }
 
-abi StoreU64 {
+abi BasicStorage {
     #[storage(write)]
     fn store_u64(key: b256, value: u64);
     #[storage(read)]
@@ -19,9 +19,9 @@ abi StoreU64 {
     fn intrinsic_load_word(key: b256) -> u64;
 
     #[storage(write)]
-    fn intrinsic_store_quad(key: b256, value: Quad);
+    fn intrinsic_store_quad(key: b256, value: Vec<Quad>);
     #[storage(read)]
-    fn intrinsic_load_quad(key: b256) -> Quad;
+    fn intrinsic_load_quad(key: b256, slots: u64) -> Vec<Quad>;
 
     #[storage(read, write)]
     fn test_storage_exhaustive();
