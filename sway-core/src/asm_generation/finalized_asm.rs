@@ -63,7 +63,6 @@ fn to_bytecode_mut(
     source_map: &mut SourceMap,
 ) -> CompileResult<(Vec<u8>, BTreeMap<String, u64>)> {
     let mut errors = vec![];
-    dbg!(&data_section);
     if program_section.ops.len() & 1 != 0 {
         tracing::info!("ops len: {}", program_section.ops.len());
         errors.push(CompileError::Internal(

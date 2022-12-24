@@ -1911,7 +1911,6 @@ impl<'ir> AsmBuilder<'ir> {
                             .config_map
                             .insert(config_name.unwrap().to_string(), data_id.0 as u32);
                     }
-                    dbg!(&self.data_section.config_map);
                     initialized.0
                 })
             })

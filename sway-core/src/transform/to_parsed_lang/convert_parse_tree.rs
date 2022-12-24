@@ -746,11 +746,11 @@ fn item_configurable_to_constant_declarations(
         })
         .collect::<Result<_, _>>()?;
 
-    // Make sure each configurable field is declared once
+    // Make sure each configurable is declared once
     let mut names_of_declarations = std::collections::HashSet::new();
     declarations.iter().for_each(|v| {
         if !names_of_declarations.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateConfigurableField {
+            errors.push(ConvertParseTreeError::DuplicateConfigurable {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
