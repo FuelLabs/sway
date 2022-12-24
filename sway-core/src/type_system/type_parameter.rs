@@ -1,5 +1,6 @@
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::*,
@@ -27,7 +28,7 @@ pub struct TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl HashWithTypeEngine for TypeParameter {
+impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         type_engine
             .look_up_type_id(self.type_id)
@@ -40,34 +41,33 @@ impl HashWithTypeEngine for TypeParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TypeParameter {}
-impl PartialEqWithTypeEngine for TypeParameter {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+impl EqWithEngines for TypeParameter {}
+impl PartialEqWithEngines for TypeParameter {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         type_engine
             .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+            .eq(&type_engine.look_up_type_id(other.type_id), engines)
             && self.name_ident == other.name_ident
-            && self
-                .trait_constraints
-                .eq(&other.trait_constraints, type_engine)
+            && self.trait_constraints.eq(&other.trait_constraints, engines)
     }
 }
 
 impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.type_id.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.type_id.copy_types(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
     }
 }
 
 impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.type_id.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_id.replace_self_type(engines, self_type);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }
 
@@ -77,14 +77,9 @@ impl Spanned for TypeParameter {
     }
 }
 
-impl DisplayWithTypeEngine for TypeParameter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.name_ident,
-            type_engine.help_out(self.type_id)
-        )
+impl DisplayWithEngines for TypeParameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
     }
 }
 
@@ -101,6 +96,9 @@ impl TypeParameter {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
 
         let TypeParameter {
             initial_type_id,
@@ -122,10 +120,13 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = ctx.type_engine.insert_type(TypeInfo::UnknownGeneric {
-            name: name_ident.clone(),
-            trait_constraints: VecSet(trait_constraints.clone()),
-        });
+        let type_id = type_engine.insert_type(
+            declaration_engine,
+            TypeInfo::UnknownGeneric {
+                name: name_ident.clone(),
+                trait_constraints: VecSet(trait_constraints.clone()),
+            },
+        );
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {
@@ -207,7 +208,7 @@ impl TypeParameter {
                         *type_id,
                         trait_constraints,
                         access_span,
-                        ctx.type_engine,
+                        ctx.engines()
                     ),
                 continue,
                 warnings,
@@ -279,6 +280,8 @@ fn handle_trait(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let declaration_engine = ctx.declaration_engine;
+
     let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
 
@@ -290,7 +293,9 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(de_get_trait(decl_id, &trait_name.suffix.span())),
+                CompileResult::from(
+                    declaration_engine.get_trait(decl_id, &trait_name.suffix.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors

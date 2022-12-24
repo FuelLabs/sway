@@ -1,4 +1,6 @@
 use crate::{
+    declaration_engine::DeclarationEngine,
+    engine_threading::*,
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
@@ -21,6 +23,12 @@ pub struct TypeCheckContext<'a> {
     /// - A `mod_path` that represents the current module being type-checked. This is automatically
     ///   updated upon entering/exiting submodules via the `enter_submodule` method.
     pub(crate) namespace: &'a mut Namespace,
+
+    /// The type engine storing types.
+    pub(crate) type_engine: &'a TypeEngine,
+
+    /// The declaration engine holds declarations.
+    pub(crate) declaration_engine: &'a DeclarationEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -49,8 +57,6 @@ pub struct TypeCheckContext<'a> {
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
-    /// The type engine storing types.
-    pub(crate) type_engine: &'a TypeEngine,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -62,18 +68,20 @@ impl<'a> TypeCheckContext<'a> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
-        Self::from_module_namespace(root_namespace, type_engine)
+    pub fn from_root(root_namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+        Self::from_module_namespace(root_namespace, engines)
     }
 
-    fn from_module_namespace(namespace: &'a mut Namespace, type_engine: &'a TypeEngine) -> Self {
+    fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         Self {
             namespace,
             type_engine,
-            type_annotation: type_engine.insert_type(TypeInfo::Unknown),
+            declaration_engine,
+            type_annotation: type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert_type(TypeInfo::Contract),
+            self_type: type_engine.insert_type(declaration_engine, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
@@ -98,6 +106,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind.clone(),
             type_engine: self.type_engine,
+            declaration_engine: self.declaration_engine,
         }
     }
 
@@ -112,6 +121,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind,
             type_engine: self.type_engine,
+            declaration_engine: self.declaration_engine,
         }
     }
 
@@ -129,7 +139,10 @@ impl<'a> TypeCheckContext<'a> {
         // engine here once they're added.
         let Self { namespace, .. } = self;
         let mut submod_ns = namespace.enter_submodule(dep_name);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, self.type_engine);
+        let submod_ctx = TypeCheckContext::from_module_namespace(
+            &mut submod_ns,
+            Engines::new(self.type_engine, self.declaration_engine),
+        );
         with_submod_ctx(submod_ctx)
     }
 
@@ -208,6 +221,7 @@ impl<'a> TypeCheckContext<'a> {
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(
+            self.declaration_engine,
             value,
             type_arguments,
             enforce_type_arguments,
@@ -227,7 +241,7 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace.resolve_type_with_self(
-            self.type_engine,
+            self.engines(),
             type_id,
             self.self_type,
             span,
@@ -244,7 +258,7 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         self.namespace
-            .resolve_type_without_self(self.type_engine, type_id, span, type_info_prefix)
+            .resolve_type_without_self(self.engines(), type_id, span, type_info_prefix)
     }
 
     /// Short-hand around `type_system::unify_with_self`, where the `TypeCheckContext` provides the
@@ -255,11 +269,17 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify_with_self(
+            self.declaration_engine,
             ty,
             self.type_annotation(),
             self.self_type(),
             span,
             self.help_text(),
         )
+    }
+
+    /// Get the engines needed for engine threading.
+    pub(crate) fn engines(&self) -> Engines<'a> {
+        Engines::new(self.type_engine, self.declaration_engine)
     }
 }
