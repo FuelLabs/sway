@@ -36,6 +36,10 @@ pub enum Scrutinee {
         elems: Vec<Scrutinee>,
         span: Span,
     },
+    // this is to handle parser recovery
+    Error {
+        spans: Box<[Span]>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +64,7 @@ impl Spanned for Scrutinee {
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
+            Scrutinee::Error { spans } => spans.iter().cloned().reduce(Span::join).unwrap(),
         }
     }
 }
@@ -156,7 +161,10 @@ impl Scrutinee {
                 .iter()
                 .flat_map(|scrutinee| scrutinee.gather_approximate_typeinfo_dependencies())
                 .collect::<Vec<TypeInfo>>(),
-            Scrutinee::Literal { .. } | Scrutinee::CatchAll { .. } | Scrutinee::Variable { .. } => {
+            Scrutinee::Literal { .. }
+            | Scrutinee::CatchAll { .. }
+            | Scrutinee::Variable { .. }
+            | Scrutinee::Error { .. } => {
                 vec![]
             }
         }

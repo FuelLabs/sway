@@ -21,6 +21,8 @@ pub enum Pattern {
         fields: Braces<Punctuated<PatternStructField, CommaToken>>,
     },
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
+    // to handle parser recovery: Error represents an incomplete Constructor
+    Error(Box<[Span]>),
 }
 
 impl Spanned for Pattern {
@@ -44,6 +46,7 @@ impl Spanned for Pattern {
             Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),
             Pattern::Struct { path, fields } => Span::join(path.span(), fields.span()),
             Pattern::Tuple(pat_tuple) => pat_tuple.span(),
+            Pattern::Error(spans) => spans.iter().cloned().reduce(Span::join).unwrap(),
         }
     }
 }
