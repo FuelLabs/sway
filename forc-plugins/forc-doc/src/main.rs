@@ -16,7 +16,6 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
@@ -76,7 +75,7 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(Arc::new(declaration_engine), raw_docs);
+    let rendered_docs = RenderedDocumentation::from(raw_docs);
 
     // write contents to outfile
     for doc in rendered_docs.0 {

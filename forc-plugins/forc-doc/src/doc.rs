@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use sway_core::{
     declaration_engine::DeclarationEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
@@ -119,10 +119,10 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         box_html! {
-            : self.item_header.render(declaration_engine.clone());
-            : self.item_body.render(declaration_engine);
+            : self.item_header.render();
+            : self.item_body.render();
         }
     }
 }

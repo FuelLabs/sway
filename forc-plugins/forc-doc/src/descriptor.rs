@@ -4,8 +4,26 @@ use crate::{
     render::{attrsmap_to_html_str, trim_fn_body, ContextType, ItemBody, ItemContext, ItemHeader},
 };
 use anyhow::Result;
-use sway_core::{declaration_engine::*, language::ty::TyDeclaration};
+use sway_core::{
+    declaration_engine::*,
+    language::ty::{TyDeclaration, TyTraitFn},
+};
 use sway_types::Spanned;
+
+trait RequiredMethods {
+    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn>;
+}
+impl RequiredMethods for Vec<sway_core::declaration_engine::DeclarationId> {
+    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn> {
+        self.iter()
+            .map(|decl_id| {
+                declaration_engine
+                    .get_trait_fn(decl_id.clone(), &decl_id.span())
+                    .expect("could not get trait fn from declaration id")
+            })
+            .collect()
+    }
+}
 
 /// Used in deciding whether or not a [Declaration] is documentable.
 pub(crate) enum Descriptor {
@@ -97,8 +115,11 @@ impl Descriptor {
                     let item_name = trait_decl.name;
                     let attrs_opt = (!trait_decl.attributes.is_empty())
                         .then(|| attrsmap_to_html_str(trait_decl.attributes));
-                    let context = (!trait_decl.interface_surface.is_empty())
-                        .then_some(ContextType::RequiredMethods(trait_decl.interface_surface));
+                    let context = (!trait_decl.interface_surface.is_empty()).then_some(
+                        ContextType::RequiredMethods(
+                            trait_decl.interface_surface.to_methods(declaration_engine),
+                        ),
+                    );
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -125,8 +146,11 @@ impl Descriptor {
                 let item_name = abi_decl.name;
                 let attrs_opt = (!abi_decl.attributes.is_empty())
                     .then(|| attrsmap_to_html_str(abi_decl.attributes));
-                let context = (!abi_decl.interface_surface.is_empty())
-                    .then_some(ContextType::RequiredMethods(abi_decl.interface_surface));
+                let context = (!abi_decl.interface_surface.is_empty()).then_some(
+                    ContextType::RequiredMethods(
+                        abi_decl.interface_surface.to_methods(declaration_engine),
+                    ),
+                );
 
                 Ok(Descriptor::Documentable(Document {
                     module_info: module_info.clone(),

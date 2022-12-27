@@ -1,21 +1,17 @@
 use crate::doc::{Documentation, ModuleInfo};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::{fmt::Write, sync::Arc};
-use sway_core::declaration_engine::DeclarationEngine;
+use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
-use sway_types::{BaseIdent, Spanned};
+use sway_types::BaseIdent;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
-    /// NOTE: The DE is passed as an [Arc] because the [box_html!] macro boxes
-    /// (i.e. captures) its own environment, making using immutable references
-    /// directly a pain.
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox>;
+    fn render(self) -> Box<dyn RenderBox>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -28,10 +24,7 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(
-        declaration_engine: Arc<DeclarationEngine>,
-        raw: Documentation,
-    ) -> RenderedDocumentation {
+    pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_doc: AllDoc = Default::default();
         for doc in raw {
@@ -40,7 +33,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.0.clone(),
                 html_file_name: html_file_name.clone(),
-                file_contents: HTMLString::from(doc.clone().render(declaration_engine.clone())),
+                file_contents: HTMLString::from(doc.clone().render()),
             });
             all_doc.0.push(AllDocItem {
                 ty_decl: doc.item_body.ty_decl.clone(),
@@ -52,7 +45,7 @@ impl RenderedDocumentation {
         rendered_docs.0.push(RenderedDocument {
             module_info: vec![],
             html_file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString::from(all_doc.render(declaration_engine)),
+            file_contents: HTMLString::from(all_doc.render()),
         });
 
         rendered_docs
@@ -84,7 +77,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let ItemHeader {
             module_info,
             friendly_name,
@@ -156,7 +149,7 @@ impl SidebarNav for ItemBody {
 }
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info: _,
@@ -172,7 +165,7 @@ impl Renderable for ItemBody {
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar.render(declaration_engine.clone());
+                : sidebar.render();
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -229,7 +222,7 @@ impl Renderable for ItemBody {
                                 }
                             }
                             @ if item_context.context.is_some() {
-                                : item_context.render(declaration_engine);
+                                : item_context.render();
                             }
                         }
                     }
@@ -248,7 +241,7 @@ pub(crate) enum ContextType {
     EnumVariants(Vec<TyEnumVariant>),
     /// traits and abi, this can be split
     /// at a later date if need be
-    RequiredMethods(Vec<sway_core::declaration_engine::DeclarationId>),
+    RequiredMethods(Vec<TyTraitFn>),
 }
 #[derive(Clone)]
 pub(crate) struct ItemContext {
@@ -257,40 +250,20 @@ pub(crate) struct ItemContext {
     // implementations on foreign types, method implementations, etc.
 }
 impl Renderable for ItemContext {
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         const FIELD_NAME: &str = "Fields";
         const VARIANT_NAME: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => {
-                context_section(declaration_engine, fields, FIELD_NAME)
-            }
-            ContextType::StorageFields(fields) => {
-                context_section(declaration_engine, fields, FIELD_NAME)
-            }
-            ContextType::EnumVariants(variants) => {
-                context_section(declaration_engine, variants, VARIANT_NAME)
-            }
-            ContextType::RequiredMethods(methods) => {
-                // This is the only section we need the decl engine for, at this time.
-                // I believe we can move this portion to descriptor and avoid unnecessary
-                // use of the decl engine in render.
-                let methods = methods
-                    .iter()
-                    .map(|decl_id| {
-                        declaration_engine
-                            .get_trait_fn(decl_id.clone(), &decl_id.span())
-                            .expect("could not get trait fn from declaration id")
-                    })
-                    .collect();
-                context_section(declaration_engine, methods, REQUIRED_METHODS)
-            }
+            ContextType::StructFields(fields) => context_section(fields, FIELD_NAME),
+            ContextType::StorageFields(fields) => context_section(fields, FIELD_NAME),
+            ContextType::EnumVariants(variants) => context_section(variants, VARIANT_NAME),
+            ContextType::RequiredMethods(methods) => context_section(methods, REQUIRED_METHODS),
         }
     }
 }
 /// Dynamically creates the context section of an item.
 fn context_section<'title, S: Renderable + 'static>(
-    declaration_engine: Arc<DeclarationEngine>,
     list: Vec<S>,
     title: &'title str,
 ) -> Box<dyn RenderBox + 'title> {
@@ -302,7 +275,7 @@ fn context_section<'title, S: Renderable + 'static>(
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
-            : item.render(declaration_engine.clone());
+            : item.render();
         }
     }
 }
@@ -318,7 +291,7 @@ fn html_title_str(title: &str) -> String {
     }
 }
 impl Renderable for TyStructField {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
@@ -338,7 +311,7 @@ impl Renderable for TyStructField {
     }
 }
 impl Renderable for TyStorageField {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
@@ -358,7 +331,7 @@ impl Renderable for TyStorageField {
     }
 }
 impl Renderable for TyEnumVariant {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
@@ -377,7 +350,7 @@ impl Renderable for TyEnumVariant {
     }
 }
 impl Renderable for TyTraitFn {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         // there is likely a better way we can do this while simultaneously storing the
         // string slices we need like "&mut "
         let mut fn_sig = format!("fn {}(", self.name.as_str());
@@ -507,7 +480,7 @@ struct AllDoc(Vec<AllDocItem>);
 
 impl Renderable for AllDoc {
     /// crate level, all items belonging to a crate
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let AllDoc(all_doc) = self;
         // TODO: find a better way to do this
         //
@@ -551,7 +524,7 @@ impl Renderable for AllDoc {
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
             }
             body(class="swaydoc mod") {
-                : sidebar.render(declaration_engine);
+                : sidebar.render();
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -631,7 +604,7 @@ struct Sidebar {
     href_path: String,
 }
 impl Renderable for Sidebar {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let logo_path = self
             .module_info
             .to_html_shorthand_path_str("assets/sway-logo.svg");
