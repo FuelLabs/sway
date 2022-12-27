@@ -26,7 +26,7 @@ impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
     pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
-        let mut all_doc: AllDoc = Default::default();
+        let mut all_docs: AllDocs = Default::default();
         for doc in raw {
             let html_file_name = doc.html_file_name();
 
@@ -35,17 +35,24 @@ impl RenderedDocumentation {
                 html_file_name: html_file_name.clone(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
-            all_doc.0.push(AllDocItem {
+            all_docs.0.push(AllDocItem {
+                item_name: doc.item_header.item_name.clone(),
                 ty_decl: doc.item_body.ty_decl.clone(),
                 module_info: doc.module_info,
                 html_file_name,
             });
         }
-        // All Doc
+        // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
             module_info: vec![],
             html_file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString::from(all_doc.render()),
+            file_contents: HTMLString::from(
+                AllDocIndex {
+                    project_name: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
+                    all_docs,
+                }
+                .render(),
+            ),
         });
 
         rendered_docs
@@ -251,13 +258,13 @@ pub(crate) struct ItemContext {
 }
 impl Renderable for ItemContext {
     fn render(self) -> Box<dyn RenderBox> {
-        const FIELD_NAME: &str = "Fields";
-        const VARIANT_NAME: &str = "Variants";
+        const FIELDS: &str = "Fields";
+        const VARIANTS: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => context_section(fields, FIELD_NAME),
-            ContextType::StorageFields(fields) => context_section(fields, FIELD_NAME),
-            ContextType::EnumVariants(variants) => context_section(variants, VARIANT_NAME),
+            ContextType::StructFields(fields) => context_section(fields, FIELDS),
+            ContextType::StorageFields(fields) => context_section(fields, FIELDS),
+            ContextType::EnumVariants(variants) => context_section(variants, VARIANTS),
             ContextType::RequiredMethods(methods) => context_section(methods, REQUIRED_METHODS),
         }
     }
@@ -445,6 +452,7 @@ impl Renderable for TyTraitFn {
 }
 #[derive(Clone)]
 struct AllDocItem {
+    item_name: BaseIdent,
     ty_decl: TyDeclaration,
     module_info: ModuleInfo,
     html_file_name: String,
@@ -452,18 +460,10 @@ struct AllDocItem {
 impl AllDocItem {
     fn to_item_link(&self) -> ItemLink {
         ItemLink {
-            name: self.module_info.to_path_literal_str(),
-            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
-        }
-    }
-}
-impl SidebarNav for AllDocItem {
-    fn sidebar(&self) -> Sidebar {
-        Sidebar {
-            module_info: self.module_info.clone(),
-            href_path: self
+            name: self
                 .module_info
-                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
+                .to_path_literal_str(self.item_name.as_str()),
+            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
         }
     }
 }
@@ -476,15 +476,36 @@ struct ItemLink {
     hyperlink: String,
 }
 #[derive(Default, Clone)]
-struct AllDoc(Vec<AllDocItem>);
-
-impl Renderable for AllDoc {
+struct AllDocs(Vec<AllDocItem>);
+impl AllDocs {
+    /// A wrapper for `ModuleInfo::project_name()`.
+    fn project_name(&self) -> &str {
+        self.0.first().unwrap().module_info.project_name()
+    }
+}
+#[derive(Clone)]
+struct AllDocIndex {
+    /// A [ModuleInfo] with only the project name.
+    project_name: ModuleInfo,
+    /// All doc items.
+    all_docs: AllDocs,
+}
+impl SidebarNav for AllDocIndex {
+    fn sidebar(&self) -> Sidebar {
+        Sidebar {
+            module_info: self.project_name.clone(),
+            href_path: self
+                .project_name
+                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
+        }
+    }
+}
+impl Renderable for AllDocIndex {
     /// crate level, all items belonging to a crate
     fn render(self) -> Box<dyn RenderBox> {
-        let AllDoc(all_doc) = self;
         // TODO: find a better way to do this
         //
-        // we need to have a finalized list for the all doc
+        // we need to have a finalized list of links for the all doc
         let mut struct_items: Vec<ItemLink> = Vec::new();
         let mut enum_items: Vec<ItemLink> = Vec::new();
         let mut trait_items: Vec<ItemLink> = Vec::new();
@@ -493,7 +514,7 @@ impl Renderable for AllDoc {
         let mut fn_items: Vec<ItemLink> = Vec::new();
         let mut const_items: Vec<ItemLink> = Vec::new();
 
-        for doc_item in &all_doc {
+        for doc_item in &self.all_docs.0 {
             use TyDeclaration::*;
             match doc_item.ty_decl {
                 StructDeclaration(_) => struct_items.push(doc_item.to_item_link()),
@@ -506,7 +527,7 @@ impl Renderable for AllDoc {
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
-        let sidebar = all_doc.first().unwrap().sidebar();
+        let sidebar = self.sidebar();
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -611,7 +632,7 @@ impl Renderable for Sidebar {
 
         box_html! {
             nav(class="sidebar") {
-                a(class="sidebar-logo", href=self.href_path) {
+                a(class="sidebar-logo", href=&self.href_path) {
                     div(class="logo-container") {
                         img(class="sway-logo", src=logo_path, alt="logo");
                     }
@@ -623,7 +644,8 @@ impl Renderable for Sidebar {
                     section {
                         // TODO: add connections between item contents and
                         // sidebar nav. This will be dynamic e.g. "Variants"
-                        // for Enum, and "Fields" for Structs
+                        // for Enum, and "Fields" for Structs, and also will be different
+                        // based on the type of section e.g. Index, All or Item.
                     }
                 }
             }
