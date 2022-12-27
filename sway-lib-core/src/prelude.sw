@@ -6,3 +6,4 @@ library prelude;
 use ::primitives::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
+use ::never::*;
