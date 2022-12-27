@@ -41,8 +41,22 @@ impl fmt::Display for Effect {
             StorageRead => write!(f, "Storage read"),
             BalanceTreeRead => write!(f, "Balance tree read"),
             BalanceTreeReadWrite => write!(f, "Balance tree update"),
-            OutputMessage => write!(f, "Output messages modification"),
+            OutputMessage => write!(f, "Output message sent"),
         }
+    }
+}
+
+impl Effect {
+    fn to_suggestion(&self) -> String {
+        use Effect::*;
+        String::from(match self {
+            Interaction => "making all interactions",
+            StorageWrite => "making all storage writes",
+            StorageRead => "making all storage reads",
+            BalanceTreeRead => "making all balance tree reads",
+            BalanceTreeReadWrite => "making all balance tree updates",
+            OutputMessage => "sending all output messages",
+        })
     }
 }
 
@@ -460,6 +474,7 @@ fn warn_after_interaction(
             span: Span::join(interaction_span.clone(), effect_span.clone()),
             warning_content: Warning::EffectAfterInteraction {
                 effect: eff.to_string(),
+                effect_in_suggestion: Effect::to_suggestion(eff),
                 block_name: block_name.clone(),
             },
         });

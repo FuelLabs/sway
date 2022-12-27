@@ -93,6 +93,7 @@ pub enum Warning {
     },
     EffectAfterInteraction {
         effect: String,
+        effect_in_suggestion: String,
         block_name: Ident,
     },
 }
@@ -220,10 +221,9 @@ impl fmt::Display for Warning {
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
-            EffectAfterInteraction {effect, block_name} =>
+            EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
                 write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
-                          Consider making all {}s before calling another contract",
-                       effect.to_lowercase()),
+                          Consider {effect_in_suggestion} before calling another contract"),
         }
     }
 }
