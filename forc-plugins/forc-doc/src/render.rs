@@ -458,7 +458,7 @@ struct AllDocItem {
     html_file_name: String,
 }
 impl AllDocItem {
-    fn to_item_link(&self) -> ItemLink {
+    fn link(&self) -> ItemLink {
         ItemLink {
             name: self
                 .module_info
@@ -517,13 +517,13 @@ impl Renderable for AllDocIndex {
         for doc_item in &self.all_docs.0 {
             use TyDeclaration::*;
             match doc_item.ty_decl {
-                StructDeclaration(_) => struct_items.push(doc_item.to_item_link()),
-                EnumDeclaration(_) => enum_items.push(doc_item.to_item_link()),
-                TraitDeclaration(_) => trait_items.push(doc_item.to_item_link()),
-                AbiDeclaration(_) => abi_items.push(doc_item.to_item_link()),
-                StorageDeclaration(_) => storage_items.push(doc_item.to_item_link()),
-                FunctionDeclaration(_) => fn_items.push(doc_item.to_item_link()),
-                ConstantDeclaration(_) => const_items.push(doc_item.to_item_link()),
+                StructDeclaration(_) => struct_items.push(doc_item.link()),
+                EnumDeclaration(_) => enum_items.push(doc_item.link()),
+                TraitDeclaration(_) => trait_items.push(doc_item.link()),
+                AbiDeclaration(_) => abi_items.push(doc_item.link()),
+                StorageDeclaration(_) => storage_items.push(doc_item.link()),
+                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
+                ConstantDeclaration(_) => const_items.push(doc_item.link()),
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
