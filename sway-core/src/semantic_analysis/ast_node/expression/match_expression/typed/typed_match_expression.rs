@@ -176,7 +176,7 @@ impl ty::TyMatchExpression {
                 {
                     let condition = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert_type(TypeInfo::Boolean),
+                        return_type: type_engine.insert_type(declaration_engine, TypeInfo::Boolean),
                         span: self.span.clone(),
                     };
                     let then_exp = ty::TyExpression {
