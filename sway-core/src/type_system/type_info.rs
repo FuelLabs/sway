@@ -1621,6 +1621,15 @@ impl TypeInfo {
         }
     }
 
+    /// Checks if a given [TypeInfo] has a valid constructor.
+    pub(crate) fn has_valid_constructor(&self) -> bool {
+        match self {
+            TypeInfo::Unknown => false,
+            TypeInfo::Enum { variant_types, .. } => !variant_types.is_empty(),
+            _ => true,
+        }
+    }
+
     /// Given a `TypeInfo` `self`, expect that `self` is a `TypeInfo::Tuple`,
     /// and return its contents.
     ///
