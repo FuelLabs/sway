@@ -287,13 +287,19 @@ interaction before a storage modification:</p>
 29 | |
 30 | |         // Storage update _after_ external call
 31 | |         storage.balances.insert(sender, 0);
-   | |__________________________________________- Storage modification after external contract interaction in function or method &quot;withdraw&quot;. Consider making all storage writes before calling another contract
+   | |__________________________________________- Storage write after external contract interaction in function or method &quot;withdraw&quot;. Consider making all storage writes before calling another contract
 32 |       }
 33 |   }
    |
 ____
 </code></pre>
 <p>In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.</p>
+<p>In addition to storage reads and writes after an interaction, the CEI analyzer reports analogous warnings about:</p>
+<ul>
+<li>balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the <code>tr</code> and <code>tro</code> asm instructions or library functions using them under the hood;</li>
+<li>balance trees reads with <code>bal</code> instruction;</li>
+<li>changes to the output messages that can be produced by the <code>__smo</code> intrinsic function or the <code>smo</code> asm instruction.</li>
+</ul>
 <h2 id="differences-from-the-evm"><a class="header" href="#differences-from-the-evm">Differences from the EVM</a></h2>
 <p>While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, forwarding gas and data), it differs in <em>two</em> key ways:</p>
 <ol>
