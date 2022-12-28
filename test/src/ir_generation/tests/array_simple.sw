@@ -7,11 +7,11 @@ fn main() -> bool {
 
 // ::check-ir::
 
-// check: local ptr [bool; 3] a
+// check: local [bool; 3] a
 
 // check: store
 
-// check: $(ptr_val=$VAL) = get_ptr ptr [bool; 3] a, ptr [bool; 3], 0
+// check: $(var_val=$VAL) = get_local [bool; 3] a
 // check: $(idx_val=$VAL) = const u64 1
-// check: $(ret_val=$VAL) = extract_element $ptr_val, [bool; 3], $idx_val
+// check: $(ret_val=$VAL) = extract_element $var_val, [bool; 3], $idx_val
 // check: ret bool $ret_val

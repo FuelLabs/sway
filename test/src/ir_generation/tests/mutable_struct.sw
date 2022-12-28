@@ -14,12 +14,12 @@ struct Record {
     b: u64,
 }
 
-// check: local mut ptr { u64, u64 } record
+// check: local { u64, u64 } record
 
-// The first get_ptr when initialising record:
-// check: get_ptr mut ptr { u64, u64 } record, ptr { u64, u64 }, 0
+// The first get_local when initialising record:
+// check: get_local { u64, u64 } record
 
 // The second one when mutating.
-// check: $(rec_ptr=$VAL) = get_ptr mut ptr { u64, u64 } record, ptr { u64, u64 }, 0
+// check: $(rec_var=$VAL) = get_local { u64, u64 } record
 // check: $(fifty=$VAL) = const u64 50
-// check: insert_value $rec_ptr, { u64, u64 }, $fifty, 0
+// check: insert_value $rec_var, { u64, u64 }, $fifty, 0

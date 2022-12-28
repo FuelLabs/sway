@@ -49,6 +49,7 @@ pub enum IrError {
     VerifyMismatchedReturnTypes(String),
     VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
+    VerifyPtrCastToNonPointer,
     VerifyReturnRefTypeValue(String, String),
     VerifyStateAccessNumOfSlots,
     VerifyStateKeyBadType,
@@ -280,6 +281,9 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: Pointer cast from non pointer value."
                 )
+            }
+            IrError::VerifyPtrCastToNonPointer => {
+                write!(f, "Verification failed: Pointer cast to non pointer type.")
             }
             IrError::VerifyReturnRefTypeValue(fn_str, ty_str) => {
                 write!(

@@ -313,7 +313,7 @@ pub(super) fn compile_function(
             .parameters
             .iter()
             .map(|param| convert_fn_param(type_engine, context, param))
-            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
+            .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
 
         compile_fn_with_args(
             engines,
@@ -388,17 +388,11 @@ fn convert_fn_param(
     type_engine: &TypeEngine,
     context: &mut Context,
     param: &ty::TyFunctionParameter,
-) -> Result<(String, Type, Span), CompileError> {
+) -> Result<(String, Type, bool, Span), CompileError> {
     convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span).map(|ty| {
-        (
-            param.name.as_str().into(),
-            if param.is_reference && type_engine.look_up_type_id(param.type_id).is_copy_type() {
-                Type::Pointer(Pointer::new(context, ty, param.is_mutable, None))
-            } else {
-                ty
-            },
-            param.name.span(),
-        )
+        let by_ref =
+            param.is_reference && type_engine.look_up_type_id(param.type_id).is_copy_type();
+        (param.name.as_str().into(), ty, by_ref, param.name.span())
     })
 }
 
@@ -410,7 +404,7 @@ fn compile_fn_with_args(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     is_entry: bool,
-    args: Vec<(String, Type, Span)>,
+    args: Vec<(String, Type, bool, Span)>,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -432,17 +426,18 @@ fn compile_fn_with_args(
 
     let mut args = args
         .into_iter()
-        .map(|(name, ty, span)| (name, ty, md_mgr.span_to_md(context, &span)))
+        .map(|(name, ty, by_ref, span)| (name, ty, by_ref, md_mgr.span_to_md(context, &span)))
         .collect::<Vec<_>>();
 
     let ret_type = convert_resolved_typeid(type_engine, context, return_type, return_type_span)?;
 
-    let returns_by_ref = !is_entry && !ret_type.is_copy_type();
+    let returns_by_ref = !is_entry && !type_engine.look_up_type_id(*return_type).is_copy_type();
     if returns_by_ref {
         // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
         args.push((
             "__ret_value".to_owned(),
-            Type::Pointer(Pointer::new(context, ret_type, true, None)),
+            ret_type,
+            true,
             md_mgr.span_to_md(context, return_type_span),
         ));
     }
@@ -488,9 +483,7 @@ fn compile_fn_with_args(
     // together and is invalid.  This can happen with diverging control flow or with implicit
     // returns.  We can double check here and make sure the return value type is correct.
     ret_val = match ret_val.get_type(context) {
-        Some(ret_val_type) if ret_type.eq(context, &ret_val_type.strip_ptr_type(context)) => {
-            ret_val
-        }
+        Some(ret_val_type) if ret_type.eq(context, &ret_val_type) => ret_val,
 
         // Mismatched or unavailable type.  Set ret_val to a correctly typed Undef.
         _otherwise => Value::new_constant(context, Constant::get_undef(ret_type)),
@@ -593,9 +586,9 @@ fn compile_abi_method(
         .iter()
         .map(|param| {
             convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span)
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span()))
+                .map(|ty| (param.name.as_str().into(), ty, false, param.name.span()))
         })
-        .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
+        .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
 
     compile_fn_with_args(
         engines,

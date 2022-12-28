@@ -16,7 +16,7 @@ use crate::{
     context::Context,
     function::Function,
     irtype::{Aggregate, Type},
-    pointer::Pointer,
+    local_var::LocalVar,
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
 };
@@ -45,6 +45,15 @@ pub enum Instruction {
     Branch(BranchToWithArgs),
     /// A function call with a list of arguments.
     Call(Function, Vec<Value>),
+    /// Temporary! Cast between 'pointers' to reference types.  At this intermediate stage, where
+    /// we have removed the old `get_ptr` instruction, we have no way to do the casting and
+    /// offsetting it did, which was used almost exclusively by storage accesses.  When we
+    /// reintroduce pointers we can make them untyped/opaque which removes the need for casting,
+    /// and we can introduce GEP which will allow indexing into aggregates.
+    ///
+    /// Until then we can replicate the `get_ptr` functionality with `CastPtr`.
+    /// The `Value` here should always be a `get_local` and the types must be non-copy.
+    CastPtr(Value, Type, u64),
     /// Comparison between two values using various comparators and returning a boolean.
     Cmp(Predicate, Value, Value),
     /// A conditional jump with the boolean condition value and true or false destinations.
@@ -76,12 +85,8 @@ pub enum Instruction {
     },
     /// Umbrella instruction variant for FuelVM-specific instructions
     FuelVm(FuelVmInstruction),
-    /// Return a pointer as a value.
-    GetPointer {
-        base_ptr: Pointer,
-        ptr_ty: Pointer,
-        offset: u64,
-    },
+    /// Return a local variable.
+    GetLocal(LocalVar),
     /// Writing a specific value to an array.
     InsertElement {
         array: Value,
@@ -226,6 +231,7 @@ impl Instruction {
             Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
+            Instruction::CastPtr(_val, ty, _offs) => Some(*ty),
             Instruction::Cmp(..) => Some(Type::Bool),
             Instruction::ContractCall { return_type, .. } => Some(*return_type),
             Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
@@ -238,15 +244,13 @@ impl Instruction {
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
-                ValueDatum::Argument(arg) => Some(arg.ty.strip_ptr_type(context)),
-                ValueDatum::Constant(cons) => Some(cons.ty.strip_ptr_type(context)),
-                ValueDatum::Instruction(ins) => {
-                    ins.get_type(context).map(|f| f.strip_ptr_type(context))
-                }
+                ValueDatum::Argument(arg) => Some(arg.ty),
+                ValueDatum::Constant(cons) => Some(cons.ty),
+                ValueDatum::Instruction(ins) => ins.get_type(context),
             },
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetPointer { ptr_ty, .. } => Some(Type::Pointer(*ptr_ty)),
+            Instruction::GetLocal(local_var) => Some(*local_var.get_type(context)),
 
             // Used to re-interpret an integer as a pointer to some type so return the pointer type.
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -277,7 +281,7 @@ impl Instruction {
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
             },
-            Instruction::GetPointer { ptr_ty, .. } => match ptr_ty.get_type(context) {
+            Instruction::GetLocal(local_var) => match local_var.get_type(context) {
                 Type::Array(aggregate) => Some(*aggregate),
                 Type::Struct(aggregate) => Some(*aggregate),
                 _otherwise => None,
@@ -311,6 +315,7 @@ impl Instruction {
             Instruction::BinaryOp { op: _, arg1, arg2 } => vec![*arg1, *arg2],
             Instruction::Branch(BranchToWithArgs { args, .. }) => args.clone(),
             Instruction::Call(_, vs) => vs.clone(),
+            Instruction::CastPtr(val, _ty, _offs) => vec![*val],
             Instruction::Cmp(_, lhs, rhs) => vec![*lhs, *rhs],
             Instruction::ConditionalBranch {
                 cond_value,
@@ -379,13 +384,8 @@ impl Instruction {
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
             },
-            Instruction::GetPointer {
-                base_ptr: _,
-                ptr_ty: _,
-                offset: _,
-            } =>
-            // TODO: Not sure.
-            {
+            Instruction::GetLocal(_local_var) => {
+                // TODO: Not sure.
                 vec![]
             }
             Instruction::InsertElement {
@@ -437,6 +437,7 @@ impl Instruction {
                 block.args.iter_mut().for_each(replace);
             }
             Instruction::Call(_, args) => args.iter_mut().for_each(replace),
+            Instruction::CastPtr(val, _ty, _offs) => replace(val),
             Instruction::Cmp(_, lhs_val, rhs_val) => {
                 replace(lhs_val);
                 replace(rhs_val);
@@ -462,7 +463,7 @@ impl Instruction {
                 replace(asset_id);
                 replace(gas);
             }
-            Instruction::GetPointer { .. } => (),
+            Instruction::GetLocal(_) => (),
             Instruction::InsertElement {
                 array,
                 value,
@@ -569,6 +570,7 @@ impl Instruction {
                 | Instruction::AddrOf(_)
                 | Instruction::BitCast(..)
                 | Instruction::BinaryOp { .. }
+                    | Instruction::CastPtr(..)
                 | Instruction::Cmp(..)
                 | Instruction::ExtractElement {  .. }
                 | Instruction::ExtractValue { .. }
@@ -578,7 +580,7 @@ impl Instruction {
                 | Instruction::FuelVm(FuelVmInstruction::Revert(..))
                 | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_))
                 | Instruction::Load(_)
-                | Instruction::GetPointer { .. }
+                | Instruction::GetLocal(_)
                 | Instruction::IntToPtr(..)
                 | Instruction::Branch(_)
                 | Instruction::ConditionalBranch { .. }
@@ -707,10 +709,6 @@ impl<'a> InstructionInserter<'a> {
         make_instruction!(self, Instruction::BinaryOp { op, arg1, arg2 })
     }
 
-    pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
-        make_instruction!(self, Instruction::IntToPtr(value, ty))
-    }
-
     pub fn branch(self, to_block: Block, dest_params: Vec<Value>) -> Value {
         let br_val = Value::new_instruction(
             self.context,
@@ -726,6 +724,10 @@ impl<'a> InstructionInserter<'a> {
 
     pub fn call(self, function: Function, args: &[Value]) -> Value {
         make_instruction!(self, Instruction::Call(function, args.to_vec()))
+    }
+
+    pub fn cast_ptr(self, val: Value, ty: Type, offs: u64) -> Value {
+        make_instruction!(self, Instruction::CastPtr(val, ty, offs))
     }
 
     pub fn cmp(self, pred: Predicate, lhs_value: Value, rhs_value: Value) -> Value {
@@ -815,16 +817,8 @@ impl<'a> InstructionInserter<'a> {
         )
     }
 
-    pub fn get_ptr(self, base_ptr: Pointer, ptr_ty: Type, offset: u64) -> Value {
-        let ptr = Pointer::new(self.context, ptr_ty, false, None);
-        make_instruction!(
-            self,
-            Instruction::GetPointer {
-                base_ptr,
-                ptr_ty: ptr,
-                offset,
-            }
-        )
+    pub fn get_local(self, local_var: LocalVar) -> Value {
+        make_instruction!(self, Instruction::GetLocal(local_var))
     }
 
     pub fn insert_element(
@@ -861,6 +855,10 @@ impl<'a> InstructionInserter<'a> {
                 indices,
             }
         )
+    }
+
+    pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
+        make_instruction!(self, Instruction::IntToPtr(value, ty))
     }
 
     pub fn load(self, src_val: Value) -> Value {
