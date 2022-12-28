@@ -270,6 +270,9 @@ fn use_tree_to_use_statements(
             use_tree_to_use_statements(*suffix, is_absolute, path, ret);
             path.pop().unwrap();
         }
+        UseTree::Error { .. } => {
+            // parsing error, nothing to push to the use statements collection
+        }
     }
 }
 
@@ -1184,8 +1187,14 @@ fn expr_func_app_to_expression_kind(
         root_opt,
         prefix,
         mut suffix,
+        ..
     } = match *func {
         Expr::Path(path_expr) => path_expr,
+        Expr::Error(_) => {
+            // FIXME we can do better here and return function application expression here
+            // if there are no parsing errors in the arguments
+            return Ok(ExpressionKind::Error(Box::new([span])));
+        }
         _ => {
             let error = ConvertParseTreeError::FunctionArbitraryExpression { span: func.span() };
             return Err(handler.emit_err(error.into()));
@@ -1883,7 +1892,7 @@ fn fn_arg_to_function_parameter(
             let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
         }
-        Pattern::Constructor { .. } => {
+        Pattern::Constructor { .. } | Pattern::Error(..) => {
             let error =
                 ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span: pat_span };
             return Err(handler.emit_err(error.into()));
@@ -2325,6 +2334,7 @@ fn path_expr_to_call_path_binding(
         root_opt,
         prefix,
         mut suffix,
+        ..
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
     let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
@@ -2367,6 +2377,7 @@ fn path_expr_to_call_path(
         root_opt,
         prefix,
         mut suffix,
+        ..
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
     let call_path = match suffix.pop() {
@@ -2562,7 +2573,7 @@ fn statement_let_to_ast_nodes(
                 let error = ConvertParseTreeError::ConstantPatternsNotSupportedHere { span };
                 return Err(handler.emit_err(error.into()));
             }
-            Pattern::Constructor { .. } => {
+            Pattern::Constructor { .. } | Pattern::Error(..) => {
                 let error = ConvertParseTreeError::ConstructorPatternsNotSupportedHere { span };
                 return Err(handler.emit_err(error.into()));
             }
@@ -2885,6 +2896,7 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
             },
             span,
         },
+        Pattern::Error(spans) => Scrutinee::Error { spans },
     };
     Ok(scrutinee)
 }
@@ -2949,6 +2961,7 @@ fn path_expr_to_ident(handler: &Handler, path_expr: PathExpr) -> Result<Ident, E
         root_opt,
         prefix,
         suffix,
+        ..
     } = path_expr;
     if root_opt.is_some() || !suffix.is_empty() {
         let error = ConvertParseTreeError::PathsNotSupportedHere { span };
