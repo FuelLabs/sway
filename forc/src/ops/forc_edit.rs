@@ -25,7 +25,7 @@ pub fn add(
         // if the manifest is a package...
         pkg_manifest // store this package
     } else {
-        bail!("forc-edit does not support workspaces.") // otherwise bail
+        bail!("forc-edit does not support workspaces.") 
     };
 
     let dependency_path = PathBuf::from(&dependency); // create a path buffer from the dependency string
@@ -35,10 +35,10 @@ pub fn add(
             // ...store this variable
             dep_pkg
         } else {
-            bail!("forc-edit does not support workspaces.") // otherwise bail
+            bail!("forc-edit does not support workspaces.") 
         }
     } else {
-        bail!("dependency path does not contain a forc.toml") // otherwise bail
+        bail!("dependency path does not contain a forc.toml") 
     };
     let key = dep_pkg.project.name.clone(); // the key is the name of the project
     let value = Dependency::Detailed(DependencyDetails {
@@ -55,7 +55,7 @@ pub fn add(
     // 2. How will we find the dependency block in the forc.toml?
     //
     // Todo: can I insert a new key value pair directly into this BTreeMap?
-    if let Some(mut deps) = pkg_manifest.dependencies.clone() {
+    if let Some(deps) = pkg_manifest.dependencies.as_mut() {
         // 3. Write new dependency to that block (name and path)
         deps.insert(key, value);
     }
