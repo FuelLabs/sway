@@ -13,3 +13,9 @@ impl MyEq for u64 {
         self == other
     }
 }
+
+impl MyEq for bool {
+    fn my_eq(self, other: Self) -> bool {
+        self == other
+    }
+}

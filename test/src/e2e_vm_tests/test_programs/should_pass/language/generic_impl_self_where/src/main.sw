@@ -49,6 +49,22 @@ impl<T,K> Data2<T,K> {
   }
 }
 
+struct Data3 {
+  x: u64
+}
+
+impl Eq for Data3 {
+  fn eq(self, other: Self) -> bool {
+    self.x == other.x
+  }
+}
+
+impl MyEq for Data3 {
+  fn my_eq(self, other: Self) -> bool {
+    self.x == other.x
+  }
+}
+
 fn main() {
   let s = Data { x: 42 };
   assert(s.contains(42));
@@ -78,4 +94,18 @@ fn main() {
   assert(d.contains6(Data2 { x: 42, y: 42 }));
   assert(!d.contains6(Data2 { x: 42, y: 41 }));
   assert(!d.contains6(Data2 { x: 41, y: 42 }));
+
+  let d2 = Data2 { x: 42, y: true };
+  assert(d2.contains5(Data2 { x: 42, y: true }));
+  assert(!d2.contains5(Data2 { x: 42, y: false }));
+  assert(!d2.contains5(Data2 { x: 41, y: true }));
+
+  let d3 = Data { x: Data3 { x: 42 }};
+  assert(d3.contains(Data3 { x: 42 }));
+  assert(!d3.contains(Data3 { x: 41 }));
+
+  let d4 = Data2 { x: 42, y: Data3 { x: 42 } };
+  assert(d4.contains5(Data2 { x: 42, y: Data3 { x: 42 } }));
+  assert(!d4.contains5(Data2 { x: 42, y: Data3 { x: 41 } }));
+  assert(!d4.contains5(Data2 { x: 41, y: Data3 { x: 42 } }));
 }
