@@ -163,14 +163,11 @@ fn item_to_ast_nodes(
         ItemKind::Fn(item_fn) => {
             let function_declaration =
                 item_fn_to_function_declaration(handler, engines, item_fn, attributes)?;
-            for param in &function_declaration.parameters {
-                if matches!(param.type_info, TypeInfo::SelfType) {
-                    let error = ConvertParseTreeError::SelfParameterNotAllowedForFreeFn {
-                        span: param.type_span.clone(),
-                    };
-                    return Err(handler.emit_err(error.into()));
-                }
-            }
+            error_if_self_param_is_not_allowed(
+                handler,
+                &function_declaration.parameters,
+                "a free function",
+            )?;
             decl(Declaration::FunctionDeclaration(function_declaration))
         }
         ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
@@ -625,7 +622,14 @@ fn item_abi_to_abi_declaration(
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
                     let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
-                    fn_signature_to_trait_fn(handler, engines, fn_signature.value, attributes)
+                    let trait_fn =
+                        fn_signature_to_trait_fn(handler, engines, fn_signature.value, attributes)?;
+                    error_if_self_param_is_not_allowed(
+                        handler,
+                        &trait_fn.parameters,
+                        "an ABI method signature",
+                    )?;
+                    Ok(trait_fn)
                 })
                 .collect::<Result<_, _>>()?
         },
@@ -636,7 +640,18 @@ fn item_abi_to_abi_declaration(
                 .into_iter()
                 .map(|item_fn| {
                     let attributes = item_attrs_to_map(handler, &item_fn.attribute_list)?;
-                    item_fn_to_function_declaration(handler, engines, item_fn.value, attributes)
+                    let function_declaration = item_fn_to_function_declaration(
+                        handler,
+                        engines,
+                        item_fn.value,
+                        attributes,
+                    )?;
+                    error_if_self_param_is_not_allowed(
+                        handler,
+                        &function_declaration.parameters,
+                        "a method provided by ABI",
+                    )?;
+                    Ok(function_declaration)
                 })
                 .collect::<Result<_, _>>()?,
         },
@@ -3305,4 +3320,21 @@ fn item_attrs_to_map(
         }
     }
     Ok(Arc::new(attrs_map))
+}
+
+fn error_if_self_param_is_not_allowed(
+    handler: &Handler,
+    parameters: &[FunctionParameter],
+    fn_kind: &str,
+) -> Result<(), ErrorEmitted> {
+    for param in parameters {
+        if matches!(param.type_info, TypeInfo::SelfType) {
+            let error = ConvertParseTreeError::SelfParameterNotAllowedForFn {
+                fn_kind: fn_kind.to_owned(),
+                span: param.type_span.clone(),
+            };
+            return Err(handler.emit_err(error.into()));
+        }
+    }
+    Ok(())
 }

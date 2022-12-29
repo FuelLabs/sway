@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()self parameter is not allowed for a method provided by ABI
