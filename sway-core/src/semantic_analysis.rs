@@ -1,6 +1,7 @@
 //! Type checking for Sway.
 pub mod ast_node;
 pub(crate) mod cei_pattern_analysis;
+pub(crate) mod coins_analysis;
 mod module;
 pub mod namespace;
 mod node_dependencies;

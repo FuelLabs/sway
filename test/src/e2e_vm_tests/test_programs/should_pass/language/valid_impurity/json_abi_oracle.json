@@ -1,6 +1,15 @@
 {
   "functions": [
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "impure_func",
       "output": {

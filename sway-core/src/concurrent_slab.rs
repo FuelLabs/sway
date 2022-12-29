@@ -2,13 +2,26 @@ use std::{fmt, sync::RwLock};
 
 use crate::{
     declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
+    engine_threading::*,
     type_system::TypeId,
-    PartialEqWithTypeEngine, TypeEngine, TypeInfo,
+    TypeInfo,
 };
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Vec<T>>,
+}
+
+impl<T> Clone for ConcurrentSlab<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        let inner = self.inner.read().unwrap();
+        Self {
+            inner: RwLock::new(inner.clone()),
+        }
+    }
 }
 
 impl<T> Default for ConcurrentSlab<T>
@@ -64,11 +77,6 @@ where
         inner[index].clone()
     }
 
-    pub fn clear(&self) {
-        let mut inner = self.inner.write().unwrap();
-        *inner = Vec::new();
-    }
-
     pub fn exists<F: Fn(&T) -> bool>(&self, f: F) -> bool {
         let inner = self.inner.read().unwrap();
         inner.iter().any(f)
@@ -81,7 +89,7 @@ impl ConcurrentSlab<TypeInfo> {
         index: TypeId,
         prev_value: &TypeInfo,
         new_value: TypeInfo,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> Option<TypeInfo> {
         let index = index.index();
         // The comparison below ends up calling functions in the slab, which
@@ -92,7 +100,7 @@ impl ConcurrentSlab<TypeInfo> {
         {
             let inner = self.inner.read().unwrap();
             let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, type_engine) {
+            if !actual_prev_value.eq(prev_value, engines) {
                 return Some(actual_prev_value.clone());
             }
         }

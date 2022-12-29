@@ -3,6 +3,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
     transform,
@@ -31,31 +32,20 @@ pub struct TyFunctionDeclaration {
     pub purity: Purity,
 }
 
-impl From<&TyFunctionDeclaration> for TyAstNode {
-    fn from(o: &TyFunctionDeclaration) -> Self {
-        let span = o.span.clone();
-        TyAstNode {
-            content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
-                de_insert_function(o.clone()),
-            )),
-            span,
-        }
-    }
-}
-
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyFunctionDeclaration {}
-impl PartialEqWithTypeEngine for TyFunctionDeclaration {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+impl EqWithEngines for TyFunctionDeclaration {}
+impl PartialEqWithEngines for TyFunctionDeclaration {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
-            && self.body.eq(&other.body, type_engine)
-            && self.parameters.eq(&other.parameters, type_engine)
+            && self.body.eq(&other.body, engines)
+            && self.parameters.eq(&other.parameters, engines)
             && type_engine
                 .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), type_engine)
-            && self.type_parameters.eq(&other.type_parameters, type_engine)
+                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+            && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
@@ -63,34 +53,34 @@ impl PartialEqWithTypeEngine for TyFunctionDeclaration {
 }
 
 impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
-        self.return_type.copy_types(type_mapping, type_engine);
-        self.body.copy_types(type_mapping, type_engine);
+            .for_each(|x| x.copy_types(type_mapping, engines));
+        self.return_type.copy_types(type_mapping, engines);
+        self.body.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
-        self.return_type.replace_self_type(type_engine, self_type);
-        self.body.replace_self_type(type_engine, self_type);
+            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.return_type.replace_self_type(engines, self_type);
+        self.body.replace_self_type(engines, self_type);
     }
 }
 
 impl ReplaceDecls for TyFunctionDeclaration {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, type_engine: &TypeEngine) {
-        self.body.replace_decls(decl_mapping, type_engine);
+    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        self.body.replace_decls(decl_mapping, engines);
     }
 }
 
@@ -113,15 +103,16 @@ impl MonomorphizeHelper for TyFunctionDeclaration {
 impl UnconstrainedTypeParameters for TyFunctionDeclaration {
     fn type_parameter_is_unconstrained(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_parameter: &TypeParameter,
     ) -> bool {
+        let type_engine = engines.te();
         let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
         if self
             .type_parameters
             .iter()
             .map(|type_param| type_engine.look_up_type_id(type_param.type_id))
-            .any(|x| x.eq(&type_parameter_info, type_engine))
+            .any(|x| x.eq(&type_parameter_info, engines))
         {
             return false;
         }
@@ -129,18 +120,60 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|param| type_engine.look_up_type_id(param.type_id))
-            .any(|x| x.eq(&type_parameter_info, type_engine))
+            .any(|x| x.eq(&type_parameter_info, engines))
         {
             return true;
         }
         if type_engine
             .look_up_type_id(self.return_type)
-            .eq(&type_parameter_info, type_engine)
+            .eq(&type_parameter_info, engines)
         {
             return true;
         }
 
         false
+    }
+}
+
+impl CollectTypesMetadata for TyFunctionDeclaration {
+    fn collect_types_metadata(
+        &self,
+        ctx: &mut CollectTypesMetadataContext,
+    ) -> CompileResult<Vec<TypeMetadata>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let mut body = vec![];
+        for content in self.body.contents.iter() {
+            body.append(&mut check!(
+                content.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        body.append(&mut check!(
+            self.return_type.collect_types_metadata(ctx),
+            return err(warnings, errors),
+            warnings,
+            errors
+        ));
+        for type_param in self.type_parameters.iter() {
+            body.append(&mut check!(
+                type_param.type_id.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        for param in self.parameters.iter() {
+            body.append(&mut check!(
+                param.type_id.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            ));
+        }
+        ok(body, warnings, errors)
     }
 }
 
@@ -153,8 +186,10 @@ impl TyFunctionDeclaration {
     /// compile, preventing cascading namespace errors.
     pub(crate) fn error(
         decl: parsed::FunctionDeclaration,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> TyFunctionDeclaration {
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -164,7 +199,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(return_type);
+        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,
@@ -328,6 +363,7 @@ impl TyFunctionDeclaration {
                     self.return_type,
                 ),
             },
+            attributes: transform::generate_json_abi_attributes_map(&self.attributes),
         }
     }
 
@@ -379,26 +415,27 @@ pub struct TyFunctionParameter {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyFunctionParameter {}
-impl PartialEqWithTypeEngine for TyFunctionParameter {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+impl EqWithEngines for TyFunctionParameter {}
+impl PartialEqWithEngines for TyFunctionParameter {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
                 .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
+                .eq(&type_engine.look_up_type_id(other.type_id), engines)
             && self.is_mutable == other.is_mutable
     }
 }
 
 impl CopyTypes for TyFunctionParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
-        self.type_id.copy_types(type_mapping, type_engine);
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+        self.type_id.copy_types(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
-        self.type_id.replace_self_type(type_engine, self_type);
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_id.replace_self_type(engines, self_type);
     }
 }
 

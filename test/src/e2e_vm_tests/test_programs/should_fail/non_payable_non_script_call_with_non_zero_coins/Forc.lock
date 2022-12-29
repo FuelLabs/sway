@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-60E36F2CB08CE2F8'
+
+[[package]]
+name = 'non_payable_non_script_call_with_non_zero_coins'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-60E36F2CB08CE2F8'
+dependencies = ['core']

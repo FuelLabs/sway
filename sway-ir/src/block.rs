@@ -16,7 +16,7 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::{Instruction, InstructionInserter, InstructionIterator},
+    instruction::{FuelVmInstruction, Instruction, InstructionInserter, InstructionIterator},
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
     BranchToWithArgs, Type,
@@ -312,7 +312,10 @@ impl Block {
     /// Return whether this block is already terminated specifically by a Ret instruction.
     pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
         self.get_terminator(context).map_or(false, |i| {
-            matches!(i, Instruction::Ret(..) | Instruction::Revert(..))
+            matches!(
+                i,
+                Instruction::Ret(..) | Instruction::FuelVm(FuelVmInstruction::Revert(..))
+            )
         })
     }
 

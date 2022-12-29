@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     constant::Constant,
     context::Context,
-    instruction::Instruction,
+    instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pointer::Pointer,
@@ -104,7 +104,7 @@ impl Value {
                 Instruction::Branch(_)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(_, _)
-                    | Instruction::Revert(_)
+                    | Instruction::FuelVm(FuelVmInstruction::Revert(_))
             ),
             _ => false,
         }
@@ -117,7 +117,7 @@ impl Value {
                 Instruction::Branch(..)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(..)
-                    | Instruction::Revert(..)
+                    | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             ),
             ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
         }
