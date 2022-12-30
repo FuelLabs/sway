@@ -115,7 +115,9 @@ impl Items {
         if self.symbols.get(&name).is_some() {
             match item {
                 ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. } => {
+                | ty::TyDeclaration::StructDeclaration { .. }
+                | ty::TyDeclaration::AbiDeclaration { .. }
+                | ty::TyDeclaration::TraitDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
