@@ -1,0 +1,3 @@
+[[package]]
+name = 'repeated_abi_declaration'
+source = 'member'
