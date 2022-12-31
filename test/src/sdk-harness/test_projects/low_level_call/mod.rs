@@ -76,9 +76,9 @@ async fn can_call_contract_with_generic_call() {
     let tx = script_instance
         .main(id)
         .with_inputs(vec![contract_input])
-        .with_outputs(vec![contract_output]);
+        .with_outputs(vec![contract_output])
+        .tx_params(TxParameters::new(None, Some(10_000_000), None));
 
-    let result = tx.call().await.unwrap();
+    tx.call().await.unwrap();
 
-    assert!(result.value);
 }
