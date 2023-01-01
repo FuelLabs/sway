@@ -996,7 +996,6 @@ mod tests {
     macro_rules! lsp_capability_test {
         ($test:ident, $capability:expr) => {
             #[tokio::test]
-
             async fn $test() {
                 test_lsp_capability!(doc_comments_dir(), $capability);
             }
