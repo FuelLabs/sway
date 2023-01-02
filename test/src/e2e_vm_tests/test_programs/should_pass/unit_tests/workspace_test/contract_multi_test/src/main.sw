@@ -14,7 +14,7 @@ impl MyContract for Contract {
 
 #[test]
 fn test_foo() {
-  assert(true)
+    assert(true)
 }
 
 #[test(should_revert)]
