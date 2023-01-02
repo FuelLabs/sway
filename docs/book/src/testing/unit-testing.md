@@ -81,4 +81,16 @@ fn test_success() {
 }
 ```
 
+It is also possible to test failure with contract calls as well.
+
+```sway
+#[test(should_revert)]
+fn test_fail() {
+    let contract_id = 0xa8f18533afc18453323bdf17c83750c556916ab183daacf46d7a8d3c633a40ee;
+    let caller = abi(MyContract, contract_id);
+    let result = caller.test_function {}();
+    assert(result == false)
+}
+```
+
 > **Note:** `contract_id` is needed for the `abi` cast used in the test. Running `forc test` will output deployed contract's id and that can be used for the cast. This means, before writing the `test_success()` test, `forc test` needs to be executed to retrieve the `contract_id`. This will not be necessary in the future and you can track the progress at [here](https://github.com/FuelLabs/sway/issues/3673).
