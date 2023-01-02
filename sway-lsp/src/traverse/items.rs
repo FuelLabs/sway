@@ -24,7 +24,10 @@ impl<'a> ParsedItems<'a> {
 
     pub fn parse_module(&self, src: Arc<str>, path: Arc<PathBuf>) -> Result<(), ErrorEmitted> {
         let handler = <_>::default();
+        let module_dir = path.parent().expect("module file has no parent directory");
         let module = sway_parse::parse_file(&handler, src, Some(path.clone()))?;
+
+        
 
         for item in module.items {
             item.value.parse(self.tokens);

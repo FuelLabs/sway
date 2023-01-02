@@ -9,7 +9,9 @@ use crate::{
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
-    traverse::{dependency::Dependency, parsed_tree::ParsedTree, typed_tree::TypedTree},
+    traverse::{
+        dependency::Dependency, items::ParsedItems, parsed_tree::ParsedTree, typed_tree::TypedTree,
+    },
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
@@ -136,9 +138,14 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        for (_k, v) in &member_manifests {
+        let parsed_items = ParsedItems::new(&self.token_map);
+        for (k, v) in &member_manifests {
+            // eprintln!("Parsing {}", k);
+
+            // v.deps().for_each(|d| {
+            //     eprintln!("deps {:?}", d);
+            // });
             let source = v.entry_string().unwrap();
-            let parsed_items = traverse::items::ParsedItems::new(&self.token_map);
             let _ = parsed_items.parse_module(source, Arc::new(v.entry_path()));
         }
 
