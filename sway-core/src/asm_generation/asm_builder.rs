@@ -737,7 +737,7 @@ impl<'ir> AsmBuilder<'ir> {
             if elem_size > compiler_constants::TWELVE_BITS {
                 let size_data_id = self
                     .data_section
-                    .insert_data_value(Entry::new_word(elem_size, None), false);
+                    .insert_data_value(Entry::new_word(elem_size, None, None));
                 let size_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -894,10 +894,11 @@ impl<'ir> AsmBuilder<'ir> {
 
         let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
 
-        let data_id = self.data_section.insert_data_value(
-            Entry::new_byte_array((*hashed_storage_slot).to_vec(), None),
-            false,
-        );
+        let data_id = self.data_section.insert_data_value(Entry::new_byte_array(
+            (*hashed_storage_slot).to_vec(),
+            None,
+            None,
+        ));
 
         // Allocate a register for it, and a load instruction.
         let reg = self.reg_seqr.next();
@@ -1337,9 +1338,9 @@ impl<'ir> AsmBuilder<'ir> {
             // it.
             let size_reg = self.reg_seqr.next();
             let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
-            let size_data_id = self
-                .data_section
-                .insert_data_value(Entry::new_word(size_in_bytes, None), false);
+            let size_data_id =
+                self.data_section
+                    .insert_data_value(Entry::new_word(size_in_bytes, None, None));
 
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1437,9 +1438,11 @@ impl<'ir> AsmBuilder<'ir> {
                     // First put the size into the data section, then add a LW to get it,
                     // then add a RETD which uses it.
                     let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
-                    let size_data_id = self
-                        .data_section
-                        .insert_data_value(Entry::new_word(size_in_bytes, None), false);
+                    let size_data_id = self.data_section.insert_data_value(Entry::new_word(
+                        size_in_bytes,
+                        None,
+                        None,
+                    ));
 
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1896,25 +1899,25 @@ impl<'ir> AsmBuilder<'ir> {
     fn initialise_constant(
         &mut self,
         constant: &Constant,
-        is_configurable: bool,
+        config_name: Option<String>,
         span: Option<Span>,
     ) -> (VirtualRegister, Option<DataId>) {
         match &constant.value {
             // Use cheaper $zero or $one registers if possible.
             ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
-                if !is_configurable =>
+                if config_name.is_none() =>
             {
                 (VirtualRegister::Constant(ConstantRegister::Zero), None)
             }
 
-            ConstantValue::Bool(true) | ConstantValue::Uint(1) if !is_configurable => {
+            ConstantValue::Bool(true) | ConstantValue::Uint(1) if config_name.is_none() => {
                 (VirtualRegister::Constant(ConstantRegister::One), None)
             }
 
             _otherwise => {
                 // Get the constant into the namespace.
-                let entry = Entry::from_constant(self.context, constant);
-                let data_id = self.data_section.insert_data_value(entry, is_configurable);
+                let entry = Entry::from_constant(self.context, constant, config_name);
+                let data_id = self.data_section.insert_data_value(entry);
 
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
@@ -1953,7 +1956,7 @@ impl<'ir> AsmBuilder<'ir> {
             .or_else(|| {
                 value.get_constant(self.context).map(|constant| {
                     let span = self.md_mgr.val_to_span(self.context, *value);
-                    self.initialise_constant(constant, false, span).0
+                    self.initialise_constant(constant, None, span).0
                 })
             })
             .or_else(|| {
@@ -1961,13 +1964,16 @@ impl<'ir> AsmBuilder<'ir> {
                     let span = self.md_mgr.val_to_span(self.context, *value);
                     let config_name = self
                         .md_mgr
-                        .md_to_config_const_name(self.context, value.get_metadata(self.context));
+                        .md_to_config_const_name(self.context, value.get_metadata(self.context))
+                        .unwrap()
+                        .to_string();
 
-                    let initialized = self.initialise_constant(constant, true, span);
+                    let initialized =
+                        self.initialise_constant(constant, Some(config_name.clone()), span);
                     if let Some(data_id) = initialized.1 {
                         self.data_section
                             .config_map
-                            .insert(config_name.unwrap().to_string(), data_id.0 as u32);
+                            .insert(config_name, data_id.0 as u32);
                     }
                     initialized.0
                 })
