@@ -127,16 +127,6 @@ impl Backend {
         let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
             Some(item) => item.value().clone(),
             None => {
-                // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
-                // Until then, we clear the current project and init with the new project.
-                // At least allows the user to switch between projects within a workspace but only if they
-                // have one pane open.
-                let _ = self.sessions.iter().map(|item| {
-                    let session = item.value();
-                    session.shutdown();
-                });
-                self.sessions.clear();
-
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
@@ -241,13 +231,13 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // update this file with the new changes and write to disk
-                if let Some(src) = session.update_text_document(&uri, params.content_changes) {
-                    if let Ok(mut file) = File::create(uri.path()) {
-                        let _ = writeln!(&mut file, "{}", src);
+                match session.write_changes_to_file(&uri, params.content_changes) {
+                    Ok(_) => {
+                        self.parse_project(uri, params.text_document.uri, session.clone())
+                            .await;
                     }
+                    Err(err) => tracing::error!("{}", err.to_string()),
                 }
-                self.parse_project(uri, params.text_document.uri, session.clone())
-                    .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
         }
@@ -606,7 +596,6 @@ mod tests {
     use super::*;
     use crate::utils::test::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
-    use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
     use tower_lsp::{
@@ -893,14 +882,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
-    #[serial]
     async fn initialized() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -908,7 +895,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn initializes_only_once() {
         let (mut service, _) = LspService::new(Backend::new);
         let initialize = initialize_request(&mut service).await;
@@ -919,7 +905,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn shutdown() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -932,7 +917,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn refuses_requests_after_shutdown() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -943,7 +927,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_open() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
@@ -951,7 +934,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_close() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
@@ -960,7 +942,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -969,7 +950,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -980,7 +960,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn show_ast() {
         let (mut service, _) = LspService::build(Backend::new)
             .custom_method("sway/show_ast", Backend::show_ast)
@@ -992,7 +971,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -1018,7 +996,6 @@ mod tests {
     macro_rules! lsp_capability_test {
         ($test:ident, $capability:expr) => {
             #[tokio::test]
-            #[serial]
             async fn $test() {
                 test_lsp_capability!(doc_comments_dir(), $capability);
             }
