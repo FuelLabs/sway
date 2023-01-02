@@ -148,7 +148,7 @@ impl BuiltTests {
 }
 
 impl<'a> PackageTests {
-    /// Returns a reference to the underlying `BuiltPackage`.
+    /// Return a reference to the underlying `BuiltPackage`.
     ///
     /// If this `PackageTests` is `PackageTests::Contract`, built package with tests included is
     /// returned.
@@ -221,7 +221,7 @@ impl<'a> PackageTests {
         Ok(tested_pkg)
     }
 
-    /// Setups the storage for a test and returns a contract id for testing contracts.
+    /// Setup the storage for a test and returns a contract id for testing contracts.
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
@@ -361,6 +361,7 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
     let salt = tx::Salt::zeroed();
     let contract_id = contract.id(&salt, &root, &state_root);
+    println!("contract id {:?}", contract_id);
 
     // Setup the interpreter for deployment.
     let params = tx::ConsensusParameters::default();
