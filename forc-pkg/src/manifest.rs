@@ -192,7 +192,7 @@ pub enum Dependency {
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
     pub(crate) version: Option<String>,
-    path: Option<String>,
+    pub path: Option<String>,
     pub(crate) git: Option<String>,
     pub(crate) branch: Option<String>,
     pub(crate) tag: Option<String>,
@@ -200,9 +200,23 @@ pub struct DependencyDetails {
     pub(crate) rev: Option<String>,
 }
 impl DependencyDetails {
+    /// Returns either [DependencyDetails] from a valid manifest.
     pub fn from_path(path: &Path) -> Self {
-        
+        let path = path.to_str().unwrap().to_string();
+        Self {
+            version: None,
+            path: Some(path),
+            git: None,
+            branch: None,
+            tag: None,
+            package: None,
+            rev: None,
+        }
     }
+
+    // pub fn from_git(repo_url: &Url, git_ref: GitReference) -> Self {
+    //     Self { version: (), path: (), git: (), branch: (), tag: (), package: (), rev: () }
+    // }
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -228,7 +242,6 @@ impl Dependency {
         }
     }
 }
-
 
 impl PackageManifestFile {
     /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
