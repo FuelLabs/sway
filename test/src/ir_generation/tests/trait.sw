@@ -28,15 +28,15 @@ fn main() -> bool {
     foo.pred_or(bar)
 }
 
-// check:  ptr { bool } bar
-// check:  ptr { bool } foo
+// check:  { bool } bar
+// check:  { bool } foo
 
-// check: get_ptr ptr { bool } foo, ptr { bool }, 0
-// check: get_ptr ptr { bool } bar, ptr { bool }, 0
+// check: get_local { bool } foo
+// check: get_local { bool } bar
 
-// check: $(foo_ptr=$VAL) = get_ptr ptr { bool } foo, ptr { bool }, 0
-// check: $(bar_ptr=$VAL) = get_ptr ptr { bool } bar, ptr { bool }, 0
-// check: $(res=$VAL) = call $(pred_or=$ID)($foo_ptr, $bar_ptr)
+// check: $(foo_var=$VAL) = get_local { bool } foo
+// check: $(bar_var=$VAL) = get_local { bool } bar
+// check: $(res=$VAL) = call $(pred_or=$ID)($foo_var, $bar_var)
 // check: ret bool $res
 
 // check: fn $pred_or(self $MD: { bool }, other $MD: { bool }) -> bool

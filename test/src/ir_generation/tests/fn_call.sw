@@ -33,7 +33,7 @@ fn main() -> u64 {
 // check: }
 
 // check: fn $ID(x $MD: u64, y $MD: u64) -> u64
-// check:     local ptr bool var
+// check:     local bool var
 
 // ::check-asm::
 //

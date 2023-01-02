@@ -10,19 +10,19 @@ fn main() {
 
 // ::check-ir::
 
-// check: local ptr u64 field1
-// check: local ptr b256 field2
+// check: local u64 field1
+// check: local b256 field2
 
 // check: $(gtf1_index=$VAL) = const u64 1
 // check: $(gtf1=$VAL) = gtf $gtf1_index, 66
-// check: $(field1_ptr=$VAL) = get_ptr ptr u64 field1, ptr u64, 0
-// check:  store $gtf1, ptr $field1_ptr
+// check: $(field1_var=$VAL) = get_local u64 field1
+// check:  store $gtf1 to $field1_var
 
 // check: $(gtf2_index=$VAL) = const u64 2
 // check: $(gtf2=$VAL) = gtf $gtf2_index, 119
-// check: $(gtf2_int_to_ptr=$VAL) = int_to_ptr $gtf2 to b256, !6
-// check: $(field2_ptr=$VAL) = get_ptr ptr b256 field2, ptr b256, 0
-// check: store $gtf2_int_to_ptr, ptr $field2_ptr
+// check: $(gtf2_int_to_ptr=$VAL) = int_to_ptr $gtf2 to b256
+// check: $(field2_var=$VAL) = get_local b256 field2
+// check: store $gtf2_int_to_ptr to $field2_var
 
 // ::check-asm::
 
