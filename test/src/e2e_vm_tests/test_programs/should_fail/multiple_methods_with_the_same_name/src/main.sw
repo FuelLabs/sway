@@ -62,6 +62,33 @@ impl Data<u8> {
     }
 }
 
+pub struct A {
+    a: u64,
+}
+
+pub struct B {
+    b: u64,
+}
+
+pub struct C {
+    c: u64,
+}
+
+pub trait Convert<T> {
+    fn convert(t: u64);
+}
+
+impl Convert<B> for A {
+    fn convert(t: u64) {
+    }
+}
+
+impl Convert<C> for A {
+    // duplicate definition
+    fn convert(t: u64) {
+    }
+}
+
 fn main() {
 
 }
