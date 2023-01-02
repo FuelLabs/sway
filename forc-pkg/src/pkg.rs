@@ -2802,6 +2802,12 @@ fn update_json_type_declaration(
 /// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
 type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
 
+pub struct CompilationStage {
+    pub modules: Vec<sway_ast::Module>,
+    pub parse_program: ParseProgram,
+    pub typed_program: Option<ty::TyProgram>,
+}
+
 /// Compile the entire forc package and return the parse and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
@@ -2809,7 +2815,7 @@ pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
+) -> anyhow::Result<Vec<CompileResult<CompilationStage>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2829,6 +2835,8 @@ pub fn check(
             engines,
         )
         .expect("failed to create dependency namespace");
+
+        let modules = vec![];
         let CompileResult {
             value,
             mut warnings,
@@ -2849,7 +2857,11 @@ pub fn check(
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some((parse_program, None));
+                let value = Some(CompilationStage {
+                    modules,
+                    parse_program,
+                    typed_program: None,
+                });
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
             }
@@ -2862,7 +2874,11 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some((parse_program, Some(typed_program)));
+        let value = Some(CompilationStage {
+            modules,
+            parse_program,
+            typed_program: Some(typed_program),
+        });
         results.push(CompileResult::new(value, warnings, errors));
     }
 

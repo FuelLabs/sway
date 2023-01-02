@@ -14,7 +14,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
-use pkg::manifest::ManifestFile;
+use pkg::{manifest::ManifestFile, CompilationStage};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     declaration_engine::DeclarationEngine,
@@ -151,14 +151,16 @@ impl Session {
                 errors,
             } = res;
 
-            // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-            // due to the new API.g
-            let (parsed, typed) = match value {
-                None => (None, None),
-                Some((pp, tp)) => (Some(pp), tp),
+            let (modules, parsed, typed) = match value {
+                Some(CompilationStage {
+                    modules,
+                    parse_program,
+                    typed_program,
+                }) => (modules, parse_program, typed_program),
+                None => continue,
             };
 
-            let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
+            let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
 
             let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
