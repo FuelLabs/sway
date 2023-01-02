@@ -8,10 +8,7 @@ use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
 use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
 use sway_types::{Span, Spanned};
 use tx::{AssetId, TxPointer, UtxoId};
-use vm::{
-    prelude::{Interpreter, SecretKey},
-    storage::MemoryStorage,
-};
+use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -105,7 +102,7 @@ pub struct Opts {
     pub time_phases: bool,
 }
 
-/// The required common metadata for building a transaction both for deploying and running.
+/// The required common metadata for building a transaction to deploy a contract or run a test.
 #[derive(Debug)]
 struct TxMetadata {
     secret_key: SecretKey,
@@ -115,6 +112,13 @@ struct TxMetadata {
     tx_pointer: TxPointer,
     maturity: u64,
     block_height: tx::Word,
+}
+
+/// The storage and the contract id (if a contract is being tested) for a test.
+#[derive(Debug)]
+struct TestSetup {
+    storage: vm::storage::MemoryStorage,
+    contract_id: Option<tx::ContractId>,
 }
 
 impl BuiltTests {
@@ -189,9 +193,8 @@ impl<'a> PackageTests {
                 let offset =
                     u32::try_from(entry.imm).expect("test instruction offset out of range");
                 let name = entry.fn_name.clone();
-                let (storage, contract_id) = self.setup()?;
-                let (state, duration) =
-                    exec_test(&pkg_with_tests.bytecode, offset, storage, contract_id);
+                let test_setup = self.setup()?;
+                let (state, duration) = exec_test(&pkg_with_tests.bytecode, offset, test_setup);
                 let test_decl_id = entry
                     .test_decl_id
                     .clone()
@@ -222,14 +225,17 @@ impl<'a> PackageTests {
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
-    fn setup(&self) -> anyhow::Result<(vm::storage::MemoryStorage, Option<tx::ContractId>)> {
+    fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
                 let contract_pkg_without_tests = contract_to_test.tests_excluded.clone();
-                let (storage, contract_id) = deploy_test_contract(contract_pkg_without_tests)?;
-                Ok((storage.as_ref().clone(), Some(contract_id)))
+                let test_setup = deploy_test_contract(contract_pkg_without_tests)?;
+                Ok(test_setup)
             }
-            PackageTests::NonContract(_) => Ok((vm::storage::MemoryStorage::default(), None)),
+            PackageTests::NonContract(_) => Ok(TestSetup {
+                storage: vm::storage::MemoryStorage::default(),
+                contract_id: None,
+            }),
         }
     }
 }
@@ -345,9 +351,7 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
-fn deploy_test_contract(
-    built_pkg: BuiltPackage,
-) -> anyhow::Result<(Interpreter<MemoryStorage>, tx::ContractId)> {
+fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots;
     storage_slots.sort();
@@ -383,9 +387,10 @@ fn deploy_test_contract(
     // Deploy the contract.
     interpreter.transact(tx)?;
     let storage_after_deploy = interpreter.as_ref();
-    let interpreter_with_deployed_contract =
-        vm::interpreter::Interpreter::with_storage(storage_after_deploy.clone(), params);
-    Ok((interpreter_with_deployed_contract, contract_id))
+    Ok(TestSetup {
+        storage: storage_after_deploy.clone(),
+        contract_id: Some(contract_id),
+    })
 }
 
 fn test_pass_condition(
@@ -466,9 +471,11 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
 fn exec_test(
     bytecode: &[u8],
     test_offset: u32,
-    storage: vm::storage::MemoryStorage,
-    contract_id: Option<tx::ContractId>,
+    test_setup: TestSetup,
 ) -> (vm::state::ProgramState, std::time::Duration) {
+    let storage = test_setup.storage;
+    let contract_id = test_setup.contract_id;
+
     // Patch the bytecode to jump to the relevant test.
     let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
 
