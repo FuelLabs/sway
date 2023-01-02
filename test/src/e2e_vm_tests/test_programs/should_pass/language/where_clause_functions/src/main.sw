@@ -11,10 +11,6 @@ trait MyAdd {
     fn my_add(self, other: Self) -> Self;
 }
 
-trait MyMul {
-    fn my_mul(self, other: Self) -> Self;
-}
-
 impl MyAdd for u8 {
     fn my_add(self, other: Self) -> Self {
         self + other

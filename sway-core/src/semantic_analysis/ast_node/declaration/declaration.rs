@@ -194,7 +194,12 @@ impl ty::TyDeclaration {
                     .methods
                     .iter_mut()
                     .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
-                ctx.namespace.insert_symbol(name, decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 decl
             }
             parsed::Declaration::ImplTrait(impl_trait) => {
@@ -293,7 +298,12 @@ impl ty::TyDeclaration {
                     .methods
                     .iter_mut()
                     .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
-                ctx.namespace.insert_symbol(name, decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 decl
             }
             parsed::Declaration::StorageDeclaration(parsed::StorageDeclaration {

@@ -38,15 +38,13 @@ pub(crate) fn compile_const_decl(
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
-        if let Some(ptr) = fn_compiler.get_function_ptr(env.context, name.as_str()) {
+        if let Some(local_var) = fn_compiler.get_function_var(env.context, name.as_str()) {
             found_local = true;
-            if !ptr.is_mutable(env.context) {
-                if let Some(constant) = ptr.get_initializer(env.context) {
-                    return Ok(Some(Value::new_constant(env.context, constant.clone())));
-                }
+            if let Some(constant) = local_var.get_initializer(env.context) {
+                return Ok(Some(Value::new_constant(env.context, constant.clone())));
             }
 
-            // Check if a constant was stored to the pointer in the current block
+            // Check if a constant was stored to a local variable in the current block.
             let mut stored_const_opt: Option<&Constant> = None;
             for ins in fn_compiler.current_block.instruction_iter(env.context) {
                 if let Some(Instruction::Store {
@@ -54,12 +52,10 @@ pub(crate) fn compile_const_decl(
                     stored_val,
                 }) = ins.get_instruction(env.context)
                 {
-                    if let Some(Instruction::GetPointer {
-                        base_ptr: base_ptr_2,
-                        ..
-                    }) = dst_val.get_instruction(env.context)
+                    if let Some(Instruction::GetLocal(store_dst_var)) =
+                        dst_val.get_instruction(env.context)
                     {
-                        if &ptr == base_ptr_2 {
+                        if &local_var == store_dst_var {
                             stored_const_opt = stored_val.get_constant(env.context);
                         }
                     }

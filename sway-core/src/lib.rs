@@ -29,7 +29,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Type, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -551,8 +551,10 @@ pub fn inline_function_calls(
         // isn't one.  Ref type args which aren't pointers need to be inlined.
         if func.args_iter(ctx).any(|(_name, arg_val)| {
             arg_val
-                .get_type(ctx)
-                .map(|ty| !ty.is_copy_type())
+                .get_argument_type_and_byref(ctx)
+                .map(|(ty, by_ref)| {
+                    by_ref || !matches!(ty, Type::Unit | Type::Bool | Type::Uint(_))
+                })
                 .unwrap_or(false)
         }) {
             return true;

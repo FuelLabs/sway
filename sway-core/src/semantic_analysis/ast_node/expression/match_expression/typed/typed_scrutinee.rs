@@ -43,6 +43,7 @@ impl ty::TyScrutinee {
                 span,
             } => type_check_enum(ctx, call_path, *value, span),
             Scrutinee::Tuple { elems, span } => type_check_tuple(ctx, elems, span),
+            Scrutinee::Error { .. } => err(vec![], vec![]),
         }
     }
 }

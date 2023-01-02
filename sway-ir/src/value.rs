@@ -14,7 +14,6 @@ use crate::{
     instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
-    pointer::Pointer,
     pretty::DebugWithContext,
     BlockArgument,
 };
@@ -198,11 +197,11 @@ impl Value {
     }
 
     /// Iff this value is an argument, return its type.
-    pub fn get_argument_type(&self, context: &Context) -> Option<Type> {
-        if let ValueDatum::Argument(BlockArgument { ty, .. }) =
+    pub fn get_argument_type_and_byref(&self, context: &Context) -> Option<(Type, bool)> {
+        if let ValueDatum::Argument(BlockArgument { ty, by_ref, .. }) =
             &context.values.get(self.0).unwrap().value
         {
-            Some(*ty)
+            Some((*ty, *by_ref))
         } else {
             None
         }
@@ -218,30 +217,5 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
-    }
-
-    /// Get the pointer argument for this value if there is one.  I.e., where get_ptr is
-    /// essentially a Value wrapper around a Pointer, this function unwrap it.
-    pub fn get_pointer(&self, context: &Context) -> Option<Pointer> {
-        match &context.values[self.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
-
-            ValueDatum::Argument(BlockArgument {
-                ty: Type::Pointer(ptr),
-                ..
-            }) => Some(*ptr),
-
-            ValueDatum::Instruction(Instruction::InsertValue { aggregate, .. })
-            | ValueDatum::Instruction(Instruction::ExtractValue { aggregate, .. }) => {
-                aggregate.get_pointer(context)
-            }
-
-            _otherwise => None,
-        }
-    }
-
-    /// Get the type for this value with any pointer stripped, if found.
-    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
-        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }

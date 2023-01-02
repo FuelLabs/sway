@@ -4,7 +4,7 @@ use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken, SelfToken, Sto
 use sway_ast::{
     AngleBrackets, PathExpr, PathExprSegment, PathType, PathTypeSegment, QualifiedPathRoot,
 };
-use sway_types::Ident;
+use sway_types::{Ident, Spanned};
 
 impl Parse for PathExpr {
     fn parse(parser: &mut Parser) -> ParseResult<PathExpr> {
@@ -25,15 +25,27 @@ impl Parse for PathExpr {
                 .map(|double_colon_token| (None, double_colon_token)),
         };
         let prefix = parser.parse()?;
-        let mut suffix = Vec::new();
+        let mut suffix: Vec<(DoubleColonToken, PathExprSegment)> = Vec::new();
+        let mut incomplete_suffix = false;
         while let Some(double_colon_token) = parser.take() {
-            let segment = parser.parse()?;
-            suffix.push((double_colon_token, segment));
+            if let Ok(segment) = parser.parse() {
+                suffix.push((double_colon_token, segment));
+            } else {
+                incomplete_suffix = true;
+                // this is to make the span be `foo::` instead of just `foo`
+                let dummy_path_expr_segment = PathExprSegment {
+                    name: Ident::new(double_colon_token.span()),
+                    generics_opt: None,
+                };
+                suffix.push((double_colon_token, dummy_path_expr_segment));
+                break;
+            }
         }
         Ok(PathExpr {
             root_opt,
             prefix,
             suffix,
+            incomplete_suffix,
         })
     }
 }

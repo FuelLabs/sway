@@ -115,6 +115,7 @@ impl Format for Pattern {
                     },
                 )?;
             }
+            Self::Error(..) => {}
         }
         Ok(())
     }
@@ -291,6 +292,10 @@ impl LeafSpans for Pattern {
             }
             Pattern::Tuple(tuple) => {
                 collected_spans.append(&mut tuple.leaf_spans());
+            }
+            Pattern::Error(spans) => {
+                let mut leaf_spans = spans.iter().map(|s| ByteSpan::from(s.clone())).collect();
+                collected_spans.append(&mut leaf_spans)
             }
         }
         collected_spans
