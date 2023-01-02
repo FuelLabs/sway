@@ -191,13 +191,18 @@ pub enum Dependency {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct DependencyDetails {
-    pub version: Option<String>,
-    pub path: Option<String>,
-    pub git: Option<String>,
-    pub branch: Option<String>,
-    pub tag: Option<String>,
-    pub package: Option<String>,
-    pub rev: Option<String>,
+    pub(crate) version: Option<String>,
+    path: Option<String>,
+    pub(crate) git: Option<String>,
+    pub(crate) branch: Option<String>,
+    pub(crate) tag: Option<String>,
+    pub(crate) package: Option<String>,
+    pub(crate) rev: Option<String>,
+}
+impl DependencyDetails {
+    pub fn from_path(path: &Path) -> Self {
+        
+    }
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -223,6 +228,7 @@ impl Dependency {
         }
     }
 }
+
 
 impl PackageManifestFile {
     /// Given a path to a `Forc.toml`, read it and construct a `PackageManifest`.
