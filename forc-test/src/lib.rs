@@ -361,6 +361,11 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
     let salt = tx::Salt::zeroed();
     let contract_id = contract.id(&salt, &root, &state_root);
+    // TODO: Remove this prompt once https://github.com/FuelLabs/sway/issues/3673 is addressed.
+    println!(
+        "      Deploying contract with id {:?} for testing",
+        contract_id
+    );
 
     // Setup the interpreter for deployment.
     let params = tx::ConsensusParameters::default();
