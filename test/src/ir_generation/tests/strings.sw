@@ -14,15 +14,13 @@ fn f(a: str[10], b: str[10]) -> u64 {
 // really just snapshotting the current situation, but string support in the compiler needs to
 // improve.
 
-// check: local ptr string<10> s
+// check: local string<10> s
 
-// check: $(s_ptr=$VAL) = get_ptr ptr string<10> s, ptr string<10>, 0
+// check: $(s_var=$VAL) = get_local string<10> s
 // check: $(str_lit=$VAL) = const string<10> "foo \x5ct bar"
-// check: store $str_lit, ptr $s_ptr
+// check: store $str_lit to $s_var
 
-// check: $(s_ptr=$VAL) = get_ptr ptr string<10> s, ptr string<10>, 0
-// check: $(lhs=$VAL) = load ptr $s_ptr
-// check: $(s_ptr=$VAL) = get_ptr ptr string<10> s, ptr string<10>, 0
-// check: $(rhs=$VAL) = load ptr $s_ptr
-// check: $(res=$VAL) = call $ID($lhs, $rhs)
+// check: $(l_var=$VAL) = get_local string<10> s
+// check: $(r_var=$VAL) = get_local string<10> s
+// check: $(res=$VAL) = call $ID($l_var, $r_var)
 // check: ret u64 $res

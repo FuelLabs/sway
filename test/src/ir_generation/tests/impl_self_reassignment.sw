@@ -15,12 +15,12 @@ fn main() {
     a.f();
 }
 
-// check: local mut ptr { u64 } a
+// check: local { u64 } a
 
-// check: get_ptr mut ptr { u64 } a, ptr { u64 }, 0
+// check: get_local { u64 } a
 
-// check: $(a_ptr=$VAL) = get_ptr mut ptr { u64 } a, ptr { u64 }, 0
-// check: call $(f_method=$ID)($a_ptr)
+// check: $(a_var=$VAL) = get_local { u64 } a
+// check: call $(f_method=$ID)($a_var)
 
 // check: fn $f_method(self $MD: { u64 }) -> ()
 // nextln: entry(self: { u64 }):

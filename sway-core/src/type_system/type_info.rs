@@ -842,7 +842,10 @@ impl TypeInfo {
     }
 
     pub fn is_copy_type(&self) -> bool {
-        matches!(self, TypeInfo::Boolean | TypeInfo::UnsignedInteger(_)) || self.is_unit()
+        matches!(
+            self,
+            TypeInfo::Boolean | TypeInfo::UnsignedInteger(_) | TypeInfo::RawUntypedPtr
+        ) || self.is_unit()
     }
 
     pub(crate) fn apply_type_arguments(
