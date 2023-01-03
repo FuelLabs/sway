@@ -24,17 +24,17 @@
 
 script {
     fn a(b: bool) -> u64 {
-        local ptr u64 x
+        local u64 x
 
         entry(b: bool):
-        v0 = get_ptr ptr u64 x, ptr u64, 0
+        v0 = get_local u64 x
         v1 = const u64 10
-        store v1, ptr v0
+        store v1 to v0
         cbr b, block0(), block1()
 
         block0():
-        v2 = get_ptr ptr u64 x, ptr u64, 0
-        v3 = load ptr v2
+        v2 = get_local u64 x
+        v3 = load v2
         br block2(v3)
 
         block1():
@@ -51,12 +51,12 @@ script {
 
 // check: fn main
     fn main() -> u64 {
-        local mut ptr u64 x
+        local u64 x
 
         entry():
-        v0 = get_ptr mut ptr u64 x, ptr u64, 0
+        v0 = get_local u64 x
         v1 = const u64 0
-        store v1, ptr v0
+        store v1 to v0
 
 // check: $(arg=$VAR) = const bool true
         v2 = const bool true
@@ -68,11 +68,11 @@ script {
 // check: $t():
 // check: $f():
 
-// check: get_ptr mut ptr u64 x, ptr u64, 0
-        v4 = get_ptr mut ptr u64 x, ptr u64, 0
-        store v3, ptr v4
-        v5 = get_ptr mut ptr u64 x, ptr u64, 0
-        v6 = load ptr v5
+// check: get_local u64 x
+        v4 = get_local u64 x
+        store v3 to v4
+        v5 = get_local u64 x
+        v6 = load v5
         ret u64 v6
     }
 }

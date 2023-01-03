@@ -310,7 +310,10 @@ impl<'ir> AsmBuilder<'ir> {
                         }
 
                         // The base is an offset.  Dereference it.
-                        if val.get_type(self.context).unwrap().is_copy_type() {
+                        if val
+                            .get_type(self.context)
+                            .map_or(false, |t| self.is_copy_type(&t))
+                        {
                             self.cur_bytecode.push(Op {
                                 opcode: either::Either::Left(VirtualOp::LW(
                                     single_arg_reg.clone(),
@@ -344,7 +347,7 @@ impl<'ir> AsmBuilder<'ir> {
                     let current_arg_reg = self.value_to_register(val);
                     let arg_type = val.get_type(self.context).unwrap();
                     let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
-                    if arg_type.is_copy_type() {
+                    if self.is_copy_type(&arg_type) {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
                             self.cur_bytecode.push(Op {
@@ -589,15 +592,14 @@ impl<'ir> AsmBuilder<'ir> {
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
         let mut stack_base = 0_u64;
         for (_name, ptr) in function.locals_iter(self.context) {
-            if !ptr.is_mutable(self.context) && ptr.get_initializer(self.context).is_some() {
-                let constant = ptr.get_initializer(self.context).unwrap();
+            if let Some(constant) = ptr.get_initializer(self.context) {
                 let data_id = self
                     .data_section
                     .insert_data_value(Entry::from_constant(self.context, constant));
                 self.ptr_map.insert(*ptr, Storage::Data(data_id));
             } else {
                 match ptr.get_type(self.context) {
-                    Type::Unit | Type::Bool | Type::Uint(_) | Type::Pointer(_) => {
+                    Type::Unit | Type::Bool | Type::Uint(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
                     }
