@@ -2800,11 +2800,11 @@ fn update_json_type_declaration(
     }
 }
 
-/// Contains the lexed, parsed, and typed compilation results of a program
-pub struct CompilationStage {
-    pub lexed_program: lexed::LexedProgram,
-    pub parse_program: ParseProgram,
-    pub typed_program: Option<ty::TyProgram>,
+/// Contains the lexed, parsed, and typed compilation results of a program.
+pub struct Programs {
+    pub lexed: lexed::LexedProgram,
+    pub parsed: ParseProgram,
+    pub typed: Option<ty::TyProgram>,
 }
 
 /// Compile the entire forc package and return the parse and typed programs
@@ -2814,7 +2814,7 @@ pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<Vec<CompileResult<CompilationStage>>> {
+) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2841,7 +2841,7 @@ pub fn check(
             mut errors,
         } = parse(manifest, terse_mode, engines)?;
 
-        let (lexed_program, parse_program) = match value {
+        let (lexed, parsed) = match value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
@@ -2849,16 +2849,16 @@ pub fn check(
             Some(modules) => modules,
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some(CompilationStage {
-                    lexed_program,
-                    parse_program,
-                    typed_program: None,
+                let value = Some(Programs {
+                    lexed,
+                    parsed,
+                    typed: None,
                 });
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
@@ -2872,10 +2872,10 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some(CompilationStage {
-            lexed_program,
-            parse_program,
-            typed_program: Some(typed_program),
+        let value = Some(Programs {
+            lexed,
+            parsed,
+            typed: Some(typed_program),
         });
         results.push(CompileResult::new(value, warnings, errors));
     }

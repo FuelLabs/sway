@@ -21,7 +21,6 @@ semver = { version = "1.0", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_ignored = "0.1"
 serde_json = "1.0"
-sway-ast = { version = "0.32.2", path = "../sway-ast" }
 sway-core = { version = "0.32.2", path = "../sway-core" }
 sway-error = { version = "0.32.2", path = "../sway-error" }
 sway-types = { version = "0.32.2", path = "../sway-types" }

@@ -28,6 +28,6 @@ pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResul
     let res = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector")
-        .flat_map(|stage| CompileResult::new(stage.typed_program, vec![], vec![]));
+        .flat_map(|programs| CompileResult::new(programs.typed, vec![], vec![]));
     Ok(res)
 }

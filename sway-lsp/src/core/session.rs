@@ -14,7 +14,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, CompilationStage};
+use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     declaration_engine::DeclarationEngine,
@@ -151,14 +151,14 @@ impl Session {
                 errors,
             } = res;
 
-            let (lexed, parsed, typed) = match value {
-                Some(CompilationStage {
-                    lexed_program,
-                    parse_program,
-                    typed_program,
-                }) => (lexed_program, parse_program, typed_program),
-                None => continue,
-            };
+            if value.is_none() {
+                continue;
+            }
+            let Programs {
+                lexed: _, //(Josh): use this to collect keyword & bracket tokens
+                parsed,
+                typed,
+            } = value.unwrap();
 
             let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
@@ -168,7 +168,6 @@ impl Session {
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
-                eprintln!("lexed: {:#?}", lexed);
                 // First, populate our token_map with un-typed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
                 self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
