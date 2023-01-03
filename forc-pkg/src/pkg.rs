@@ -2818,7 +2818,7 @@ impl Programs {
     }
 }
 
-/// Compile the entire forc package and return the parse and typed programs
+/// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
