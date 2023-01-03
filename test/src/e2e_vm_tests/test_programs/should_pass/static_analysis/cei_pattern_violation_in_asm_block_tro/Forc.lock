@@ -1,0 +1,13 @@
+[[package]]
+name = 'cei_pattern_violation_in_asm_block_tro'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-D9AC6CFA47996221'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D9AC6CFA47996221'
+dependencies = ['core']

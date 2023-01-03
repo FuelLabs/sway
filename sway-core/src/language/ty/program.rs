@@ -8,6 +8,7 @@ use crate::{
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
+    Engines,
 };
 
 #[derive(Debug, Clone)]
@@ -23,7 +24,7 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        ty_engine: &TypeEngine,
+        engines: Engines<'_>,
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
@@ -32,11 +33,14 @@ impl TyProgram {
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let ty_engine = engines.te();
+        let declaration_engine = engines.de();
+
         // Validate all submodules
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
-                    ty_engine,
+                    engines,
                     &submodule.module,
                     parsed::TreeType::Library {
                         name: submodule.library_name.clone(),
@@ -57,7 +61,9 @@ impl TyProgram {
             match &node.content {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
                     let func = check!(
-                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        CompileResult::from(
+                            declaration_engine.get_function(decl_id.clone(), &node.span)
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -83,7 +89,9 @@ impl TyProgram {
                         span,
                         ..
                     } = check!(
-                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        CompileResult::from(
+                            declaration_engine.get_impl_trait(decl_id.clone(), &node.span)
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -93,7 +101,7 @@ impl TyProgram {
                         TypeInfo::Contract
                     ) {
                         for method_id in methods {
-                            match de_get_function(method_id, &span) {
+                            match declaration_engine.get_function(method_id, &span) {
                                 Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }
@@ -111,7 +119,7 @@ impl TyProgram {
         for ast_n in &root.all_nodes {
             check!(
                 storage_only_types::validate_decls_for_storage_only_types_in_ast(
-                    ty_engine,
+                    engines,
                     &ast_n.content
                 ),
                 continue,
@@ -124,7 +132,11 @@ impl TyProgram {
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
             if !matches!(kind, parsed::TreeType::Library { .. }) {
-                errors.extend(disallow_impure_functions(&declarations, &mains));
+                errors.extend(disallow_impure_functions(
+                    declaration_engine,
+                    &declarations,
+                    &mains,
+                ));
             }
 
             // `storage` declarations are not allowed in non-contracts
@@ -134,7 +146,9 @@ impl TyProgram {
 
             if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
                 let TyStorageDeclaration { span, .. } = check!(
-                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    CompileResult::from(
+                        declaration_engine.get_storage(decl_id.clone(), &decl_id.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -242,6 +256,7 @@ impl TyProgram {
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let declaration_engine = ctx.declaration_engine;
         // Get all of the entry points for this tree type. For libraries, that's everything
         // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
         let metadata = match &self.kind {
@@ -249,13 +264,13 @@ impl TyProgram {
                 let mut ret = vec![];
                 for node in self.root.all_nodes.iter() {
                     let public = check!(
-                        node.is_public(),
+                        node.is_public(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -275,13 +290,13 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Script),
+                        node.is_main_function(declaration_engine, parsed::TreeType::Script),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -301,13 +316,13 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Predicate),
+                        node.is_main_function(declaration_engine, parsed::TreeType::Predicate),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -327,7 +342,7 @@ impl TyProgram {
                 let mut data = vec![];
                 for node in self.root.all_nodes.iter() {
                     let is_test = check!(
-                        node.is_test_function(),
+                        node.is_test_function(declaration_engine),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -343,7 +358,7 @@ impl TyProgram {
                 }
                 for entry in abi_entries.iter() {
                     data.append(&mut check!(
-                        TyAstNode::from(entry).collect_types_metadata(ctx),
+                        entry.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -469,11 +484,14 @@ impl TyProgram {
     }
 
     /// All test function declarations within the program.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
+    pub fn test_fns<'a: 'b, 'b>(
+        &'b self,
+        declaration_engine: &'a DeclarationEngine,
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
         self.root
             .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns())
-            .chain(self.root.test_fns())
+            .flat_map(|(_, submod)| submod.module.test_fns(declaration_engine))
+            .chain(self.root.test_fns(declaration_engine))
     }
 }
 
@@ -506,6 +524,7 @@ impl TyProgramKind {
 }
 
 fn disallow_impure_functions(
+    declaration_engine: &DeclarationEngine,
     declarations: &[TyDeclaration],
     mains: &[TyFunctionDeclaration],
 ) -> Vec<CompileError> {
@@ -514,7 +533,7 @@ fn disallow_impure_functions(
         .iter()
         .filter_map(|decl| match decl {
             TyDeclaration::FunctionDeclaration(decl_id) => {
-                match de_get_function(decl_id.clone(), &decl.span()) {
+                match declaration_engine.get_function(decl_id.clone(), &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {
                         errs.push(err);

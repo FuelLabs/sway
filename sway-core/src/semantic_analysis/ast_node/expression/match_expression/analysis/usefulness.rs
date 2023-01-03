@@ -5,7 +5,7 @@ use crate::{
     error::{err, ok},
     language::ty,
     type_system::TypeId,
-    CompileResult, TypeEngine,
+    CompileResult, Engines,
 };
 
 use super::{
@@ -187,8 +187,8 @@ use super::{
 ///
 /// This algorithm checks is a match expression is exhaustive and if its match
 /// arms are reachable by applying the above definitions of usefulness and
-/// witnesses. This algorithm sequentionally creates a `WitnessReport` for every
-/// match arm by calling *U(P, q)*, where *P* is the `Matrix` of patterns seen
+/// witnesses. This algorithm sequentially creates a [WitnessReport] for every
+/// match arm by calling *U(P, q)*, where *P* is the [Matrix] of patterns seen
 /// so far and *q* is the current pattern under investigation for its
 /// reachability. A match arm is reachable if its `WitnessReport` is non-empty.
 /// Once all existing match arms have been analyzed, the match expression is
@@ -198,7 +198,7 @@ use super::{
 /// exhaustive if the imaginary additional wildcard pattern has an empty
 /// `WitnessReport`.
 pub(crate) fn check_match_expression_usefulness(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     type_id: TypeId,
     scrutinees: Vec<ty::TyScrutinee>,
     span: Span,
@@ -207,8 +207,24 @@ pub(crate) fn check_match_expression_usefulness(
     let mut errors = vec![];
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
+
+    // If the provided type does has no valid constructor and there are no
+    // branches in the match expression (i.e. no scrutinees to check), then
+    // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
+    // case.
+    if !engines
+        .te()
+        .look_up_type_id(type_id)
+        .has_valid_constructor()
+        && scrutinees.is_empty()
+    {
+        let witness_report = WitnessReport::NoWitnesses;
+        let arms_reachability = vec![];
+        return ok((witness_report, arms_reachability), warnings, errors);
+    }
+
     let factory = check!(
-        ConstructorFactory::new(type_engine, type_id, &span),
+        ConstructorFactory::new(engines.te(), type_id, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -222,7 +238,7 @@ pub(crate) fn check_match_expression_usefulness(
         );
         let v = PatStack::from_pattern(pat);
         let witness_report = check!(
-            is_useful(type_engine, &factory, &matrix, &v, &span),
+            is_useful(engines, &factory, &matrix, &v, &span),
             return err(warnings, errors),
             warnings,
             errors
@@ -236,7 +252,7 @@ pub(crate) fn check_match_expression_usefulness(
     }
     let v = PatStack::from_pattern(Pattern::wild_pattern());
     let witness_report = check!(
-        is_useful(type_engine, &factory, &matrix, &v, &span),
+        is_useful(engines, &factory, &matrix, &v, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -257,9 +273,9 @@ pub(crate) fn check_match_expression_usefulness(
 /// everything else, and what we do for induction depends on what the first
 /// element of *q* is. Depending on if the first element of *q* is a wildcard
 /// pattern, or-pattern, or constructed pattern we do something different. Each
-/// case returns a witness report that we propogate through the recursive steps.
+/// case returns a witness report that we propagate through the recursive steps.
 fn is_useful(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -284,19 +300,19 @@ fn is_useful(
             );
             let witness_report = match c {
                 Pattern::Wildcard => check!(
-                    is_useful_wildcard(type_engine, factory, p, q, span),
+                    is_useful_wildcard(engines, factory, p, q, span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
                 Pattern::Or(pats) => check!(
-                    is_useful_or(type_engine, factory, p, q, pats, span),
+                    is_useful_or(engines, factory, p, q, pats, span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 ),
                 c => check!(
-                    is_useful_constructed(type_engine, factory, p, q, c, span),
+                    is_useful_constructed(engines, factory, p, q, c, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -345,7 +361,7 @@ fn is_useful(
 ///     5. Add this new pattern to the resulting witness report
 ///     6. Return the witness report
 fn is_useful_wildcard(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -365,7 +381,7 @@ fn is_useful_wildcard(
 
     // 2. Determine if Σ is a complete signature.
     let is_complete_signature = check!(
-        factory.is_complete_signature(type_engine, &sigma, span),
+        factory.is_complete_signature(engines, &sigma, span),
         return err(warnings, errors),
         warnings,
         errors
@@ -402,7 +418,7 @@ fn is_useful_wildcard(
 
             //     3.3. Recursively compute U(S(cₖ, P), S(cₖ, q))
             let wr = check!(
-                is_useful(type_engine, factory, &s_c_k_p, &s_c_k_q, span),
+                is_useful(engines, factory, &s_c_k_p, &s_c_k_q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -485,7 +501,7 @@ fn is_useful_wildcard(
 
         //     4.3. Recursively compute *U(D(P), q')*.
         let mut witness_report = check!(
-            is_useful(type_engine, factory, &d_p, &q_rest, span),
+            is_useful(engines, factory, &d_p, &q_rest, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -496,7 +512,7 @@ fn is_useful_wildcard(
             Pattern::Wildcard
         } else {
             check!(
-                factory.create_pattern_not_present(type_engine, sigma, span),
+                factory.create_pattern_not_present(engines, sigma, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -532,7 +548,7 @@ fn is_useful_wildcard(
 /// 2. Extract the specialized `Matrix` *S(c, q)*
 /// 3. Recursively compute *U(S(c, P), S(c, q))*
 fn is_useful_constructed(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -557,7 +573,7 @@ fn is_useful_constructed(
     );
     if s_c_p_m > 0 && s_c_p_n != (c.a() + q.len() - 1) {
         errors.push(CompileError::Internal(
-            "S(c,P) matrix is misshappen",
+            "S(c,P) matrix is misshapen",
             span.clone(),
         ));
         return err(warnings, errors);
@@ -578,7 +594,7 @@ fn is_useful_constructed(
     );
 
     // 3. Recursively compute *U(S(c, P), S(c, q))*
-    is_useful(type_engine, factory, &s_c_p, &s_c_q, span)
+    is_useful(engines, factory, &s_c_p, &s_c_q, span)
 }
 
 /// Computes a witness report from *U(P, q)* when *q* is an or-pattern
@@ -593,7 +609,7 @@ fn is_useful_constructed(
 /// 2. Compute the witnesses from *U(P, q')*
 /// 3. Aggregate the witnesses from every *U(P, q')*
 fn is_useful_or(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     factory: &ConstructorFactory,
     p: &Matrix,
     q: &PatStack,
@@ -617,7 +633,7 @@ fn is_useful_or(
 
         // 2. Compute the witnesses from *U(P, q')*
         let wr = check!(
-            is_useful(type_engine, factory, &p, &v, span),
+            is_useful(engines, factory, &p, &v, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -758,8 +774,8 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
 /// Given a constructor *c* and a `PatStack` *pⁱ* from `Matrix` *P*, compute the
 /// resulting row of the specialized `Matrix` *S(c, P)*.
 ///
-/// Intuition: a row in the specialized `Matrix` "expands itself" or "eliminates
-/// itself" depending on if its possible to furthur "drill down" into the
+/// Intuition: a row in the specialized [Matrix] "expands itself" or "eliminates
+/// itself" depending on if its possible to further "drill down" into the
 /// elements of *P* given a *c* that we are specializing for. It is possible to
 /// "drill down" when the first element of a row of *P* *pⁱ₁* matches *c* (in
 /// which case it is possible to "drill down" into the arguments for *pⁱ₁*),

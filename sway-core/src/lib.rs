@@ -7,6 +7,7 @@ mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod declaration_engine;
+mod engine_threading;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
@@ -28,7 +29,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Type, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -46,14 +47,16 @@ pub mod fuel_prelude {
     pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
 }
 
+pub use engine_threading::Engines;
+
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// # use sway_core::parse;
 /// # fn main() {
 ///     let input = "script; fn main() -> bool { true }";
-///     let result = parse(input.into(), &<_>::default(), None);
+///     let result = parse(input.into(), <_>::default(), None);
 /// # }
 /// ```
 ///
@@ -61,14 +64,14 @@ pub mod fuel_prelude {
 /// Panics if the parser panics.
 pub fn parse(
     input: Arc<str>,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     config: Option<&BuildConfig>,
 ) -> CompileResult<parsed::ParseProgram> {
     CompileResult::with_handler(|h| match config {
-        None => parse_in_memory(h, type_engine, input),
+        None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, type_engine, input, config.canonical_root_module())
+        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module())
             .map(|(kind, root)| parsed::ParseProgram { kind, root }),
     })
 }
@@ -85,11 +88,11 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     src: Arc<str>,
 ) -> Result<parsed::ParseProgram, ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
     Ok(parsed::ParseProgram { kind, root })
@@ -98,7 +101,7 @@ fn parse_in_memory(
 /// Parse all dependencies `deps` as submodules.
 fn parse_submodules(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     module: &sway_ast::Module,
     module_dir: &Path,
 ) -> Vec<(Ident, parsed::ParseSubmodule)> {
@@ -122,7 +125,7 @@ fn parse_submodules(
         };
 
         if let Ok((kind, module)) =
-            parse_module_tree(handler, type_engine, dep_str.clone(), dep_path.clone())
+            parse_module_tree(handler, engines, dep_str.clone(), dep_path.clone())
         {
             let library_name = match kind {
                 parsed::TreeType::Library { name } => name,
@@ -152,7 +155,7 @@ fn parse_submodules(
 /// parse this module including all of its submodules.
 fn parse_module_tree(
     handler: &Handler,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     src: Arc<str>,
     path: Arc<PathBuf>,
 ) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
@@ -162,10 +165,10 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, type_engine, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, type_engine, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
 
     Ok((kind, parsed::ParseModule { tree, submodules }))
 }
@@ -184,7 +187,7 @@ pub struct CompiledAsm(pub FinalizedAsm);
 pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     parse_program: &parsed::ParseProgram,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -194,7 +197,7 @@ pub fn parsed_to_ast(
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(type_engine, parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace);
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),
@@ -205,7 +208,7 @@ pub fn parsed_to_ast(
         value: types_metadata_result,
         warnings: new_warnings,
         errors: new_errors,
-    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(type_engine));
+    } = typed_program.collect_types_metadata(&mut CollectTypesMetadataContext::new(engines));
     warnings.extend(new_warnings);
     errors.extend(new_errors);
     let types_metadata = match types_metadata_result {
@@ -229,7 +232,7 @@ pub fn parsed_to_ast(
 
     // Perform control flow analysis and extend with any errors.
     let cfa_res = perform_control_flow_analysis(
-        type_engine,
+        engines,
         &typed_program,
         match build_config {
             Some(cfg) => cfg.print_dca_graph,
@@ -245,7 +248,7 @@ pub fn parsed_to_ast(
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
-        type_engine,
+        engines,
         &mut ctx,
         &mut md_mgr,
         module,
@@ -256,12 +259,12 @@ pub fn parsed_to_ast(
 
     // CEI pattern analysis
     let cei_analysis_warnings =
-        semantic_analysis::cei_pattern_analysis::analyze_program(type_engine, &typed_program);
+        semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
     warnings.extend(cei_analysis_warnings);
 
     // Check that all storage initializers can be evaluated at compile time.
     let typed_wiss_res = typed_program.get_typed_program_with_initialized_storage_slots(
-        type_engine,
+        engines,
         &mut ctx,
         &mut md_mgr,
         module,
@@ -294,7 +297,7 @@ pub fn parsed_to_ast(
 }
 
 pub fn compile_to_ast(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
@@ -304,14 +307,14 @@ pub fn compile_to_ast(
         value: parse_program_opt,
         mut warnings,
         mut errors,
-    } = parse(input, type_engine, build_config);
+    } = parse(input, engines, build_config);
     let parse_program = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
 
     // Type check (+ other static analysis) the CST to a typed AST.
-    let typed_res = parsed_to_ast(type_engine, &parse_program, initial_namespace, build_config);
+    let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
     errors.extend(typed_res.errors);
     warnings.extend(typed_res.warnings);
     let typed_program = match typed_res.value {
@@ -330,20 +333,20 @@ pub fn compile_to_ast(
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn compile_to_asm(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
 ) -> CompileResult<CompiledAsm> {
-    let ast_res = compile_to_ast(type_engine, input, initial_namespace, Some(&build_config));
-    ast_to_asm(type_engine, &ast_res, &build_config)
+    let ast_res = compile_to_ast(engines, input, initial_namespace, Some(&build_config));
+    ast_to_asm(engines, &ast_res, &build_config)
 }
 
 /// Given an AST compilation result,
 /// try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
 pub fn ast_to_asm(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     ast_res: &CompileResult<ty::TyProgram>,
     build_config: &BuildConfig,
 ) -> CompileResult<CompiledAsm> {
@@ -353,7 +356,7 @@ pub fn ast_to_asm(
             let mut errors = ast_res.errors.clone();
             let mut warnings = ast_res.warnings.clone();
             let asm = check!(
-                compile_ast_to_ir_to_asm(type_engine, typed_program, build_config),
+                compile_ast_to_ir_to_asm(engines, typed_program, build_config),
                 return deduped_err(warnings, errors),
                 warnings,
                 errors
@@ -364,7 +367,7 @@ pub fn ast_to_asm(
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> CompileResult<FinalizedAsm> {
@@ -383,11 +386,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // IR phase.
 
     let tree_type = program.kind.tree_type();
-    let mut ir =
-        match ir_generation::compile_program(program, build_config.include_tests, type_engine) {
-            Ok(ir) => ir,
-            Err(e) => return err(warnings, vec![e]),
-        };
+    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
+    {
+        Ok(ir) => ir,
+        Err(e) => return err(warnings, vec![e]),
+    };
 
     // Find all the entry points for purity checking and DCE.
     let entry_point_functions: Vec<::sway_ir::Function> = ir
@@ -544,8 +547,10 @@ pub fn inline_function_calls(
         // isn't one.  Ref type args which aren't pointers need to be inlined.
         if func.args_iter(ctx).any(|(_name, arg_val)| {
             arg_val
-                .get_type(ctx)
-                .map(|ty| !ty.is_copy_type())
+                .get_argument_type_and_byref(ctx)
+                .map(|(ty, by_ref)| {
+                    by_ref || !matches!(ty, Type::Unit | Type::Bool | Type::Uint(_))
+                })
                 .unwrap_or(false)
         }) {
             return true;
@@ -635,16 +640,14 @@ fn simplify_cfg(
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn compile_to_bytecode(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     input: Arc<str>,
     initial_namespace: namespace::Module,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
 ) -> CompileResult<CompiledBytecode> {
-    let asm_res = compile_to_asm(type_engine, input, initial_namespace, build_config);
-    let result = asm_to_bytecode(asm_res, source_map);
-    clear_lazy_statics();
-    result
+    let asm_res = compile_to_asm(engines, input, initial_namespace, build_config);
+    asm_to_bytecode(asm_res, source_map)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
@@ -670,19 +673,15 @@ pub fn asm_to_bytecode(
     }
 }
 
-pub fn clear_lazy_statics() {
-    declaration_engine::declaration_engine::de_clear();
-}
-
 /// Given a [ty::TyProgram], which is type-checked Sway source, construct a graph to analyze
 /// control flow and determine if it is valid.
 fn perform_control_flow_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     program: &ty::TyProgram,
     print_graph: bool,
 ) -> CompileResult<()> {
-    let dca_res = dead_code_analysis(type_engine, program);
-    let rpa_errors = return_path_analysis(type_engine, program);
+    let dca_res = dead_code_analysis(engines, program);
+    let rpa_errors = return_path_analysis(engines, program);
     let rpa_res = if rpa_errors.is_empty() {
         ok((), vec![], vec![])
     } else {
@@ -700,25 +699,27 @@ fn perform_control_flow_analysis(
 /// code.
 ///
 /// Returns the graph that was used for analysis.
-fn dead_code_analysis(
-    type_engine: &TypeEngine,
+fn dead_code_analysis<'a>(
+    engines: Engines<'a>,
     program: &ty::TyProgram,
-) -> CompileResult<ControlFlowGraph> {
+) -> CompileResult<ControlFlowGraph<'a>> {
+    let declaration_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
-    module_dead_code_analysis(type_engine, &program.root, &tree_type, &mut dead_code_graph)
-        .flat_map(|_| {
-            let warnings = dead_code_graph.find_dead_code();
+    module_dead_code_analysis(engines, &program.root, &tree_type, &mut dead_code_graph).flat_map(
+        |_| {
+            let warnings = dead_code_graph.find_dead_code(declaration_engine);
             ok(dead_code_graph, warnings, vec![])
-        })
+        },
+    )
 }
 
 /// Recursively collect modules into the given `ControlFlowGraph` ready for dead code analysis.
-fn module_dead_code_analysis(
-    type_engine: &TypeEngine,
+fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
+    engines: Engines<'eng>,
     module: &ty::TyModule,
     tree_type: &parsed::TreeType,
-    graph: &mut ControlFlowGraph,
+    graph: &mut ControlFlowGraph<'cfg>,
 ) -> CompileResult<()> {
     let init_res = ok((), vec![], vec![]);
     let submodules_res = module
@@ -728,12 +729,12 @@ fn module_dead_code_analysis(
             let name = submodule.library_name.clone();
             let tree_type = parsed::TreeType::Library { name };
             res.flat_map(|_| {
-                module_dead_code_analysis(type_engine, &submodule.module, &tree_type, graph)
+                module_dead_code_analysis(engines, &submodule.module, &tree_type, graph)
             })
         });
     let res = submodules_res.flat_map(|()| {
         ControlFlowGraph::append_module_to_dead_code_graph(
-            type_engine,
+            engines,
             &module.all_nodes,
             tree_type,
             graph,
@@ -745,30 +746,34 @@ fn module_dead_code_analysis(
     res
 }
 
-fn return_path_analysis(type_engine: &TypeEngine, program: &ty::TyProgram) -> Vec<CompileError> {
+fn return_path_analysis(engines: Engines<'_>, program: &ty::TyProgram) -> Vec<CompileError> {
     let mut errors = vec![];
-    module_return_path_analysis(type_engine, &program.root, &mut errors);
+    module_return_path_analysis(engines, &program.root, &mut errors);
     errors
 }
 
 fn module_return_path_analysis(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     module: &ty::TyModule,
     errors: &mut Vec<CompileError>,
 ) {
     for (_, submodule) in &module.submodules {
-        module_return_path_analysis(type_engine, &submodule.module, errors);
+        module_return_path_analysis(engines, &submodule.module, errors);
     }
-    let graph = ControlFlowGraph::construct_return_path_graph(type_engine, &module.all_nodes);
+    let graph = ControlFlowGraph::construct_return_path_graph(engines, &module.all_nodes);
     match graph {
-        Ok(graph) => errors.extend(graph.analyze_return_paths(type_engine)),
+        Ok(graph) => errors.extend(graph.analyze_return_paths(engines)),
         Err(error) => errors.push(error),
     }
 }
 
 #[test]
 fn test_basic_prog() {
+    use crate::declaration_engine::DeclarationEngine;
+
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
         contract;
@@ -850,7 +855,7 @@ fn test_basic_prog() {
     }
     "#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -859,7 +864,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
+    use crate::declaration_engine::DeclarationEngine;
+
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
         contract;
@@ -869,7 +878,7 @@ fn test_parenthesized() {
         }
     "#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
@@ -879,9 +888,14 @@ fn test_parenthesized() {
 
 #[test]
 fn test_unary_ordering() {
-    use crate::language::{self, parsed};
+    use crate::{
+        declaration_engine::DeclarationEngine,
+        language::{self, parsed},
+    };
 
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
     script;
@@ -891,7 +905,7 @@ fn test_unary_ordering() {
         !a && b;
     }"#
         .into(),
-        &type_engine,
+        engines,
         None,
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();

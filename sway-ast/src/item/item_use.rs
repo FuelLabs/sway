@@ -41,4 +41,8 @@ pub enum UseTree {
         double_colon_token: DoubleColonToken,
         suffix: Box<UseTree>,
     },
+    // to handle parsing recovery, e.g. foo::
+    Error {
+        spans: Box<[Span]>,
+    },
 }

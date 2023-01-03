@@ -5,6 +5,9 @@ pub struct PathExpr {
     pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
     pub prefix: PathExprSegment,
     pub suffix: Vec<(DoubleColonToken, PathExprSegment)>,
+    // path expression with incomplete suffix are needed to do
+    // parser recovery on inputs like foo::
+    pub incomplete_suffix: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -32,7 +35,11 @@ impl Spanned for PathExpr {
 
 impl PathExpr {
     pub fn try_into_ident(self) -> Result<Ident, PathExpr> {
-        if self.root_opt.is_none() && self.suffix.is_empty() && self.prefix.generics_opt.is_none() {
+        if self.root_opt.is_none()
+            && self.suffix.is_empty()
+            && self.prefix.generics_opt.is_none()
+            && !self.incomplete_suffix
+        {
             return Ok(self.prefix.name);
         }
         Err(self)

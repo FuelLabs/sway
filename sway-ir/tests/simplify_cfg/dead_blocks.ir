@@ -2,23 +2,23 @@
 
 script {
     fn main() -> u64 {
-        local ptr u64 x
+        local u64 x
 
         entry():
         call foo()
         call bar()
         call baz()
-        v0 = get_ptr ptr u64 x, ptr u64, 0
+        v0 = get_local u64 x
 // check: const u64 11
         v1 = const u64 11
-        store v1, ptr v0
+        store v1 to v0
         br block1(v1)
 
         // Dead block, no predecessors.
         block0(v1: u64):
 // not: const u64 22
         v2 = const u64 22
-        store v2, ptr v0
+        store v2 to v0
         br block1(v2)
 
         block1(v3: u64):

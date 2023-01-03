@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-E63CC8DCA8E2AC33'
+
+[[package]]
+name = 'recover_path_pattern_matching'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-E63CC8DCA8E2AC33'
+dependencies = ['core']

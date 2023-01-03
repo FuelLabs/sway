@@ -15,10 +15,10 @@ fn cmp(a: b256, b: b256) -> bool {
 
 // ::check-ir::
 
-// check: local ptr b256 a
-// check: $(ptr=$VAL) = get_ptr ptr b256 a, ptr b256, 0
+// check: local b256 a
+// check: $(var=$VAL) = get_local b256 a
 // check: $(c1=$VAL) = const b256 0x0202020202020202020202020202020202020202020202020202020202020202
-// check: store $c1, ptr $ptr
+// check: store $c1 to $var
 
 // check: const b256 0x0303030303030303030303030303030303030303030303030303030303030303
 // check: $(res=$VAL) = call
