@@ -67,13 +67,6 @@ async fn generate_predicate_inputs(
     data: Vec<u8>,
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
-    // let mut predicate_bytecode = Opcode::RET(REG_ONE).to_bytes().to_vec();
-    // predicate_bytecode.append(&mut predicate_bytecode.clone());
-    // predicate_bytecode.append(&mut predicate_bytecode.clone());
-    // predicate_bytecode.append(&mut predicate_bytecode.clone());
-    // let predicate_root: [u8; 32] = (*TxContract::root_from_code(&predicate_bytecode)).into();
-    // let predicate_root = Address::from(predicate_root);
-
     let predicate =
         Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
@@ -82,7 +75,7 @@ async fn generate_predicate_inputs(
 
     let provider = wallet.get_provider().unwrap();
 
-    let _receipt = wallet
+    wallet
         .transfer(
             &predicate_root,
             amount,
@@ -104,14 +97,14 @@ async fn generate_predicate_inputs(
         tx_pointer: TxPointer::default(),
         maturity: 0,
         predicate: predicate_bytecode.clone(),
-        predicate_data: data.clone(),
+        predicate_data: vec![],
     };
 
     let message = &wallet.get_messages().await.unwrap()[0];
     let message_id = TxInput::compute_message_id(
         &message.sender.clone().into(),
         &message.recipient.clone().into(),
-        message.nonce.clone().into(),
+        0,
         message.amount,
         &data,
     );
@@ -124,7 +117,7 @@ async fn generate_predicate_inputs(
         nonce: message.nonce.clone(),
         data: data.clone(),
         predicate: predicate_bytecode.clone(),
-        predicate_data: message.data.clone(),
+        predicate_data: vec![],
     };
 
     (predicate_bytecode, predicate_coin, predicate_message)
