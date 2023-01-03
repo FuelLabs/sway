@@ -119,8 +119,8 @@ fn module_to_doc<'a>(
         Doc::List(
             module
                 .global_configurable
-                .iter()
-                .map(|(_, value)| config_to_doc(context, md_namer, &mut global_namer, value))
+                .values()
+                .map(|value| config_to_doc(context, md_namer, &mut global_namer, value))
                 .collect(),
         ),
     ))

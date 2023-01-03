@@ -1971,9 +1971,7 @@ impl<'ir> AsmBuilder<'ir> {
                     let initialized =
                         self.initialise_constant(constant, Some(config_name.clone()), span);
                     if let Some(data_id) = initialized.1 {
-                        self.data_section
-                            .config_map
-                            .insert(config_name, data_id.0 as u32);
+                        self.data_section.config_map.insert(config_name, data_id.0);
                     }
                     initialized.0
                 })
