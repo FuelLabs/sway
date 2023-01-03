@@ -1,0 +1,13 @@
+[[package]]
+name = 'configurable_consts_in_lib'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-EF021939197AF553'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-EF021939197AF553'
+dependencies = ['core']

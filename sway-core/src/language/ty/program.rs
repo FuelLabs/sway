@@ -18,6 +18,7 @@ pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
     pub declarations: Vec<TyDeclaration>,
+    pub configurables: Vec<TyConstantDeclaration>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
@@ -30,7 +31,11 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
-    ) -> CompileResult<(TyProgramKind, Vec<TyDeclaration>)> {
+    ) -> CompileResult<(
+        TyProgramKind,
+        Vec<TyDeclaration>,
+        Vec<TyConstantDeclaration>,
+    )> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -39,25 +44,29 @@ impl TyProgram {
         let declaration_engine = engines.de();
 
         // Validate all submodules
+        let mut configurables = Vec::<TyConstantDeclaration>::new();
         for (_, submodule) in &root.submodules {
-            check!(
-                Self::validate_root(
-                    engines,
-                    &submodule.module,
-                    parsed::TreeType::Library {
-                        name: submodule.library_name.clone(),
-                    },
-                    submodule.library_name.span().clone(),
-                ),
-                continue,
-                warnings,
-                errors
+            configurables.extend(
+                check!(
+                    Self::validate_root(
+                        engines,
+                        &submodule.module,
+                        parsed::TreeType::Library {
+                            name: submodule.library_name.clone(),
+                        },
+                        submodule.library_name.span().clone(),
+                    ),
+                    continue,
+                    warnings,
+                    errors
+                )
+                .2,
             );
         }
 
         let mut mains = Vec::new();
-        let mut declarations = Vec::<TyDeclaration>::new();
         let mut abi_entries = Vec::new();
+        let mut declarations = Vec::<TyDeclaration>::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
@@ -81,6 +90,14 @@ impl TyProgram {
                     }
 
                     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                }
+                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
+                    match declaration_engine.get_constant(decl_id.clone(), &node.span) {
+                        Ok(config_decl) if config_decl.is_configurable => {
+                            configurables.push(config_decl)
+                        }
+                        _ => {}
+                    }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
@@ -248,7 +265,11 @@ impl TyProgram {
             }
             _ => (),
         }
-        ok((typed_program_kind, declarations), warnings, errors)
+        ok(
+            (typed_program_kind, declarations, configurables),
+            warnings,
+            errors,
+        )
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
@@ -389,7 +410,7 @@ impl TyProgram {
                     .collect();
                 let logged_types = self.generate_json_logged_types(engines.te(), types);
                 let messages_types = self.generate_json_messages_types(engines.te(), types);
-                let configurables = self.generate_json_configurables(engines, types);
+                let configurables = self.generate_json_configurables(engines.te(), types);
                 program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
@@ -403,7 +424,7 @@ impl TyProgram {
                 let functions = vec![main_function.generate_json_abi_function(engines.te(), types)];
                 let logged_types = self.generate_json_logged_types(engines.te(), types);
                 let messages_types = self.generate_json_messages_types(engines.te(), types);
-                let configurables = self.generate_json_configurables(engines, types);
+                let configurables = self.generate_json_configurables(engines.te(), types);
                 program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
@@ -492,26 +513,12 @@ impl TyProgram {
 
     fn generate_json_configurables(
         &self,
-        engines: Engines<'_>,
+        type_engine: &TypeEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> Vec<program_abi::Configurable> {
-        let type_engine = engines.te();
-        let configurables = self
-            .declarations
-            .iter()
-            .filter_map(|decl| match decl {
-                TyDeclaration::ConstantDeclaration(decl_id) => {
-                    match engines.de().get_constant(decl_id.clone(), &decl.span()) {
-                        Ok(config_decl) if config_decl.is_configurable => Some(config_decl),
-                        _ => None,
-                    }
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
         // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
-        let configurables_types = configurables
+        let configurables_types = self
+            .configurables
             .iter()
             .map(
                 |TyConstantDeclaration { return_type, .. }| program_abi::TypeDeclaration {
@@ -535,7 +542,7 @@ impl TyProgram {
         types.extend(configurables_types);
 
         // Generate the JSON data for the configurables types
-        configurables
+        self.configurables
             .iter()
             .map(
                 |TyConstantDeclaration {

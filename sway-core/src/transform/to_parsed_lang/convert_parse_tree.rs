@@ -748,7 +748,6 @@ fn item_configurable_to_constant_declarations(
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
-    let mut errors = Vec::new();
     let declarations: Vec<ConstantDeclaration> = item_configurable
         .fields
         .into_inner()
@@ -765,6 +764,7 @@ fn item_configurable_to_constant_declarations(
         .collect::<Result<_, _>>()?;
 
     // Make sure each configurable is declared once
+    let mut errors = Vec::new();
     let mut names_of_declarations = std::collections::HashSet::new();
     declarations.iter().for_each(|v| {
         if !names_of_declarations.insert(v.name.clone()) {

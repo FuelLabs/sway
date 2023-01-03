@@ -29,10 +29,11 @@ impl ty::TyProgram {
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
-            res.map(|(kind, declarations)| Self {
+            res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
                 declarations,
+                configurables,
                 storage_slots: vec![],
                 logged_types: vec![],
                 messages_types: vec![],
