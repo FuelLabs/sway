@@ -24,12 +24,12 @@ fn main() -> u64 {
     }
 }
 
-// check: local ptr { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val
+// check: local { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val
 
-// check: get_ptr ptr { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val, ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0
+// check: get_local { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val
 
-// check: $(b_val_ptr=$VAL) = get_ptr ptr { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val, ptr { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0
-// check: $(b_val_tag=$VAL) = extract_value $b_val_ptr, { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0
+// check: $(b_val_var=$VAL) = get_local { u64, ( { { string<17>, u64 }, u64, bool } ) } b_val
+// check: $(b_val_tag=$VAL) = extract_value $b_val_var, { u64, ( { { string<17>, u64 }, u64, bool } ) }, 0
 // check: $(zero=$VAL) = const u64 0
 // check: $(tag_matches=$VAL) = call $(eq_fn=$ID)($b_val_tag, $zero)
 // check: cbr $tag_matches

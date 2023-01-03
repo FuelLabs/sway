@@ -3,14 +3,13 @@
 script {
 // check: fn main
     fn main() -> u64 {
-        local ptr u64 a
-        local ptr b256 arg_for_get_b256
-        local mut ptr { u64, b256 } args_struct_for_get_s
-        local ptr b256 b
-        local ptr { u64, b256 } s
-
 // * The struct that we build for the args to a contract call should be const, except for the
 //   bitcast.
+        local u64 a
+        local b256 arg_for_get_b256
+        local { u64, b256 } args_struct_for_get_s
+        local b256 b
+        local { u64, b256 } s
 
         entry():
         v0 = const u64 1111
@@ -29,43 +28,45 @@ script {
         v9 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
         v10 = const u64 10000
         v11 = contract_call u64 get_u64 v7, v8, v9, v10
-        v12 = get_ptr ptr u64 a, ptr u64, 0
-        store v11, ptr v12
-        v13 = get_ptr ptr b256 arg_for_get_b256, ptr b256, 0
+        v12 = get_local u64 a
+        store v11 to v12
+        v13 = get_local b256 arg_for_get_b256
         v14 = const b256 0x3333333333333333333333333333333333333333333333333333333333333333
-        store v14, ptr v13
-        v15 = get_ptr ptr b256 arg_for_get_b256, ptr u64, 0
-        v16 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }
-        v17 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
-        v18 = insert_value v16, { b256, u64, u64 }, v17, 0
-        v19 = const u64 1108491158
-        v20 = insert_value v18, { b256, u64, u64 }, v19, 1
-        v21 = insert_value v20, { b256, u64, u64 }, v15, 2
-        v22 = const u64 0
-        v23 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-        v24 = const u64 20000
-        v25 = contract_call b256 get_b256 v21, v22, v23, v24
-        v26 = get_ptr ptr b256 b, ptr b256, 0
-        store v25, ptr v26
-        v27 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr { u64, b256 }, 0
-        v28 = const u64 5555
-        v29 = insert_value v27, { u64, b256 }, v28, 0
-        v30 = const b256 0x5555555555555555555555555555555555555555555555555555555555555555
-        v31 = insert_value v29, { u64, b256 }, v30, 1
-        v32 = get_ptr mut ptr { u64, b256 } args_struct_for_get_s, ptr u64, 0
-        v33 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }
-        v34 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
-        v35 = insert_value v33, { b256, u64, u64 }, v34, 0
-        v36 = const u64 4234334249
-        v37 = insert_value v35, { b256, u64, u64 }, v36, 1
-        v38 = insert_value v37, { b256, u64, u64 }, v32, 2
-        v39 = read_register cgas
-        v40 = const u64 0
-        v41 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-        v42 = contract_call { u64, b256 } get_s v38, v40, v41, v39
-        v43 = get_ptr ptr { u64, b256 } s, ptr { u64, b256 }, 0
-        store v42, ptr v43
-        v44 = const u64 0
-        ret u64 v44
+        store v14 to v13
+        v15 = get_local b256 arg_for_get_b256
+        v16 = addr_of v15
+        v17 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }
+        v18 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
+        v19 = insert_value v17, { b256, u64, u64 }, v18, 0
+        v20 = const u64 1108491158
+        v21 = insert_value v19, { b256, u64, u64 }, v20, 1
+        v22 = insert_value v21, { b256, u64, u64 }, v16, 2
+        v23 = const u64 0
+        v24 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        v25 = const u64 20000
+        v26 = contract_call b256 get_b256 v22, v23, v24, v25
+        v27 = get_local b256 b
+        store v26 to v27
+        v28 = get_local { u64, b256 } args_struct_for_get_s
+        v29 = const u64 5555
+        v30 = insert_value v28, { u64, b256 }, v29, 0
+        v31 = const b256 0x5555555555555555555555555555555555555555555555555555555555555555
+        v32 = insert_value v30, { u64, b256 }, v31, 1
+        v33 = get_local { u64, b256 } args_struct_for_get_s
+        v34 = addr_of v33
+        v35 = const { b256, u64, u64 } { b256 undef, u64 undef, u64 undef }
+        v36 = const b256 0x0c1c50c2bf5ba4bb351b4249a2f5e7d86556fcb4a6ae90465ff6c86126eeb3c0
+        v37 = insert_value v35, { b256, u64, u64 }, v36, 0
+        v38 = const u64 4234334249
+        v39 = insert_value v37, { b256, u64, u64 }, v38, 1
+        v40 = insert_value v39, { b256, u64, u64 }, v34, 2
+        v41 = read_register cgas
+        v42 = const u64 0
+        v43 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        v44 = contract_call { u64, b256 } get_s v40, v42, v43, v41
+        v45 = get_local { u64, b256 } s
+        store v44 to v45
+        v46 = const u64 0
+        ret u64 v46
     }
 }

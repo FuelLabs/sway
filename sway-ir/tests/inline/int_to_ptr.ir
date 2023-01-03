@@ -4,8 +4,8 @@
 // regex: LABEL=[[:alpha:]0-9_]+
 
 script {
-    fn a(b: u64, __ret_value: mut ptr b256) -> b256 {
-        entry(b: u64, __ret_value: mut ptr b256):
+    fn a(b: u64, inout __ret_value: b256) -> b256 {
+        entry(b: u64, inout __ret_value: b256):
         v0 = int_to_ptr b to b256
         mem_copy __ret_value, v0, 32
         ret b256 __ret_value
@@ -13,13 +13,13 @@ script {
 
     fn main() -> b256 {
 // check: fn main
-        local mut ptr b256 __ret_val_a
+        local b256 __ret_val_a
 
         entry():
-        v0 = get_ptr mut ptr b256 __ret_val_a, ptr b256, 0
+        v0 = get_local b256 __ret_val_a
         v1 = const u64 11
 
-// check: $(retv=$VAR) = get_ptr mut ptr b256 __ret_val_a, ptr b256, 0
+// check: $(retv=$VAR) = get_local b256 __ret_val_a
 // check: $(arg0=$VAR) = const u64 11
 
         v2 = call a(v1, v0)

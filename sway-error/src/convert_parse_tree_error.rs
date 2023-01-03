@@ -85,8 +85,8 @@ pub enum ConvertParseTreeError {
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
     DuplicateParameterIdentifier { name: Ident, span: Span },
-    #[error("self parameter is not allowed for a free function")]
-    SelfParameterNotAllowedForFreeFn { span: Span },
+    #[error("self parameter is not allowed for {fn_kind}")]
+    SelfParameterNotAllowedForFn { fn_kind: String, span: Span },
     #[error("test functions are only allowed at module level")]
     TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
@@ -143,7 +143,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
-            ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
+            ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
             ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),

@@ -866,7 +866,10 @@ impl TypeInfo {
     }
 
     pub fn is_copy_type(&self) -> bool {
-        matches!(self, TypeInfo::Boolean | TypeInfo::UnsignedInteger(_)) || self.is_unit()
+        matches!(
+            self,
+            TypeInfo::Boolean | TypeInfo::UnsignedInteger(_) | TypeInfo::RawUntypedPtr
+        ) || self.is_unit()
     }
 
     pub(crate) fn apply_type_arguments(
@@ -1658,6 +1661,15 @@ impl TypeInfo {
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
             | TypeInfo::Placeholder(_) => true,
+        }
+    }
+
+    /// Checks if a given [TypeInfo] has a valid constructor.
+    pub(crate) fn has_valid_constructor(&self) -> bool {
+        match self {
+            TypeInfo::Unknown => false,
+            TypeInfo::Enum { variant_types, .. } => !variant_types.is_empty(),
+            _ => true,
         }
     }
 
