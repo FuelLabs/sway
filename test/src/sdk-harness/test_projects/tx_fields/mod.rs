@@ -1,11 +1,10 @@
-use fuel_vm::{consts::REG_ONE, fuel_asm::Opcode, fuel_crypto::Hasher};
+use fuel_vm::fuel_crypto::Hasher;
 use fuels::{
     contract::execution_script::ExecutableFuelCall,
     prelude::*,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
-        Contract as TxContract, ContractId, Input as TxInput, Output as TxOutput, TxPointer,
-        UniqueIdentifier, UtxoId,
+        ContractId, Input as TxInput, TxPointer, UniqueIdentifier, UtxoId,
     },
 };
 use std::str::FromStr;
@@ -117,24 +116,18 @@ async fn generate_predicate_inputs(
         &data,
     );
 
-    let predicate_message = TxInput::message_predicate(
-        message_id,
-        message.sender.clone().into(),
-        message.recipient.clone().into(),
-        message.amount,
-        0,
-        data.clone(),
-        predicate_bytecode.clone(),
-        data.clone(),
-    );
+    let predicate_message = TxInput::MessagePredicate {
+        message_id: message_id,
+        sender: message.sender.clone().into(),
+        recipient: message.recipient.clone().into(),
+        amount: message.amount,
+        nonce: message.nonce.clone(),
+        data: data.clone(),
+        predicate: predicate_bytecode.clone(),
+        predicate_data: message.data.clone(),
+    };
 
     (predicate_bytecode, predicate_coin, predicate_message)
-}
-
-fn generate_outputs() -> Vec<TxOutput> {
-    let mut v = vec![TxOutput::variable(Address::zeroed(), 0, AssetId::default())];
-    v.push(TxOutput::message(Address::zeroed(), 0));
-    v
 }
 
 async fn add_message_input(call: &mut ExecutableFuelCall, wallet: WalletUnlocked) {
@@ -518,11 +511,9 @@ mod inputs {
         #[tokio::test]
         async fn can_get_input_coin_predicate() {
             let (contract_instance, _, wallet, _) = get_contracts().await;
-            let provider = wallet.get_provider().unwrap();
-            let (predicate_bytecode, predicate_coin, predicate_message) =
+            let (predicate_bytecode, predicate_coin, _) =
                 generate_predicate_inputs(100, vec![], &wallet).await;
             let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
-            println!("length: {:?}", predicate_bytes.len());
 
             // Add predicate coin to inputs and call contract
             let handler = contract_instance
@@ -537,7 +528,6 @@ mod inputs {
                 .await
                 .unwrap();
 
-            println!("receipts: {:#?}", receipts);
             assert_eq!(receipts[1].val().unwrap(), 1);
         }
 
@@ -644,29 +634,37 @@ mod inputs {
 
             #[tokio::test]
             async fn can_get_input_message_predicate_length() {
-                let (contract_instance, _, _, _) = get_contracts().await;
-                let result = contract_instance
-                    .methods()
-                    .get_input_predicate_length(1)
-                    .append_variable_outputs(2)
-                    .append_message_outputs(2)
-                    .call()
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (_, _, predicate_message) =
+                    generate_predicate_inputs(100, vec![], &wallet).await;
+                let handler = contract_instance.methods().get_input_predicate_length(1);
+                let mut executable = handler.get_executable_call().await.unwrap();
+                executable.tx.inputs_mut().push(predicate_message);
+
+                let receipts = executable
+                    .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-                assert_eq!(result.value, 0u16);
+
+                assert_eq!(receipts[1].val().unwrap(), 0u16 as u64);
             }
 
             #[tokio::test]
             async fn can_get_input_message_predicate_data_length() {
-                let (contract_instance, _, _, _) = get_contracts().await;
-                let result = contract_instance
+                let (contract_instance, _, wallet, _) = get_contracts().await;
+                let (_, _, predicate_message) =
+                    generate_predicate_inputs(100, vec![], &wallet).await;
+                let handler = contract_instance
                     .methods()
-                    .get_input_predicate_data_length(1)
-                    .call()
+                    .get_input_predicate_data_length(1);
+                let mut executable = handler.get_executable_call().await.unwrap();
+                executable.tx.inputs_mut().push(predicate_message);
+
+                let receipts = executable
+                    .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-
-                assert_eq!(result.value, 0u16);
+                assert_eq!(receipts[1].val().unwrap(), 0u16 as u64);
             }
 
             #[tokio::test]
@@ -685,19 +683,18 @@ mod inputs {
                     .await
                     .unwrap();
 
-                println!("rec: {:#?}", receipts);
                 assert_eq!(receipts[1].val().unwrap(), 1);
             }
 
             #[tokio::test]
-            // #[ignore]
             async fn can_get_input_message_predicate() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
+                let predicate_bytes: Vec<u8> = predicate_bytecode.try_into().unwrap();
                 let handler = contract_instance
                     .methods()
-                    .get_input_predicate(1, predicate_bytecode.clone());
+                    .get_input_predicate(2, predicate_bytes.clone());
                 let mut executable = handler.get_executable_call().await.unwrap();
 
                 executable.tx.inputs_mut().push(predicate_message);
@@ -707,7 +704,7 @@ mod inputs {
                     .await
                     .unwrap();
 
-                assert_eq!(receipts[1].data().unwrap(), predicate_bytecode);
+                assert_eq!(receipts[1].val().unwrap(), 1);
             }
         }
     }

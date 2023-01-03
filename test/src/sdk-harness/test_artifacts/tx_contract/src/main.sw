@@ -193,7 +193,7 @@ impl TxContractTest for Contract {
     }
 
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
-        let code = input_predicate::<Vec<u8>>(index);
+        let code = input_predicate(index);
         assert(input_predicate_length(index).unwrap() == bytecode.len());
         let mut i = 0;
         while i < bytecode.len() {
