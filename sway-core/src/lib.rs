@@ -49,7 +49,7 @@ pub mod fuel_prelude {
 
 pub use engine_threading::Engines;
 
-/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
+/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
 /// # Example
 /// ```ignore
@@ -113,6 +113,7 @@ fn parse_in_memory(
     Ok((lexed_program, parsed::ParseProgram { kind, root }))
 }
 
+/// Contains the lexed and parsed submodules 'deps' of a module.
 struct Submodules {
     lexed: Vec<(Ident, lexed::LexedSubmodule)>,
     parsed: Vec<(Ident, parsed::ParseSubmodule)>,

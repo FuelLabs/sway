@@ -31,17 +31,14 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::lexed,
-    Engines, TypeEngine,
-};
-use sway_core::{
     language::{
+        lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
         ty,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, FinalizedEntry,
+    CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
@@ -2800,11 +2797,25 @@ fn update_json_type_declaration(
     }
 }
 
-/// Contains the lexed, parsed, and typed compilation results of a program.
+/// Contains the lexed, parsed, and typed compilation stages of a program.
 pub struct Programs {
-    pub lexed: lexed::LexedProgram,
+    pub lexed: LexedProgram,
     pub parsed: ParseProgram,
     pub typed: Option<ty::TyProgram>,
+}
+
+impl Programs {
+    pub fn new(
+        lexed: LexedProgram,
+        parsed: ParseProgram,
+        typed: Option<ty::TyProgram>,
+    ) -> Programs {
+        Programs {
+            lexed,
+            parsed,
+            typed,
+        }
+    }
 }
 
 /// Compile the entire forc package and return the parse and typed programs
@@ -2855,11 +2866,7 @@ pub fn check(
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some(Programs {
-                    lexed,
-                    parsed,
-                    typed: None,
-                });
+                let value = Some(Programs::new(lexed, parsed, None));
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
             }
@@ -2872,11 +2879,7 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some(Programs {
-            lexed,
-            parsed,
-            typed: Some(typed_program),
-        });
+        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
         results.push(CompileResult::new(value, warnings, errors));
     }
 
@@ -2892,7 +2895,7 @@ pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<CompileResult<(lexed::LexedProgram, ParseProgram)>> {
+) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()

@@ -1,9 +1,9 @@
 use super::LexedModule;
 use crate::language::parsed::TreeType;
 
-/// A parsed, but not yet type-checked, Sway program.
+/// A lexed, but not yet parsed or type-checked, Sway program.
 ///
-/// Includes all modules in the form of a `ParseModule` tree accessed via the `root`.
+/// Includes all modules in the form of a [LexedModule] tree accessed via the `root`.
 #[derive(Debug, Clone)]
 pub struct LexedProgram {
     pub kind: TreeType,

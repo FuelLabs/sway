@@ -8,7 +8,7 @@ use sway_types::Ident;
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
 pub struct LexedModule {
-    /// The content of this module in the form of a `ParseTree`.
+    /// The content of this module in the form of a [Module].
     pub module: Module,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, LexedSubmodule)>,
