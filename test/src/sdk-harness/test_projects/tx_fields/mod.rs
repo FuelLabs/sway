@@ -525,7 +525,9 @@ mod inputs {
             println!("length: {:?}", predicate_bytes.len());
 
             // Add predicate coin to inputs and call contract
-            let handler = contract_instance.methods().get_input_predicate(2, predicate_bytes.clone());
+            let handler = contract_instance
+                .methods()
+                .get_input_predicate(3, predicate_bytes.clone());
             let mut executable = handler.get_executable_call().await.unwrap();
 
             executable.tx.inputs_mut().push(predicate_coin);
@@ -557,7 +559,6 @@ mod inputs {
 
                 let messages = wallet.get_messages().await?;
                 let message_id: [u8; 32] = *messages[0].message_id();
-                
 
                 assert_eq!(receipts[1].data().unwrap(), message_id);
                 Ok(())
@@ -698,7 +699,9 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
-                let handler = contract_instance.methods().get_input_predicate(2, predicate_bytecode.clone());
+                let handler = contract_instance
+                    .methods()
+                    .get_input_predicate(2, predicate_bytecode.clone());
                 let mut executable = handler.get_executable_call().await.unwrap();
 
                 executable.tx.inputs_mut().push(predicate_message);
