@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: $()error
-# check: should_fail/type_mismatch_error_message/src/main.sw:18:5
+# check: type_mismatch_error_message/src/main.sw:18:5
 # check: $()fn test<A, I>(arg: A) -> Item<I> {
 # check: $()Item {
 # check: $()item: arg
