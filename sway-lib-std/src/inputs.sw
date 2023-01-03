@@ -4,6 +4,7 @@ library inputs;
 
 use ::address::Address;
 use ::assert::assert;
+use ::bytes::Bytes;
 use ::option::Option;
 use ::revert::revert;
 use ::contract_id::ContractId;
@@ -280,10 +281,15 @@ pub fn input_message_data_length(index: u64) -> u16 {
 }
 
 /// Get the data of the input message at `index`.
-pub fn input_message_data<T>(index: u64, offset: u64) -> T {
+pub fn input_message_data(index: u64, offset: u64) -> Bytes {
+    assert(valid_input_type(index, Input::Message));
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
-    let data_with_offset = data + offset;
-    data_with_offset.read::<T>()
+    let data_with_offset = data.add_uint_offset(offset);
+    let length = input_message_data_length(index);
+    let mut data_bytes = Bytes::with_capacity(length);
+    data_bytes.len = length;
+    data_with_offset.copy_bytes_to(data_bytes.buf.ptr, length);
+    data_bytes
 }
 
 fn valid_input_type(index: u64, expected_type: Input) -> bool {

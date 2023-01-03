@@ -182,30 +182,16 @@ impl TxContractTest for Contract {
         input_predicate_data_length(index).unwrap()
     }
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
-        let data = input_message_data::<[u8; 3]>(index, offset);
-        let mut data_bytes = Bytes::new();
-        let mut expected_data_bytes = Bytes::new();
-        log(data);
-        log(data[0]);
-        log(expected[0]);
-        log(data[1]);
-        log(expected[1]);
-        log(data[2]);
-        log(expected[2]);
+        let data = input_message_data(index, offset);
 
-        // data_bytes.push(data[0]);
-        // data_bytes.push(data[1]);
-        // data_bytes.push(data[2]);
-        // expected_data_bytes.push(expected[0]);
-        // expected_data_bytes.push(expected[1]);
-        // expected_data_bytes.push(expected[2]);
-        // log(data);
-        // log(data_bytes);
-        // log(expected);
-        // log(expected_data_bytes);
-        // data_bytes == expected_data_bytes
-        data[0] == expected[0] && data[1] == expected[1] && data[2] == expected[2]
+        let mut expected_data_bytes = Bytes::new();
+
+        expected_data_bytes.push(expected[0]);
+        expected_data_bytes.push(expected[1]);
+        expected_data_bytes.push(expected[2]);
+        (data.get(0).unwrap() == expected_data_bytes.get(0).unwrap()) && (data.get(1).unwrap() == expected_data_bytes.get(1).unwrap()) && (data.get(2).unwrap() == expected_data_bytes.get(2).unwrap())
     }
+
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
         let code = input_predicate::<Vec<u8>>(index);
         assert(input_predicate_length(index).unwrap() == bytecode.len());
@@ -215,7 +201,6 @@ impl TxContractTest for Contract {
             i += 1;
         }
         true
-
     }
     fn get_tx_output_pointer(index: u64) -> u64 {
         output_pointer(index)

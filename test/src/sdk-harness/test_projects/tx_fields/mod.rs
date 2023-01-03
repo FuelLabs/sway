@@ -527,7 +527,7 @@ mod inputs {
             // Add predicate coin to inputs and call contract
             let handler = contract_instance
                 .methods()
-                .get_input_predicate(3, predicate_bytes.clone());
+                .get_input_predicate(2, predicate_bytes.clone());
             let mut executable = handler.get_executable_call().await.unwrap();
 
             executable.tx.inputs_mut().push(predicate_coin);
@@ -643,7 +643,6 @@ mod inputs {
             }
 
             #[tokio::test]
-            #[ignore]
             async fn can_get_input_message_predicate_length() {
                 let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
@@ -654,12 +653,10 @@ mod inputs {
                     .call()
                     .await
                     .unwrap();
-                // flakey. test with non-zero val
                 assert_eq!(result.value, 0u16);
             }
 
             #[tokio::test]
-            #[ignore]
             async fn can_get_input_message_predicate_data_length() {
                 let (contract_instance, _, _, _) = get_contracts().await;
                 let result = contract_instance
@@ -669,7 +666,6 @@ mod inputs {
                     .await
                     .unwrap();
 
-                // flakey. test with non-zero val
                 assert_eq!(result.value, 0u16);
             }
 
@@ -690,7 +686,7 @@ mod inputs {
                     .unwrap();
 
                 println!("rec: {:#?}", receipts);
-                // assert_eq!(receipts[1].val().unwrap(), 1);
+                assert_eq!(receipts[1].val().unwrap(), 1);
             }
 
             #[tokio::test]
@@ -701,7 +697,7 @@ mod inputs {
                     generate_predicate_inputs(100, vec![], &wallet).await;
                 let handler = contract_instance
                     .methods()
-                    .get_input_predicate(2, predicate_bytecode.clone());
+                    .get_input_predicate(1, predicate_bytecode.clone());
                 let mut executable = handler.get_executable_call().await.unwrap();
 
                 executable.tx.inputs_mut().push(predicate_message);
@@ -734,9 +730,6 @@ mod outputs {
                 .unwrap();
             assert_eq!(result.value, Output::Contract());
         }
-
-        // TODO: test output.amount with outputs which have this field !
-        // TODO: organize tests into modules
     }
 
     mod revert {
