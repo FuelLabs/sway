@@ -54,26 +54,26 @@ impl Module {
         FunctionIterator::new(context, self)
     }
 
-    /// Add a global value to this module.
+    /// Add a global constant value to this module.
     pub fn add_global_constant(&self, context: &mut Context, name: String, const_val: Value) {
         context.modules[self.0]
             .global_constants
             .insert(name, const_val);
     }
 
-    /// Get a named global value from this module, if found.
+    /// Get a named global constant value from this module, if found.
     pub fn get_global_constant(&self, context: &Context, name: &str) -> Option<Value> {
         context.modules[self.0].global_constants.get(name).copied()
     }
 
-    /// Add a global value to this module.
+    /// Add a global configurable value to this module.
     pub fn add_global_configurable(&self, context: &mut Context, name: String, config_val: Value) {
         context.modules[self.0]
             .global_configurable
             .insert(name, config_val);
     }
 
-    /// Get a named global value from this module, if found.
+    /// Get a named global configurable value from this module, if found.
     pub fn get_global_configurable(&self, context: &Context, name: &str) -> Option<Value> {
         context.modules[self.0]
             .global_configurable

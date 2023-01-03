@@ -916,7 +916,9 @@ mod ir_builder {
                 convert_md_idx(&fn_decl.metadata),
             );
 
-            let mut arg_map = self.configs_map.clone(); //HashMap::<String, Value>::new();
+            // Gather all the (new) arg values by name into a map. Initialize this map with all
+            // config variables as they are globally available
+            let mut arg_map = self.configs_map.clone();
             let mut local_map = HashMap::<String, LocalVar>::new();
             for (ty, name, initializer) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {

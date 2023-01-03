@@ -65,8 +65,8 @@ impl TyProgram {
         }
 
         let mut mains = Vec::new();
-        let mut abi_entries = Vec::new();
         let mut declarations = Vec::<TyDeclaration>::new();
+        let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
@@ -399,18 +399,18 @@ impl TyProgram {
 
     pub fn generate_json_abi_program(
         &self,
-        engines: Engines<'_>,
+        type_engine: &TypeEngine,
         types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> program_abi::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
                     .iter()
-                    .map(|x| x.generate_json_abi_function(engines.te(), types))
+                    .map(|x| x.generate_json_abi_function(type_engine, types))
                     .collect();
-                let logged_types = self.generate_json_logged_types(engines.te(), types);
-                let messages_types = self.generate_json_messages_types(engines.te(), types);
-                let configurables = self.generate_json_configurables(engines.te(), types);
+                let logged_types = self.generate_json_logged_types(type_engine, types);
+                let messages_types = self.generate_json_messages_types(type_engine, types);
+                let configurables = self.generate_json_configurables(type_engine, types);
                 program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
@@ -421,10 +421,10 @@ impl TyProgram {
             }
             TyProgramKind::Script { main_function, .. }
             | TyProgramKind::Predicate { main_function, .. } => {
-                let functions = vec![main_function.generate_json_abi_function(engines.te(), types)];
-                let logged_types = self.generate_json_logged_types(engines.te(), types);
-                let messages_types = self.generate_json_messages_types(engines.te(), types);
-                let configurables = self.generate_json_configurables(engines.te(), types);
+                let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
+                let logged_types = self.generate_json_logged_types(type_engine, types);
+                let messages_types = self.generate_json_messages_types(type_engine, types);
+                let configurables = self.generate_json_configurables(type_engine, types);
                 program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,

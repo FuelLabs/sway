@@ -986,6 +986,8 @@ impl GlobalNamer {
 struct Namer {
     function: Function,
 
+    // To make things easier, each `Namer` also gets a `GlobalNamer` which includes all globally
+    // available names (such as config constants).
     global_namer: GlobalNamer,
     names: HashMap<Value, String>,
     next_value_idx: u64,

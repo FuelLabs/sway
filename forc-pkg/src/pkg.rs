@@ -2370,7 +2370,7 @@ pub fn compile(
     let mut types = vec![];
     let mut json_abi_program = time_expr!(
         "generate JSON ABI program",
-        typed_program.generate_json_abi_program(engines, &mut types)
+        typed_program.generate_json_abi_program(engines.te(), &mut types)
     );
 
     let storage_slots = typed_program.storage_slots.clone();

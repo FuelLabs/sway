@@ -13,6 +13,8 @@ use std::{
 pub struct Entry {
     value: Datum,
     size: usize,
+    // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
+    // is `None`.
     name: Option<String>,
 }
 
@@ -161,6 +163,10 @@ impl Entry {
             }
         }
 
+        // If this corresponds to a configuration-time constants, then the entry names will be
+        // available (i.e. `Some(..)`) and they must be the same before we can merge the two
+        // entries. Otherwise, `self.name` and `entry.name` will be `None` in which case we're also
+        // allowed to merge the two entries (if they're values are equivalent of course).
         equiv_data(&self.value, &entry.value) && self.name == entry.name
     }
 }
@@ -185,17 +191,13 @@ pub struct DataSection {
 impl DataSection {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
-    pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
-        self.value_pairs
-            .iter()
-            .take(id.0 as usize)
-            .map(|x| x.to_bytes().len())
-            .sum()
+    pub(crate) fn data_id_to_offset(&self, id: &DataId) -> usize {
+        self.raw_data_id_to_offset(id.0)
     }
 
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
-    pub(crate) fn offset_to_id_raw(&self, id: u32) -> usize {
+    pub(crate) fn raw_data_id_to_offset(&self, id: u32) -> usize {
         self.value_pairs
             .iter()
             .take(id as usize)

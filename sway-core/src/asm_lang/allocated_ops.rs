@@ -625,7 +625,7 @@ fn realize_lw(
     offset_to_data_section: u64,
 ) -> Vec<VmOp> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
-    let offset_bytes = data_section.offset_to_id(data_id) as u64;
+    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
     let offset_words = offset_bytes / 8;
     let offset = match VirtualImmediate12::new(offset_words, Span::new(" ".into(), 0, 0, None).unwrap()) {
         Ok(value) => value,

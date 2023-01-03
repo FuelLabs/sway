@@ -132,7 +132,7 @@ fn to_bytecode_mut(
         .map(|(name, id)| {
             (
                 name.clone(),
-                offset_to_data_section_in_bytes + data_section.offset_to_id_raw(*id) as u64,
+                offset_to_data_section_in_bytes + data_section.raw_data_id_to_offset(*id) as u64,
             )
         })
         .collect::<BTreeMap<String, u64>>();

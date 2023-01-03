@@ -241,9 +241,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     .unwrap_or_else(|e| panic!("{}: {}", path.display(), e));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {
-                    dbg!(&ir_output);
-                    dbg!(&parsed_ir_output);
-
                     tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }
