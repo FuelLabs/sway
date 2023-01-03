@@ -2,6 +2,7 @@ mod asm;
 mod call_path;
 mod inline;
 mod lazy_op;
+pub mod lexed;
 mod literal;
 mod module;
 pub mod parsed;

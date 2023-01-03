@@ -31,6 +31,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
+    language::lexed,
     Engines, TypeEngine,
 };
 use sway_core::{
@@ -2799,11 +2800,9 @@ fn update_json_type_declaration(
     }
 }
 
-/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
-type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
-
+/// Contains the lexed, parsed, and typed compilation results of a program
 pub struct CompilationStage {
-    pub modules: Vec<sway_ast::Module>,
+    pub lexed_program: lexed::LexedProgram,
     pub parse_program: ParseProgram,
     pub typed_program: Option<ty::TyProgram>,
 }
@@ -2840,26 +2839,14 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = lex(manifest, terse_mode, engines)?;
+        } = parse(manifest, terse_mode, engines)?;
 
-        let modules = match value {
+        let (lexed_program, parse_program) = match value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
             }
             Some(modules) => modules,
-        };
-
-        let parse_program = parse(manifest, terse_mode, engines)?;
-        warnings.extend(parse_program.warnings);
-        errors.extend(parse_program.errors);
-
-        let parse_program = match parse_program.value {
-            None => {
-                results.push(CompileResult::new(None, warnings, errors));
-                return Ok(results);
-            }
-            Some(program) => program,
         };
 
         let ast_result = sway_core::parsed_to_ast(engines, &parse_program, dep_namespace, None);
@@ -2869,7 +2856,7 @@ pub fn check(
         let typed_program = match ast_result.value {
             None => {
                 let value = Some(CompilationStage {
-                    modules,
+                    lexed_program,
                     parse_program,
                     typed_program: None,
                 });
@@ -2886,7 +2873,7 @@ pub fn check(
         source_map.insert_dependency(manifest.dir());
 
         let value = Some(CompilationStage {
-            modules,
+            lexed_program,
             parse_program,
             typed_program: Some(typed_program),
         });
@@ -2900,26 +2887,12 @@ pub fn check(
     Ok(results)
 }
 
-pub fn lex(
-    manifest: &PackageManifestFile,
-    terse_mode: bool,
-    engines: Engines<'_>,
-) -> anyhow::Result<CompileResult<Vec<sway_ast::Module>>> {
-    let profile = BuildProfile {
-        terse: terse_mode,
-        ..BuildProfile::debug()
-    };
-    let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::lex(source, engines, Some(&sway_build_config)))
-}
-
 /// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+) -> anyhow::Result<CompileResult<(lexed::LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()
