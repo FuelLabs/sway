@@ -73,13 +73,12 @@ pub fn parse(
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module()).map(
             |(kind, lexed, parsed)| {
-                (
-                    lexed::LexedProgram {
-                        kind: kind.clone(),
-                        root: lexed,
-                    },
-                    parsed::ParseProgram { kind, root: parsed },
-                )
+                let lexed = lexed::LexedProgram {
+                    kind: kind.clone(),
+                    root: lexed,
+                };
+                let parsed = parsed::ParseProgram { kind, root: parsed };
+                (lexed, parsed)
             },
         ),
     })
@@ -128,7 +127,7 @@ fn parse_submodules(
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut lexed_submods = Vec::with_capacity(module.dependencies().count());
-    let mut parsed_submods = Vec::with_capacity(module.dependencies().count());
+    let mut parsed_submods = Vec::with_capacity(lexed_submods.capacity());
 
     module.dependencies().for_each(|dep| {
         // Read the source code from the dependency.
@@ -200,17 +199,15 @@ fn parse_module_tree(
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
 
-    Ok((
-        kind,
-        lexed::LexedModule {
-            module,
-            submodules: submodules.lexed,
-        },
-        parsed::ParseModule {
-            tree,
-            submodules: submodules.parsed,
-        },
-    ))
+    let lexed = lexed::LexedModule {
+        module,
+        submodules: submodules.lexed,
+    };
+    let parsed = parsed::ParseModule {
+        tree,
+        submodules: submodules.parsed,
+    };
+    Ok((kind, lexed, parsed))
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
