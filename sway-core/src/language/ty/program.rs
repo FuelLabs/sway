@@ -1,6 +1,3 @@
-use sway_error::error::CompileError;
-use sway_types::*;
-
 use crate::{
     declaration_engine::*,
     error::*,
@@ -10,6 +7,11 @@ use crate::{
     type_system::*,
     Engines,
 };
+
+use sway_error::error::CompileError;
+use sway_types::*;
+
+use fuels_types::program_abi;
 
 #[derive(Debug, Clone)]
 pub struct TyProgram {
@@ -377,8 +379,8 @@ impl TyProgram {
     pub fn generate_json_abi_program(
         &self,
         engines: Engines<'_>,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> fuels_types::ProgramABI {
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> program_abi::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
@@ -388,7 +390,7 @@ impl TyProgram {
                 let logged_types = self.generate_json_logged_types(engines.te(), types);
                 let messages_types = self.generate_json_messages_types(engines.te(), types);
                 let configurables = self.generate_json_configurables(engines, types);
-                fuels_types::ProgramABI {
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
@@ -402,7 +404,7 @@ impl TyProgram {
                 let logged_types = self.generate_json_logged_types(engines.te(), types);
                 let messages_types = self.generate_json_messages_types(engines.te(), types);
                 let configurables = self.generate_json_configurables(engines, types);
-                fuels_types::ProgramABI {
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
@@ -410,7 +412,7 @@ impl TyProgram {
                     configurables: Some(configurables),
                 }
             }
-            _ => fuels_types::ProgramABI {
+            _ => program_abi::ProgramABI {
                 types: vec![],
                 functions: vec![],
                 logged_types: None,
@@ -423,13 +425,13 @@ impl TyProgram {
     fn generate_json_logged_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::LoggedType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the logged types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::LoggedType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the logged types
         let logged_types = self
             .logged_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -443,9 +445,9 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|(log_id, type_id)| fuels_types::LoggedType {
+            .map(|(log_id, type_id)| program_abi::LoggedType {
                 log_id: **log_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
@@ -457,13 +459,13 @@ impl TyProgram {
     fn generate_json_messages_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::MessageType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the messages types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::MessageType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the messages types
         let messages_types = self
             .messages_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -477,9 +479,9 @@ impl TyProgram {
         // Generate the JSON data for the messages types
         self.messages_types
             .iter()
-            .map(|(message_id, type_id)| fuels_types::MessageType {
+            .map(|(message_id, type_id)| program_abi::MessageType {
                 message_id: **message_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
@@ -491,8 +493,8 @@ impl TyProgram {
     fn generate_json_configurables(
         &self,
         engines: Engines<'_>,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::Configurable> {
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::Configurable> {
         let type_engine = engines.te();
         let configurables = self
             .declarations
@@ -508,11 +510,11 @@ impl TyProgram {
             })
             .collect::<Vec<_>>();
 
-        // A list of all `fuels_types::TypeDeclaration`s needed for the configurables types
+        // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
         let configurables_types = configurables
             .iter()
             .map(
-                |TyConstantDeclaration { return_type, .. }| fuels_types::TypeDeclaration {
+                |TyConstantDeclaration { return_type, .. }| program_abi::TypeDeclaration {
                     type_id: return_type.index(),
                     type_field: return_type.get_json_type_str(type_engine, *return_type),
                     components: return_type.get_json_type_components(
@@ -538,9 +540,9 @@ impl TyProgram {
             .map(
                 |TyConstantDeclaration {
                      name, return_type, ..
-                 }| fuels_types::Configurable {
+                 }| program_abi::Configurable {
                     name: name.to_string(),
-                    application: fuels_types::TypeApplication {
+                    application: program_abi::TypeApplication {
                         name: "".to_string(),
                         type_id: return_type.index(),
                         type_arguments: return_type.get_json_type_arguments(

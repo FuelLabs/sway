@@ -2092,8 +2092,7 @@ impl<'eng> FnCompiler<'eng> {
         }) = struct_val.get_configurable(context)
         {
             Ok(*agg)
-        }
-        else {
+        } else {
             Err(CompileError::InternalOwned(
                 "Unsupported struct value for field expression.".to_owned(),
                 ast_struct_expr_span,

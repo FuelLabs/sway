@@ -1387,7 +1387,7 @@ dependencies = [
  "fuel-tx",
  "fuels-core",
  "fuels-signers",
- "fuels-types 0.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-types 0.33.0",
  "futures",
  "hex",
  "serde",
@@ -1452,7 +1452,7 @@ dependencies = [
  "fd-lock",
  "forc-tracing",
  "forc-util",
- "fuels-types 0.33.0",
+ "fuels-types 0.1.0",
  "git2",
  "hex",
  "petgraph",
@@ -1721,7 +1721,7 @@ dependencies = [
  "anyhow",
  "fuel-tx",
  "fuel-types",
- "fuels-types 0.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-types 0.33.0",
  "hex",
  "itertools",
  "lazy_static",
@@ -1753,7 +1753,7 @@ dependencies = [
  "fuel-gql-client",
  "fuel-types",
  "fuels-core",
- "fuels-types 0.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuels-types 0.33.0",
  "hex",
  "itertools",
  "rand",
@@ -1765,25 +1765,12 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.33.0"
+version = "0.1.0"
+source = "git+https://github.com/FuelLabs/fuels-types?branch=mohammadfawaz/add_config_time_constants#3788fef2e392d2a9525f73648d7adbc2d9a76a6c"
 dependencies = [
- "anyhow",
- "bech32 0.9.1",
- "chrono",
- "fuel-chain-config",
- "fuel-gql-client",
- "fuel-tx",
- "hex",
- "itertools",
- "lazy_static",
  "proc-macro2",
- "regex",
  "serde",
- "serde_json",
- "strum",
  "strum_macros",
- "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -4073,7 +4060,7 @@ dependencies = [
  "dirs 3.0.2",
  "either",
  "fuel-vm",
- "fuels-types 0.33.0",
+ "fuels-types 0.1.0",
  "hashbrown 0.13.1",
  "hex",
  "im",

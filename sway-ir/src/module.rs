@@ -2,7 +2,7 @@
 //!
 //! A module also has a 'kind' corresponding to the different Sway module types.
 
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 
 use crate::{
     context::Context,

@@ -1,5 +1,8 @@
 use super::*;
 use crate::engine_threading::*;
+
+use fuels_types::program_abi;
+
 use std::fmt;
 
 /// A identifier to uniquely refer to our type terms
@@ -196,20 +199,20 @@ impl TypeId {
 
     /// Return the components of a given (potentially generic) type while considering what it
     /// actually resolves to. These components are essentially of type of
-    /// `fuels_types::TypeApplication`.  The method below also updates the provided list of
-    /// `fuels_types::TypeDeclaration`s  to add the newly discovered types.
+    /// `program_abi::TypeApplication`.  The method below also updates the provided list of
+    /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_components(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
+        types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
-    ) -> Option<Vec<fuels_types::TypeApplication>> {
+    ) -> Option<Vec<program_abi::TypeApplication>> {
         match type_engine.look_up_type_id(*self) {
             TypeInfo::Enum { variant_types, .. } => {
-                // A list of all `fuels_types::TypeDeclaration`s needed for the enum variants
+                // A list of all `program_abi::TypeDeclaration`s needed for the enum variants
                 let variants = variant_types
                     .iter()
-                    .map(|x| fuels_types::TypeDeclaration {
+                    .map(|x| program_abi::TypeDeclaration {
                         type_id: x.initial_type_id.index(),
                         type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                         components: x.initial_type_id.get_json_type_components(
@@ -227,11 +230,11 @@ impl TypeId {
                 types.extend(variants);
 
                 // Generate the JSON data for the enum. This is basically a list of
-                // `fuels_types::TypeApplication`s
+                // `program_abi::TypeApplication`s
                 Some(
                     variant_types
                         .iter()
-                        .map(|x| fuels_types::TypeApplication {
+                        .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: x.initial_type_id.index(),
                             type_arguments: x.initial_type_id.get_json_type_arguments(
@@ -244,10 +247,10 @@ impl TypeId {
                 )
             }
             TypeInfo::Struct { fields, .. } => {
-                // A list of all `fuels_types::TypeDeclaration`s needed for the struct fields
+                // A list of all `program_abi::TypeDeclaration`s needed for the struct fields
                 let field_types = fields
                     .iter()
-                    .map(|x| fuels_types::TypeDeclaration {
+                    .map(|x| program_abi::TypeDeclaration {
                         type_id: x.initial_type_id.index(),
                         type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                         components: x.initial_type_id.get_json_type_components(
@@ -265,11 +268,11 @@ impl TypeId {
                 types.extend(field_types);
 
                 // Generate the JSON data for the struct. This is basically a list of
-                // `fuels_types::TypeApplication`s
+                // `program_abi::TypeApplication`s
                 Some(
                     fields
                         .iter()
-                        .map(|x| fuels_types::TypeApplication {
+                        .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: x.initial_type_id.index(),
                             type_arguments: x.initial_type_id.get_json_type_arguments(
@@ -283,8 +286,8 @@ impl TypeId {
             }
             TypeInfo::Array(..) => {
                 if let TypeInfo::Array(elem_ty, _) = type_engine.look_up_type_id(resolved_type_id) {
-                    // The `fuels_types::TypeDeclaration`s needed for the array element type
-                    let elem_json_ty = fuels_types::TypeDeclaration {
+                    // The `program_abi::TypeDeclaration`s needed for the array element type
+                    let elem_json_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
                         type_field: elem_ty
                             .initial_type_id
@@ -303,8 +306,8 @@ impl TypeId {
                     types.push(elem_json_ty);
 
                     // Generate the JSON data for the array. This is basically a single
-                    // `fuels_types::TypeApplication` for the array element type
-                    Some(vec![fuels_types::TypeApplication {
+                    // `program_abi::TypeApplication` for the array element type
+                    Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
                         type_id: elem_ty.initial_type_id.index(),
                         type_arguments: elem_ty.initial_type_id.get_json_type_arguments(
@@ -319,10 +322,10 @@ impl TypeId {
             }
             TypeInfo::Tuple(_) => {
                 if let TypeInfo::Tuple(fields) = type_engine.look_up_type_id(resolved_type_id) {
-                    // A list of all `fuels_types::TypeDeclaration`s needed for the tuple fields
+                    // A list of all `program_abi::TypeDeclaration`s needed for the tuple fields
                     let fields_types = fields
                         .iter()
-                        .map(|x| fuels_types::TypeDeclaration {
+                        .map(|x| program_abi::TypeDeclaration {
                             type_id: x.initial_type_id.index(),
                             type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                             components: x.initial_type_id.get_json_type_components(
@@ -340,11 +343,11 @@ impl TypeId {
                     types.extend(fields_types);
 
                     // Generate the JSON data for the tuple. This is basically a list of
-                    // `fuels_types::TypeApplication`s
+                    // `program_abi::TypeApplication`s
                     Some(
                         fields
                             .iter()
-                            .map(|x| fuels_types::TypeApplication {
+                            .map(|x| program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: x.initial_type_id.index(),
                                 type_arguments: x.initial_type_id.get_json_type_arguments(
@@ -361,7 +364,7 @@ impl TypeId {
             }
             TypeInfo::Custom { type_arguments, .. } => {
                 if !self.is_generic_parameter(type_engine, resolved_type_id) {
-                    // A list of all `fuels_types::TypeDeclaration`s needed for the type arguments
+                    // A list of all `program_abi::TypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
                         .unwrap_or_default()
                         .iter()
@@ -371,7 +374,7 @@ impl TypeId {
                                 .unwrap_or_default()
                                 .iter(),
                         )
-                        .map(|(v, p)| fuels_types::TypeDeclaration {
+                        .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
                             type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
                             components: v.initial_type_id.get_json_type_components(
@@ -399,13 +402,13 @@ impl TypeId {
 
     /// Return the type parameters of a given (potentially generic) type while considering what it
     /// actually resolves to. These parameters are essentially of type of `usize` which are
-    /// basically the IDs of some set of `fuels_types::TypeDeclaration`s. The method below also
-    /// updates the provide list of `fuels_types::TypeDeclaration`s  to add the newly discovered
+    /// basically the IDs of some set of `program_abi::TypeDeclaration`s. The method below also
+    /// updates the provide list of `program_abi::TypeDeclaration`s  to add the newly discovered
     /// types.
     pub(crate) fn get_json_type_parameters(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
+        types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<usize>> {
         match self.is_generic_parameter(type_engine, resolved_type_id) {
@@ -420,14 +423,14 @@ impl TypeId {
 
     /// Return the type arguments of a given (potentially generic) type while considering what it
     /// actually resolves to. These arguments are essentially of type of
-    /// `fuels_types::TypeApplication`. The method below also updates the provided list of
-    /// `fuels_types::TypeDeclaration`s  to add the newly discovered types.
+    /// `program_abi::TypeApplication`. The method below also updates the provided list of
+    /// `program_abi::TypeDeclaration`s  to add the newly discovered types.
     pub(crate) fn get_json_type_arguments(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
+        types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
-    ) -> Option<Vec<fuels_types::TypeApplication>> {
+    ) -> Option<Vec<program_abi::TypeApplication>> {
         let resolved_params = resolved_type_id.get_type_parameters(type_engine);
         match type_engine.look_up_type_id(*self) {
             TypeInfo::Custom {
@@ -438,7 +441,7 @@ impl TypeId {
                 let json_type_arguments = type_arguments
                     .iter()
                     .zip(resolved_params.iter())
-                    .map(|(v, p)| fuels_types::TypeDeclaration {
+                    .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
                         components: v.initial_type_id.get_json_type_components(
@@ -457,7 +460,7 @@ impl TypeId {
 
                 type_arguments
                     .iter()
-                    .map(|arg| fuels_types::TypeApplication {
+                    .map(|arg| program_abi::TypeApplication {
                         name: "".to_string(),
                         type_id: arg.initial_type_id.index(),
                         type_arguments: arg.initial_type_id.get_json_type_arguments(
@@ -477,7 +480,7 @@ impl TypeId {
                 // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = type_parameters
                     .iter()
-                    .map(|v| fuels_types::TypeDeclaration {
+                    .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(type_engine, v.type_id),
                         components: v.type_id.get_json_type_components(
@@ -497,7 +500,7 @@ impl TypeId {
                 Some(
                     type_parameters
                         .iter()
-                        .map(|arg| fuels_types::TypeApplication {
+                        .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
                             type_arguments: arg.type_id.get_json_type_arguments(
