@@ -449,8 +449,8 @@ impl<'a> Unifier<'a> {
     where
         WithEngines<'a, T>: fmt::Display,
     {
-        let r = self.engines.help_out_with_self(r).to_string();
-        let e = self.engines.help_out_with_self(e).to_string();
+        let r = self.engines.with_thing(r).to_string();
+        let e = self.engines.with_thing(e).to_string();
         if self.arguments_are_flipped {
             (e, r)
         } else {
