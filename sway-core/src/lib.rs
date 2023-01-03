@@ -49,6 +49,19 @@ pub mod fuel_prelude {
 
 pub use engine_threading::Engines;
 
+pub fn lex(
+    input: Arc<str>,
+    engines: Engines<'_>,
+    config: Option<&BuildConfig>,
+) -> CompileResult<Vec<sway_ast::Module>> {
+    CompileResult::with_handler(|handler| match config {
+        None => Ok(vec![sway_parse::parse_file(handler, input, None)?]),
+        // When a `BuildConfig` is given,
+        // the module source may declare `dep`s that must be parsed from other files.
+        Some(config) => lex_module_tree(handler, engines, input, config.canonical_root_module()),
+    })
+}
+
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
 ///
 /// # Example
@@ -171,6 +184,58 @@ fn parse_module_tree(
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
 
     Ok((kind, parsed::ParseModule { tree, submodules }))
+}
+
+fn lex_module_tree(
+    handler: &Handler,
+    engines: Engines<'_>,
+    src: Arc<str>,
+    path: Arc<PathBuf>,
+) -> Result<Vec<sway_ast::Module>, ErrorEmitted> {
+    // Parse this module first.
+    let module_dir = path.parent().expect("module file has no parent directory");
+    let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
+
+    // Parse all submodules before converting to the `ParseTree`.
+    // This always recovers on parse errors for the file itself by skipping that file.
+    let submodules = lex_submodules(handler, engines, &module, module_dir);
+
+    let mut modules = vec![module];
+    modules.extend(submodules);
+    Ok(modules)
+}
+
+fn lex_submodules(
+    handler: &Handler,
+    engines: Engines<'_>,
+    module: &sway_ast::Module,
+    module_dir: &Path,
+) -> Vec<sway_ast::Module> {
+    // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
+    let mut submods = Vec::with_capacity(module.dependencies().count());
+
+    module.dependencies().for_each(|dep| {
+        // Read the source code from the dependency.
+        // If we cannot, record as an error, but continue with other files.
+        let dep_path = Arc::new(module_path(module_dir, dep));
+        let dep_str: Arc<str> = match std::fs::read_to_string(&*dep_path) {
+            Ok(s) => Arc::from(s),
+            Err(e) => {
+                handler.emit_err(CompileError::FileCouldNotBeRead {
+                    span: dep.path.span(),
+                    file_path: dep_path.to_string_lossy().to_string(),
+                    stringified_error: e.to_string(),
+                });
+                return;
+            }
+        };
+
+        if let Ok(module) = lex_module_tree(handler, engines, dep_str.clone(), dep_path.clone()) {
+            submods.extend(module);
+        }
+    });
+
+    submods
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {

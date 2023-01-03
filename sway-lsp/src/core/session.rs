@@ -160,6 +160,8 @@ impl Session {
                 None => continue,
             };
 
+            eprintln!("modules: {:#?}", modules.len());
+
             let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
 

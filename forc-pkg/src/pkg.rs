@@ -2836,14 +2836,25 @@ pub fn check(
         )
         .expect("failed to create dependency namespace");
 
-        let modules = vec![];
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, engines)?;
+        } = lex(manifest, terse_mode, engines)?;
 
-        let parse_program = match value {
+        let modules = match value {
+            None => {
+                results.push(CompileResult::new(None, warnings, errors));
+                return Ok(results);
+            }
+            Some(modules) => modules,
+        };
+
+        let parse_program = parse(manifest, terse_mode, engines)?;
+        warnings.extend(parse_program.warnings);
+        errors.extend(parse_program.errors);
+
+        let parse_program = match parse_program.value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
@@ -2887,6 +2898,20 @@ pub fn check(
     }
 
     Ok(results)
+}
+
+pub fn lex(
+    manifest: &PackageManifestFile,
+    terse_mode: bool,
+    engines: Engines<'_>,
+) -> anyhow::Result<CompileResult<Vec<sway_ast::Module>>> {
+    let profile = BuildProfile {
+        terse: terse_mode,
+        ..BuildProfile::debug()
+    };
+    let source = manifest.entry_string()?;
+    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
+    Ok(sway_core::lex(source, engines, Some(&sway_build_config)))
 }
 
 /// Returns a parsed AST from the supplied [PackageManifestFile]
