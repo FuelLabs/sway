@@ -169,6 +169,13 @@ impl<'a> UnifyCheck<'a> {
                     .collect::<Vec<_>>();
                 l_name == r_name && self.check_multiple(&l_types, &r_types)
             }
+            // Let empty enums to coerce to any other type. This is useful for Never enum.
+            (
+                Enum {
+                    variant_types: rvs, ..
+                },
+                _,
+            ) if rvs.is_empty() => true,
             (
                 Enum {
                     name: l_name,

@@ -117,6 +117,13 @@ impl<'a> Unifier<'a> {
                     fields: efs,
                 },
             ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
+            // Let empty enums to coerce to any other type. This is useful for Never enum.
+            (
+                Enum {
+                    variant_types: rvs, ..
+                },
+                _,
+            ) if rvs.is_empty() => (vec![], vec![]),
             (
                 Enum {
                     name: rn,
