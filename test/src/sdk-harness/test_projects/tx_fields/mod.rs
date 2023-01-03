@@ -628,7 +628,7 @@ mod inputs {
             #[tokio::test]
             async fn can_get_input_message_predicate_length() {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
-                let (_, _, predicate_message) =
+                let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
                 let handler = contract_instance.methods().get_input_predicate_length(1);
                 let mut executable = handler.get_executable_call().await.unwrap();
@@ -639,14 +639,15 @@ mod inputs {
                     .await
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 0u16 as u64);
+                assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
             }
 
             #[tokio::test]
             async fn can_get_input_message_predicate_data_length() {
+                let predicate_data = vec![];
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (_, _, predicate_message) =
-                    generate_predicate_inputs(100, vec![], &wallet).await;
+                    generate_predicate_inputs(100, predicate_data.clone(), &wallet).await;
                 let handler = contract_instance
                     .methods()
                     .get_input_predicate_data_length(1);
@@ -657,7 +658,7 @@ mod inputs {
                     .execute(&wallet.get_provider().unwrap())
                     .await
                     .unwrap();
-                assert_eq!(receipts[1].val().unwrap(), 0u16 as u64);
+                assert_eq!(receipts[1].val().unwrap(), predicate_data.len() as u64);
             }
 
             #[tokio::test]
