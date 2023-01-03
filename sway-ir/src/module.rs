@@ -2,7 +2,7 @@
 //!
 //! A module also has a 'kind' corresponding to the different Sway module types.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::{
     context::Context,
@@ -20,7 +20,7 @@ pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub global_constants: HashMap<String, Value>,
-    pub global_configurable: HashMap<String, Value>,
+    pub global_configurable: BTreeMap<String, Value>,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -39,7 +39,7 @@ impl Module {
             kind,
             functions: Vec::new(),
             global_constants: HashMap::new(),
-            global_configurable: HashMap::new(),
+            global_configurable: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
     }

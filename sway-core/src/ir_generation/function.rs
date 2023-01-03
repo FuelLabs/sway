@@ -1960,6 +1960,12 @@ impl<'eng> FnCompiler<'eng> {
         }) = array_val.get_constant(context)
         {
             Ok(*agg)
+        } else if let Some(Constant {
+            ty: Type::Array(agg),
+            ..
+        }) = array_val.get_configurable(context)
+        {
+            Ok(*agg)
         } else {
             Err(CompileError::InternalOwned(
                 "Unsupported array value for index expression.".to_owned(),
@@ -2080,7 +2086,14 @@ impl<'eng> FnCompiler<'eng> {
         }) = struct_val.get_constant(context)
         {
             Ok(*agg)
-        } else {
+        } else if let Some(Constant {
+            ty: Type::Struct(agg),
+            ..
+        }) = struct_val.get_configurable(context)
+        {
+            Ok(*agg)
+        }
+        else {
             Err(CompileError::InternalOwned(
                 "Unsupported struct value for field expression.".to_owned(),
                 ast_struct_expr_span,
