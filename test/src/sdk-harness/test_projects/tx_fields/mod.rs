@@ -16,6 +16,11 @@ abigen!(
     "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
 );
 
+predicate_abigen!(
+    Predicate,
+    "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+);
+
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
@@ -74,14 +79,12 @@ async fn generate_predicate_inputs(
     let predicate_root = predicate.address();
 
     let provider = wallet.get_provider().unwrap();
+    let balance: u64 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
 
-    wallet
-        .transfer(
-            &predicate_root,
-            amount,
-            AssetId::default(),
-            TxParameters::default(),
-        )
+    assert!(balance >= amount);
+
+    predicate
+        .receive(wallet, amount, AssetId::default(), None)
         .await
         .unwrap();
 
@@ -511,7 +514,7 @@ mod inputs {
             // Add predicate coin to inputs and call contract
             let handler = contract_instance
                 .methods()
-                .get_input_predicate(2, predicate_bytes.clone());
+                .get_input_predicate(1, predicate_bytes.clone());
             let mut executable = handler.get_executable_call().await.unwrap();
 
             executable.tx.inputs_mut().push(predicate_coin);
@@ -521,6 +524,7 @@ mod inputs {
                 .await
                 .unwrap();
 
+            println!("Receipts: {:#?}", receipts);
             assert_eq!(receipts[1].val().unwrap(), 1);
         }
 
@@ -630,7 +634,7 @@ mod inputs {
                 let (contract_instance, _, wallet, _) = get_contracts().await;
                 let (predicate_bytecode, _, predicate_message) =
                     generate_predicate_inputs(100, vec![], &wallet).await;
-                let handler = contract_instance.methods().get_input_predicate_length(1);
+                let handler = contract_instance.methods().get_input_predicate_length(2);
                 let mut executable = handler.get_executable_call().await.unwrap();
                 executable.tx.inputs_mut().push(predicate_message);
 
