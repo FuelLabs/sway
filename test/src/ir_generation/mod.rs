@@ -116,6 +116,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     path.clone(),
                     PathBuf::from("/"),
                 );
+                // Include unit tests in the build.
+                let bld_cfg = bld_cfg.include_tests(true);
+
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
                     engines,
