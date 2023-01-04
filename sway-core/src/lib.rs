@@ -40,7 +40,7 @@ use sway_error::warning::CompileWarning;
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
-use language::{parsed, ty};
+use language::{lexed, parsed, ty};
 use transform::to_parsed_lang::{self, convert_module_kind};
 
 pub mod fuel_prelude {
@@ -49,7 +49,7 @@ pub mod fuel_prelude {
 
 pub use engine_threading::Engines;
 
-/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [SwayParseTree].
+/// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
 ///
 /// # Example
 /// ```ignore
@@ -66,13 +66,21 @@ pub fn parse(
     input: Arc<str>,
     engines: Engines<'_>,
     config: Option<&BuildConfig>,
-) -> CompileResult<parsed::ParseProgram> {
+) -> CompileResult<(lexed::LexedProgram, parsed::ParseProgram)> {
     CompileResult::with_handler(|h| match config {
         None => parse_in_memory(h, engines, input),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
-        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module())
-            .map(|(kind, root)| parsed::ParseProgram { kind, root }),
+        Some(config) => parse_module_tree(h, engines, input, config.canonical_root_module()).map(
+            |(kind, lexed, parsed)| {
+                let lexed = lexed::LexedProgram {
+                    kind: kind.clone(),
+                    root: lexed,
+                };
+                let parsed = parsed::ParseProgram { kind, root: parsed };
+                (lexed, parsed)
+            },
+        ),
     })
 }
 
@@ -90,12 +98,25 @@ fn parse_in_memory(
     handler: &Handler,
     engines: Engines<'_>,
     src: Arc<str>,
-) -> Result<parsed::ParseProgram, ErrorEmitted> {
+) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
-    Ok(parsed::ParseProgram { kind, root })
+    let lexed_program = lexed::LexedProgram::new(
+        kind.clone(),
+        lexed::LexedModule {
+            tree: module,
+            submodules: Default::default(),
+        },
+    );
+    Ok((lexed_program, parsed::ParseProgram { kind, root }))
+}
+
+/// Contains the lexed and parsed submodules 'deps' of a module.
+struct Submodules {
+    lexed: Vec<(Ident, lexed::LexedSubmodule)>,
+    parsed: Vec<(Ident, parsed::ParseSubmodule)>,
 }
 
 /// Parse all dependencies `deps` as submodules.
@@ -104,9 +125,10 @@ fn parse_submodules(
     engines: Engines<'_>,
     module: &sway_ast::Module,
     module_dir: &Path,
-) -> Vec<(Ident, parsed::ParseSubmodule)> {
+) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut submods = Vec::with_capacity(module.dependencies().count());
+    let mut lexed_submods = Vec::with_capacity(module.dependencies().count());
+    let mut parsed_submods = Vec::with_capacity(lexed_submods.capacity());
 
     module.dependencies().for_each(|dep| {
         // Read the source code from the dependency.
@@ -124,7 +146,7 @@ fn parse_submodules(
             }
         };
 
-        if let Ok((kind, module)) =
+        if let Ok((kind, lexed_module, parse_module)) =
             parse_module_tree(handler, engines, dep_str.clone(), dep_path.clone())
         {
             let library_name = match kind {
@@ -140,15 +162,23 @@ fn parse_submodules(
             // is where we should use it.
             let dep_alias = None;
             let dep_name = dep_alias.unwrap_or_else(|| library_name.clone());
-            let submodule = parsed::ParseSubmodule {
-                library_name,
-                module,
+            let parse_submodule = parsed::ParseSubmodule {
+                library_name: library_name.clone(),
+                module: parse_module,
             };
-            submods.push((dep_name, submodule));
+            let lexed_submodule = lexed::LexedSubmodule {
+                library_name,
+                module: lexed_module,
+            };
+            lexed_submods.push((dep_name.clone(), lexed_submodule));
+            parsed_submods.push((dep_name, parse_submodule));
         }
     });
 
-    submods
+    Submodules {
+        lexed: lexed_submods,
+        parsed: parsed_submods,
+    }
 }
 
 /// Given the source of the module along with its path,
@@ -158,7 +188,7 @@ fn parse_module_tree(
     engines: Engines<'_>,
     src: Arc<str>,
     path: Arc<PathBuf>,
-) -> Result<(parsed::TreeType, parsed::ParseModule), ErrorEmitted> {
+) -> Result<(parsed::TreeType, lexed::LexedModule, parsed::ParseModule), ErrorEmitted> {
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let module = sway_parse::parse_file(handler, src, Some(path.clone()))?;
@@ -168,9 +198,17 @@ fn parse_module_tree(
     let submodules = parse_submodules(handler, engines, &module, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module)?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
 
-    Ok((kind, parsed::ParseModule { tree, submodules }))
+    let lexed = lexed::LexedModule {
+        tree: module,
+        submodules: submodules.lexed,
+    };
+    let parsed = parsed::ParseModule {
+        tree,
+        submodules: submodules.parsed,
+    };
+    Ok((kind, lexed, parsed))
 }
 
 fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf {
@@ -308,7 +346,7 @@ pub fn compile_to_ast(
         mut warnings,
         mut errors,
     } = parse(input, engines, build_config);
-    let parse_program = match parse_program_opt {
+    let (.., parse_program) = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
@@ -910,7 +948,7 @@ fn test_unary_ordering() {
     );
     let mut warnings: Vec<CompileWarning> = Vec::new();
     let mut errors: Vec<CompileError> = Vec::new();
-    let prog = prog.unwrap(&mut warnings, &mut errors);
+    let (.., prog) = prog.unwrap(&mut warnings, &mut errors);
     // this should parse as `(!a) && b`, not `!(a && b)`. So, the top level
     // expression should be `&&`
     if let parsed::AstNode {

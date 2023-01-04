@@ -1,11 +1,10 @@
-use std::sync::Arc;
-
 use crate::{
     descriptor::Descriptor,
-    render::{ItemBody, ItemHeader},
+    render::{ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
+use std::path::PathBuf;
 use sway_core::{
     declaration_engine::DeclarationEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
@@ -16,26 +15,24 @@ pub(crate) type Documentation = Vec<Document>;
 /// information including spans, fields on structs, variants on enums etc.
 #[derive(Clone)]
 pub(crate) struct Document {
-    pub(crate) module_prefix: Vec<String>,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) item_header: ItemHeader,
     pub(crate) item_body: ItemBody,
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
-    pub(crate) fn file_name(&self) -> String {
+    pub(crate) fn html_file_name(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
         let name = match &self.item_body.ty_decl {
             StorageDeclaration(_) => None,
-            _ => Some(&self.item_header.item_name),
+            _ => Some(self.item_header.item_name.as_str()),
         };
 
-        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name.map(|s| &**s))
+        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
     }
-    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
+    fn create_html_file_name<'name>(ty: &'name str, name: Option<&'name str>) -> String {
         match name {
-            Some(name) => {
-                format!("{ty}.{name}.html")
-            }
+            Some(name) => format!("{ty}.{name}.html"),
             None => {
                 format!("{ty}.html") // storage does not have an Ident
             }
@@ -56,7 +53,7 @@ impl Document {
                 let desc = Descriptor::from_typed_decl(
                     declaration_engine,
                     decl,
-                    vec![project_name.to_owned()],
+                    ModuleInfo::from_vec(vec![project_name.to_owned()]),
                     document_private_items,
                 )?;
 
@@ -69,7 +66,7 @@ impl Document {
         if !no_deps && !typed_program.root.submodules.is_empty() {
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
-                let module_prefix = vec![project_name.to_owned()];
+                let module_prefix = ModuleInfo::from_vec(vec![project_name.to_owned()]);
                 Document::from_ty_submodule(
                     declaration_engine,
                     typed_submodule,
@@ -86,11 +83,13 @@ impl Document {
         declaration_engine: &DeclarationEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
-        module_prefix: &[String],
+        module_prefix: &ModuleInfo,
         document_private_items: bool,
     ) -> Result<()> {
         let mut new_submodule_prefix = module_prefix.to_owned();
-        new_submodule_prefix.push(typed_submodule.library_name.as_str().to_string());
+        new_submodule_prefix
+            .0
+            .push(typed_submodule.library_name.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
@@ -119,11 +118,76 @@ impl Document {
         Ok(())
     }
 }
-impl crate::render::Renderable for Document {
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+impl Renderable for Document {
+    fn render(self) -> Box<dyn RenderBox> {
         box_html! {
-            : self.item_header.render(declaration_engine.clone());
-            : self.item_body.render(declaration_engine);
+            : self.item_header.render();
+            : self.item_body.render();
         }
+    }
+}
+pub(crate) type ModulePrefix = String;
+#[derive(Clone)]
+pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
+impl ModuleInfo {
+    /// The current module.
+    pub(crate) fn location(&self) -> &str {
+        self.0
+            .last()
+            .expect("There will always be at least the project name")
+    }
+    /// The location of the parent of the current module.
+    ///
+    /// To be used in path navigation between modules.
+    pub(crate) fn _parent(&mut self) -> &str {
+        self.0.pop();
+        self.location()
+    }
+    /// The name of the project.
+    pub(crate) fn project_name(&self) -> &str {
+        self.0.first().expect("Project name missing")
+    }
+    /// Create a qualified path literal String that represents the full path to an item.
+    pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
+        let prefix = self.to_path_literal_prefix();
+        match prefix.is_empty() {
+            true => item_name.to_owned(),
+            false => format!("{}::{}", prefix, item_name),
+        }
+    }
+    /// Create a path literal prefix from the module prefixes.
+    fn to_path_literal_prefix(&self) -> String {
+        let mut iter = self.0.iter();
+        iter.next(); // skip the project name
+        iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
+    }
+    /// Creates a String version of the path to an item,
+    /// used in navigation between pages.
+    pub(crate) fn to_file_path_str(&self, file_name: &str) -> String {
+        let mut iter = self.0.iter();
+        iter.next(); // skip the project_name
+        let mut file_path = iter.collect::<PathBuf>();
+        file_path.push(file_name);
+
+        file_path
+            .to_str()
+            .expect("There will always be at least the item name")
+            .to_string()
+    }
+    /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
+    pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
+        format!("{}{}", self.to_html_path_prefix(), file_name)
+    }
+    /// Create a path prefix `&str` for navigation from the `module.depth()`.
+    fn to_html_path_prefix(&self) -> String {
+        (1..self.depth()).map(|_| "../").collect::<String>()
+    }
+    /// The depth of a module as `usize`.
+    pub(crate) fn depth(&self) -> usize {
+        self.0.len()
+    }
+    /// Create a new [ModuleInfo] from a vec.
+    pub(crate) fn from_vec(vec: Vec<String>) -> Self {
+        Self(vec)
     }
 }
