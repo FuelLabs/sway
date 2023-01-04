@@ -2846,9 +2846,40 @@ fn test_meaning_of_life() {
 </code></pre>
 <p>Tests with <code>#[test(should_revert)]</code> considered to be passing if they are reverting.</p>
 <h2 id="calling-contracts-1"><a class="header" href="#calling-contracts-1">Calling Contracts</a></h2>
-<p><em><strong>Coming Soon</strong></em></p>
-<p><em>Track progress on constract calls in tests
-<a href="https://github.com/FuelLabs/sway/issues/3262">here</a></em></p>
+<p>Unit tests can call contract functions an example for such calls can be seen below.</p>
+<pre><code class="language-sway">contract;
+
+abi MyContract {
+    fn test_function() -&gt; bool;
+}
+
+impl MyContract for Contract {
+    fn test_function() -&gt; bool {
+        true
+    }
+}
+</code></pre>
+<p>To test the <code>test_function()</code>, a unit test like the following can be written.</p>
+<pre><code class="language-sway">#[test]
+fn test_success() {
+    let contract_id = 0xa8f18533afc18453323bdf17c83750c556916ab183daacf46d7a8d3c633a40ee;
+    let caller = abi(MyContract, contract_id);
+    let result = caller.test_function {}();
+    assert(result == true)
+}
+</code></pre>
+<p>It is also possible to test failure with contract calls as well.</p>
+<pre><code class="language-sway">#[test(should_revert)]
+fn test_fail() {
+    let contract_id = 0xa8f18533afc18453323bdf17c83750c556916ab183daacf46d7a8d3c633a40ee;
+    let caller = abi(MyContract, contract_id);
+    let result = caller.test_function {}();
+    assert(result == false)
+}
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> <code>contract_id</code> is needed for the <code>abi</code> cast used in the test. Running <code>forc test</code> will output deployed contract's id and that can be used for the cast. This means, before writing the <code>test_success()</code> test, <code>forc test</code> needs to be executed to retrieve the <code>contract_id</code>. This will not be necessary in the future and you can track the progress at <a href="https://github.com/FuelLabs/sway/issues/3673">here</a>.</p>
+</blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="testing-with-rust"><a class="header" href="#testing-with-rust">Testing with Rust</a></h1>
 <p>A common use of Sway is for writing contracts or scripts that exist as part of a
 wider Rust application. In order to test the interaction between our Sway code
