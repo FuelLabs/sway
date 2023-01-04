@@ -138,17 +138,6 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        let parsed_items = ParsedItems::new(&self.token_map);
-        for (k, v) in &member_manifests {
-            // eprintln!("Parsing {}", k);
-
-            // v.deps().for_each(|d| {
-            //     eprintln!("deps {:?}", d);
-            // });
-            let source = v.entry_string().unwrap();
-            let _ = parsed_items.parse_module(source, Arc::new(v.entry_path()));
-        }
-
         let mut diagnostics = Vec::new();
         let type_engine = &*self.type_engine.read();
         let declaration_engine = &*self.declaration_engine.read();
@@ -168,7 +157,7 @@ impl Session {
                 continue;
             }
             let Programs {
-                lexed: _, //(Josh): use this to collect keyword & bracket tokens
+                lexed,
                 parsed,
                 typed,
             } = value.unwrap();
@@ -181,6 +170,10 @@ impl Session {
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
+                let items = lexed.root.module.items;
+                let parsed_items = ParsedItems::new(&self.token_map);
+                parsed_items.parse_module(&items).unwrap();
+
                 // First, populate our token_map with un-typed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
                 self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));

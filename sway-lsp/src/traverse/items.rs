@@ -5,10 +5,10 @@ use crate::core::{
 use std::{ops::ControlFlow, path::PathBuf, sync::Arc};
 use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
-    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
-    ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
-    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty,
-    TypeField, UseTree,
+    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, Item,
+    ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait,
+    ItemUse, MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField,
+    Ty, TypeField, UseTree,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{Ident, Span, Spanned};
@@ -22,14 +22,8 @@ impl<'a> ParsedItems<'a> {
         Self { tokens }
     }
 
-    pub fn parse_module(&self, src: Arc<str>, path: Arc<PathBuf>) -> Result<(), ErrorEmitted> {
-        let handler = <_>::default();
-        let module_dir = path.parent().expect("module file has no parent directory");
-        let module = sway_parse::parse_file(&handler, src, Some(path.clone()))?;
-
-        
-
-        for item in module.items {
+    pub fn parse_module(&self, items: &[Item]) -> Result<(), ErrorEmitted> {
+        for item in items {
             item.value.parse(self.tokens);
         }
         Ok(())
