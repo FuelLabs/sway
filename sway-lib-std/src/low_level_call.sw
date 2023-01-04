@@ -1,11 +1,11 @@
 library low_level_call;
 
+use ::assert::assert;
 use ::bytes::Bytes;
 use ::revert::require;
 use ::contract_id::ContractId;
 use ::logging::log;
 use ::option::Option;
-
 
 // TODO : Replace with `pack` when implemented
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
@@ -18,16 +18,18 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
+pub struct Pointer{
+    value: raw_ptr,
+}
+
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
+
+    let ptr_in_struct = Pointer{value: ptr};
 
     let mut bytes = Bytes::with_capacity(8);
     bytes.len = 8;
 
-    let address_as_u64 = asm(r1: ptr) {r1: u64};
-
-    asm(r1: bytes.buf.ptr, r2: address_as_u64){
-        mcpi r1 r2 i8;
-    };
+    __addr_of(ptr_in_struct).copy_bytes_to(bytes.buf.ptr, 8);
 
     bytes
 }
@@ -54,18 +56,26 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
 
     require(function_selector.len() == 8, "function selector must be 8 bytes");
 
+    let val = asm(r1: calldata.buf.ptr, r2) {
+        lw r2 r1 i0;
+        r2: raw_ptr
+    };
+
+
     let mut payload = Bytes::new()
     .join(contract_id_to_bytes(target))
     .join(function_selector)
-    .join(ptr_as_bytes(calldata.buf.ptr));
-    
+    .join(ptr_as_bytes(calldata.buf.ptr));  // When calldata is reference type, need to get pointer as bytes
+    //.join(calldata);                      // When calldata is copy type, just pass calldata
+
     payload
 }
 
 
+
 pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, coins: u64, asset_id: ContractId, gas: u64) {
 
-    let payload_ptr = create_payload(target, function_selector, calldata, coins, asset_id, gas);
-    call_with_raw_payload(payload_ptr, coins, asset_id, gas);
+    let payload = create_payload(target, function_selector, calldata, coins, asset_id, gas);
+    call_with_raw_payload(payload, coins, asset_id, gas);
     
 }
