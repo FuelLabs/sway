@@ -7,6 +7,12 @@ use ::contract_id::ContractId;
 use ::logging::log;
 use ::option::Option;
 
+pub struct CallParams {
+    coins: u64,
+    asset_id: ContractId,
+    gas: u64,
+}
+
 // TODO : Replace with `pack` when implemented
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 
@@ -18,12 +24,14 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
+
+
 pub struct Pointer{
     value: raw_ptr,
-}
+}   
 
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
-
+    
     let ptr_in_struct = Pointer{value: ptr};
 
     let mut bytes = Bytes::with_capacity(8);
@@ -44,7 +52,7 @@ fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, gas: 
 
 
 // Enocode a payload from the function selection and calldata, and call the target contract
-fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes, coins: u64, asset_id: ContractId, gas: u64) -> Bytes {
+fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes) -> Bytes {
 
     // packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
     /*
@@ -55,11 +63,6 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
     */
 
     require(function_selector.len() == 8, "function selector must be 8 bytes");
-
-    let val = asm(r1: calldata.buf.ptr, r2) {
-        lw r2 r1 i0;
-        r2: raw_ptr
-    };
 
 
     let mut payload = Bytes::new()
@@ -73,9 +76,9 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
 
 
 
-pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, coins: u64, asset_id: ContractId, gas: u64) {
+pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
 
-    let payload = create_payload(target, function_selector, calldata, coins, asset_id, gas);
-    call_with_raw_payload(payload, coins, asset_id, gas);
+    let payload = create_payload(target, function_selector, calldata);
+    call_with_raw_payload(payload, call_params.coins, call_params.asset_id, call_params.gas);
     
 }

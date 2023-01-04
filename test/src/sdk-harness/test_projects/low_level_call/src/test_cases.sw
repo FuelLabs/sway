@@ -1,6 +1,6 @@
 library test_cases;
 
-use std::low_level_call::call_with_function_selector;
+use std::low_level_call::{call_with_function_selector, CallParams};
 use std::constants::BASE_ASSET_ID;
 use std::bytes::Bytes;
 
@@ -35,7 +35,7 @@ pub fn test_u64(target: ContractId) -> bool {
     };
     
     // Calling "set_value(u64)" with argument "42" should set the value to 42
-    call_with_function_selector(target, function_selector, calldata, 0, BASE_ASSET_ID, 100_000);
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 100_000});
 
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
@@ -65,7 +65,7 @@ pub fn test_b256(target: ContractId) -> bool {
         i += 1;
     };
 
-    call_with_function_selector(target, function_selector, calldata, 0, BASE_ASSET_ID, 2_000_000);
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000});
 
     let called_contract = abi(CalledContract, target.into());
     let return_value = called_contract.get_b256_value();
