@@ -1326,6 +1326,11 @@ impl TypeInfo {
         ok(all_nested_types, warnings, errors)
     }
 
+    /// Given a [TypeInfo] `self`, analyze `self` and return all nested generic
+    /// types found in `self`, including `self`. In other words, if `self` is a
+    /// generic type, then this method will return a set with a single element
+    /// `self`, otherwise it will return all of the nested generic types found
+    /// in `self`.
     pub(crate) fn extract_nested_generics<'a>(
         &self,
         engines: Engines<'a>,

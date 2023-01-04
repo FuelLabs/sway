@@ -2,6 +2,7 @@ mod collect_types_metadata;
 mod copy_types;
 mod create_type_id;
 mod length;
+mod occurs_check;
 mod replace_self_type;
 mod resolved_type;
 mod trait_constraint;
