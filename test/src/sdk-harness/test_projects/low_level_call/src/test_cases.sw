@@ -25,7 +25,7 @@ pub fn test_u64(target: ContractId) -> bool {
     };
 
     // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/argument_encoding.md
-    // calldata is 42u64, (8 bytes)
+    // calldata is 42u64 (8 bytes)
     let calldata_arr= [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8];
     let mut calldata = Bytes::new();
     i = 0;
@@ -71,4 +71,38 @@ pub fn test_b256(target: ContractId) -> bool {
     let return_value = called_contract.get_b256_value();
 
     return_value == 0x0101010101010101010101010101010101010101010101010101010101010101
+}
+
+pub fn test_multiple_args(target: ContractId) -> bool {
+
+    // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/fn_selector_encoding.md#function-selector-encoding=
+    // function selector is calculated as the first 4 bytes of sha256("set_value(u64)"), left padded to 8 bytes
+    // hex : 00 00 00 00 70 e0 49 13
+    // dec : 00 00 00 00 112 224 73 19
+    let function_selector_arr = [0u8, 0u8, 0u8, 0u8, 112u8, 224u8, 73u8, 19u8];
+    let mut function_selector = Bytes::new();
+    let mut i = 0;
+    while i < 8 {
+        function_selector.push(function_selector_arr[i]);
+        i += 1;
+    };
+
+    // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/argument_encoding.md
+    let calldata_arr= [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 23u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8];
+    let mut calldata = Bytes::new();
+    i = 0;
+    while i < 16 {
+        calldata.push(calldata_arr[i]);
+        i += 1;
+    };
+    
+    // Calling "set_value(u64)" with arguments "23" and "42" should set the value to 65
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 100_000});
+
+    // Get value from called contract and return
+    let called_contract = abi(CalledContract, target.into());
+    let return_value = called_contract.get_value();
+
+   return_value == 65
+
 }

@@ -3,6 +3,8 @@ contract;
 abi CalledContract {
     #[storage(write)]
     fn set_value(new_value: u64);
+    #[storage(write)]
+    fn set_value_multiple(a: u64, b: u64);
     #[storage(read)]
     fn get_value() -> u64;
     #[storage(write)]
@@ -22,6 +24,11 @@ impl CalledContract for Contract {
     #[storage(write)]
     fn set_value(new_value: u64) {
         storage.value = new_value;
+    }
+    
+    #[storage(write)]
+    fn set_value_multiple(a: u64, b: u64) {
+        storage.value = a + b;
     }
 
     #[storage(read)]

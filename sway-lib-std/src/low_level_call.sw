@@ -59,7 +59,7 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes)
     bytes	type	    value	description
     32	    byte[32]	to	    Contract ID to call.
     8	    byte[8]	    param1	First parameter (function selector).
-    8	    byte[8]	    param2	Second parameter (pointer to abi-encoded calldata).
+    8	    byte[8]	    param2	Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
     */
 
     require(function_selector.len() == 8, "function selector must be 8 bytes");
@@ -73,7 +73,6 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes)
 
     payload
 }
-
 
 
 pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
