@@ -17,9 +17,9 @@ use crate::{
     context::Context,
     error::IrError,
     irtype::Type,
+    local_var::{LocalVar, LocalVarContent},
     metadata::MetadataIndex,
     module::Module,
-    pointer::{Pointer, PointerContent},
     value::Value,
     BlockArgument, BranchToWithArgs,
 };
@@ -40,7 +40,7 @@ pub struct FunctionContent {
     pub selector: Option<[u8; 4]>,
     pub metadata: Option<MetadataIndex>,
 
-    pub local_storage: BTreeMap<String, Pointer>, // BTree rather than Hash for deterministic ordering.
+    pub local_storage: BTreeMap<String, LocalVar>, // BTree rather than Hash for deterministic ordering.
 
     next_label_idx: u64,
 }
@@ -58,7 +58,7 @@ impl Function {
         context: &mut Context,
         module: Module,
         name: String,
-        args: Vec<(String, Type, Option<MetadataIndex>)>,
+        args: Vec<(String, Type, bool, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
@@ -95,7 +95,7 @@ impl Function {
         let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
-            .map(|(idx, (name, ty, arg_metadata))| {
+            .map(|(idx, (name, ty, by_ref, arg_metadata))| {
                 (
                     name,
                     Value::new_argument(
@@ -104,6 +104,7 @@ impl Function {
                             block: entry_block,
                             idx,
                             ty,
+                            by_ref,
                         },
                     )
                     .add_metadatum(context, arg_metadata),
@@ -304,48 +305,50 @@ impl Function {
     }
 
     /// Get a pointer to a local value by name, if found.
-    pub fn get_local_ptr(&self, context: &Context, name: &str) -> Option<Pointer> {
+    pub fn get_local_var(&self, context: &Context, name: &str) -> Option<LocalVar> {
         context.functions[self.0].local_storage.get(name).copied()
     }
 
     /// Find the name of a local value by pointer.
-    pub fn lookup_local_name<'a>(&self, context: &'a Context, ptr: &Pointer) -> Option<&'a String> {
+    pub fn lookup_local_name<'a>(
+        &self,
+        context: &'a Context,
+        var: &LocalVar,
+    ) -> Option<&'a String> {
         context.functions[self.0]
             .local_storage
             .iter()
-            .find_map(|(name, local_ptr)| if local_ptr == ptr { Some(name) } else { None })
+            .find_map(|(name, local_var)| if local_var == var { Some(name) } else { None })
     }
 
     /// Add a value to the function local storage.
     ///
     /// The name must be unique to this function else an error is returned.
-    pub fn new_local_ptr(
+    pub fn new_local_var(
         &self,
         context: &mut Context,
         name: String,
         local_type: Type,
-        is_mutable: bool,
         initializer: Option<Constant>,
-    ) -> Result<Pointer, IrError> {
-        let ptr = Pointer::new(context, local_type, is_mutable, initializer);
+    ) -> Result<LocalVar, IrError> {
+        let var = LocalVar::new(context, local_type, initializer);
         let func = context.functions.get_mut(self.0).unwrap();
         func.local_storage
-            .insert(name.clone(), ptr)
+            .insert(name.clone(), var)
             .map(|_| Err(IrError::FunctionLocalClobbered(func.name.clone(), name)))
-            .unwrap_or(Ok(ptr))
+            .unwrap_or(Ok(var))
     }
 
     /// Add a value to the function local storage, by forcing the name to be unique if needed.
     ///
     /// Will use the provided name as a hint and rename to guarantee insertion.
-    pub fn new_unique_local_ptr(
+    pub fn new_unique_local_var(
         &self,
         context: &mut Context,
         name: String,
         local_type: Type,
-        is_mutable: bool,
         initializer: Option<Constant>,
-    ) -> Pointer {
+    ) -> LocalVar {
         let func = &context.functions[self.0];
         let new_name = if func.local_storage.contains_key(&name) {
             // Assuming that we'll eventually find a unique name by appending numbers to the old
@@ -363,7 +366,7 @@ impl Function {
         } else {
             name
         };
-        self.new_local_ptr(context, new_name, local_type, is_mutable, initializer)
+        self.new_local_var(context, new_name, local_type, initializer)
             .unwrap()
     }
 
@@ -371,14 +374,14 @@ impl Function {
     pub fn locals_iter<'a>(
         &self,
         context: &'a Context,
-    ) -> impl Iterator<Item = (&'a String, &'a Pointer)> {
+    ) -> impl Iterator<Item = (&'a String, &'a LocalVar)> {
         context.functions[self.0].local_storage.iter()
     }
 
     /// Merge values from another [`Function`] into this one.
     ///
     /// The names of the merged values are guaranteed to be unique via the use of
-    /// [`Function::new_unique_local_ptr`].
+    /// [`Function::new_unique_local_var`].
     ///
     /// Returns a map from the original pointers to the newly merged pointers.
     ///
@@ -387,24 +390,23 @@ impl Function {
         &self,
         context: &mut Context,
         other: Function,
-    ) -> Result<HashMap<Pointer, Pointer>, IrError> {
-        let mut ptr_map = HashMap::new();
-        let old_ptrs: Vec<(String, Pointer, PointerContent)> = context.functions[other.0]
+    ) -> HashMap<LocalVar, LocalVar> {
+        let mut var_map = HashMap::new();
+        let old_vars: Vec<(String, LocalVar, LocalVarContent)> = context.functions[other.0]
             .local_storage
             .iter()
-            .map(|(name, ptr)| (name.clone(), *ptr, context.pointers[ptr.0].clone()))
+            .map(|(name, var)| (name.clone(), *var, context.local_vars[var.0].clone()))
             .collect();
-        for (name, old_ptr, old_ptr_content) in old_ptrs {
-            let new_ptr = self.new_unique_local_ptr(
+        for (name, old_var, old_var_content) in old_vars {
+            let new_var = self.new_unique_local_var(
                 context,
                 name.clone(),
-                old_ptr_content.ty,
-                old_ptr_content.is_mutable,
-                old_ptr_content.initializer,
+                old_var_content.ty,
+                old_var_content.initializer,
             );
-            ptr_map.insert(old_ptr, new_ptr);
+            var_map.insert(old_var, new_var);
         }
-        Ok(ptr_map)
+        var_map
     }
 
     /// Return an iterator to each block in this function.

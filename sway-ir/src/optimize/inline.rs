@@ -14,8 +14,8 @@ use crate::{
     function::Function,
     instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
+    local_var::LocalVar,
     metadata::{combine, MetadataIndex},
-    pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
     BlockArgument,
 };
@@ -95,7 +95,6 @@ pub fn is_small_fn(
             | Type::Uint(_)
             | Type::B256
             | Type::String(_)
-            | Type::Pointer(_)
             | Type::Slice => 1,
             Type::Array(aggregate) => {
                 let (ty, sz) = context.aggregates[aggregate.0].array_type();
@@ -173,7 +172,7 @@ pub fn inline_function_call(
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.
-    if post_block.new_arg(context, call_site.get_type(context).unwrap()) != 0 {
+    if post_block.new_arg(context, call_site.get_type(context).unwrap(), false) != 0 {
         panic!("Expected newly created post_block to not have block args")
     }
     function.replace_value(
@@ -185,7 +184,7 @@ pub fn inline_function_call(
 
     // Take the locals from the inlined function and add them to this function.  `value_map` is a
     // map from the original local ptrs to the new ptrs.
-    let ptr_map = function.merge_locals_from(context, inlined_function)?;
+    let ptr_map = function.merge_locals_from(context, inlined_function);
     let mut value_map = HashMap::new();
 
     // Add the mapping from argument values in the inlined function to the args passed to the call.
@@ -239,9 +238,10 @@ pub fn inline_function_call(
                 block: _,
                 idx: _,
                 ty,
+                by_ref,
             }) = &context.values[inlined_arg.0].value
             {
-                let index = new_block.new_arg(context, *ty);
+                let index = new_block.new_arg(context, *ty, *by_ref);
                 value_map.insert(inlined_arg, new_block.get_arg(context, index).unwrap());
             } else {
                 unreachable!("Expected a block argument")
@@ -281,7 +281,7 @@ fn inline_instruction(
     instruction: &Value,
     block_map: &HashMap<Block, Block>,
     value_map: &mut HashMap<Value, Value>,
-    ptr_map: &HashMap<Pointer, Pointer>,
+    local_map: &HashMap<LocalVar, LocalVar>,
     fn_metadata: Option<MetadataIndex>,
 ) {
     // Util to translate old blocks to new.  If an old block isn't in the map then we panic, since
@@ -291,7 +291,7 @@ fn inline_instruction(
     // Util to translate old values to new.  If an old value isn't in the map then it (should be)
     // a const, which we can just keep using.
     let map_value = |old_val: Value| value_map.get(&old_val).copied().unwrap_or(old_val);
-    let map_ptr = |old_ptr| ptr_map.get(&old_ptr).copied().unwrap();
+    let map_local = |old_local| local_map.get(&old_local).copied().unwrap();
 
     // The instruction needs to be cloned into the new block, with each value and/or block
     // translated using the above maps.  Most of these are relatively cheap as Instructions
@@ -342,6 +342,9 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
+            Instruction::CastPtr(val, ty, offs) => {
+                new_block.ins(context).cast_ptr(map_value(val), ty, offs)
+            }
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 new_block
                     .ins(context)
@@ -412,28 +415,33 @@ fn inline_instruction(
                     map_value(output_index),
                     map_value(coins),
                 ),
-                FuelVmInstruction::StateLoadQuadWord { load_val, key } => new_block
-                    .ins(context)
-                    .state_load_quad_word(map_value(load_val), map_value(key)),
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_load_quad_word(
+                    map_value(load_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
                 FuelVmInstruction::StateLoadWord(key) => {
                     new_block.ins(context).state_load_word(map_value(key))
                 }
-                FuelVmInstruction::StateStoreQuadWord { stored_val, key } => new_block
-                    .ins(context)
-                    .state_store_quad_word(map_value(stored_val), map_value(key)),
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_store_quad_word(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .ins(context)
                     .state_store_word(map_value(stored_val), map_value(key)),
             },
-            Instruction::GetPointer {
-                base_ptr,
-                ptr_ty,
-                offset,
-            } => {
-                let ty = *ptr_ty.get_type(context);
-                new_block
-                    .ins(context)
-                    .get_ptr(map_ptr(base_ptr), ty, offset)
+            Instruction::GetLocal(local_var) => {
+                new_block.ins(context).get_local(map_local(local_var))
             }
             Instruction::InsertElement {
                 array,

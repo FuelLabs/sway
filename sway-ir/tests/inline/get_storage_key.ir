@@ -6,18 +6,18 @@
 
 contract {
     fn test<58d7eb51>() -> b256, !1 {
-        local ptr {  } __anon_0
-        local mut ptr b256 __ret_val_f_0
+        local {  } __anon_0
+        local b256 __ret_val_f_0
 
         entry():
-        v0 = get_ptr ptr {  } __anon_0, ptr {  }, 0, !2
-        v1 = get_ptr mut ptr b256 __ret_val_f_0, ptr b256, 0
+        v0 = get_local {  } __anon_0
+        v1 = get_local b256 __ret_val_f_0
         v2 = call f_0(v0, v1), !5
         ret b256 v2
     }
 
-    fn f_0(self !6: {  }, __ret_value !7: mut ptr b256) -> b256, !8 {
-        entry(self: {  }, __ret_value: mut ptr b256):
+    fn f_0(self !6: {  }, inout __ret_value !7: b256) -> b256, !8 {
+        entry(self: {  }, inout __ret_value: b256):
         v0 = get_storage_key, !9
         mem_copy __ret_value, v0, 32
         ret b256 __ret_value

@@ -9,6 +9,8 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        let declaration_engine = ctx.declaration_engine;
+
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
         let evaluated_contents = code_block
@@ -33,26 +35,55 @@ impl ty::TyCodeBlock {
         // find the implicit return, if any, and use it as the code block's return type.
         // The fact that there is at most one implicit return is an invariant held by the parser.
         // If any node diverges then the entire block has unknown type.
+        let mut node_deterministically_aborts = false;
         let block_type = evaluated_contents
             .iter()
             .find_map(|node| {
-                if node.deterministically_aborts(true) {
-                    Some(ctx.type_engine.insert_type(TypeInfo::Unknown))
-                } else {
-                    match node {
-                        ty::TyAstNode {
-                            content:
-                                ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                                    ref return_type,
-                                    ..
-                                }),
-                            ..
-                        } => Some(*return_type),
-                        _ => None,
-                    }
+                if node.deterministically_aborts(declaration_engine, true) {
+                    node_deterministically_aborts = true;
+                };
+                match node {
+                    ty::TyAstNode {
+                        content:
+                            ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
+                                ref return_type,
+                                ..
+                            }),
+                        ..
+                    } => Some(*return_type),
+                    _ => None,
                 }
             })
-            .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Tuple(Vec::new())));
+            .unwrap_or_else(|| {
+                if node_deterministically_aborts {
+                    let never_mod_path = vec![
+                        Ident::new_with_override("core", span.clone()),
+                        Ident::new_with_override("never", span.clone()),
+                    ];
+                    let never_ident = Ident::new_with_override("Never", span.clone());
+
+                    let never_decl_opt = ctx
+                        .namespace
+                        .root()
+                        .resolve_symbol(&never_mod_path, &never_ident)
+                        .value;
+
+                    if let Some(ty::TyDeclaration::EnumDeclaration(never_decl_id)) = never_decl_opt
+                    {
+                        if let Ok(never_decl) =
+                            declaration_engine.get_enum(never_decl_id.clone(), &span)
+                        {
+                            return never_decl.create_type_id(ctx.engines());
+                        }
+                    }
+
+                    ctx.type_engine
+                        .insert_type(declaration_engine, TypeInfo::Unknown)
+                } else {
+                    ctx.type_engine
+                        .insert_type(declaration_engine, TypeInfo::Tuple(Vec::new()))
+                }
+            });
 
         append!(ctx.unify_with_self(block_type, &span), warnings, errors);
 

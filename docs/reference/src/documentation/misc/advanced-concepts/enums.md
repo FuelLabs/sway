@@ -44,7 +44,7 @@ Instantiating the [`b256`](../../language/built-ins/b256.md) type will take up `
 {{#include ../../../code/misc/advanced-concepts/enums/src/lib.sw:b256_type_space}}
 ```
 
-Instantiating the `unit` type will take up `40 bytes`.
+Instantiating the `u64` type will take up `40 bytes`.
 
 ```sway
 {{#include ../../../code/misc/advanced-concepts/enums/src/lib.sw:b256_unit_space}}

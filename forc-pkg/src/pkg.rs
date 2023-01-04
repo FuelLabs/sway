@@ -26,20 +26,19 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    declaration_engine::DeclarationEngine,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    TypeEngine,
-};
-use sway_core::{
     language::{
+        lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
         ty,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, FinalizedEntry,
+    CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
@@ -94,6 +93,8 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
+    pub declaration_engine: DeclarationEngine,
+    pub manifest_file: PackageManifestFile,
 }
 
 /// The result of successfully compiling a workspace.
@@ -255,7 +256,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -273,7 +274,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -432,6 +433,14 @@ impl Built {
                 Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
+        }
+    }
+
+    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+        match self {
+            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
         }
     }
 }
@@ -2169,9 +2178,9 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(type_engine, constants)?;
+    let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2202,7 +2211,7 @@ pub fn dependency_namespace(
                     public: true,
                 };
                 constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(type_engine, constants)?
+                namespace::Module::default_with_constants(engines, constants)?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2220,18 +2229,10 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(
-        &[CORE, PRELUDE].map(Ident::new_no_span),
-        &[],
-        type_engine,
-    );
+    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[], engines);
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(
-            &[STD, PRELUDE].map(Ident::new_no_span),
-            &[],
-            type_engine,
-        );
+        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[], engines);
     }
 
     Ok(namespace)
@@ -2291,7 +2292,7 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
@@ -2299,8 +2300,7 @@ pub fn compile_ast(
     let source = manifest.entry_string()?;
     let sway_build_config =
         sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res =
-        sway_core::compile_to_ast(type_engine, source, namespace, Some(&sway_build_config));
+    let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
 
@@ -2327,7 +2327,7 @@ pub fn compile(
     manifest: &PackageManifestFile,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
@@ -2362,7 +2362,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(type_engine, manifest, build_profile, namespace)?
+        compile_ast(engines, manifest, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2376,7 +2376,7 @@ pub fn compile(
     let mut types = vec![];
     let json_abi_program = time_expr!(
         "generate JSON ABI program",
-        typed_program.generate_json_abi_program(type_engine, &mut types)
+        typed_program.generate_json_abi_program(engines.te(), &mut types)
     );
 
     let storage_slots = typed_program.storage_slots.clone();
@@ -2390,7 +2390,7 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
+        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
     let entries = asm_res
         .value
@@ -2414,6 +2414,8 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
+                declaration_engine: engines.de().clone(),
+                manifest_file: manifest.clone(),
             };
             Ok((built_package, namespace))
         }
@@ -2614,8 +2616,6 @@ pub fn build(
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2624,6 +2624,9 @@ pub fn build(
         .collect();
 
     let type_engine = TypeEngine::default();
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
+
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
     for &node in plan
@@ -2641,7 +2644,7 @@ pub fn build(
             &plan.graph,
             node,
             constants,
-            &type_engine,
+            engines,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2654,7 +2657,7 @@ pub fn build(
             manifest,
             profile,
             dep_namespace,
-            &type_engine,
+            engines,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
@@ -2804,19 +2807,35 @@ fn update_json_type_declaration(
     }
 }
 
-/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
-type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+/// Contains the lexed, parsed, and typed compilation stages of a program.
+pub struct Programs {
+    pub lexed: LexedProgram,
+    pub parsed: ParseProgram,
+    pub typed: Option<ty::TyProgram>,
+}
 
-/// Compile the entire forc package and return the parse and typed programs
+impl Programs {
+    pub fn new(
+        lexed: LexedProgram,
+        parsed: ParseProgram,
+        typed: Option<ty::TyProgram>,
+    ) -> Programs {
+        Programs {
+            lexed,
+            parsed,
+            typed,
+        }
+    }
+}
+
+/// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
-    type_engine: &TypeEngine,
-) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
+    engines: Engines<'_>,
+) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2833,30 +2852,31 @@ pub fn check(
             &plan.graph,
             node,
             constants,
-            type_engine,
+            engines,
         )
         .expect("failed to create dependency namespace");
+
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, type_engine)?;
+        } = parse(manifest, terse_mode, engines)?;
 
-        let parse_program = match value {
+        let (lexed, parsed) = match value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
             }
-            Some(program) => program,
+            Some(modules) => modules,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some((parse_program, None));
+                let value = Some(Programs::new(lexed, parsed, None));
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
             }
@@ -2869,7 +2889,7 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some((parse_program, Some(typed_program)));
+        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
         results.push(CompileResult::new(value, warnings, errors));
     }
 
@@ -2884,19 +2904,15 @@ pub fn check(
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
-    type_engine: &TypeEngine,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+    engines: Engines<'_>,
+) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
     let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::parse(
-        source,
-        type_engine,
-        Some(&sway_build_config),
-    ))
+    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.

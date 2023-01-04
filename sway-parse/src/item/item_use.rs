@@ -2,6 +2,7 @@ use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::{Braces, ItemUse, UseTree};
 use sway_error::parser_error::ParseErrorKind;
+use sway_types::Spanned;
 
 impl Parse for UseTree {
     fn parse(parser: &mut Parser) -> ParseResult<UseTree> {
@@ -23,12 +24,18 @@ impl Parse for UseTree {
             });
         }
         if let Some(double_colon_token) = parser.take() {
-            let suffix = parser.parse()?;
-            return Ok(UseTree::Path {
-                prefix: name,
-                double_colon_token,
-                suffix,
-            });
+            if let Ok(suffix) = parser.parse() {
+                return Ok(UseTree::Path {
+                    prefix: name,
+                    double_colon_token,
+                    suffix,
+                });
+            } else {
+                // parser recovery for foo::
+                return Ok(UseTree::Error {
+                    spans: Box::new([name.span(), double_colon_token.span()]),
+                });
+            }
         }
         Ok(UseTree::Name { name })
     }

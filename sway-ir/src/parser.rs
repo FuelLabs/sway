@@ -89,14 +89,17 @@ mod ir_builder {
                     string_to_hex::<4>(s)
                 }
 
-            rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
-                = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
-                    (ty, name, mdi)
+            rule block_arg() -> (IrAstTy, String, bool, Option<MdIdxRef>)
+                = br:by_ref()? name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
+                    (ty, name, br.is_some(), mdi)
                 }
 
-            rule fn_local() -> (IrAstTy, String, bool, Option<IrAstOperation>)
-                = "local" _ im:mut_ptr() ty:ast_ty() name:id() init:fn_local_init()? {
-                    (ty, name, im, init)
+            rule by_ref() -> ()
+                = "inout" _
+
+            rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>)
+                = "local" _ ty:ast_ty() name:id() init:fn_local_init()? {
+                    (ty, name, init)
                 }
 
             rule fn_local_init() -> IrAstOperation
@@ -151,6 +154,7 @@ mod ir_builder {
                 / op_bitcast()
                 / op_binary()
                 / op_call()
+                / op_cast_ptr()
                 / op_cbr()
                 / op_cmp()
                 / op_const()
@@ -158,7 +162,7 @@ mod ir_builder {
                 / op_extract_element()
                 / op_extract_value()
                 / op_get_storage_key()
-                / op_get_ptr()
+                / op_get_local()
                 / op_gtf()
                 / op_insert_element()
                 / op_insert_value()
@@ -213,7 +217,12 @@ mod ir_builder {
             rule op_call() -> IrAstOperation
                 = "call" _ callee:id() "(" _ args:(id() ** comma()) ")" _ {
                     IrAstOperation::Call(callee, args)
-            }
+                }
+
+            rule op_cast_ptr() -> IrAstOperation
+                = "cast_ptr" _ val:id() comma() ty:ast_ty() comma() offs:decimal() {
+                    IrAstOperation::CastPtr(val, ty, offs)
+                }
 
             rule op_cbr() -> IrAstOperation
                 = "cbr" _ cond:id() comma() tblock:id()
@@ -254,10 +263,9 @@ mod ir_builder {
                     IrAstOperation::GetStorageKey()
                 }
 
-            rule op_get_ptr() -> IrAstOperation
-                = "get_ptr" _ mut_ptr() ty:ast_ty() name:id()
-                    comma() ptr() ty:ast_ty() comma() offset:(decimal())  {
-                    IrAstOperation::GetPtr(name, ty, offset)
+            rule op_get_local() -> IrAstOperation
+                = "get_local" _ ast_ty() name:id() {
+                    IrAstOperation::GetLocal(name)
                 }
 
             rule op_gtf() -> IrAstOperation
@@ -281,7 +289,7 @@ mod ir_builder {
                 }
 
             rule op_load() -> IrAstOperation
-                = "load" _ ptr() src:id() {
+                = "load" _ src:id() {
                     IrAstOperation::Load(src)
                 }
 
@@ -322,27 +330,27 @@ mod ir_builder {
             }
 
             rule op_state_load_quad_word() -> IrAstOperation
-                = "state_load_quad_word" _ ptr() dst:id() comma() "key" _ ptr() _ key:id() {
-                    IrAstOperation::StateLoadQuadWord(dst, key)
+                = "state_load_quad_word" _ dst:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
                 }
 
             rule op_state_load_word() -> IrAstOperation
-                = "state_load_word" _ "key" _ ptr() _ key:id() {
+                = "state_load_word" _ "key" _ key:id() {
                     IrAstOperation::StateLoadWord(key)
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
-                = "state_store_quad_word" _ ptr() src:id() comma() "key" _ ptr() _ key:id() {
-                    IrAstOperation::StateStoreQuadWord(src, key)
+                = "state_store_quad_word" _ src:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateStoreQuadWord(src, key, number_of_slots)
                 }
 
             rule op_state_store_word() -> IrAstOperation
-                = "state_store_word" _ src:id() comma() "key" _ ptr() _ key:id() {
+                = "state_store_word" _ src:id() comma() "key" _ key:id() {
                     IrAstOperation::StateStoreWord(src, key)
                 }
 
             rule op_store() -> IrAstOperation
-                = "store" _ val:id() comma() ptr() dst:id() {
+                = "store" _ val:id() "to" _ dst:id() {
                     IrAstOperation::Store(val, dst)
                 }
 
@@ -471,7 +479,6 @@ mod ir_builder {
                 / array_ty()
                 / struct_ty()
                 / union_ty()
-                / mp:mut_ptr() ty:ast_ty() { IrAstTy::Pointer(Box::new(ty), mp) }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -559,14 +566,6 @@ mod ir_builder {
                     ds.parse::<u64>().unwrap()
                 }
 
-            rule ptr()
-                = "ptr" _
-
-            rule mut_ptr() -> bool
-                = m:("mut" _)? ptr() {
-                    m.is_some()
-                }
-
             rule comma()
                 = quiet!{ "," _ }
 
@@ -601,9 +600,9 @@ mod ir_builder {
         function::Function,
         instruction::{Instruction, Predicate, Register},
         irtype::{Aggregate, Type},
+        local_var::LocalVar,
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
-        pointer::Pointer,
         value::Value,
         BinaryOpKind, BlockArgument,
     };
@@ -618,11 +617,11 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstFnDecl {
         name: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrAstTy, String, bool, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
-        locals: Vec<(IrAstTy, String, bool, Option<IrAstOperation>)>,
+        locals: Vec<(IrAstTy, String, Option<IrAstOperation>)>,
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
@@ -631,7 +630,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstBlock {
         label: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrAstTy, String, bool, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
@@ -656,6 +655,7 @@ mod ir_builder {
         BinaryOp(BinaryOpKind, String, String),
         Br(String, Vec<String>),
         Call(String, Vec<String>),
+        CastPtr(String, IrAstTy, u64),
         Cbr(String, String, Vec<String>, String, Vec<String>),
         Cmp(String, String, String),
         Const(IrAstTy, IrAstConst),
@@ -663,7 +663,7 @@ mod ir_builder {
         ExtractElement(String, IrAstTy, String),
         ExtractValue(String, IrAstTy, Vec<u64>),
         GetStorageKey(),
-        GetPtr(String, IrAstTy, u64),
+        GetLocal(String),
         Gtf(String, u64),
         InsertElement(String, IrAstTy, String, String),
         InsertValue(String, IrAstTy, String, Vec<u64>),
@@ -676,9 +676,9 @@ mod ir_builder {
         Ret(IrAstTy, String),
         Revert(String),
         Smo(String, String, String, String),
-        StateLoadQuadWord(String, String),
+        StateLoadQuadWord(String, String, String),
         StateLoadWord(String),
-        StateStoreQuadWord(String, String),
+        StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
     }
@@ -778,7 +778,6 @@ mod ir_builder {
         Array(Box<IrAstTy>, u64),
         Union(Vec<IrAstTy>),
         Struct(Vec<IrAstTy>),
-        Pointer(Box<IrAstTy>, bool),
     }
 
     impl IrAstTy {
@@ -792,10 +791,6 @@ mod ir_builder {
                 IrAstTy::Array(..) => Type::Array(self.to_ir_aggregate_type(context)),
                 IrAstTy::Union(_) => Type::Union(self.to_ir_aggregate_type(context)),
                 IrAstTy::Struct(_) => Type::Struct(self.to_ir_aggregate_type(context)),
-                IrAstTy::Pointer(ty, is_mut) => {
-                    let ty = ty.to_ir_type(context);
-                    Type::Pointer(Pointer::new(context, ty, *is_mut, None))
-                }
             }
         }
 
@@ -870,11 +865,16 @@ mod ir_builder {
             let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
                 opt_md_idx.map(|mdi| self.md_map.get(&mdi).copied().unwrap())
             };
-            let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
+            let args: Vec<(String, Type, bool, Option<MetadataIndex>)> = fn_decl
                 .args
                 .iter()
-                .map(|(ty, name, md_idx)| {
-                    (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx))
+                .map(|(ty, name, by_ref, md_idx)| {
+                    (
+                        name.into(),
+                        ty.to_ir_type(context),
+                        *by_ref,
+                        convert_md_idx(md_idx),
+                    )
                 })
                 .collect();
             let ret_type = fn_decl.ret_type.to_ir_type(context);
@@ -892,8 +892,8 @@ mod ir_builder {
 
             // Gather all the (new) arg values by name into a map.
             let mut arg_map = HashMap::<String, Value>::new();
-            let mut ptr_map = HashMap::<String, Pointer>::new();
-            for (ty, name, is_mutable, initializer) in fn_decl.locals {
+            let mut local_map = HashMap::<String, LocalVar>::new();
+            for (ty, name, initializer) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
                     if let IrAstOperation::Const(val_ty, val) = const_init {
                         val.value.as_constant(context, val_ty)
@@ -902,9 +902,9 @@ mod ir_builder {
                     }
                 });
                 let ty = ty.to_ir_type(context);
-                ptr_map.insert(
+                local_map.insert(
                     name.clone(),
-                    func.new_local_ptr(context, name, ty, is_mutable, initializer)?,
+                    func.new_local_var(context, name, ty, initializer)?,
                 );
             }
 
@@ -916,17 +916,18 @@ mod ir_builder {
                         func.get_entry_block(context)
                     } else {
                         let irblock = func.create_block(context, Some(block.label.clone()));
-                        for (idx, arg) in block.args.iter().enumerate() {
-                            let ty = arg.0.to_ir_type(context);
+                        for (idx, (arg_ty, _, by_ref, md)) in block.args.iter().enumerate() {
+                            let ty = arg_ty.to_ir_type(context);
                             let arg = Value::new_argument(
                                 context,
                                 BlockArgument {
                                     block: irblock,
                                     idx,
                                     ty,
+                                    by_ref: *by_ref,
                                 },
                             )
-                            .add_metadatum(context, convert_md_idx(&arg.2));
+                            .add_metadatum(context, convert_md_idx(md));
                             irblock.add_arg(context, arg);
                         }
                         irblock
@@ -941,7 +942,13 @@ mod ir_builder {
                         named_blocks[&block.label].get_arg(context, idx).unwrap(),
                     );
                 }
-                self.add_block_instructions(context, block, &named_blocks, &ptr_map, &mut arg_map);
+                self.add_block_instructions(
+                    context,
+                    block,
+                    &named_blocks,
+                    &local_map,
+                    &mut arg_map,
+                );
             }
             Ok(())
         }
@@ -951,7 +958,7 @@ mod ir_builder {
             context: &mut Context,
             ir_block: IrAstBlock,
             named_blocks: &HashMap<String, Block>,
-            ptr_map: &HashMap<String, Pointer>,
+            local_map: &HashMap<String, LocalVar>,
             val_map: &mut HashMap<String, Value>,
         ) {
             let block = named_blocks.get(&ir_block.label).unwrap();
@@ -1054,6 +1061,13 @@ mod ir_builder {
                         self.unresolved_calls.push(PendingCall { call_val, callee });
                         call_val
                     }
+                    IrAstOperation::CastPtr(val, ty, offs) => {
+                        let ir_ty = ty.to_ir_type(context);
+                        block
+                            .ins(context)
+                            .cast_ptr(*val_map.get(&val).unwrap(), ir_ty, offs)
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::Cbr(
                         cond_val_name,
                         true_block_name,
@@ -1134,13 +1148,10 @@ mod ir_builder {
                         .ins(context)
                         .get_storage_key()
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::GetPtr(base_ptr, ptr_ty, offset) => {
-                        let ptr_ir_ty = ptr_ty.to_ir_type(context);
-                        block
-                            .ins(context)
-                            .get_ptr(*ptr_map.get(&base_ptr).unwrap(), ptr_ir_ty, offset)
-                            .add_metadatum(context, opt_metadata)
-                    }
+                    IrAstOperation::GetLocal(local_name) => block
+                        .ins(context)
+                        .get_local(*local_map.get(&local_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Gtf(index, tx_field_id) => block
                         .ins(context)
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
@@ -1245,22 +1256,24 @@ mod ir_builder {
                             *val_map.get(&coins).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateLoadQuadWord(dst, key) => block
+                    IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots) => block
                         .ins(context)
                         .state_load_quad_word(
                             *val_map.get(&dst).unwrap(),
                             *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadWord(key) => block
                         .ins(context)
                         .state_load_word(*val_map.get(&key).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateStoreQuadWord(src, key) => block
+                    IrAstOperation::StateStoreQuadWord(src, key, number_of_slots) => block
                         .ins(context)
                         .state_store_quad_word(
                             *val_map.get(&src).unwrap(),
                             *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreWord(src, key) => block

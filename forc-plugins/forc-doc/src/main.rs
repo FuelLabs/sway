@@ -16,9 +16,10 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
+    sync::Arc,
     {fs, path::PathBuf},
 };
-use sway_core::TypeEngine;
+use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -58,21 +59,25 @@ pub fn main() -> Result<()> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
-    let typed_program = match pkg::check(&plan, silent, &type_engine)?
+    let declaration_engine = DeclarationEngine::default();
+    let engines = Engines::new(&type_engine, &declaration_engine);
+    let typed_program = match pkg::check(&plan, silent, engines)?
         .pop()
         .and_then(|compilation| compilation.value)
+        .and_then(|programs| programs.typed)
     {
-        Some((_, Some(typed_program))) => typed_program,
+        Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
+        &declaration_engine,
         project_name,
         &typed_program,
         no_deps,
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(raw_docs);
+    let rendered_docs = RenderedDocumentation::from(Arc::new(declaration_engine), raw_docs);
 
     // write contents to outfile
     for doc in rendered_docs.0 {

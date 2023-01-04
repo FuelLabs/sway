@@ -35,6 +35,7 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::ValueParam
         | SymbolKind::ByteLiteral
         | SymbolKind::Variable
+        | SymbolKind::Keyword
         | SymbolKind::Unknown => lsp_types::SymbolKind::VARIABLE,
     }
 }

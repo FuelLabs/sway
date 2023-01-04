@@ -19,6 +19,8 @@ pub(crate) fn instantiate_function_application(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
@@ -49,15 +51,18 @@ pub(crate) fn instantiate_function_application(
                     not match the declared type of the parameter in the function \
                     declaration.",
                 )
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+                .with_type_annotation(
+                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                );
             let exp = check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::TyExpression::error(arg.span(), type_engine),
+                ty::TyExpression::error(arg.span(), engines),
                 warnings,
                 errors
             );
             append!(
                 type_engine.unify_right(
+                    declaration_engine,
                     exp.return_type,
                     param.type_id,
                     &exp.span,
@@ -93,10 +98,10 @@ pub(crate) fn instantiate_function_application(
         warnings,
         errors
     );
-    function_decl.replace_decls(&decl_mapping, type_engine);
+    function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
     let span = function_decl.span.clone();
-    let new_decl_id = de_insert_function(function_decl);
+    let new_decl_id = declaration_engine.insert_function(function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

@@ -44,27 +44,31 @@ impl<'a> Dependency<'a> {
     }
 
     /// Insert TypedDeclaration tokens into the TokenMap.
-    pub fn collect_typed_declaration(&self, node: &ty::TyAstNode) {
+    pub fn collect_typed_declaration(
+        &self,
+        declaration_engine: &de::DeclarationEngine,
+        node: &ty::TyAstNode,
+    ) {
         if let ty::TyAstNodeContent::Declaration(declaration) = &node.content {
             let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 
             if let Ok(ident) = match declaration {
                 ty::TyDeclaration::VariableDeclaration(variable) => Ok(variable.name.clone()),
-                ty::TyDeclaration::StructDeclaration(decl_id) => {
-                    de::de_get_struct(decl_id.clone(), &declaration.span()).map(|decl| decl.name)
-                }
-                ty::TyDeclaration::TraitDeclaration(decl_id) => {
-                    de::de_get_trait(decl_id.clone(), &declaration.span()).map(|decl| decl.name)
-                }
-                ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-                    de::de_get_function(decl_id.clone(), &declaration.span()).map(|decl| decl.name)
-                }
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    de::de_get_constant(decl_id.clone(), &declaration.span()).map(|decl| decl.name)
-                }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    de::de_get_enum(decl_id.clone(), &declaration.span()).map(|decl| decl.name)
-                }
+                ty::TyDeclaration::StructDeclaration(decl_id) => declaration_engine
+                    .get_struct(decl_id.clone(), &declaration.span())
+                    .map(|decl| decl.name),
+                ty::TyDeclaration::TraitDeclaration(decl_id) => declaration_engine
+                    .get_trait(decl_id.clone(), &declaration.span())
+                    .map(|decl| decl.name),
+                ty::TyDeclaration::FunctionDeclaration(decl_id) => declaration_engine
+                    .get_function(decl_id.clone(), &declaration.span())
+                    .map(|decl| decl.name),
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => declaration_engine
+                    .get_constant(decl_id.clone(), &declaration.span())
+                    .map(|decl| decl.name),
+                ty::TyDeclaration::EnumDeclaration(decl_id) => declaration_engine
+                    .get_enum(decl_id.clone(), &declaration.span())
+                    .map(|decl| decl.name),
                 _ => return,
             } {
                 let ident = token::to_ident_key(&ident);
