@@ -1,7 +1,10 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 
 use crate::{
     error::*,
@@ -38,6 +41,15 @@ impl ty::TyFunctionDeclaration {
         let declaration_engine = ctx.declaration_engine;
         let engines = ctx.engines();
 
+        // If functions aren't allowed in this location, return an error.
+        if ctx.functions_disallowed() {
+            errors.push(CompileError::Unimplemented(
+                "Nested function definitions are not allowed at this time.",
+                span,
+            ));
+            return err(warnings, errors);
+        }
+
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
             warnings.push(CompileWarning {
@@ -48,7 +60,11 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+        let mut fn_ctx = ctx
+            .by_ref()
+            .scoped(&mut fn_namespace)
+            .with_purity(purity)
+            .disallow_functions();
 
         // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
