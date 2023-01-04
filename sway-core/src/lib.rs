@@ -106,7 +106,7 @@ fn parse_in_memory(
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
-            module,
+            tree: module,
             submodules: Default::default(),
         },
     );
@@ -201,7 +201,7 @@ fn parse_module_tree(
     let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
 
     let lexed = lexed::LexedModule {
-        module,
+        tree: module,
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {

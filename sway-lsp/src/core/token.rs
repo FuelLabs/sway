@@ -30,7 +30,6 @@ pub enum AstToken {
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
-
     Keyword(Ident),
 }
 
@@ -67,7 +66,6 @@ pub enum SymbolKind {
     StringLiteral,
     NumericLiteral,
     Variable,
-    BuiltinAttr,
     BuiltinType,
     Module,
     TypeParameter,

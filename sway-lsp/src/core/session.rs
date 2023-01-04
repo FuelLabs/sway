@@ -10,7 +10,8 @@ use crate::{
     },
     error::{DocumentError, LanguageServerError},
     traverse::{
-        dependency::Dependency, items::ParsedItems, parsed_tree::ParsedTree, typed_tree::TypedTree,
+        dependency::Dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree,
+        typed_tree::TypedTree,
     },
 };
 use dashmap::DashMap;
@@ -170,15 +171,15 @@ impl Session {
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
-                let items = lexed.root.module.items;
-                let parsed_items = ParsedItems::new(&self.token_map);
-                parsed_items.parse_module(&items).unwrap();
+                // First, populate our token_map with sway keywords.
+                let lexed_tree = LexedTree::new(&self.token_map);
+                lexed_tree.parse(&lexed);
 
-                // First, populate our token_map with un-typed ast nodes.
+                // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
                 self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
 
-                // Next, create runnables and populate our token_map with typed ast nodes.
+                // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);

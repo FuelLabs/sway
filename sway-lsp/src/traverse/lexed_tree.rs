@@ -2,31 +2,36 @@ use crate::core::{
     token::{to_ident_key, AstToken, SymbolKind, Token},
     token_map::TokenMap,
 };
-use std::{ops::ControlFlow, path::PathBuf, sync::Arc};
+use std::ops::ControlFlow;
 use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
-    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, Item,
-    ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait,
-    ItemUse, MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField,
-    Ty, TypeField, UseTree,
+    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
+    ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
+    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty,
+    TypeField, UseTree,
 };
-use sway_error::handler::ErrorEmitted;
+use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
 
-pub struct ParsedItems<'a> {
+pub struct LexedTree<'a> {
     tokens: &'a TokenMap,
 }
 
-impl<'a> ParsedItems<'a> {
+impl<'a> LexedTree<'a> {
     pub fn new(tokens: &'a TokenMap) -> Self {
         Self { tokens }
     }
 
-    pub fn parse_module(&self, items: &[Item]) -> Result<(), ErrorEmitted> {
-        for item in items {
+    pub fn parse(&self, lexed_program: &LexedProgram) {
+        for item in &lexed_program.root.tree.items {
             item.value.parse(self.tokens);
         }
-        Ok(())
+
+        for (.., dep) in &lexed_program.root.submodules {
+            for item in &dep.module.tree.items {
+                item.value.parse(self.tokens);
+            }
+        }
     }
 }
 
@@ -282,13 +287,13 @@ impl Parse for ItemTrait {
 
         self.trait_items
             .get()
-            .into_iter()
+            .iter()
             .for_each(|item| item.0.value.parse(tokens));
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
             trait_defs_opt
                 .get()
-                .into_iter()
+                .iter()
                 .for_each(|item| item.value.parse(tokens));
         }
     }
@@ -326,7 +331,7 @@ impl Parse for ItemAbi {
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
             abi_defs_opt
                 .get()
-                .into_iter()
+                .iter()
                 .for_each(|item| item.value.parse(tokens));
         }
     }
@@ -584,10 +589,12 @@ impl Parse for Pattern {
 
 impl Parse for PatternStructField {
     fn parse(&self, tokens: &TokenMap) {
-        if let PatternStructField::Field { pattern_opt, .. } = self {
-            if let Some((.., pattern)) = pattern_opt {
-                pattern.parse(tokens);
-            }
+        if let PatternStructField::Field {
+            pattern_opt: Some((.., pattern)),
+            ..
+        } = self
+        {
+            pattern.parse(tokens);
         }
     }
 }
