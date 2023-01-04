@@ -9,7 +9,7 @@ use sway_types::Ident;
 #[derive(Debug, Clone)]
 pub struct LexedModule {
     /// The content of this module in the form of a [Module].
-    pub module: Module,
+    pub tree: Module,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, LexedSubmodule)>,
 }
