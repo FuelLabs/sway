@@ -52,7 +52,7 @@ fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, gas: 
 
 
 // Enocode a payload from the function selection and calldata, and call the target contract
-fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes) -> Bytes {
+fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes, single_value_type_arg: bool) -> Bytes {
 
     // packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
     /*
@@ -67,17 +67,21 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes)
 
     let mut payload = Bytes::new()
     .join(contract_id_to_bytes(target))
-    .join(function_selector)
-    .join(ptr_as_bytes(calldata.buf.ptr));  // When calldata is reference type, need to get pointer as bytes
-    //.join(calldata);                      // When calldata is copy type, just pass calldata
+    .join(function_selector);
+
+    if (single_value_type_arg) {
+        payload = payload.join(calldata); // When calldata is copy type, just pass calldata
+    } else {
+        payload = payload.join(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
+    };
 
     payload
 }
 
 
-pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
+pub fn call_with_function_selector(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
 
-    let payload = create_payload(target, function_selector, calldata);
+    let payload = create_payload(target, function_selector, calldata, single_value_type_arg);
     call_with_raw_payload(payload, call_params.coins, call_params.asset_id, call_params.gas);
     
 }

@@ -38,7 +38,7 @@ pub fn test_u64(target: ContractId) -> bool {
     };
     
     // Calling "set_value(u64)" with argument "42" should set the value to 42
-    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000});
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000}, true);
 
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
@@ -68,7 +68,7 @@ pub fn test_b256(target: ContractId) -> bool {
         i += 1;
     };
 
-    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000});
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000}, false);
 
     let called_contract = abi(CalledContract, target.into());
     let return_value = called_contract.get_b256_value();
@@ -94,7 +94,7 @@ pub fn test_multiple_args_simple(target: ContractId) -> bool {
         i += 1;
     };
     
-    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000});
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000}, false);
 
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
@@ -133,7 +133,7 @@ pub fn test_multiple_args_complex(target: ContractId) -> bool {
         i += 1;
     };
     
-    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000});
+    call_with_function_selector(target, function_selector, calldata, CallParams{coins: 0, asset_id: BASE_ASSET_ID, gas: 2_000_000}, false);
 
     // Get value from called contract and return
     let called_contract = abi(CalledContract, target.into());
