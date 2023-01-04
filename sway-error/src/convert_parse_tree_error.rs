@@ -83,8 +83,6 @@ pub enum ConvertParseTreeError {
     DuplicateStorageField { name: Ident, span: Span },
     #[error("configurable \"{name}\" already declared")]
     DuplicateConfigurable { name: Ident, span: Span },
-    #[error("Multiple configurable blocks detected")]
-    MultipleConfigurableBlocks { span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
@@ -146,7 +144,6 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateConfigurable { span, .. } => span.clone(),
-            ConvertParseTreeError::MultipleConfigurableBlocks { span } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
