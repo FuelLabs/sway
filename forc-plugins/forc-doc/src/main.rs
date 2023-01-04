@@ -61,7 +61,7 @@ pub fn main() -> Result<()> {
     let declaration_engine = DeclarationEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
     let tests_enabled = true;
-    let typed_program = match pkg::check(&plan, silent, engines, tests_enabled)?
+    let typed_program = match pkg::check(&plan, silent, tests_enabled, engines)?
         .pop()
         .and_then(|compilation| compilation.value)
         .and_then(|programs| programs.typed)
