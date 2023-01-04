@@ -69,6 +69,7 @@ fn create_payload(target: ContractId, function_selector: Bytes, calldata: Bytes,
     .join(contract_id_to_bytes(target))
     .join(function_selector);
 
+    // TODO: Replace this flag parameter with some dynamic check if possible.
     if (single_value_type_arg) {
         payload = payload.join(calldata); // When calldata is copy type, just pass calldata
     } else {
