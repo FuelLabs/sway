@@ -302,6 +302,7 @@ fn compile_core(engines: Engines<'_>) -> namespace::Module {
         path: Some(libcore_root_dir),
         offline_mode: true,
         terse_mode: true,
+        disable_tests: false,
         locked: false,
     };
 
