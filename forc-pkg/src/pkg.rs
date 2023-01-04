@@ -94,6 +94,7 @@ pub struct BuiltPackage {
     source_map: SourceMap,
     pub pkg_name: String,
     pub declaration_engine: DeclarationEngine,
+    pub manifest_file: PackageManifestFile,
 }
 
 /// The result of successfully compiling a workspace.
@@ -255,7 +256,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -273,7 +274,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -432,6 +433,14 @@ impl Built {
                 Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
+        }
+    }
+
+    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+        match self {
+            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
         }
     }
 }
@@ -2406,6 +2415,7 @@ pub fn compile(
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 declaration_engine: engines.de().clone(),
+                manifest_file: manifest.clone(),
             };
             Ok((built_package, namespace))
         }
