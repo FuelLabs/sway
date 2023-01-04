@@ -1,6 +1,4 @@
 category = "fail"
 
-# check: $()error
-# nextln: ref_mut_contract_abi/src/main.sw:14:13
-# check: $()bar(ref Vec::new());
-# nextln: $()Ref expressions are not supported yet.
+# check: $()fn foo(ref mut x: u64);
+# nextln: $()ref mut or mut parameter is not allowed for contract ABI function.
