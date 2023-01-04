@@ -6,12 +6,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::ty,
-    type_system::{occurs_check::OccursCheck, *},
-    Engines,
-};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {

@@ -74,7 +74,7 @@ pub(crate) fn instantiate_enum(
                     declaration_engine,
                     typed_expr.return_type,
                     enum_variant.type_id,
-                    &span,
+                    span,
                     "Enum instantiator must match its declared variant type.",
                     None
                 )),
