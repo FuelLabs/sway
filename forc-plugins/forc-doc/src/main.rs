@@ -64,8 +64,9 @@ pub fn main() -> Result<()> {
     let typed_program = match pkg::check(&plan, silent, engines)?
         .pop()
         .and_then(|compilation| compilation.value)
+        .and_then(|programs| programs.typed)
     {
-        Some((_, Some(typed_program))) => typed_program,
+        Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
