@@ -711,6 +711,8 @@ pub enum CompileError {
         missing_impl_attribute: bool,
         span: Span,
     },
+    #[error("The name `{name}` is defined multiple times")]
+    NameDefinedMultipleTimes { name: Ident },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -898,6 +900,7 @@ impl Spanned for CompileError {
             DisallowedWhileInPredicate { span } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
+            NameDefinedMultipleTimes { name } => name.span(),
         }
     }
 }

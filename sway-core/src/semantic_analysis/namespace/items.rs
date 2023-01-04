@@ -113,12 +113,16 @@ impl Items {
         // purposefully do not preemptively return errors so that the
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
+            dbg!(&item);
             match item {
                 ty::TyDeclaration::EnumDeclaration { .. }
                 | ty::TyDeclaration::StructDeclaration { .. }
                 | ty::TyDeclaration::AbiDeclaration { .. }
                 | ty::TyDeclaration::TraitDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
+                }
+                ty::TyDeclaration::ConstantDeclaration { .. } => {
+                    errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
                 }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });

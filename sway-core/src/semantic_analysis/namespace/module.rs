@@ -356,6 +356,23 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
+
+                if let ty::TyDeclaration::ConstantDeclaration(ref var_decl) = decl {
+                    let const_decl = check!(
+                        CompileResult::from(
+                            declaration_engine.get_constant(var_decl.clone(), &var_decl.span())
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors,
+                    );
+                    self[dst].insert_symbol(
+                        alias.unwrap_or_else(|| const_decl.name.clone()),
+                        decl.clone(),
+                    );
+                    return ok((), warnings, errors);
+                }
+
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {

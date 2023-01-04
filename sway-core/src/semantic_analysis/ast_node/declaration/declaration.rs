@@ -137,7 +137,12 @@ impl ty::TyDeclaration {
                 let typed_const_decl = ty::TyDeclaration::ConstantDeclaration(
                     declaration_engine.insert_constant(decl),
                 );
-                ctx.namespace.insert_symbol(name, typed_const_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_const_decl
             }
             parsed::Declaration::EnumDeclaration(decl) => {
