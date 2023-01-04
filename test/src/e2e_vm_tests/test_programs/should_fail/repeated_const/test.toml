@@ -1,0 +1,9 @@
+category = "fail"
+
+# check: const X = 5;
+# nextln: $()This declaration is never used.
+# nextln: const X = 5;
+
+# check: const X = 5;
+# nextln: const X = 5;
+# nextln: $()The name `X` is defined multiple times

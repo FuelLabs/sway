@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: pub const X = 5;
+# nextln: $()This declaration is never used.
+
+# check: const X = 6;
+# nextln: $()The name `X` is defined multiple times

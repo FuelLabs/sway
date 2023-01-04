@@ -113,7 +113,6 @@ impl Items {
         // purposefully do not preemptively return errors so that the
         // new definition allows later usages to compile
         if self.symbols.get(&name).is_some() {
-            dbg!(&item);
             match item {
                 ty::TyDeclaration::EnumDeclaration { .. }
                 | ty::TyDeclaration::StructDeclaration { .. }
