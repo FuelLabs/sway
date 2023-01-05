@@ -102,7 +102,7 @@ impl Span {
     /// We do this because there is no gaurantee that the user will have a ' '
     /// character amended in their function. E.g `fn foo(){}`.
     pub fn implicit_fn_return(fn_body_span: Span) -> Option<Span> {
-        match fn_body_span.src.chars().nth(0) {
+        match fn_body_span.src.chars().next() {
             None => None,
             Some(open_curlybrace) => Span::new(
                 Arc::from(open_curlybrace.to_string()),
