@@ -400,7 +400,10 @@ fn item_fn_to_function_declaration(
     let span = item_fn.span();
     let return_type_span = match &item_fn.fn_signature.return_type_opt {
         Some((_right_arrow_token, ty)) => ty.span(),
-        None => Span::dummy(),
+        None => match Span::implicit_fn_return(item_fn.body.span.clone()) {
+            Some(span) => span,
+            None => item_fn.fn_signature.span(),
+        },
     };
     Ok(FunctionDeclaration {
         purity: get_attributed_purity(handler, &attributes)?,

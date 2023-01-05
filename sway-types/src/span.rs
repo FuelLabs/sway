@@ -96,6 +96,23 @@ impl Span {
         })
     }
 
+    /// Handles error spans for functions returning the unit type.
+    ///
+    /// Takes the function body, containing the `{` that the error will point to.
+    /// We do this because there is no gaurantee that the user will have a ' '
+    /// character amended in their function. E.g `fn foo(){}`.
+    pub fn implicit_fn_return(fn_body_span: Span) -> Option<Span> {
+        match fn_body_span.src.chars().nth(0) {
+            None => None,
+            Some(open_curlybrace) => Span::new(
+                Arc::from(open_curlybrace.to_string()),
+                fn_body_span.start,
+                fn_body_span.start + 1,
+                fn_body_span.path,
+            ),
+        }
+    }
+
     pub fn from_string(source: String) -> Span {
         let len = source.len();
         Span::new(Arc::from(source), 0, len, None).unwrap()
