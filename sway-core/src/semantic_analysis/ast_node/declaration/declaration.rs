@@ -70,7 +70,12 @@ impl ty::TyDeclaration {
                         type_ascription,
                         type_ascription_span,
                     }));
-                ctx.namespace.insert_symbol(name, typed_var_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_var_decl
             }
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {

@@ -112,8 +112,13 @@ impl Items {
         let mut errors = vec![];
         // purposefully do not preemptively return errors so that the
         // new definition allows later usages to compile
-        if self.symbols.get(&name).is_some() {
+        if let Some(decl) = self.symbols.get(&name) {
             match item {
+                ty::TyDeclaration::VariableDeclaration { .. } => {
+                    if matches!(decl, ty::TyDeclaration::ConstantDeclaration { .. }) {
+                        errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
+                    }
+                }
                 ty::TyDeclaration::EnumDeclaration { .. }
                 | ty::TyDeclaration::StructDeclaration { .. }
                 | ty::TyDeclaration::AbiDeclaration { .. }

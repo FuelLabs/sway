@@ -351,8 +351,13 @@ impl Module {
                         mutability, name, ..
                     } = &**var_decl;
                     if mutability == &ty::VariableMutability::ExportedConst {
-                        self[dst]
-                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
+                        check!(
+                            self[dst]
+                                .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone()),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
                         return ok((), warnings, errors);
                     }
                 }
@@ -366,9 +371,14 @@ impl Module {
                         warnings,
                         errors,
                     );
-                    self[dst].insert_symbol(
-                        alias.unwrap_or_else(|| const_decl.name.clone()),
-                        decl.clone(),
+                    check!(
+                        self[dst].insert_symbol(
+                            alias.unwrap_or_else(|| const_decl.name.clone()),
+                            decl.clone(),
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
                     );
                     return ok((), warnings, errors);
                 }

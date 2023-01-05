@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()const X = 5;
+# nextln: $()The name `X` is defined multiple times
