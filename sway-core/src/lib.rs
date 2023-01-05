@@ -346,10 +346,18 @@ pub fn compile_to_ast(
         mut warnings,
         mut errors,
     } = parse(input, engines, build_config);
-    let (.., parse_program) = match parse_program_opt {
+    let (.., mut parse_program) = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
+
+    // If tests are not enabled, exclude them from `parsed_program`.
+    if build_config
+        .map(|config| !config.include_tests)
+        .unwrap_or(true)
+    {
+        parse_program.exclude_tests();
+    }
 
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
