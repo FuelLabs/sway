@@ -104,6 +104,25 @@ impl<T> From<Result<T, CompileError>> for CompileResult<T> {
     }
 }
 
+impl From<(Vec<CompileWarning>, Vec<CompileError>)> for CompileResult<()> {
+    fn from(o: (Vec<CompileWarning>, Vec<CompileError>)) -> Self {
+        let (warnings, errors) = o;
+        if errors.is_empty() {
+            CompileResult {
+                value: Some(()),
+                warnings,
+                errors,
+            }
+        } else {
+            CompileResult {
+                value: None,
+                warnings,
+                errors,
+            }
+        }
+    }
+}
+
 impl<T> CompileResult<T> {
     pub fn is_ok(&self) -> bool {
         self.value.is_some() && self.errors.is_empty()

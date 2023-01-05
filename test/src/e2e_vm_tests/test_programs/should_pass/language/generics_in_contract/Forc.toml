@@ -1,8 +1,8 @@
 [project]
+name = "generics_in_contract"
 authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "lib.sw"
+entry = "main.sw"
 license = "Apache-2.0"
-name = "lib_single_test"
 implicit-std = false
 
 [dependencies]
