@@ -6,7 +6,7 @@ pub(super) struct UnifyCheck<'a> {
 }
 
 impl<'a> UnifyCheck<'a> {
-    /// Creates a new [Coercion].
+    /// Creates a new [UnifyCheck].
     pub(super) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
         UnifyCheck { engines }
     }
