@@ -4,4 +4,4 @@ category = "fail"
 # nextln: $()Mismatched types.
 # nextln: $()expected: bool
 # nextln: $()found:    u64.
-# nextln: $()help: Struct field's type must match up with the type specified in its declaration.
+# nextln: $()help: Struct field's type must match the type specified in its declaration.

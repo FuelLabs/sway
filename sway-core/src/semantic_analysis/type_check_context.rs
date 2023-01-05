@@ -305,6 +305,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             span,
             self.help_text(),
+            None,
         )
     }
 
