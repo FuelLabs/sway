@@ -136,7 +136,7 @@ impl ModuleInfo {
     pub(crate) fn location(&self) -> Result<&str> {
         match self.0.last() {
             Some(location) => Ok(location),
-            None => bail!("Expected Some module location, found None")
+            None => bail!("Expected Some module location, found None"),
         }
     }
     /// The location of the parent of the current module.

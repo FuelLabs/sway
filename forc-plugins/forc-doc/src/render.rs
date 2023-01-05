@@ -1,11 +1,11 @@
 use crate::doc::{Documentation, ModuleInfo};
+use anyhow::Result;
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
 };
-use anyhow::Result;
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
 use sway_types::BaseIdent;
@@ -263,16 +263,19 @@ pub(crate) struct ItemContext {
 impl Renderable for ItemContext {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         const FIELDS: &str = "Fields";
+
         const VARIANTS: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
         match self.context {
             Some(context) => match context {
                 ContextType::StructFields(fields) => Ok(context_section(fields, FIELDS)?),
-            ContextType::StorageFields(fields) => Ok(context_section(fields, FIELDS)?),
-            ContextType::EnumVariants(variants) => Ok(context_section(variants, VARIANTS)?),
-            ContextType::RequiredMethods(methods) => Ok(context_section(methods, REQUIRED_METHODS)?),
-            }
-            None => Ok(box_html! {})
+                ContextType::StorageFields(fields) => Ok(context_section(fields, FIELDS)?),
+                ContextType::EnumVariants(variants) => Ok(context_section(variants, VARIANTS)?),
+                ContextType::RequiredMethods(methods) => {
+                    Ok(context_section(methods, REQUIRED_METHODS)?)
+                }
+            },
+            None => Ok(box_html! {}),
         }
     }
 }
