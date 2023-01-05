@@ -489,7 +489,13 @@ impl ty::TyExpression {
             errors
         );
 
-        instantiate_function_application(ctx, function_decl, call_path_binding.inner, arguments)
+        instantiate_function_application(
+            ctx,
+            function_decl,
+            call_path_binding.inner,
+            arguments,
+            span,
+        )
     }
 
     fn type_check_lazy_operator(
@@ -1144,7 +1150,7 @@ impl ty::TyExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
+                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1154,7 +1160,13 @@ impl ty::TyExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding.inner, args,),
+                    instantiate_function_application(
+                        ctx,
+                        func_decl,
+                        call_path_binding.inner,
+                        args,
+                        span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
