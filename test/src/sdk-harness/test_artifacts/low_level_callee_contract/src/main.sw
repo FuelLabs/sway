@@ -21,7 +21,7 @@ abi CalledContract {
 
 pub struct MyStruct {
     a: bool,
-    b: [u64; 3]
+    b: [u64; 3],
 }
 
 storage {
@@ -38,7 +38,7 @@ impl CalledContract for Contract {
     fn set_value(new_value: u64) {
         storage.value = new_value;
     }
-    
+
     #[storage(write)]
     fn set_value_multiple(a: u64, b: u64) {
         storage.value = a + b;
@@ -70,10 +70,9 @@ impl CalledContract for Contract {
     fn get_str_value() -> str[4] {
         storage.value_str
     }
-    
+
     #[storage(read)]
     fn get_bool_value() -> bool {
         storage.value_bool
     }
-
 }

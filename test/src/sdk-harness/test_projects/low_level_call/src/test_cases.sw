@@ -1,9 +1,9 @@
 library test_cases;
 
-use std::low_level_call::{call_with_function_selector, CallParams};
-use std::constants::BASE_ASSET_ID;
 use std::bytes::Bytes;
+use std::constants::BASE_ASSET_ID;
 use std::hash::sha256;
+use std::low_level_call::{call_with_function_selector, CallParams};
 
 abi CalledContract {
     #[storage(read)]
@@ -86,7 +86,10 @@ pub fn test_multiple_args_simple(target: ContractId) -> bool {
         i += 1;
     };
 
-    let calldata_arr= [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 23u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8];
+    let calldata_arr= [
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 23u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8
+        ];
     let mut calldata = Bytes::new();
     i = 0;
     while i < 16 {
@@ -123,7 +126,7 @@ pub fn test_multiple_args_complex(target: ContractId) -> bool {
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, // 1u64 for MyStruct.b[0]
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 2u8, // 2u64 for MyStruct.b[1]
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 3u8, // 3u64 for MyStruct.b[2]
-        102u8, 117u8, 101u8, 108u8, 0u8, 0u8, 0u8, 0u8 // "fuel" (0x6675656c) for str[4]
+        102u8, 117u8, 101u8, 108u8, 0u8, 0u8, 0u8, 0u8 // "fuel" (0x6675656c) for str[4]  (note right padding)
         ];
 
     let mut calldata = Bytes::new();

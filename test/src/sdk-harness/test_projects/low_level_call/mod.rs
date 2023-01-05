@@ -80,5 +80,4 @@ async fn can_call_contract_with_generic_call() {
         .tx_params(TxParameters::new(None, Some(10_000_000), None));
 
     tx.call().await.unwrap();
-
 }
