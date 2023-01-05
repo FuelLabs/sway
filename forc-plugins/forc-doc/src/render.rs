@@ -263,7 +263,6 @@ pub(crate) struct ItemContext {
 impl Renderable for ItemContext {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         const FIELDS: &str = "Fields";
-
         const VARIANTS: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
         match self.context {
