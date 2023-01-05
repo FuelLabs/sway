@@ -6,6 +6,7 @@ use ::revert::require;
 use ::contract_id::ContractId;
 use ::logging::log;
 use ::option::Option;
+use ::vec::Vec;
 
 pub struct CallParams {
     coins: u64,
@@ -23,16 +24,15 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
-pub struct Pointer {
-    value: raw_ptr,
-}
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
-    let ptr_in_struct = Pointer { value: ptr };
 
     let mut bytes = Bytes::with_capacity(8);
     bytes.len = 8;
 
-    __addr_of(ptr_in_struct).copy_bytes_to(bytes.buf.ptr, 8);
+    // Need to copy pointer to heap so it has an address and can be copied onto the bytes buffer
+    let mut ptr_on_heap = Vec::new();
+    ptr_on_heap.push(ptr);
+    ptr_on_heap.buf.ptr.copy_bytes_to(bytes.buf.ptr, 8);
 
     bytes
 }
