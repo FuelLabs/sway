@@ -1,5 +1,7 @@
 library complex_tests;
 
+use std::result::*;
+
 fn a(x: u64) -> u64 {
     match x {
         7 => { 0 },
@@ -53,18 +55,13 @@ struct MyAddress {
     inner: u64,
 }
 
-struct MyContract {
+struct MyContractId {
     inner: bool
 }
 
 enum MyIdentity {
     Address: MyAddress,
-    Contract: MyContract,
-}
-
-enum MyResult<T, E> {
-    Ok: T,
-    Err: E,
+    ContractId: MyContractId,
 }
 
 enum MyAuthError {
@@ -73,12 +70,32 @@ enum MyAuthError {
 }
 
 pub fn enum_match_exp_bugfix_test() {
-    let sender: MyResult<MyIdentity, MyAuthError> = MyResult::Ok(MyIdentity::Address(MyAddress { inner: 7 }));
-    let res = match sender {
-        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
-        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_2 })) => 2,
-        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_3 })) => 3,
-        MyResult::Err(_) => 5,
+    let a: Result<MyIdentity, MyAuthError> = Result::Ok(
+        MyIdentity::Address(
+            MyAddress { inner: 7 }
+        )
+    );
+
+    // should fail with non-exhaustive
+    let b = match a {
+        Result::Ok(MyIdentity::Address(_)) => 1,
+        // missing Result::Ok(MyIdentity::ContractId(_))
+        Result::Err(_) => 5,
     };
-    assert(res == 4);
+    assert(b == 4);
+}
+
+pub fn enum_match_exp_bugfix_test2() {
+    let a: Result<MyIdentity, MyAuthError> = Result::Ok(
+        MyIdentity::ContractId(
+            MyContractId { inner: false }
+        )
+    );
+
+    // should succeed
+    let b = match a.unwrap() {
+        MyIdentity::Address(_) => 1,
+        MyIdentity::ContractId(_) => 2,
+    };
+    assert(b == 2);
 }
