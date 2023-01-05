@@ -87,10 +87,10 @@ impl<'a> Unifier<'a> {
             return (vec![], vec![]);
         }
 
-        let r = self.engines.te().slab.get(received.index());
-        let e = self.engines.te().slab.get(expected.index());
-
-        match (r, e) {
+        match (
+            self.engines.te().slab.get(received.index()),
+            self.engines.te().slab.get(expected.index()),
+        ) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
