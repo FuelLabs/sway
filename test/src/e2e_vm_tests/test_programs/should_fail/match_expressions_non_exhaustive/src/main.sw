@@ -15,6 +15,7 @@ fn main() -> u64 {
     crazy_point_test();
     variable_not_found_test();
     nested_match_tests();
+    enum_match_exp_bugfix_test();
 
     42u64
 }

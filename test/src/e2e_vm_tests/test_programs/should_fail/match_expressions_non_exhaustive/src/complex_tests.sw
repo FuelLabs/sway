@@ -45,17 +45,40 @@ pub fn nested_match_tests() {
     assert(foo == 42);
 }
 
-// const ORACLE_1: u64 = 2;
-// const ORACLE_2: u64 = 3;
-// const ORACLE_3: u64 = 4;
+const ORACLE_1: u64 = 2;
+const ORACLE_2: u64 = 3;
+const ORACLE_3: u64 = 4;
 
-// fn enum_match_exp_bugfix_test() {
-//     let sender: Result<Identity, AuthError> = msg_sender();
-//     match sender {
-//         Result::Ok(Identity::Address(Address { value: ORACLE_1 })) => true,
-//         Result::Ok(Identity::Address(Address { value: ORACLE_2 })) => true,
-//         Result::Ok(Identity::Address(Address { value: ORACLE_3 })) => true,
-//         // Result::Ok(_) => false,
-//         Result::Err(_) => false,
-//     }
-// }
+struct MyAddress {
+    inner: u64,
+}
+
+struct MyContract {
+    inner: bool
+}
+
+enum MyIdentity {
+    Address: MyAddress,
+    Contract: MyContract,
+}
+
+enum MyResult<T, E> {
+    Ok: T,
+    Err: E,
+}
+
+enum MyAuthError {
+    ReasonOne: (),
+    ReasonTwo: (),
+}
+
+pub fn enum_match_exp_bugfix_test() {
+    let sender: MyResult<MyIdentity, MyAuthError> = MyResult::Ok(MyIdentity::Address(MyAddress { inner: 7 }));
+    let res = match sender {
+        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_1 })) => 1,
+        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_2 })) => 2,
+        MyResult::Ok(MyIdentity::Address(MyAddress { inner: ORACLE_3 })) => 3,
+        MyResult::Err(_) => 5,
+    };
+    assert(res == 4);
+}
