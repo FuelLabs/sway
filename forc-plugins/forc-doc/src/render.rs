@@ -5,13 +5,14 @@ use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
 };
+use anyhow::Result;
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
 use sway_types::BaseIdent;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
-    fn render(self) -> Box<dyn RenderBox>;
+    fn render(self) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -24,7 +25,7 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: Documentation) -> RenderedDocumentation {
+    pub fn from(raw: Documentation) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_docs: AllDocs = Default::default();
         for doc in raw {
@@ -33,7 +34,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.0.clone(),
                 html_file_name: html_file_name.clone(),
-                file_contents: HTMLString::from(doc.clone().render()),
+                file_contents: HTMLString::from(doc.clone().render()?),
             });
             all_docs.0.push(AllDocItem {
                 item_name: doc.item_header.item_name.clone(),
@@ -51,11 +52,11 @@ impl RenderedDocumentation {
                     project_name: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
                     all_docs,
                 }
-                .render(),
+                .render()?,
             ),
         });
 
-        rendered_docs
+        Ok(rendered_docs)
     }
 }
 /// The finalized HTML file contents.
@@ -84,7 +85,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let ItemHeader {
             module_info,
             friendly_name,
@@ -95,8 +96,9 @@ impl Renderable for ItemHeader {
         let normalize = module_info.to_html_shorthand_path_str("assets/normalize.css");
         let swaydoc = module_info.to_html_shorthand_path_str("assets/swaydoc.css");
         let ayu = module_info.to_html_shorthand_path_str("assets/ayu.css");
+        let location = module_info.location()?.to_owned();
 
-        box_html! {
+        Ok(box_html! {
             head {
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1.0");
@@ -105,18 +107,18 @@ impl Renderable for ItemHeader {
                     name="description",
                     content=format!(
                         "API documentation for the Sway `{}` {} in `{}`.",
-                        item_name.as_str(), friendly_name, module_info.location(),
+                        item_name.as_str(), friendly_name, &location,
                     )
                 );
                 meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name.as_str()));
                 link(rel="icon", href=favicon);
-                title: format!("{} in {} - Sway", item_name.as_str(), module_info.location());
+                title: format!("{} in {} - Sway", item_name.as_str(), location);
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
                 // TODO: Add links for fonts
             }
-        }
+        })
     }
 }
 /// All necessary components to render the body portion of
@@ -156,7 +158,7 @@ impl SidebarNav for ItemBody {
 }
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info: _,
@@ -169,10 +171,12 @@ impl Renderable for ItemBody {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
+        let sidebar = sidebar.render()?;
+        let rendered_item_context = item_context.clone().render()?;
 
-        box_html! {
+        Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar.render();
+                : sidebar;
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -229,13 +233,13 @@ impl Renderable for ItemBody {
                                 }
                             }
                             @ if item_context.context.is_some() {
-                                : item_context.render();
+                                : rendered_item_context;
                             }
                         }
                     }
                 }
             }
-        }
+        })
     }
 }
 #[derive(Clone)]
@@ -257,15 +261,18 @@ pub(crate) struct ItemContext {
     // implementations on foreign types, method implementations, etc.
 }
 impl Renderable for ItemContext {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         const FIELDS: &str = "Fields";
         const VARIANTS: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
-        match self.context.unwrap() {
-            ContextType::StructFields(fields) => context_section(fields, FIELDS),
-            ContextType::StorageFields(fields) => context_section(fields, FIELDS),
-            ContextType::EnumVariants(variants) => context_section(variants, VARIANTS),
-            ContextType::RequiredMethods(methods) => context_section(methods, REQUIRED_METHODS),
+        match self.context {
+            Some(context) => match context {
+                ContextType::StructFields(fields) => Ok(context_section(fields, FIELDS)?),
+            ContextType::StorageFields(fields) => Ok(context_section(fields, FIELDS)?),
+            ContextType::EnumVariants(variants) => Ok(context_section(variants, VARIANTS)?),
+            ContextType::RequiredMethods(methods) => Ok(context_section(methods, REQUIRED_METHODS)?),
+            }
+            None => Ok(box_html! {})
         }
     }
 }
@@ -273,18 +280,22 @@ impl Renderable for ItemContext {
 fn context_section<'title, S: Renderable + 'static>(
     list: Vec<S>,
     title: &'title str,
-) -> Box<dyn RenderBox + 'title> {
+) -> Result<Box<dyn RenderBox + 'title>> {
     let lct = html_title_str(title);
-    box_html! {
+    let mut rendered_list: Vec<Box<dyn RenderBox>> = Vec::new();
+    for item in list {
+        rendered_list.push(item.render()?)
+    }
+    Ok(box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title;
             a(class="anchor", href=format!("#{}", lct));
         }
-        @ for item in list {
+        @ for item in rendered_list {
             // TODO: Check for visibility of the field itself
-            : item.render();
+            : item;
         }
-    }
+    })
 }
 fn html_title_str(title: &str) -> String {
     if title.contains(' ') {
@@ -298,9 +309,9 @@ fn html_title_str(title: &str) -> String {
     }
 }
 impl Renderable for TyStructField {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
-        box_html! {
+        Ok(box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
                 a(class="anchor field", href=format!("#{}", struct_field_id));
                 code {
@@ -314,13 +325,13 @@ impl Renderable for TyStructField {
                     : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
-        }
+        })
     }
 }
 impl Renderable for TyStorageField {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
-        box_html! {
+        Ok(box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
                 a(class="anchor field", href=format!("#{}", storage_field_id));
                 code {
@@ -334,13 +345,13 @@ impl Renderable for TyStorageField {
                     : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
-        }
+        })
     }
 }
 impl Renderable for TyEnumVariant {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
-        box_html! {
+        Ok(box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
                 a(class="anchor field", href=format!("#{}", enum_variant_id));
                 code {
@@ -353,11 +364,11 @@ impl Renderable for TyEnumVariant {
                     : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
-        }
+        })
     }
 }
 impl Renderable for TyTraitFn {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         // there is likely a better way we can do this while simultaneously storing the
         // string slices we need like "&mut "
         let mut fn_sig = format!("fn {}(", self.name.as_str());
@@ -389,7 +400,7 @@ impl Renderable for TyTraitFn {
         let multiline = fn_sig.chars().count() >= 60;
 
         let method_id = format!("tymethod.{}", self.name.as_str());
-        box_html! {
+        Ok(box_html! {
             div(class="methods") {
                 div(id=&method_id, class="method has-srclink") {
                     h4(class="code-header") {
@@ -447,7 +458,7 @@ impl Renderable for TyTraitFn {
                     }
                 }
             }
-        }
+        })
     }
 }
 #[derive(Clone)]
@@ -502,7 +513,7 @@ impl SidebarNav for AllDocIndex {
 }
 impl Renderable for AllDocIndex {
     /// crate level, all items belonging to a crate
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         // TODO: find a better way to do this
         //
         // we need to have a finalized list of links for the all doc
@@ -527,8 +538,8 @@ impl Renderable for AllDocIndex {
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
-        let sidebar = self.sidebar();
-        box_html! {
+        let sidebar = self.sidebar().render()?;
+        Ok(box_html! {
             head {
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1.0");
@@ -545,7 +556,7 @@ impl Renderable for AllDocIndex {
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
             }
             body(class="swaydoc mod") {
-                : sidebar.render();
+                : sidebar;
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -598,7 +609,7 @@ impl Renderable for AllDocIndex {
                     }
                 }
             }
-        }
+        })
     }
 }
 
@@ -625,12 +636,13 @@ struct Sidebar {
     href_path: String,
 }
 impl Renderable for Sidebar {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let logo_path = self
             .module_info
             .to_html_shorthand_path_str("assets/sway-logo.svg");
+        let location = self.module_info.location()?.to_owned();
 
-        box_html! {
+        Ok(box_html! {
             nav(class="sidebar") {
                 a(class="sidebar-logo", href=&self.href_path) {
                     div(class="logo-container") {
@@ -638,7 +650,7 @@ impl Renderable for Sidebar {
                     }
                 }
                 h2(class="location") {
-                    a(href="#") { : self.module_info.location(); }
+                    a(href="#") { : location; }
                 }
                 div(class="sidebar-elems") {
                     section {
@@ -649,7 +661,7 @@ impl Renderable for Sidebar {
                     }
                 }
             }
-        }
+        })
     }
 }
 /// Creates an HTML String from an [AttributesMap]

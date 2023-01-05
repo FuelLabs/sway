@@ -76,7 +76,7 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(raw_docs);
+    let rendered_docs = RenderedDocumentation::from(raw_docs)?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {

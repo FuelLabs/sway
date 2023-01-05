@@ -2,7 +2,7 @@ use crate::{
     descriptor::Descriptor,
     render::{ItemBody, ItemHeader, Renderable},
 };
-use anyhow::Result;
+use anyhow::{bail, Result};
 use horrorshow::{box_html, RenderBox};
 use std::path::PathBuf;
 use sway_core::{
@@ -119,11 +119,13 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self) -> Box<dyn RenderBox> {
-        box_html! {
-            : self.item_header.render();
-            : self.item_body.render();
-        }
+    fn render(self) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render()?;
+        let body = self.item_body.render()?;
+        Ok(box_html! {
+            : header;
+            : body;
+        })
     }
 }
 pub(crate) type ModulePrefix = String;
@@ -131,15 +133,16 @@ pub(crate) type ModulePrefix = String;
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
-    pub(crate) fn location(&self) -> &str {
-        self.0
-            .last()
-            .expect("There will always be at least the project name")
+    pub(crate) fn location(&self) -> Result<&str> {
+        match self.0.last() {
+            Some(location) => Ok(location),
+            None => bail!("Expected Some module location, found None")
+        }
     }
     /// The location of the parent of the current module.
     ///
     /// To be used in path navigation between modules.
-    pub(crate) fn _parent(&mut self) -> &str {
+    pub(crate) fn _parent(&mut self) -> Result<&str> {
         self.0.pop();
         self.location()
     }
