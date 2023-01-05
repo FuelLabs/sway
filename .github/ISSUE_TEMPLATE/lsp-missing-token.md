@@ -1,7 +1,7 @@
 ---
 name: LSP missing token
 about: 'LSP missing tokens:'
-title: ''
+title: 'LSP missing tokens: '
 labels: 'compiler: frontend, language server'
 assignees: ''
 
