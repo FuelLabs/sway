@@ -42,6 +42,14 @@ impl<'a> Engines<'a> {
             engines: *self,
         }
     }
+
+    /// Helps out some `thing: T` by adding `self` as context.
+    pub fn with_thing<T>(self, thing: T) -> WithEngines<'a, T> {
+        WithEngines {
+            thing,
+            engines: self,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]

@@ -37,6 +37,7 @@ pub(crate) fn instantiate_if_expression(
                 ctx.self_type(),
                 &then.span,
                 "`then` branch must return expected type.",
+                None
             ),
             warnings,
             errors
@@ -60,6 +61,7 @@ pub(crate) fn instantiate_if_expression(
                     ctx.self_type(),
                     &r#else.span,
                     "`else` branch must return expected type.",
+                    None
                 ),
                 warnings,
                 errors
@@ -80,6 +82,7 @@ pub(crate) fn instantiate_if_expression(
             ctx.self_type(),
             &span,
             "The two branches of an if expression must return the same type.",
+            None,
         );
         warnings.append(&mut new_warnings);
         if new_errors.is_empty() {
