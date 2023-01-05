@@ -36,7 +36,7 @@ impl ty::TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
@@ -458,7 +458,7 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut ctx = ctx.scoped(&mut impl_namespace).allow_functions();
 
         // create the trait name
         let trait_name = CallPath {
