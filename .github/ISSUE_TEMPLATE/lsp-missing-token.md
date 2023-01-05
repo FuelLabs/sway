@@ -1,6 +1,6 @@
 ---
 name: LSP missing token
-about: 'LSP missing tokens:'
+about: 'Unable to access span information for '
 title: 'LSP missing tokens: '
 labels: 'compiler: frontend, language server'
 assignees: ''
