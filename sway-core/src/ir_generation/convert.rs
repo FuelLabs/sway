@@ -138,6 +138,7 @@ fn convert_resolved_type(
         TypeInfo::ContractCaller { .. } => reject_type!("ContractCaller"),
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
+        TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

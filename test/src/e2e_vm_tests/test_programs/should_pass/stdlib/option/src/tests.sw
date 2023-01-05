@@ -15,12 +15,12 @@ use std::hash::sha256;
 /////////////////////////////////////////////////////////////////////////////
 fn test_is_some<T>(val: T) {
     assert(Option::Some(val).is_some());
-    assert(!Option::None.is_some());
+    assert(!Option::None::<T>().is_some());
 }
 
 fn test_is_none<T>(val: T) {
     assert(!Option::Some(val).is_none());
-    assert(Option::None.is_none());
+    assert(Option::None::<T>().is_none());
 }
 
 fn test_unwrap<T>(val: T)

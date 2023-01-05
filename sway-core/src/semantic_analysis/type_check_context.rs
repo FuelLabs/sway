@@ -57,6 +57,11 @@ pub struct TypeCheckContext<'a> {
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
+
+    /// Indicates when semantic analysis should disallow functions. (i.e.
+    /// disallowing functions from being defined inside of another function
+    /// body).
+    disallow_functions: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -85,6 +90,7 @@ impl<'a> TypeCheckContext<'a> {
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
+            disallow_functions: false,
         }
     }
 
@@ -107,6 +113,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind.clone(),
             type_engine: self.type_engine,
             declaration_engine: self.declaration_engine,
+            disallow_functions: self.disallow_functions,
         }
     }
 
@@ -122,6 +129,7 @@ impl<'a> TypeCheckContext<'a> {
             kind: self.kind,
             type_engine: self.type_engine,
             declaration_engine: self.declaration_engine,
+            disallow_functions: self.disallow_functions,
         }
     }
 
@@ -179,6 +187,24 @@ impl<'a> TypeCheckContext<'a> {
         Self { self_type, ..self }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `disallow_functions` set to `true`.
+    pub(crate) fn disallow_functions(self) -> Self {
+        Self {
+            disallow_functions: true,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `disallow_functions` set to `false`.
+    pub(crate) fn allow_functions(self) -> Self {
+        Self {
+            disallow_functions: false,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -204,6 +230,10 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn self_type(&self) -> TypeId {
         self.self_type
+    }
+
+    pub(crate) fn functions_disallowed(&self) -> bool {
+        self.disallow_functions
     }
 
     // Provide some convenience functions around the inner context.
@@ -275,6 +305,7 @@ impl<'a> TypeCheckContext<'a> {
             self.self_type(),
             span,
             self.help_text(),
+            None,
         )
     }
 

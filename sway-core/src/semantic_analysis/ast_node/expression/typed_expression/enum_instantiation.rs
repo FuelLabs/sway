@@ -66,14 +66,18 @@ pub(crate) fn instantiate_enum(
                 warnings,
                 errors
             );
-            append!(
-                type_engine.unify_adt(
+
+            // unify the value of the argument with the variant
+            check!(
+                CompileResult::from(type_engine.unify_adt(
                     declaration_engine,
                     typed_expr.return_type,
                     enum_variant.type_id,
                     &typed_expr.span,
-                    "Enum instantiator must match its declared variant type."
-                ),
+                    "Enum instantiator must match its declared variant type.",
+                    None
+                )),
+                return err(warnings, errors),
                 warnings,
                 errors
             );

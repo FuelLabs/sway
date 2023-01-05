@@ -1584,8 +1584,18 @@ fn expr_to_expression(
             }),
             span,
         },
-        Expr::Ref { .. } => unimplemented!(),
-        Expr::Deref { .. } => unimplemented!(),
+        Expr::Ref { ref_token, .. } => {
+            let error = ConvertParseTreeError::RefExprNotYetSupported {
+                span: ref_token.span(),
+            };
+            return Err(handler.emit_err(error.into()));
+        }
+        Expr::Deref { deref_token, .. } => {
+            let error = ConvertParseTreeError::DerefExprNotYetSupported {
+                span: deref_token.span(),
+            };
+            return Err(handler.emit_err(error.into()));
+        }
         Expr::Not { bang_token, expr } => {
             let expr = expr_to_expression(handler, engines, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?

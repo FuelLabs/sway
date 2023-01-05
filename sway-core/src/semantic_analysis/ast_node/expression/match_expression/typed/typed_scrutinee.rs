@@ -1,11 +1,11 @@
-use sway_types::{Ident, Span, Spanned};
+use sway_error::error::CompileError;
+use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    error::{err, ok},
+    error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::{CreateTypeId, EnforceTypeArguments, TypeArgument},
-    CompileError, CompileResult, TypeInfo,
+    type_system::*,
 };
 
 impl ty::TyScrutinee {
@@ -16,9 +16,18 @@ impl ty::TyScrutinee {
         let declaration_engine = ctx.declaration_engine;
         match scrutinee {
             Scrutinee::CatchAll { span } => {
+                let type_id = type_engine.insert_type(declaration_engine, TypeInfo::Unknown);
+                let dummy_type_param = TypeParameter {
+                    type_id,
+                    initial_type_id: type_id,
+                    name_ident: BaseIdent::new_with_override("_", span.clone()),
+                    trait_constraints: vec![],
+                    trait_constraints_span: Span::dummy(),
+                };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
-                    type_id: type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                    type_id: type_engine
+                        .insert_type(declaration_engine, TypeInfo::Placeholder(dummy_type_param)),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
