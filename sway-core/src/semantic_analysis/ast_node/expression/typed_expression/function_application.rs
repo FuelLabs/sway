@@ -18,7 +18,6 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let type_engine = ctx.type_engine;
     let declaration_engine = ctx.declaration_engine;
     let engines = ctx.engines();
 
@@ -38,52 +37,19 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
-    // Type check the arguments from the function application and unify them with
-    // the arguments from the function application.
-    let typed_arguments: Vec<(Ident, ty::TyExpression)> = arguments
-        .into_iter()
-        .zip(function_decl.parameters.iter())
-        .map(|(arg, param)| {
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration.",
-                )
-                .with_type_annotation(
-                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-                );
-            let exp = check!(
-                ty::TyExpression::type_check(ctx, arg.clone()),
-                ty::TyExpression::error(arg.span(), engines),
-                warnings,
-                errors
-            );
-            append!(
-                type_engine.unify_right(
-                    declaration_engine,
-                    exp.return_type,
-                    param.type_id,
-                    &exp.span,
-                    "The argument that has been provided to this function's type does \
-                    not match the declared type of the parameter in the function \
-                    declaration."
-                ),
-                warnings,
-                errors
-            );
+    let typed_arguments = check!(
+        type_check_arguments(ctx.by_ref(), arguments),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-            // check for matching mutability
-            let param_mutability =
-                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-            if exp.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-                errors.push(CompileError::ImmutableArgumentToMutableParameter { span: arg.span() });
-            }
-
-            (param.name.clone(), exp)
-        })
-        .collect();
+    let typed_arguments_with_names = check!(
+        unify_arguments_and_parameters(ctx.by_ref(), typed_arguments, &function_decl.parameters),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
@@ -107,7 +73,7 @@ pub(crate) fn instantiate_function_application(
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: HashMap::new(),
-            arguments: typed_arguments,
+            arguments: typed_arguments_with_names,
             function_decl_id: new_decl_id,
             self_state_idx: None,
             selector: None,
@@ -117,6 +83,91 @@ pub(crate) fn instantiate_function_application(
     };
 
     ok(exp, warnings, errors)
+}
+
+/// Type checks the arguments.
+fn type_check_arguments(
+    mut ctx: TypeCheckContext,
+    arguments: Vec<parsed::Expression>,
+) -> CompileResult<Vec<ty::TyExpression>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
+
+    let typed_arguments = arguments
+        .into_iter()
+        .map(|arg| {
+            let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
+                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+            );
+            check!(
+                ty::TyExpression::type_check(ctx, arg.clone()),
+                ty::TyExpression::error(arg.span(), engines),
+                warnings,
+                errors
+            )
+        })
+        .collect();
+
+    if errors.is_empty() {
+        ok(typed_arguments, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
+/// Unifies the types of the arguments with the types of the parameters. Returns
+/// a list of the arguments with the names of the corresponding parameters.
+fn unify_arguments_and_parameters(
+    ctx: TypeCheckContext,
+    typed_arguments: Vec<ty::TyExpression>,
+    parameters: &[ty::TyFunctionParameter],
+) -> CompileResult<Vec<(Ident, ty::TyExpression)>> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let mut typed_arguments_and_names = vec![];
+
+    for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
+        // unify the type of the argument with the type of the param
+        check!(
+            CompileResult::from(type_engine.unify(
+                declaration_engine,
+                arg.return_type,
+                param.type_id,
+                &arg.span,
+                "The argument that has been provided to this function's type does \
+            not match the declared type of the parameter in the function \
+            declaration.",
+                None
+            )),
+            continue,
+            warnings,
+            errors
+        );
+
+        // check for matching mutability
+        let param_mutability =
+            ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+        if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+            errors.push(CompileError::ImmutableArgumentToMutableParameter {
+                span: arg.span.clone(),
+            });
+        }
+
+        typed_arguments_and_names.push((param.name.clone(), arg));
+    }
+
+    if errors.is_empty() {
+        ok(typed_arguments_and_names, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
 
 pub(crate) fn check_function_arguments_arity(

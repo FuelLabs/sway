@@ -14,6 +14,9 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
+use super::unify::Unifier;
+use super::unify_check::UnifyCheck;
+
 #[derive(Debug, Default)]
 pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
@@ -95,18 +98,6 @@ impl TypeEngine {
                 self.get_unified_types_rec(*unify_id, final_unify_ids);
             }
         }
-    }
-
-    /// Currently the [TypeEngine] is a lazy static object, so when we run
-    /// cargo tests, we can either choose to use a local [TypeEngine] and bypass
-    /// all of the global methods or we can use the lazy static [TypeEngine].
-    /// This method is for testing to be able to bypass the global methods for
-    /// the lazy static [TypeEngine] (contained within the call to hash in the
-    /// id_map).
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub(crate) fn insert_type_always(&self, ty: TypeInfo) -> TypeId {
-        TypeId::new(self.slab.insert(ty))
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
@@ -256,6 +247,7 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify `received` and
     /// `expected`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
         declaration_engine: &DeclarationEngine,
@@ -264,10 +256,18 @@ impl TypeEngine {
         self_type: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         received.replace_self_type(Engines::new(self, declaration_engine), self_type);
         expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        self.unify(declaration_engine, received, expected, span, help_text)
+        self.unify(
+            declaration_engine,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+        )
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -284,87 +284,39 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            Engines::new(self, declaration_engine),
-            received,
-            expected,
-            span,
-            help_text,
-            false,
-        ))
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify_right
-    /// `received` and `expected`.
-    pub(crate) fn unify_right_with_self(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
-        self.unify_right(declaration_engine, received, expected, span, help_text)
-    }
-
-    /// Make the type of `expected` equivalent to `received`.
-    ///
-    /// This is different than the `unify` method because it _only allows
-    /// changes to `expected`_. It also rejects the case where `received` is a
-    /// generic type and `expected` is not a generic type.
-    ///
-    /// Here is an example for why this method is necessary. Take this Sway
-    /// code:
-    ///
-    /// ```ignore
-    /// fn test_function<T>(input: T) -> T {
-    ///     input
-    /// }
-    ///
-    /// fn call_it() -> bool {
-    ///     test_function(true)
-    /// }
-    /// ```
-    ///
-    /// This is valid Sway code and we should expect it to compile because the
-    /// type `bool` is valid under the generic type `T`.
-    ///
-    /// Now, look at this Sway code:
-    ///
-    /// ```ignore
-    /// fn test_function(input: bool) -> bool {
-    ///     input
-    /// }
-    ///
-    /// fn call_it<T>(input: T) -> T {
-    ///     test_function(input)
-    /// }
-    /// ```
-    ///
-    /// We should expect this Sway to fail to compile because the generic type
-    /// `T` is not valid under the type `bool`.
-    ///
-    /// This is the function that makes that distinction for us!
-    pub(crate) fn unify_right(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify_right(
-            Engines::new(self, declaration_engine),
-            received,
-            expected,
-            span,
-            help_text,
-        ))
+        let engines = Engines::new(self, declaration_engine);
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) =
+            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     /// Helper function for making the type of `expected` equivalent to
@@ -418,22 +370,52 @@ impl TypeEngine {
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            Engines::new(self, declaration_engine),
-            expected,
-            received,
-            span,
-            help_text,
-            true,
-        ))
+        let engines = Engines::new(self, declaration_engine);
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) = normalize_err(
+            Unifier::new(engines, help_text)
+                .flip_arguments()
+                .unify(expected, received, span),
+        );
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
-            TypeInfo::Unknown => Err(TypeError::UnknownType {
-                span: error_span.clone(),
-            }),
+            TypeInfo::Unknown => {
+                //panic!();
+                Err(TypeError::UnknownType {
+                    span: error_span.clone(),
+                })
+            }
             ty => Ok(ty),
         }
     }

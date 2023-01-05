@@ -8,7 +8,7 @@ use crate::{
     CreateTypeId, TypeInfo,
 };
 
-use super::{ReplaceSelfType, TypeArgument, TypeId};
+use super::{TypeArgument, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -151,12 +151,16 @@ impl TypeBinding<CallPath> {
 
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
-            type_argument.replace_self_type(engines, ctx.self_type());
-            type_argument.type_id = check!(
-                ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
+            check!(
+                ctx.resolve_type_with_self(
+                    type_argument.type_id,
+                    &type_argument.span,
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
                 type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                 warnings,
-                errors
+                errors,
             );
         }
 
@@ -266,6 +270,7 @@ impl TypeBinding<CallPath> {
             }
             _ => unknown_decl,
         };
+
         ok(new_decl, warnings, errors)
     }
 }

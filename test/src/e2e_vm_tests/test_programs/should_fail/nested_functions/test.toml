@@ -1,0 +1,11 @@
+category = "fail"
+
+# check: $()error
+# check: main.sw:9:9
+# check: $()fn double(n: u64) -> u64 {
+# check: $()Unimplemented feature: Nested function definitions are not allowed at this time.
+
+# check: $()error
+# check: main.sw:18:5
+# check: $()fn bla() { }
+# nextln: $()Unimplemented feature: Nested function definitions are not allowed at this time.
