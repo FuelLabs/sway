@@ -119,11 +119,16 @@ pub(crate) async fn runs_on_node(
     .await
 }
 
+pub(crate) enum VMExecutionResult {
+    Fuel(ProgramState, Vec<Receipt>),
+    Evm(revm::ExecutionResult),
+}
+
 /// Very basic check that code does indeed run in the VM.
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> Result<(ProgramState, Vec<Receipt>, BuiltPackage)> {
+) -> Result<VMExecutionResult> {
     match script.build_target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();
@@ -138,7 +143,7 @@ pub(crate) fn runs_in_vm(
                 ..ConsensusParameters::DEFAULT
             };
 
-            let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
+            let tx = TransactionBuilder::script(script.bytecode, script_data)
                 .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
                 .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity)
@@ -146,9 +151,22 @@ pub(crate) fn runs_in_vm(
 
             let mut i = Interpreter::with_storage(storage, Default::default());
             let transition = i.transact(tx)?;
-            Ok((*transition.state(), transition.receipts().to_vec(), script))
+            Ok(VMExecutionResult::Fuel(
+                *transition.state(),
+                transition.receipts().to_vec(),
+            ))
         }
-        BuildTarget::EVM => todo!(),
+        BuildTarget::EVM => {
+            let mut database = revm::InMemoryDB::default();
+            let mut env = revm::Env::default();
+            env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+            let mut evm = revm::new();
+            evm.database(&mut database);
+            evm.env = env;
+
+            let result = evm.transact_commit();
+            Ok(VMExecutionResult::Evm(result))
+        }
     }
 }
 
