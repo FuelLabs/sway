@@ -31,16 +31,14 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    Engines, TypeEngine,
-};
-use sway_core::{
     language::{
+        lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
         ty,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, FinalizedEntry,
+    CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
@@ -96,6 +94,7 @@ pub struct BuiltPackage {
     source_map: SourceMap,
     pub pkg_name: String,
     pub declaration_engine: DeclarationEngine,
+    pub manifest_file: PackageManifestFile,
 }
 
 /// The result of successfully compiling a workspace.
@@ -257,7 +256,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -275,7 +274,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -434,6 +433,14 @@ impl Built {
                 Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
+        }
+    }
+
+    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+        match self {
+            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
         }
     }
 }
@@ -2408,6 +2415,7 @@ pub fn compile(
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 declaration_engine: engines.de().clone(),
+                manifest_file: manifest.clone(),
             };
             Ok((built_package, namespace))
         }
@@ -2799,17 +2807,36 @@ fn update_json_type_declaration(
     }
 }
 
-/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
-type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+/// Contains the lexed, parsed, and typed compilation stages of a program.
+pub struct Programs {
+    pub lexed: LexedProgram,
+    pub parsed: ParseProgram,
+    pub typed: Option<ty::TyProgram>,
+}
 
-/// Compile the entire forc package and return the parse and typed programs
+impl Programs {
+    pub fn new(
+        lexed: LexedProgram,
+        parsed: ParseProgram,
+        typed: Option<ty::TyProgram>,
+    ) -> Programs {
+        Programs {
+            lexed,
+            parsed,
+            typed,
+        }
+    }
+}
+
+/// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
+    include_tests: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
+) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2829,27 +2856,28 @@ pub fn check(
             engines,
         )
         .expect("failed to create dependency namespace");
+
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, engines)?;
+        } = parse(manifest, terse_mode, include_tests, engines)?;
 
-        let parse_program = match value {
+        let (lexed, parsed) = match value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
             }
-            Some(program) => program,
+            Some(modules) => modules,
         };
 
-        let ast_result = sway_core::parsed_to_ast(engines, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some((parse_program, None));
+                let value = Some(Programs::new(lexed, parsed, None));
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
             }
@@ -2862,7 +2890,7 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some((parse_program, Some(typed_program)));
+        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
         results.push(CompileResult::new(value, warnings, errors));
     }
 
@@ -2877,14 +2905,16 @@ pub fn check(
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
+    include_tests: bool,
     engines: Engines<'_>,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
+    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?
+        .include_tests(include_tests);
     Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 

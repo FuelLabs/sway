@@ -35,3 +35,10 @@ impl std::fmt::Display for TreeType {
         )
     }
 }
+
+impl ParseProgram {
+    /// Excludes all test functions from the parse tree.
+    pub(crate) fn exclude_tests(&mut self) {
+        self.root.tree.exclude_tests()
+    }
+}

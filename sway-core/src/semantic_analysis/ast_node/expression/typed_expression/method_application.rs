@@ -337,24 +337,12 @@ pub(crate) fn type_check_method_application(
     );
 
     // unify the types of the arguments with the types of the parameters from the function declaration
-    for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let (mut new_warnings, new_errors) = type_engine.unify_right_with_self(
-            ctx.declaration_engine,
-            arg.return_type,
-            param.type_id,
-            ctx.self_type(),
-            &arg.span,
-            "This argument's type is not castable to the declared parameter type.",
-        );
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: engines.help_out(arg.return_type).to_string(),
-                should_be: engines.help_out(param.type_id).to_string(),
-            });
-        }
-    }
+    check!(
+        unify_arguments_and_parameters(ctx.by_ref(), &args_buf, &method.parameters),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     // Map the names of the parameters to the typed arguments.
     let args_and_names = method
@@ -378,6 +366,49 @@ pub(crate) fn type_check_method_application(
     };
 
     ok(exp, warnings, errors)
+}
+
+/// Unifies the types of the arguments with the types of the parameters from the
+/// function declaration.
+fn unify_arguments_and_parameters(
+    ctx: TypeCheckContext,
+    arguments: &VecDeque<ty::TyExpression>,
+    parameters: &[ty::TyFunctionParameter],
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
+
+    for (arg, param) in arguments.iter().zip(parameters.iter()) {
+        // unify the type of the argument with the type of the param
+        check!(
+            CompileResult::from(type_engine.unify_with_self(
+                declaration_engine,
+                arg.return_type,
+                param.type_id,
+                ctx.self_type(),
+                &arg.span,
+                "This argument's type is not castable to the declared parameter type.",
+                Some(CompileError::ArgumentParameterTypeMismatch {
+                    span: arg.span.clone(),
+                    provided: engines.help_out(arg.return_type).to_string(),
+                    should_be: engines.help_out(param.type_id).to_string(),
+                })
+            )),
+            continue,
+            warnings,
+            errors
+        );
+    }
+
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
 }
 
 pub(crate) fn resolve_method_name(

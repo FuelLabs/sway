@@ -16,7 +16,6 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
@@ -61,11 +60,13 @@ pub fn main() -> Result<()> {
     let type_engine = TypeEngine::default();
     let declaration_engine = DeclarationEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
-    let typed_program = match pkg::check(&plan, silent, engines)?
+    let tests_enabled = true;
+    let typed_program = match pkg::check(&plan, silent, tests_enabled, engines)?
         .pop()
         .and_then(|compilation| compilation.value)
+        .and_then(|programs| programs.typed)
     {
-        Some((_, Some(typed_program))) => typed_program,
+        Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
@@ -76,19 +77,19 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(Arc::new(declaration_engine), raw_docs);
+    let rendered_docs = RenderedDocumentation::from(raw_docs);
 
     // write contents to outfile
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
-        for prefix in doc.module_prefix {
+        for prefix in doc.module_info {
             if &prefix != project_name {
                 doc_path.push(prefix);
             }
         }
 
         fs::create_dir_all(&doc_path)?;
-        doc_path.push(doc.file_name);
+        doc_path.push(doc.html_file_name);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     // CSS, icons and logos

@@ -6,7 +6,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 /// Given an enum declaration and the instantiation expression/type arguments, construct a valid
 /// [ty::TyExpression].
@@ -17,6 +17,7 @@ pub(crate) fn instantiate_enum(
     enum_name: Ident,
     enum_variant_name: Ident,
     args: Vec<Expression>,
+    span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -66,14 +67,18 @@ pub(crate) fn instantiate_enum(
                 warnings,
                 errors
             );
-            append!(
-                type_engine.unify_adt(
+
+            // unify the value of the argument with the variant
+            check!(
+                CompileResult::from(type_engine.unify_adt(
                     declaration_engine,
                     typed_expr.return_type,
                     enum_variant.type_id,
-                    &typed_expr.span,
-                    "Enum instantiator must match its declared variant type."
-                ),
+                    span,
+                    "Enum instantiator must match its declared variant type.",
+                    None
+                )),
+                return err(warnings, errors),
                 warnings,
                 errors
             );

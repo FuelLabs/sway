@@ -67,13 +67,7 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(
-                        declaration_engine,
-                        TypeInfo::UnknownGeneric {
-                            name: x.name_ident.clone(),
-                            trait_constraints: VecSet(x.trait_constraints.clone()),
-                        },
-                    ),
+                    type_engine.insert_type(declaration_engine, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -315,6 +309,7 @@ impl TypeMapping {
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
+            TypeInfo::Placeholder(_) => None,
             TypeInfo::Struct {
                 fields,
                 name,

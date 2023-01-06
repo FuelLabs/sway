@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()error
+# nextln: ref_and_deref_expressions/src/main.sw:9:13
+# check: $()foo(ref Vec::new());
+# nextln: $()Ref expressions are not supported yet.

@@ -9,12 +9,15 @@ use crate::{
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
-    traverse::{dependency::Dependency, parsed_tree::ParsedTree, typed_tree::TypedTree},
+    traverse::{
+        dependency::Dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree,
+        typed_tree::TypedTree,
+    },
 };
 use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
-use pkg::manifest::ManifestFile;
+use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     declaration_engine::DeclarationEngine,
@@ -140,8 +143,9 @@ impl Session {
         let type_engine = &*self.type_engine.read();
         let declaration_engine = &*self.declaration_engine.read();
         let engines = Engines::new(type_engine, declaration_engine);
-        let results =
-            pkg::check(&plan, true, engines).map_err(LanguageServerError::FailedToCompile)?;
+        let tests_enabled = true;
+        let results = pkg::check(&plan, true, tests_enabled, engines)
+            .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
             // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -151,14 +155,16 @@ impl Session {
                 errors,
             } = res;
 
-            // FIXME(Centril): Refactor parse_ast_to_tokens + parse_ast_to_typed_tokens
-            // due to the new API.g
-            let (parsed, typed) = match value {
-                None => (None, None),
-                Some((pp, tp)) => (Some(pp), tp),
-            };
+            if value.is_none() {
+                continue;
+            }
+            let Programs {
+                lexed,
+                parsed,
+                typed,
+            } = value.unwrap();
 
-            let parsed_res = CompileResult::new(parsed, warnings.clone(), errors.clone());
+            let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
 
             let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
@@ -166,11 +172,15 @@ impl Session {
 
             // The final element in the results is the main program.
             if i == results_len - 1 {
-                // First, populate our token_map with un-typed ast nodes.
+                // First, populate our token_map with sway keywords.
+                let lexed_tree = LexedTree::new(&self.token_map);
+                lexed_tree.parse(&lexed);
+
+                // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
                 self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
 
-                // Next, create runnables and populate our token_map with typed ast nodes.
+                // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);
