@@ -54,8 +54,8 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
 #[test()]
 fn test_block_header_hash_ok() {
 
-    // Get the block header hash of the genesis block (guaranteed to exist)
-    let mut hash = block_header_hash(0);
+    // Get the block header hash of the previous block
+    let mut hash = block_header_hash(height() - 1);
     assert(hash.is_ok());
 }
 
@@ -64,6 +64,12 @@ fn test_block_header_hash_err() {
 
     // Try to get header hash of a block in the future
     // The function should return a BlockHashError
-    let hash = block_header_hash(10_000_000_000);
-    assert(hash.is_err());
+    let hash = block_header_hash(height() + 1);
+    let correct_error = match hash {
+        Result::Ok(_) => false,
+        Result::Err(BlockHashError::BlockHeightTooHigh) => true,
+    };
+
+    assert(correct_error);
+    
 }
