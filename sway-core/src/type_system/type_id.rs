@@ -30,6 +30,29 @@ impl CollectTypesMetadata for TypeId {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = vec![];
+        match ctx.type_engine.look_up_type_id(*self) {
+            TypeInfo::UnknownGeneric {
+                name,
+                trait_constraints,
+            } => {
+                res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
+                for trait_constraint in trait_constraints.iter() {
+                    res.extend(check!(
+                        trait_constraint.collect_types_metadata(ctx),
+                        continue,
+                        warnings,
+                        errors
+                    ));
+                }
+            }
+            TypeInfo::Placeholder(type_param) => {
+                res.push(TypeMetadata::UnresolvedType(
+                    type_param.name_ident,
+                    ctx.call_site_get(self),
+                ));
+            }
+            _ => {}
+        }
         if let TypeInfo::UnknownGeneric {
             name,
             trait_constraints,
@@ -114,7 +137,8 @@ impl ReplaceSelfType for TypeId {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Placeholder(_) => {}
         }
     }
 }
