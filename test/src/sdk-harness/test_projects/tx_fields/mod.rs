@@ -16,10 +16,10 @@ abigen!(
     "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
 );
 
-predicate_abigen!(
-    Predicate,
-    "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
-);
+// predicate_abigen!(
+//     Predicate,
+//     "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+// );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
@@ -83,8 +83,18 @@ async fn generate_predicate_inputs(
 
     assert!(balance >= amount);
 
-    predicate
-        .receive(wallet, amount, AssetId::default(), None)
+    // predicate
+    //     .receive(wallet, amount, AssetId::default(), None)
+    //     .await
+    //     .unwrap();
+
+    wallet
+        .transfer(
+            predicate_root,
+            amount,
+            AssetId::default(),
+            TxParameters::default(),
+        )
         .await
         .unwrap();
 
@@ -514,7 +524,7 @@ mod inputs {
             // Add predicate coin to inputs and call contract
             let handler = contract_instance
                 .methods()
-                .get_input_predicate(1, predicate_bytes.clone());
+                .get_input_predicate(2, predicate_bytes.clone());
             let mut executable = handler.get_executable_call().await.unwrap();
 
             executable.tx.inputs_mut().push(predicate_coin);

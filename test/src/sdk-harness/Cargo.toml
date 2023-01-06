@@ -26,5 +26,5 @@ path = "test_projects/harness.rs"
 
 [workspace]
 
-[patch.crates-io]
-fuels = { path = "../../../../fuels-rs/packages/fuels" }
+# [patch.crates-io]
+# fuels = { path = "../../../../fuels-rs/packages/fuels" }
