@@ -14,6 +14,7 @@ pub(crate) fn instantiate_function_application(
     mut function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
     arguments: Vec<Expression>,
+    span: Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
@@ -66,7 +67,6 @@ pub(crate) fn instantiate_function_application(
     );
     function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
-    let span = function_decl.span.clone();
     let new_decl_id = declaration_engine.insert_function(function_decl);
 
     let exp = ty::TyExpression {
