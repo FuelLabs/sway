@@ -1,5 +1,6 @@
 library block;
 
+use ::assert::assert;
 use ::constants::ZERO_B256;
 use ::result::Result;
 
@@ -41,4 +42,27 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
         ZERO_B256 => Result::Err(BlockHashError::BlockHeightTooHigh),
         _ => Result::Ok(header_hash),
     }
+}
+
+////////////////////////////////////////////////////////////////////
+// Tests
+////////////////////////////////////////////////////////////////////
+
+#[test()]
+fn test_block_header_hash() {
+
+// Get the block header hash of the genesis block (guaranteed to exist)
+    let mut hash = block_header_hash(0);
+    assert(hash.is_ok());
+
+    // Try to get header hash of a block in the future
+    // The function should return a BlockHashError
+    let hash = block_header_hash(1_000_000_000);
+    let did_error = match hash {
+        Result::Ok(_) => false,
+        Result::Err(BlockHashError) => true,
+    };
+
+    assert(did_error);
+
 }
