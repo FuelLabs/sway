@@ -36,6 +36,7 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
         r1: b256
     };
 
+    // `bhsh` returns b256(0) if the block is not found, so catch this and return explicit error
     match header_hash {
         ZERO_B256 => Result::Err(BlockHashError::BlockHeightTooHigh),
         _ => Result::Ok(header_hash),

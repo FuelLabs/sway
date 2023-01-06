@@ -5,7 +5,7 @@ use std::{assert::assert, block::block_header_hash, constants::ZERO_B256};
 fn main() -> bool {
 
     // Get the block header hash of the genesis block (guaranteed to exist)
-    // Function handles cases where header hash doesn't exist, so if unwrap succeeds,
+    // Function handles cases where block, so if unwrap succeeds,
     // the header hash was succesfully retrieved
     let mut hash = block_header_hash(0).unwrap();
 
