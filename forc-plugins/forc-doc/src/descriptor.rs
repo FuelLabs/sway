@@ -11,17 +11,15 @@ use sway_core::{
 use sway_types::Spanned;
 
 trait RequiredMethods {
-    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn>;
+    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Result<Vec<TyTraitFn>>;
 }
 impl RequiredMethods for Vec<sway_core::declaration_engine::DeclarationId> {
-    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn> {
-        self.iter()
-            .map(|decl_id| {
-                declaration_engine
-                    .get_trait_fn(decl_id.clone(), &decl_id.span())
-                    .expect("could not get trait fn from declaration id")
-            })
-            .collect()
+    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Result<Vec<TyTraitFn>> {
+        let mut ty_trait_fns: Vec<TyTraitFn> = Vec::new();
+        for decl_id in self.iter() {
+            ty_trait_fns.push(declaration_engine.get_trait_fn(decl_id.clone(), &decl_id.span())?)
+        }
+        Ok(ty_trait_fns)
     }
 }
 
@@ -117,7 +115,9 @@ impl Descriptor {
                         .then(|| attrsmap_to_html_str(trait_decl.attributes));
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
-                            trait_decl.interface_surface.to_methods(declaration_engine),
+                            trait_decl
+                                .interface_surface
+                                .to_methods(declaration_engine)?,
                         ),
                     );
 
@@ -148,7 +148,7 @@ impl Descriptor {
                     .then(|| attrsmap_to_html_str(abi_decl.attributes));
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
-                        abi_decl.interface_surface.to_methods(declaration_engine),
+                        abi_decl.interface_surface.to_methods(declaration_engine)?,
                     ),
                 );
 
