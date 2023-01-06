@@ -530,13 +530,13 @@ impl Renderable for AllDocIndex {
         for doc_item in &self.all_docs.0 {
             use TyDeclaration::*;
             match doc_item.ty_decl {
-                StructDeclaration(_) => struct_items.push(doc_item.link()),
-                EnumDeclaration(_) => enum_items.push(doc_item.link()),
-                TraitDeclaration(_) => trait_items.push(doc_item.link()),
-                AbiDeclaration(_) => abi_items.push(doc_item.link()),
-                StorageDeclaration(_) => storage_items.push(doc_item.link()),
-                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
-                ConstantDeclaration(_) => const_items.push(doc_item.link()),
+                StructDeclaration(_) => struct_items.push(doc_item.link()?),
+                EnumDeclaration(_) => enum_items.push(doc_item.link()?),
+                TraitDeclaration(_) => trait_items.push(doc_item.link()?),
+                AbiDeclaration(_) => abi_items.push(doc_item.link()?),
+                StorageDeclaration(_) => storage_items.push(doc_item.link()?),
+                FunctionDeclaration(_) => fn_items.push(doc_item.link()?),
+                ConstantDeclaration(_) => const_items.push(doc_item.link()?),
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
