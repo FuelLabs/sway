@@ -27,4 +27,4 @@ impl<T> MyMul for MyPoint<T> where T: MyMul {
     }
 }
 
-impl<T> MyMath for MyPoint<T> { }
+impl<T> MyMath for MyPoint<T> where T: MyMath { }
