@@ -16,11 +16,6 @@ abigen!(
     "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
 );
 
-// predicate_abigen!(
-//     Predicate,
-//     "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
-// );
-
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
     let mut wallet = WalletUnlocked::new_random(None);
     let mut deployment_wallet = WalletUnlocked::new_random(None);
@@ -75,18 +70,12 @@ async fn generate_predicate_inputs(
     let predicate =
         Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
-    let predicate_bytecode = predicate.code();
     let predicate_root = predicate.address();
 
     let provider = wallet.get_provider().unwrap();
     let balance: u64 = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
 
     assert!(balance >= amount);
-
-    // predicate
-    //     .receive(wallet, amount, AssetId::default(), None)
-    //     .await
-    //     .unwrap();
 
     wallet
         .transfer(
@@ -109,15 +98,15 @@ async fn generate_predicate_inputs(
         asset_id: AssetId::from(predicate_coin.asset_id.clone()),
         tx_pointer: TxPointer::default(),
         maturity: 0,
-        predicate: predicate_bytecode.clone(),
+        predicate: predicate.code().clone(),
         predicate_data: vec![],
     };
-
+    let predicate_address: Address = predicate.address().into();
     let message = &wallet.get_messages().await.unwrap()[0];
     let message_id = TxInput::compute_message_id(
         &message.sender.clone().into(),
-        &message.recipient.clone().into(),
-        0,
+        &predicate_address,
+        message.nonce.clone(),
         message.amount,
         &data,
     );
@@ -125,15 +114,15 @@ async fn generate_predicate_inputs(
     let predicate_message = TxInput::MessagePredicate {
         message_id: message_id,
         sender: message.sender.clone().into(),
-        recipient: message.recipient.clone().into(),
+        recipient: predicate_address.clone().into(),
         amount: message.amount,
         nonce: message.nonce.clone(),
         data: data.clone(),
-        predicate: predicate_bytecode.clone(),
+        predicate: predicate.code().clone(),
         predicate_data: vec![],
     };
 
-    (predicate_bytecode, predicate_coin, predicate_message)
+    (predicate.code(), predicate_coin, predicate_message)
 }
 
 async fn add_message_input(call: &mut ExecutableFuelCall, wallet: WalletUnlocked) {
@@ -534,7 +523,6 @@ mod inputs {
                 .await
                 .unwrap();
 
-            println!("Receipts: {:#?}", receipts);
             assert_eq!(receipts[1].val().unwrap(), 1);
         }
 
