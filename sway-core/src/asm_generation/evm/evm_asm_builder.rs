@@ -16,13 +16,36 @@ use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::Span;
 
-use etk_asm::ops::*;
+use etk_asm::{asm::Assembler, ops::*};
+
+/// A smart contract is created by sending a transaction with an empty "to" field.
+/// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
+/// set in the init byte array which is a field that can contain EVM bytecode
+///
+/// The EVM bytecode that is then stored on the blockchain is the value that is
+/// returned by running the content of init on the EVM.
+///
+/// The bytecode can refer to itself through the opcode CODECOPY opcode, which reads
+/// three values on the stack where two of those values are pointers to the bytecode,
+/// one marking the beginning and one marking the end of what should be copied to memory.
+///
+/// The RETURN opcode is then used, along with the correct values placed on the stack,
+/// to return bytecode from the initial run of the EVM code.
+/// RETURN reads and removes two pointers from the stack.
+/// These pointers define the part of the memory that is a return value.
+/// The return value of the initial contract creating run of the bytecode defines
+/// the bytecode that is stored on the blockchain and associated with the address
+/// on which you have created the smart contract.
+///
+/// The code that is compiled but not stored on the blockchain is thus the code needed
+/// to store the correct code on the blockchain but also any logic that is contained in
+/// a (potential) constructor of the contract.
 
 pub struct EvmAsmBuilder<'ir> {
     #[allow(dead_code)]
     program_kind: ProgramKind,
 
-    ops: Vec<etk_asm::ops::AbstractOp>,
+    sections: Vec<EvmAsmSection>,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -40,8 +63,28 @@ pub struct EvmAsmBuilder<'ir> {
     md_mgr: MetadataManager,
 }
 
+#[derive(Default, Debug)]
+pub struct EvmAsmSection {
+    ops: Vec<etk_asm::ops::AbstractOp>,
+}
+
+impl EvmAsmSection {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn size(&self) -> u32 {
+        let mut asm = Assembler::new();
+        if asm.push_all(self.ops.clone()).is_err() {
+            panic!("Could not size EVM assembly section");
+        }
+        asm.take().len() as u32
+    }
+}
+
 pub struct EvmAsmBuilderResult {
     pub ops: Vec<etk_asm::ops::AbstractOp>,
+    pub ops_runtime: Vec<etk_asm::ops::AbstractOp>,
 }
 
 impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
@@ -68,27 +111,170 @@ impl<'ir> EvmAsmBuilder<'ir> {
     ) -> Self {
         let mut b = EvmAsmBuilder {
             program_kind,
-            ops: Vec::new(),
+            sections: Vec::new(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
             context,
             md_mgr: MetadataManager::default(),
         };
-        b.ops.push(AbstractOp::Label("main".into()));
-        b.ops.push(AbstractOp::new(Op::GetPc).unwrap());
+        let s = b.generate_function();
+        b.sections.push(s);
         b
+    }
+
+    pub fn finalize(&self) -> AsmBuilderResult {
+        let mut global_ops = Vec::new();
+
+        let mut size = 0;
+        let mut it = self.sections.iter().peekable();
+        while let Some(section) = it.next() {
+            size += section.size();
+            global_ops.append(&mut section.ops.clone());
+
+            if it.peek().is_some() {
+                size += AbstractOp::Op(Op::Invalid).size().unwrap();
+                global_ops.push(AbstractOp::Op(Op::Invalid));
+            }
+        }
+
+        // First generate a dummy ctor section to calculate its size.
+        let dummy = self.generate_constructor(false, size, 0);
+
+        // Generate the actual ctor section with the correct size..
+        let mut ctor = self.generate_constructor(false, size, dummy.size());
+        ctor.ops.append(&mut global_ops);
+
+        AsmBuilderResult::Evm(EvmAsmBuilderResult {
+            ops: ctor.ops.clone(),
+            ops_runtime: ctor.ops,
+        })
+    }
+
+    fn generate_constructor(
+        &self,
+        is_payable: bool,
+        data_size: u32,
+        data_offset: u32,
+    ) -> EvmAsmSection {
+        // For more details and explanations see:
+        // https://medium.com/@hayeah/diving-into-the-ethereum-vm-part-5-the-smart-contract-creation-process-cb7b6133b855.
+
+        let mut s = EvmAsmSection::new();
+        self.setup_free_memory_pointer(&mut s);
+
+        if is_payable {
+            // Get the the amount of ETH transferred to the contract by the parent contract,
+            // or by a transaction and check for a non-payable contract. Revert if caller
+            // sent ether.
+            //
+            //   callvalue
+            //   dup1
+            //   iszero
+            //   push1 0x0f
+            //   jumpi
+            //   push1 0x00
+            //   dup1
+            //   revert
+            //   jumpdest
+            //   pop
+
+            s.ops.push(AbstractOp::new(Op::CallValue).unwrap());
+            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+            s.ops.push(AbstractOp::new(Op::IsZero).unwrap());
+            let tag_label = "tag_1";
+            s.ops
+                .push(AbstractOp::Op(Op::with_label(Op::Push1(()), tag_label)));
+            s.ops.push(AbstractOp::new(Op::JumpI).unwrap());
+            s.ops
+                .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
+            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+            s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+
+            s.ops.push(AbstractOp::Label("tag_1".into()));
+            s.ops.push(AbstractOp::new(Op::JumpDest).unwrap());
+            s.ops.push(AbstractOp::Op(Op::Pop));
+        }
+
+        self.copy_contract_code_to_memory(&mut s, data_size, data_offset);
+
+        s
+    }
+
+    fn copy_contract_code_to_memory(
+        &self,
+        s: &mut EvmAsmSection,
+        data_size: u32,
+        data_offset: u32,
+    ) {
+        // Copy contract code into memory, and return.
+        //   push1 dataSize
+        //   dup1
+        //   push1 dataOffset
+        //   push1 0x00
+        //   codecopy
+        //   push1 0x00
+        //   return
+        s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
+            data_size.into(),
+        ))));
+        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+        s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
+            data_offset.into(),
+        ))));
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
+        s.ops.push(AbstractOp::Op(Op::CodeCopy));
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
+        s.ops.push(AbstractOp::Op(Op::Return));
+    }
+
+    fn generate_function(&mut self) -> EvmAsmSection {
+        let mut s = EvmAsmSection::new();
+
+        // push1 0x80 # selector("conduct_auto(uint256,uint256,uint256)")
+        // push1 0x40
+        // mstore
+        // push1 0x00
+        // dup1
+        // revert
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
+        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
+        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+        s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+
+        s
+    }
+
+    fn setup_free_memory_pointer(&self, s: &mut EvmAsmSection) {
+        // Setup the initial free memory pointer.
+        //
+        // The "free memory pointer" is stored at position 0x40 in memory.
+        // The first 64 bytes of memory can be used as "scratch space" for short-term allocation.
+        // The 32 bytes after the free memory pointer (i.e., starting at 0x60) are meant to be
+        // zero permanently and is used as the initial value for empty dynamic memory arrays.
+        // This means that the allocatable memory starts at 0x80, which is the initial value
+        // of the free memory pointer.
+        //
+        //   push1 0x80
+        //   push1 0x40
+        //   mstore
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
+        s.ops
+            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
+        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
     }
 
     fn empty_span() -> Span {
         let msg = "unknown source location";
         Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
-    }
-
-    pub fn finalize(&self) -> AsmBuilderResult {
-        AsmBuilderResult::Evm(EvmAsmBuilderResult {
-            ops: self.ops.clone(),
-        })
     }
 
     pub(super) fn compile_instruction(
