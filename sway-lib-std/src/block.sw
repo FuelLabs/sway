@@ -32,15 +32,18 @@ pub fn timestamp_of_block(block_height: u64) -> u64 {
 
 /// Get the header hash of the block at height `block_height`
 pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
-    let header_hash = asm(r1, r2: block_height) {
+
+    let mut header_hash = ZERO_B256;
+
+    asm(r1: __addr_of(header_hash), r2: block_height) {
         bhsh r1 r2;
-        r1: b256
     };
 
-    // `bhsh` returns b256(0) if the block is not found, so catch this and return explicit error
-    match header_hash {
-        ZERO_B256 => Result::Err(BlockHashError::BlockHeightTooHigh),
-        _ => Result::Ok(header_hash),
+    // `bhsh` returns b256(0) if the block is not found, so catch this and return an error
+    if header_hash == ZERO_B256 {
+        Result::Err(BlockHashError::BlockHeightTooHigh)
+    } else {
+        Result::Ok(header_hash)
     }
 }
 
@@ -49,20 +52,18 @@ pub fn block_header_hash(block_height: u64) -> Result<b256, BlockHashError> {
 ////////////////////////////////////////////////////////////////////
 
 #[test()]
-fn test_block_header_hash() {
+fn test_block_header_hash_ok() {
 
-// Get the block header hash of the genesis block (guaranteed to exist)
+    // Get the block header hash of the genesis block (guaranteed to exist)
     let mut hash = block_header_hash(0);
     assert(hash.is_ok());
+}
+
+#[test()]
+fn test_block_header_hash_err() {
 
     // Try to get header hash of a block in the future
     // The function should return a BlockHashError
-    let hash = block_header_hash(1_000_000_000);
-    let did_error = match hash {
-        Result::Ok(_) => false,
-        Result::Err(BlockHashError) => true,
-    };
-
-    assert(did_error);
-
+    let hash = block_header_hash(10_000_000_000);
+    assert(hash.is_err());
 }
