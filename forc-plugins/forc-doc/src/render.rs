@@ -49,7 +49,7 @@ impl RenderedDocumentation {
             html_file_name: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
-                    project_name: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
+                    project_name: ModuleInfo::from_vec(vec![all_docs.project_name()?.to_owned()]),
                     all_docs,
                 }
                 .render()?,
@@ -471,13 +471,13 @@ struct AllDocItem {
     html_file_name: String,
 }
 impl AllDocItem {
-    fn link(&self) -> ItemLink {
-        ItemLink {
+    fn link(&self) -> Result<ItemLink> {
+        Ok(ItemLink {
             name: self
                 .module_info
                 .to_path_literal_str(self.item_name.as_str()),
-            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
-        }
+            hyperlink: self.module_info.to_file_path_str(&self.html_file_name)?,
+        })
     }
 }
 /// Used for creating links.
@@ -492,7 +492,7 @@ struct ItemLink {
 struct AllDocs(Vec<AllDocItem>);
 impl AllDocs {
     /// A wrapper for `ModuleInfo::project_name()`.
-    fn project_name(&self) -> &str {
+    fn project_name(&self) -> Result<&str> {
         self.0.first().unwrap().module_info.project_name()
     }
 }

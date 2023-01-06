@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use horrorshow::{box_html, RenderBox};
+use std::option::Option;
 use std::path::PathBuf;
 use sway_core::{
     declaration_engine::DeclarationEngine,
@@ -128,6 +129,7 @@ impl Renderable for Document {
         })
     }
 }
+
 pub(crate) type ModulePrefix = String;
 #[derive(Clone)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
@@ -147,8 +149,11 @@ impl ModuleInfo {
         self.location()
     }
     /// The name of the project.
-    pub(crate) fn project_name(&self) -> &str {
-        self.0.first().expect("Project name missing")
+    pub(crate) fn project_name(&self) -> Result<&str> {
+        match self.0.first() {
+            Some(project_name) => Ok(project_name),
+            None => bail!("Project name missing"),
+        }
     }
     /// Create a qualified path literal String that represents the full path to an item.
     pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
@@ -166,16 +171,16 @@ impl ModuleInfo {
     }
     /// Creates a String version of the path to an item,
     /// used in navigation between pages.
-    pub(crate) fn to_file_path_str(&self, file_name: &str) -> String {
+    pub(crate) fn to_file_path_str(&self, file_name: &str) -> Result<String> {
         let mut iter = self.0.iter();
         iter.next(); // skip the project_name
         let mut file_path = iter.collect::<PathBuf>();
         file_path.push(file_name);
 
-        file_path
-            .to_str()
-            .expect("There will always be at least the item name")
-            .to_string()
+        match file_path.to_str() {
+            Some(path) => Ok(path.to_string()),
+            None => bail!("There will always be at least the item name"),
+        }
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
