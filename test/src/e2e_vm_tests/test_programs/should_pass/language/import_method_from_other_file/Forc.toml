@@ -5,4 +5,4 @@ name = "import_method_from_other_file"
 entry = "main.sw"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }
