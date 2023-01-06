@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "import_method_from_other_file"
+name = "generic_transpose"
 entry = "main.sw"
 
 [dependencies]
