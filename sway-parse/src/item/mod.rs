@@ -6,8 +6,9 @@ use sway_ast::keywords::{
     WhereToken,
 };
 use sway_ast::{
-    Dependency, FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct,
-    ItemTrait, ItemUse, TypeField,
+    Braces, CodeBlockContents, Dependency, FnArg, FnArgs, FnReturnType, FnSignature,
+    ImplicitReturn, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait, ItemUse,
+    TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -146,12 +147,12 @@ impl Parse for FnSignature {
             name: parser.parse()?,
             generics: parser.guarded_parse::<OpenAngleBracketToken, _>()?,
             arguments: parser.parse()?,
-            return_type_opt: match parser.take() {
+            return_type: match parser.take() {
                 Some(right_arrow_token) => {
                     let ty = parser.parse()?;
-                    Some((right_arrow_token, ty))
+                    FnReturnType::TypedReturn((right_arrow_token, ty))
                 }
-                None => None,
+                None => FnReturnType::Implicit(ImplicitReturn),
             },
             where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
         })

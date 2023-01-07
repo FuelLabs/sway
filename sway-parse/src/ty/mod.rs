@@ -2,7 +2,7 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 
 use sway_ast::brackets::{Parens, SquareBrackets};
 use sway_ast::keywords::{DoubleColonToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
+use sway_ast::token::OpeningDelimiter;
 use sway_ast::ty::{Ty, TyArrayDescriptor, TyTupleDescriptor};
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::Ident;
@@ -11,7 +11,7 @@ impl Parse for Ty {
     fn parse(parser: &mut Parser) -> ParseResult<Ty> {
         // parse parens carefully, such that only patterns of (ty) are parsed as ty,
         // and patterns of (ty,) are parsed as one-artity tuples with one element ty
-        if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
+        if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
             if let Some(_consumed) = parser.check_empty() {
                 return Ok(Ty::Tuple(Parens::new(TyTupleDescriptor::Nil, span)));
             }

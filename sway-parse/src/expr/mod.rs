@@ -11,7 +11,7 @@ use sway_ast::keywords::{
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
-use sway_ast::token::Delimiter;
+use sway_ast::token::{Delimiter, OpeningDelimiter};
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
@@ -171,7 +171,7 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<ConstToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
-            Some((_, Delimiter::Brace))
+            Some((_, OpeningDelimiter::CurlyBrace))
         )
     {
         return stmt(Statement::Item(parser.parse()?));
@@ -619,7 +619,7 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some(array_inner) = SquareBrackets::try_parse(parser)? {
         return Ok(Expr::Array(array_inner));
     }
-    if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
+    if let Some((mut parser, span)) = parser.enter_delimited(OpeningDelimiter::Parenthesis) {
         if let Some(_consumed) = parser.check_empty() {
             return Ok(Expr::Tuple(Parens::new(ExprTupleDescriptor::Nil, span)));
         }

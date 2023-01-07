@@ -97,7 +97,7 @@ pub struct FnSignature {
     pub name: Ident,
     pub generics: Option<GenericParams>,
     pub arguments: Parens<FnArgs>,
-    pub return_type_opt: Option<(RightArrowToken, Ty)>,
+    pub return_type: FnReturnType,
     pub where_clause_opt: Option<WhereClause>,
 }
 
@@ -109,11 +109,28 @@ impl Spanned for FnSignature {
         };
         let end = match &self.where_clause_opt {
             Some(where_clause) => where_clause.span(),
-            None => match &self.return_type_opt {
-                Some((_right_arrow, ty)) => ty.span(),
-                None => self.arguments.span(),
+            None => match &self.return_type {
+                FnReturnType::TypedReturn((_right_arrow, ty)) => ty.span(),
+                FnReturnType::Implicit(_) => self.arguments.span(),
             },
         };
         Span::join(start, end)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum FnReturnType {
+    Implicit(ImplicitReturn),
+    TypedReturn((RightArrowToken, Ty)),
+}
+
+#[derive(Clone, Debug)]
+pub struct ImplicitReturn {
+    span: Span,
+}
+
+impl ImplicitReturn {
+    pub fn from_span(span: Span) -> Self {
+        Self { span }
     }
 }

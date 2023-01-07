@@ -68,7 +68,7 @@ impl PunctKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct GenericGroup<T> {
-    pub delimiter: Delimiter,
+    pub delimiter: OpeningDelimiter,
     pub token_stream: T,
     pub span: Span,
 }
@@ -81,31 +81,53 @@ impl<T> Spanned for GenericGroup<T> {
         self.span.clone()
     }
 }
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Delimiter {
+    Opening(OpeningDelimiter),
+    Closing(ClosingDelimiter),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum OpeningDelimiter {
     Parenthesis,
-    Brace,
-    Bracket,
+    CurlyBrace,
+    SquareBracket,
+    AngleBracket,
 }
-
+impl OpeningDelimiter {
+    pub fn as_char(&self) -> char {
+        match self {
+            OpeningDelimiter::Parenthesis => '(',
+            OpeningDelimiter::CurlyBrace => '{',
+            OpeningDelimiter::SquareBracket => '[',
+            OpeningDelimiter::AngleBracket => '<',
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ClosingDelimiter {
+    Parenthesis,
+    CurlyBrace,
+    SquareBracket,
+    AngleBracket,
+}
+impl ClosingDelimiter {
+    pub fn as_char(&self) -> char {
+        match self {
+            ClosingDelimiter::Parenthesis => ')',
+            ClosingDelimiter::CurlyBrace => '}',
+            ClosingDelimiter::SquareBracket => ']',
+            ClosingDelimiter::AngleBracket => '>',
+        }
+    }
+}
 impl Delimiter {
-    pub fn as_open_char(self) -> char {
+    pub fn as_char(&self) -> char {
         match self {
-            Delimiter::Parenthesis => '(',
-            Delimiter::Brace => '{',
-            Delimiter::Bracket => '[',
-        }
-    }
-    pub fn as_close_char(self) -> char {
-        match self {
-            Delimiter::Parenthesis => ')',
-            Delimiter::Brace => '}',
-            Delimiter::Bracket => ']',
+            Delimiter::Opening(open_del) => open_del.as_char(),
+            Delimiter::Closing(close_del) => close_del.as_char(),
         }
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Comment {
     pub span: Span,
@@ -242,20 +264,20 @@ pub struct CommentedTokenStream {
 
 #[extension_trait]
 impl CharExt for char {
-    fn as_open_delimiter(self) -> Option<Delimiter> {
+    fn as_open_delimiter(self) -> Option<OpeningDelimiter> {
         match self {
-            '(' => Some(Delimiter::Parenthesis),
-            '{' => Some(Delimiter::Brace),
-            '[' => Some(Delimiter::Bracket),
+            '(' => Some(OpeningDelimiter::Parenthesis),
+            '{' => Some(OpeningDelimiter::CurlyBrace),
+            '[' => Some(OpeningDelimiter::SquareBracket),
             _ => None,
         }
     }
 
-    fn as_close_delimiter(self) -> Option<Delimiter> {
+    fn as_close_delimiter(self) -> Option<ClosingDelimiter> {
         match self {
-            ')' => Some(Delimiter::Parenthesis),
-            '}' => Some(Delimiter::Brace),
-            ']' => Some(Delimiter::Bracket),
+            ')' => Some(ClosingDelimiter::Parenthesis),
+            '}' => Some(ClosingDelimiter::CurlyBrace),
+            ']' => Some(ClosingDelimiter::SquareBracket),
             _ => None,
         }
     }

@@ -423,7 +423,7 @@ impl Parse for FnSignature {
         insert_keyword(tokens, self.fn_token.span());
 
         self.arguments.get().parse(tokens);
-        if let Some((.., ty)) = &self.return_type_opt {
+        if let Some((.., ty)) = &self.return_type {
             ty.parse(tokens);
         }
         if let Some(where_clause) = &self.where_clause_opt {

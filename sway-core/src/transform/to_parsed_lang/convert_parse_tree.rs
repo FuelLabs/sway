@@ -398,12 +398,9 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
-    let return_type_span = match &item_fn.fn_signature.return_type_opt {
+    let return_type_span = match &item_fn.fn_signature.return_type {
         Some((_right_arrow_token, ty)) => ty.span(),
-        None => match Span::implicit_fn_return(item_fn.body.span.clone()) {
-            Some(span) => span,
-            None => item_fn.fn_signature.span(),
-        },
+        None => Span::implicit_fn_return(item_fn.body.span.clone()),
     };
     Ok(FunctionDeclaration {
         purity: get_attributed_purity(handler, &attributes)?,
@@ -417,7 +414,7 @@ fn item_fn_to_function_declaration(
             item_fn.fn_signature.arguments.into_inner(),
         )?,
         span,
-        return_type: match item_fn.fn_signature.return_type_opt {
+        return_type: match item_fn.fn_signature.return_type {
             Some((_right_arrow, ty)) => ty_to_type_info(handler, engines, ty)?,
             None => TypeInfo::Tuple(Vec::new()),
         },
@@ -1010,7 +1007,7 @@ fn fn_signature_to_trait_fn(
     fn_signature: FnSignature,
     attributes: AttributesMap,
 ) -> Result<TraitFn, ErrorEmitted> {
-    let return_type_span = match &fn_signature.return_type_opt {
+    let return_type_span = match &fn_signature.return_type {
         Some((_right_arrow_token, ty)) => ty.span(),
         None => Span::dummy(),
     };
@@ -1023,7 +1020,7 @@ fn fn_signature_to_trait_fn(
             engines,
             fn_signature.arguments.into_inner(),
         )?,
-        return_type: match fn_signature.return_type_opt {
+        return_type: match fn_signature.return_type {
             Some((_right_arrow_token, ty)) => ty_to_type_info(handler, engines, ty)?,
             None => TypeInfo::Tuple(Vec::new()),
         },

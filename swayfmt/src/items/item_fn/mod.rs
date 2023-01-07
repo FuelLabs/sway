@@ -155,7 +155,7 @@ fn format_fn_sig(
     // `)`
     FnSignature::close_parenthesis(formatted_code, formatter)?;
     // `return_type_opt`
-    if let Some((right_arrow, ty)) = &fn_sig.return_type_opt {
+    if let Some((right_arrow, ty)) = &fn_sig.return_type {
         write!(
             formatted_code,
             " {} ",
@@ -319,7 +319,7 @@ impl LeafSpans for FnSignature {
             collected_spans.push(ByteSpan::from(generics.parameters.span()));
         }
         collected_spans.append(&mut self.arguments.leaf_spans());
-        if let Some(return_type) = &self.return_type_opt {
+        if let Some(return_type) = &self.return_type {
             collected_spans.append(&mut return_type.leaf_spans());
         }
         if let Some(where_clause) = &self.where_clause_opt {

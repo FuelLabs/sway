@@ -2,7 +2,7 @@ use crate::{Parse, ParseResult, ParseToEnd, Parser};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::keywords::{CloseAngleBracketToken, OpenAngleBracketToken};
-use sway_ast::token::Delimiter;
+use sway_ast::token::OpeningDelimiter;
 use sway_error::handler::ErrorEmitted;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Span, Spanned};
@@ -34,10 +34,10 @@ macro_rules! impl_brackets (
             where
                 T: ParseToEnd
             {
-                match parser.enter_delimited(Delimiter::$delimiter) {
+                match parser.enter_delimited(OpeningDelimiter::$delimiter) {
                     Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok(Some($ty_name { inner, span }))
+                        Ok(Some($ty_name { open_token, inner, close_token }))
                     },
                     None => Ok(None),
                 }

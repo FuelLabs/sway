@@ -4,7 +4,8 @@ use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
-    Delimiter, DocComment, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree,
+    Delimiter, DocComment, Group, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
+    TokenTree,
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
@@ -100,7 +101,7 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     pub fn enter_delimited(
         &mut self,
-        expected_delimiter: Delimiter,
+        expected_delimiter: OpeningDelimiter,
     ) -> Option<(Parser<'_, '_>, Span)> {
         match self.token_trees {
             [TokenTree::Group(Group {
