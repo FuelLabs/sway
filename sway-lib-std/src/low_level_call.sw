@@ -2,10 +2,9 @@ library low_level_call;
 
 use ::assert::assert;
 use ::bytes::Bytes;
-use ::revert::require;
 use ::contract_id::ContractId;
-use ::logging::log;
 use ::option::Option;
+use ::revert::require;
 use ::vec::Vec;
 
 pub struct CallParams {
@@ -44,7 +43,7 @@ pub fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
     };
 }
 
-// Enocode a payload from the function selection and calldata, and call the target contract
+// Encode a payload from the function selection and calldata, and call the target contract
 fn create_payload(
     target: ContractId,
     function_selector: Bytes,
@@ -62,7 +61,6 @@ fn create_payload(
 
     let mut payload = Bytes::new().join(contract_id_to_bytes(target)).join(function_selector);
 
-    // TODO: Replace this flag parameter with some dynamic check if possible.
     if (single_value_type_arg) {
         payload = payload.join(calldata); // When calldata is copy type, just pass calldata
     } else {
@@ -89,8 +87,8 @@ pub fn call_with_function_selector_vec(
     target: ContractId,
     function_selector: Vec<u8>,
     calldata: Vec<u8>,
-    call_params: CallParams,
     single_value_type_arg: bool,
+    call_params: CallParams
 ) {
     let mut function_selector = function_selector;
     let function_selector_bytes = Bytes::from_vec_u8(function_selector);

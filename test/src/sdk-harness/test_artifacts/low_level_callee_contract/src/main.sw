@@ -46,6 +46,7 @@ impl CalledContract for Contract {
 
     #[storage(write)]
     fn set_value_multiple_complex(a: MyStruct, b: str[4]) {
+        //revert(999);
         storage.value = a.b[1];
         storage.value_str = b;
         storage.value_bool = a.a;

@@ -11,5 +11,5 @@ fn main(target: ContractId, function_selector: Vec<u8>, calldata: Vec<u8>, singl
         gas: 10_000_000,
     };
 
-    call_with_function_selector_vec(target, function_selector, calldata, call_params, single_value_type_arg);
+    call_with_function_selector_vec(target, function_selector, calldata, single_value_type_arg, call_params);
 }
