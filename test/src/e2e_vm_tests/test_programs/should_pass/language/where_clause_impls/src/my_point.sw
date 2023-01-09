@@ -9,6 +9,15 @@ pub struct MyPoint<T> {
     y: T,
 }
 
+impl<T> MyPoint<T> {
+    pub fn new(x: T, y: T) -> MyPoint<T> {
+        MyPoint {
+            x,
+            y,
+        }
+    }
+}
+
 impl<T> MyAdd for MyPoint<T> where T: MyAdd {
     fn my_add(self, other: Self) -> Self {
         MyPoint {
