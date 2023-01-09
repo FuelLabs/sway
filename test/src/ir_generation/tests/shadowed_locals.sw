@@ -11,19 +11,19 @@ fn main() -> u64 {
     a.a
 }
 
-// check: local ptr bool a
-// check: local ptr u64 a_
-// check: local ptr { u64 } a__
+// check: local bool a
+// check: local u64 a_
+// check: local { u64 } a__
 
-// check: $(a_ptr=$VAL) = get_ptr ptr bool a, ptr bool, 0
+// check: $(a_var=$VAL) = get_local bool a
 // check: $(true=$VAL) = const bool true
-// check: store $true, ptr $a_ptr
+// check: store $true to $a_var
 
 // check: $ID($(int_val=$VAL):
-// check: $(a__ptr=$VAL) = get_ptr ptr u64 a_, ptr u64, 0
-// check: store $int_val, ptr $a__ptr
+// check: $(a__var=$VAL) = get_local u64 a_
+// check: store $int_val to $a__var
 
-// check: $(struct_undef=$VAL) = get_ptr ptr { u64 } $ID, ptr { u64 }, 0
+// check: $(struct_undef=$VAL) = get_local { u64 } $ID
 // check: $(struct_set=$VAL) = insert_value $struct_undef, { u64 }, v9, 0
-// check: $(a___ptr=$VAL) = get_ptr ptr { u64 } a__, ptr { u64 }, 0
-// check: store $struct_set, ptr $a___ptr
+// check: $(a___var=$VAL) = get_local { u64 } a__
+// check: store $struct_set to $a___var

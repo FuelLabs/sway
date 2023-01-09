@@ -5,6 +5,7 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     declaration_engine::{declaration_engine::*, DeclMapping, DeclarationId, ReplaceDecls},
+    engine_threading::*,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -30,10 +31,12 @@ impl ty::TyImplTrait {
         } = impl_trait;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace);
+        let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
 
         // type check the type parameters which also inserts them into the namespace
         let mut new_impl_type_parameters = vec![];
@@ -65,7 +68,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(type_implementing_for),
+                type_engine.insert_type(declaration_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -87,7 +90,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                type_engine,
+                engines,
                 &new_impl_type_parameters,
                 &trait_type_arguments,
                 implementing_for_type_id,
@@ -102,7 +105,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -112,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -166,7 +169,7 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(de_get_abi(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_abi(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -174,11 +177,11 @@ impl ty::TyImplTrait {
 
                 if !type_engine
                     .look_up_type_id(implementing_for_type_id)
-                    .eq(&TypeInfo::Contract, type_engine)
+                    .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
                         span: type_implementing_for_span.clone(),
-                        ty: type_engine.help_out(implementing_for_type_id).to_string(),
+                        ty: engines.help_out(implementing_for_type_id).to_string(),
                     });
                 }
 
@@ -227,28 +230,30 @@ impl ty::TyImplTrait {
     // impl_typ can only be a storage type.
     // This is noted down in the type engine.
     fn gather_storage_only_types(
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         impl_typ: TypeId,
         methods: &[ty::TyFunctionDeclaration],
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
                 ty::TyAstNodeContent::Expression(expr)
                 | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-                    expr_contains_get_storage_index(expr, access_span)
+                    expr_contains_get_storage_index(declaration_engine, expr, access_span)
                 }
                 ty::TyAstNodeContent::Declaration(decl) => {
-                    decl_contains_get_storage_index(decl, access_span)
+                    decl_contains_get_storage_index(declaration_engine, decl, access_span)
                 }
                 ty::TyAstNodeContent::SideEffect => Ok(false),
             }
         }
 
         fn expr_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -263,7 +268,8 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiName(_) => false,
                 ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for f in arguments.iter() {
-                        let b = expr_contains_get_storage_index(&f.1, access_span)?;
+                        let b =
+                            expr_contains_get_storage_index(declaration_engine, &f.1, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -279,13 +285,14 @@ impl ty::TyImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(expr1, access_span)?
-                        || expr_contains_get_storage_index(expr2, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, expr1, access_span)?
+                        || expr_contains_get_storage_index(declaration_engine, expr2, access_span)?
                 }
                 ty::TyExpressionVariant::Tuple { fields: exprvec }
                 | ty::TyExpressionVariant::Array { contents: exprvec } => {
                     for f in exprvec.iter() {
-                        let b = expr_contains_get_storage_index(f, access_span)?;
+                        let b =
+                            expr_contains_get_storage_index(declaration_engine, f, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -295,7 +302,11 @@ impl ty::TyImplTrait {
 
                 ty::TyExpressionVariant::StructExpression { fields, .. } => {
                     for f in fields.iter() {
-                        let b = expr_contains_get_storage_index(&f.value, access_span)?;
+                        let b = expr_contains_get_storage_index(
+                            declaration_engine,
+                            &f.value,
+                            access_span,
+                        )?;
                         if b {
                             return Ok(true);
                         }
@@ -303,17 +314,17 @@ impl ty::TyImplTrait {
                     false
                 }
                 ty::TyExpressionVariant::CodeBlock(cb) => {
-                    codeblock_contains_get_storage_index(cb, access_span)?
+                    codeblock_contains_get_storage_index(declaration_engine, cb, access_span)?
                 }
                 ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(condition, access_span)?
-                        || expr_contains_get_storage_index(then, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
+                        || expr_contains_get_storage_index(declaration_engine, then, access_span)?
                         || r#else.as_ref().map_or(Ok(false), |r#else| {
-                            expr_contains_get_storage_index(r#else, access_span)
+                            expr_contains_get_storage_index(declaration_engine, r#else, access_span)
                         })?
                 }
                 ty::TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -321,11 +332,11 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiCast { address: exp, .. }
                 | ty::TyExpressionVariant::EnumTag { exp }
                 | ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(exp, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
                 }
                 ty::TyExpressionVariant::EnumInstantiation { contents, .. } => {
                     contents.as_ref().map_or(Ok(false), |f| {
-                        expr_contains_get_storage_index(f, access_span)
+                        expr_contains_get_storage_index(declaration_engine, f, access_span)
                     })?
                 }
 
@@ -334,34 +345,47 @@ impl ty::TyImplTrait {
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
                 ty::TyExpressionVariant::WhileLoop { condition, body } => {
-                    expr_contains_get_storage_index(condition, access_span)?
-                        || codeblock_contains_get_storage_index(body, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
+                        || codeblock_contains_get_storage_index(
+                            declaration_engine,
+                            body,
+                            access_span,
+                        )?
                 }
                 ty::TyExpressionVariant::Reassignment(reassignment) => {
-                    expr_contains_get_storage_index(&reassignment.rhs, access_span)?
+                    expr_contains_get_storage_index(
+                        declaration_engine,
+                        &reassignment.rhs,
+                        access_span,
+                    )?
                 }
                 ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
-                    expr_contains_get_storage_index(&storage_reassignment.rhs, access_span)?
+                    expr_contains_get_storage_index(
+                        declaration_engine,
+                        &storage_reassignment.rhs,
+                        access_span,
+                    )?
                 }
                 ty::TyExpressionVariant::Return(exp) => {
-                    expr_contains_get_storage_index(exp, access_span)?
+                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
                 }
             };
             Ok(res)
         }
 
         fn decl_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
                 ty::TyDeclaration::VariableDeclaration(decl) => {
-                    expr_contains_get_storage_index(&decl.body, access_span)
+                    expr_contains_get_storage_index(declaration_engine, &decl.body, access_span)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        de_get_constant(decl_id.clone(), access_span)?;
-                    expr_contains_get_storage_index(&expr, access_span)
+                        declaration_engine.get_constant(decl_id.clone(), access_span)?;
+                    expr_contains_get_storage_index(declaration_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
@@ -378,11 +402,16 @@ impl ty::TyImplTrait {
         }
 
         fn codeblock_contains_get_storage_index(
+            declaration_engine: &DeclarationEngine,
             cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             for content in cb.contents.iter() {
-                let b = ast_node_contains_get_storage_index(&content.content, access_span)?;
+                let b = ast_node_contains_get_storage_index(
+                    declaration_engine,
+                    &content.content,
+                    access_span,
+                )?;
                 if b {
                     return Ok(true);
                 }
@@ -390,9 +419,15 @@ impl ty::TyImplTrait {
             Ok(false)
         }
 
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
+
         for method in methods.iter() {
-            let contains_get_storage_index =
-                codeblock_contains_get_storage_index(&method.body, access_span)?;
+            let contains_get_storage_index = codeblock_contains_get_storage_index(
+                declaration_engine,
+                &method.body,
+                access_span,
+            )?;
             if contains_get_storage_index {
                 type_engine.set_type_as_storage_only(impl_typ);
                 return Ok(());
@@ -418,10 +453,12 @@ impl ty::TyImplTrait {
         } = impl_self;
 
         let type_engine = ctx.type_engine;
+        let declaration_engine = ctx.declaration_engine;
+        let engines = ctx.engines();
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace);
+        let mut ctx = ctx.scoped(&mut impl_namespace).allow_functions();
 
         // create the trait name
         let trait_name = CallPath {
@@ -456,7 +493,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(type_implementing_for),
+                type_engine.insert_type(declaration_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -478,7 +515,7 @@ impl ty::TyImplTrait {
         // check for unconstrained type parameters
         check!(
             check_for_unconstrained_type_parameters(
-                type_engine,
+                engines,
                 &new_impl_type_parameters,
                 &[],
                 implementing_for_type_id,
@@ -492,7 +529,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -510,7 +547,7 @@ impl ty::TyImplTrait {
 
         check!(
             CompileResult::from(Self::gather_storage_only_types(
-                type_engine,
+                engines,
                 implementing_for_type_id,
                 &methods,
                 &type_implementing_for_span,
@@ -522,7 +559,7 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| de_insert_function(d.clone()))
+            .map(|d| declaration_engine.insert_function(d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -558,7 +595,10 @@ fn type_check_trait_implementation(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+    let engines = ctx.engines();
     let self_type = ctx.self_type();
+
     let interface_name = || -> InterfaceName {
         if is_contract {
             InterfaceName::Abi(trait_name.suffix.clone())
@@ -579,7 +619,7 @@ fn type_check_trait_implementation(
                     .map(|x| x.into())
                     .collect::<Vec<_>>(),
                 block_span,
-                type_engine,
+                engines,
             ),
         return err(warnings, errors),
         warnings,
@@ -609,7 +649,7 @@ fn type_check_trait_implementation(
             .collect::<Vec<_>>(),
         &trait_name.span(),
         false,
-        type_engine,
+        engines,
     );
 
     // This map keeps track of the remaining functions in the interface surface
@@ -626,7 +666,7 @@ fn type_check_trait_implementation(
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
-            CompileResult::from(de_get_trait_fn(decl_id.clone(), block_span)),
+            CompileResult::from(declaration_engine.get_trait_fn(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -640,7 +680,7 @@ fn type_check_trait_implementation(
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
 
         // type check the function declaration
         let mut impl_method = check!(
@@ -674,7 +714,7 @@ fn type_check_trait_implementation(
         // replace instances of `TypeInfo::SelfType` with a fresh
         // `TypeInfo::SelfType` to avoid replacing types in the original trait
         // declaration
-        impl_method_signature.replace_self_type(type_engine, self_type);
+        impl_method_signature.replace_self_type(engines, self_type);
 
         // ensure this fn decl's parameters and signature lines up with the one
         // in the trait
@@ -718,16 +758,16 @@ fn type_check_trait_implementation(
 
             impl_method_param
                 .type_id
-                .replace_self_type(type_engine, self_type);
+                .replace_self_type(engines, self_type);
             if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
                 &type_engine.look_up_type_id(impl_method_signature_param.type_id),
-                type_engine,
+                engines,
             ) {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
                     span: impl_method_param.type_span.clone(),
-                    given: type_engine.help_out(impl_method_param.type_id).to_string(),
-                    expected: type_engine
+                    given: engines.help_out(impl_method_param.type_id).to_string(),
+                    expected: engines
                         .help_out(impl_method_signature_param.type_id)
                         .to_string(),
                 });
@@ -755,20 +795,49 @@ fn type_check_trait_implementation(
             });
         }
 
+        // check there is no mismatch of payability attributes
+        // between the method signature and the method implementation
+        use crate::transform::AttributeKind::Payable;
+        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
+        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+        match (impl_method_signature_payable, impl_method_payable) {
+            (true, false) =>
+            // implementation does not have payable attribute
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: true,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (false, true) =>
+            // implementation has extra payable attribute, not mentioned by signature
+            {
+                errors.push(CompileError::TraitImplPayabilityMismatch {
+                    fn_name: impl_method.name.clone(),
+                    interface_name: interface_name(),
+                    missing_impl_attribute: false,
+                    span: impl_method.span.clone(),
+                })
+            }
+            (true, true) | (false, false) => (), // no payability mismatch
+        }
+
         impl_method
             .return_type
-            .replace_self_type(type_engine, self_type);
+            .replace_self_type(engines, self_type);
         if !type_engine.look_up_type_id(impl_method.return_type).eq(
             &type_engine.look_up_type_id(impl_method_signature.return_type),
-            type_engine,
+            engines,
         ) {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
-                expected: type_engine
+                expected: engines
                     .help_out(impl_method_signature.return_type)
                     .to_string(),
-                given: type_engine.help_out(impl_method.return_type).to_string(),
+                given: engines.help_out(impl_method.return_type).to_string(),
             });
             continue;
         }
@@ -788,19 +857,19 @@ fn type_check_trait_implementation(
         // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
         // or https://github.com/FuelLabs/sway/issues/2814 goes in.
         let unconstrained_type_parameters_in_this_function: HashSet<
-            WithTypeEngine<'_, TypeParameter>,
+            WithEngines<'_, TypeParameter>,
         > = impl_method
-            .unconstrained_type_parameters(type_engine, impl_type_parameters)
+            .unconstrained_type_parameters(engines, impl_type_parameters)
             .into_iter()
             .cloned()
-            .map(|x| WithTypeEngine::new(x, type_engine))
+            .map(|x| WithEngines::new(x, engines))
             .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<WithTypeEngine<'_, TypeParameter>> =
+        let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
             ctx.self_type()
-                .unconstrained_type_parameters(type_engine, impl_type_parameters)
+                .unconstrained_type_parameters(engines, impl_type_parameters)
                 .into_iter()
                 .cloned()
-                .map(|x| WithTypeEngine::new(x, type_engine))
+                .map(|x| WithEngines::new(x, engines))
                 .collect::<HashSet<_>>();
         let mut unconstrained_type_parameters_to_be_added =
             unconstrained_type_parameters_in_this_function
@@ -814,7 +883,7 @@ fn type_check_trait_implementation(
             .append(&mut unconstrained_type_parameters_to_be_added);
 
         let name = impl_method.name.clone();
-        let decl_id = de_insert_function(impl_method);
+        let decl_id = declaration_engine.insert_function(impl_method);
         impld_method_ids.insert(name, decl_id);
     }
 
@@ -842,15 +911,19 @@ fn type_check_trait_implementation(
         DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
-            CompileResult::from(de_get_function(decl_id.clone(), block_span)),
+            CompileResult::from(declaration_engine.get_function(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
         );
-        method.replace_decls(&decl_mapping, type_engine);
-        method.copy_types(&type_mapping, ctx.type_engine);
-        method.replace_self_type(type_engine, ctx.self_type());
-        all_method_ids.push(de_insert_function(method).with_parent(decl_id.clone()));
+        method.replace_decls(&decl_mapping, engines);
+        method.copy_types(&type_mapping, engines);
+        method.replace_self_type(engines, ctx.self_type());
+        all_method_ids.push(
+            declaration_engine
+                .insert_function(method)
+                .with_parent(declaration_engine, decl_id.clone()),
+        );
     }
 
     // check that the implementation checklist is complete
@@ -907,7 +980,7 @@ fn type_check_trait_implementation(
 /// }
 /// ```
 fn check_for_unconstrained_type_parameters(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
@@ -920,26 +993,28 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (type_engine.look_up_type_id(x.type_id), x.span()))
-            .map(|(thing, sp)| (WithTypeEngine::new(thing, type_engine), sp)),
+            .map(|x| (engines.te().look_up_type_id(x.type_id), x.span()))
+            .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
     // create a list of the generics in use in the impl signature
     let mut generics_in_use = HashSet::new();
     for type_arg in trait_type_arguments.iter() {
         generics_in_use.extend(check!(
-            type_engine
+            engines
+                .te()
                 .look_up_type_id(type_arg.type_id)
-                .extract_nested_generics(type_engine, &type_arg.span),
+                .extract_nested_generics(engines, &type_arg.span),
             HashSet::new(),
             warnings,
             errors
         ));
     }
     generics_in_use.extend(check!(
-        type_engine
+        engines
+            .te()
             .look_up_type_id(self_type)
-            .extract_nested_generics(type_engine, self_type_span),
+            .extract_nested_generics(engines, self_type_span),
         HashSet::new(),
         warnings,
         errors
@@ -978,6 +1053,8 @@ fn handle_supertraits(
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
+    let declaration_engine = ctx.declaration_engine;
+
     let mut interface_surface_methods_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
     let self_type = ctx.self_type();
@@ -1003,7 +1080,9 @@ fn handle_supertraits(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id.clone(), &supertrait.span())),
+                    CompileResult::from(
+                        declaration_engine.get_trait(decl_id.clone(), &supertrait.span())
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors

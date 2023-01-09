@@ -764,6 +764,9 @@ impl<'a> ParsedTree<'a> {
                     self.collect_scrutinee(elem);
                 }
             }
+            Scrutinee::Error { .. } => {
+                // FIXME: Left for @JoshuaBatty to use.
+            }
         }
     }
 

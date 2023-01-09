@@ -1,5 +1,6 @@
 use crate::{
-    declaration_engine::{declaration_engine::de_get_storage, declaration_id::DeclarationId},
+    declaration_engine::{declaration_id::DeclarationId, DeclarationEngine},
+    engine_threading::Engines,
     error::*,
     language::{ty, CallPath},
     namespace::*,
@@ -55,17 +56,21 @@ impl Items {
 
     pub fn apply_storage_load(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
         access_span: &Span,
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let type_engine = engines.te();
+        let declaration_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(
+                        declaration_engine.get_storage(decl_id.clone(), access_span)
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -110,7 +115,9 @@ impl Items {
         if self.symbols.get(&name).is_some() {
             match item {
                 ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. } => {
+                | ty::TyDeclaration::StructDeclaration { .. }
+                | ty::TyDeclaration::AbiDeclaration { .. }
+                | ty::TyDeclaration::TraitDeclaration { .. } => {
                     errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                 }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
@@ -135,7 +142,7 @@ impl Items {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn insert_trait_implementation(
+    pub(crate) fn insert_trait_implementation<'a>(
         &mut self,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
@@ -143,7 +150,7 @@ impl Items {
         methods: &[DeclarationId],
         impl_span: &Span,
         is_impl_self: bool,
-        type_engine: &TypeEngine,
+        engines: Engines<'a>,
     ) -> CompileResult<()> {
         let new_prefixes = if trait_name.prefixes.is_empty() {
             self.use_synonyms
@@ -166,39 +173,35 @@ impl Items {
             methods,
             impl_span,
             is_impl_self,
-            type_engine,
+            engines,
         )
     }
 
     pub(crate) fn insert_trait_implementation_for_type(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
     ) {
-        self.implemented_traits
-            .insert_for_type(type_engine, type_id);
+        self.implemented_traits.insert_for_type(engines, type_id);
     }
 
     pub(crate) fn get_methods_for_type(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
     ) -> Vec<DeclarationId> {
         self.implemented_traits
-            .get_methods_for_type(type_engine, type_id)
+            .get_methods_for_type(engines, type_id)
     }
 
     pub(crate) fn get_methods_for_type_and_trait_name(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<DeclarationId> {
-        self.implemented_traits.get_methods_for_type_and_trait_name(
-            type_engine,
-            type_id,
-            trait_name,
-        )
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -207,6 +210,7 @@ impl Items {
 
     pub(crate) fn get_storage_field_descriptors(
         &self,
+        declaration_engine: &DeclarationEngine,
         access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
@@ -214,7 +218,9 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(de_get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(
+                        declaration_engine.get_storage(decl_id.clone(), access_span)
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -234,12 +240,15 @@ impl Items {
     /// the second is the [ResolvedType] of its parent, for control-flow analysis.
     pub(crate) fn find_subfield_type(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> CompileResult<(TypeId, TypeId)> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = engines.te();
+
         let symbol = match self.symbols.get(base_name).cloned() {
             Some(s) => s,
             None => {
@@ -250,7 +259,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(&base_name.span(), type_engine),
+            symbol.return_type(engines, &base_name.span()),
             return err(warnings, errors),
             warnings,
             errors
@@ -350,7 +359,7 @@ impl Items {
                 (actually, ty::ProjectionKind::StructField { .. }) => {
                     errors.push(CompileError::FieldAccessOnNonStruct {
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -358,7 +367,7 @@ impl Items {
                     errors.push(CompileError::NotATuple {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }
@@ -366,7 +375,7 @@ impl Items {
                     errors.push(CompileError::NotIndexable {
                         name: full_name_for_error,
                         span: full_span_for_error,
-                        actually: type_engine.help_out(actually).to_string(),
+                        actually: engines.help_out(actually).to_string(),
                     });
                     return err(warnings, errors);
                 }

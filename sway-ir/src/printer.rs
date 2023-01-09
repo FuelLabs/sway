@@ -12,7 +12,7 @@ use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
     function::{Function, FunctionContent},
-    instruction::{Instruction, Predicate, Register},
+    instruction::{FuelVmInstruction, Instruction, Predicate, Register},
     irtype::Type,
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
@@ -161,17 +161,21 @@ fn function_to_doc<'a>(
                     .iter()
                     .map(|(name, arg_val)| {
                         if let ValueContent {
-                            value: ValueDatum::Argument(BlockArgument { ty, .. }),
+                            value: ValueDatum::Argument(BlockArgument { ty, by_ref, .. }),
                             metadata,
                             ..
                         } = &context.values[arg_val.0]
                         {
-                            Doc::text(name)
-                                .append(
-                                    Doc::Space
-                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                                )
-                                .append(Doc::text(format!(": {}", ty.as_string(context))))
+                            if *by_ref {
+                                Doc::text("inout ")
+                            } else {
+                                Doc::Empty
+                            }
+                            .append(Doc::text(name))
+                            .append(
+                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                            )
+                            .append(Doc::text(format!(": {}", ty.as_string(context))))
                         } else {
                             unreachable!("Unexpected non argument value for function arguments.")
                         }
@@ -193,9 +197,9 @@ fn function_to_doc<'a>(
                     function
                         .local_storage
                         .iter()
-                        .map(|(name, ptr)| {
-                            let ptr_content = &context.pointers[ptr.0];
-                            let init_doc = match &ptr_content.initializer {
+                        .map(|(name, var)| {
+                            let var_content = &context.local_vars[var.0];
+                            let init_doc = match &var_content.initializer {
                                 Some(const_val) => Doc::text(format!(
                                     " = const {}",
                                     const_val.as_lit_string(context)
@@ -203,8 +207,11 @@ fn function_to_doc<'a>(
                                 None => Doc::Empty,
                             };
                             Doc::line(
-                                Doc::text(format!("local {}", ptr.as_string(context, Some(name))))
-                                    .append(init_doc),
+                                Doc::text(format!(
+                                    "local {} {name}",
+                                    var.get_type(context).as_string(context)
+                                ))
+                                .append(init_doc),
                             )
                         })
                         .collect(),
@@ -311,14 +318,14 @@ fn instruction_to_doc<'a>(
                 asm_block_to_doc(context, md_namer, namer, ins_value, asm, args, metadata)
             }
             Instruction::AddrOf(value) => maybe_constant_to_doc(context, md_namer, namer, value)
-                .append(
-                    Doc::text_line(format!(
+                .append(Doc::line(
+                    Doc::text(format!(
                         "{} = addr_of {}",
                         namer.name(context, ins_value),
                         namer.name(context, value),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
-                ),
+                )),
             Instruction::BitCast(value, ty) => {
                 maybe_constant_to_doc(context, md_namer, namer, value).append(Doc::line(
                     Doc::text(format!(
@@ -390,6 +397,15 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::CastPtr(val, ty, offs) => Doc::line(
+                Doc::text(format!(
+                    "{} = cast_ptr {}, {}, {offs}",
+                    namer.name(context, ins_value),
+                    namer.name(context, val),
+                    ty.as_string(context)
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            ),
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 let pred_str = match pred {
                     Predicate::Equal => "eq",
@@ -504,40 +520,156 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             )),
-            Instruction::GetStorageKey => Doc::line(
-                Doc::text(format!(
-                    "{} = get_storage_key",
-                    namer.name(context, ins_value),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
-            Instruction::Gtf { index, tx_field_id } => {
-                maybe_constant_to_doc(context, md_namer, namer, index).append(Doc::line(
+            Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                FuelVmInstruction::GetStorageKey => Doc::line(
                     Doc::text(format!(
-                        "{} = gtf {}, {}",
+                        "{} = get_storage_key",
                         namer.name(context, ins_value),
-                        namer.name(context, index),
-                        tx_field_id,
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
-                ))
-            }
-            Instruction::GetPointer {
-                base_ptr,
-                ptr_ty,
-                offset,
-            } => {
+                ),
+                FuelVmInstruction::Gtf { index, tx_field_id } => {
+                    maybe_constant_to_doc(context, md_namer, namer, index).append(Doc::line(
+                        Doc::text(format!(
+                            "{} = gtf {}, {}",
+                            namer.name(context, ins_value),
+                            namer.name(context, index),
+                            tx_field_id,
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
+                }
+                FuelVmInstruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => maybe_constant_to_doc(context, md_namer, namer, log_val)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, log_id))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "log {} {}, {}",
+                            log_ty.as_string(context),
+                            namer.name(context, log_val),
+                            namer.name(context, log_id),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
+                FuelVmInstruction::ReadRegister(reg) => Doc::line(
+                    Doc::text(format!(
+                        "{} = read_register {}",
+                        namer.name(context, ins_value),
+                        match reg {
+                            Register::Of => "of",
+                            Register::Pc => "pc",
+                            Register::Ssp => "ssp",
+                            Register::Sp => "sp",
+                            Register::Fp => "fp",
+                            Register::Hp => "hp",
+                            Register::Error => "err",
+                            Register::Ggas => "ggas",
+                            Register::Cgas => "cgas",
+                            Register::Bal => "bal",
+                            Register::Is => "is",
+                            Register::Ret => "ret",
+                            Register::Retl => "retl",
+                            Register::Flag => "flag",
+                        },
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                ),
+                FuelVmInstruction::Revert(v) => maybe_constant_to_doc(context, md_namer, namer, v)
+                    .append(Doc::line(
+                        Doc::text(format!("revert {}", namer.name(context, v),))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
+                FuelVmInstruction::Smo {
+                    recipient_and_message,
+                    message_size,
+                    output_index,
+                    coins,
+                } => maybe_constant_to_doc(context, md_namer, namer, recipient_and_message)
+                    .append(maybe_constant_to_doc(
+                        context,
+                        md_namer,
+                        namer,
+                        message_size,
+                    ))
+                    .append(maybe_constant_to_doc(
+                        context,
+                        md_namer,
+                        namer,
+                        output_index,
+                    ))
+                    .append(maybe_constant_to_doc(context, md_namer, namer, coins))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "smo {}, {}, {}, {}",
+                            namer.name(context, recipient_and_message),
+                            namer.name(context, message_size),
+                            namer.name(context, output_index),
+                            namer.name(context, coins),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "state_load_quad_word {}, key {}, {}",
+                            namer.name(context, load_val),
+                            namer.name(context, key),
+                            namer.name(context, number_of_slots),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ),
+                ),
+                FuelVmInstruction::StateLoadWord(key) => Doc::line(
+                    Doc::text(format!(
+                        "{} = state_load_word key {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, key),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                ),
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "state_store_quad_word {}, key {}, {}",
+                            namer.name(context, stored_val),
+                            namer.name(context, key),
+                            namer.name(context, number_of_slots),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ),
+                ),
+                FuelVmInstruction::StateStoreWord { stored_val, key } => {
+                    maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
+                        Doc::text(format!(
+                            "state_store_word {}, key {}",
+                            namer.name(context, stored_val),
+                            namer.name(context, key),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
+                }
+            },
+            Instruction::GetLocal(local_var) => {
                 let name = block
                     .get_function(context)
-                    .lookup_local_name(context, base_ptr)
+                    .lookup_local_name(context, local_var)
                     .unwrap();
                 Doc::line(
                     Doc::text(format!(
-                        "{} = get_ptr {}, {}, {}",
+                        "{} = get_local {} {name}",
                         namer.name(context, ins_value),
-                        base_ptr.as_string(context, Some(name)),
-                        ptr_ty.as_string(context, None),
-                        offset,
+                        local_var.get_type(context).as_string(context),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
@@ -598,27 +730,12 @@ fn instruction_to_doc<'a>(
             }
             Instruction::Load(src_value) => Doc::line(
                 Doc::text(format!(
-                    "{} = load ptr {}",
+                    "{} = load {}",
                     namer.name(context, ins_value),
                     namer.name(context, src_value),
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
-            Instruction::Log {
-                log_val,
-                log_ty,
-                log_id,
-            } => maybe_constant_to_doc(context, md_namer, namer, log_val)
-                .append(maybe_constant_to_doc(context, md_namer, namer, log_id))
-                .append(Doc::line(
-                    Doc::text(format!(
-                        "log {} {}, {}",
-                        log_ty.as_string(context),
-                        namer.name(context, log_val),
-                        namer.name(context, log_id),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                )),
             Instruction::MemCopy {
                 dst_val,
                 src_val,
@@ -636,29 +753,6 @@ fn instruction_to_doc<'a>(
                 Doc::text(format!("{} = nop", namer.name(context, ins_value)))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
-            Instruction::ReadRegister(reg) => Doc::line(
-                Doc::text(format!(
-                    "{} = read_register {}",
-                    namer.name(context, ins_value),
-                    match reg {
-                        Register::Of => "of",
-                        Register::Pc => "pc",
-                        Register::Ssp => "ssp",
-                        Register::Sp => "sp",
-                        Register::Fp => "fp",
-                        Register::Hp => "hp",
-                        Register::Error => "err",
-                        Register::Ggas => "ggas",
-                        Register::Cgas => "cgas",
-                        Register::Bal => "bal",
-                        Register::Is => "is",
-                        Register::Ret => "ret",
-                        Register::Retl => "retl",
-                        Register::Flag => "flag",
-                    },
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
             Instruction::Ret(v, t) => {
                 maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::line(
                     Doc::text(format!(
@@ -669,81 +763,12 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ))
             }
-            Instruction::Revert(v) => {
-                maybe_constant_to_doc(context, md_namer, namer, v).append(Doc::line(
-                    Doc::text(format!("revert {}", namer.name(context, v),))
-                        .append(md_namer.md_idx_to_doc(context, metadata)),
-                ))
-            }
-            Instruction::Smo {
-                recipient_and_message,
-                message_size,
-                output_index,
-                coins,
-            } => maybe_constant_to_doc(context, md_namer, namer, recipient_and_message)
-                .append(maybe_constant_to_doc(
-                    context,
-                    md_namer,
-                    namer,
-                    message_size,
-                ))
-                .append(maybe_constant_to_doc(
-                    context,
-                    md_namer,
-                    namer,
-                    output_index,
-                ))
-                .append(maybe_constant_to_doc(context, md_namer, namer, coins))
-                .append(Doc::line(
-                    Doc::text(format!(
-                        "smo {}, {}, {}, {}",
-                        namer.name(context, recipient_and_message),
-                        namer.name(context, message_size),
-                        namer.name(context, output_index),
-                        namer.name(context, coins),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                )),
-            Instruction::StateLoadQuadWord { load_val, key } => Doc::line(
-                Doc::text(format!(
-                    "state_load_quad_word ptr {}, key ptr {}",
-                    namer.name(context, load_val),
-                    namer.name(context, key),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
-            Instruction::StateLoadWord(key) => Doc::line(
-                Doc::text(format!(
-                    "{} = state_load_word key ptr {}",
-                    namer.name(context, ins_value),
-                    namer.name(context, key),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
-            Instruction::StateStoreQuadWord { stored_val, key } => Doc::line(
-                Doc::text(format!(
-                    "state_store_quad_word ptr {}, key ptr {}",
-                    namer.name(context, stored_val),
-                    namer.name(context, key),
-                ))
-                .append(md_namer.md_idx_to_doc(context, metadata)),
-            ),
-            Instruction::StateStoreWord { stored_val, key } => {
-                maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
-                    Doc::text(format!(
-                        "state_store_word {}, key ptr {}",
-                        namer.name(context, stored_val),
-                        namer.name(context, key),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                ))
-            }
             Instruction::Store {
                 dst_val,
                 stored_val,
             } => maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
                 Doc::text(format!(
-                    "store {}, ptr {}",
+                    "store {} to {}",
                     namer.name(context, stored_val),
                     namer.name(context, dst_val),
                 ))

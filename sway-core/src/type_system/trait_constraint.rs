@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::*,
+    engine_threading::*,
     error::*,
     language::{parsed::Supertrait, ty, CallPath},
     semantic_analysis::{declaration::insert_supertraits_into_namespace, TypeCheckContext},
@@ -18,17 +18,17 @@ pub struct TraitConstraint {
     pub(crate) type_arguments: Vec<TypeArgument>,
 }
 
-impl HashWithTypeEngine for TraitConstraint {
+impl HashWithEngines for TraitConstraint {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.trait_name.hash(state);
         self.type_arguments.hash(state, type_engine);
     }
 }
-impl EqWithTypeEngine for TraitConstraint {}
-impl PartialEqWithTypeEngine for TraitConstraint {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.trait_name == rhs.trait_name
-            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+impl EqWithEngines for TraitConstraint {}
+impl PartialEqWithEngines for TraitConstraint {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.trait_name == other.trait_name
+            && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
 
@@ -39,18 +39,18 @@ impl Spanned for TraitConstraint {
 }
 
 impl CopyTypes for TraitConstraint {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.copy_types(type_mapping, engines));
     }
 }
 
 impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }
 
@@ -92,6 +92,8 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         // Right now we don't have the ability to support defining a type for a
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
@@ -132,7 +134,8 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                ctx.type_engine
+                    .insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -153,6 +156,8 @@ impl TraitConstraint {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let declaration_engine = ctx.declaration_engine;
+
         let TraitConstraint {
             trait_name,
             type_arguments,
@@ -168,7 +173,7 @@ impl TraitConstraint {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(de_get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

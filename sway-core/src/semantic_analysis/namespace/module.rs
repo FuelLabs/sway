@@ -1,9 +1,10 @@
 use crate::{
+    engine_threading::Engines,
     error::*,
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace, TypeEngine,
+    Ident, Namespace,
 };
 
 use super::{
@@ -44,11 +45,11 @@ pub struct Module {
 
 impl Module {
     pub fn default_with_constants(
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, type_engine, constants).map_err(|_| {
+        Module::default_with_constants_inner(&handler, engines, constants).map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
 
@@ -59,7 +60,7 @@ impl Module {
 
     fn default_with_constants_inner(
         handler: &Handler,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
@@ -94,10 +95,7 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                handler,
-                type_engine,
-                const_item,
-                attributes,
+                handler, engines, const_item, attributes,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
@@ -114,7 +112,7 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns, type_engine);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:
@@ -193,10 +191,13 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -208,7 +209,7 @@ impl Module {
         let mut symbols = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(),
+                decl.visibility(declaration_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -221,7 +222,7 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns
             .implemented_traits
-            .extend(implemented_traits, type_engine);
+            .extend(implemented_traits, engines);
         for symbol in symbols {
             dst_ns
                 .use_synonyms
@@ -241,10 +242,13 @@ impl Module {
         &mut self,
         src: &Path,
         dst: &Path,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -257,7 +261,7 @@ impl Module {
         let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(),
+                decl.visibility(declaration_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -270,7 +274,7 @@ impl Module {
         let dst_ns = &mut self[dst];
         dst_ns
             .implemented_traits
-            .extend(implemented_traits, type_engine);
+            .extend(implemented_traits, engines);
         let mut try_add = |symbol, path| {
             dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
         };
@@ -298,13 +302,13 @@ impl Module {
     /// import.
     pub(crate) fn self_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         dst: &Path,
         alias: Option<Ident>,
     ) -> CompileResult<()> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(type_engine, src, last_item, dst, alias)
+        self.item_import(engines, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -312,7 +316,7 @@ impl Module {
     /// Paths are assumed to be relative to `self`.
     pub(crate) fn item_import(
         &mut self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         src: &Path,
         item: &Ident,
         dst: &Path,
@@ -320,6 +324,9 @@ impl Module {
     ) -> CompileResult<()> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let declaration_engine = engines.de();
+
         let src_ns = check!(
             self.check_submodule(src),
             return err(warnings, errors),
@@ -330,7 +337,7 @@ impl Module {
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
-                    decl.visibility(),
+                    decl.visibility(declaration_engine),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -349,14 +356,14 @@ impl Module {
                         return ok((), warnings, errors);
                     }
                 }
-                let type_id = decl.return_type(&item.span(), type_engine).value;
+                let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(
                         src_ns
                             .implemented_traits
-                            .filter_by_type_item_import(type_id, type_engine),
-                        type_engine,
+                            .filter_by_type_item_import(type_id, engines),
+                        engines,
                     );
                 }
                 // no matter what, import it this way though.
@@ -386,9 +393,7 @@ impl Module {
         };
 
         let dst_ns = &mut self[dst];
-        dst_ns
-            .implemented_traits
-            .extend(impls_to_insert, type_engine);
+        dst_ns.implemented_traits.extend(impls_to_insert, engines);
 
         ok((), warnings, errors)
     }

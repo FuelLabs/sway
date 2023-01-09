@@ -45,10 +45,13 @@ pub enum IrError {
     VerifyIntToPtrToCopyType(String),
     VerifyIntToPtrUnknownSourceType,
     VerifyLoadFromNonPointer,
+    VerifyMemcopyNonExistentPointer,
     VerifyMismatchedReturnTypes(String),
     VerifyBlockArgMalformed,
     VerifyPtrCastFromNonPointer,
+    VerifyPtrCastToNonPointer,
     VerifyReturnRefTypeValue(String, String),
+    VerifyStateAccessNumOfSlots,
     VerifyStateKeyBadType,
     VerifyStateDestBadType(String),
     VerifyStoreMismatchedTypes,
@@ -253,6 +256,12 @@ impl fmt::Display for IrError {
             IrError::VerifyLoadFromNonPointer => {
                 write!(f, "Verification failed: Load must be from a pointer.")
             }
+            IrError::VerifyMemcopyNonExistentPointer => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to use non pointer with `mem_copy`."
+                )
+            }
             IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
                 f,
                 "Verification failed: Function {fn_str} return type must match its RET \
@@ -273,11 +282,20 @@ impl fmt::Display for IrError {
                     "Verification failed: Pointer cast from non pointer value."
                 )
             }
+            IrError::VerifyPtrCastToNonPointer => {
+                write!(f, "Verification failed: Pointer cast to non pointer type.")
+            }
             IrError::VerifyReturnRefTypeValue(fn_str, ty_str) => {
                 write!(
                     f,
                     "Verification failed: Function {fn_str} must not return value with reference \
                     type of {ty_str}.",
+                )
+            }
+            IrError::VerifyStateAccessNumOfSlots => {
+                write!(
+                    f,
+                    "Verification failed: Number of slots for state access must be an integer."
                 )
             }
             IrError::VerifyStateKeyBadType => {

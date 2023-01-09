@@ -1,5 +1,7 @@
 script;
 
+use core::ops::*;
+
 use std::{
     assert::assert,
     logging::log,
@@ -7,10 +9,6 @@ use std::{
 
 trait MyAdd {
     fn my_add(self, other: Self) -> Self;
-}
-
-trait MyMul {
-    fn my_mul(self, other: Self) -> Self;
 }
 
 impl MyAdd for u8 {
@@ -139,6 +137,27 @@ fn do_math3<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyMath {
     }
 }
 
+enum MyOption<T> {
+    Some: T,
+    None: ()
+}
+
+impl<T> MyOption<T> {
+    pub fn ok_or<E>(self, err: E) -> Result<T, E> {
+        match self {
+            MyOption::Some(v) => Result::Ok(v),
+            MyOption::None => Result::Err(err),
+        }
+    }
+}
+
+fn test_ok_or<T, E>(val: T, default: E) where T: Eq, E: Eq {
+    match MyOption::Some(val).ok_or(default) {
+        Result::Ok(inner) => assert(val == inner),
+        Result::Err(_) => revert(0),
+    }
+}
+
 fn main() -> u64 {
     let a = MyPoint {
         x: 1u64,
@@ -197,6 +216,8 @@ fn main() -> u64 {
     let m = do_math3(a, b);
     assert(m.x == 12u64);
     assert(m.y == 20u64);
+
+    test_ok_or(true, 0);
 
     42
 }

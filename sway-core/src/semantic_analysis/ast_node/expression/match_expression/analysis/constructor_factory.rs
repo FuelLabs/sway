@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span};
 
-use crate::{error::*, language::ty, type_system::TypeId, TypeEngine, TypeInfo};
+use crate::{error::*, language::ty, type_system::TypeId, Engines, TypeEngine, TypeInfo};
 
 use super::{
     patstack::PatStack,
@@ -74,7 +74,7 @@ impl ConstructorFactory {
     /// ```
     pub(crate) fn create_pattern_not_present(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         sigma: PatStack,
         span: &Span,
     ) -> CompileResult<Pattern> {
@@ -291,7 +291,7 @@ impl ConstructorFactory {
                     errors
                 );
                 let (enum_name, enum_variants) = check!(
-                    type_info.expect_enum(type_engine, "", span),
+                    type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -396,7 +396,7 @@ impl ConstructorFactory {
     /// from the "`Tuple` with 2 sub-patterns" type.
     pub(crate) fn is_complete_signature(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         pat_stack: &PatStack,
         span: &Span,
     ) -> CompileResult<bool> {
@@ -529,7 +529,7 @@ impl ConstructorFactory {
                     errors
                 );
                 let (enum_name, enum_variants) = check!(
-                    type_info.expect_enum(type_engine, "", span),
+                    type_info.expect_enum(engines, "", span),
                     return err(warnings, errors),
                     warnings,
                     errors

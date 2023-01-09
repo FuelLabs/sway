@@ -85,8 +85,8 @@ pub enum ConvertParseTreeError {
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
     DuplicateParameterIdentifier { name: Ident, span: Span },
-    #[error("self parameter is not allowed for a free function")]
-    SelfParameterNotAllowedForFreeFn { span: Span },
+    #[error("self parameter is not allowed for {fn_kind}")]
+    SelfParameterNotAllowedForFn { fn_kind: String, span: Span },
     #[error("test functions are only allowed at module level")]
     TestFnOnlyAllowedAtModuleLevel { span: Span },
     #[error("`impl Self` for contracts is not supported")]
@@ -97,6 +97,10 @@ pub enum ConvertParseTreeError {
     CannotAnnotateDependency { span: Span },
     #[error("Expected dependency at the beginning before any other items.")]
     ExpectedDependencyAtBeginning { span: Span },
+    #[error("Ref expressions are not supported yet.")]
+    RefExprNotYetSupported { span: Span },
+    #[error("Deref expressions are not supported yet.")]
+    DerefExprNotYetSupported { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -143,12 +147,14 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
-            ConvertParseTreeError::SelfParameterNotAllowedForFreeFn { span, .. } => span.clone(),
+            ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
             ConvertParseTreeError::TestFnOnlyAllowedAtModuleLevel { span } => span.clone(),
             ConvertParseTreeError::SelfImplForContract { span, .. } => span.clone(),
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
             ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
+            ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
+            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
         }
     }
 }

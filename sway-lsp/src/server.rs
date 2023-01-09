@@ -102,6 +102,7 @@ fn capabilities() -> ServerCapabilities {
         document_formatting_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
+        code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -123,23 +124,14 @@ impl Backend {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.sessions.get(&manifest_dir) {
+        let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
             Some(item) => item.value().clone(),
             None => {
-                // TODO, remove this once the type engine no longer uses global memory: https://github.com/FuelLabs/sway/issues/2063
-                // Until then, we clear the current project and init with the new project.
-                // At least allows the user to switch between projects within a workspace but only if they
-                // have one pane open.
-                let _ = self.sessions.iter().map(|item| {
-                    let session = item.value();
-                    session.shutdown();
-                });
-                self.sessions.clear();
-
                 // If no session can be found, then we need to call init and inserst a new session into the map
                 self.init(uri)?;
                 self.sessions
-                    .get(&manifest_dir)
+                    .try_get(&manifest_dir)
+                    .try_unwrap()
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
             }
@@ -295,6 +287,24 @@ impl LanguageServer for Backend {
                 let position = params.text_document_position_params.position;
                 Ok(capabilities::hover::hover_data(session, uri, position))
             }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
+    async fn code_action(
+        &self,
+        params: CodeActionParams,
+    ) -> jsonrpc::Result<Option<CodeActionResponse>> {
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((temp_uri, session)) => Ok(capabilities::code_actions(
+                session,
+                &params.range,
+                params.text_document,
+                &temp_uri,
+            )),
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
@@ -472,7 +482,8 @@ impl Backend {
             Ok((_, session)) => {
                 let ranges = session
                     .runnables
-                    .get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_unwrap()
                     .map(|item| {
                         let runnable = item.value();
                         vec![(runnable.range, format!("{}", runnable.tree_type))]
@@ -585,7 +596,6 @@ mod tests {
     use super::*;
     use crate::utils::test::{doc_comments_dir, e2e_test_dir};
     use serde_json::json;
-    use serial_test::serial;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
     use tower_lsp::{
@@ -872,14 +882,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn initialize() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
     }
 
     #[tokio::test]
-    #[serial]
     async fn initialized() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -887,7 +895,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn initializes_only_once() {
         let (mut service, _) = LspService::new(Backend::new);
         let initialize = initialize_request(&mut service).await;
@@ -898,7 +905,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn shutdown() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -911,7 +917,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn refuses_requests_after_shutdown() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = initialize_request(&mut service).await;
@@ -922,7 +927,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_open() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
@@ -930,7 +934,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_close() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
@@ -939,7 +942,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn did_change() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -948,7 +950,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -959,7 +960,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn show_ast() {
         let (mut service, _) = LspService::build(Backend::new)
             .custom_method("sway/show_ast", Backend::show_ast)
@@ -971,7 +971,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[serial]
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
@@ -997,7 +996,6 @@ mod tests {
     macro_rules! lsp_capability_test {
         ($test:ident, $capability:expr) => {
             #[tokio::test]
-            #[serial]
             async fn $test() {
                 test_lsp_capability!(doc_comments_dir(), $capability);
             }

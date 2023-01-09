@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()The name "MyContract" shadows another symbol with the same name.

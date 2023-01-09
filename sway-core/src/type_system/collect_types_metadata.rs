@@ -8,7 +8,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, CompileResult, TypeEngine};
+use crate::{
+    declaration_engine::DeclarationEngine, type_system::TypeId, CompileResult, Engines, TypeEngine,
+};
 use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -68,9 +70,10 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) type_engine: &'cx TypeEngine,
+    pub(crate) declaration_engine: &'cx DeclarationEngine,
 }
 
-impl<'a> CollectTypesMetadataContext<'a> {
+impl<'cx> CollectTypesMetadataContext<'cx> {
     pub fn log_id_counter(&self) -> usize {
         self.log_id_counter
     }
@@ -115,9 +118,11 @@ impl<'a> CollectTypesMetadataContext<'a> {
         None
     }
 
-    pub fn new(type_engine: &'a TypeEngine) -> Self {
+    pub fn new(engines: Engines<'cx>) -> Self {
+        let (type_engine, declaration_engine) = engines.unwrap();
         let mut ctx = Self {
             type_engine,
+            declaration_engine,
             log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],

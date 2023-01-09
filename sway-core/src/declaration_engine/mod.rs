@@ -17,5 +17,5 @@ pub(crate) mod replace_declaration_id;
 
 pub(crate) use decl_mapping::*;
 pub use declaration_engine::*;
-pub(crate) use declaration_id::*;
+pub use declaration_id::*;
 pub(crate) use replace_declaration_id::*;

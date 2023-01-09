@@ -34,8 +34,8 @@ dep flags;
 dep u128;
 dep u256;
 dep vec;
-dep message;
 dep bytes;
+dep message;
 dep prelude;
 dep low_level_call;
 

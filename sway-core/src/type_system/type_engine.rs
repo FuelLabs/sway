@@ -1,19 +1,21 @@
-use core::fmt;
-use core::hash::{Hash, Hasher};
+use core::fmt::Write;
+use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::cmp::Ordering;
 use std::hash::BuildHasher;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
 use crate::{
-    concurrent_slab::ConcurrentSlab, declaration_engine::*, language::ty, namespace::Path,
-    type_system::*, Namespace,
+    concurrent_slab::ConcurrentSlab, declaration_engine::*, engine_threading::*, language::ty,
+    namespace::Path, type_system::*, Namespace,
 };
 
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
+
+use super::unify::Unifier;
+use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
@@ -23,22 +25,12 @@ pub struct TypeEngine {
     unify_map: RwLock<HashMap<TypeId, Vec<TypeId>>>,
 }
 
-impl fmt::Display for TypeEngine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.slab.with_slice(|elems| {
-            let list = elems.iter().map(|type_info| self.help_out(type_info));
-            let list = ListDisplay { list };
-            write!(f, "TypeEngine {{\n{}\n}}", list)
-        })
-    }
-}
-
 fn make_hasher<'a: 'b, 'b, K>(
     hash_builder: &'a impl BuildHasher,
     type_engine: &'b TypeEngine,
 ) -> impl Fn(&K) -> u64 + 'b
 where
-    K: HashWithTypeEngine + ?Sized,
+    K: HashWithEngines + ?Sized,
 {
     move |key: &K| {
         let mut state = hash_builder.build_hasher();
@@ -50,15 +42,19 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert_type(&self, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert_type(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        ty: TypeInfo,
+    ) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, self)(&ty);
 
-        let raw_entry = id_map
-            .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, self));
+        let raw_entry = id_map.raw_entry_mut().from_hash(ty_hash, |x| {
+            x.eq(&ty, Engines::new(self, declaration_engine))
+        });
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
@@ -104,18 +100,6 @@ impl TypeEngine {
         }
     }
 
-    /// Currently the [TypeEngine] is a lazy static object, so when we run
-    /// cargo tests, we can either choose to use a local [TypeEngine] and bypass
-    /// all of the global methods or we can use the lazy static [TypeEngine].
-    /// This method is for testing to be able to bypass the global methods for
-    /// the lazy static [TypeEngine] (contained within the call to hash in the
-    /// id_map).
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub(crate) fn insert_type_always(&self, ty: TypeInfo) -> TypeId {
-        TypeId::new(self.slab.insert(ty))
-    }
-
     /// Performs a lookup of `id` into the [TypeEngine].
     pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
         self.slab.get(id.index())
@@ -127,8 +111,13 @@ impl TypeEngine {
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
-        self.storage_only_types.exists(|x| ti.is_subset_of(x, self))
+    pub(crate) fn is_type_info_storage_only(
+        &self,
+        declaration_engine: &DeclarationEngine,
+        ti: &TypeInfo,
+    ) -> bool {
+        self.storage_only_types
+            .exists(|x| ti.is_subset_of(x, Engines::new(self, declaration_engine)))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -161,8 +150,10 @@ impl TypeEngine {
     ///         the same length
     ///     4b. for each type argument in `type_arguments`, resolve the type
     ///     4c. refresh the generic types with a [TypeMapping]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
+        declaration_engine: &DeclarationEngine,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -175,6 +166,7 @@ impl TypeEngine {
     {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let engines = Engines::new(self, declaration_engine);
         match (
             value.type_parameters().is_empty(),
             type_arguments.is_empty(),
@@ -188,8 +180,9 @@ impl TypeEngine {
                     });
                     return err(warnings, errors);
                 }
-                let type_mapping = TypeMapping::from_type_parameters(value.type_parameters(), self);
-                value.copy_types(&type_mapping, self);
+                let type_mapping =
+                    TypeMapping::from_type_parameters(engines, value.type_parameters());
+                value.copy_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -221,6 +214,7 @@ impl TypeEngine {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type(
+                            declaration_engine,
                             type_argument.type_id,
                             &type_argument.span,
                             enforce_type_arguments,
@@ -228,7 +222,7 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -244,7 +238,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping, self);
+                value.copy_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
         }
@@ -253,17 +247,27 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in both `received` and `expected`, then unify `received` and
     /// `expected`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
+        declaration_engine: &DeclarationEngine,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(self, self_type);
-        expected.replace_self_type(self, self_type);
-        self.unify(received, expected, span, help_text)
+        received.replace_self_type(Engines::new(self, declaration_engine), self_type);
+        expected.replace_self_type(Engines::new(self, declaration_engine), self_type);
+        self.unify(
+            declaration_engine,
+            received,
+            expected,
+            span,
+            help_text,
+            err_override,
+        )
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -275,80 +279,44 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
+        declaration_engine: &DeclarationEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            self, received, expected, span, help_text, false,
-        ))
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify_right
-    /// `received` and `expected`.
-    pub(crate) fn unify_right_with_self(
-        &self,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(self, self_type);
-        expected.replace_self_type(self, self_type);
-        self.unify_right(received, expected, span, help_text)
-    }
-
-    /// Make the type of `expected` equivalent to `received`.
-    ///
-    /// This is different than the `unify` method because it _only allows
-    /// changes to `expected`_. It also rejects the case where `received` is a
-    /// generic type and `expected` is not a generic type.
-    ///
-    /// Here is an example for why this method is necessary. Take this Sway
-    /// code:
-    ///
-    /// ```ignore
-    /// fn test_function<T>(input: T) -> T {
-    ///     input
-    /// }
-    ///
-    /// fn call_it() -> bool {
-    ///     test_function(true)
-    /// }
-    /// ```
-    ///
-    /// This is valid Sway code and we should expect it to compile because the
-    /// type `bool` is valid under the generic type `T`.
-    ///
-    /// Now, look at this Sway code:
-    ///
-    /// ```ignore
-    /// fn test_function(input: bool) -> bool {
-    ///     input
-    /// }
-    ///
-    /// fn call_it<T>(input: T) -> T {
-    ///     test_function(input)
-    /// }
-    /// ```
-    ///
-    /// We should expect this Sway to fail to compile because the generic type
-    /// `T` is not valid under the type `bool`.
-    ///
-    /// This is the function that makes that distinction for us!
-    pub(crate) fn unify_right(
-        &self,
-        received: TypeId,
-        expected: TypeId,
-        span: &Span,
-        help_text: &str,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify_right(
-            self, received, expected, span, help_text,
-        ))
+        let engines = Engines::new(self, declaration_engine);
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) =
+            normalize_err(Unifier::new(engines, help_text).unify(received, expected, span));
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     /// Helper function for making the type of `expected` equivalent to
@@ -397,21 +365,57 @@ impl TypeEngine {
     /// generic types, then `expected` will be replaced with `received`.
     pub(crate) fn unify_adt(
         &self,
+        declaration_engine: &DeclarationEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
         help_text: &str,
+        err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        normalize_err(unify::unify(
-            self, expected, received, span, help_text, true,
-        ))
+        let engines = Engines::new(self, declaration_engine);
+        if !UnifyCheck::new(engines).check(received, expected) {
+            // create a "mismatched type" error unless the `err_override`
+            // argument has been provided
+            let mut errors = vec![];
+            match err_override {
+                Some(err_override) => {
+                    errors.push(err_override);
+                }
+                None => {
+                    errors.push(CompileError::TypeError(TypeError::MismatchedType {
+                        expected: engines.help_out(expected).to_string(),
+                        received: engines.help_out(received).to_string(),
+                        help_text: help_text.to_string(),
+                        span: span.clone(),
+                    }));
+                }
+            }
+            return (vec![], errors);
+        }
+        let (warnings, errors) = normalize_err(
+            Unifier::new(engines, help_text)
+                .flip_arguments()
+                .unify(expected, received, span),
+        );
+        if errors.is_empty() {
+            (warnings, errors)
+        } else if err_override.is_some() {
+            // return the errors from unification unless the `err_override`
+            // argument has been provided
+            (warnings, vec![err_override.unwrap()])
+        } else {
+            (warnings, errors)
+        }
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.look_up_type_id(id) {
-            TypeInfo::Unknown => Err(TypeError::UnknownType {
-                span: error_span.clone(),
-            }),
+            TypeInfo::Unknown => {
+                //panic!();
+                Err(TypeError::UnknownType {
+                    span: error_span.clone(),
+                })
+            }
             ty => Ok(ty),
         }
     }
@@ -419,8 +423,10 @@ impl TypeEngine {
     /// Resolve the type of the given [TypeId], replacing any instances of
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type(
         &self,
+        declaration_engine: &DeclarationEngine,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -430,6 +436,7 @@ impl TypeEngine {
     ) -> CompileResult<TypeId> {
         let mut warnings = vec![];
         let mut errors = vec![];
+        let engines = Engines::new(self, declaration_engine);
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.look_up_type_id(type_id) {
             TypeInfo::Custom {
@@ -445,7 +452,9 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_struct(original_id, &name.span())),
+                            CompileResult::from(
+                                declaration_engine.get_struct(original_id, &name.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -454,6 +463,7 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
+                                declaration_engine,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -467,10 +477,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(self);
+                        let type_id = new_copy.create_type_id(engines);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(self, type_id);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
                         type_id
@@ -478,7 +488,9 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(de_get_enum(original_id, &name.span())),
+                            CompileResult::from(
+                                declaration_engine.get_enum(original_id, &name.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -487,6 +499,7 @@ impl TypeEngine {
                         // monomorphize the copy, in place
                         check!(
                             self.monomorphize(
+                                declaration_engine,
                                 &mut new_copy,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
@@ -500,10 +513,10 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(self);
+                        let type_id = new_copy.create_type_id(engines);
 
                         // take any trait methods that apply to this type and copy them to the new type
-                        namespace.insert_trait_implementation_for_type(self, type_id);
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
 
                         // return the id
                         type_id
@@ -514,13 +527,14 @@ impl TypeEngine {
                             name: name.to_string(),
                             span: name.span(),
                         });
-                        self.insert_type(TypeInfo::ErrorRecovery)
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery)
                     }
                 }
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
                     self.resolve_type(
+                        declaration_engine,
                         elem_ty.type_id,
                         span,
                         enforce_type_arguments,
@@ -528,16 +542,17 @@ impl TypeEngine {
                         namespace,
                         mod_path
                     ),
-                    self.insert_type(TypeInfo::ErrorRecovery),
+                    self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert_type(TypeInfo::Array(elem_ty, n))
+                self.insert_type(declaration_engine, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
                         self.resolve_type(
+                            declaration_engine,
                             type_argument.type_id,
                             span,
                             enforce_type_arguments,
@@ -545,12 +560,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(TypeInfo::ErrorRecovery),
+                        self.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert_type(TypeInfo::Tuple(type_arguments))
+                self.insert_type(declaration_engine, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };
@@ -562,6 +577,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type_with_self(
         &self,
+        declaration_engine: &DeclarationEngine,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -570,8 +586,9 @@ impl TypeEngine {
         namespace: &mut Namespace,
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(self, self_type);
+        type_id.replace_self_type(Engines::new(self, declaration_engine), self_type);
         self.resolve_type(
+            declaration_engine,
             type_id,
             span,
             enforce_type_arguments,
@@ -581,12 +598,18 @@ impl TypeEngine {
         )
     }
 
-    /// Helps out some `thing: T` by adding `self` as context.
-    pub fn help_out<T>(&self, thing: T) -> WithTypeEngine<'_, T> {
-        WithTypeEngine {
-            thing,
-            engine: self,
-        }
+    /// Pretty print method for printing the [TypeEngine]. This method is
+    /// manually implemented to avoid implementation overhead regarding using
+    /// [DisplayWithEngines].
+    pub fn pretty_print(&self, declaration_engine: &DeclarationEngine) -> String {
+        let engines = Engines::new(self, declaration_engine);
+        let mut builder = String::new();
+        self.slab.with_slice(|elems| {
+            let list = elems.iter().map(|type_info| engines.help_out(type_info));
+            let list = ListDisplay { list };
+            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+        });
+        builder
     }
 }
 
@@ -635,125 +658,3 @@ pub(crate) enum EnforceTypeArguments {
     Yes,
     No,
 }
-
-pub(crate) trait DisplayWithTypeEngine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result;
-}
-
-impl<T: DisplayWithTypeEngine> DisplayWithTypeEngine for &T {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
-        (*self).fmt(f, type_engine)
-    }
-}
-
-pub trait HashWithTypeEngine {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine);
-}
-
-impl<T: HashWithTypeEngine + ?Sized> HashWithTypeEngine for &T {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        (*self).hash(state, type_engine)
-    }
-}
-
-impl<T: HashWithTypeEngine> HashWithTypeEngine for Option<T> {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        match self {
-            None => state.write_u8(0),
-            Some(x) => x.hash(state, type_engine),
-        }
-    }
-}
-
-impl<T: HashWithTypeEngine> HashWithTypeEngine for [T] {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        for x in self {
-            x.hash(state, type_engine)
-        }
-    }
-}
-
-pub trait EqWithTypeEngine: PartialEqWithTypeEngine {}
-
-pub trait PartialEqWithTypeEngine {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool;
-}
-
-pub trait OrdWithTypeEngine {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering;
-}
-
-impl<T: EqWithTypeEngine + ?Sized> EqWithTypeEngine for &T {}
-impl<T: PartialEqWithTypeEngine + ?Sized> PartialEqWithTypeEngine for &T {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        (*self).eq(*rhs, type_engine)
-    }
-}
-impl<T: OrdWithTypeEngine + ?Sized> OrdWithTypeEngine for &T {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
-        (*self).cmp(*rhs, type_engine)
-    }
-}
-
-impl<T: EqWithTypeEngine> EqWithTypeEngine for Option<T> {}
-impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for Option<T> {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        match (self, rhs) {
-            (None, None) => true,
-            (Some(x), Some(y)) => x.eq(y, type_engine),
-            _ => false,
-        }
-    }
-}
-
-impl<T: EqWithTypeEngine> EqWithTypeEngine for [T] {}
-impl<T: PartialEqWithTypeEngine> PartialEqWithTypeEngine for [T] {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.len() == rhs.len()
-            && self
-                .iter()
-                .zip(rhs.iter())
-                .all(|(x, y)| x.eq(y, type_engine))
-    }
-}
-impl<T: OrdWithTypeEngine> OrdWithTypeEngine for [T] {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
-        self.iter()
-            .zip(rhs.iter())
-            .map(|(x, y)| x.cmp(y, type_engine))
-            .find(|o| o.is_ne())
-            .unwrap_or_else(|| self.len().cmp(&rhs.len()))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct WithTypeEngine<'a, T> {
-    pub thing: T,
-    pub engine: &'a TypeEngine,
-}
-
-impl<'a, T> WithTypeEngine<'a, T> {
-    pub fn new(thing: T, engine: &'a TypeEngine) -> Self {
-        WithTypeEngine { thing, engine }
-    }
-}
-
-impl<T: DisplayWithTypeEngine> fmt::Display for WithTypeEngine<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.thing.fmt(f, self.engine)
-    }
-}
-
-impl<T: HashWithTypeEngine> Hash for WithTypeEngine<'_, T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.thing.hash(state, self.engine)
-    }
-}
-
-impl<T: PartialEqWithTypeEngine> PartialEq for WithTypeEngine<'_, T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engine)
-    }
-}
-
-impl<T: EqWithTypeEngine> Eq for WithTypeEngine<'_, T> {}

@@ -141,7 +141,7 @@ warning
 29 | |
 30 | |         // Storage update _after_ external call
 31 | |         storage.balances.insert(sender, 0);
-   | |__________________________________________- Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
+   | |__________________________________________- Storage write after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
 32 |       }
 33 |   }
    |
@@ -149,6 +149,12 @@ ____
 ```
 
 In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.
+
+In addition to storage reads and writes after an interaction, the CEI analyzer reports analogous warnings about:
+
+- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `tro` asm instructions or library functions using them under the hood;
+- balance trees reads with `bal` instruction;
+- changes to the output messages that can be produced by the `__smo` intrinsic function or the `smo` asm instruction.
 
 ## Differences from the EVM
 

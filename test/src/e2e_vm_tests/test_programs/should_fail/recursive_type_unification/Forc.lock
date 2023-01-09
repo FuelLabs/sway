@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-07F1C570AB447C35'
+
+[[package]]
+name = 'recursive_type_unification'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-07F1C570AB447C35'
+dependencies = ['core']

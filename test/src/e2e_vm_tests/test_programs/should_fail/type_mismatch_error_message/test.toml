@@ -1,3 +1,15 @@
 category = "fail"
 
-# check: $()No method named "does_not_exist" found for type "Result<Data<bool>, str[4]>".
+# check: $()error
+# check: type_mismatch_error_message/src/main.sw:18:5
+# check: $()fn test<A, I>(arg: A) -> Item<I> {
+# check: $()Item {
+# check: $()item: arg
+# check: $()}
+# nextln: $()Mismatched types.
+# nextln: $()expected: Item<I>
+# nextln: $()found:    Item<A>
+# nextln: $()help: Implicit return must match up with block's type.
+
+# check: $()error
+# check: $()No method named "does_not_exist" found for type "MyResult<Data<bool>, str[4]>".

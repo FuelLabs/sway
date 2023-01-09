@@ -40,6 +40,9 @@ impl Parse for Pattern {
         }
 
         let path = parser.parse::<PathExpr>()?;
+        if path.incomplete_suffix {
+            return Ok(Pattern::Error(Box::new([path.span()])));
+        }
         if let Some(args) = Parens::try_parse(parser)? {
             return Ok(Pattern::Constructor { path, args });
         }
