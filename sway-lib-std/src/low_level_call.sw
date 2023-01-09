@@ -23,6 +23,7 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
+/// Represent a raw pointer as a Bytes
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 
     let mut bytes = Bytes::with_capacity(8);
@@ -36,14 +37,14 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
     bytes
 }
 
-// Call a target contract with an already-encoded payload
-pub fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
+/// Call a target contract with an already-encoded payload
+fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
     asm(r1: payload.buf.ptr, r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
         call r1 r2 r3 r4;
     };
 }
 
-// Encode a payload from the function selection and calldata, and call the target contract
+/// Encode a payload from the function selection and calldata
 fn create_payload(
     target: ContractId,
     function_selector: Bytes,
@@ -70,12 +71,19 @@ fn create_payload(
     payload
 }
 
+/// Call a target contract with a function selector and calldata, provided as `Bytes`
+/// Call a target contract with a function selector and calldata, provided as `Vec<u8>`
+/// `target` : The contract ID of the contract to be called
+/// `function_selector` : The function selector of the function to be called. E.g. bytes8(sha256("my_func(u64)"))
+/// `calldata` : The encoded arguments with which to call the function
+/// `single_value_type_arg` : Whether the function being called takesa single value-type argument
+/// `call_params` : The amount and color of coins to forward, and the gas to forward
 pub fn call_with_function_selector(
     target: ContractId,
     function_selector: Bytes,
     calldata: Bytes,
-    call_params: CallParams,
     single_value_type_arg: bool,
+    call_params: CallParams,
 ) {
     let payload = create_payload(target, function_selector, calldata, single_value_type_arg);
     call_with_raw_payload(payload, call_params);
@@ -83,6 +91,7 @@ pub fn call_with_function_selector(
 
 
 // TO DO: Deprecate when SDK supports Bytes
+
 pub fn call_with_function_selector_vec(
     target: ContractId,
     function_selector: Vec<u8>,
@@ -91,11 +100,7 @@ pub fn call_with_function_selector_vec(
     call_params: CallParams
 ) {
     let mut function_selector = function_selector;
-    let function_selector_bytes = Bytes::from_vec_u8(function_selector);
-
     let mut calldata = calldata;
-    let calldata_bytes = Bytes::from_vec_u8(calldata);
 
-    let payload = create_payload(target, function_selector_bytes, calldata_bytes, single_value_type_arg);
-    call_with_raw_payload(payload, call_params);
+    call_with_function_selector(target, Bytes::from_vec_u8(function_selector), Bytes::from_vec_u8(calldata), single_value_type_arg, call_params);
 }
