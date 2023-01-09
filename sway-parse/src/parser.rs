@@ -4,7 +4,8 @@ use core::marker::PhantomData;
 use sway_ast::keywords::Keyword;
 use sway_ast::literal::Literal;
 use sway_ast::token::{
-    DocComment, Group, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream, TokenTree, GenericGroup,
+    DocComment, GenericGroup, Group, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
+    TokenTree,
 };
 use sway_ast::PubToken;
 use sway_error::error::CompileError;
@@ -235,49 +236,7 @@ impl<'a> Peeker<'a> {
         *self.num_tokens = punct_kinds.len();
         Ok(span)
     }
-
-    pub fn peek_open_delimiter(self, delimiter: &[OpeningDelimiter]) -> Result<OpeningDelimiter, Self> {
-        let (last_punct_kind, first_punct_kinds) = delimiter
-            .split_last()
-            .unwrap_or_else(|| panic!("peek_open_delimiter called with empty slice"));
-            if self.token_trees.len() < delimiter.len() {
-                return Err(self);
-            }
-            for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
-                match tt {
-                    TokenTree::Group(GenericGroup {
-                        delimiters,
-                        ..
-                    }) if *delimiters.opening == *open_delim => {}
-                    _ => return Err(self),
-                }
-            }
-            let span_end = match &self.token_trees[delimiter.len() - 1] {
-                TokenTree::Group(GenericGroup {
-                    delimiters,
-                    token_stream,
-                    span,
-                }) if *delimiters.opening == *last_punct_kind => match spacing {
-                    Spacing::Alone => span,
-                    Spacing::Joint => match &self.token_trees.get(punct_kinds.len()) {
-                        Some(TokenTree::Punct(Punct { kind, .. })) => {
-                            if not_followed_by.contains(kind) {
-                                return Err(self);
-                            }
-                            span
-                        }
-                        _ => span,
-                    },
-                },
-                _ => return Err(self),
-            };
-            let span_start = match &self.token_trees[0] {
-                TokenTree::Punct(Punct { span, .. }) => span,
-                _ => unreachable!(),
-            };
-            let span = Span::join(span_start.clone(), span_end.clone());
-            *self.num_tokens = punct_kinds.len();
-            Ok(span)
+    pub fn peek_open_delimiter(self) -> Result<OpeningDelimiter, Self> {
         match self.token_trees {
             [TokenTree::Group(Group { delimiters, .. }), ..] => {
                 *self.num_tokens = 1;
@@ -285,6 +244,36 @@ impl<'a> Peeker<'a> {
             }
             _ => Err(self),
         }
+    }
+    pub fn peek_open_delimiter_token(self, delimiter: &[OpeningDelimiter]) -> Result<Span, Self> {
+        let (last_punct_kind, first_punct_kinds) = delimiter
+            .split_last()
+            .unwrap_or_else(|| panic!("peek_open_delimiter called with empty slice"));
+        if self.token_trees.len() < delimiter.len() {
+            return Err(self);
+        }
+        for (open_delim, tt) in first_punct_kinds.iter().zip(self.token_trees.iter()) {
+            match tt {
+                TokenTree::Group(GenericGroup { delimiters, .. })
+                    if delimiters.opening == *open_delim => {}
+                _ => return Err(self),
+            }
+        }
+        let span_end = match &self.token_trees[delimiter.len() - 1] {
+            TokenTree::Group(GenericGroup {
+                delimiters,
+                token_stream,
+                span,
+            }) if delimiters.opening == *last_punct_kind => span,
+            _ => return Err(self),
+        };
+        let span_start = match &self.token_trees[0] {
+            TokenTree::Group(GenericGroup { span, .. }) => span,
+            _ => unreachable!(),
+        };
+        let span = Span::join(span_start.clone(), span_end.clone());
+        *self.num_tokens = delimiter.len();
+        Ok(span)
     }
 
     pub fn peek_doc_comment(self) -> Result<&'a DocComment, Self> {
