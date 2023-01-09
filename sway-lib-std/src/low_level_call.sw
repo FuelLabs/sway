@@ -14,7 +14,7 @@ pub struct CallParams {
     gas: u64,
 }
 
-// TODO : Replace with `pack` when implemented
+// TODO : Replace with `from` when implemented
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     let mut target_bytes = Bytes::with_capacity(32);
     target_bytes.len = 32;
@@ -38,8 +38,8 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 }
 
 // Call a target contract with an already-encoded payload
-fn call_with_raw_payload(payload: Bytes, coins: u64, asset_id: ContractId, gas: u64) {
-    asm(r1: payload.buf.ptr, r2: coins, r3: asset_id, r4: gas) {
+pub fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
+    asm(r1: payload.buf.ptr, r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
         call r1 r2 r3 r4;
     };
 }
@@ -80,5 +80,24 @@ pub fn call_with_function_selector(
     single_value_type_arg: bool,
 ) {
     let payload = create_payload(target, function_selector, calldata, single_value_type_arg);
-    call_with_raw_payload(payload, call_params.coins, call_params.asset_id, call_params.gas);
+    call_with_raw_payload(payload, call_params);
+}
+
+
+// TO DO: Deprecate when SDK supports Bytes
+pub fn call_with_function_selector_vec(
+    target: ContractId,
+    function_selector: Vec<u8>,
+    calldata: Vec<u8>,
+    call_params: CallParams,
+    single_value_type_arg: bool,
+) {
+    let mut function_selector = function_selector;
+    let function_selector_bytes = Bytes::from_vec_u8(function_selector);
+
+    let mut calldata = calldata;
+    let calldata_bytes = Bytes::from_vec_u8(calldata);
+
+    let payload = create_payload(target, function_selector_bytes, calldata_bytes, single_value_type_arg);
+    call_with_raw_payload(payload, call_params);
 }

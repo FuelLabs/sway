@@ -1,19 +1,15 @@
 script;
 
-dep test_cases;
+use std::constants::BASE_ASSET_ID ;
+use std::low_level_call::{call_with_function_selector_vec, CallParams};
 
-use std::revert::require;
+fn main(target: ContractId, function_selector: Vec<u8>, calldata: Vec<u8>, single_value_type_arg: bool) {
+    
+    let call_params = CallParams {
+        coins: 0,
+        asset_id: BASE_ASSET_ID,
+        gas: 10_000_000,
+    };
 
-pub enum TestCaseError {
-    U64: (),
-    B256: (),
-    MultipleArgsSimple: (),
-    MultipleArgsComplex: (),
-}
-
-fn main(target: ContractId) {
-    require(test_cases::test_u64(target), TestCaseError::U64);
-    require(test_cases::test_b256(target), TestCaseError::B256);
-    require(test_cases::test_multiple_args_simple(target), TestCaseError::MultipleArgsSimple);
-    require(test_cases::test_multiple_args_complex(target), TestCaseError::MultipleArgsComplex);
+    call_with_function_selector_vec(target, function_selector, calldata, call_params, single_value_type_arg);
 }
