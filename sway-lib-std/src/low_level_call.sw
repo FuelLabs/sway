@@ -72,7 +72,6 @@ fn create_payload(
 }
 
 /// Call a target contract with a function selector and calldata, provided as `Bytes`
-/// Call a target contract with a function selector and calldata, provided as `Vec<u8>`
 /// `target` : The contract ID of the contract to be called
 /// `function_selector` : The function selector of the function to be called. E.g. bytes8(sha256("my_func(u64)"))
 /// `calldata` : The encoded arguments with which to call the function
@@ -91,7 +90,7 @@ pub fn call_with_function_selector(
 
 
 // TO DO: Deprecate when SDK supports Bytes
-
+/// Call a target contract with a function selector and calldata, provided as `Vec<u8>`
 pub fn call_with_function_selector_vec(
     target: ContractId,
     function_selector: Vec<u8>,
