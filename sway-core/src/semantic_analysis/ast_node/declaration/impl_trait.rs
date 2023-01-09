@@ -45,7 +45,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, false),
             return err(warnings, errors),
             warnings,
             errors
