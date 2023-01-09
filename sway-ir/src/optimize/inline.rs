@@ -89,28 +89,22 @@ pub fn is_small_fn(
 ) -> impl Fn(&Context, &Function, &Value) -> bool {
     fn count_type_elements(context: &Context, ty: &Type) -> usize {
         // This is meant to just be a heuristic rather than be super accurate.
-        match ty {
-            Type::Unit
-            | Type::Bool
-            | Type::Uint(_)
-            | Type::B256
-            | Type::String(_)
-            | Type::Slice => 1,
-            Type::Array(aggregate) => {
-                let (ty, sz) = context.aggregates[aggregate.0].array_type();
-                count_type_elements(context, ty) * *sz as usize
-            }
-            Type::Union(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+        if ty.is_array(context) {
+            count_type_elements(context, &ty.get_array_elem_type(context).unwrap())
+                * ty.get_array_len(context).unwrap() as usize
+        } else if ty.is_union(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
                 .max()
-                .unwrap_or(1),
-            Type::Struct(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+                .unwrap_or(1)
+        } else if ty.is_struct(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
-                .sum(),
+                .sum()
+        } else {
+            1
         }
     }
 
@@ -125,7 +119,7 @@ pub fn is_small_fn(
                 .map(|max_stack_size_count| {
                     function
                         .locals_iter(context)
-                        .map(|(_name, ptr)| count_type_elements(context, ptr.get_type(context)))
+                        .map(|(_name, ptr)| count_type_elements(context, &ptr.get_type(context)))
                         .sum::<usize>()
                         <= max_stack_size_count
                 })

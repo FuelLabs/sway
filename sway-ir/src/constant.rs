@@ -1,11 +1,6 @@
 //! [`Constant`] is a typed constant value.
 
-use crate::{
-    context::Context,
-    irtype::{Aggregate, Type},
-    pretty::DebugWithContext,
-    value::Value,
-};
+use crate::{context::Context, irtype::Type, pretty::DebugWithContext, value::Value};
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
 #[derive(Debug, Clone, DebugWithContext)]
@@ -28,51 +23,51 @@ pub enum ConstantValue {
 }
 
 impl Constant {
-    pub fn new_unit() -> Self {
+    pub fn new_unit(context: &Context) -> Self {
         Constant {
-            ty: Type::Unit,
+            ty: Type::get_unit(context),
             value: ConstantValue::Unit,
         }
     }
 
-    pub fn new_bool(b: bool) -> Self {
+    pub fn new_bool(context: &Context, b: bool) -> Self {
         Constant {
-            ty: Type::Bool,
+            ty: Type::get_bool(context),
             value: ConstantValue::Bool(b),
         }
     }
 
-    pub fn new_uint(nbits: u8, n: u64) -> Self {
+    pub fn new_uint(context: &mut Context, nbits: u8, n: u64) -> Self {
         Constant {
-            ty: Type::Uint(nbits),
+            ty: Type::new_uint(context, nbits),
             value: ConstantValue::Uint(n),
         }
     }
 
-    pub fn new_b256(bytes: [u8; 32]) -> Self {
+    pub fn new_b256(context: &Context, bytes: [u8; 32]) -> Self {
         Constant {
-            ty: Type::B256,
+            ty: Type::get_b256(context),
             value: ConstantValue::B256(bytes),
         }
     }
 
-    pub fn new_string(string: Vec<u8>) -> Self {
+    pub fn new_string(context: &mut Context, string: Vec<u8>) -> Self {
         Constant {
-            ty: Type::String(string.len() as u64),
+            ty: Type::new_string(context, string.len() as u64),
             value: ConstantValue::String(string),
         }
     }
 
-    pub fn new_array(aggregate: &Aggregate, elems: Vec<Constant>) -> Self {
+    pub fn new_array(context: &mut Context, elm_ty: Type, elems: Vec<Constant>) -> Self {
         Constant {
-            ty: Type::Array(*aggregate),
+            ty: Type::new_array(context, elm_ty, elems.len() as u64),
             value: ConstantValue::Array(elems),
         }
     }
 
-    pub fn new_struct(aggregate: &Aggregate, fields: Vec<Constant>) -> Self {
+    pub fn new_struct(context: &mut Context, fields: Vec<Constant>) -> Self {
         Constant {
-            ty: Type::Struct(*aggregate),
+            ty: Type::new_struct(context, fields.iter().map(|c| c.ty).collect()),
             value: ConstantValue::Struct(fields),
         }
     }
@@ -85,46 +80,39 @@ impl Constant {
     }
 
     pub fn get_unit(context: &mut Context) -> Value {
-        Value::new_constant(context, Constant::new_unit())
+        let new_const = Constant::new_unit(context);
+        Value::new_constant(context, new_const)
     }
 
     pub fn get_bool(context: &mut Context, value: bool) -> Value {
-        Value::new_constant(context, Constant::new_bool(value))
+        let new_const = Constant::new_bool(context, value);
+        Value::new_constant(context, new_const)
     }
 
     pub fn get_uint(context: &mut Context, nbits: u8, value: u64) -> Value {
-        Value::new_constant(context, Constant::new_uint(nbits, value))
+        let new_const = Constant::new_uint(context, nbits, value);
+        Value::new_constant(context, new_const)
     }
 
     pub fn get_b256(context: &mut Context, value: [u8; 32]) -> Value {
-        Value::new_constant(context, Constant::new_b256(value))
+        let new_const = Constant::new_b256(context, value);
+        Value::new_constant(context, new_const)
     }
 
     pub fn get_string(context: &mut Context, value: Vec<u8>) -> Value {
-        Value::new_constant(context, Constant::new_string(value))
+        let new_const = Constant::new_string(context, value);
+        Value::new_constant(context, new_const)
     }
 
     /// `value` must be created as an array constant first, using [`Constant::new_array()`].
     pub fn get_array(context: &mut Context, value: Constant) -> Value {
-        assert!(matches!(
-            value,
-            Constant {
-                ty: Type::Array(_),
-                ..
-            }
-        ));
+        assert!(value.ty.is_array(context));
         Value::new_constant(context, value)
     }
 
     /// `value` must be created as a struct constant first, using [`Constant::new_struct()`].
     pub fn get_struct(context: &mut Context, value: Constant) -> Value {
-        assert!(matches!(
-            value,
-            Constant {
-                ty: Type::Struct(_),
-                ..
-            }
-        ));
+        assert!(value.ty.is_struct(context));
         Value::new_constant(context, value)
     }
 

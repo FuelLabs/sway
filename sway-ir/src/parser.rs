@@ -599,7 +599,7 @@ mod ir_builder {
         error::IrError,
         function::Function,
         instruction::{Instruction, Predicate, Register},
-        irtype::{Aggregate, Type},
+        irtype::Type,
         local_var::LocalVar,
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
@@ -783,26 +783,26 @@ mod ir_builder {
     impl IrAstTy {
         fn to_ir_type(&self, context: &mut Context) -> Type {
             match self {
-                IrAstTy::Unit => Type::Unit,
-                IrAstTy::Bool => Type::Bool,
-                IrAstTy::U64 => Type::Uint(64),
-                IrAstTy::B256 => Type::B256,
-                IrAstTy::String(n) => Type::String(*n),
-                IrAstTy::Array(..) => Type::Array(self.to_ir_aggregate_type(context)),
-                IrAstTy::Union(_) => Type::Union(self.to_ir_aggregate_type(context)),
-                IrAstTy::Struct(_) => Type::Struct(self.to_ir_aggregate_type(context)),
+                IrAstTy::Unit => Type::get_unit(context),
+                IrAstTy::Bool => Type::get_bool(context),
+                IrAstTy::U64 => Type::get_uint64(context),
+                IrAstTy::B256 => Type::get_b256(context),
+                IrAstTy::String(n) => Type::new_string(context, *n),
+                IrAstTy::Array(..) => self.to_ir_aggregate_type(context),
+                IrAstTy::Union(_) => self.to_ir_aggregate_type(context),
+                IrAstTy::Struct(_) => self.to_ir_aggregate_type(context),
             }
         }
 
-        fn to_ir_aggregate_type(&self, context: &mut Context) -> Aggregate {
+        fn to_ir_aggregate_type(&self, context: &mut Context) -> Type {
             match self {
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
-                    Aggregate::new_array(context, el_ty, *count)
+                    Type::new_array(context, el_ty, *count)
                 }
                 IrAstTy::Struct(tys) | IrAstTy::Union(tys) => {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
-                    Aggregate::new_struct(context, tys)
+                    Type::new_struct(context, tys)
                 }
                 _otherwise => {
                     unreachable!("Converting non aggregate IR AST type to IR aggregate type.")

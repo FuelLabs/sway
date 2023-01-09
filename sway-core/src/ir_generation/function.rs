@@ -362,7 +362,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
             }
             ty::TyExpressionVariant::AbiName(_) => {
-                Ok(Value::new_constant(context, Constant::new_unit()))
+                Ok(Value::new_constant(context, Constant::new_unit(context)))
             }
             ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => {
                 self.compile_unsafe_downcast(context, md_mgr, exp, variant)
@@ -447,7 +447,7 @@ impl<'eng> FnCompiler<'eng> {
             // Local variable for the key
             let key_var = compiler
                 .function
-                .new_local_var(context, alias_key_name, Type::B256, None)
+                .new_local_var(context, alias_key_name, Type::get_b256(context), None)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -649,11 +649,12 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                let b256_ty = Type::get_b256(context);
                 // For quad word, the IR instructions take in a pointer rather than a raw u64.
                 let val_ptr = self
                     .current_block
                     .ins(context)
-                    .int_to_ptr(val_value, Type::B256)
+                    .int_to_ptr(val_value, b256_ty)
                     .add_metadatum(context, span_md_idx);
                 match kind {
                     Intrinsic::StateLoadQuad => Ok(self
@@ -776,9 +777,13 @@ impl<'eng> FnCompiler<'eng> {
                 // - The first field is a `b256` that contains the `recipient`
                 // - The second field is a `u64` that contains the message ID
                 // - The third field contains the actual user data
-                let field_types = [Type::B256, Type::Uint(64), user_message_type];
+                let field_types = [
+                    Type::get_b256(context),
+                    Type::get_uint64(context),
+                    user_message_type,
+                ];
                 let recipient_and_message_aggregate =
-                    Aggregate::new_struct(context, field_types.to_vec());
+                    Type::new_struct(context, field_types.to_vec());
 
                 // Step 3: construct a local pointer for the recipient and message data struct
                 let recipient_and_message_aggregate_local_name = self.lexical_map.insert_anon();
@@ -787,7 +792,7 @@ impl<'eng> FnCompiler<'eng> {
                     .new_local_var(
                         context,
                         recipient_and_message_aggregate_local_name,
-                        Type::Struct(recipient_and_message_aggregate),
+                        recipient_and_message_aggregate,
                         None,
                     )
                     .map_err(|ir_error| {
@@ -947,9 +952,11 @@ impl<'eng> FnCompiler<'eng> {
 
         let merge_val_arg_idx = final_block.new_arg(
             context,
-            lhs_val
-                .get_type(context)
-                .unwrap_or_else(|| rhs_val.get_type(context).unwrap_or(Type::Unit)),
+            lhs_val.get_type(context).unwrap_or_else(|| {
+                rhs_val
+                    .get_type(context)
+                    .unwrap_or_else(|| Type::get_unit(context))
+            }),
             false,
         );
 
@@ -1008,7 +1015,7 @@ impl<'eng> FnCompiler<'eng> {
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-
+                let u64_ty = Type::get_uint64(context);
                 if self
                     .type_engine
                     .look_up_type_id(ast_args[0].1.return_type)
@@ -1016,7 +1023,7 @@ impl<'eng> FnCompiler<'eng> {
                 {
                     self.current_block
                         .ins(context)
-                        .bitcast(arg0, Type::Uint(64))
+                        .bitcast(arg0, u64_ty)
                         .add_metadatum(context, span_md_idx)
                 } else {
                     // Copy this value to a new location.  This is quite inefficient but we need to
@@ -1048,7 +1055,7 @@ impl<'eng> FnCompiler<'eng> {
                     .iter()
                     .filter_map(|val| val.get_type(context))
                     .collect::<Vec<_>>();
-                let user_args_struct_aggregate = Aggregate::new_struct(context, field_types);
+                let user_args_struct_aggregate = Type::new_struct(context, field_types);
 
                 // New local pointer for the struct to hold all user arguments
                 let user_args_struct_local_name = self
@@ -1059,7 +1066,7 @@ impl<'eng> FnCompiler<'eng> {
                     .new_local_var(
                         context,
                         user_args_struct_local_name,
-                        Type::Struct(user_args_struct_aggregate),
+                        user_args_struct_aggregate,
                         None,
                     )
                     .map_err(|ir_error| {
@@ -1097,9 +1104,14 @@ impl<'eng> FnCompiler<'eng> {
 
         // Now handle the contract address and the selector. The contract address is just
         // as B256 while the selector is a [u8; 4] which we have to convert to a U64.
-        let ra_struct_aggregate = Aggregate::new_struct(
+        let ra_struct_aggregate = Type::new_struct(
             context,
-            [Type::B256, Type::Uint(64), Type::Uint(64)].to_vec(),
+            [
+                Type::get_b256(context),
+                Type::get_uint64(context),
+                Type::get_uint64(context),
+            ]
+            .to_vec(),
         );
 
         let ra_struct_var = self
@@ -1107,7 +1119,7 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(
                 context,
                 self.lexical_map.insert_anon(),
-                Type::Struct(ra_struct_aggregate),
+                ra_struct_aggregate,
                 None,
             )
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
@@ -1367,9 +1379,11 @@ impl<'eng> FnCompiler<'eng> {
         // Add a single argument to merge_block that merges true_value and false_value.
         let merge_val_arg_idx = merge_block.new_arg(
             context,
-            true_value
-                .get_type(context)
-                .unwrap_or_else(|| false_value.get_type(context).unwrap_or(Type::Unit)),
+            true_value.get_type(context).unwrap_or_else(|| {
+                false_value
+                    .get_type(context)
+                    .unwrap_or_else(|| Type::get_unit(context))
+            }),
             false,
         );
         if !true_block_end.is_terminated(context) {
@@ -1401,7 +1415,7 @@ impl<'eng> FnCompiler<'eng> {
             &exp.return_type,
             &exp.span,
         )? {
-            Type::Struct(aggregate) => aggregate,
+            ty if ty.is_struct(context) => ty,
             _ => {
                 return Err(CompileError::Internal(
                     "Enum type for `unsafe downcast` is not an enum.",
@@ -1432,7 +1446,7 @@ impl<'eng> FnCompiler<'eng> {
             &exp.return_type,
             &exp.span,
         )? {
-            Type::Struct(aggregate) => aggregate,
+            ty if ty.is_struct(context) => ty,
             _ => {
                 return Err(CompileError::Internal("Expected enum type here.", exp.span));
             }
@@ -1549,7 +1563,9 @@ impl<'eng> FnCompiler<'eng> {
         name: &str,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
-        let need_to_load = |ty: &Type| matches!(ty, Type::Unit | Type::Bool | Type::Uint(_));
+        let need_to_load = |ty: &Type, context: &Context| {
+            ty.is_unit(context) || ty.is_bool(context) || ty.is_uint(context)
+        };
 
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
@@ -1567,7 +1583,7 @@ impl<'eng> FnCompiler<'eng> {
                     .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
-            if !is_ref_primitive && need_to_load(var.get_type(context)) {
+            if !is_ref_primitive && need_to_load(&var.get_type(context), context) {
                 Ok(self
                     .current_block
                     .ins(context)
@@ -1641,7 +1657,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
-        let var_ty = *local_var.get_type(context);
+        let var_ty = local_var.get_type(context);
         if ir_type_size_in_bytes(context, &var_ty) > 0 {
             let local_val = self
                 .current_block
@@ -1691,7 +1707,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
         // otherwise use a store.
-        let var_ty = *local_var.get_type(context);
+        let var_ty = local_var.get_type(context);
         if ir_type_size_in_bytes(context, &var_ty) > 0 {
             let local_val = self
                 .current_block
@@ -1764,7 +1780,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
 
                 let ty = match val.get_type(context).unwrap() {
-                    Type::Array(aggregate) => aggregate,
+                    ty if ty.is_array(context) => ty,
                     _otherwise => {
                         let spans = ast_reassignment
                             .lhs_indices
@@ -1807,7 +1823,7 @@ impl<'eng> FnCompiler<'eng> {
             )?;
 
             let ty = match val.get_type(context).unwrap() {
-                Type::Struct(aggregate) => aggregate,
+                ty if ty.is_struct(context) => ty,
                 _otherwise => {
                     let spans = ast_reassignment
                         .lhs_indices
@@ -1883,17 +1899,17 @@ impl<'eng> FnCompiler<'eng> {
             // A zero length array is a pointer to nothing, which is still supported by Sway.
             // We're unable to get the type though it's irrelevant because it can't be indexed, so
             // we'll just use Unit.
-            Type::Unit
+            Type::get_unit(context)
         } else {
             convert_resolved_typeid_no_span(self.type_engine, context, &contents[0].return_type)?
         };
-        let aggregate = Aggregate::new_array(context, elem_type, contents.len() as u64);
+        let aggregate = Type::new_array(context, elem_type, contents.len() as u64);
 
         // Compile each element and insert it immediately.
         let temp_name = self.lexical_map.insert_anon();
         let array_var = self
             .function
-            .new_local_var(context, temp_name, Type::Array(aggregate), None)
+            .new_local_var(context, temp_name, aggregate, None)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let mut array_value = self
             .current_block
@@ -1942,12 +1958,14 @@ impl<'eng> FnCompiler<'eng> {
                     array_expr_span,
                 )
             })
-        } else if let Some((Type::Array(agg), _)) = array_val.get_argument_type_and_byref(context) {
+        } else if let Some((agg, _)) = array_val
+            .get_argument_type_and_byref(context)
+            .filter(|(ty, _)| ty.is_array(context))
+        {
             Ok(agg)
-        } else if let Some(Constant {
-            ty: Type::Array(agg),
-            ..
-        }) = array_val.get_constant(context)
+        } else if let Some(Constant { ty: agg, .. }) = array_val
+            .get_constant(context)
+            .filter(|c| c.ty.is_array(context))
         {
             Ok(*agg)
         } else {
@@ -1971,11 +1989,11 @@ impl<'eng> FnCompiler<'eng> {
             Some(self),
             index_expr,
         ) {
-            let (_, count) = aggregate.get_content(context).array_type();
-            if constant_value >= *count {
+            let count = aggregate.get_array_len(context).unwrap();
+            if constant_value >= count {
                 return Err(CompileError::ArrayOutOfBounds {
                     index: constant_value,
-                    count: *count,
+                    count,
                     span: index_expr_span,
                 });
             }
@@ -2025,7 +2043,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let struct_var = self
             .function
-            .new_local_var(context, temp_name, Type::Struct(aggregate), None)
+            .new_local_var(context, temp_name, aggregate, None)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let agg_value = self
             .current_block
@@ -2061,13 +2079,14 @@ impl<'eng> FnCompiler<'eng> {
                         "Unsupported instruction as struct value for field expression. {instruction:?}"),
                         ast_struct_expr_span)
                 })
-        } else if let Some((Type::Struct(agg), _)) = struct_val.get_argument_type_and_byref(context)
+        } else if let Some((agg, _)) = struct_val
+            .get_argument_type_and_byref(context)
+            .filter(|(ty, _)| ty.is_struct(context))
         {
             Ok(agg)
-        } else if let Some(Constant {
-            ty: Type::Struct(agg),
-            ..
-        }) = struct_val.get_constant(context)
+        } else if let Some(Constant { ty: agg, .. }) = struct_val
+            .get_constant(context)
+            .filter(|c| c.ty.is_struct(context))
         {
             Ok(*agg)
         } else {
@@ -2131,7 +2150,7 @@ impl<'eng> FnCompiler<'eng> {
         let temp_name = self.lexical_map.insert_anon();
         let enum_var = self
             .function
-            .new_local_var(context, temp_name, Type::Struct(aggregate), None)
+            .new_local_var(context, temp_name, aggregate, None)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
         let enum_val = self
             .current_block
@@ -2147,26 +2166,22 @@ impl<'eng> FnCompiler<'eng> {
         // If the struct representing the enum has only one field, then that field is basically the
         // tag and all the variants must have unit types, hence the absence of the union.
         // Therefore, there is no need for another `insert_value` instruction here.
-        match aggregate.get_content(context) {
-            AggregateContent::FieldTypes(field_tys) => {
-                Ok(if field_tys.len() == 1 {
-                    agg_value
-                } else {
-                    match &contents {
-                        None => agg_value,
-                        Some(te) => {
-                            // Insert the value too.
-                            let contents_value = self.compile_expression(context, md_mgr, te)?;
-                            self.current_block
-                                .ins(context)
-                                .insert_value(agg_value, aggregate, contents_value, vec![1])
-                                .add_metadatum(context, span_md_idx)
-                        }
-                    }
-                })
+        let field_tys = aggregate.get_field_types(context);
+        Ok(if field_tys.len() == 1 {
+            agg_value
+        } else {
+            match &contents {
+                None => agg_value,
+                Some(te) => {
+                    // Insert the value too.
+                    let contents_value = self.compile_expression(context, md_mgr, te)?;
+                    self.current_block
+                        .ins(context)
+                        .insert_value(agg_value, aggregate, contents_value, vec![1])
+                        .add_metadatum(context, span_md_idx)
+                }
             }
-            _ => unreachable!("Wrong content for struct."),
-        }
+        })
     }
 
     fn compile_tuple_expr(
@@ -2197,11 +2212,11 @@ impl<'eng> FnCompiler<'eng> {
                 init_types.push(init_type);
             }
 
-            let aggregate = Aggregate::new_struct(context, init_types);
+            let aggregate = Type::new_struct(context, init_types);
             let temp_name = self.lexical_map.insert_anon();
             let tuple_var = self
                 .function
-                .new_local_var(context, temp_name, Type::Struct(aggregate), None)
+                .new_local_var(context, temp_name, aggregate, None)
                 .map_err(|ir_error| {
                     CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                 })?;
@@ -2233,14 +2248,13 @@ impl<'eng> FnCompiler<'eng> {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
-        if let Type::Struct(aggregate) =
-            convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?
-        {
+        let ty = convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?;
+        if ty.is_struct(context) {
             let span_md_idx = md_mgr.span_to_md(context, &span);
             Ok(self
                 .current_block
                 .ins(context)
-                .extract_value(tuple_value, aggregate, vec![idx as u64])
+                .extract_value(tuple_value, ty, vec![idx as u64])
                 .add_metadatum(context, span_md_idx))
         } else {
             Err(CompileError::Internal(
@@ -2343,11 +2357,11 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<Value, CompileError> {
         match ty {
-            Type::Struct(aggregate) => {
+            ty if ty.is_struct(context) => {
                 let temp_name = self.lexical_map.insert_anon();
                 let struct_var = self
                     .function
-                    .new_local_var(context, temp_name, Type::Struct(*aggregate), None)
+                    .new_local_var(context, temp_name, *ty, None)
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2357,7 +2371,7 @@ impl<'eng> FnCompiler<'eng> {
                     .get_local(struct_var)
                     .add_metadatum(context, span_md_idx);
 
-                let fields = aggregate.get_content(context).field_types().clone();
+                let fields = ty.get_field_types(context);
                 for (field_idx, field_type) in fields.into_iter().enumerate() {
                     let field_idx = field_idx as u64;
 
@@ -2378,7 +2392,7 @@ impl<'eng> FnCompiler<'eng> {
                     struct_val = self
                         .current_block
                         .ins(context)
-                        .insert_value(struct_val, *aggregate, val_to_insert, vec![field_idx])
+                        .insert_value(struct_val, *ty, val_to_insert, vec![field_idx])
                         .add_metadatum(context, span_md_idx);
                 }
                 Ok(struct_val)
@@ -2396,7 +2410,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Local pointer for the key
                 let key_var = self
                     .function
-                    .new_local_var(context, alias_key_name, Type::B256, None)
+                    .new_local_var(context, alias_key_name, Type::get_b256(context), None)
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2419,31 +2433,32 @@ impl<'eng> FnCompiler<'eng> {
                     .store(key_val, const_key)
                     .add_metadatum(context, span_md_idx);
 
-                match ty {
-                    Type::Array(_) => Err(CompileError::Internal(
+                match ty.get_content(context) {
+                    TypeContent::Array(..) => Err(CompileError::Internal(
                         "Arrays in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
-                    Type::Slice => Err(CompileError::Internal(
+                    TypeContent::Slice => Err(CompileError::Internal(
                         "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
-                    Type::B256 => {
+                    TypeContent::B256 => {
                         self.compile_b256_storage_read(context, ix, indices, &key_val, span_md_idx)
                     }
-                    Type::Bool | Type::Uint(_) => {
+                    TypeContent::Bool | TypeContent::Uint(_) => {
                         self.compile_uint_or_bool_storage_read(context, &key_val, ty, span_md_idx)
                     }
-                    Type::String(_) | Type::Union(_) => self.compile_union_or_string_storage_read(
-                        context,
-                        ix,
-                        indices,
-                        &key_val,
-                        ty,
-                        span_md_idx,
-                    ),
-                    Type::Struct(_) => unreachable!("structs are already handled!"),
-                    Type::Unit => {
+                    TypeContent::String(_) | TypeContent::Union(_) => self
+                        .compile_union_or_string_storage_read(
+                            context,
+                            ix,
+                            indices,
+                            &key_val,
+                            ty,
+                            span_md_idx,
+                        ),
+                    TypeContent::Struct(_) => unreachable!("structs are already handled!"),
+                    TypeContent::Unit => {
                         Ok(Constant::get_unit(context).add_metadatum(context, span_md_idx))
                     }
                 }
@@ -2463,8 +2478,8 @@ impl<'eng> FnCompiler<'eng> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
         match ty {
-            Type::Struct(aggregate) => {
-                let fields = aggregate.get_content(context).field_types().clone();
+            ty if ty.is_struct(context) => {
+                let fields = ty.get_field_types(context);
                 for (field_idx, field_type) in fields.into_iter().enumerate() {
                     let field_idx = field_idx as u64;
 
@@ -2476,7 +2491,7 @@ impl<'eng> FnCompiler<'eng> {
                     let rhs = self
                         .current_block
                         .ins(context)
-                        .extract_value(rhs, *aggregate, vec![field_idx])
+                        .extract_value(rhs, *ty, vec![field_idx])
                         .add_metadatum(context, span_md_idx);
 
                     self.compile_storage_write(
@@ -2504,7 +2519,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Local pointer for the key
                 let key_var = self
                     .function
-                    .new_local_var(context, alias_key_name, Type::B256, None)
+                    .new_local_var(context, alias_key_name, Type::get_b256(context), None)
                     .map_err(|ir_error| {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
@@ -2527,16 +2542,16 @@ impl<'eng> FnCompiler<'eng> {
                     .store(key_val, const_key)
                     .add_metadatum(context, span_md_idx);
 
-                match ty {
-                    Type::Array(_) => Err(CompileError::Internal(
+                match ty.get_content(context) {
+                    TypeContent::Array(..) => Err(CompileError::Internal(
                         "Arrays in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
-                    Type::Slice => Err(CompileError::Internal(
+                    TypeContent::Slice => Err(CompileError::Internal(
                         "Slices in storage have not been implemented yet.",
                         Span::dummy(),
                     )),
-                    Type::B256 => self.compile_b256_storage_write(
+                    TypeContent::B256 => self.compile_b256_storage_write(
                         context,
                         ix,
                         indices,
@@ -2544,20 +2559,21 @@ impl<'eng> FnCompiler<'eng> {
                         rhs,
                         span_md_idx,
                     ),
-                    Type::Bool | Type::Uint(_) => {
+                    TypeContent::Bool | TypeContent::Uint(_) => {
                         self.compile_uint_or_bool_storage_write(context, &key_val, rhs, span_md_idx)
                     }
-                    Type::String(_) | Type::Union(_) => self.compile_union_or_string_storage_write(
-                        context,
-                        ix,
-                        indices,
-                        &key_val,
-                        ty,
-                        rhs,
-                        span_md_idx,
-                    ),
-                    Type::Struct(_) => unreachable!("structs are already handled!"),
-                    Type::Unit => Ok(()),
+                    TypeContent::String(_) | TypeContent::Union(_) => self
+                        .compile_union_or_string_storage_write(
+                            context,
+                            ix,
+                            indices,
+                            &key_val,
+                            ty,
+                            rhs,
+                            span_md_idx,
+                        ),
+                    TypeContent::Struct(_) => unreachable!("structs are already handled!"),
+                    TypeContent::Unit => Ok(()),
                 }
             }
         }
@@ -2592,12 +2608,13 @@ impl<'eng> FnCompiler<'eng> {
         rhs: Value,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<(), CompileError> {
+        let u64_ty = Type::get_uint64(context);
         // `state_store_word` requires a `u64`. Cast the value to store to
         // `u64` first before actually storing.
         let rhs_u64 = self
             .current_block
             .ins(context)
-            .bitcast(rhs, Type::Uint(64))
+            .bitcast(rhs, u64_ty)
             .add_metadatum(context, span_md_idx);
         self.current_block
             .ins(context)
@@ -2625,7 +2642,7 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the B256
         let local_var = self
             .function
-            .new_local_var(context, alias_value_name, Type::B256, None)
+            .new_local_var(context, alias_value_name, Type::get_b256(context), None)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
@@ -2663,7 +2680,7 @@ impl<'eng> FnCompiler<'eng> {
         // Local pointer to hold the B256
         let local_var = self
             .function
-            .new_local_var(context, alias_value_name, Type::B256, None)
+            .new_local_var(context, alias_value_name, Type::get_b256(context), None)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
         // Convert the local pointer created to a value using get_ptr
@@ -2713,11 +2730,7 @@ impl<'eng> FnCompiler<'eng> {
         // Create an array of `b256` that will hold the value to store into storage
         // or the value loaded from storage. The array has to fit the whole type.
         let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
-        let b256_array_type = Type::Array(Aggregate::new_array(
-            context,
-            Type::B256,
-            number_of_elements,
-        ));
+        let b256_array_type = Type::new_array(context, Type::get_b256(context), number_of_elements);
 
         // Local pointer to hold the array of b256s
         let local_var = self
@@ -2736,6 +2749,7 @@ impl<'eng> FnCompiler<'eng> {
             .ins(context)
             .cast_ptr(local_val, *r#type, 0)
             .add_metadatum(context, span_md_idx);
+        let b256_ty = Type::get_b256(context);
 
         if number_of_elements > 0 {
             // Get the b256 from the array at index iter
@@ -2747,7 +2761,7 @@ impl<'eng> FnCompiler<'eng> {
             let indexed_value_val_b256 = self
                 .current_block
                 .ins(context)
-                .cast_ptr(value_val_b256, Type::B256, 0)
+                .cast_ptr(value_val_b256, b256_ty, 0)
                 .add_metadatum(context, span_md_idx);
 
             let count_value = convert_literal_to_value(context, &Literal::U64(number_of_elements));
@@ -2786,11 +2800,7 @@ impl<'eng> FnCompiler<'eng> {
         // Create an array of `b256` that will hold the value to store into storage
         // or the value loaded from storage. The array has to fit the whole type.
         let number_of_elements = (ir_type_size_in_bytes(context, r#type) + 31) / 32;
-        let b256_array_type = Type::Array(Aggregate::new_array(
-            context,
-            Type::B256,
-            number_of_elements,
-        ));
+        let b256_array_type = Type::new_array(context, Type::get_b256(context), number_of_elements);
 
         // Local pointer to hold the array of b256s
         let local_var = self
@@ -2817,6 +2827,7 @@ impl<'eng> FnCompiler<'eng> {
             .store(final_val, rhs)
             .add_metadatum(context, span_md_idx);
 
+        let b256_ty = Type::get_b256(context);
         if number_of_elements > 0 {
             // Get the b256 from the array at index iter
             let value_ptr_val_b256 = self
@@ -2827,7 +2838,7 @@ impl<'eng> FnCompiler<'eng> {
             let indexed_value_ptr_val_b256 = self
                 .current_block
                 .ins(context)
-                .cast_ptr(value_ptr_val_b256, Type::B256, 0)
+                .cast_ptr(value_ptr_val_b256, b256_ty, 0)
                 .add_metadatum(context, span_md_idx);
 
             // Finally, just call state_load_quad_word/state_store_quad_word

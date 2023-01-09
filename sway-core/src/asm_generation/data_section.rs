@@ -1,6 +1,6 @@
 use crate::asm_generation::from_ir::ir_type_size_in_bytes;
 
-use sway_ir::{AggregateContent, Constant, ConstantValue, Context, Type};
+use sway_ir::{Constant, ConstantValue, Context};
 
 use std::fmt::{self, Write};
 
@@ -50,28 +50,25 @@ impl Entry {
         let size = Some(ir_type_size_in_bytes(context, &constant.ty) as usize);
 
         // Is this constant a tagged union?
-        if let Type::Struct(struct_agg) = &constant.ty {
-            if let AggregateContent::FieldTypes(field_tys) = struct_agg.get_content(context) {
-                if field_tys.len() == 2
-                    && matches!(
-                        (field_tys[0], field_tys[1]),
-                        (Type::Uint(_), Type::Union(_))
-                    )
-                {
-                    // OK, this looks very much like a tagged union enum, which is the only place
-                    // we use unions (otherwise we should be generalising this a bit more).
-                    if let ConstantValue::Struct(els) = &constant.value {
-                        if els.len() == 2 {
-                            let tag_entry = Entry::from_constant(context, &els[0]);
+        if constant.ty.is_struct(context) {
+            let field_tys = constant.ty.get_field_types(context);
+            if field_tys.len() == 2
+                && field_tys[0].is_uint(context)
+                && field_tys[1].is_union(context)
+            {
+                // OK, this looks very much like a tagged union enum, which is the only place
+                // we use unions (otherwise we should be generalising this a bit more).
+                if let ConstantValue::Struct(els) = &constant.value {
+                    if els.len() == 2 {
+                        let tag_entry = Entry::from_constant(context, &els[0]);
 
-                            // Here's the special case.  We need to get the size of the union and
-                            // attach it to this constant entry which will be one of the variants.
-                            let mut val_entry = Entry::from_constant(context, &els[1]);
-                            val_entry.size = ir_type_size_in_bytes(context, &field_tys[1]) as usize;
+                        // Here's the special case.  We need to get the size of the union and
+                        // attach it to this constant entry which will be one of the variants.
+                        let mut val_entry = Entry::from_constant(context, &els[1]);
+                        val_entry.size = ir_type_size_in_bytes(context, &field_tys[1]) as usize;
 
-                            // Return here from our special case.
-                            return Entry::new_collection(vec![tag_entry, val_entry], size);
-                        }
+                        // Return here from our special case.
+                        return Entry::new_collection(vec![tag_entry, val_entry], size);
                     }
                 }
             }

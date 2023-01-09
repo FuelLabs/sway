@@ -22,8 +22,8 @@ impl LocalVar {
     }
 
     /// Return the type of this local variable.
-    pub fn get_type<'a>(&self, context: &'a Context) -> &'a Type {
-        &context.local_vars[self.0].ty
+    pub fn get_type(&self, context: &Context) -> Type {
+        context.local_vars[self.0].ty
     }
 
     /// Return the initializer for this local variable.

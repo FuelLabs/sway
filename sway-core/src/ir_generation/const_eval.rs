@@ -184,7 +184,7 @@ fn const_eval_typed_expr(
     expr: &ty::TyExpression,
 ) -> Result<Option<Constant>, CompileError> {
     Ok(match &expr.expression {
-        ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(l)),
+        ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
             function_decl_id,
@@ -253,8 +253,8 @@ fn const_eval_typed_expr(
                 return Ok(None);
             }
             get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs)
-                .map_or(None, |aggregate| {
-                    Some(Constant::new_struct(&aggregate, field_vals))
+                .map_or(None, |_struct_ty| {
+                    Some(Constant::new_struct(lookup.context, field_vals))
                 })
         }
         ty::TyExpressionVariant::Tuple { fields } => {
@@ -271,8 +271,8 @@ fn const_eval_typed_expr(
                 return Ok(None);
             }
             create_tuple_aggregate(lookup.type_engine, lookup.context, field_typs)
-                .map_or(None, |aggregate| {
-                    Some(Constant::new_struct(&aggregate, field_vals))
+                .map_or(None, |_tuple_ty| {
+                    Some(Constant::new_struct(lookup.context, field_vals))
                 })
         }
         ty::TyExpressionVariant::Array { contents } => {
@@ -305,8 +305,12 @@ fn const_eval_typed_expr(
                 element_type_id,
                 element_typs.len().try_into().unwrap(),
             )
-            .map_or(None, |aggregate| {
-                Some(Constant::new_array(&aggregate, element_vals))
+            .map_or(None, |array_ty| {
+                Some(Constant::new_array(
+                    lookup.context,
+                    array_ty.get_array_elem_type(lookup.context).unwrap(),
+                    element_vals,
+                ))
             })
         }
         ty::TyExpressionVariant::EnumInstantiation {
@@ -317,11 +321,11 @@ fn const_eval_typed_expr(
         } => {
             let aggregate =
                 create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
-            if let Ok(aggregate) = aggregate {
-                let tag_value = Constant::new_uint(64, *tag as u64);
+            if let Ok(_enum_ty) = aggregate {
+                let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
                 match contents {
-                    None => fields.push(Constant::new_unit()),
+                    None => fields.push(Constant::new_unit(lookup.context)),
                     Some(subexpr) => {
                         let eval_expr = const_eval_typed_expr(lookup, known_consts, subexpr)?;
                         eval_expr.into_iter().for_each(|enum_val| {
@@ -329,7 +333,7 @@ fn const_eval_typed_expr(
                         })
                     }
                 }
-                Some(Constant::new_struct(&aggregate, fields))
+                Some(Constant::new_struct(lookup.context, fields))
             } else {
                 None
             }

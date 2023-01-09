@@ -465,7 +465,7 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
         let val_reg = self.value_to_register(bitcast_val);
-        let reg = if let Type::Bool = to_type {
+        let reg = if to_type.is_bool(self.context) {
             // This may not be necessary if we just treat a non-zero value as 'true'.
             let res_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
@@ -686,7 +686,7 @@ impl<'ir> AsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         index_val: &Value,
     ) {
         // Base register should pointer to some stack allocated memory.
@@ -701,7 +701,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         let instr_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_type = ty.get_array_elem_type(self.context).unwrap();
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if self.is_copy_type(&elem_type) {
             self.cur_bytecode.push(Op {
@@ -974,7 +974,7 @@ impl<'ir> AsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         value: &Value,
         index_val: &Value,
     ) {
@@ -988,7 +988,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_type = ty.get_array_elem_type(self.context).unwrap();
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if self.is_copy_type(&elem_type) {
             self.cur_bytecode.push(Op {
@@ -1087,7 +1087,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Account for the padding if the final field type is a union and the value we're trying to
         // insert is smaller than the size of the union (i.e. we're inserting a small variant).
-        if matches!(field_type, Type::Union(_)) {
+        if field_type.is_union(self.context) {
             let field_size_in_words = size_bytes_in_words!(field_size_in_bytes);
             assert!(field_size_in_words >= value_size_in_words);
             insert_offs += field_size_in_words - value_size_in_words;
@@ -1206,7 +1206,7 @@ impl<'ir> AsmBuilder<'ir> {
                 }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.locals_base_reg().clone();
-                    if self.is_copy_type(local_var.get_type(self.context)) {
+                    if self.is_copy_type(&local_var.get_type(self.context)) {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -1389,7 +1389,7 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        if ret_type.eq(self.context, &Type::Unit) {
+        if ret_type.is_unit(self.context) {
             // Unit returns should always be zero, although because they can be omitted from
             // functions, the register is sometimes uninitialized. Manually return zero in this
             // case.
@@ -1412,7 +1412,7 @@ impl<'ir> AsmBuilder<'ir> {
             } else {
                 // If the type is not a copy type then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
-                if ret_type.eq(self.context, &Type::Slice) {
+                if ret_type.is_slice(self.context) {
                     // If this is a slice then return what it points to.
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -1537,8 +1537,8 @@ impl<'ir> AsmBuilder<'ir> {
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
-        assert!(matches!(val.get_type(self.context), Some(Type::B256)));
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(val.get_type(self.context).is(Type::is_b256, self.context));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
         let key_var = self.resolve_ptr(key);
@@ -1549,7 +1549,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(var_ty.eq(self.context, &Type::B256));
+        assert!(var_ty.is_b256(self.context));
 
         let val_reg = if matches!(
             val.get_instruction(self.context),
@@ -1567,7 +1567,7 @@ impl<'ir> AsmBuilder<'ir> {
             }
             let (local_val, local_val_ty, _offset) = local_var.value.unwrap();
             // Expect the ptr_ty for val to also be B256
-            assert!(local_val_ty.eq(self.context, &Type::B256));
+            assert!(local_val_ty.is_b256(self.context));
             match self.ptr_map.get(&local_val) {
                 Some(Storage::Stack(val_offset)) => {
                     let base_reg = self.locals_base_reg().clone();
@@ -1611,7 +1611,7 @@ impl<'ir> AsmBuilder<'ir> {
 
     fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
         // Make sure that the key is a pointers to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
 
         let key_var = self.resolve_ptr(key);
         if key_var.value.is_none() {
@@ -1621,7 +1621,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(var_ty.eq(self.context, &Type::B256));
+        assert!(var_ty.is_b256(self.context));
 
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
@@ -1660,13 +1660,12 @@ impl<'ir> AsmBuilder<'ir> {
         key: &Value,
     ) -> CompileResult<()> {
         // Make sure that key is a pointer to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
 
         // Make sure that store_val is a U64 value.
-        assert!(matches!(
-            store_val.get_type(self.context),
-            Some(Type::Uint(64))
-        ));
+        assert!(store_val
+            .get_type(self.context)
+            .is(Type::is_uint64, self.context));
         let store_reg = self.value_to_register(store_val);
 
         // Expect the get_ptr here to have type b256 and offset = 0???
@@ -1681,7 +1680,7 @@ impl<'ir> AsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(key_var_ty.eq(self.context, &Type::B256));
+        assert!(key_var_ty.is_b256(self.context));
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&key_var) {
@@ -1724,15 +1723,15 @@ impl<'ir> AsmBuilder<'ir> {
                     let word_offs = *word_offs;
                     let store_type = local_var.get_type(self.context);
                     let store_size_in_words =
-                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, store_type));
-                    if self.is_copy_type(store_type) {
+                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, &store_type));
+                    if self.is_copy_type(&store_type) {
                         let base_reg = self.locals_base_reg().clone();
 
                         // A single word can be stored with SW.
-                        let is_aggregate_var = matches!(
-                            local_var.get_type(self.context),
-                            Type::Array(_) | Type::Struct(_) | Type::Union(_)
-                        );
+                        let local_var_ty = local_var.get_type(self.context);
+                        let is_aggregate_var = local_var_ty.is_array(self.context)
+                            || local_var_ty.is_struct(self.context)
+                            || local_var_ty.is_union(self.context);
                         let stored_reg = if !is_aggregate_var {
                             // stored_reg is a value.
                             stored_reg
@@ -1855,7 +1854,7 @@ impl<'ir> AsmBuilder<'ir> {
     }
 
     fn is_copy_type(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Unit | Type::Bool | Type::Uint(_))
+        ty.is_unit(self.context) || ty.is_bool(self.context) | ty.is_uint(self.context)
     }
 
     fn resolve_ptr(&mut self, ptr_val: &Value) -> CompileResult<(LocalVar, Type, u64)> {
@@ -1864,7 +1863,7 @@ impl<'ir> AsmBuilder<'ir> {
         match ptr_val.get_instruction(self.context) {
             // Return the local variable with its type and an offset of 0.
             Some(Instruction::GetLocal(local_var)) => ok(
-                (*local_var, *local_var.get_type(self.context), 0),
+                (*local_var, local_var.get_type(self.context), 0),
                 warnings,
                 errors,
             ),
