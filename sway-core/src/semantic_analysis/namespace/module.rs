@@ -41,6 +41,8 @@ pub struct Module {
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
+    /// Name of the module, package name for root module, dependency name for other modules
+    pub name: Option<Ident>,
 }
 
 impl Module {
@@ -144,6 +146,8 @@ impl Module {
 
     /// Insert a submodule into this `Module`.
     pub fn insert_submodule(&mut self, name: String, submodule: Module) {
+        let mut submodule = submodule;
+        submodule.name = Some(Ident::new_no_span(Box::leak(name.clone().into_boxed_str())));
         self.submodules.insert(name, submodule);
     }
 
