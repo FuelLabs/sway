@@ -29,7 +29,7 @@ pub use {
         pattern::Pattern,
         punctuated::Punctuated,
         statement::{Statement, StatementLet},
-        token::{Delimiter, Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
+        token::{Group, Punct, PunctKind, Spacing, TokenStream, TokenTree},
         ty::Ty,
         where_clause::{WhereBound, WhereClause},
     },

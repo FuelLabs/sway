@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
-    DocStyle, Punct, PunctKind, Spacing, TokenStream,
+    ClosingDelimiter, Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree,
+    Delimiters, DocComment, DocStyle, OpeningDelimiter, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -17,21 +17,21 @@ use unicode_xid::UnicodeXID;
 #[extension_trait]
 impl CharExt for char {
     /// Converts the character into an opening delimiter, if any.
-    fn as_open_delimiter(self) -> Option<Delimiter> {
+    fn as_open_delimiter(self) -> Option<OpeningDelimiter> {
         match self {
-            '(' => Some(Delimiter::Parenthesis),
-            '{' => Some(Delimiter::Brace),
-            '[' => Some(Delimiter::Bracket),
+            '(' => Some(OpeningDelimiter::Parenthesis),
+            '{' => Some(OpeningDelimiter::CurlyBrace),
+            '[' => Some(OpeningDelimiter::SquareBracket),
             _ => None,
         }
     }
 
     /// Converts the character into a closing delimiter, if any.
-    fn as_close_delimiter(self) -> Option<Delimiter> {
+    fn as_close_delimiter(self) -> Option<ClosingDelimiter> {
         match self {
-            ')' => Some(Delimiter::Parenthesis),
-            '}' => Some(Delimiter::Brace),
-            ']' => Some(Delimiter::Bracket),
+            ')' => Some(ClosingDelimiter::Parenthesis),
+            '}' => Some(ClosingDelimiter::CurlyBrace),
+            ']' => Some(ClosingDelimiter::SquareBracket),
             _ => None,
         }
     }
@@ -189,7 +189,7 @@ pub fn lex_commented(
                     error(l.handler, LexError { kind, span });
                 }
                 Some((parent, open_index, open_delimiter)) => {
-                    if open_delimiter != close_delimiter {
+                    if open_delimiter.as_char() != close_delimiter.as_char() {
                         // Recover on e.g., a `{ )` mismatch by having `)` interpreted as `}`.
                         let kind = LexErrorKind::MismatchedDelimiters {
                             open_position: open_index,
@@ -206,7 +206,10 @@ pub fn lex_commented(
                         parent,
                         token_trees,
                         open_index,
-                        open_delimiter,
+                        Delimiters {
+                            opening: open_delimiter,
+                            closing: close_delimiter,
+                        },
                     );
                 }
             }
@@ -246,7 +249,7 @@ pub fn lex_commented(
             open_position: open_index,
             open_delimiter,
         };
-        let span = span_one(&l, open_index, open_delimiter.as_open_char());
+        let span = span_one(&l, open_index, open_delimiter.as_char());
         error(l.handler, LexError { kind, span });
 
         token_trees = lex_close_delimiter(
@@ -270,16 +273,16 @@ fn lex_close_delimiter(
     mut parent: Vec<CommentedTokenTree>,
     token_trees: Vec<CommentedTokenTree>,
     open_index: usize,
-    delimiter: Delimiter,
+    delimiters: Delimiters,
 ) -> Vec<CommentedTokenTree> {
-    let start_index = open_index + delimiter.as_open_char().len_utf8();
+    let start_index = open_index + delimiters.opening.as_char().len_utf8();
     let full_span = span(l, start_index, index);
     let group = CommentedGroup {
         token_stream: CommentedTokenStream {
             token_trees,
             full_span,
         },
-        delimiter,
+        delimiters,
         span: span_until(l, open_index),
     };
     parent.push(CommentedTokenTree::Tree(group.into()));

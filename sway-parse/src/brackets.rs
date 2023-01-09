@@ -8,11 +8,12 @@ use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Span, Spanned};
 
 pub trait ParseBracket<T>: Sized {
-    fn try_parse(parser: &mut Parser) -> ParseResult<Option<Self>>
+    fn try_parse(&self, parser: &mut Parser) -> ParseResult<Option<Self>>
     where
         T: ParseToEnd;
 
     fn parse_all_inner(
+        &self,
         parser: &mut Parser,
         on_error: impl FnOnce(Parser) -> ErrorEmitted,
     ) -> ParseResult<Self>
@@ -20,6 +21,7 @@ pub trait ParseBracket<T>: Sized {
         T: Parse;
 
     fn try_parse_all_inner(
+        &self,
         parser: &mut Parser,
         on_error: impl FnOnce(Parser) -> ErrorEmitted,
     ) -> ParseResult<Option<Self>>
@@ -30,52 +32,54 @@ pub trait ParseBracket<T>: Sized {
 macro_rules! impl_brackets (
     ($ty_name:ident, $delimiter:ident, $error:ident) => {
         impl<T> ParseBracket<T> for $ty_name<T> {
-            fn try_parse(parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>>
+            fn try_parse(&self, parser: &mut Parser) -> ParseResult<Option<$ty_name<T>>>
             where
                 T: ParseToEnd
             {
                 match parser.enter_delimited(OpeningDelimiter::$delimiter) {
                     Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok(Some($ty_name { open_token, inner, close_token }))
+                        Ok(Some($ty_name { open_token: self.open_token, inner, close_token: self.close_token }))
                     },
                     None => Ok(None),
                 }
             }
 
             fn parse_all_inner(
+                &self,
                 parser: &mut Parser,
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
             ) -> ParseResult<$ty_name<T>>
             where
                 T: Parse
             {
-                match parser.enter_delimited(Delimiter::$delimiter) {
+                match parser.enter_delimited(OpeningDelimiter::$delimiter) {
                     Some((mut parser, span)) => {
                         let inner = parser.parse()?;
                         if !parser.is_empty() {
                             return Err(on_error(parser))
                         }
-                        Ok($ty_name { inner, span })
+                        Ok($ty_name { open_token: self.open_token, inner, close_token: self.close_token })
                     },
                     None => Err(parser.emit_error(ParseErrorKind::$error)),
                 }
             }
 
             fn try_parse_all_inner(
+                &self,
                 parser: &mut Parser,
                 on_error: impl FnOnce(Parser) -> ErrorEmitted,
             ) -> ParseResult<Option<$ty_name<T>>>
             where
                 T: Parse
             {
-                match parser.enter_delimited(Delimiter::$delimiter) {
+                match parser.enter_delimited(OpeningDelimiter::$delimiter) {
                     Some((mut parser, span)) => {
                         let inner = parser.parse()?;
                         if !parser.is_empty() {
                             return Err(on_error(parser))
                         }
-                        Ok(Some($ty_name { inner, span }))
+                        Ok(Some($ty_name { open_token: self.open_token, inner, close_token: self.close_token }))
                     },
                     None => Ok(None),
                 }
@@ -87,10 +91,10 @@ macro_rules! impl_brackets (
             T: ParseToEnd,
         {
             fn parse(parser: &mut Parser) -> ParseResult<$ty_name<T>> {
-                match parser.enter_delimited(Delimiter::$delimiter) {
+                match parser.enter_delimited(OpeningDelimiter::$delimiter) {
                     Some((parser, span)) => {
                         let (inner, _consumed) = parser.parse_to_end()?;
-                        Ok($ty_name { inner, span })
+                        Ok($ty_name { open_token, inner, close_token })
                     },
                     None => Err(parser.emit_error(ParseErrorKind::$error)),
                 }
@@ -99,9 +103,9 @@ macro_rules! impl_brackets (
     };
 );
 
-impl_brackets!(Braces, Brace, ExpectedOpenBrace);
+impl_brackets!(Braces, CurlyBrace, ExpectedOpenBrace);
 impl_brackets!(Parens, Parenthesis, ExpectedOpenParen);
-impl_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
+impl_brackets!(SquareBrackets, SquareBracket, ExpectedOpenBracket);
 
 #[derive(Clone, Debug)]
 pub struct AngleBrackets<T> {

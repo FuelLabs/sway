@@ -1,7 +1,7 @@
 use crate::keywords::RESERVED_KEYWORDS;
 use crate::{ParseResult, Parser, ParserConsumed, Peeker};
 
-use sway_ast::token::Delimiter;
+use sway_ast::token::OpeningDelimiter;
 use sway_ast::Intrinsic;
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Spanned};
@@ -134,8 +134,8 @@ impl Parse for Ident {
     }
 }
 
-impl Peek for Delimiter {
-    fn peek(peeker: Peeker<'_>) -> Option<Delimiter> {
-        peeker.peek_delimiter().ok()
+impl Peek for OpeningDelimiter {
+    fn peek(peeker: Peeker<'_>) -> Option<OpeningDelimiter> {
+        peeker.peek_open_delimiter().ok()
     }
 }

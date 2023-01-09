@@ -86,10 +86,10 @@ define_keyword!(ContinueToken, "continue");
 
 /// The type is a keyword.
 pub trait Token: Spanned + Sized {
-    /// Creates the keyword from the given `span`.
+    /// Creates the token from the given `span`.
     fn new(span: Span) -> Self;
 
-    /// Returns an identifier for this keyword.
+    /// Returns an identifier for this token.
     fn ident(&self) -> Ident;
 
     /// The sequence of punctuations that make up the token.

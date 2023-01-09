@@ -68,7 +68,7 @@ impl PunctKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct GenericGroup<T> {
-    pub delimiter: OpeningDelimiter,
+    pub delimiters: Delimiters,
     pub token_stream: T,
     pub span: Span,
 }
@@ -82,9 +82,9 @@ impl<T> Spanned for GenericGroup<T> {
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Delimiter {
-    Opening(OpeningDelimiter),
-    Closing(ClosingDelimiter),
+pub struct Delimiters {
+    pub opening: OpeningDelimiter,
+    pub closing: ClosingDelimiter,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OpeningDelimiter {
@@ -117,14 +117,6 @@ impl ClosingDelimiter {
             ClosingDelimiter::CurlyBrace => '}',
             ClosingDelimiter::SquareBracket => ']',
             ClosingDelimiter::AngleBracket => '>',
-        }
-    }
-}
-impl Delimiter {
-    pub fn as_char(&self) -> char {
-        match self {
-            Delimiter::Opening(open_del) => open_del.as_char(),
-            Delimiter::Closing(close_del) => close_del.as_char(),
         }
     }
 }
@@ -180,7 +172,7 @@ pub enum CommentedTokenTree {
 impl CommentedGroup {
     pub fn strip_comments(self) -> Group {
         Group {
-            delimiter: self.delimiter,
+            delimiters: self.delimiters,
             token_stream: self.token_stream.strip_comments(),
             span: self.span,
         }

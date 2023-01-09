@@ -6,12 +6,12 @@ use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
     AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
     EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
-    PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
-    SubEqToken, Token, TraitToken, TrueToken, UseToken,
+    OpenCurlyBraceToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
+    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
-use sway_ast::token::{Delimiter, OpeningDelimiter};
+use sway_ast::token::OpeningDelimiter;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
@@ -170,8 +170,8 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<(AbiToken, Ident)>().is_some()
         || parser.peek::<ConstToken>().is_some()
         || matches!(
-            parser.peek::<(StorageToken, Delimiter)>(),
-            Some((_, OpeningDelimiter::CurlyBrace))
+            parser.peek::<(StorageToken, OpenCurlyBraceToken)>(),
+            Some((_, OpenCurlyBraceToken))
         )
     {
         return stmt(Statement::Item(parser.parse()?));
