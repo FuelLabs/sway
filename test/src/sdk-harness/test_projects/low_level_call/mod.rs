@@ -4,6 +4,18 @@ use fuels::{
     tx::{Bytes32, Input, Output, TxPointer, UtxoId},
 };
 
+macro_rules! fn_selector {
+    ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
+         ::fuels::core::code_gen::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::Parameterize>::param_type() ),*]).to_vec()
+    }
+}
+macro_rules! calldata {
+    ( $($arg: expr),* ) => {
+        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::core::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+    }
+}
+
+
 // Load abi from json
 abigen!(
     TestContract,
@@ -57,14 +69,14 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
-            Some(1),             /* Single wallet */
-            Some(1),             /* Single coin (UTXO) */
+            Some(1), /* Single wallet */
+            Some(1), /* Single coin (UTXO) */
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
         None,
     )
-    .await;
+        .await;
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::deploy(
@@ -76,8 +88,8 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
                 .to_string(),
         )),
     )
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     let instance = TestContract::new(id.clone(), wallet.clone());
 
@@ -86,17 +98,12 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
 
 #[tokio::test]
 async fn can_call_with_one_word_arg() {
+    Tokenizable::into_token(10u64);
     let (instance, id, wallet) = get_contract_instance().await;
 
-    // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/fn_selector_encoding.md#function-selector-encoding=
-    // sha256("set_value(u64)")
-    // hex : 00 00 00 00 e0  ff  38 8f
-    // dec : 00 00 00 00 224 255 56 143
-    let function_selector = vec![0u8, 0u8, 0u8, 0u8, 224u8, 255u8, 56u8, 143u8];
+    let function_selector = fn_selector!(set_value(u64)).to_vec();
 
-    // https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/abi/argument_encoding.md
-    // calldata is 42u64 (8 bytes)
-    let calldata = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8];
+    let calldata = calldata!(42u64);
 
     // Calling "set_value(u64)" with argument "42" should set the value to 42
     low_level_call(id, wallet, function_selector, calldata, true).await;
@@ -108,13 +115,9 @@ async fn can_call_with_one_word_arg() {
 async fn can_call_with_multi_word_arg() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    // sha256("set_b256_value(b256)")
-    // 0x6c 0x5e 0x2f 0xe2
-    // 108 94 47 226
-    let function_selector = vec![0u8, 0u8, 0u8, 0u8, 108u8, 94u8, 47u8, 226u8];
+    let function_selector = fn_selector!(set_b256_value(Bits256));
 
-    // 0x0101010101010101010101010101010101010101010101010101010101010101
-    let calldata = vec![1u8; 32];
+    let calldata = calldata!(Bits256([1u8; 32]));
 
     low_level_call(id, wallet, function_selector, calldata, false).await;
     let result = instance
@@ -124,17 +127,15 @@ async fn can_call_with_multi_word_arg() {
         .await
         .unwrap()
         .value;
-    assert_eq!(result, fuels::core::types::Bits256([1u8; 32]));
+    assert_eq!(result, Bits256([1u8; 32]));
 }
 
 #[tokio::test]
 async fn can_call_with_multiple_args() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    let function_selector = vec![0u8, 0u8, 0u8, 0u8, 112u8, 224u8, 73u8, 19u8];
-    let calldata = vec![
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 23u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 42u8,
-    ];
+    let function_selector = fn_selector!(set_value_multiple(u64, u64));
+    let calldata = calldata!(23u64, 42u64);
 
     low_level_call(id, wallet, function_selector, calldata, false).await;
     let result = instance.methods().get_value().call().await.unwrap().value;
@@ -145,18 +146,14 @@ async fn can_call_with_multiple_args() {
 async fn can_call_with_multiple_args_complex() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    // sha256("set_value_multiple_complex(s(bool,a[u64;3]),str[4])")
-    // 0x62 0xc3 0x1a 0x4c
-    // 00 00 00 00 98 195 26 76
-    let function_selector = vec![0u8, 0u8, 0u8, 0u8, 98u8, 195u8, 26u8, 76u8];
-    let calldata = vec![
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, // true for MyStruct.a
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, // 1u64 for MyStruct.b[0]
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 2u8, // 2u64 for MyStruct.b[1]
-        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 3u8, // 3u64 for MyStruct.b[2]
-        102u8, 117u8, 101u8, 108u8, 0u8, 0u8, 0u8,
-        0u8, // "fuel" (0x6675656c) for str[4]  (note right padding)
-    ];
+    let function_selector = fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
+    let calldata = calldata!(
+        MyStruct {
+            a: true,
+            b: [1, 2, 3],
+        },
+        SizedAsciiString::<4>::try_from("fuel").unwrap()
+    );
 
     low_level_call(id, wallet, function_selector, calldata, false).await;
 
@@ -177,6 +174,6 @@ async fn can_call_with_multiple_args_complex() {
         .value;
 
     assert_eq!(result_uint, 2);
-    assert_eq!(result_bool, true);
+    assert!(result_bool);
     assert_eq!(result_str, "fuel");
 }
