@@ -1,12 +1,8 @@
 category = "fail"
 
-
-# check: Ok: T,
+# check: $()error
+# check: enum_bad_type_inference/src/main.sw:25:9
+# check: $()y = x;
 # nextln: $()Mismatched types.
-# nextln: $()expected: bool
-# nextln: $()found:    u64.
-
-# check: enum Result<T, E> {
-# nextln: $()Mismatched types.
-# nextln: $()expected: bool
-# nextln: $()found:    u64.
+# nextln: $()expected: Result<bool, SaleError>
+# nextln: $()found:    Result<u64, SaleError>

@@ -31,3 +31,14 @@ pub enum Declaration {
     ConstantDeclaration(ConstantDeclaration),
     StorageDeclaration(StorageDeclaration),
 }
+
+impl Declaration {
+    /// Checks if this `Declaration` is a test.
+    pub(crate) fn is_test(&self) -> bool {
+        if let Declaration::FunctionDeclaration(fn_decl) = self {
+            fn_decl.is_test()
+        } else {
+            false
+        }
+    }
+}

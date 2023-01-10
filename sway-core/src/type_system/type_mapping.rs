@@ -67,13 +67,7 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(
-                        declaration_engine,
-                        TypeInfo::UnknownGeneric {
-                            name: x.name_ident.clone(),
-                            trait_constraints: VecSet(x.trait_constraints.clone()),
-                        },
-                    ),
+                    type_engine.insert_type(declaration_engine, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -156,7 +150,8 @@ impl TypeMapping {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -175,7 +170,8 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -194,13 +190,15 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
             }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters
                         .iter()
                         .map(|x| x.type_id)
@@ -209,7 +207,8 @@ impl TypeMapping {
                 )
             }
             (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
                 )
@@ -227,7 +226,8 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -246,6 +246,28 @@ impl TypeMapping {
             }
             _ => TypeMapping { mapping: vec![] },
         }
+    }
+
+    /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
+    /// and a list of [TypeId]s `type_arguments`, the generated [TypeMapping]
+    /// is extended with the result from calling `from_superset_and_subset`
+    /// with each [SourceType]s and [DestinationType]s in the original [TypeMapping].
+    fn from_superset_and_subset_helper(
+        type_engine: &TypeEngine,
+        type_parameters: Vec<SourceType>,
+        type_arguments: Vec<DestinationType>,
+    ) -> TypeMapping {
+        let mut type_mapping =
+            TypeMapping::from_type_parameters_and_type_arguments(type_parameters, type_arguments);
+
+        for (s, d) in type_mapping.mapping.clone().iter() {
+            type_mapping.mapping.extend(
+                TypeMapping::from_superset_and_subset(type_engine, *s, *d)
+                    .mapping
+                    .iter(),
+            );
+        }
+        type_mapping
     }
 
     /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
@@ -287,6 +309,7 @@ impl TypeMapping {
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
+            TypeInfo::Placeholder(_) => None,
             TypeInfo::Struct {
                 fields,
                 name,
