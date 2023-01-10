@@ -432,7 +432,8 @@ fn is_useful_wildcard(
             //        (3.4)
             match (&witness_report, wr) {
                 (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {}
-                (WitnessReport::NoWitnesses, wr) => {
+                (WitnessReport::Witnesses(_), WitnessReport::NoWitnesses) => {}
+                (WitnessReport::NoWitnesses, wr @ WitnessReport::Witnesses(_)) => {
                     let (pat, wr) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
                         return err(warnings, errors),
@@ -445,7 +446,7 @@ fn is_useful_wildcard(
                     witness_report = wr;
                 }
                 (_, wr) => {
-                    let (pat, _) = check!(
+                    let (pat, wr) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
                         return err(warnings, errors),
                         warnings,
@@ -454,6 +455,7 @@ fn is_useful_wildcard(
                     if !pat_stack.contains(&pat) {
                         pat_stack.push(pat);
                     }
+                    witness_report = WitnessReport::join_witness_reports(witness_report, wr);
                 }
             }
         }
