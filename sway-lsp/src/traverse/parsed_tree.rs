@@ -390,8 +390,18 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(exp);
                 }
             }
-            ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
+            ExpressionKind::TupleIndex(TupleIndexExpression {
+                prefix, index_span, ..
+            }) => {
                 self.handle_expression(prefix);
+
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(index_span.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::NumericLiteral,
+                    ),
+                );
             }
             ExpressionKind::Array(contents) => {
                 for exp in contents {
