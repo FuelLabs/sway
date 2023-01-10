@@ -100,7 +100,7 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
 async fn can_call_with_one_word_arg() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    let function_selector = fn_selector!(set_value(u64)).to_vec();
+    let function_selector = fn_selector!(set_value(u64));
 
     let calldata = calldata!(42u64);
 
