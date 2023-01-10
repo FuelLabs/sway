@@ -48,7 +48,7 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn is_subset(&self, other: &Self, engines: Engines<'_>) -> bool {
+    pub fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.0.len() <= other.0.len()
             && self
                 .0
@@ -59,20 +59,36 @@ impl<T: PartialEqWithEngines> VecSet<T> {
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.is_subset(other, engines) && other.is_subset(self, engines)
+        self.eq(other, engines) && other.eq(self, engines)
     }
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
-// TODO use idents instead of Strings when we have arena spans
 #[derive(Debug, Clone)]
 pub enum TypeInfo {
     Unknown,
+    /// Represents a type parameter.
+    ///
+    /// The equivalent type in the Rust compiler is:
+    /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#190
     UnknownGeneric {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
     },
+    /// Represents a type that will be inferred by the Sway compiler. This type
+    /// is created when the user writes code that creates a new ADT that has
+    /// type parameters in it's definition, before type inference can determine
+    /// what the type of those type parameters are.
+    ///
+    /// This type would also be created in a case where the user wrote a type
+    /// annotation with a wildcard type, like:
+    /// `let v: Vec<_> = iter.collect();`. However, this is not yet implemented
+    /// in Sway.
+    ///
+    /// The equivalent type in the Rust compiler is:
+    /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
+    Placeholder(TypeParameter),
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
@@ -227,6 +243,10 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::RawUntypedSlice => {
                 state.write_u8(19);
             }
+            TypeInfo::Placeholder(ty) => {
+                state.write_u8(20);
+                ty.hash(state, type_engine);
+            }
         }
     }
 }
@@ -256,6 +276,7 @@ impl PartialEqWithEngines for TypeInfo {
                     trait_constraints: rtc,
                 },
             ) => l == r && ltc.eq(rtc, engines),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::Custom {
                     name: l_name,
@@ -349,6 +370,7 @@ impl DisplayWithEngines for TypeInfo {
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(_) => "_".to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -512,7 +534,8 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::ErrorRecovery
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::Storage { .. } => false,
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => false,
         }
     }
 }
@@ -523,6 +546,7 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
+            TypeInfo::Placeholder(_) => "_".to_string(),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -896,7 +920,8 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
             }
@@ -1002,7 +1027,8 @@ impl TypeInfo {
                 | TypeInfo::Numeric
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::RawUntypedSlice
-                | TypeInfo::Contract => {
+                | TypeInfo::Contract
+                | TypeInfo::Placeholder(_) => {
                     inner_types.insert(type_id);
                 }
                 TypeInfo::ErrorRecovery => {}
@@ -1068,7 +1094,8 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Placeholder(_) => {}
         }
         inner_types
     }
@@ -1098,13 +1125,17 @@ impl TypeInfo {
             | TypeInfo::SelfType
             | TypeInfo::Str(_)
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
                 ));
+                err(warnings, errors)
+            }
+            TypeInfo::ErrorRecovery => {
+                // return an error but don't create a new error message
                 err(warnings, errors)
             }
         }
@@ -1133,12 +1164,16 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Storage { .. } => {
+            | TypeInfo::Storage { .. }
+            | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),
                 ));
+                err(warnings, errors)
+            }
+            TypeInfo::ErrorRecovery => {
+                // return an error but don't create a new error message
                 err(warnings, errors)
             }
         }
@@ -1275,12 +1310,16 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery => {}
+            | TypeInfo::Placeholder(_) => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {
                 errors.push(CompileError::Internal(
                     "did not expect to find this type here",
                     span.clone(),
                 ));
+                return err(warnings, errors);
+            }
+            TypeInfo::ErrorRecovery => {
+                // return an error but don't create a new error message
                 return err(warnings, errors);
             }
         }
@@ -1397,7 +1436,7 @@ impl TypeInfo {
                     ..
                 },
             ) => {
-                return rtc.is_subset(ltc, engines);
+                return rtc.eq(ltc, engines);
             }
             // any type is the subset of a generic
             (_, Self::UnknownGeneric { .. }) => {
@@ -1620,7 +1659,8 @@ impl TypeInfo {
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
-            | TypeInfo::Numeric => true,
+            | TypeInfo::Numeric
+            | TypeInfo::Placeholder(_) => true,
         }
     }
 

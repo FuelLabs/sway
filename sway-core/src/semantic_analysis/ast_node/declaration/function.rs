@@ -136,20 +136,12 @@ impl ty::TyFunctionDeclaration {
             .flat_map(|node| node.gather_return_statements())
             .collect();
 
-        // unify the types of the return statements with the function return type
-        for stmt in return_statements {
-            append!(
-                fn_ctx
-                    .by_ref()
-                    .with_type_annotation(return_type)
-                    .with_help_text(
-                        "Return statement must return the declared function return type."
-                    )
-                    .unify_with_self(stmt.return_type, &stmt.span),
-                warnings,
-                errors
-            );
-        }
+        check!(
+            unify_return_statements(fn_ctx.by_ref(), &return_statements, return_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -192,6 +184,43 @@ impl ty::TyFunctionDeclaration {
             .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
+    }
+}
+
+/// Unifies the types of the return statements and the return type of the
+/// function declaration.
+fn unify_return_statements(
+    ctx: TypeCheckContext,
+    return_statements: &[&ty::TyExpression],
+    return_type: TypeId,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let declaration_engine = ctx.declaration_engine;
+
+    for stmt in return_statements.iter() {
+        check!(
+            CompileResult::from(type_engine.unify_with_self(
+                declaration_engine,
+                stmt.return_type,
+                return_type,
+                ctx.self_type(),
+                &stmt.span,
+                "Return statement must return the declared function return type.",
+                None,
+            )),
+            continue,
+            warnings,
+            errors
+        );
+    }
+
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
     }
 }
 

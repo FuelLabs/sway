@@ -845,7 +845,7 @@ fn type_field_to_enum_variant(
     let type_span = if let Ty::Path(path_type) = &type_field.ty {
         path_type.prefix.name.span()
     } else {
-        span.clone()
+        type_field.ty.span()
     };
 
     let enum_variant = EnumVariant {

@@ -60,3 +60,21 @@ pub enum AstNodeContent {
     /// A statement of the form `dep foo::bar;` which imports/includes another source file.
     IncludeStatement(IncludeStatement),
 }
+
+impl ParseTree {
+    /// Excludes all test functions from the parse tree.
+    pub(crate) fn exclude_tests(&mut self) {
+        self.root_nodes.retain(|node| !node.is_test());
+    }
+}
+
+impl AstNode {
+    /// Checks if this `AstNode` is a test.
+    pub(crate) fn is_test(&self) -> bool {
+        if let AstNodeContent::Declaration(decl) = &self.content {
+            decl.is_test()
+        } else {
+            false
+        }
+    }
+}

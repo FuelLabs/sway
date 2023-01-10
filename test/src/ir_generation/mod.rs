@@ -116,6 +116,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     path.clone(),
                     PathBuf::from("/"),
                 );
+                // Include unit tests in the build.
+                let bld_cfg = bld_cfg.include_tests(true);
+
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
                     engines,
@@ -299,6 +302,7 @@ fn compile_core(engines: Engines<'_>) -> namespace::Module {
         path: Some(libcore_root_dir),
         offline_mode: true,
         terse_mode: true,
+        disable_tests: false,
         locked: false,
     };
 
