@@ -624,7 +624,8 @@ impl<'ir> AsmBuilder<'ir> {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
 
                         // Reserve space by incrementing the base.
-                        stack_base += size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty));
+                        stack_base +=
+                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty));
                     }
                 };
             }

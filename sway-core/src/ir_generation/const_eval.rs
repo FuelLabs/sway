@@ -252,10 +252,16 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs)
-                .map_or(None, |_struct_ty| {
-                    Some(Constant::new_struct(lookup.context, field_vals))
-                })
+            get_aggregate_for_types(lookup.type_engine, lookup.context, &field_typs).map_or(
+                None,
+                |struct_ty| {
+                    Some(Constant::new_struct(
+                        lookup.context,
+                        struct_ty.get_field_types(lookup.context),
+                        field_vals,
+                    ))
+                },
+            )
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (mut field_typs, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -270,10 +276,16 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            create_tuple_aggregate(lookup.type_engine, lookup.context, field_typs)
-                .map_or(None, |_tuple_ty| {
-                    Some(Constant::new_struct(lookup.context, field_vals))
-                })
+            create_tuple_aggregate(lookup.type_engine, lookup.context, field_typs).map_or(
+                None,
+                |tuple_ty| {
+                    Some(Constant::new_struct(
+                        lookup.context,
+                        tuple_ty.get_field_types(lookup.context),
+                        field_vals,
+                    ))
+                },
+            )
         }
         ty::TyExpressionVariant::Array { contents } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
@@ -321,7 +333,7 @@ fn const_eval_typed_expr(
         } => {
             let aggregate =
                 create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
-            if let Ok(_enum_ty) = aggregate {
+            if let Ok(enum_ty) = aggregate {
                 let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<Constant> = vec![tag_value];
                 match contents {
@@ -333,7 +345,11 @@ fn const_eval_typed_expr(
                         })
                     }
                 }
-                Some(Constant::new_struct(lookup.context, fields))
+                Some(Constant::new_struct(
+                    lookup.context,
+                    enum_ty.get_field_types(lookup.context),
+                    fields,
+                ))
             } else {
                 None
             }

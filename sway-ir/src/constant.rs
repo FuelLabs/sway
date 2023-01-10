@@ -65,9 +65,9 @@ impl Constant {
         }
     }
 
-    pub fn new_struct(context: &mut Context, fields: Vec<Constant>) -> Self {
+    pub fn new_struct(context: &mut Context, field_tys: Vec<Type>, fields: Vec<Constant>) -> Self {
         Constant {
-            ty: Type::new_struct(context, fields.iter().map(|c| c.ty).collect()),
+            ty: Type::new_struct(context, field_tys),
             value: ConstantValue::Struct(fields),
         }
     }
