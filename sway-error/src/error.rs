@@ -416,6 +416,8 @@ pub enum CompileError {
     MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
+    #[error("`{ty}` is a unit enum variant, and does not take parentheses to be constructed.")]
+    UnitVariantWithParenthesesEnumInstantiator { span: Span, ty: String },
     #[error("Cannot find trait \"{name}\" in this scope.")]
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
@@ -813,6 +815,7 @@ impl Spanned for CompileError {
             ImportMustBeLibrary { span, .. } => span.clone(),
             MoreThanOneEnumInstantiator { span, .. } => span.clone(),
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
+            UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),

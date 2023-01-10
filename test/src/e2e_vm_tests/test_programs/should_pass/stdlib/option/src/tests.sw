@@ -15,12 +15,12 @@ use std::hash::sha256;
 /////////////////////////////////////////////////////////////////////////////
 fn test_is_some<T>(val: T) {
     assert(Option::Some(val).is_some());
-    assert(!Option::None::<T>().is_some());
+    assert(!Option::None::<T>.is_some());
 }
 
 fn test_is_none<T>(val: T) {
     assert(!Option::Some(val).is_none());
-    assert(Option::None::<T>().is_none());
+    assert(Option::None::<T>.is_none());
 }
 
 fn test_unwrap<T>(val: T)
@@ -35,7 +35,7 @@ where
     T: Eq
 {
     assert(sha256(Option::Some(val).unwrap_or(default)) == sha256(val));
-    assert(sha256(Option::None::<T>().unwrap_or(default)) == sha256(default));
+    assert(sha256(Option::None::<T>.unwrap_or(default)) == sha256(default));
 }
 
 /* Currently not able to combine the two functions below due to
@@ -53,7 +53,7 @@ fn test_none_ok_or<T, E>(_val: T, default: E)
 where
     E: Eq
 {
-    match Option::None::<T>().ok_or(default) {
+    match Option::None::<T>.ok_or(default) {
         Result::Ok(_) => revert(0),
         Result::Err(e) => assert(sha256(default) == sha256(e)),
     }

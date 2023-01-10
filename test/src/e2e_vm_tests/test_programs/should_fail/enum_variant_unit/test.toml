@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let n: Option<u64> = Option::None();
+# nextln: $()`Option::None` is a unit enum variant, and does not take parentheses to be constructed.
