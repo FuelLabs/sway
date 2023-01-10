@@ -98,7 +98,6 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
 
 #[tokio::test]
 async fn can_call_with_one_word_arg() {
-    Tokenizable::into_token(10u64);
     let (instance, id, wallet) = get_contract_instance().await;
 
     let function_selector = fn_selector!(set_value(u64)).to_vec();
