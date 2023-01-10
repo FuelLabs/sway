@@ -12,7 +12,7 @@ abi FizzBuzz {
 }
 
 impl FizzBuzz for Contract {
-    fn fizzbuzz(input: u64) -> FizzBuzzResult {
+    fn fizzbuzz(input: u64) -> bool {
         if input % 15 == 0 {
             FizzBuzzResult::FizzBuzz
         } else if input % 3 == 0 {
