@@ -10,7 +10,7 @@ pub struct TraitDeclaration {
     pub attributes: transform::AttributesMap,
     pub interface_surface: Vec<TraitFn>,
     pub methods: Vec<FunctionDeclaration>,
-    pub(crate) supertraits: Vec<Supertrait>,
+    pub supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
     pub span: Span,
 }
