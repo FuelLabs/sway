@@ -136,6 +136,16 @@ impl<'a> ParsedTree<'a> {
                 for func_dec in &trait_decl.methods {
                     self.handle_function_declation(func_dec);
                 }
+
+                for supertrait in &trait_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
+                }
             }
             Declaration::StructDeclaration(struct_dec) => {
                 self.tokens.insert(
