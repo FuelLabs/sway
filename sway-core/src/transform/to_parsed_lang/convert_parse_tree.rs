@@ -845,7 +845,7 @@ fn type_field_to_enum_variant(
     let type_span = if let Ty::Path(path_type) = &type_field.ty {
         path_type.prefix.name.span()
     } else {
-        span.clone()
+        type_field.ty.span()
     };
 
     let enum_variant = EnumVariant {
@@ -1383,19 +1383,28 @@ fn expr_to_expression(
                         .into_iter()
                         .map(|expr| expr_to_expression(handler, engines, expr))
                         .collect::<Result<_, _>>()?;
+                    let array_expression = ArrayExpression {
+                        contents,
+                        length_span: None,
+                    };
                     Expression {
-                        kind: ExpressionKind::Array(contents),
+                        kind: ExpressionKind::Array(array_expression),
                         span,
                     }
                 }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
                     let expression = expr_to_expression(handler, engines, *value)?;
+                    let length_span = length.span();
                     let length = expr_to_usize(handler, *length)?;
                     let contents = iter::repeat_with(|| expression.clone())
                         .take(length)
                         .collect();
+                    let array_expression = ArrayExpression {
+                        contents,
+                        length_span: Some(length_span),
+                    };
                     Expression {
-                        kind: ExpressionKind::Array(contents),
+                        kind: ExpressionKind::Array(array_expression),
                         span,
                     }
                 }
