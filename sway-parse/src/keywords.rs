@@ -152,7 +152,7 @@ fn peek_open_delimiter<T: OpenDelimiterToken>(peeker: Peeker<'_>) -> Option<T> {
     Some(T::new(span))
 }
 
-fn parse_token<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> ParseResult<T> {
+fn parse_open_delimiter<T: OpenDelimiterToken + Peek>(parser: &mut Parser) -> ParseResult<T> {
     match parser.take() {
         Some(value) => Ok(value),
         None => {
