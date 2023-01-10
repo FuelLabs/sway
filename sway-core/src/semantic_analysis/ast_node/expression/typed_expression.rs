@@ -5,13 +5,15 @@ mod if_expression;
 mod lazy_operator;
 mod method_application;
 mod struct_field_access;
+mod struct_instantiation;
 mod tuple_index_access;
 mod unsafe_downcast;
 
 use self::constant_declaration::instantiate_constant_decl;
 pub(crate) use self::{
     enum_instantiation::*, function_application::*, if_expression::*, lazy_operator::*,
-    method_application::*, struct_field_access::*, tuple_index_access::*, unsafe_downcast::*,
+    method_application::*, struct_field_access::*, struct_instantiation::*, tuple_index_access::*,
+    unsafe_downcast::*,
 };
 
 use crate::{
@@ -172,7 +174,7 @@ impl ty::TyExpression {
                     call_path_binding,
                     fields,
                 } = *struct_expression;
-                Self::type_check_struct_expression(ctx.by_ref(), call_path_binding, fields, span)
+                struct_instantiation(ctx.by_ref(), call_path_binding, fields, span)
             }
             ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
@@ -487,7 +489,13 @@ impl ty::TyExpression {
             errors
         );
 
-        instantiate_function_application(ctx, function_decl, call_path_binding.inner, arguments)
+        instantiate_function_application(
+            ctx,
+            function_decl,
+            call_path_binding.inner,
+            arguments,
+            span,
+        )
     }
 
     fn type_check_lazy_operator(
@@ -777,158 +785,6 @@ impl ty::TyExpression {
         ok(exp, warnings, errors)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    fn type_check_struct_expression(
-        mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath>,
-        fields: Vec<StructExpressionField>,
-        span: Span,
-    ) -> CompileResult<ty::TyExpression> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
-        let engines = ctx.engines();
-
-        let TypeBinding {
-            inner: CallPath {
-                prefixes, suffix, ..
-            },
-            type_arguments,
-            span: inner_span,
-        } = call_path_binding;
-        let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
-            ("Self", true) => TypeInfo::SelfType,
-            ("Self", false) => {
-                errors.push(CompileError::TypeArgumentsNotAllowed {
-                    span: suffix.span(),
-                });
-                return err(warnings, errors);
-            }
-            (_, true) => TypeInfo::Custom {
-                name: suffix,
-                type_arguments: None,
-            },
-            (_, false) => TypeInfo::Custom {
-                name: suffix,
-                type_arguments: Some(type_arguments),
-            },
-        };
-
-        // find the module that the struct decl is in
-        let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
-        check!(
-            ctx.namespace.root().check_submodule(&type_info_prefix),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // resolve the type of the struct decl
-        let type_id = check!(
-            ctx.resolve_type_with_self(
-                type_engine.insert_type(declaration_engine, type_info),
-                &inner_span,
-                EnforceTypeArguments::No,
-                Some(&type_info_prefix)
-            ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
-
-        // extract the struct name and fields from the type info
-        let type_info = type_engine.look_up_type_id(type_id);
-        let (struct_name, struct_fields) = check!(
-            type_info.expect_struct(engines, &span),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let mut struct_fields = struct_fields.clone();
-
-        // match up the names with their type annotations from the declaration
-        let mut typed_fields_buf = vec![];
-        for def_field in struct_fields.iter_mut() {
-            let expr_field: StructExpressionField =
-                match fields.iter().find(|x| x.name == def_field.name) {
-                    Some(val) => val.clone(),
-                    None => {
-                        errors.push(CompileError::StructMissingField {
-                            field_name: def_field.name.clone(),
-                            struct_name: struct_name.clone(),
-                            span: span.clone(),
-                        });
-                        typed_fields_buf.push(ty::TyStructExpressionField {
-                            name: def_field.name.clone(),
-                            value: ty::TyExpression {
-                                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                                return_type: type_engine
-                                    .insert_type(declaration_engine, TypeInfo::ErrorRecovery),
-                                span: span.clone(),
-                            },
-                        });
-                        continue;
-                    }
-                };
-
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "Struct field's type must match up with the type specified in its declaration.",
-                )
-                .with_type_annotation(
-                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-                );
-            let typed_field = check!(
-                ty::TyExpression::type_check(ctx, expr_field.value),
-                continue,
-                warnings,
-                errors
-            );
-            append!(
-                type_engine.unify_adt(
-                    declaration_engine,
-                    typed_field.return_type,
-                    def_field.type_id,
-                    &typed_field.span,
-                    "Struct field's type must match up with the type specified in its declaration.",
-                ),
-                warnings,
-                errors
-            );
-
-            def_field.span = typed_field.span.clone();
-            typed_fields_buf.push(ty::TyStructExpressionField {
-                value: typed_field,
-                name: expr_field.name.clone(),
-            });
-        }
-
-        // check that there are no extra fields
-        for field in fields {
-            if !struct_fields.iter().any(|x| x.name == field.name) {
-                errors.push(CompileError::StructDoesNotHaveField {
-                    field_name: field.name.clone(),
-                    struct_name: struct_name.clone(),
-                    span: field.span,
-                });
-            }
-        }
-        let exp = ty::TyExpression {
-            expression: ty::TyExpressionVariant::StructExpression {
-                struct_name: struct_name.clone(),
-                fields: typed_fields_buf,
-                span: inner_span,
-            },
-            return_type: type_id,
-            span,
-        };
-        ok(exp, warnings, errors)
-    }
-
-    #[allow(clippy::too_many_arguments)]
     fn type_check_subfield_expression(
         ctx: TypeCheckContext,
         prefix: Expression,
@@ -1294,7 +1150,7 @@ impl ty::TyExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args),
+                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1304,7 +1160,13 @@ impl ty::TyExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding.inner, args,),
+                    instantiate_function_application(
+                        ctx,
+                        func_decl,
+                        call_path_binding.inner,
+                        args,
+                        span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors

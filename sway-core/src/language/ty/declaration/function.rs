@@ -9,7 +9,7 @@ use crate::{
     type_system::*,
 };
 
-use fuels_types::program_abi;
+use fuel_abi_types::program_abi;
 
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},

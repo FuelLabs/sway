@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-7C1B718054AB62D3'
+
+[[package]]
+name = 'generics_in_contract'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-7C1B718054AB62D3'
+dependencies = ['core']

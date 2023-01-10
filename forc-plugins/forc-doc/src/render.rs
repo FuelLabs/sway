@@ -1,27 +1,22 @@
-use std::{fmt::Write, path::PathBuf, sync::Arc};
-
-use crate::doc::Documentation;
+use crate::doc::{Documentation, ModuleInfo};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use sway_core::declaration_engine::DeclarationEngine;
+use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
-use sway_types::Spanned;
+use sway_types::BaseIdent;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
-    /// NOTE: The DE is passed as an [Arc] because the [box_html!] macro boxes
-    /// (i.e. captures) its own environment, making using immutable references
-    /// directly a pain.
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox>;
+    fn render(self) -> Box<dyn RenderBox>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_prefix: Vec<String>,
-    pub(crate) file_name: String,
+    pub(crate) module_info: Vec<String>,
+    pub(crate) html_file_name: String,
     pub(crate) file_contents: HTMLString,
 }
 #[derive(Default)]
@@ -29,45 +24,37 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(
-        declaration_engine: Arc<DeclarationEngine>,
-        raw: Documentation,
-    ) -> RenderedDocumentation {
+    pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
-        let mut all_doc: AllDoc = Default::default();
+        let mut all_docs: AllDocs = Default::default();
         for doc in raw {
-            let module_prefix = doc.module_prefix.clone();
-            let file_name = doc.file_name();
-            rendered_docs.0.push(RenderedDocument {
-                module_prefix: module_prefix.clone(),
-                file_name: file_name.clone(),
-                file_contents: HTMLString::from(doc.clone().render(declaration_engine.clone())),
-            });
+            let html_file_name = doc.html_file_name();
 
-            let item_name = doc.item_header.item_name.as_str().to_string();
-            // TODO: need to think about how to do this for larger paths
-            //
-            // after some thought we could probably have this passed as
-            // another field on Document, something like:
-            // qualified_path_str: String,
-            let path_str = if doc.item_header.module_depth == 0 {
-                item_name
-            } else {
-                format!("{}::{}", &doc.item_header.module, &item_name)
-            };
-            all_doc.0.push(AllDocItem {
+            rendered_docs.0.push(RenderedDocument {
+                module_info: doc.module_info.0.clone(),
+                html_file_name: html_file_name.clone(),
+                file_contents: HTMLString::from(doc.clone().render()),
+            });
+            all_docs.0.push(AllDocItem {
+                item_name: doc.item_header.item_name.clone(),
                 ty_decl: doc.item_body.ty_decl.clone(),
-                path_str,
-                module_prefix,
-                file_name,
+                module_info: doc.module_info,
+                html_file_name,
             });
         }
-        // All Doc
+        // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
-            module_prefix: vec![],
-            file_name: ALL_DOC_FILENAME.to_string(),
-            file_contents: HTMLString::from(all_doc.render(declaration_engine)),
+            module_info: vec![],
+            html_file_name: ALL_DOC_FILENAME.to_string(),
+            file_contents: HTMLString::from(
+                AllDocIndex {
+                    project_name: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
+                    all_docs,
+                }
+                .render(),
+            ),
         });
+
         rendered_docs
     }
 }
@@ -91,30 +78,23 @@ impl HTMLString {
 /// the item html doc.
 #[derive(Clone)]
 pub(crate) struct ItemHeader {
-    pub(crate) module_depth: usize,
-    pub(crate) module: String,
-    pub(crate) friendly_name: String,
-    pub(crate) item_name: String,
+    pub(crate) module_info: ModuleInfo,
+    pub(crate) friendly_name: &'static str,
+    pub(crate) item_name: BaseIdent,
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let ItemHeader {
-            module_depth,
-            module: location,
+            module_info,
             friendly_name,
             item_name,
         } = self;
 
-        let prefix = module_depth_to_path_prefix(module_depth);
-        let mut favicon = prefix.clone();
-        let mut normalize = prefix.clone();
-        let mut swaydoc = prefix.clone();
-        let mut ayu = prefix;
-        favicon.push_str("assets/sway-logo.svg");
-        normalize.push_str("assets/normalize.css");
-        swaydoc.push_str("assets/swaydoc.css");
-        ayu.push_str("assets/ayu.css");
+        let favicon = module_info.to_html_shorthand_path_str("assets/sway-logo.svg");
+        let normalize = module_info.to_html_shorthand_path_str("assets/normalize.css");
+        let swaydoc = module_info.to_html_shorthand_path_str("assets/swaydoc.css");
+        let ayu = module_info.to_html_shorthand_path_str("assets/ayu.css");
 
         box_html! {
             head {
@@ -125,12 +105,12 @@ impl Renderable for ItemHeader {
                     name="description",
                     content=format!(
                         "API documentation for the Sway `{}` {} in `{}`.",
-                        item_name.clone(), friendly_name, location,
+                        item_name.as_str(), friendly_name, module_info.location(),
                     )
                 );
-                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name));
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name.as_str()));
                 link(rel="icon", href=favicon);
-                title: format!("{} in {} - Sway", item_name, location);
+                title: format!("{} in {} - Sway", item_name.as_str(), module_info.location());
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -144,24 +124,44 @@ impl Renderable for ItemHeader {
 /// for each item, but things like struct fields vs trait methods will be different.
 #[derive(Clone)]
 pub(crate) struct ItemBody {
-    pub(crate) module_depth: usize,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) ty_decl: TyDeclaration,
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
-    pub(crate) item_name: String,
+    pub(crate) item_name: BaseIdent,
     pub(crate) code_str: String,
     pub(crate) attrs_opt: Option<String>,
     pub(crate) item_context: ItemContext,
 }
+impl SidebarNav for ItemBody {
+    fn sidebar(&self) -> Sidebar {
+        Sidebar {
+            module_info: self.module_info.clone(),
+            href_path: self
+                .module_info
+                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
+            /*
+                The href_path will be the path to the parent module of the current module.
+                Currently we will use the All Doc path since the parent module index has yet to be created.
 
+                TODO: make a method for getting the parent path e.g:
+                let href_path = &self.module_info.iter();
+                href_path.rnext();
+
+                href_path: href_path.last().unwrap().
+            */
+        }
+    }
+}
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
+        let sidebar = self.sidebar();
         let ItemBody {
-            module_depth,
+            module_info: _,
             ty_decl,
-            item_name: decl_name,
+            item_name,
             code_str,
             attrs_opt,
             item_context,
@@ -169,12 +169,10 @@ impl Renderable for ItemBody {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
-        let mut all_path = module_depth_to_path_prefix(module_depth);
-        all_path.push_str(ALL_DOC_FILENAME);
 
         box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
-                : sidebar(module_depth, decl_name.clone(), all_path);
+                : sidebar.render();
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
@@ -208,7 +206,7 @@ impl Renderable for ItemBody {
                                         : format!("{} ", friendly_name);
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href="#") {
-                                            : decl_name;
+                                            : item_name.as_str();
                                         }
                                     }
                                 }
@@ -231,7 +229,7 @@ impl Renderable for ItemBody {
                                 }
                             }
                             @ if item_context.context.is_some() {
-                                : item_context.render(declaration_engine);
+                                : item_context.render();
                             }
                         }
                     }
@@ -250,7 +248,7 @@ pub(crate) enum ContextType {
     EnumVariants(Vec<TyEnumVariant>),
     /// traits and abi, this can be split
     /// at a later date if need be
-    RequiredMethods(Vec<sway_core::declaration_engine::DeclarationId>),
+    RequiredMethods(Vec<TyTraitFn>),
 }
 #[derive(Clone)]
 pub(crate) struct ItemContext {
@@ -259,37 +257,20 @@ pub(crate) struct ItemContext {
     // implementations on foreign types, method implementations, etc.
 }
 impl Renderable for ItemContext {
-    fn render(self, declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
-        const FIELD_NAME: &str = "Fields";
-        const VARIANT_NAME: &str = "Variants";
+    fn render(self) -> Box<dyn RenderBox> {
+        const FIELDS: &str = "Fields";
+        const VARIANTS: &str = "Variants";
         const REQUIRED_METHODS: &str = "Required Methods";
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => {
-                context_section(declaration_engine, fields, FIELD_NAME)
-            }
-            ContextType::StorageFields(fields) => {
-                context_section(declaration_engine, fields, FIELD_NAME)
-            }
-            ContextType::EnumVariants(variants) => {
-                context_section(declaration_engine, variants, VARIANT_NAME)
-            }
-            ContextType::RequiredMethods(methods) => {
-                let methods = methods
-                    .iter()
-                    .map(|decl_id| {
-                        declaration_engine
-                            .get_trait_fn(decl_id.clone(), &decl_id.span())
-                            .expect("could not get trait fn from declaration id")
-                    })
-                    .collect();
-                context_section(declaration_engine, methods, REQUIRED_METHODS)
-            }
+            ContextType::StructFields(fields) => context_section(fields, FIELDS),
+            ContextType::StorageFields(fields) => context_section(fields, FIELDS),
+            ContextType::EnumVariants(variants) => context_section(variants, VARIANTS),
+            ContextType::RequiredMethods(methods) => context_section(methods, REQUIRED_METHODS),
         }
     }
 }
 /// Dynamically creates the context section of an item.
 fn context_section<'title, S: Renderable + 'static>(
-    declaration_engine: Arc<DeclarationEngine>,
     list: Vec<S>,
     title: &'title str,
 ) -> Box<dyn RenderBox + 'title> {
@@ -301,7 +282,7 @@ fn context_section<'title, S: Renderable + 'static>(
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
-            : item.render(declaration_engine.clone());
+            : item.render();
         }
     }
 }
@@ -317,7 +298,7 @@ fn html_title_str(title: &str) -> String {
     }
 }
 impl Renderable for TyStructField {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
@@ -330,14 +311,14 @@ impl Renderable for TyStructField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_string(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
     }
 }
 impl Renderable for TyStorageField {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
@@ -350,14 +331,14 @@ impl Renderable for TyStorageField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_string(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
     }
 }
 impl Renderable for TyEnumVariant {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
@@ -369,14 +350,14 @@ impl Renderable for TyEnumVariant {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_string(&self.attributes));
+                    : Raw(attrsmap_to_html_str(self.attributes));
                 }
             }
         }
     }
 }
 impl Renderable for TyTraitFn {
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
+    fn render(self) -> Box<dyn RenderBox> {
         // there is likely a better way we can do this while simultaneously storing the
         // string slices we need like "&mut "
         let mut fn_sig = format!("fn {}(", self.name.as_str());
@@ -471,80 +452,82 @@ impl Renderable for TyTraitFn {
 }
 #[derive(Clone)]
 struct AllDocItem {
+    item_name: BaseIdent,
     ty_decl: TyDeclaration,
-    path_str: String,
-    module_prefix: Vec<String>,
-    file_name: String,
+    module_info: ModuleInfo,
+    html_file_name: String,
 }
-struct ItemPath {
-    path_literal_str: String,
-    qualified_file_path: String,
+impl AllDocItem {
+    fn link(&self) -> ItemLink {
+        ItemLink {
+            name: self
+                .module_info
+                .to_path_literal_str(self.item_name.as_str()),
+            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
+        }
+    }
+}
+/// Used for creating links.
+///
+/// This could be a path literal with a link e.g `proj_name::foo::Foo`,
+/// or just the item name: `Foo`.
+struct ItemLink {
+    name: String,
+    hyperlink: String,
 }
 #[derive(Default, Clone)]
-struct AllDoc(Vec<AllDocItem>);
-
-impl Renderable for AllDoc {
+struct AllDocs(Vec<AllDocItem>);
+impl AllDocs {
+    /// A wrapper for `ModuleInfo::project_name()`.
+    fn project_name(&self) -> &str {
+        self.0.first().unwrap().module_info.project_name()
+    }
+}
+#[derive(Clone)]
+struct AllDocIndex {
+    /// A [ModuleInfo] with only the project name.
+    project_name: ModuleInfo,
+    /// All doc items.
+    all_docs: AllDocs,
+}
+impl SidebarNav for AllDocIndex {
+    fn sidebar(&self) -> Sidebar {
+        Sidebar {
+            module_info: self.project_name.clone(),
+            href_path: self
+                .project_name
+                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
+        }
+    }
+}
+impl Renderable for AllDocIndex {
     /// crate level, all items belonging to a crate
-    fn render(self, _declaration_engine: Arc<DeclarationEngine>) -> Box<dyn RenderBox> {
-        let AllDoc(all_doc) = self;
+    fn render(self) -> Box<dyn RenderBox> {
         // TODO: find a better way to do this
         //
-        // we need to have a finalized list for the all doc
-        let mut struct_items: Vec<ItemPath> = Vec::new();
-        let mut enum_items: Vec<ItemPath> = Vec::new();
-        let mut trait_items: Vec<ItemPath> = Vec::new();
-        let mut abi_items: Vec<ItemPath> = Vec::new();
-        let mut storage_items: Vec<ItemPath> = Vec::new();
-        let mut fn_items: Vec<ItemPath> = Vec::new();
-        let mut const_items: Vec<ItemPath> = Vec::new();
+        // we need to have a finalized list of links for the all doc
+        let mut struct_items: Vec<ItemLink> = Vec::new();
+        let mut enum_items: Vec<ItemLink> = Vec::new();
+        let mut trait_items: Vec<ItemLink> = Vec::new();
+        let mut abi_items: Vec<ItemLink> = Vec::new();
+        let mut storage_items: Vec<ItemLink> = Vec::new();
+        let mut fn_items: Vec<ItemLink> = Vec::new();
+        let mut const_items: Vec<ItemLink> = Vec::new();
 
-        for doc_item in all_doc.clone() {
-            let AllDocItem {
-                ty_decl,
-                path_str,
-                module_prefix,
-                file_name,
-            } = doc_item;
+        for doc_item in &self.all_docs.0 {
             use TyDeclaration::*;
-            match ty_decl {
-                StructDeclaration(_) => struct_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                EnumDeclaration(_) => enum_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                TraitDeclaration(_) => trait_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                AbiDeclaration(_) => abi_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                StorageDeclaration(_) => storage_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                FunctionDeclaration(_) => fn_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                ConstantDeclaration(_) => const_items.push(ItemPath {
-                    path_literal_str: path_str.to_string(),
-                    qualified_file_path: qualified_file_path(&module_prefix, file_name.to_string()),
-                }),
-                _ => {}
+            match doc_item.ty_decl {
+                StructDeclaration(_) => struct_items.push(doc_item.link()),
+                EnumDeclaration(_) => enum_items.push(doc_item.link()),
+                TraitDeclaration(_) => trait_items.push(doc_item.link()),
+                AbiDeclaration(_) => abi_items.push(doc_item.link()),
+                StorageDeclaration(_) => storage_items.push(doc_item.link()),
+                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
+                ConstantDeclaration(_) => const_items.push(doc_item.link()),
+                _ => {} // TODO: ImplTraitDeclaration
             }
         }
-        let project_name = all_doc
-            .first()
-            .unwrap()
-            .module_prefix
-            .first()
-            .unwrap()
-            .clone();
+        let sidebar = self.sidebar();
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -562,7 +545,7 @@ impl Renderable for AllDoc {
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
             }
             body(class="swaydoc mod") {
-                : sidebar(0, format!("Crate {project_name}"), ALL_DOC_FILENAME.to_string());
+                : sidebar.render();
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -620,72 +603,57 @@ impl Renderable for AllDoc {
 }
 
 /// Renders the items list from each item kind and adds the links to each file path
-fn all_items_list(title: String, list_items: Vec<ItemPath>) -> Box<dyn RenderBox> {
+fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox> {
     box_html! {
         h3(id=format!("{title}")) { : title.clone(); }
         ul(class=format!("{} docblock", title.to_lowercase())) {
             @ for item in list_items {
                 li {
-                    a(href=item.qualified_file_path) { : item.path_literal_str; }
+                    a(href=item.hyperlink) { : item.name; }
                 }
             }
         }
     }
 }
-// module level index.html
-// for each module we need to create an index
-// that will have all of the item docs in it
-fn _module_index() -> Box<dyn RenderBox> {
-    box_html! {}
+trait SidebarNav {
+    /// Create sidebar component.
+    fn sidebar(&self) -> Sidebar;
 }
-/// Sidebar component
-fn sidebar(
-    module_depth: usize,
-    location: String,
-    href: String, /* TODO: sidebar_items */
-) -> Box<dyn RenderBox> {
-    let mut logo_path = module_depth_to_path_prefix(module_depth);
-    logo_path.push_str("assets/sway-logo.svg");
+/// Sidebar component for quick navigation.
+struct Sidebar {
+    module_info: ModuleInfo,
+    href_path: String,
+}
+impl Renderable for Sidebar {
+    fn render(self) -> Box<dyn RenderBox> {
+        let logo_path = self
+            .module_info
+            .to_html_shorthand_path_str("assets/sway-logo.svg");
 
-    box_html! {
-        nav(class="sidebar") {
-            a(class="sidebar-logo", href=href) {
-                div(class="logo-container") {
-                    img(class="sway-logo", src=logo_path, alt="logo");
+        box_html! {
+            nav(class="sidebar") {
+                a(class="sidebar-logo", href=&self.href_path) {
+                    div(class="logo-container") {
+                        img(class="sway-logo", src=logo_path, alt="logo");
+                    }
                 }
-            }
-            h2(class="location") {
-                a(href="#") { : location; }
-            }
-            div(class="sidebar-elems") {
-                section {
-                    // TODO: add connections between item contents and
-                    // sidebar nav. This will be dynamic e.g. "Variants"
-                    // for Enum, and "Fields" for Structs
+                h2(class="location") {
+                    a(href="#") { : self.module_info.location(); }
+                }
+                div(class="sidebar-elems") {
+                    section {
+                        // TODO: add connections between item contents and
+                        // sidebar nav. This will be dynamic e.g. "Variants"
+                        // for Enum, and "Fields" for Structs, and also will be different
+                        // based on the type of section e.g. Index, All or Item.
+                    }
                 }
             }
         }
     }
-}
-/// Creates a String version of the path to an item, used in navigating from
-/// all.html to items.
-fn qualified_file_path(module_prefix: &Vec<String>, file_name: String) -> String {
-    let mut file_path = PathBuf::new();
-    for prefix in module_prefix {
-        if prefix != &module_prefix[0] {
-            file_path.push(prefix)
-        }
-    }
-    file_path.push(file_name);
-
-    file_path.to_str().unwrap().to_string()
-}
-/// Create a path prefix string for navigation from the `module_depth`
-fn module_depth_to_path_prefix(module_depth: usize) -> String {
-    (1..module_depth).map(|_| "../").collect::<String>()
 }
 /// Creates an HTML String from an [AttributesMap]
-pub(crate) fn attrsmap_to_html_string(attributes: &AttributesMap) -> String {
+pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
     let attributes = attributes.get(&AttributeKind::DocComment);
     let mut docs = String::new();
 

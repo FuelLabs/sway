@@ -22,7 +22,7 @@
 
 use sway_types::{Ident, Span};
 
-use fuels_types::program_abi;
+use fuel_abi_types::program_abi;
 
 use std::{collections::HashMap, sync::Arc};
 

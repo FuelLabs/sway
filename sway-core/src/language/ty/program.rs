@@ -11,7 +11,7 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::*;
 
-use fuels_types::program_abi;
+use fuel_abi_types::program_abi;
 
 #[derive(Debug, Clone)]
 pub struct TyProgram {

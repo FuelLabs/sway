@@ -11,7 +11,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, user_forc_directory,
 };
-use fuels_types::program_abi;
+use fuel_abi_types::program_abi;
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -2849,6 +2849,7 @@ impl Programs {
 pub fn check(
     plan: &BuildPlan,
     terse_mode: bool,
+    include_tests: bool,
     engines: Engines<'_>,
 ) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
@@ -2875,7 +2876,7 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, engines)?;
+        } = parse(manifest, terse_mode, include_tests, engines)?;
 
         let (lexed, parsed) = match value {
             None => {
@@ -2919,6 +2920,7 @@ pub fn check(
 pub fn parse(
     manifest: &PackageManifestFile,
     terse_mode: bool,
+    include_tests: bool,
     engines: Engines<'_>,
 ) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
@@ -2926,7 +2928,8 @@ pub fn parse(
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
+    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?
+        .include_tests(include_tests);
     Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
