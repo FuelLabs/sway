@@ -22,6 +22,7 @@ use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
     declaration_engine::DeclarationEngine,
     language::{
+        lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty,
     },
@@ -39,6 +40,7 @@ pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
+    pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
 }
@@ -164,10 +166,7 @@ impl Session {
                 typed,
             } = value.unwrap();
 
-            let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
-
-            let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
 
             // The final element in the results is the main program.
@@ -178,7 +177,7 @@ impl Session {
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
-                self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
+                self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
@@ -186,7 +185,8 @@ impl Session {
                 let typed_tree = TypedTree::new(engines, &self.token_map);
                 self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
 
-                self.save_parse_program(parse_program.to_owned().clone());
+                self.save_lexed_program(lexed.to_owned().clone());
+                self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
                 diagnostics =
@@ -194,9 +194,7 @@ impl Session {
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 let dependency = Dependency::new(&self.token_map);
-                self.parse_ast_to_tokens(parse_program, |an| {
-                    dependency.collect_parsed_declaration(an)
-                });
+                self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
                 self.parse_ast_to_typed_tokens(typed_program, |an| {
                     dependency.collect_typed_declaration(declaration_engine, an)
@@ -356,20 +354,6 @@ impl Session {
         root_nodes.chain(sub_nodes).for_each(f);
     }
 
-    /// Get a reference to the [ParseProgram] AST.
-    fn compile_res_to_parse_program<'a>(
-        &'a self,
-        parsed_result: &'a CompileResult<ParseProgram>,
-    ) -> Result<&'a ParseProgram, LanguageServerError> {
-        parsed_result.value.as_ref().ok_or_else(|| {
-            let diagnostics = capabilities::diagnostic::get_diagnostics(
-                &parsed_result.warnings,
-                &parsed_result.errors,
-            );
-            LanguageServerError::FailedToParse { diagnostics }
-        })
-    }
-
     /// Get a reference to the [ty::TyProgram] AST.
     fn compile_res_to_typed_program<'a>(
         &'a self,
@@ -398,8 +382,14 @@ impl Session {
         }
     }
 
+    /// Save the `LexedProgram` AST in the session.
+    fn save_lexed_program(&self, lexed_program: LexedProgram) {
+        let mut program = self.compiled_program.write();
+        program.lexed = Some(lexed_program);
+    }
+
     /// Save the `ParseProgram` AST in the session.
-    fn save_parse_program(&self, parse_program: ParseProgram) {
+    fn save_parsed_program(&self, parse_program: ParseProgram) {
         let mut program = self.compiled_program.write();
         program.parsed = Some(parse_program);
     }
