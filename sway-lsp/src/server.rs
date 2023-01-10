@@ -204,7 +204,6 @@ impl LanguageServer for Backend {
             init_tracing_subscriber(tracing_options);
         }
 
-        tracing::info!("Sophie's Sway Language Server Initializing");
         tracing::info!("Initializing the Sway Language Server");
 
         Ok(InitializeResult {
@@ -216,7 +215,7 @@ impl LanguageServer for Backend {
 
     // LSP-Server Lifecycle
     async fn initialized(&self, _: InitializedParams) {
-        tracing::info!("Sophie's Sway Language Server Initialized");
+        tracing::info!("Sway Language Server Initialized");
     }
 
     async fn shutdown(&self) -> jsonrpc::Result<()> {
