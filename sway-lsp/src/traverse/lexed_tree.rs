@@ -23,11 +23,13 @@ impl<'a> LexedTree<'a> {
     }
 
     pub fn parse(&self, lexed_program: &LexedProgram) {
+        insert_keyword(self.tokens, lexed_program.root.tree.kind.span());
         for item in &lexed_program.root.tree.items {
             item.value.parse(self.tokens);
         }
 
         for (.., dep) in &lexed_program.root.submodules {
+            insert_keyword(self.tokens, dep.module.tree.kind.span());
             for item in &dep.module.tree.items {
                 item.value.parse(self.tokens);
             }
