@@ -403,9 +403,19 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
             }
-            ExpressionKind::Array(contents) => {
-                for exp in contents {
+            ExpressionKind::Array(array_expression) => {
+                for exp in &array_expression.contents {
                     self.handle_expression(exp);
+                }
+
+                if let Some(length_span) = &array_expression.length_span {
+                    self.tokens.insert(
+                        to_ident_key(&Ident::new(length_span.clone())),
+                        Token::from_parsed(
+                            AstToken::Expression(expression.clone()),
+                            SymbolKind::NumericLiteral,
+                        ),
+                    );
                 }
             }
             ExpressionKind::Struct(struct_expression) => {

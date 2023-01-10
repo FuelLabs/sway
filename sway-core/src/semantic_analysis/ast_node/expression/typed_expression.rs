@@ -220,7 +220,9 @@ impl ty::TyExpression {
                 let AbiCastExpression { abi_name, address } = *abi_cast_expression;
                 Self::type_check_abi_cast(ctx.by_ref(), abi_name, *address, span)
             }
-            ExpressionKind::Array(contents) => Self::type_check_array(ctx.by_ref(), contents, span),
+            ExpressionKind::Array(array_expression) => {
+                Self::type_check_array(ctx.by_ref(), array_expression.contents, span)
+            }
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                 let ctx = ctx
                     .by_ref()
