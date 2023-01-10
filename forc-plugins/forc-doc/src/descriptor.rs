@@ -3,7 +3,7 @@ use crate::{
     doc::{Document, ModuleInfo},
     render::{attrsmap_to_html_str, trim_fn_body, ContextType, ItemBody, ItemContext, ItemHeader},
 };
-use anyhow::Result;
+use anyhow::{bail, Result};
 use sway_core::{
     declaration_engine::*,
     language::ty::{TyDeclaration, TyTraitFn},
@@ -49,8 +49,14 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = struct_decl.name;
-                    let attrs_opt = (!struct_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(struct_decl.attributes));
+                    let attrs_opt = if !struct_decl.attributes.is_empty() {
+                        match attrsmap_to_html_str(struct_decl.attributes) {
+                            Ok(s) => Some(s),
+                            Err(e) => bail!("{}", e),
+                        }
+                    } else {
+                        None
+                    };
                     let context = (!struct_decl.fields.is_empty())
                         .then_some(ContextType::StructFields(struct_decl.fields));
 

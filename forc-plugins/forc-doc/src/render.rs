@@ -313,6 +313,10 @@ fn html_title_str(title: &str) -> String {
 impl Renderable for TyStructField {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
+        let attributes = match self.attributes.is_empty() {
+            false => Some(attrsmap_to_html_str(self.attributes)?),
+            true => None,
+        };
         Ok(box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
                 a(class="anchor field", href=format!("#{}", struct_field_id));
@@ -322,9 +326,9 @@ impl Renderable for TyStructField {
                     : self.type_span.as_str();
                 }
             }
-            @ if !self.attributes.is_empty() {
+            @ if let Some(attrs) = attributes {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(attrs);
                 }
             }
         })
@@ -333,6 +337,10 @@ impl Renderable for TyStructField {
 impl Renderable for TyStorageField {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
+        let attributes = match self.attributes.is_empty() {
+            false => Some(attrsmap_to_html_str(self.attributes)?),
+            true => None,
+        };
         Ok(box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
                 a(class="anchor field", href=format!("#{}", storage_field_id));
@@ -342,17 +350,23 @@ impl Renderable for TyStorageField {
                     : self.type_span.as_str();
                 }
             }
-            @ if !self.attributes.is_empty() {
+            @ if let Some(attrs) = attributes {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(attrs);
                 }
             }
         })
     }
 }
+
 impl Renderable for TyEnumVariant {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
+
+        let attributes = match self.attributes.is_empty() {
+            false => Some(attrsmap_to_html_str(self.attributes)?),
+            true => None,
+        };
         Ok(box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
                 a(class="anchor field", href=format!("#{}", enum_variant_id));
@@ -361,9 +375,9 @@ impl Renderable for TyEnumVariant {
                     : self.type_span.as_str();
                 }
             }
-            @ if !self.attributes.is_empty() {
+            @ if let Some(attrs) = attributes {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(attrs);
                 }
             }
         })
@@ -377,28 +391,23 @@ impl Renderable for TyTraitFn {
         for param in &self.parameters {
             let mut param_str = String::new();
             if param.is_reference {
-                write!(param_str, "&")
-                    .expect("failed to write reference to param_str for method fn");
+                write!(param_str, "&")?;
             }
             if param.is_mutable {
-                write!(param_str, "mut ")
-                    .expect("failed to write mutability to param_str for method fn");
+                write!(param_str, "mut ")?;
             }
             if param.is_self() {
-                write!(param_str, "self,")
-                    .expect("failed to write self to param_str for method fn");
+                write!(param_str, "self,")?;
             } else {
                 write!(
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
                     param.type_span.as_str()
-                )
-                .expect("failed to write name/type to param_str for method fn");
+                )?;
             }
         }
-        write!(fn_sig, ") -> {}", self.return_type_span.as_str())
-            .expect("failed to write return type to param_str for method fn");
+        write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
         let method_id = format!("tymethod.{}", self.name.as_str());
@@ -667,14 +676,13 @@ impl Renderable for Sidebar {
     }
 }
 /// Creates an HTML String from an [AttributesMap]
-pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
+pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> Result<String> {
     let attributes = attributes.get(&AttributeKind::DocComment);
     let mut docs = String::new();
 
     if let Some(vec_attrs) = attributes {
         for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
-            writeln!(docs, "{}", ident.as_str())
-                .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
+            writeln!(docs, "{}", ident.as_str())?;
         }
     }
 
@@ -688,7 +696,7 @@ pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
     options.extension.footnotes = true;
     options.parse.smart = true;
     options.parse.default_info_string = Some("sway".into());
-    markdown_to_html(&format_docs(&docs), &options)
+    Ok(markdown_to_html(&format_docs(&docs), &options))
 }
 /// Takes a formatted String fn and returns only the function signature.
 pub(crate) fn trim_fn_body(f: String) -> String {
