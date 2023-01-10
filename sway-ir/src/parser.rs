@@ -788,24 +788,17 @@ mod ir_builder {
                 IrAstTy::U64 => Type::get_uint64(context),
                 IrAstTy::B256 => Type::get_b256(context),
                 IrAstTy::String(n) => Type::new_string(context, *n),
-                IrAstTy::Array(..) => self.to_ir_aggregate_type(context),
-                IrAstTy::Union(_) => self.to_ir_aggregate_type(context),
-                IrAstTy::Struct(_) => self.to_ir_aggregate_type(context),
-            }
-        }
-
-        fn to_ir_aggregate_type(&self, context: &mut Context) -> Type {
-            match self {
                 IrAstTy::Array(el_ty, count) => {
                     let el_ty = el_ty.to_ir_type(context);
                     Type::new_array(context, el_ty, *count)
                 }
-                IrAstTy::Struct(tys) | IrAstTy::Union(tys) => {
+                IrAstTy::Union(tys) => {
+                    let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
+                    Type::new_union(context, tys)
+                }
+                IrAstTy::Struct(tys) => {
                     let tys = tys.iter().map(|ty| ty.to_ir_type(context)).collect();
                     Type::new_struct(context, tys)
-                }
-                _otherwise => {
-                    unreachable!("Converting non aggregate IR AST type to IR aggregate type.")
                 }
             }
         }
@@ -1127,7 +1120,7 @@ mod ir_builder {
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::ExtractElement(aval, ty, idx) => {
-                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        let ir_ty = ty.to_ir_type(context);
                         block
                             .ins(context)
                             .extract_element(
@@ -1138,7 +1131,7 @@ mod ir_builder {
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::ExtractValue(val, ty, idcs) => {
-                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        let ir_ty = ty.to_ir_type(context);
                         block
                             .ins(context)
                             .extract_value(*val_map.get(&val).unwrap(), ir_ty, idcs)
@@ -1157,7 +1150,7 @@ mod ir_builder {
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::InsertElement(aval, ty, val, idx) => {
-                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        let ir_ty = ty.to_ir_type(context);
                         block
                             .ins(context)
                             .insert_element(
@@ -1169,7 +1162,7 @@ mod ir_builder {
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::InsertValue(aval, ty, ival, idcs) => {
-                        let ir_ty = ty.to_ir_aggregate_type(context);
+                        let ir_ty = ty.to_ir_type(context);
                         block
                             .ins(context)
                             .insert_value(
