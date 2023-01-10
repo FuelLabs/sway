@@ -550,6 +550,19 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = String::new();
+
+        // Because [Range]s represent the `[n, m]` (fully) inclusive 'contains',
+        // it is entirely possible (and normal) for the occasional [Range] to
+        // have the same `first` and `last`. For example, if the user is
+        // matching on `u64` values and specifies a match arm for `2` but does
+        // not specify a match arm for `1`, then this would otherwise display as
+        // `[MIN...1]`. While not incorrect, it looks kind of weird. So instead
+        // we bypass this problem when displaying [Range]s.
+        if self.first == self.last {
+            write!(builder, "{}", self.first)?;
+            return write!(f, "{}", builder);
+        }
+
         builder.push('[');
         if self.first == T::global_min() {
             builder.push_str("MIN");

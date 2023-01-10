@@ -42,6 +42,12 @@ pub struct TupleIndexExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ArrayExpression {
+    pub contents: Vec<Expression>,
+    pub length_span: Option<Span>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StructExpression {
     pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
@@ -157,7 +163,7 @@ pub enum ExpressionKind {
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),
-    Array(Vec<Expression>),
+    Array(ArrayExpression),
     Struct(Box<StructExpression>),
     CodeBlock(CodeBlock),
     If(IfExpression),
