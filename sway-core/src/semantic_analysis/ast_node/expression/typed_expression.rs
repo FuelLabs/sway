@@ -1894,16 +1894,19 @@ mod tests {
     fn test_array_type_check_non_homogeneous_0() {
         // [true, 0] -- first element is correct, assumes type is [bool; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(vec![
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                    span: Span::dummy(),
-                },
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::U64(0)),
-                    span: Span::dummy(),
-                },
-            ]),
+            kind: ExpressionKind::Array(ArrayExpression {
+                contents: vec![
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                        span: Span::dummy(),
+                    },
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::U64(0)),
+                        span: Span::dummy(),
+                    },
+                ],
+                length_span: None,
+            }),
             span: Span::dummy(),
         };
 
@@ -1922,16 +1925,19 @@ mod tests {
     fn test_array_type_check_non_homogeneous_1() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(vec![
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::U64(0)),
-                    span: Span::dummy(),
-                },
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                    span: Span::dummy(),
-                },
-            ]),
+            kind: ExpressionKind::Array(ArrayExpression {
+                contents: vec![
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::U64(0)),
+                        span: Span::dummy(),
+                    },
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                        span: Span::dummy(),
+                    },
+                ],
+                length_span: None,
+            }),
             span: Span::dummy(),
         };
 
@@ -1957,20 +1963,23 @@ mod tests {
     fn test_array_type_check_bad_count() {
         // [0, false] -- first element is incorrect, assumes type is [u64; 2].
         let expr = Expression {
-            kind: ExpressionKind::Array(vec![
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                    span: Span::dummy(),
-                },
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                    span: Span::dummy(),
-                },
-                Expression {
-                    kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                    span: Span::dummy(),
-                },
-            ]),
+            kind: ExpressionKind::Array(ArrayExpression {
+                contents: vec![
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                        span: Span::dummy(),
+                    },
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                        span: Span::dummy(),
+                    },
+                    Expression {
+                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                        span: Span::dummy(),
+                    },
+                ],
+                length_span: None,
+            }),
             span: Span::dummy(),
         };
 
@@ -1988,7 +1997,10 @@ mod tests {
     #[test]
     fn test_array_type_check_empty() {
         let expr = Expression {
-            kind: ExpressionKind::Array(Vec::new()),
+            kind: ExpressionKind::Array(ArrayExpression {
+                contents: Vec::new(),
+                length_span: None,
+            }),
             span: Span::dummy(),
         };
 
