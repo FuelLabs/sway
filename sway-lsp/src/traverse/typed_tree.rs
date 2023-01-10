@@ -436,8 +436,20 @@ impl<'a> TypedTree<'a> {
                     token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
                 }
             }
-            ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+            ty::TyExpressionVariant::TupleElemAccess {
+                prefix,
+                elem_to_access_span,
+                ..
+            } => {
                 self.handle_expression(prefix);
+
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(elem_to_access_span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                }
             }
             ty::TyExpressionVariant::EnumInstantiation {
                 variant_name,
