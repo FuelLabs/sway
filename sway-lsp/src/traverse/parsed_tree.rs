@@ -136,6 +136,16 @@ impl<'a> ParsedTree<'a> {
                 for func_dec in &trait_decl.methods {
                     self.handle_function_declation(func_dec);
                 }
+
+                for supertrait in &trait_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
+                }
             }
             Declaration::StructDeclaration(struct_dec) => {
                 self.tokens.insert(
@@ -390,12 +400,32 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(exp);
                 }
             }
-            ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
+            ExpressionKind::TupleIndex(TupleIndexExpression {
+                prefix, index_span, ..
+            }) => {
                 self.handle_expression(prefix);
+
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(index_span.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::NumericLiteral,
+                    ),
+                );
             }
-            ExpressionKind::Array(contents) => {
-                for exp in contents {
+            ExpressionKind::Array(array_expression) => {
+                for exp in &array_expression.contents {
                     self.handle_expression(exp);
+                }
+
+                if let Some(length_span) = &array_expression.length_span {
+                    self.tokens.insert(
+                        to_ident_key(&Ident::new(length_span.clone())),
+                        Token::from_parsed(
+                            AstToken::Expression(expression.clone()),
+                            SymbolKind::NumericLiteral,
+                        ),
+                    );
                 }
             }
             ExpressionKind::Struct(struct_expression) => {

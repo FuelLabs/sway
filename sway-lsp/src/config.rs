@@ -4,10 +4,13 @@ use tracing::metadata::LevelFilter;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
+    #[serde(default)]
     pub debug: DebugConfig,
+    #[serde(default)]
     pub logging: LoggingConfig,
+    #[serde(default)]
     pub inlay_hints: InlayHintsConfig,
-    #[serde(skip_serializing)]
+    #[serde(default, skip_serializing)]
     trace: TraceConfig,
 }
 
