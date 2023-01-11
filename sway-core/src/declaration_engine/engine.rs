@@ -41,7 +41,7 @@ impl fmt::Display for DeclEngine {
 }
 
 impl DeclEngine {
-    pub(crate) fn look_up_decl_id(&self, index: DeclId) -> DeclWrapper {
+    pub(crate) fn get(&self, index: DeclId) -> DeclWrapper {
         self.slab.get(*index)
     }
 

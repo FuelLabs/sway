@@ -26,8 +26,8 @@ impl EqWithEngines for DeclId {}
 impl PartialEqWithEngines for DeclId {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let declaration_engine = engines.de();
-        let left = declaration_engine.look_up_decl_id(self.clone());
-        let right = declaration_engine.look_up_decl_id(other.clone());
+        let left = declaration_engine.get(self.clone());
+        let right = declaration_engine.get(other.clone());
         left.eq(&right, engines)
     }
 }
@@ -55,7 +55,7 @@ impl Spanned for DeclId {
 impl CopyTypes for DeclId {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.copy_types(type_mapping, engines);
         declaration_engine.replace_decl_id(self.clone(), decl);
     }
@@ -64,7 +64,7 @@ impl CopyTypes for DeclId {
 impl ReplaceSelfType for DeclId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         declaration_engine.replace_decl_id(self.clone(), decl);
     }
@@ -94,7 +94,7 @@ impl ReplaceFunctionImplementingType for DeclId {
         implementing_type: ty::TyDeclaration,
     ) {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.replace_implementing_type(engines, implementing_type);
         declaration_engine.replace_decl_id(self.clone(), decl);
     }
@@ -120,7 +120,7 @@ impl DeclId {
         engines: Engines<'_>,
     ) -> DeclId {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.copy_types(type_mapping, engines);
         declaration_engine
             .insert(decl, self.1.clone())
@@ -133,7 +133,7 @@ impl DeclId {
         self_type: TypeId,
     ) -> DeclId {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         declaration_engine
             .insert(decl, self.1.clone())
@@ -146,7 +146,7 @@ impl DeclId {
         engines: Engines<'_>,
     ) -> DeclId {
         let declaration_engine = engines.de();
-        let mut decl = declaration_engine.look_up_decl_id(self.clone());
+        let mut decl = declaration_engine.get(self.clone());
         decl.replace_decls(decl_mapping, engines);
         declaration_engine
             .insert(decl, self.1.clone())

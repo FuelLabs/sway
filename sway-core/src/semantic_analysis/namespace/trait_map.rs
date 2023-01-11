@@ -599,7 +599,7 @@ impl TraitMap {
                         .clone()
                         .into_iter()
                         .map(|(name, decl_id)| {
-                            let mut decl = declaration_engine.look_up_decl_id(decl_id.clone());
+                            let mut decl = declaration_engine.get(decl_id.clone());
                             decl.copy_types(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             (
