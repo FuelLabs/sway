@@ -661,8 +661,18 @@ impl<'a> ParsedTree<'a> {
                 }
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
-                arguments, ..
+                name,
+                kind_binding,
+                arguments,
             }) => {
+                self.tokens.insert(
+                    to_ident_key(name),
+                    Token::from_parsed(
+                        AstToken::Intrinsic(kind_binding.inner.clone()),
+                        SymbolKind::Function,
+                    ),
+                );
+
                 for argument in arguments {
                     self.handle_expression(argument);
                 }
