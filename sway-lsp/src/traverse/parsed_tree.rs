@@ -21,6 +21,7 @@ use sway_core::{
         },
         Literal,
     },
+    transform::Attribute,
     type_system::{TypeArgument, TypeParameter},
     TypeEngine, TypeInfo,
 };
@@ -77,6 +78,10 @@ impl<'a> ParsedTree<'a> {
             Some(func.return_type_span.clone()),
             None,
         );
+
+        func.attributes.values().for_each(|attr| {
+            self.collect_attributes(attr);
+        });
     }
 
     fn handle_declaration(&self, declaration: &Declaration) {
@@ -166,6 +171,10 @@ impl<'a> ParsedTree<'a> {
                         Some(field.type_span.clone()),
                         None,
                     );
+
+                    field.attributes.values().for_each(|attr| {
+                        self.collect_attributes(attr);
+                    });
                 }
 
                 for type_param in &struct_dec.type_parameters {
@@ -174,6 +183,10 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Declaration(declaration.clone()),
                     );
                 }
+
+                struct_dec.attributes.values().for_each(|attr| {
+                    self.collect_attributes(attr);
+                });
             }
             Declaration::EnumDeclaration(enum_decl) => {
                 self.tokens.insert(
@@ -205,7 +218,15 @@ impl<'a> ParsedTree<'a> {
                         Some(variant.type_span.clone()),
                         Some(SymbolKind::Variant),
                     );
+
+                    variant.attributes.values().for_each(|attr| {
+                        self.collect_attributes(attr);
+                    });
                 }
+
+                enum_decl.attributes.values().for_each(|attr| {
+                    self.collect_attributes(attr);
+                });
             }
             Declaration::ImplTrait(impl_trait) => {
                 for ident in &impl_trait.trait_name.prefixes {
@@ -306,6 +327,10 @@ impl<'a> ParsedTree<'a> {
                     None,
                 );
                 self.handle_expression(&const_decl.value);
+
+                const_decl.attributes.values().for_each(|attr| {
+                    self.collect_attributes(attr);
+                });
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {
@@ -322,7 +347,15 @@ impl<'a> ParsedTree<'a> {
                         None,
                     );
                     self.handle_expression(&field.initializer);
+
+                    field.attributes.values().for_each(|attr| {
+                        self.collect_attributes(attr);
+                    });
                 }
+
+                storage_decl.attributes.values().for_each(|attr| {
+                    self.collect_attributes(attr);
+                });
             }
         }
     }
@@ -881,6 +914,10 @@ impl<'a> ParsedTree<'a> {
             Some(trait_fn.return_type_span.clone()),
             None,
         );
+
+        trait_fn.attributes.values().for_each(|attr| {
+            self.collect_attributes(attr);
+        });
     }
 
     fn collect_type_parameter(&self, type_param: &TypeParameter, token: AstToken) {
@@ -888,6 +925,18 @@ impl<'a> ParsedTree<'a> {
             to_ident_key(&type_param.name_ident),
             Token::from_parsed(token, SymbolKind::TypeParameter),
         );
+    }
+
+    fn collect_attributes(&self, attributes: &[Attribute]) {
+        for attribute in attributes {
+            self.tokens.insert(
+                to_ident_key(&attribute.name),
+                Token::from_parsed(
+                    AstToken::Attribute(attribute.clone()),
+                    SymbolKind::DeriveHelper,
+                ),
+            );
+        }
     }
 }
 
