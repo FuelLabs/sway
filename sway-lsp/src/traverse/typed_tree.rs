@@ -69,6 +69,18 @@ impl<'a> TypedTree<'a> {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                         token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                     }
+
+                    if let Some(type_ascription_span) = &const_decl.type_ascription_span {
+                        if let Some(mut token) = self
+                            .tokens
+                            .try_get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.type_def = Some(TypeDefinition::TypeId(const_decl.return_type));
+                        }
+                    };
                     self.handle_expression(&const_decl.value);
                 }
             }

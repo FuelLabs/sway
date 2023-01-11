@@ -14,6 +14,7 @@ pub struct TyConstantDeclaration {
     pub visibility: Visibility,
     pub return_type: TypeId,
     pub attributes: transform::AttributesMap,
+    pub type_ascription_span: Option<Span>,
     pub span: Span,
 }
 
