@@ -3,7 +3,7 @@
 
 use crate::{
     control_flow_analysis::*,
-    declaration_engine::DeclarationId,
+    decl_engine::DeclId,
     language::{ty, CallPath},
     type_system::*,
     Engines,
@@ -180,7 +180,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     leaves: &[NodeIndex],
 ) -> Result<Vec<NodeIndex>, CompileError> {
     use ty::TyDeclaration::*;
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)
@@ -196,7 +196,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(vec![entry_node])
         }
         FunctionDeclaration(decl_id) => {
-            let fn_decl = declaration_engine.get_function(decl_id.clone(), &decl.span())?;
+            let fn_decl = decl_engine.get_function(decl_id.clone(), &decl.span())?;
             let entry_node = graph.add_node(engines, node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -209,7 +209,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 trait_name,
                 methods,
                 ..
-            } = declaration_engine.get_impl_trait(decl_id.clone(), &span)?;
+            } = decl_engine.get_impl_trait(decl_id.clone(), &span)?;
             let entry_node = graph.add_node(engines, node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -231,15 +231,14 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclarationId],
+    methods: &[DeclId],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for method_decl_id in methods {
-        let fn_decl =
-            declaration_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
+        let fn_decl = decl_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(
             engines,
             ControlFlowGraphNode::MethodDeclaration {

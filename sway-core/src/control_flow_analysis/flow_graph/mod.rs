@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     language::ty::{self, GetDeclIdent},
     Engines, Ident,
 };
@@ -62,7 +62,7 @@ pub enum ControlFlowGraphNode<'cfg> {
     MethodDeclaration {
         span: Span,
         method_name: Ident,
-        method_decl_id: DeclarationId,
+        method_decl_id: DeclId,
         engines: Engines<'cfg>,
     },
     StructField {
@@ -75,10 +75,10 @@ pub enum ControlFlowGraphNode<'cfg> {
 }
 
 impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
-            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(declaration_engine),
+            ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(decl_engine),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.clone()),
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
                 Some(method_name.clone())
@@ -139,15 +139,15 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
                 engines,
                 ..
             } => {
-                let declaration_engines = engines.de();
-                let method = declaration_engines
+                let decl_engines = engines.de();
+                let method = decl_engines
                     .get_function(method_decl_id.clone(), &Span::dummy())
                     .unwrap();
                 if let Some(implementing_type) = method.implementing_type {
                     format!(
                         "Method {}.{}",
                         implementing_type
-                            .get_decl_ident(declaration_engines)
+                            .get_decl_ident(decl_engines)
                             .map_or(String::from(""), |f| f.as_str().to_string()),
                         method_name.as_str()
                     )
@@ -177,8 +177,8 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         engines: Engines<'eng>,
         node: ControlFlowGraphNode<'cfg>,
     ) -> NodeIndex {
-        let declaration_engine = engines.de();
-        let ident_opt = node.get_decl_ident(declaration_engine);
+        let decl_engine = engines.de();
+        let ident_opt = node.get_decl_ident(decl_engine);
         let node_index = self.graph.add_node(node);
         if let Some(ident) = ident_opt {
             self.decls.insert(ident.into(), node_index);
@@ -208,8 +208,8 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         engines: Engines<'_>,
         cfg_node: &ControlFlowGraphNode,
     ) -> Option<NodeIndex> {
-        let declaration_engine = engines.de();
-        if let Some(ident) = cfg_node.get_decl_ident(declaration_engine) {
+        let decl_engine = engines.de();
+        if let Some(ident) = cfg_node.get_decl_ident(decl_engine) {
             self.decls.get(&ident.into()).cloned()
         } else {
             None
