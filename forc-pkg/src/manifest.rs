@@ -726,7 +726,18 @@ impl WorkspaceManifestFile {
             // Check if the found manifest file is a workspace manifest file or a standalone
             // package manifest file.
             let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
-            Self::from_file(possible_path).is_ok()
+            // We should not continue to search if the given manifest is a workspace manifest with
+            // some issues.
+            //
+            // If the error is missing field `workspace` (which happens when trying to read a
+            // package manifest as a workspace manifest), look into the parent directories for a
+            // legitimate workspace manifest. If the error returned is something else this is a
+            // workspace manifest with errors, classify this as a workspace manifest but with
+            // errors so that the erros will be displayed to the user.
+            Self::from_file(possible_path)
+                .err()
+                .map(|e| !e.to_string().contains("missing field `workspace`"))
+                .unwrap_or_else(|| true)
         })
         .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
