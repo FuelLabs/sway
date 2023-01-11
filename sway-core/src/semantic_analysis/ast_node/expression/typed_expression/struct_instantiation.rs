@@ -138,27 +138,23 @@ fn type_check_field_arguments(
 
     let mut typed_fields = vec![];
 
-    for field in fields.iter() {
-        let ctx = ctx
-            .by_ref()
-            .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
-        let value = check!(
-            ty::TyExpression::type_check(ctx, field.value.clone()),
-            continue,
-            warnings,
-            errors
-        );
-        typed_fields.push(ty::TyStructExpressionField {
-            value,
-            name: field.name.clone(),
-        });
-    }
-
     for struct_field in struct_fields.iter_mut() {
         match fields.iter().find(|x| x.name == struct_field.name) {
-            Some(typed_field) => {
-                struct_field.span = typed_field.value.span.clone();
+            Some(field) => {
+                let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
+                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                );
+                let value = check!(
+                    ty::TyExpression::type_check(ctx, field.value.clone()),
+                    continue,
+                    warnings,
+                    errors
+                );
+                typed_fields.push(ty::TyStructExpressionField {
+                    value,
+                    name: field.name.clone(),
+                });
+                struct_field.span = field.value.span.clone();
             }
             None => {
                 errors.push(CompileError::StructMissingField {
