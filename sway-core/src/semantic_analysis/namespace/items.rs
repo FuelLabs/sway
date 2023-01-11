@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_id::DeclId, DeclarationEngine},
+    declaration_engine::*,
     engine_threading::Engines,
     error::*,
     language::{ty, CallPath},

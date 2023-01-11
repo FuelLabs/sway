@@ -8,14 +8,15 @@
 //! [DeclarationEngine](declaration_engine::DeclarationEngine), a [DeclarationId](declaration_id::DeclarationId)
 //! is generated, which is then used to refer to the declaration.
 
-pub(crate) mod decl_mapping;
 #[allow(clippy::module_inception)]
-pub(crate) mod declaration_engine;
-pub(crate) mod declaration_id;
-pub(crate) mod declaration_wrapper;
-pub(crate) mod replace_declaration_id;
+pub(crate) mod engine;
+pub(crate) mod id;
+pub(crate) mod mapping;
+pub(crate) mod replace_decl_id;
+pub(crate) mod wrapper;
 
-pub(crate) use decl_mapping::*;
-pub use declaration_engine::*;
-pub use declaration_id::*;
-pub(crate) use replace_declaration_id::*;
+pub use engine::*;
+pub use id::*;
+pub(crate) use mapping::*;
+pub(crate) use replace_decl_id::*;
+pub(crate) use wrapper::*;

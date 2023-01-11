@@ -9,11 +9,10 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
+    declaration_engine::*,
     engine_threading::*,
     language::ty,
 };
-
-use super::{declaration_id::DeclId, declaration_wrapper::DeclWrapper};
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]

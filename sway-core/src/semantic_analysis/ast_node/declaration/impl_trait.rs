@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::{declaration_engine::*, DeclId, DeclMapping, ReplaceDecls},
+    declaration_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed::*, ty, *},
