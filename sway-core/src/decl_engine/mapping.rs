@@ -2,10 +2,10 @@ use std::{collections::BTreeMap, fmt};
 
 use sway_types::Ident;
 
-use super::DeclarationId;
+use super::DeclId;
 
-type SourceDecl = DeclarationId;
-type DestinationDecl = DeclarationId;
+type SourceDecl = DeclId;
+type DestinationDecl = DeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
@@ -47,8 +47,8 @@ impl DeclMapping {
     }
 
     pub(crate) fn from_original_and_new_decl_ids(
-        original_decl_ids: BTreeMap<Ident, DeclarationId>,
-        new_decl_ids: BTreeMap<Ident, DeclarationId>,
+        original_decl_ids: BTreeMap<Ident, DeclId>,
+        new_decl_ids: BTreeMap<Ident, DeclId>,
     ) -> DeclMapping {
         let mut mapping = vec![];
         for (original_decl_name, original_decl_id) in original_decl_ids.into_iter() {

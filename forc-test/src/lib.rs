@@ -201,7 +201,7 @@ impl<'a> PackageTests {
                     .expect("test entry point is missing declaration id");
                 let span = test_decl_id.span();
                 let test_function_decl = pkg_with_tests
-                    .declaration_engine
+                    .decl_engine
                     .get_function(test_decl_id, &span)
                     .expect("declaration engine is missing function declaration for test");
                 let condition = test_pass_condition(&test_function_decl)?;

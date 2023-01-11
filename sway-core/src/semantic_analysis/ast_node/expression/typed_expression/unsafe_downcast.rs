@@ -13,14 +13,14 @@ pub(crate) fn instantiate_unsafe_downcast(
     span: Span,
 ) -> (MatchReqMap, ty::TyExpression) {
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let match_req_map = vec![(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
             return_type: type_engine.insert_type(
-                declaration_engine,
+                decl_engine,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             ),
             span: exp.span.clone(),
@@ -28,7 +28,7 @@ pub(crate) fn instantiate_unsafe_downcast(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
             return_type: type_engine.insert_type(
-                declaration_engine,
+                decl_engine,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             ),
             span: exp.span.clone(),

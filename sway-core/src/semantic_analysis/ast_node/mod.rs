@@ -24,7 +24,7 @@ impl ty::TyAstNode {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         let node = ty::TyAstNode {
@@ -58,7 +58,7 @@ impl ty::TyAstNode {
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
                         .with_type_annotation(
-                            type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+                            type_engine.insert_type(decl_engine, TypeInfo::Unknown),
                         )
                         .with_help_text("");
                     let inner = check!(
@@ -114,7 +114,7 @@ pub(crate) fn reassign_storage_subfield(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
     if !ctx.namespace.has_storage_declared() {
@@ -125,7 +125,7 @@ pub(crate) fn reassign_storage_subfield(
 
     let storage_fields = check!(
         ctx.namespace
-            .get_storage_field_descriptors(declaration_engine, &span),
+            .get_storage_field_descriptors(decl_engine, &span),
         return err(warnings, errors),
         warnings,
         errors
