@@ -130,6 +130,7 @@ pub struct StorageAccessExpression {
 
 #[derive(Debug, Clone)]
 pub struct IntrinsicFunctionExpression {
+    pub name: Ident,
     pub kind_binding: TypeBinding<Intrinsic>,
     pub arguments: Vec<Expression>,
 }

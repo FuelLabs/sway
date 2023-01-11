@@ -1,3 +1,4 @@
+use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
@@ -32,6 +33,7 @@ pub enum AstToken {
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),
+    Intrinsic(Intrinsic),
     Attribute(Attribute),
 }
 
