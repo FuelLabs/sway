@@ -1,6 +1,6 @@
 use super::{DataSection, InstructionSet, ProgramKind};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
-use crate::declaration_engine::DeclarationId;
+use crate::declaration_engine::DeclId;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
@@ -31,7 +31,7 @@ pub struct FinalizedEntry {
     pub selector: Option<[u8; 4]>,
     /// If this entry is constructed from a test function contains the declaration id for that
     /// function, otherwise contains `None`.
-    pub test_decl_id: Option<DeclarationId>,
+    pub test_decl_id: Option<DeclId>,
 }
 
 impl FinalizedAsm {

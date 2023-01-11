@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::{DeclarationEngine, DeclarationId},
+    declaration_engine::{DeclId, DeclarationEngine},
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
     Engines, TypeEngine, TypeId,
@@ -477,7 +477,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclarationId],
+    methods: &[DeclId],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -803,7 +803,7 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
 
 fn get_trait_fn_node_index<'a, 'cfg>(
     engines: Engines<'_>,
-    function_decl_id: DeclarationId,
+    function_decl_id: DeclId,
     expression_span: Span,
     graph: &'a ControlFlowGraph<'cfg>,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {

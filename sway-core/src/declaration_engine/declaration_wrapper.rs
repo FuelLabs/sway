@@ -15,7 +15,7 @@ use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 /// The [DeclarationWrapper] type is used in the [DeclarationEngine]
 /// as a means of placing all declaration types into the same type.
 #[derive(Clone, Debug)]
-pub enum DeclarationWrapper {
+pub enum DeclWrapper {
     // no-op variant to fulfill the default trait
     Unknown,
     Function(ty::TyFunctionDeclaration),
@@ -29,118 +29,116 @@ pub enum DeclarationWrapper {
     Enum(ty::TyEnumDeclaration),
 }
 
-impl Default for DeclarationWrapper {
+impl Default for DeclWrapper {
     fn default() -> Self {
-        DeclarationWrapper::Unknown
+        DeclWrapper::Unknown
     }
 }
 
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl PartialEqWithEngines for DeclarationWrapper {
+impl PartialEqWithEngines for DeclWrapper {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
-            (DeclarationWrapper::Unknown, DeclarationWrapper::Unknown) => true,
-            (DeclarationWrapper::Function(l), DeclarationWrapper::Function(r)) => l.eq(r, engines),
-            (DeclarationWrapper::Trait(l), DeclarationWrapper::Trait(r)) => l.eq(r, engines),
-            (DeclarationWrapper::TraitFn(l), DeclarationWrapper::TraitFn(r)) => l.eq(r, engines),
-            (DeclarationWrapper::ImplTrait(l), DeclarationWrapper::ImplTrait(r)) => {
-                l.eq(r, engines)
-            }
-            (DeclarationWrapper::Struct(l), DeclarationWrapper::Struct(r)) => l.eq(r, engines),
-            (DeclarationWrapper::Storage(l), DeclarationWrapper::Storage(r)) => l.eq(r, engines),
-            (DeclarationWrapper::Abi(l), DeclarationWrapper::Abi(r)) => l.eq(r, engines),
-            (DeclarationWrapper::Constant(l), DeclarationWrapper::Constant(r)) => l.eq(r, engines),
-            (DeclarationWrapper::Enum(l), DeclarationWrapper::Enum(r)) => l.eq(r, engines),
+            (DeclWrapper::Unknown, DeclWrapper::Unknown) => true,
+            (DeclWrapper::Function(l), DeclWrapper::Function(r)) => l.eq(r, engines),
+            (DeclWrapper::Trait(l), DeclWrapper::Trait(r)) => l.eq(r, engines),
+            (DeclWrapper::TraitFn(l), DeclWrapper::TraitFn(r)) => l.eq(r, engines),
+            (DeclWrapper::ImplTrait(l), DeclWrapper::ImplTrait(r)) => l.eq(r, engines),
+            (DeclWrapper::Struct(l), DeclWrapper::Struct(r)) => l.eq(r, engines),
+            (DeclWrapper::Storage(l), DeclWrapper::Storage(r)) => l.eq(r, engines),
+            (DeclWrapper::Abi(l), DeclWrapper::Abi(r)) => l.eq(r, engines),
+            (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, engines),
+            (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, engines),
             _ => false,
         }
     }
 }
 
-impl fmt::Display for DeclarationWrapper {
+impl fmt::Display for DeclWrapper {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "decl({})", self.friendly_name())
     }
 }
 
-impl CopyTypes for DeclarationWrapper {
+impl CopyTypes for DeclWrapper {
     fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
         match self {
-            DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.copy_types(type_mapping, engines),
-            DeclarationWrapper::Trait(decl) => decl.copy_types(type_mapping, engines),
-            DeclarationWrapper::TraitFn(decl) => decl.copy_types(type_mapping, engines),
-            DeclarationWrapper::ImplTrait(decl) => decl.copy_types(type_mapping, engines),
-            DeclarationWrapper::Struct(decl) => decl.copy_types(type_mapping, engines),
-            DeclarationWrapper::Storage(_) => {}
-            DeclarationWrapper::Abi(_) => {}
-            DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Unknown => {}
+            DeclWrapper::Function(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Trait(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::TraitFn(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::ImplTrait(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Struct(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Storage(_) => {}
+            DeclWrapper::Abi(_) => {}
+            DeclWrapper::Constant(_) => {}
+            DeclWrapper::Enum(decl) => decl.copy_types(type_mapping, engines),
         }
     }
 }
 
-impl ReplaceSelfType for DeclarationWrapper {
+impl ReplaceSelfType for DeclWrapper {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         match self {
-            DeclarationWrapper::Unknown => {}
-            DeclarationWrapper::Function(decl) => decl.replace_self_type(engines, self_type),
-            DeclarationWrapper::Trait(decl) => decl.replace_self_type(engines, self_type),
-            DeclarationWrapper::TraitFn(decl) => decl.replace_self_type(engines, self_type),
-            DeclarationWrapper::ImplTrait(decl) => decl.replace_self_type(engines, self_type),
-            DeclarationWrapper::Struct(decl) => decl.replace_self_type(engines, self_type),
-            DeclarationWrapper::Storage(_) => {}
-            DeclarationWrapper::Abi(_) => {}
-            DeclarationWrapper::Constant(_) => {}
-            DeclarationWrapper::Enum(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::Unknown => {}
+            DeclWrapper::Function(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::Trait(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::TraitFn(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::ImplTrait(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::Struct(decl) => decl.replace_self_type(engines, self_type),
+            DeclWrapper::Storage(_) => {}
+            DeclWrapper::Abi(_) => {}
+            DeclWrapper::Constant(_) => {}
+            DeclWrapper::Enum(decl) => decl.replace_self_type(engines, self_type),
         }
     }
 }
 
-impl ReplaceDecls for DeclarationWrapper {
+impl ReplaceDecls for DeclWrapper {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        if let DeclarationWrapper::Function(decl) = self {
+        if let DeclWrapper::Function(decl) = self {
             decl.replace_decls(decl_mapping, engines);
         }
     }
 }
 
-impl ReplaceFunctionImplementingType for DeclarationWrapper {
+impl ReplaceFunctionImplementingType for DeclWrapper {
     fn replace_implementing_type(
         &mut self,
         _engines: Engines<'_>,
         implementing_type: ty::TyDeclaration,
     ) {
         match self {
-            DeclarationWrapper::Function(decl) => decl.set_implementing_type(implementing_type),
-            DeclarationWrapper::Unknown
-            | DeclarationWrapper::Trait(_)
-            | DeclarationWrapper::TraitFn(_)
-            | DeclarationWrapper::ImplTrait(_)
-            | DeclarationWrapper::Struct(_)
-            | DeclarationWrapper::Storage(_)
-            | DeclarationWrapper::Abi(_)
-            | DeclarationWrapper::Constant(_)
-            | DeclarationWrapper::Enum(_) => {}
+            DeclWrapper::Function(decl) => decl.set_implementing_type(implementing_type),
+            DeclWrapper::Unknown
+            | DeclWrapper::Trait(_)
+            | DeclWrapper::TraitFn(_)
+            | DeclWrapper::ImplTrait(_)
+            | DeclWrapper::Struct(_)
+            | DeclWrapper::Storage(_)
+            | DeclWrapper::Abi(_)
+            | DeclWrapper::Constant(_)
+            | DeclWrapper::Enum(_) => {}
         }
     }
 }
 
-impl DeclarationWrapper {
+impl DeclWrapper {
     /// friendly name string used for error reporting.
     fn friendly_name(&self) -> &'static str {
         match self {
-            DeclarationWrapper::Unknown => "unknown",
-            DeclarationWrapper::Function(_) => "function",
-            DeclarationWrapper::Trait(_) => "trait",
-            DeclarationWrapper::Struct(_) => "struct",
-            DeclarationWrapper::ImplTrait(_) => "impl trait",
-            DeclarationWrapper::TraitFn(_) => "trait function",
-            DeclarationWrapper::Storage(_) => "storage",
-            DeclarationWrapper::Abi(_) => "abi",
-            DeclarationWrapper::Constant(_) => "constant",
-            DeclarationWrapper::Enum(_) => "enum",
+            DeclWrapper::Unknown => "unknown",
+            DeclWrapper::Function(_) => "function",
+            DeclWrapper::Trait(_) => "trait",
+            DeclWrapper::Struct(_) => "struct",
+            DeclWrapper::ImplTrait(_) => "impl trait",
+            DeclWrapper::TraitFn(_) => "trait function",
+            DeclWrapper::Storage(_) => "storage",
+            DeclWrapper::Abi(_) => "abi",
+            DeclWrapper::Constant(_) => "constant",
+            DeclWrapper::Enum(_) => "enum",
         }
     }
 
@@ -149,8 +147,8 @@ impl DeclarationWrapper {
         span: &Span,
     ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Function(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Function(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -163,8 +161,8 @@ impl DeclarationWrapper {
 
     pub(super) fn expect_trait(self, span: &Span) -> Result<ty::TyTraitDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Trait(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Trait(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -177,8 +175,8 @@ impl DeclarationWrapper {
 
     pub(super) fn expect_trait_fn(self, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
         match self {
-            DeclarationWrapper::TraitFn(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::TraitFn(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -191,8 +189,8 @@ impl DeclarationWrapper {
 
     pub(super) fn expect_impl_trait(self, span: &Span) -> Result<ty::TyImplTrait, CompileError> {
         match self {
-            DeclarationWrapper::ImplTrait(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::ImplTrait(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -208,8 +206,8 @@ impl DeclarationWrapper {
         span: &Span,
     ) -> Result<ty::TyStructDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Struct(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Struct(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -225,8 +223,8 @@ impl DeclarationWrapper {
         span: &Span,
     ) -> Result<ty::TyStorageDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Storage(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Storage(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -239,8 +237,8 @@ impl DeclarationWrapper {
 
     pub(super) fn expect_abi(self, span: &Span) -> Result<ty::TyAbiDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Abi(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Abi(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -256,8 +254,8 @@ impl DeclarationWrapper {
         span: &Span,
     ) -> Result<ty::TyConstantDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Constant(decl) => Ok(*decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Constant(decl) => Ok(*decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),
@@ -270,8 +268,8 @@ impl DeclarationWrapper {
 
     pub(super) fn expect_enum(self, span: &Span) -> Result<ty::TyEnumDeclaration, CompileError> {
         match self {
-            DeclarationWrapper::Enum(decl) => Ok(decl),
-            DeclarationWrapper::Unknown => Err(CompileError::Internal(
+            DeclWrapper::Enum(decl) => Ok(decl),
+            DeclWrapper::Unknown => Err(CompileError::Internal(
                 "did not expect to find unknown declaration",
                 span.clone(),
             )),

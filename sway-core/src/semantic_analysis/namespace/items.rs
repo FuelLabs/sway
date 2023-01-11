@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_id::DeclarationId, DeclarationEngine},
+    declaration_engine::{declaration_id::DeclId, DeclarationEngine},
     engine_threading::Engines,
     error::*,
     language::{ty, CallPath},
@@ -45,7 +45,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclarationId>,
+    pub(crate) declared_storage: Option<DeclId>,
 }
 
 impl Items {
@@ -86,7 +86,7 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclarationId) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
@@ -147,7 +147,7 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclarationId],
+        methods: &[DeclId],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'a>,
@@ -189,7 +189,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }
@@ -199,7 +199,7 @@ impl Items {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type_and_trait_name(engines, type_id, trait_name)
     }

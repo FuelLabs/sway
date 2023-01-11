@@ -9,7 +9,7 @@
 // as well as modifying output messages.
 
 use crate::{
-    declaration_engine::{DeclarationEngine, DeclarationId},
+    declaration_engine::{DeclId, DeclarationEngine},
     language::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
@@ -111,7 +111,7 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     declaration_engine: &DeclarationEngine,
-    decl_id: &DeclarationId,
+    decl_id: &DeclId,
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
     declaration_engine
@@ -121,7 +121,7 @@ fn decl_id_to_fn_decls(
 
 fn impl_trait_methods<'a>(
     declaration_engine: &DeclarationEngine,
-    impl_trait_decl_id: &'a DeclarationId,
+    impl_trait_decl_id: &'a DeclId,
     span: &'a Span,
 ) -> Vec<ty::TyFunctionDeclaration> {
     match declaration_engine.get_impl_trait(impl_trait_decl_id.clone(), span) {

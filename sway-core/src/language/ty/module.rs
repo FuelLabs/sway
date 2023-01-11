@@ -1,7 +1,7 @@
 use sway_types::Ident;
 
 use crate::{
-    declaration_engine::{DeclarationEngine, DeclarationId},
+    declaration_engine::{DeclId, DeclarationEngine},
     language::ty::*,
     language::DepName,
     semantic_analysis::namespace,
@@ -44,7 +44,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         declaration_engine: &'a DeclarationEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
                 node.content

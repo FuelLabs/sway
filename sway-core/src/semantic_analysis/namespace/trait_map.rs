@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::DeclarationId,
+    declaration_engine::DeclId,
     engine_threading::*,
     error::*,
     language::CallPath,
@@ -63,7 +63,7 @@ impl OrdWithEngines for TraitKey {
 }
 
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
-type TraitMethods = im::HashMap<String, DeclarationId>;
+type TraitMethods = im::HashMap<String, DeclId>;
 
 #[derive(Clone, Debug)]
 struct TraitEntry {
@@ -98,7 +98,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclarationId],
+        methods: &[DeclId],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -648,7 +648,7 @@ impl TraitMap {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case
@@ -687,7 +687,7 @@ impl TraitMap {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case

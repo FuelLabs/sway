@@ -14,18 +14,18 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum TyDeclaration {
     VariableDeclaration(Box<TyVariableDeclaration>),
-    ConstantDeclaration(DeclarationId),
-    FunctionDeclaration(DeclarationId),
-    TraitDeclaration(DeclarationId),
-    StructDeclaration(DeclarationId),
-    EnumDeclaration(DeclarationId),
-    ImplTrait(DeclarationId),
-    AbiDeclaration(DeclarationId),
+    ConstantDeclaration(DeclId),
+    FunctionDeclaration(DeclId),
+    TraitDeclaration(DeclId),
+    StructDeclaration(DeclId),
+    EnumDeclaration(DeclId),
+    ImplTrait(DeclId),
+    AbiDeclaration(DeclId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery(Span),
-    StorageDeclaration(DeclarationId),
+    StorageDeclaration(DeclId),
 }
 
 impl EqWithEngines for TyDeclaration {}

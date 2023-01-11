@@ -6,7 +6,7 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
+    declaration_engine::{DeclId, DeclMapping, ReplaceDecls},
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,
@@ -19,7 +19,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclarationId,
+        function_decl_id: DeclId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,

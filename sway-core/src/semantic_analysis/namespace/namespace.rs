@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationId,
+    declaration_engine::DeclId,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -160,7 +160,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclarationId> {
+    ) -> CompileResult<DeclId> {
         let mut warnings = vec![];
         let mut errors = vec![];
 

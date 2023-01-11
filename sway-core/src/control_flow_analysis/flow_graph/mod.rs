@@ -62,7 +62,7 @@ pub enum ControlFlowGraphNode<'cfg> {
     MethodDeclaration {
         span: Span,
         method_name: Ident,
-        method_decl_id: DeclarationId,
+        method_decl_id: DeclId,
         engines: Engines<'cfg>,
     },
     StructField {

@@ -1,7 +1,7 @@
 use std::{fmt, sync::RwLock};
 
 use crate::{
-    declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
+    declaration_engine::{declaration_id::DeclId, declaration_wrapper::DeclWrapper},
     engine_threading::*,
     type_system::TypeId,
     TypeInfo,
@@ -111,12 +111,8 @@ impl ConcurrentSlab<TypeInfo> {
     }
 }
 
-impl ConcurrentSlab<DeclarationWrapper> {
-    pub fn replace(
-        &self,
-        index: DeclarationId,
-        new_value: DeclarationWrapper,
-    ) -> Option<DeclarationWrapper> {
+impl ConcurrentSlab<DeclWrapper> {
+    pub fn replace(&self, index: DeclId, new_value: DeclWrapper) -> Option<DeclWrapper> {
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None
