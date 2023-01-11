@@ -1,0 +1,9 @@
+category = "fail"
+
+# check: $()error
+# nextln: recursive_type_unification/src/main.sw:8:5
+# check: $()Option::Some::<V>(foo::<V>(value))
+# nextln: $()Mismatched types.
+# nextln: $()expected: V
+# nextln: $()found:    Option<V>.
+# nextln: $()help: Enum instantiator must match its declared variant type.

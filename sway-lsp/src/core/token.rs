@@ -1,3 +1,4 @@
+use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
@@ -7,6 +8,7 @@ use sway_core::{
         },
         ty,
     },
+    transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
     TypeArgument, TypeEngine,
 };
@@ -31,6 +33,8 @@ pub enum AstToken {
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),
+    Intrinsic(Intrinsic),
+    Attribute(Attribute),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -67,6 +71,7 @@ pub enum SymbolKind {
     NumericLiteral,
     Variable,
     BuiltinType,
+    DeriveHelper,
     Module,
     TypeParameter,
     Keyword,

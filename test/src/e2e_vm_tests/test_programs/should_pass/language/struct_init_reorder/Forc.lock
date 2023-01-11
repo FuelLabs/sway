@@ -1,0 +1,16 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-320F50F2CB619270'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-320F50F2CB619270'
+dependencies = ['core']
+
+[[package]]
+name = 'struct_init_reorder'
+source = 'member'
+dependencies = [
+    'core',
+    'std',
+]

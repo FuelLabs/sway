@@ -7,15 +7,15 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, declaration_engine::DeclarationEngine,
-    inline_function_calls, ir_generation::compile_program, namespace, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, inline_function_calls,
+    ir_generation::compile_program, namespace, Engines, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let core_lib = compile_core(engines);
 
     // Find all the tests.
@@ -116,6 +116,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     path.clone(),
                     PathBuf::from("/"),
                 );
+                // Include unit tests in the build.
+                let bld_cfg = bld_cfg.include_tests(true);
+
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
                     engines,
@@ -299,6 +302,7 @@ fn compile_core(engines: Engines<'_>) -> namespace::Module {
         path: Some(libcore_root_dir),
         offline_mode: true,
         terse_mode: true,
+        disable_tests: false,
         locked: false,
     };
 

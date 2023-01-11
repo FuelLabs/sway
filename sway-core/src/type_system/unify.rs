@@ -6,7 +6,7 @@ use sway_error::{
 };
 use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
-use crate::{engine_threading::*, language::ty, type_system::*, Engines};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
@@ -230,11 +230,11 @@ impl<'a> Unifier<'a> {
                 self.engines.te().insert_unified_type(expected, received);
                 (vec![], vec![])
             }
-            (r @ UnknownGeneric { .. }, e) => {
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
                 self.engines.te().insert_unified_type(expected, received);
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) => {
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r, span) => {
                 self.engines.te().insert_unified_type(received, expected);
                 self.replace_expected_with_received(received, expected, r, &e, span)
             }
@@ -253,6 +253,13 @@ impl<'a> Unifier<'a> {
                 (vec![], errors)
             }
         }
+    }
+
+    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo, span: &Span) -> bool {
+        OccursCheck::new(self.engines)
+            .check(generic, other, span)
+            .value
+            .unwrap_or(true)
     }
 
     fn unify_strs(

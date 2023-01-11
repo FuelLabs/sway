@@ -61,13 +61,13 @@ impl TypeMapping {
         type_parameters: &[TypeParameter],
     ) -> TypeMapping {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let mapping = type_parameters
             .iter()
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(declaration_engine, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert_type(decl_engine, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -150,7 +150,8 @@ impl TypeMapping {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -169,7 +170,8 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -188,13 +190,15 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
             }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters
                         .iter()
                         .map(|x| x.type_id)
@@ -203,7 +207,8 @@ impl TypeMapping {
                 )
             }
             (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
                 )
@@ -221,7 +226,8 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_type_parameters_and_type_arguments(
+                TypeMapping::from_superset_and_subset_helper(
+                    type_engine,
                     type_parameters,
                     type_arguments,
                 )
@@ -240,6 +246,28 @@ impl TypeMapping {
             }
             _ => TypeMapping { mapping: vec![] },
         }
+    }
+
+    /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
+    /// and a list of [TypeId]s `type_arguments`, the generated [TypeMapping]
+    /// is extended with the result from calling `from_superset_and_subset`
+    /// with each [SourceType]s and [DestinationType]s in the original [TypeMapping].
+    fn from_superset_and_subset_helper(
+        type_engine: &TypeEngine,
+        type_parameters: Vec<SourceType>,
+        type_arguments: Vec<DestinationType>,
+    ) -> TypeMapping {
+        let mut type_mapping =
+            TypeMapping::from_type_parameters_and_type_arguments(type_parameters, type_arguments);
+
+        for (s, d) in type_mapping.mapping.clone().iter() {
+            type_mapping.mapping.extend(
+                TypeMapping::from_superset_and_subset(type_engine, *s, *d)
+                    .mapping
+                    .iter(),
+            );
+        }
+        type_mapping
     }
 
     /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
@@ -276,7 +304,7 @@ impl TypeMapping {
     /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let type_info = type_engine.look_up_type_id(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
@@ -310,7 +338,7 @@ impl TypeMapping {
                     .collect::<Vec<_>>();
                 if need_to_create_new {
                     Some(type_engine.insert_type(
-                        declaration_engine,
+                        decl_engine,
                         TypeInfo::Struct {
                             fields,
                             name,
@@ -349,7 +377,7 @@ impl TypeMapping {
                     .collect::<Vec<_>>();
                 if need_to_create_new {
                     Some(type_engine.insert_type(
-                        declaration_engine,
+                        decl_engine,
                         TypeInfo::Enum {
                             variant_types,
                             type_parameters,
@@ -363,7 +391,7 @@ impl TypeMapping {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert_type(declaration_engine, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert_type(decl_engine, TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -379,7 +407,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(declaration_engine, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert_type(decl_engine, TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -397,7 +425,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(declaration_engine, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert_type(decl_engine, TypeInfo::Storage { fields }))
                 } else {
                     None
                 }
