@@ -78,11 +78,11 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            let decl_id = decl_engine.insert_trait_fn(method.clone());
+            let decl_id = decl_engine.insert(method.clone());
             new_interface_surface.push(decl_id.clone());
             dummy_interface_surface.push(
                 decl_engine
-                    .insert_function(method.to_dummy_func(Mode::NonAbi))
+                    .insert(method.to_dummy_func(Mode::NonAbi))
                     .with_parent(decl_engine, decl_id),
             );
         }
@@ -117,7 +117,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            new_methods.push(decl_engine.insert_function(method));
+            new_methods.push(decl_engine.insert(method));
         }
 
         let typed_trait_decl = ty::TyTraitDeclaration {
@@ -261,9 +261,7 @@ impl ty::TyTraitDeclaration {
             method.copy_types(&type_mapping, engines);
             impld_method_ids.insert(
                 method.name.clone(),
-                decl_engine
-                    .insert_function(method)
-                    .with_parent(decl_engine, decl_id),
+                decl_engine.insert(method).with_parent(decl_engine, decl_id),
             );
         }
 
@@ -320,7 +318,7 @@ impl ty::TyTraitDeclaration {
             method.copy_types(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
-                    .insert_function(method.to_dummy_func(Mode::NonAbi))
+                    .insert(method.to_dummy_func(Mode::NonAbi))
                     .with_parent(ctx.decl_engine, decl_id.clone()),
             );
         }
@@ -335,7 +333,7 @@ impl ty::TyTraitDeclaration {
             method.copy_types(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
-                    .insert_function(method)
+                    .insert(method)
                     .with_parent(ctx.decl_engine, decl_id.clone()),
             );
         }

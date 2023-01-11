@@ -5,7 +5,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Span, Spanned};
+use sway_types::Span;
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
@@ -49,8 +49,16 @@ impl DeclEngine {
         self.slab.replace(index, wrapper);
     }
 
-    pub(crate) fn insert(&self, declaration_wrapper: DeclWrapper, span: Span) -> DeclId {
-        DeclId::new(self.slab.insert(declaration_wrapper), span)
+    pub(crate) fn insert<T>(&self, decl: T) -> DeclId
+    where
+        T: Into<(DeclWrapper, Span)>,
+    {
+        let (decl_wrapper, span) = decl.into();
+        DeclId::new(self.slab.insert(decl_wrapper), span)
+    }
+
+    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclId {
+        DeclId::new(self.slab.insert(decl_wrapper), span)
     }
 
     /// Given a [DeclarationId] `index`, finds all the parents of `index` and
@@ -89,22 +97,12 @@ impl DeclEngine {
             .or_insert_with(|| vec![parent]);
     }
 
-    pub(crate) fn insert_function(&self, function: ty::TyFunctionDeclaration) -> DeclId {
-        let span = function.span();
-        self.insert(DeclWrapper::Function(function), span)
-    }
-
     pub fn get_function(
         &self,
         index: DeclId,
         span: &Span,
     ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         self.slab.get(*index).expect_function(span)
-    }
-
-    pub(crate) fn insert_trait(&self, r#trait: ty::TyTraitDeclaration) -> DeclId {
-        let span = r#trait.name.span();
-        self.insert(DeclWrapper::Trait(r#trait), span)
     }
 
     pub fn get_trait(
@@ -115,18 +113,8 @@ impl DeclEngine {
         self.slab.get(*index).expect_trait(span)
     }
 
-    pub(crate) fn insert_trait_fn(&self, trait_fn: ty::TyTraitFn) -> DeclId {
-        let span = trait_fn.name.span();
-        self.insert(DeclWrapper::TraitFn(trait_fn), span)
-    }
-
     pub fn get_trait_fn(&self, index: DeclId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
         self.slab.get(*index).expect_trait_fn(span)
-    }
-
-    pub(crate) fn insert_impl_trait(&self, impl_trait: ty::TyImplTrait) -> DeclId {
-        let span = impl_trait.span.clone();
-        self.insert(DeclWrapper::ImplTrait(impl_trait), span)
     }
 
     pub fn get_impl_trait(
@@ -137,22 +125,12 @@ impl DeclEngine {
         self.slab.get(*index).expect_impl_trait(span)
     }
 
-    pub(crate) fn insert_struct(&self, r#struct: ty::TyStructDeclaration) -> DeclId {
-        let span = r#struct.span();
-        self.insert(DeclWrapper::Struct(r#struct), span)
-    }
-
     pub fn get_struct(
         &self,
         index: DeclId,
         span: &Span,
     ) -> Result<ty::TyStructDeclaration, CompileError> {
         self.slab.get(*index).expect_struct(span)
-    }
-
-    pub(crate) fn insert_storage(&self, storage: ty::TyStorageDeclaration) -> DeclId {
-        let span = storage.span();
-        self.insert(DeclWrapper::Storage(storage), span)
     }
 
     pub fn get_storage(
@@ -163,11 +141,6 @@ impl DeclEngine {
         self.slab.get(*index).expect_storage(span)
     }
 
-    pub(crate) fn insert_abi(&self, abi: ty::TyAbiDeclaration) -> DeclId {
-        let span = abi.span.clone();
-        self.insert(DeclWrapper::Abi(abi), span)
-    }
-
     pub fn get_abi(
         &self,
         index: DeclId,
@@ -176,25 +149,12 @@ impl DeclEngine {
         self.slab.get(*index).expect_abi(span)
     }
 
-    pub(crate) fn insert_constant(&self, constant: ty::TyConstantDeclaration) -> DeclId {
-        let span = constant.name.span();
-        DeclId::new(
-            self.slab.insert(DeclWrapper::Constant(Box::new(constant))),
-            span,
-        )
-    }
-
     pub fn get_constant(
         &self,
         index: DeclId,
         span: &Span,
     ) -> Result<ty::TyConstantDeclaration, CompileError> {
         self.slab.get(*index).expect_constant(span)
-    }
-
-    pub(crate) fn insert_enum(&self, enum_decl: ty::TyEnumDeclaration) -> DeclId {
-        let span = enum_decl.span();
-        self.insert(DeclWrapper::Enum(enum_decl), span)
     }
 
     pub fn get_enum(

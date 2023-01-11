@@ -543,7 +543,7 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| decl_engine.insert_function(d.clone()))
+            .map(|d| decl_engine.insert(d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -867,7 +867,7 @@ fn type_check_trait_implementation(
             .append(&mut unconstrained_type_parameters_to_be_added);
 
         let name = impl_method.name.clone();
-        let decl_id = decl_engine.insert_function(impl_method);
+        let decl_id = decl_engine.insert(impl_method);
         impld_method_ids.insert(name, decl_id);
     }
 
@@ -905,7 +905,7 @@ fn type_check_trait_implementation(
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
             decl_engine
-                .insert_function(method)
+                .insert(method)
                 .with_parent(decl_engine, decl_id.clone()),
         );
     }

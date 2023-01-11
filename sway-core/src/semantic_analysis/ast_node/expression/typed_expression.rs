@@ -1329,7 +1329,7 @@ impl ty::TyExpression {
             );
             abi_methods.push(
                 decl_engine
-                    .insert_function(method.to_dummy_func(Mode::ImplAbiFn))
+                    .insert(method.to_dummy_func(Mode::ImplAbiFn))
                     .with_parent(decl_engine, decl_id),
             );
         }

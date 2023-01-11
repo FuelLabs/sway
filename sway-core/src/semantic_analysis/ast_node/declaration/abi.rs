@@ -48,7 +48,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_interface_surface.push(ctx.decl_engine.insert_trait_fn(method));
+            new_interface_surface.push(ctx.decl_engine.insert(method));
         }
 
         // Type check the methods.
@@ -67,7 +67,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(ctx.decl_engine.insert_function(method));
+            new_methods.push(ctx.decl_engine.insert(method));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

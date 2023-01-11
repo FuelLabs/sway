@@ -67,7 +67,7 @@ pub(crate) fn instantiate_function_application(
     );
     function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
-    let new_decl_id = decl_engine.insert_function(function_decl);
+    let new_decl_id = decl_engine.insert(function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

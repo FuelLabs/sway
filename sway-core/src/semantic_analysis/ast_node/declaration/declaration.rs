@@ -136,7 +136,7 @@ impl ty::TyDeclaration {
                     span,
                 };
                 let typed_const_decl =
-                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert_constant(decl));
+                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
                 ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                 typed_const_decl
             }
@@ -149,7 +149,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = enum_decl.name.clone();
-                let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert_enum(enum_decl));
+                let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -169,8 +169,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = fn_decl.name.clone();
-                let decl =
-                    ty::TyDeclaration::FunctionDeclaration(decl_engine.insert_function(fn_decl));
+                let decl = ty::TyDeclaration::FunctionDeclaration(decl_engine.insert(fn_decl));
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -183,7 +182,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
-                let decl_id = decl_engine.insert_trait(trait_decl.clone());
+                let decl_id = decl_engine.insert(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
                 trait_decl
                     .methods
@@ -220,7 +219,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert_impl_trait(impl_trait.clone()));
+                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
                 impl_trait.methods.iter_mut().for_each(|method| {
                     method.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
@@ -249,7 +248,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert_impl_trait(impl_trait.clone()));
+                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
                 impl_trait.methods.iter_mut().for_each(|method| {
                     method.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
@@ -264,7 +263,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = decl.name.clone();
-                let decl_id = decl_engine.insert_struct(decl);
+                let decl_id = decl_engine.insert(decl);
                 let decl = ty::TyDeclaration::StructDeclaration(decl_id);
                 // insert the struct decl into namespace
                 check!(
@@ -284,8 +283,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl =
-                    ty::TyDeclaration::AbiDeclaration(decl_engine.insert_abi(abi_decl.clone()));
+                let decl = ty::TyDeclaration::AbiDeclaration(decl_engine.insert(abi_decl.clone()));
                 abi_decl
                     .methods
                     .iter_mut()
@@ -343,7 +341,7 @@ impl ty::TyDeclaration {
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_id = decl_engine.insert_storage(decl);
+                let decl_id = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 

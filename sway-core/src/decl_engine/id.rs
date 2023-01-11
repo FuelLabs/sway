@@ -123,7 +123,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.copy_types(type_mapping, engines);
         decl_engine
-            .insert(decl, self.1.clone())
+            .insert_wrapper(decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -136,7 +136,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         decl_engine
-            .insert(decl, self.1.clone())
+            .insert_wrapper(decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -149,7 +149,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.replace_decls(decl_mapping, engines);
         decl_engine
-            .insert(decl, self.1.clone())
+            .insert_wrapper(decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 }

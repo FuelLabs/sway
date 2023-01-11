@@ -197,7 +197,7 @@ impl TypeBinding<CallPath> {
                 // insert the new copy into the declaration engine
                 let new_id = ctx
                     .decl_engine
-                    .insert_function(new_copy)
+                    .insert(new_copy)
                     .with_parent(ctx.decl_engine, original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
@@ -231,7 +231,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert_enum(new_copy);
+                let new_id = ctx.decl_engine.insert(new_copy);
 
                 ty::TyDeclaration::EnumDeclaration(new_id)
             }
@@ -264,7 +264,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert_struct(new_copy);
+                let new_id = ctx.decl_engine.insert(new_copy);
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }

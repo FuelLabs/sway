@@ -535,7 +535,7 @@ pub(crate) fn resolve_method_name(
 
     let decl_id = ctx
         .decl_engine
-        .insert_function(func_decl)
+        .insert(func_decl)
         .with_parent(ctx.decl_engine, decl_id);
 
     ok(decl_id, warnings, errors)

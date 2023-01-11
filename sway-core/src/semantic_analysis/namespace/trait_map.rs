@@ -604,7 +604,7 @@ impl TraitMap {
                             (
                                 name,
                                 decl_engine
-                                    .insert(decl, decl_id.span())
+                                    .insert_wrapper(decl, decl_id.span())
                                     .with_parent(decl_engine, decl_id),
                             )
                         })
