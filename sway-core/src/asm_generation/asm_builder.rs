@@ -7,7 +7,7 @@ use super::{
 
 use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
-    declaration_engine::DeclarationId,
+    decl_engine::DeclId,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
@@ -57,7 +57,7 @@ pub(super) struct AsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    entries: Vec<(Function, Label, Vec<Op>, Option<DeclarationId>)>,
+    entries: Vec<(Function, Label, Vec<Op>, Option<DeclId>)>,
     non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -67,12 +67,7 @@ pub(super) struct AsmBuilder<'ir> {
 type AsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(
-        Function,
-        Label,
-        AbstractInstructionSet,
-        Option<DeclarationId>,
-    )>,
+    Vec<(Function, Label, AbstractInstructionSet, Option<DeclId>)>,
     Vec<AbstractInstructionSet>,
 );
 

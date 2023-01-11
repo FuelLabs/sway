@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -32,7 +32,7 @@ use std::collections::HashMap;
 
 pub(crate) struct FnCompiler<'eng> {
     type_engine: &'eng TypeEngine,
-    declaration_engine: &'eng DeclarationEngine,
+    decl_engine: &'eng DeclEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,
@@ -58,7 +58,7 @@ impl<'eng> FnCompiler<'eng> {
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
     ) -> Self {
-        let (type_engine, declaration_engine) = engines.unwrap();
+        let (type_engine, decl_engine) = engines.unwrap();
         let lexical_map = LexicalMap::from_iter(
             function
                 .args_iter(context)
@@ -66,7 +66,7 @@ impl<'eng> FnCompiler<'eng> {
         );
         FnCompiler {
             type_engine,
-            declaration_engine,
+            decl_engine,
             module,
             function,
             current_block: function.get_entry_block(context),
@@ -141,7 +141,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let tcd = self
-                        .declaration_engine
+                        .decl_engine
                         .get_constant(decl_id.clone(), &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
@@ -165,9 +165,7 @@ impl<'eng> FnCompiler<'eng> {
                     })
                 }
                 ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = self
-                        .declaration_engine
-                        .get_enum(decl_id.clone(), &ast_node.span)?;
+                    let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
@@ -252,7 +250,7 @@ impl<'eng> FnCompiler<'eng> {
                     )
                 } else {
                     let function_decl = self
-                        .declaration_engine
+                        .decl_engine
                         .get_function(function_decl_id.clone(), &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
@@ -468,7 +466,7 @@ impl<'eng> FnCompiler<'eng> {
             Ok(key_val)
         }
 
-        let engines = Engines::new(self.type_engine, self.declaration_engine);
+        let engines = Engines::new(self.type_engine, self.decl_engine);
 
         // We safely index into arguments and type_arguments arrays below
         // because the type-checker ensures that the arguments are all there.
@@ -1245,7 +1243,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
                 let is_entry = false;
                 let new_func = compile_function(
-                    Engines::new(self.type_engine, self.declaration_engine),
+                    Engines::new(self.type_engine, self.decl_engine),
                     context,
                     md_mgr,
                     self.module,
@@ -1629,8 +1627,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let body_deterministically_aborts =
-            body.deterministically_aborts(self.declaration_engine, false);
+        let body_deterministically_aborts = body.deterministically_aborts(self.decl_engine, false);
         let init_val = self.compile_expression(context, md_mgr, body)?;
         if init_val.is_diverging(context) || body_deterministically_aborts {
             return Ok(Some(init_val));
@@ -1675,7 +1672,7 @@ impl<'eng> FnCompiler<'eng> {
             ..
         } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
-            Engines::new(self.type_engine, self.declaration_engine),
+            Engines::new(self.type_engine, self.decl_engine),
             context,
             md_mgr,
             self.module,
@@ -1979,7 +1976,7 @@ impl<'eng> FnCompiler<'eng> {
             value: ConstantValue::Uint(constant_value),
             ..
         }) = compile_constant_expression_to_constant(
-            Engines::new(self.type_engine, self.declaration_engine),
+            Engines::new(self.type_engine, self.decl_engine),
             context,
             md_mgr,
             self.module,

@@ -27,7 +27,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -94,7 +94,7 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
-    pub declaration_engine: DeclarationEngine,
+    pub decl_engine: DeclEngine,
     pub manifest_file: PackageManifestFile,
 }
 
@@ -2424,7 +2424,7 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
-                declaration_engine: engines.de().clone(),
+                decl_engine: engines.de().clone(),
                 manifest_file: manifest.clone(),
             };
             Ok((built_package, namespace))
@@ -2634,8 +2634,8 @@ pub fn build(
         .collect();
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();

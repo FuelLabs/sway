@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_id::DeclarationId, DeclarationEngine},
+    decl_engine::*,
     engine_threading::Engines,
     error::*,
     language::{ty, CallPath},
@@ -45,7 +45,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclarationId>,
+    pub(crate) declared_storage: Option<DeclId>,
 }
 
 impl Items {
@@ -64,13 +64,11 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -86,7 +84,7 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclarationId) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
@@ -147,7 +145,7 @@ impl Items {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclarationId],
+        methods: &[DeclId],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'a>,
@@ -189,7 +187,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }
@@ -199,7 +197,7 @@ impl Items {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type_and_trait_name(engines, type_id, trait_name)
     }
@@ -210,7 +208,7 @@ impl Items {
 
     pub(crate) fn get_storage_field_descriptors(
         &self,
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
@@ -218,9 +216,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
