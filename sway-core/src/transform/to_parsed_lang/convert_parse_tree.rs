@@ -1261,6 +1261,7 @@ fn expr_func_app_to_expression_kind(
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
+                    name: call_seg.name,
                     kind_binding: TypeBinding {
                         inner: intrinsic,
                         type_arguments,

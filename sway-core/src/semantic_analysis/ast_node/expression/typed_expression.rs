@@ -244,6 +244,7 @@ impl ty::TyExpression {
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 kind_binding,
                 arguments,
+                ..
             }) => Self::type_check_intrinsic_function(ctx.by_ref(), kind_binding, arguments, span),
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(ctx.by_ref(), *condition, body, span)
