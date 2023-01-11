@@ -137,11 +137,21 @@ impl ModuleInfo {
             .expect("There will always be at least the project name")
     }
     /// The location of the parent of the current module.
+    /// Returns `None` if there is no parent.
     ///
     /// To be used in path navigation between modules.
-    pub(crate) fn _parent(&mut self) -> &str {
-        self.0.pop();
-        self.location()
+    pub(crate) fn parent(&self) -> Option<&String> {
+        match self.has_parent() {
+            true => {
+                let mut iter = self.0.iter();
+                iter.next_back();
+                iter.next_back()
+            }
+            false => None,
+        }
+    }
+    fn has_parent(&self) -> bool {
+        self.depth() > 1
     }
     /// The name of the project.
     pub(crate) fn project_name(&self) -> &str {
@@ -189,5 +199,26 @@ impl ModuleInfo {
     /// Create a new [ModuleInfo] from a vec.
     pub(crate) fn from_vec(vec: Vec<String>) -> Self {
         Self(vec)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ModuleInfo;
+
+    #[test]
+    fn test_parent() {
+        let project = String::from("project_name");
+        let module = String::from("module_name");
+        let mut module_vec = vec![project.clone(), module.clone()];
+
+        let module_info = ModuleInfo::from_vec(module_vec.clone());
+        let project_opt = module_info.parent();
+        assert_eq!(Some(&project), project_opt);
+
+        module_vec.pop();
+        let module_info = ModuleInfo::from_vec(module_vec);
+        let project_opt = module_info.parent();
+        assert_eq!(None, project_opt);
     }
 }
