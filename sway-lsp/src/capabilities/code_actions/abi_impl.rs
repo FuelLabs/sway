@@ -63,12 +63,12 @@ fn get_return_type_string(engines: Engines<'_>, function_decl: TyTraitFn) -> Str
 }
 
 fn get_function_signatures(engines: Engines<'_>, abi_decl: TyAbiDeclaration) -> String {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     abi_decl
         .interface_surface
         .iter()
         .filter_map(|function_decl_id| {
-            declaration_engine
+            decl_engine
                 .get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
                 .ok()
                 .map(|function_decl| {

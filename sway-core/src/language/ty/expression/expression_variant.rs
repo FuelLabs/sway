@@ -6,7 +6,7 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
+    decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,
@@ -19,7 +19,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclarationId,
+        function_decl_id: DeclId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -129,7 +129,7 @@ impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -146,10 +146,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_function_decl = declaration_engine
+                let l_function_decl = decl_engine
                     .get_function(l_function_decl_id.clone(), &Span::dummy())
                     .unwrap();
-                let r_function_decl = declaration_engine
+                let r_function_decl = decl_engine
                     .get_function(r_function_decl_id.clone(), &Span::dummy())
                     .unwrap();
                 l_name == r_name

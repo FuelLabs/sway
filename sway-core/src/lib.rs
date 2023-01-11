@@ -6,7 +6,7 @@ mod asm_lang;
 mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
-pub mod declaration_engine;
+pub mod decl_engine;
 mod engine_threading;
 pub mod ir_generation;
 pub mod language;
@@ -346,10 +346,18 @@ pub fn compile_to_ast(
         mut warnings,
         mut errors,
     } = parse(input, engines, build_config);
-    let (.., parse_program) = match parse_program_opt {
+    let (.., mut parse_program) = match parse_program_opt {
         Some(parse_program) => parse_program,
         None => return deduped_err(warnings, errors),
     };
+
+    // If tests are not enabled, exclude them from `parsed_program`.
+    if build_config
+        .map(|config| !config.include_tests)
+        .unwrap_or(true)
+    {
+        parse_program.exclude_tests();
+    }
 
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = parsed_to_ast(engines, &parse_program, initial_namespace, build_config);
@@ -741,12 +749,12 @@ fn dead_code_analysis<'a>(
     engines: Engines<'a>,
     program: &ty::TyProgram,
 ) -> CompileResult<ControlFlowGraph<'a>> {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(engines, &program.root, &tree_type, &mut dead_code_graph).flat_map(
         |_| {
-            let warnings = dead_code_graph.find_dead_code(declaration_engine);
+            let warnings = dead_code_graph.find_dead_code(decl_engine);
             ok(dead_code_graph, warnings, vec![])
         },
     )
@@ -807,11 +815,11 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
         contract;
@@ -902,11 +910,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
         contract;
@@ -927,13 +935,13 @@ fn test_parenthesized() {
 #[test]
 fn test_unary_ordering() {
     use crate::{
-        declaration_engine::DeclarationEngine,
+        decl_engine::DeclEngine,
         language::{self, parsed},
     };
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
     script;

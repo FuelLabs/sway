@@ -4,10 +4,15 @@ use tracing::metadata::LevelFilter;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
+    #[serde(default)]
     pub debug: DebugConfig,
+    #[serde(default)]
     pub logging: LoggingConfig,
+    #[serde(default)]
     pub inlay_hints: InlayHintsConfig,
-    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub diagnostic: DiagnosticConfig,
+    #[serde(default, skip_serializing)]
     trace: TraceConfig,
 }
 
@@ -19,6 +24,23 @@ struct TraceConfig {}
 #[serde(rename_all = "camelCase")]
 pub struct DebugConfig {
     pub show_collected_tokens_as_warnings: Warnings,
+}
+
+// Options for displaying compiler diagnostics
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticConfig {
+    pub show_warnings: bool,
+    pub show_errors: bool,
+}
+
+impl Default for DiagnosticConfig {
+    fn default() -> Self {
+        Self {
+            show_warnings: true,
+            show_errors: true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

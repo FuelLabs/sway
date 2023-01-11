@@ -1,11 +1,6 @@
 use sway_types::Ident;
 
-use crate::{
-    declaration_engine::{DeclMapping, ReplaceDecls},
-    engine_threading::*,
-    language::ty::*,
-    type_system::*,
-};
+use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStructExpressionField {

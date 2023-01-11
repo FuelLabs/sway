@@ -196,7 +196,7 @@ impl Module {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         let src_ns = check!(
             self.check_submodule(src),
@@ -209,7 +209,7 @@ impl Module {
         let mut symbols = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(declaration_engine),
+                decl.visibility(decl_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -247,7 +247,7 @@ impl Module {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         let src_ns = check!(
             self.check_submodule(src),
@@ -261,7 +261,7 @@ impl Module {
         let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
-                decl.visibility(declaration_engine),
+                decl.visibility(decl_engine),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -325,7 +325,7 @@ impl Module {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         let src_ns = check!(
             self.check_submodule(src),
@@ -337,7 +337,7 @@ impl Module {
         match src_ns.symbols.get(item).cloned() {
             Some(decl) => {
                 let visibility = check!(
-                    decl.visibility(declaration_engine),
+                    decl.visibility(decl_engine),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -365,7 +365,7 @@ impl Module {
                 if let ty::TyDeclaration::ConstantDeclaration(ref var_decl) = decl {
                     let const_decl = check!(
                         CompileResult::from(
-                            declaration_engine.get_constant(var_decl.clone(), &var_decl.span())
+                            decl_engine.get_constant(var_decl.clone(), &var_decl.span())
                         ),
                         return err(warnings, errors),
                         warnings,
