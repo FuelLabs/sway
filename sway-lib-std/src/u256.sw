@@ -220,6 +220,16 @@ impl core::ops::Ord for U256 {
     }
 }
 
+impl U256{
+    pub fn ge(self, other: Self) -> bool {
+        self > other || self == other
+    }
+
+    pub fn le(self, other: Self) -> bool {
+        self < other || self == other
+    }
+}
+
 impl core::ops::BitwiseAnd for U256 {
     fn binary_and(self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();

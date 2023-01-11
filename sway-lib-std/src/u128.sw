@@ -45,6 +45,15 @@ impl core::ops::Ord for U128 {
         self.upper < other.upper || self.upper == other.upper && self.lower < other.lower
     }
 }
+impl U128{
+    pub fn ge(self, other: Self) -> bool {
+        self > other || self == other
+    }
+
+    pub fn le(self, other: Self) -> bool {
+        self < other || self == other
+    }
+}
 
 // TODO this doesn't work?
 // impl core::ops::OrdEq for U128 {
