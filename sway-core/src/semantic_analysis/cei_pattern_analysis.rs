@@ -9,7 +9,7 @@
 // as well as modifying output messages.
 
 use crate::{
-    declaration_engine::{DeclId, DeclarationEngine},
+    declaration_engine::{DeclEngine, DeclId},
     language::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
@@ -91,7 +91,7 @@ fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<Co
 
 // standalone functions and methods
 fn contract_entry_points(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
 ) -> Vec<ty::TyFunctionDeclaration> {
     use crate::ty::TyAstNodeContent::Declaration;
@@ -110,7 +110,7 @@ fn contract_entry_points(
 }
 
 fn decl_id_to_fn_decls(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     decl_id: &DeclId,
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
@@ -120,7 +120,7 @@ fn decl_id_to_fn_decls(
 }
 
 fn impl_trait_methods<'a>(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     impl_trait_decl_id: &'a DeclId,
     span: &'a Span,
 ) -> Vec<ty::TyFunctionDeclaration> {

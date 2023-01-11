@@ -21,7 +21,7 @@ use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    declaration_engine::DeclEngine,
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
@@ -57,7 +57,7 @@ pub struct Session {
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
-    pub declaration_engine: RwLock<DeclarationEngine>,
+    pub declaration_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
 }
 

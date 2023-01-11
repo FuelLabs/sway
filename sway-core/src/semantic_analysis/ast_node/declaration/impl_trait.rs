@@ -236,7 +236,7 @@ impl ty::TyImplTrait {
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            declaration_engine: &DeclEngine,
             x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -253,7 +253,7 @@ impl ty::TyImplTrait {
         }
 
         fn expr_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            declaration_engine: &DeclEngine,
             expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -374,7 +374,7 @@ impl ty::TyImplTrait {
         }
 
         fn decl_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            declaration_engine: &DeclEngine,
             decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -402,7 +402,7 @@ impl ty::TyImplTrait {
         }
 
         fn codeblock_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            declaration_engine: &DeclEngine,
             cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {

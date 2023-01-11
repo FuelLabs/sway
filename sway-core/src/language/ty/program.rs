@@ -486,7 +486,7 @@ impl TyProgram {
     /// All test function declarations within the program.
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
-        declaration_engine: &'a DeclarationEngine,
+        declaration_engine: &'a DeclEngine,
     ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
         self.root
             .submodules_recursive()
@@ -524,7 +524,7 @@ impl TyProgramKind {
 }
 
 fn disallow_impure_functions(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     declarations: &[TyDeclaration],
     mains: &[TyFunctionDeclaration],
 ) -> Vec<CompileError> {

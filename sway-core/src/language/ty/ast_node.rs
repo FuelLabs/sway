@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
+    declaration_engine::{DeclEngine, DeclMapping, ReplaceDecls},
     engine_threading::*,
     error::*,
     language::{parsed, ty::*},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident>;
+    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -96,7 +96,7 @@ impl CollectTypesMetadata for TyAstNode {
 impl DeterministicallyAborts for TyAstNode {
     fn deterministically_aborts(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         check_call_body: bool,
     ) -> bool {
         use TyAstNodeContent::*;
@@ -111,7 +111,7 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
         self.content.get_decl_ident(declaration_engine)
     }
 }
@@ -134,7 +134,7 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self, declaration_engine: &DeclarationEngine) -> CompileResult<bool> {
+    pub(crate) fn is_public(&self, declaration_engine: &DeclEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let public = match &self.content {
@@ -158,7 +158,7 @@ impl TyAstNode {
     /// the [TreeType] is Script or Predicate.
     pub(crate) fn is_main_function(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         tree_type: parsed::TreeType,
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
@@ -187,10 +187,7 @@ impl TyAstNode {
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(
-        &self,
-        declaration_engine: &DeclarationEngine,
-    ) -> CompileResult<bool> {
+    pub(crate) fn is_test_function(&self, declaration_engine: &DeclEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -270,7 +267,7 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
         match self {
             TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(declaration_engine),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),

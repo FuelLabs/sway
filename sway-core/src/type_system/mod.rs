@@ -42,11 +42,9 @@ use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{
-        declaration_engine::DeclarationEngine, language::ty, span::Span, transform, Ident,
-    };
+    use crate::{declaration_engine::DeclEngine, language::ty, span::Span, transform, Ident};
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
 
     let sp = Span::dummy();
     let generic_name = Ident::new_with_override("T", sp.clone());
@@ -153,9 +151,9 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::declaration_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
 
     let sp = Span::dummy();
     // numerics
@@ -177,9 +175,9 @@ fn basic_numeric_unknown() {
 
 #[test]
 fn unify_numerics() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::declaration_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let sp = Span::dummy();
 
     // numerics
@@ -201,9 +199,9 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::declaration_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let sp = Span::dummy();
 
     // numerics

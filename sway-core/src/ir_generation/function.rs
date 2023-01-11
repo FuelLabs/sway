@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     asm_generation::from_ir::ir_type_size_in_bytes,
-    declaration_engine::DeclarationEngine,
+    declaration_engine::DeclEngine,
     engine_threading::*,
     ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
@@ -32,7 +32,7 @@ use std::collections::HashMap;
 
 pub(crate) struct FnCompiler<'eng> {
     type_engine: &'eng TypeEngine,
-    declaration_engine: &'eng DeclarationEngine,
+    declaration_engine: &'eng DeclEngine,
     module: Module,
     pub(super) function: Function,
     pub(super) current_block: Block,

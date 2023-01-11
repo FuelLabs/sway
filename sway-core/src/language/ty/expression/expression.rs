@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
+    declaration_engine::{DeclEngine, DeclMapping, ReplaceDecls},
     engine_threading::*,
     error::*,
     language::{ty::*, Literal},
@@ -400,7 +400,7 @@ impl CollectTypesMetadata for TyExpression {
 impl DeterministicallyAborts for TyExpression {
     fn deterministically_aborts(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         check_call_body: bool,
     ) -> bool {
         use TyExpressionVariant::*;

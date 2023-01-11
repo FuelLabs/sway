@@ -1855,7 +1855,7 @@ impl ty::TyExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{declaration_engine::DeclarationEngine, Engines};
+    use crate::{declaration_engine::DeclEngine, Engines};
     use sway_error::type_error::TypeError;
 
     fn do_type_check(
@@ -1871,7 +1871,7 @@ mod tests {
 
     fn do_type_check_for_boolx2(expr: Expression) -> CompileResult<ty::TyExpression> {
         let type_engine = TypeEngine::default();
-        let declaration_engine = DeclarationEngine::default();
+        let declaration_engine = DeclEngine::default();
         do_type_check(
             Engines::new(&type_engine, &declaration_engine),
             expr,
@@ -2005,7 +2005,7 @@ mod tests {
         };
 
         let type_engine = TypeEngine::default();
-        let declaration_engine = DeclarationEngine::default();
+        let declaration_engine = DeclEngine::default();
         let comp_res = do_type_check(
             Engines::new(&type_engine, &declaration_engine),
             expr,

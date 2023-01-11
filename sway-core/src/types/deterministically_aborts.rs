@@ -1,4 +1,4 @@
-use crate::declaration_engine::DeclarationEngine;
+use crate::declaration_engine::DeclEngine;
 
 /// If this expression deterministically_aborts 100% of the time, this function returns
 /// `true`. Used in dead-code and control-flow analysis.
@@ -6,7 +6,7 @@ use crate::declaration_engine::DeclarationEngine;
 pub(crate) trait DeterministicallyAborts {
     fn deterministically_aborts(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         check_call_body: bool,
     ) -> bool;
 }

@@ -11,10 +11,10 @@ use sway_core::{
 use sway_types::Spanned;
 
 trait RequiredMethods {
-    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn>;
+    fn to_methods(&self, declaration_engine: &DeclEngine) -> Vec<TyTraitFn>;
 }
 impl RequiredMethods for Vec<sway_core::declaration_engine::DeclId> {
-    fn to_methods(&self, declaration_engine: &DeclarationEngine) -> Vec<TyTraitFn> {
+    fn to_methods(&self, declaration_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
             .map(|decl_id| {
                 declaration_engine
@@ -34,7 +34,7 @@ pub(crate) enum Descriptor {
 impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         ty_decl: &TyDeclaration,
         module_info: ModuleInfo,
         document_private_items: bool,

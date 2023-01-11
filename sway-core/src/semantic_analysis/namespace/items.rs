@@ -210,7 +210,7 @@ impl Items {
 
     pub(crate) fn get_storage_field_descriptors(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];

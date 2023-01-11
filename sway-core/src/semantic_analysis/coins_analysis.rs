@@ -1,4 +1,4 @@
-use crate::{declaration_engine::DeclarationEngine, language::ty, Namespace};
+use crate::{declaration_engine::DeclEngine, language::ty, Namespace};
 
 // This analysis checks if an expression is known statically to evaluate
 // to a non-zero value at runtime.
@@ -6,7 +6,7 @@ use crate::{declaration_engine::DeclarationEngine, language::ty, Namespace};
 // method gets called with a non-zero amount of `coins`
 pub fn possibly_nonzero_u64_expression(
     namespace: &Namespace,
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     expr: &ty::TyExpression,
 ) -> bool {
     use ty::TyExpressionVariant::*;

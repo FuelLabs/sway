@@ -42,11 +42,7 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert_type(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        ty: TypeInfo,
-    ) -> TypeId {
+    pub(crate) fn insert_type(&self, declaration_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -113,7 +109,7 @@ impl TypeEngine {
     /// Checks if the given [TypeInfo] is a storage only type.
     pub(crate) fn is_type_info_storage_only(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         ti: &TypeInfo,
     ) -> bool {
         self.storage_only_types
@@ -153,7 +149,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         value: &mut T,
         type_arguments: &mut [TypeArgument],
         enforce_type_arguments: EnforceTypeArguments,
@@ -250,7 +246,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn unify_with_self(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         mut received: TypeId,
         mut expected: TypeId,
         self_type: TypeId,
@@ -279,7 +275,7 @@ impl TypeEngine {
     /// is not).
     pub(crate) fn unify(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -365,7 +361,7 @@ impl TypeEngine {
     /// generic types, then `expected` will be replaced with `received`.
     pub(crate) fn unify_adt(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         received: TypeId,
         expected: TypeId,
         span: &Span,
@@ -426,7 +422,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         type_id: TypeId,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
@@ -577,7 +573,7 @@ impl TypeEngine {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_type_with_self(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         mut type_id: TypeId,
         self_type: TypeId,
         span: &Span,
@@ -601,7 +597,7 @@ impl TypeEngine {
     /// Pretty print method for printing the [TypeEngine]. This method is
     /// manually implemented to avoid implementation overhead regarding using
     /// [DisplayWithEngines].
-    pub fn pretty_print(&self, declaration_engine: &DeclarationEngine) -> String {
+    pub fn pretty_print(&self, declaration_engine: &DeclEngine) -> String {
         let engines = Engines::new(self, declaration_engine);
         let mut builder = String::new();
         self.slab.with_slice(|elems| {

@@ -226,11 +226,11 @@ fn unify_return_statements(
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{declaration_engine::DeclarationEngine, language::Visibility};
+    use crate::{declaration_engine::DeclEngine, language::Visibility};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),

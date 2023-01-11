@@ -7,7 +7,7 @@ use crate::{
     ReplaceSelfType, TypeId,
 };
 
-use super::{DeclMapping, DeclarationEngine, ReplaceDecls, ReplaceFunctionImplementingType};
+use super::{DeclEngine, DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
 /// An ID used to refer to an item in the [DeclarationEngine](super::declaration_engine::DeclarationEngine)
 #[derive(Debug)]
@@ -105,11 +105,7 @@ impl DeclId {
         DeclId(index, span)
     }
 
-    pub(crate) fn with_parent(
-        self,
-        declaration_engine: &DeclarationEngine,
-        parent: DeclId,
-    ) -> DeclId {
+    pub(crate) fn with_parent(self, declaration_engine: &DeclEngine, parent: DeclId) -> DeclId {
         declaration_engine.register_parent(&self, parent);
         self
     }

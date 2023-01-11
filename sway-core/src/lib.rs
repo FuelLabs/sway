@@ -815,10 +815,10 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::declaration_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
@@ -910,10 +910,10 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::declaration_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"
@@ -935,12 +935,12 @@ fn test_parenthesized() {
 #[test]
 fn test_unary_ordering() {
     use crate::{
-        declaration_engine::DeclarationEngine,
+        declaration_engine::DeclEngine,
         language::{self, parsed},
     };
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
     let prog = parse(
         r#"

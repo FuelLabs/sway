@@ -26,7 +26,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    declaration_engine::DeclEngine,
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -93,7 +93,7 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
-    pub declaration_engine: DeclarationEngine,
+    pub declaration_engine: DeclEngine,
     pub manifest_file: PackageManifestFile,
 }
 
@@ -2624,7 +2624,7 @@ pub fn build(
         .collect();
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let declaration_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &declaration_engine);
 
     let mut lib_namespace_map = Default::default();

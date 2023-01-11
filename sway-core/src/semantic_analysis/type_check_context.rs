@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationEngine,
+    declaration_engine::DeclEngine,
     engine_threading::*,
     language::{parsed::TreeType, Purity},
     namespace::Path,
@@ -28,7 +28,7 @@ pub struct TypeCheckContext<'a> {
     pub(crate) type_engine: &'a TypeEngine,
 
     /// The declaration engine holds declarations.
-    pub(crate) declaration_engine: &'a DeclarationEngine,
+    pub(crate) declaration_engine: &'a DeclEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`

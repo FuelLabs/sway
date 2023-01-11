@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    declaration_engine::DeclarationEngine, type_system::TypeId, CompileResult, Engines, TypeEngine,
+    declaration_engine::DeclEngine, type_system::TypeId, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Ident, Span};
 
@@ -70,7 +70,7 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) type_engine: &'cx TypeEngine,
-    pub(crate) declaration_engine: &'cx DeclarationEngine,
+    pub(crate) declaration_engine: &'cx DeclEngine,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {

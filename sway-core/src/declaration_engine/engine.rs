@@ -16,22 +16,22 @@ use crate::{
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
-pub struct DeclarationEngine {
+pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
     parents: RwLock<HashMap<usize, Vec<DeclId>>>,
 }
 
-impl Clone for DeclarationEngine {
+impl Clone for DeclEngine {
     fn clone(&self) -> Self {
         let parents = self.parents.read().unwrap();
-        DeclarationEngine {
+        DeclEngine {
             slab: self.slab.clone(),
             parents: RwLock::new(parents.clone()),
         }
     }
 }
 
-impl fmt::Display for DeclarationEngine {
+impl fmt::Display for DeclEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.slab.with_slice(|elems| {
             let list = ListDisplay { list: elems.iter() };
@@ -40,7 +40,7 @@ impl fmt::Display for DeclarationEngine {
     }
 }
 
-impl DeclarationEngine {
+impl DeclEngine {
     pub(crate) fn look_up_decl_id(&self, index: DeclId) -> DeclWrapper {
         self.slab.get(*index)
     }

@@ -46,7 +46,7 @@ impl<'a> Dependency<'a> {
     /// Insert TypedDeclaration tokens into the TokenMap.
     pub fn collect_typed_declaration(
         &self,
-        declaration_engine: &de::DeclarationEngine,
+        declaration_engine: &de::DeclEngine,
         node: &ty::TyAstNode,
     ) {
         if let ty::TyAstNodeContent::Declaration(declaration) = &node.content {

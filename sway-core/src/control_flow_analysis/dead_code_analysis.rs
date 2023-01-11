@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::{DeclId, DeclarationEngine},
+    declaration_engine::{DeclEngine, DeclId},
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
     Engines, TypeEngine, TypeId,
@@ -12,10 +12,7 @@ use sway_error::{error::CompileError, type_error::TypeError};
 use sway_types::{span::Span, Ident, Spanned};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
-    pub(crate) fn find_dead_code(
-        &self,
-        declaration_engine: &DeclarationEngine,
-    ) -> Vec<CompileWarning> {
+    pub(crate) fn find_dead_code(&self, declaration_engine: &DeclEngine) -> Vec<CompileWarning> {
         // Dead code is code that has no path from the entry point.
         // Collect all connected nodes by traversing from the entries.
         // The dead nodes are those we did not collect.
@@ -130,7 +127,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
 /// Collect all entry points into the graph based on the tree type.
 fn entry_points(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     tree_type: &TreeType,
     graph: &flow_graph::Graph,
 ) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
@@ -1610,7 +1607,7 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
 /// if the node is a function declaration, but "this trait is never used" if it is a trait
 /// declaration.
 fn construct_dead_code_warning_from_node(
-    declaration_engine: &DeclarationEngine,
+    declaration_engine: &DeclEngine,
     node: &ty::TyAstNode,
 ) -> Option<CompileWarning> {
     Some(match node {

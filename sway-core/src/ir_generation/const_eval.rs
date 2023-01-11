@@ -1,6 +1,6 @@
 use crate::{
-    declaration_engine::DeclarationEngine, engine_threading::*, language::ty,
-    metadata::MetadataManager, semantic_analysis::*, TypeEngine,
+    declaration_engine::DeclEngine, engine_threading::*, language::ty, metadata::MetadataManager,
+    semantic_analysis::*, TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -18,7 +18,7 @@ use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
-    pub(crate) declaration_engine: &'a DeclarationEngine,
+    pub(crate) declaration_engine: &'a DeclEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,

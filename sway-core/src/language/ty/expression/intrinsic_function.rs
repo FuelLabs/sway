@@ -1,8 +1,8 @@
 use std::fmt;
 
 use crate::{
-    declaration_engine::DeclarationEngine, engine_threading::*, error::*, language::ty::*,
-    type_system::*, types::DeterministicallyAborts,
+    declaration_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
+    types::DeterministicallyAborts,
 };
 use itertools::Itertools;
 use sway_ast::Intrinsic;
@@ -67,7 +67,7 @@ impl DisplayWithEngines for TyIntrinsicFunctionKind {
 impl DeterministicallyAborts for TyIntrinsicFunctionKind {
     fn deterministically_aborts(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         check_call_body: bool,
     ) -> bool {
         matches!(self.kind, Intrinsic::Revert)

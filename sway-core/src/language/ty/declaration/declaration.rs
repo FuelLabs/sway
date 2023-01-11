@@ -257,7 +257,7 @@ impl CollectTypesMetadata for TyDeclaration {
 }
 
 impl GetDeclIdent for TyDeclaration {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
         match self {
             TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
             TyDeclaration::ConstantDeclaration(decl) => Some(
@@ -316,7 +316,7 @@ impl TyDeclaration {
     /// Returns an error if `self` is not a [TyEnumDeclaration].
     pub(crate) fn expect_enum(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyEnumDeclaration> {
         match self {
@@ -339,7 +339,7 @@ impl TyDeclaration {
     /// Returns an error if `self` is not a [TyStructDeclaration].
     pub(crate) fn expect_struct(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyStructDeclaration> {
         let mut warnings = vec![];
@@ -372,7 +372,7 @@ impl TyDeclaration {
     /// Returns an error if `self` is not a [TyFunctionDeclaration].
     pub(crate) fn expect_function(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyFunctionDeclaration> {
         let mut warnings = vec![];
@@ -424,7 +424,7 @@ impl TyDeclaration {
     /// Returns an error if `self` is not a [TyAbiDeclaration].
     pub(crate) fn expect_abi(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyAbiDeclaration> {
         match self {
@@ -447,7 +447,7 @@ impl TyDeclaration {
     /// Returns an error if `self` is not a [TyConstantDeclaration].
     pub(crate) fn expect_const(
         &self,
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyConstantDeclaration> {
         match self {
@@ -572,10 +572,7 @@ impl TyDeclaration {
         ok(type_id, warnings, errors)
     }
 
-    pub(crate) fn visibility(
-        &self,
-        declaration_engine: &DeclarationEngine,
-    ) -> CompileResult<Visibility> {
+    pub(crate) fn visibility(&self, declaration_engine: &DeclEngine) -> CompileResult<Visibility> {
         use TyDeclaration::*;
         let mut warnings = vec![];
         let mut errors = vec![];

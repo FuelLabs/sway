@@ -75,7 +75,7 @@ pub enum ControlFlowGraphNode<'cfg> {
 }
 
 impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
-    fn get_decl_ident(&self, declaration_engine: &DeclarationEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
             ControlFlowGraphNode::ProgramNode(node) => node.get_decl_ident(declaration_engine),

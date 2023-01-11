@@ -6,7 +6,7 @@ use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
 use std::path::PathBuf;
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    declaration_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
 };
 
@@ -40,7 +40,7 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
         no_deps: bool,
@@ -80,7 +80,7 @@ impl Document {
         Ok(docs)
     }
     fn from_ty_submodule(
-        declaration_engine: &DeclarationEngine,
+        declaration_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &ModuleInfo,
