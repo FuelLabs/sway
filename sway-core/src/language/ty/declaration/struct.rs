@@ -53,9 +53,9 @@ impl ReplaceSelfType for TyStructDeclaration {
 impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         type_engine.insert_type(
-            declaration_engine,
+            decl_engine,
             TypeInfo::Struct {
                 name: self.name.clone(),
                 fields: self.fields.clone(),

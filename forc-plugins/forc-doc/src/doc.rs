@@ -7,7 +7,7 @@ use horrorshow::{box_html, RenderBox};
 use std::option::Option;
 use std::path::PathBuf;
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
 };
 
@@ -41,7 +41,7 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
         no_deps: bool,
@@ -52,7 +52,7 @@ impl Document {
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
-                    declaration_engine,
+                    decl_engine,
                     decl,
                     ModuleInfo::from_vec(vec![project_name.to_owned()]),
                     document_private_items,
@@ -69,7 +69,7 @@ impl Document {
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = ModuleInfo::from_vec(vec![project_name.to_owned()]);
                 Document::from_ty_submodule(
-                    declaration_engine,
+                    decl_engine,
                     typed_submodule,
                     &mut docs,
                     &module_prefix,
@@ -81,7 +81,7 @@ impl Document {
         Ok(docs)
     }
     fn from_ty_submodule(
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &ModuleInfo,
@@ -94,7 +94,7 @@ impl Document {
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
-                    declaration_engine,
+                    decl_engine,
                     decl,
                     new_submodule_prefix.clone(),
                     document_private_items,
@@ -108,7 +108,7 @@ impl Document {
         // if there is another submodule we need to go a level deeper
         if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
             Document::from_ty_submodule(
-                declaration_engine,
+                decl_engine,
                 submodule,
                 docs,
                 &new_submodule_prefix,

@@ -3,7 +3,7 @@ use crate::core::{
     token_map::TokenMap,
 };
 use sway_core::{
-    declaration_engine as de,
+    decl_engine as de,
     language::{
         parsed::{AstNode, AstNodeContent, Declaration},
         ty,
@@ -44,29 +44,25 @@ impl<'a> Dependency<'a> {
     }
 
     /// Insert TypedDeclaration tokens into the TokenMap.
-    pub fn collect_typed_declaration(
-        &self,
-        declaration_engine: &de::DeclarationEngine,
-        node: &ty::TyAstNode,
-    ) {
+    pub fn collect_typed_declaration(&self, decl_engine: &de::DeclEngine, node: &ty::TyAstNode) {
         if let ty::TyAstNodeContent::Declaration(declaration) = &node.content {
             let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 
             if let Ok(ident) = match declaration {
                 ty::TyDeclaration::VariableDeclaration(variable) => Ok(variable.name.clone()),
-                ty::TyDeclaration::StructDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
                     .get_struct(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::TraitDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::TraitDeclaration(decl_id) => decl_engine
                     .get_trait(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::FunctionDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::FunctionDeclaration(decl_id) => decl_engine
                     .get_function(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => decl_engine
                     .get_constant(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::EnumDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
                     .get_enum(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
                 _ => return,
