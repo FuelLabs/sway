@@ -6,7 +6,7 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclId, DeclMapping, ReplaceDecls},
+    declaration_engine::*,
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,

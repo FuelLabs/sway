@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    declaration_engine::{DeclEngine, DeclId},
+    declaration_engine::*,
     language::{parsed::TreeType, ty, CallPath, Visibility},
     type_system::TypeInfo,
     Engines, TypeEngine, TypeId,

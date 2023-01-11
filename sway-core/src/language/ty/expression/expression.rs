@@ -3,7 +3,7 @@ use std::fmt;
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::{DeclEngine, DeclMapping, ReplaceDecls},
+    declaration_engine::*,
     engine_threading::*,
     error::*,
     language::{ty::*, Literal},

@@ -2,12 +2,7 @@ use std::borrow::Cow;
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{
-    declaration_engine::{DeclMapping, ReplaceDecls},
-    engine_threading::*,
-    language::ty::*,
-    type_system::*,
-};
+use crate::{declaration_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyReassignment {

@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclEngine, DeclMapping, ReplaceDecls},
+    declaration_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed, ty::*},

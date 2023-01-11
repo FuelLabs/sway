@@ -9,7 +9,7 @@
 // as well as modifying output messages.
 
 use crate::{
-    declaration_engine::{DeclEngine, DeclId},
+    declaration_engine::*,
     language::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
