@@ -14,12 +14,6 @@ pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) trait Renderable {
     fn render(self) -> Result<Box<dyn RenderBox>>;
 }
-/// so, I would recommend you take a look at: https://rust-unofficial.github.io/too-many-lists/first-ownership.html
-/// will help you understand the difference between self, &self and &mut self
-/// Here, we don't want to use &self, because it is a reference to self
-/// There is a difficult to explain reason why we don't and can't use &self here
-/// and it has to do with the macro `box_html!` and lifetimes
-///
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_info: Vec<String>,
