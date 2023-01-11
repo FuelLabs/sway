@@ -1,6 +1,6 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities,
+    capabilities::{self, diagnostic::Diagnostics},
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
@@ -67,7 +67,10 @@ impl Backend {
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
-                    vec![]
+                    Diagnostics {
+                        warnings: vec![],
+                        errors: vec![],
+                    }
                 }
             }
         };
@@ -145,20 +148,31 @@ impl Backend {
         uri: &Url,
         workspace_uri: &Url,
         session: Arc<Session>,
-        diagnostics: Vec<Diagnostic>,
+        diagnostics: Diagnostics,
     ) {
         let diagnostics_res = {
-            let debug = &self.config.read().debug;
+            let mut diagnostics_to_publish = vec![];
+            let config = &self.config.read();
             let tokens = session.token_map().tokens_for_file(uri);
-            match debug.show_collected_tokens_as_warnings {
-                Warnings::Default => diagnostics,
+            match config.debug.show_collected_tokens_as_warnings {
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
+                Warnings::Parsed => diagnostics_to_publish
+                    .extend(debug::generate_warnings_for_parsed_tokens(tokens)),
+                Warnings::Typed => {
+                    diagnostics_to_publish.extend(debug::generate_warnings_for_typed_tokens(tokens))
+                }
+                Warnings::Default => {}
             }
+            if config.diagnostic.show_warnings {
+                diagnostics_to_publish.extend(diagnostics.warnings);
+            }
+            if config.diagnostic.show_errors {
+                diagnostics_to_publish.extend(diagnostics.errors);
+            }
+            diagnostics_to_publish
         };
 
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
