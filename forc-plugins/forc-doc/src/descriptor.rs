@@ -86,8 +86,14 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = enum_decl.name;
-                    let attrs_opt = (!enum_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(enum_decl.attributes));
+                    let attrs_opt = if !enum_decl.attributes.is_empty() {
+                        match attrsmap_to_html_str(enum_decl.attributes) {
+                            Ok(s) => Some(s),
+                            Err(e) => bail!("{}", e),
+                        }
+                    } else {
+                        None
+                    };
                     let context = (!enum_decl.variants.is_empty())
                         .then_some(ContextType::EnumVariants(enum_decl.variants));
 
@@ -117,8 +123,14 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = trait_decl.name;
-                    let attrs_opt = (!trait_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(trait_decl.attributes));
+                    let attrs_opt = if !trait_decl.attributes.is_empty() {
+                        match attrsmap_to_html_str(trait_decl.attributes) {
+                            Ok(s) => Some(s),
+                            Err(e) => bail!("{}", e),
+                        }
+                    } else {
+                        None
+                    };
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
                             trait_decl
@@ -150,8 +162,15 @@ impl Descriptor {
             AbiDeclaration(ref decl_id) => {
                 let abi_decl = declaration_engine.get_abi(decl_id.clone(), &decl_id.span())?;
                 let item_name = abi_decl.name;
-                let attrs_opt = (!abi_decl.attributes.is_empty())
-                    .then(|| attrsmap_to_html_str(abi_decl.attributes));
+                let attrs_opt = if !abi_decl.attributes.is_empty() {
+                    match attrsmap_to_html_str(abi_decl.attributes) {
+                        Ok(s) => Some(s),
+                        Err(e) => bail!("{}", e),
+                    }
+                } else {
+                    None
+                };
+
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
                         abi_decl.interface_surface.to_methods(declaration_engine)?,
@@ -181,8 +200,14 @@ impl Descriptor {
                 let item_name = sway_types::BaseIdent::new_no_trim(
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
                 );
-                let attrs_opt = (!storage_decl.attributes.is_empty())
-                    .then(|| attrsmap_to_html_str(storage_decl.attributes));
+                let attrs_opt = if !storage_decl.attributes.is_empty() {
+                    match attrsmap_to_html_str(storage_decl.attributes) {
+                        Ok(s) => Some(s),
+                        Err(e) => bail!("{}", e),
+                    }
+                } else {
+                    None
+                };
                 let context = (!storage_decl.fields.is_empty())
                     .then_some(ContextType::StorageFields(storage_decl.fields));
 
@@ -238,8 +263,14 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = fn_decl.name;
-                    let attrs_opt = (!fn_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(fn_decl.attributes));
+                    let attrs_opt = if !fn_decl.attributes.is_empty() {
+                        match attrsmap_to_html_str(fn_decl.attributes) {
+                            Ok(s) => Some(s),
+                            Err(e) => bail!("{}", e),
+                        }
+                    } else {
+                        None
+                    };
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -268,8 +299,14 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = const_decl.name;
-                    let attrs_opt = (!const_decl.attributes.is_empty())
-                        .then(|| attrsmap_to_html_str(const_decl.attributes));
+                    let attrs_opt = if !const_decl.attributes.is_empty() {
+                        match attrsmap_to_html_str(const_decl.attributes) {
+                            Ok(s) => Some(s),
+                            Err(e) => bail!("{}", e),
+                        }
+                    } else {
+                        None
+                    };
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
