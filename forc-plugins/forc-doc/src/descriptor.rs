@@ -170,7 +170,6 @@ impl Descriptor {
                 } else {
                     None
                 };
-
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
                         abi_decl.interface_surface.to_methods(declaration_engine)?,
