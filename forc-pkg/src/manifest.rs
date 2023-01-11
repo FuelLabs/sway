@@ -722,8 +722,13 @@ impl WorkspaceManifestFile {
     /// This is short for `PackageManifest::from_file`, but takes care of constructing the path to the
     /// file.
     pub fn from_dir(manifest_dir: &Path) -> Result<Self> {
-        let dir = forc_util::find_manifest_dir(manifest_dir)
-            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let dir = forc_util::find_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
+            // Check if the found manifest file is a workspace manifest file or a standalone
+            // package manifest file.
+            let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
+            Self::from_file(possible_path).is_ok()
+        })
+        .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
