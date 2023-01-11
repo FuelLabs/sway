@@ -76,11 +76,11 @@ impl ty::TyDeclaration {
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {
                 name,
                 type_ascription,
+                type_ascription_span,
                 value,
                 visibility,
                 attributes,
                 span,
-                ..
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
@@ -132,6 +132,7 @@ impl ty::TyDeclaration {
                     visibility,
                     return_type,
                     attributes,
+                    type_ascription_span,
                     span,
                 };
                 let typed_const_decl = ty::TyDeclaration::ConstantDeclaration(
