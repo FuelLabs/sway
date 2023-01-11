@@ -112,10 +112,10 @@ impl TokenMap {
         type_id: &TypeId,
     ) -> Option<ty::TyStructDeclaration> {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         self.declaration_of_type_id(type_engine, type_id)
             .and_then(|decl| match decl {
-                ty::TyDeclaration::StructDeclaration(ref decl_id) => declaration_engine
+                ty::TyDeclaration::StructDeclaration(ref decl_id) => decl_engine
                     .get_struct(decl_id.clone(), &decl_id.span())
                     .ok(),
                 _ => None,

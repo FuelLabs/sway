@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclId,
+    decl_engine::DeclId,
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -199,12 +199,12 @@ pub(crate) fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    let (type_engine, declaration_engine) = engines.unwrap();
+    let (type_engine, decl_engine) = engines.unwrap();
     for decl_name in module_ns.get_all_declared_symbols() {
         compile_const_decl(
             &mut LookupEnv {
                 type_engine,
-                declaration_engine,
+                decl_engine,
                 context,
                 md_mgr,
                 module,
@@ -240,15 +240,15 @@ fn compile_declarations(
     namespace: &namespace::Module,
     declarations: &[ty::TyDeclaration],
 ) -> Result<(), CompileError> {
-    let (type_engine, declaration_engine) = engines.unwrap();
+    let (type_engine, decl_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
             ty::TyDeclaration::ConstantDeclaration(ref decl_id) => {
-                let decl = declaration_engine.get_constant(decl_id.clone(), &declaration.span())?;
+                let decl = decl_engine.get_constant(decl_id.clone(), &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
-                        declaration_engine,
+                        decl_engine,
                         context,
                         md_mgr,
                         module,

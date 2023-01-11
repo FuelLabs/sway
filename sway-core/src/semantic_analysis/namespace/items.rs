@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::Engines,
     error::*,
     language::{ty, CallPath},
@@ -64,13 +64,11 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -210,7 +208,7 @@ impl Items {
 
     pub(crate) fn get_storage_field_descriptors(
         &self,
-        declaration_engine: &DeclEngine,
+        decl_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
@@ -218,9 +216,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors

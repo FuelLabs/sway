@@ -18,7 +18,7 @@ pub(crate) fn insert_supertraits_into_namespace(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
     for supertrait in supertraits.iter() {
         // Right now we don't have the ability to support defining a supertrait
@@ -41,9 +41,7 @@ pub(crate) fn insert_supertraits_into_namespace(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(
-                        declaration_engine.get_trait(decl_id.clone(), &supertrait.span())
-                    ),
+                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &supertrait.span())),
                     break,
                     warnings,
                     errors

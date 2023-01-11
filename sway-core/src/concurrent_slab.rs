@@ -1,6 +1,6 @@
 use std::{fmt, sync::RwLock};
 
-use crate::{declaration_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
+use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {

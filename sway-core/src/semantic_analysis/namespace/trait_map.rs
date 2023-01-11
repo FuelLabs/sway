@@ -4,7 +4,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::DeclId,
+    decl_engine::DeclId,
     engine_threading::*,
     error::*,
     language::CallPath,
@@ -107,12 +107,12 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
         for decl_id in methods.iter() {
             let method = check!(
-                CompileResult::from(declaration_engine.get_function(decl_id.clone(), impl_span)),
+                CompileResult::from(decl_engine.get_function(decl_id.clone(), impl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -122,7 +122,7 @@ impl TraitMap {
 
         // check to see if adding this trait will produce a conflicting definition
         let trait_type_id = type_engine.insert_type(
-            declaration_engine,
+            decl_engine,
             TypeInfo::Custom {
                 name: trait_name.suffix.clone(),
                 type_arguments: if trait_type_args.is_empty() {
@@ -150,7 +150,7 @@ impl TraitMap {
                 ..
             } = map_trait_name;
             let map_trait_type_id = type_engine.insert_type(
-                declaration_engine,
+                decl_engine,
                 TypeInfo::Custom {
                     name: map_trait_name_suffix.clone(),
                     type_arguments: if map_trait_type_args.is_empty() {
@@ -195,7 +195,7 @@ impl TraitMap {
                     if map_trait_methods.get(name).is_some() {
                         let method = check!(
                             CompileResult::from(
-                                declaration_engine.get_function(decl_id.clone(), impl_span)
+                                decl_engine.get_function(decl_id.clone(), impl_span)
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -569,7 +569,7 @@ impl TraitMap {
         decider: impl Fn(&TypeInfo, &TypeInfo) -> bool,
     ) -> TraitMap {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let mut trait_map = TraitMap::default();
         for TraitEntry {
             key:
@@ -592,21 +592,20 @@ impl TraitMap {
                 } else if decider(&type_info, &type_engine.look_up_type_id(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(type_engine, *map_type_id, *type_id);
-                    let new_self_type =
-                        type_engine.insert_type(declaration_engine, TypeInfo::SelfType);
+                    let new_self_type = type_engine.insert_type(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
                         .into_iter()
                         .map(|(name, decl_id)| {
-                            let mut decl = declaration_engine.get(decl_id.clone());
+                            let mut decl = decl_engine.get(decl_id.clone());
                             decl.copy_types(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
-                                declaration_engine
+                                decl_engine
                                     .insert(decl, decl_id.span())
-                                    .with_parent(declaration_engine, decl_id),
+                                    .with_parent(decl_engine, decl_id),
                             )
                         })
                         .collect();
@@ -725,7 +724,7 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         let required_traits: BTreeSet<Ident> = constraints
             .iter()
@@ -740,7 +739,7 @@ impl TraitMap {
                 type_arguments: constraint_type_arguments,
             } = constraint;
             let constraint_type_id = type_engine.insert_type(
-                declaration_engine,
+                decl_engine,
                 TypeInfo::Custom {
                     name: constraint_trait_name.suffix.clone(),
                     type_arguments: if constraint_type_arguments.is_empty() {
@@ -753,7 +752,7 @@ impl TraitMap {
             for key in self.trait_impls.iter().map(|e| &e.key) {
                 let suffix = &key.name.suffix;
                 let map_trait_type_id = type_engine.insert_type(
-                    declaration_engine,
+                    decl_engine,
                     TypeInfo::Custom {
                         name: suffix.name.clone(),
                         type_arguments: if suffix.args.is_empty() {

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::{
-    declaration_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
+    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
     types::DeterministicallyAborts,
 };
 use itertools::Itertools;
@@ -65,16 +65,12 @@ impl DisplayWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl DeterministicallyAborts for TyIntrinsicFunctionKind {
-    fn deterministically_aborts(
-        &self,
-        declaration_engine: &DeclEngine,
-        check_call_body: bool,
-    ) -> bool {
+    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         matches!(self.kind, Intrinsic::Revert)
             || self
                 .arguments
                 .iter()
-                .any(|x| x.deterministically_aborts(declaration_engine, check_call_body))
+                .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }
 

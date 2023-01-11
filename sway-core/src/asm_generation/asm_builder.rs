@@ -7,7 +7,7 @@ use super::{
 
 use crate::{
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
-    declaration_engine::DeclId,
+    decl_engine::DeclId,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,

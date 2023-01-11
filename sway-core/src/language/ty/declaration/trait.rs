@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::DeclId,
+    decl_engine::DeclId,
     engine_threading::*,
     language::{parsed, Visibility},
     transform,

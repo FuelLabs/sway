@@ -1,6 +1,6 @@
 use sway_types::{Ident, Span};
 
-use crate::{declaration_engine::DeclId, engine_threading::*, transform, type_system::*};
+use crate::{decl_engine::DeclId, engine_threading::*, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
@@ -28,11 +28,11 @@ impl PartialEqWithEngines for TyAbiDeclaration {
 impl CreateTypeId for TyAbiDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let ty = TypeInfo::ContractCaller {
             abi_name: AbiName::Known(self.name.clone().into()),
             address: None,
         };
-        type_engine.insert_type(declaration_engine, ty)
+        type_engine.insert_type(decl_engine, ty)
     }
 }

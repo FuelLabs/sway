@@ -1,6 +1,6 @@
 use super::{DataSection, InstructionSet, ProgramKind};
 use crate::asm_lang::allocated_ops::AllocatedOpcode;
-use crate::declaration_engine::DeclId;
+use crate::decl_engine::DeclId;
 use crate::error::*;
 use crate::source_map::SourceMap;
 

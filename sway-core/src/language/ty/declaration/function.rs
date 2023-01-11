@@ -2,7 +2,7 @@ use sha2::{Digest, Sha256};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
@@ -189,7 +189,7 @@ impl TyFunctionDeclaration {
         engines: Engines<'_>,
     ) -> TyFunctionDeclaration {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -199,7 +199,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
+        let initial_return_type = type_engine.insert_type(decl_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,

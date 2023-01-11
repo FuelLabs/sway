@@ -7,15 +7,15 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, declaration_engine::DeclEngine, inline_function_calls,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, inline_function_calls,
     ir_generation::compile_program, namespace, Engines, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let core_lib = compile_core(engines);
 
     // Find all the tests.

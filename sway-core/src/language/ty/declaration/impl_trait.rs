@@ -1,6 +1,6 @@
 use sway_types::Span;
 
-use crate::{declaration_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
+use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {

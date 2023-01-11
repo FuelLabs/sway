@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -98,7 +98,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         let TypeParameter {
             initial_type_id,
@@ -121,7 +121,7 @@ impl TypeParameter {
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
         let type_id = type_engine.insert_type(
-            declaration_engine,
+            decl_engine,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -277,7 +277,7 @@ fn handle_trait(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
     let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
     let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
@@ -290,9 +290,7 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(
-                    declaration_engine.get_trait(decl_id, &trait_name.suffix.span())
-                ),
+                CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

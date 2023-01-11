@@ -9,7 +9,7 @@ use crate::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
         VirtualImmediate24, VirtualOp,
     },
-    declaration_engine::DeclId,
+    decl_engine::DeclId,
     error::*,
     fuel_prelude::fuel_asm::GTFArgs,
 };

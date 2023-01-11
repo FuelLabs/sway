@@ -4,19 +4,19 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{declaration_engine::DeclEngine, TypeEngine};
+use crate::{decl_engine::DeclEngine, TypeEngine};
 
 #[derive(Clone, Copy)]
 pub struct Engines<'a> {
     type_engine: &'a TypeEngine,
-    declaration_engine: &'a DeclEngine,
+    decl_engine: &'a DeclEngine,
 }
 
 impl<'a> Engines<'a> {
-    pub fn new(type_engine: &'a TypeEngine, declaration_engine: &'a DeclEngine) -> Engines<'a> {
+    pub fn new(type_engine: &'a TypeEngine, decl_engine: &'a DeclEngine) -> Engines<'a> {
         Engines {
             type_engine,
-            declaration_engine,
+            decl_engine,
         }
     }
 
@@ -25,11 +25,11 @@ impl<'a> Engines<'a> {
     }
 
     pub fn de(&self) -> &DeclEngine {
-        self.declaration_engine
+        self.decl_engine
     }
 
     pub(crate) fn unwrap(self) -> (&'a TypeEngine, &'a DeclEngine) {
-        (self.type_engine, self.declaration_engine)
+        (self.type_engine, self.decl_engine)
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

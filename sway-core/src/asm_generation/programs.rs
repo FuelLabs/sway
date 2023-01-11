@@ -7,7 +7,7 @@ use super::{
     DataSection, InstructionSet,
 };
 
-use crate::{asm_lang::Label, declaration_engine::DeclId};
+use crate::{asm_lang::Label, decl_engine::DeclId};
 
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;

@@ -9,7 +9,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     language::ty,
 };
@@ -45,7 +45,7 @@ impl DeclEngine {
         self.slab.get(*index)
     }
 
-    pub(crate) fn replace_decl_id(&self, index: DeclId, wrapper: DeclWrapper) {
+    pub(super) fn replace(&self, index: DeclId, wrapper: DeclWrapper) {
         self.slab.replace(index, wrapper);
     }
 

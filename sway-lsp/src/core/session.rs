@@ -21,7 +21,7 @@ use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
-    declaration_engine::DeclEngine,
+    decl_engine::DeclEngine,
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
@@ -57,7 +57,7 @@ pub struct Session {
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
-    pub declaration_engine: RwLock<DeclEngine>,
+    pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
 }
 
@@ -69,7 +69,7 @@ impl Session {
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),
-            declaration_engine: <_>::default(),
+            decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
         }
     }
@@ -77,7 +77,7 @@ impl Session {
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
 
-        *self.declaration_engine.write() = <_>::default();
+        *self.decl_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
@@ -147,8 +147,8 @@ impl Session {
             errors: vec![],
         };
         let type_engine = &*self.type_engine.read();
-        let declaration_engine = &*self.declaration_engine.read();
-        let engines = Engines::new(type_engine, declaration_engine);
+        let decl_engine = &*self.decl_engine.read();
+        let engines = Engines::new(type_engine, decl_engine);
         let tests_enabled = true;
         let results = pkg::check(&plan, true, tests_enabled, engines)
             .map_err(LanguageServerError::FailedToCompile)?;
@@ -200,7 +200,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
                 self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(declaration_engine, an)
+                    dependency.collect_typed_declaration(decl_engine, an)
                 });
             }
         }

@@ -3,7 +3,7 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed, ty::*},
@@ -13,7 +13,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident>;
+    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -94,16 +94,12 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(
-        &self,
-        declaration_engine: &DeclEngine,
-        check_call_body: bool,
-    ) -> bool {
+    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(_) => false,
             Expression(exp) | ImplicitReturnExpression(exp) => {
-                exp.deterministically_aborts(declaration_engine, check_call_body)
+                exp.deterministically_aborts(decl_engine, check_call_body)
             }
             SideEffect => false,
         }
@@ -111,8 +107,8 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
-        self.content.get_decl_ident(declaration_engine)
+    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
+        self.content.get_decl_ident(decl_engine)
     }
 }
 
@@ -134,13 +130,13 @@ impl TyAstNode {
     }
 
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
-    pub(crate) fn is_public(&self, declaration_engine: &DeclEngine) -> CompileResult<bool> {
+    pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         let public = match &self.content {
             TyAstNodeContent::Declaration(decl) => {
                 let visibility = check!(
-                    decl.visibility(declaration_engine),
+                    decl.visibility(decl_engine),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -158,7 +154,7 @@ impl TyAstNode {
     /// the [TreeType] is Script or Predicate.
     pub(crate) fn is_main_function(
         &self,
-        declaration_engine: &DeclEngine,
+        decl_engine: &DeclEngine,
         tree_type: parsed::TreeType,
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
@@ -170,7 +166,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { name, .. } = check!(
-                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
+                    CompileResult::from(decl_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -187,7 +183,7 @@ impl TyAstNode {
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(&self, declaration_engine: &DeclEngine) -> CompileResult<bool> {
+    pub(crate) fn is_test_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -197,7 +193,7 @@ impl TyAstNode {
                 ..
             } => {
                 let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(declaration_engine.get_function(decl_id.clone(), span)),
+                    CompileResult::from(decl_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -267,9 +263,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self, declaration_engine: &DeclEngine) -> Option<Ident> {
+    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(declaration_engine),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(decl_engine),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect => None,

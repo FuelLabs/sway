@@ -59,7 +59,7 @@ impl ty::TyMatchExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;
@@ -88,7 +88,7 @@ impl ty::TyMatchExpression {
                             LazyOp::And,
                             new_condition,
                             inner_condition,
-                            type_engine.insert_type(declaration_engine, TypeInfo::Boolean),
+                            type_engine.insert_type(decl_engine, TypeInfo::Boolean),
                             joined_span,
                         )
                     }
@@ -121,7 +121,7 @@ impl ty::TyMatchExpression {
                     let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert_type(declaration_engine, TypeInfo::Boolean),
+                        return_type: type_engine.insert_type(decl_engine, TypeInfo::Boolean),
                         span: result_span.clone(),
                     };
                     check!(
@@ -176,7 +176,7 @@ impl ty::TyMatchExpression {
                 {
                     let condition = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert_type(declaration_engine, TypeInfo::Boolean),
+                        return_type: type_engine.insert_type(decl_engine, TypeInfo::Boolean),
                         span: self.span.clone(),
                     };
                     let then_exp = ty::TyExpression {
