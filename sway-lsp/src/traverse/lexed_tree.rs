@@ -1,6 +1,9 @@
-use crate::core::{
-    token::{to_ident_key, AstToken, SymbolKind, Token},
-    token_map::TokenMap,
+use crate::{
+    core::{
+        token::{to_ident_key, AstToken, SymbolKind, Token},
+        token_map::TokenMap,
+    },
+    traverse::Parse,
 };
 use std::ops::ControlFlow;
 use sway_ast::{
@@ -23,11 +26,13 @@ impl<'a> LexedTree<'a> {
     }
 
     pub fn parse(&self, lexed_program: &LexedProgram) {
+        insert_keyword(self.tokens, lexed_program.root.tree.kind.span());
         for item in &lexed_program.root.tree.items {
             item.value.parse(self.tokens);
         }
 
         for (.., dep) in &lexed_program.root.submodules {
+            insert_keyword(self.tokens, dep.module.tree.kind.span());
             for item in &dep.module.tree.items {
                 item.value.parse(self.tokens);
             }
@@ -39,10 +44,6 @@ fn insert_keyword(tokens: &TokenMap, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
     tokens.insert(to_ident_key(&ident), token);
-}
-
-pub trait Parse {
-    fn parse(&self, tokens: &TokenMap);
 }
 
 impl Parse for ItemKind {

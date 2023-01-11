@@ -1,6 +1,6 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities,
+    capabilities::{self, diagnostic::Diagnostics},
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
@@ -67,7 +67,10 @@ impl Backend {
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
-                    vec![]
+                    Diagnostics {
+                        warnings: vec![],
+                        errors: vec![],
+                    }
                 }
             }
         };
@@ -145,20 +148,31 @@ impl Backend {
         uri: &Url,
         workspace_uri: &Url,
         session: Arc<Session>,
-        diagnostics: Vec<Diagnostic>,
+        diagnostics: Diagnostics,
     ) {
         let diagnostics_res = {
-            let debug = &self.config.read().debug;
+            let mut diagnostics_to_publish = vec![];
+            let config = &self.config.read();
             let tokens = session.token_map().tokens_for_file(uri);
-            match debug.show_collected_tokens_as_warnings {
-                Warnings::Default => diagnostics,
+            match config.debug.show_collected_tokens_as_warnings {
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
+                Warnings::Parsed => diagnostics_to_publish
+                    .extend(debug::generate_warnings_for_parsed_tokens(tokens)),
+                Warnings::Typed => {
+                    diagnostics_to_publish.extend(debug::generate_warnings_for_typed_tokens(tokens))
+                }
+                Warnings::Default => {}
             }
+            if config.diagnostic.show_warnings {
+                diagnostics_to_publish.extend(diagnostics.warnings);
+            }
+            if config.diagnostic.show_errors {
+                diagnostics_to_publish.extend(diagnostics.errors);
+            }
+            diagnostics_to_publish
         };
 
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -499,13 +513,13 @@ impl Backend {
     }
 
     /// This method is triggered by a command palette request in VScode
-    /// The 2 commands are: "show parsed ast" or "show typed ast"
+    /// The 3 commands are: "show lexed ast", "show parsed ast" or "show typed ast"
     ///
-    /// If either command is executed, the client requests this method
+    /// If any of these commands are executed, the client requests this method
     /// by calling the "sway/show_ast".
     ///
     /// The function expects the URI of the current open file where the
-    /// request was made, and if the "parsed" or "typed" ast was requested.
+    /// request was made, and if the "lexed", "parsed" or "typed" ast was requested.
     ///
     /// A formatted AST is written to a temporary file and the URI is
     /// returned to the client so it can be opened and displayed in a
@@ -532,52 +546,58 @@ impl Backend {
                         None
                     };
 
+                // Returns true if the current path matches the path of a submodule
+                let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
+                    ident.span().path().map(|a| a.deref()) == path.as_ref()
+                };
+
                 {
                     let program = session.compiled_program.read();
                     match params.ast_kind.as_str() {
-                        "parsed" => {
-                            match program.parsed {
-                                Some(ref parsed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", parsed_program.root.tree.root_nodes);
-
-                                    for (ident, submodule) in &parsed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                        "lexed" => {
+                            Ok(program.lexed.as_ref().and_then(|lexed_program| {
+                                let mut formatted_ast = format!("{:#?}", program.lexed);
+                                for (ident, submodule) in &lexed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.tree.root_nodes);
-                                        }
+                                        formatted_ast = format!("{:#?}", submodule.module.tree);
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                let tmp_ast_path = Path::new("/tmp/lexed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
+                        }
+                        "parsed" => {
+                            Ok(program.parsed.as_ref().and_then(|parsed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast =
+                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+                                for (ident, submodule) in &parsed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
+                                        // overwrite the root AST with the submodule AST
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.tree.root_nodes);
+                                    }
+                                }
+                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
                         }
                         "typed" => {
-                            match program.typed {
-                                Some(ref typed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", typed_program.root.all_nodes);
-
-                                    for (ident, submodule) in &typed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                            Ok(program.typed.as_ref().and_then(|typed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast =
+                                    format!("{:#?}", typed_program.root.all_nodes);
+                                for (ident, submodule) in &typed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.all_nodes);
-                                        }
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.all_nodes);
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
                         }
                         _ => Ok(None),
                     }

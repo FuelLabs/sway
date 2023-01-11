@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationId,
+    decl_engine::DeclId,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -160,12 +160,12 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclarationId> {
+    ) -> CompileResult<DeclId> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         // grab the local module
         let local_module = check!(
@@ -183,7 +183,7 @@ impl Namespace {
         // resolve the type
         let type_id = check!(
             type_engine.resolve_type(
-                declaration_engine,
+                decl_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
@@ -191,7 +191,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -212,9 +212,7 @@ impl Namespace {
 
         for decl_id in methods.into_iter() {
             let method = check!(
-                CompileResult::from(
-                    declaration_engine.get_function(decl_id.clone(), &decl_id.span())
-                ),
+                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
