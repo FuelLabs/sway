@@ -185,7 +185,7 @@ impl Pattern {
         }
     }
 
-    /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
+    /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of length 1,
     /// this function returns the single element, if it is of length > 1, this
     /// function wraps the provided `PatStack` in a `Pattern::Or(..)`.
     pub(crate) fn from_pat_stack(pat_stack: PatStack, span: &Span) -> CompileResult<Pattern> {
@@ -628,9 +628,9 @@ impl Pattern {
         ok(pats, warnings, errors)
     }
 
-    /// Flattens a `Pattern` into a `PatStack`. If the pattern is an
-    /// "or-pattern", return its contents, otherwise return the pattern as a
-    /// `PatStack`
+    /// Performs a one-layer-deep flattening of a `Pattern` into a `PatStack`.
+    /// If the pattern is an "or-pattern", return its contents, otherwise
+    /// return the pattern as a `PatStack`.
     pub(crate) fn flatten(&self) -> PatStack {
         match self {
             Pattern::Or(pats) => pats.to_owned(),
@@ -702,7 +702,11 @@ impl fmt::Display for Pattern {
                 builder.push(')');
                 builder
             }
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Or(elems) => elems
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" | "),
         };
         write!(f, "{}", s)
     }
