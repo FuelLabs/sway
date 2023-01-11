@@ -1,13 +1,17 @@
 #![allow(dead_code)]
 use std::iter;
 
-use crate::core::{
-    token::{
-        desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
-        TypeDefinition,
+use crate::{
+    core::{
+        token::{
+            desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
+            TypeDefinition,
+        },
+        token_map::TokenMap,
     },
-    token_map::TokenMap,
+    traverse::Parse,
 };
+
 use sway_core::{
     language::{
         parsed::{
@@ -21,7 +25,7 @@ use sway_core::{
         },
         Literal,
     },
-    transform::Attribute,
+    transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
     TypeEngine, TypeInfo,
 };
@@ -79,9 +83,7 @@ impl<'a> ParsedTree<'a> {
             None,
         );
 
-        func.attributes.values().for_each(|attr| {
-            self.collect_attributes(attr);
-        });
+        func.attributes.parse(self.tokens);
     }
 
     fn handle_declaration(&self, declaration: &Declaration) {
@@ -172,9 +174,7 @@ impl<'a> ParsedTree<'a> {
                         None,
                     );
 
-                    field.attributes.values().for_each(|attr| {
-                        self.collect_attributes(attr);
-                    });
+                    field.attributes.parse(self.tokens);
                 }
 
                 for type_param in &struct_dec.type_parameters {
@@ -184,9 +184,7 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                struct_dec.attributes.values().for_each(|attr| {
-                    self.collect_attributes(attr);
-                });
+                struct_dec.attributes.parse(self.tokens);
             }
             Declaration::EnumDeclaration(enum_decl) => {
                 self.tokens.insert(
@@ -218,15 +216,10 @@ impl<'a> ParsedTree<'a> {
                         Some(variant.type_span.clone()),
                         Some(SymbolKind::Variant),
                     );
-
-                    variant.attributes.values().for_each(|attr| {
-                        self.collect_attributes(attr);
-                    });
+                    variant.attributes.parse(self.tokens);
                 }
 
-                enum_decl.attributes.values().for_each(|attr| {
-                    self.collect_attributes(attr);
-                });
+                enum_decl.attributes.parse(self.tokens);
             }
             Declaration::ImplTrait(impl_trait) => {
                 for ident in &impl_trait.trait_name.prefixes {
@@ -311,6 +304,8 @@ impl<'a> ParsedTree<'a> {
                 for trait_fn in &abi_decl.interface_surface {
                     self.collect_trait_fn(trait_fn);
                 }
+
+                abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {
                 let token = Token::from_parsed(
@@ -328,9 +323,7 @@ impl<'a> ParsedTree<'a> {
                 );
                 self.handle_expression(&const_decl.value);
 
-                const_decl.attributes.values().for_each(|attr| {
-                    self.collect_attributes(attr);
-                });
+                const_decl.attributes.parse(self.tokens);
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {
@@ -348,14 +341,9 @@ impl<'a> ParsedTree<'a> {
                     );
                     self.handle_expression(&field.initializer);
 
-                    field.attributes.values().for_each(|attr| {
-                        self.collect_attributes(attr);
-                    });
+                    field.attributes.parse(self.tokens);
                 }
-
-                storage_decl.attributes.values().for_each(|attr| {
-                    self.collect_attributes(attr);
-                });
+                storage_decl.attributes.parse(self.tokens);
             }
         }
     }
@@ -915,9 +903,7 @@ impl<'a> ParsedTree<'a> {
             None,
         );
 
-        trait_fn.attributes.values().for_each(|attr| {
-            self.collect_attributes(attr);
-        });
+        trait_fn.attributes.parse(self.tokens);
     }
 
     fn collect_type_parameter(&self, type_param: &TypeParameter, token: AstToken) {
@@ -926,17 +912,22 @@ impl<'a> ParsedTree<'a> {
             Token::from_parsed(token, SymbolKind::TypeParameter),
         );
     }
+}
 
-    fn collect_attributes(&self, attributes: &[Attribute]) {
-        for attribute in attributes {
-            self.tokens.insert(
-                to_ident_key(&attribute.name),
-                Token::from_parsed(
-                    AstToken::Attribute(attribute.clone()),
-                    SymbolKind::DeriveHelper,
-                ),
-            );
-        }
+impl Parse for AttributesMap {
+    fn parse(&self, tokens: &TokenMap) {
+        self.iter()
+            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
+            .flat_map(|(.., attrs)| attrs)
+            .for_each(|attribute| {
+                tokens.insert(
+                    to_ident_key(&attribute.name),
+                    Token::from_parsed(
+                        AstToken::Attribute(attribute.clone()),
+                        SymbolKind::DeriveHelper,
+                    ),
+                );
+            });
     }
 }
 
