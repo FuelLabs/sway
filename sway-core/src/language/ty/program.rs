@@ -46,21 +46,18 @@ impl TyProgram {
         // Validate all submodules
         let mut configurables = Vec::<TyConstantDeclaration>::new();
         for (_, submodule) in &root.submodules {
-            configurables.extend(
-                check!(
-                    Self::validate_root(
-                        engines,
-                        &submodule.module,
-                        parsed::TreeType::Library {
-                            name: submodule.library_name.clone(),
-                        },
-                        submodule.library_name.span().clone(),
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                )
-                .2,
+            check!(
+                Self::validate_root(
+                    engines,
+                    &submodule.module,
+                    parsed::TreeType::Library {
+                        name: submodule.library_name.clone(),
+                    },
+                    submodule.library_name.span().clone(),
+                ),
+                continue,
+                warnings,
+                errors
             );
         }
 
@@ -178,7 +175,14 @@ impl TyProgram {
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
             parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
-            parsed::TreeType::Library { name } => TyProgramKind::Library { name },
+            parsed::TreeType::Library { name } => {
+                if !configurables.is_empty() {
+                    errors.push(CompileError::ConfigurableInLibrary {
+                        span: configurables[0].name.span(),
+                    });
+                }
+                TyProgramKind::Library { name }
+            }
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
