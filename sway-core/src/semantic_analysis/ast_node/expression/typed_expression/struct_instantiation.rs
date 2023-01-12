@@ -69,7 +69,7 @@ pub(crate) fn struct_instantiation(
     );
 
     // extract the struct name and fields from the type info
-    let type_info = type_engine.look_up_type_id(type_id);
+    let type_info = type_engine.get(type_id);
     let (struct_name, struct_fields) = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),

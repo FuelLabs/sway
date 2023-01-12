@@ -96,8 +96,8 @@ impl<'a> UnifyCheck<'a> {
             return true;
         }
 
-        let left = self.engines.te().look_up_type_id(left);
-        let right = self.engines.te().look_up_type_id(right);
+        let left = self.engines.te().get(left);
+        let right = self.engines.te().get(right);
         match (left, right) {
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
@@ -347,11 +347,11 @@ impl<'a> UnifyCheck<'a> {
         // invariant 3. The elements of `left` satisfy the constraints of `right`
         let left_types = left
             .iter()
-            .map(|x| self.engines.te().look_up_type_id(*x))
+            .map(|x| self.engines.te().get(*x))
             .collect::<Vec<_>>();
         let right_types = right
             .iter()
-            .map(|x| self.engines.te().look_up_type_id(*x))
+            .map(|x| self.engines.te().get(*x))
             .collect::<Vec<_>>();
         let mut constraints = vec![];
         for i in 0..(right_types.len() - 1) {

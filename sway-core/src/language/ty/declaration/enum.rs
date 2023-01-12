@@ -123,9 +123,7 @@ pub struct TyEnumVariant {
 impl HashWithEngines for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.tag.hash(state);
     }
 }
@@ -139,8 +137,8 @@ impl PartialEqWithEngines for TyEnumVariant {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.tag == other.tag
     }
 }

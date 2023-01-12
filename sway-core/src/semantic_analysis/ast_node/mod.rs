@@ -157,7 +157,7 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+    let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
         TypeInfo::Struct { fields, .. } => fields,
         _ => vec![],
     };

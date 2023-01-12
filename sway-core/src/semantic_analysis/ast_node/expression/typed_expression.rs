@@ -329,7 +329,7 @@ impl ty::TyExpression {
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
-                match type_engine.look_up_type_id(typed_expression.return_type) {
+                match type_engine.get(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
                         typed_expression = check!(
                             Self::resolve_numeric_literal(
@@ -654,7 +654,7 @@ impl ty::TyExpression {
         // check to make sure that the type of the value is something that can be matched upon
         check!(
             type_engine
-                .look_up_type_id(type_id)
+                .get(type_id)
                 .expect_is_supported_in_match_expressions(&typed_value.span),
             return err(warnings, errors),
             warnings,
@@ -826,7 +826,7 @@ impl ty::TyExpression {
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
-        let field_type_opt = match type_engine.look_up_type_id(ctx.type_annotation()) {
+        let field_type_opt = match type_engine.get(ctx.type_annotation()) {
             TypeInfo::Tuple(field_type_ids) if field_type_ids.len() == fields.len() => {
                 Some(field_type_ids)
             }
@@ -1255,7 +1255,7 @@ impl ty::TyExpression {
             }
             ty::TyDeclaration::VariableDeclaration(ref decl) => {
                 let ty::TyVariableDeclaration { body: expr, .. } = &**decl;
-                let ret_ty = type_engine.look_up_type_id(expr.return_type);
+                let ret_ty = type_engine.get(expr.return_type);
                 let abi_name = match ret_ty {
                     TypeInfo::ContractCaller { abi_name, .. } => abi_name,
                     _ => {
@@ -1485,7 +1485,7 @@ impl ty::TyExpression {
         };
 
         // If the return type is a static array then create a `ty::TyExpressionVariant::ArrayIndex`.
-        if let TypeInfo::Array(elem_type, _) = type_engine.look_up_type_id(prefix_te.return_type) {
+        if let TypeInfo::Array(elem_type, _) = type_engine.get(prefix_te.return_type) {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
                 .with_help_text("")
@@ -1759,7 +1759,7 @@ impl ty::TyExpression {
 
         // Parse and resolve a Numeric(span) based on new_type.
         let (val, new_integer_type) = match lit {
-            Literal::Numeric(num) => match type_engine.look_up_type_id(new_type) {
+            Literal::Numeric(num) => match type_engine.get(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
                         num.to_string().parse().map(Literal::U8).map_err(|e| {

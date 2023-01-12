@@ -27,8 +27,8 @@ impl PartialEqWithEngines for TyExpression {
         let type_engine = engines.te();
         self.expression.eq(&other.expression, engines)
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
     }
 }
 
@@ -139,7 +139,7 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression { fields, span, .. } => {
                 if let TypeInfo::Struct {
                     type_parameters, ..
-                } = ctx.type_engine.look_up_type_id(self.return_type)
+                } = ctx.type_engine.get(self.return_type)
                 {
                     for type_parameter in type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());

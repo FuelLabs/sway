@@ -228,7 +228,7 @@ impl Namespace {
 
         if !args_buf
             .get(0)
-            .map(|x| type_engine.look_up_type_id(x.return_type))
+            .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {

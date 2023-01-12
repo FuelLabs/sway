@@ -20,9 +20,7 @@ impl Spanned for TypeArgument {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeArgument {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
     }
 }
 
@@ -34,8 +32,8 @@ impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
     }
 }
 impl OrdWithEngines for TypeArgument {
@@ -48,11 +46,7 @@ impl OrdWithEngines for TypeArgument {
 
 impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            engines.help_out(engines.te().look_up_type_id(self.type_id))
-        )
+        write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
     }
 }
 
@@ -68,9 +62,7 @@ impl From<&TypeParameter> for TypeArgument {
 
 impl TypeArgument {
     pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .json_abi_str(type_engine)
+        type_engine.get(self.type_id).json_abi_str(type_engine)
     }
 }
 

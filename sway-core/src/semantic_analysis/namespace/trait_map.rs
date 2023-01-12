@@ -162,11 +162,11 @@ impl TraitMap {
             );
 
             let types_are_subset = type_engine
-                .look_up_type_id(type_id)
-                .is_subset_of(&type_engine.look_up_type_id(*map_type_id), engines);
+                .get(type_id)
+                .is_subset_of(&type_engine.get(*map_type_id), engines);
             let traits_are_subset = type_engine
-                .look_up_type_id(trait_type_id)
-                .is_subset_of(&type_engine.look_up_type_id(map_trait_type_id), engines);
+                .get(trait_type_id)
+                .is_subset_of(&type_engine.get(map_trait_type_id), engines);
 
             if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
@@ -468,9 +468,7 @@ impl TraitMap {
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine
-            .look_up_type_id(type_id)
-            .extract_inner_types(type_engine);
+        let mut all_types = type_engine.get(type_id).extract_inner_types(type_engine);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -547,7 +545,7 @@ impl TraitMap {
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
-            .look_up_type_id(type_id)
+            .get(type_id)
             .extract_inner_types(type_engine)
             .into_iter()
             .collect::<Vec<_>>();
@@ -581,7 +579,7 @@ impl TraitMap {
         } in self.trait_impls.iter()
         {
             for type_id in all_types.iter_mut() {
-                let type_info = type_engine.look_up_type_id(*type_id);
+                let type_info = type_engine.get(*type_id);
                 if !type_info.can_change() && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
@@ -589,7 +587,7 @@ impl TraitMap {
                         map_trait_methods.clone(),
                         engines,
                     );
-                } else if decider(&type_info, &type_engine.look_up_type_id(*map_type_id)) {
+                } else if decider(&type_info, &type_engine.get(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
@@ -629,8 +627,8 @@ impl TraitMap {
         let type_engine = engines.te();
         self.trait_impls.retain(|e| {
             !type_engine
-                .look_up_type_id(type_id)
-                .is_subset_of(&type_engine.look_up_type_id(e.key.type_id), engines)
+                .get(type_id)
+                .is_subset_of(&type_engine.get(e.key.type_id), engines)
         });
     }
 
@@ -652,7 +650,7 @@ impl TraitMap {
         let mut methods = vec![];
         // small performance gain in bad case
         if type_engine
-            .look_up_type_id(type_id)
+            .get(type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return methods;
@@ -691,7 +689,7 @@ impl TraitMap {
         let mut methods = vec![];
         // small performance gain in bad case
         if type_engine
-            .look_up_type_id(type_id)
+            .get(type_id)
             .eq(&TypeInfo::ErrorRecovery, engines)
         {
             return methods;
@@ -795,10 +793,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
     if left.index() == right.index() {
         return true;
     }
-    match (
-        type_engine.look_up_type_id(left),
-        type_engine.look_up_type_id(right),
-    ) {
+    match (type_engine.get(left), type_engine.get(right)) {
         // these cases are false because, unless left and right have the same
         // TypeId, they may later resolve to be different types in the type
         // engine

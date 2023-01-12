@@ -30,9 +30,7 @@ pub struct TypeParameter {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.name_ident.hash(state);
         self.trait_constraints.hash(state, type_engine);
     }
@@ -46,8 +44,8 @@ impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
     }

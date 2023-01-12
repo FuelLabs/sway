@@ -87,7 +87,7 @@ pub(crate) fn instantiate_if_expression(
         );
         warnings.append(&mut new_warnings);
         if new_errors.is_empty() {
-            if !type_engine.look_up_type_id(r#else_ret_ty).is_unit() && r#else.is_none() {
+            if !type_engine.get(r#else_ret_ty).is_unit() && r#else.is_none() {
                 errors.push(CompileError::NoElseBranch {
                     span: span.clone(),
                     r#type: engines.help_out(ctx.type_annotation()).to_string(),

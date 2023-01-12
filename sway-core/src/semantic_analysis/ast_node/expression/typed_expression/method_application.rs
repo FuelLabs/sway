@@ -288,17 +288,16 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address =
-            match contract_caller.map(|x| type_engine.look_up_type_id(x.return_type)) {
-                Some(TypeInfo::ContractCaller { address, .. }) => address,
-                _ => {
-                    errors.push(CompileError::Internal(
-                        "Attempted to find contract address of non-contract-call.",
-                        span.clone(),
-                    ));
-                    None
-                }
-            };
+        let contract_address = match contract_caller.map(|x| type_engine.get(x.return_type)) {
+            Some(TypeInfo::ContractCaller { address, .. }) => address,
+            _ => {
+                errors.push(CompileError::Internal(
+                    "Attempted to find contract address of non-contract-call.",
+                    span.clone(),
+                ));
+                None
+            }
+        };
         let contract_address = if let Some(addr) = contract_address {
             addr
         } else {

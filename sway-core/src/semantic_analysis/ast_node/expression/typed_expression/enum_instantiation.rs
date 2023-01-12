@@ -38,7 +38,7 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], type_engine.look_up_type_id(enum_variant.type_id)) {
+    match (&args[..], type_engine.get(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
                 return_type: enum_decl.create_type_id(engines),

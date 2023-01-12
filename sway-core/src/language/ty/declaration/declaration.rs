@@ -144,7 +144,7 @@ impl DisplayWithEngines for TyDeclaration {
                     builder.push_str(": ");
                     builder.push_str(
                         &engines
-                            .help_out(type_engine.look_up_type_id(*type_ascription))
+                            .help_out(type_engine.get(*type_ascription))
                             .to_string(),
                     );
                     builder.push_str(" = ");

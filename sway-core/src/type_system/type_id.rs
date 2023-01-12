@@ -8,11 +8,7 @@ pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            engines.help_out(engines.te().look_up_type_id(*self))
-        )
+        write!(f, "{}", engines.help_out(engines.te().get(*self)))
     }
 }
 
@@ -30,7 +26,7 @@ impl CollectTypesMetadata for TypeId {
         let mut warnings = vec![];
         let mut errors = vec![];
         let mut res = vec![];
-        match ctx.type_engine.look_up_type_id(*self) {
+        match ctx.type_engine.get(*self) {
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints,
@@ -56,7 +52,7 @@ impl CollectTypesMetadata for TypeId {
         if let TypeInfo::UnknownGeneric {
             name,
             trait_constraints,
-        } = ctx.type_engine.look_up_type_id(*self)
+        } = ctx.type_engine.get(*self)
         {
             res.push(TypeMetadata::UnresolvedType(name, ctx.call_site_get(self)));
             for trait_constraint in trait_constraints.iter() {
@@ -78,7 +74,7 @@ impl CollectTypesMetadata for TypeId {
 
 impl ReplaceSelfType for TypeId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match engines.te().look_up_type_id(*self) {
+        match engines.te().get(*self) {
             TypeInfo::SelfType => {
                 *self = self_type;
             }
@@ -159,7 +155,7 @@ impl UnconstrainedTypeParameters for TypeId {
     ) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(*self)
+            .get(*self)
             .type_parameter_is_unconstrained(engines, type_parameter)
     }
 }
@@ -178,7 +174,7 @@ impl TypeId {
         &self,
         type_engine: &TypeEngine,
     ) -> Option<Vec<TypeParameter>> {
-        match type_engine.look_up_type_id(*self) {
+        match type_engine.get(*self) {
             TypeInfo::Enum {
                 type_parameters, ..
             } => (!type_parameters.is_empty()).then_some(type_parameters),
@@ -197,10 +193,7 @@ impl TypeId {
         type_engine: &TypeEngine,
         resolved_type_id: TypeId,
     ) -> bool {
-        match (
-            type_engine.look_up_type_id(self),
-            type_engine.look_up_type_id(resolved_type_id),
-        ) {
+        match (type_engine.get(self), type_engine.get(resolved_type_id)) {
             (
                 TypeInfo::Custom { name, .. },
                 TypeInfo::Enum {
@@ -228,7 +221,7 @@ impl TypeId {
         types: &mut Vec<fuels_types::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<fuels_types::TypeApplication>> {
-        match type_engine.look_up_type_id(*self) {
+        match type_engine.get(*self) {
             TypeInfo::Enum { variant_types, .. } => {
                 // A list of all `fuels_types::TypeDeclaration`s needed for the enum variants
                 let variants = variant_types
@@ -306,7 +299,7 @@ impl TypeId {
                 )
             }
             TypeInfo::Array(..) => {
-                if let TypeInfo::Array(elem_ty, _) = type_engine.look_up_type_id(resolved_type_id) {
+                if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id) {
                     // The `fuels_types::TypeDeclaration`s needed for the array element type
                     let elem_json_ty = fuels_types::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
@@ -342,7 +335,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Tuple(_) => {
-                if let TypeInfo::Tuple(fields) = type_engine.look_up_type_id(resolved_type_id) {
+                if let TypeInfo::Tuple(fields) = type_engine.get(resolved_type_id) {
                     // A list of all `fuels_types::TypeDeclaration`s needed for the tuple fields
                     let fields_types = fields
                         .iter()
@@ -453,7 +446,7 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Option<Vec<fuels_types::TypeApplication>> {
         let resolved_params = resolved_type_id.get_type_parameters(type_engine);
-        match type_engine.look_up_type_id(*self) {
+        match type_engine.get(*self) {
             TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
                 ..
@@ -538,7 +531,7 @@ impl TypeId {
     }
 
     pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine.look_up_type_id(*self).json_abi_str(type_engine)
+        type_engine.get(*self).json_abi_str(type_engine)
     }
 
     /// Gives back a string that represents the type, considering what it resolves to
@@ -550,24 +543,18 @@ impl TypeId {
         if self.is_generic_parameter(type_engine, resolved_type_id) {
             format!(
                 "generic {}",
-                type_engine.look_up_type_id(*self).json_abi_str(type_engine)
+                type_engine.get(*self).json_abi_str(type_engine)
             )
         } else {
-            match (
-                type_engine.look_up_type_id(*self),
-                type_engine.look_up_type_id(resolved_type_id),
-            ) {
+            match (type_engine.get(*self), type_engine.get(resolved_type_id)) {
                 (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
                     format!(
                         "struct {}",
-                        type_engine.look_up_type_id(*self).json_abi_str(type_engine)
+                        type_engine.get(*self).json_abi_str(type_engine)
                     )
                 }
                 (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
-                    format!(
-                        "enum {}",
-                        type_engine.look_up_type_id(*self).json_abi_str(type_engine)
-                    )
+                    format!("enum {}", type_engine.get(*self).json_abi_str(type_engine))
                 }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
@@ -584,10 +571,10 @@ impl TypeId {
                 (TypeInfo::Custom { .. }, _) => {
                     format!(
                         "generic {}",
-                        type_engine.look_up_type_id(*self).json_abi_str(type_engine)
+                        type_engine.get(*self).json_abi_str(type_engine)
                     )
                 }
-                _ => type_engine.look_up_type_id(*self).json_abi_str(type_engine),
+                _ => type_engine.get(*self).json_abi_str(type_engine),
             }
         }
     }

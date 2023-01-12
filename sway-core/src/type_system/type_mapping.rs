@@ -126,10 +126,7 @@ impl TypeMapping {
         superset: TypeId,
         subset: TypeId,
     ) -> TypeMapping {
-        match (
-            type_engine.look_up_type_id(superset),
-            type_engine.look_up_type_id(subset),
-        ) {
+        match (type_engine.get(superset), type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
                 mapping: vec![(superset, subset)],
             },
@@ -305,7 +302,7 @@ impl TypeMapping {
     pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        let type_info = type_engine.look_up_type_id(type_id);
+        let type_info = type_engine.get(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
@@ -453,10 +450,7 @@ fn iter_for_match(
 ) -> Option<TypeId> {
     let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine
-            .look_up_type_id(*source_type)
-            .eq(type_info, engines)
-        {
+        if type_engine.get(*source_type).eq(type_info, engines) {
             return Some(*dest_type);
         }
     }

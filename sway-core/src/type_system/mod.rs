@@ -137,11 +137,11 @@ fn generic_enum_resolution() {
         name,
         variant_types,
         ..
-    } = type_engine.look_up_type_id(ty_1)
+    } = type_engine.get(ty_1)
     {
         assert_eq!(name.as_str(), "Result");
         assert!(matches!(
-            type_engine.look_up_type_id(variant_types[0].type_id),
+            type_engine.get(variant_types[0].type_id),
             TypeInfo::Boolean
         ));
     } else {

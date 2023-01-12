@@ -278,10 +278,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_field_to_access.eq(r_field_to_access, engines)
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::TupleElemAccess {
@@ -299,10 +298,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_elem_to_access_num == r_elem_to_access_num
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::EnumInstantiation {

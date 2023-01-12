@@ -23,11 +23,11 @@ impl PartialEqWithEngines for TyVariableDeclaration {
             && self.body.eq(&other.body, engines)
             && self.mutability == other.mutability
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
             && type_engine
-                .look_up_type_id(self.type_ascription)
-                .eq(&type_engine.look_up_type_id(other.type_ascription), engines)
+                .get(self.type_ascription)
+                .eq(&type_engine.get(other.type_ascription), engines)
     }
 }
 

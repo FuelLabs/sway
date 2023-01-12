@@ -80,7 +80,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -176,7 +176,7 @@ impl ty::TyImplTrait {
                 );
 
                 if !type_engine
-                    .look_up_type_id(implementing_for_type_id)
+                    .get(implementing_for_type_id)
                     .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
@@ -489,7 +489,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -743,8 +743,8 @@ fn type_check_trait_implementation(
             impl_method_param
                 .type_id
                 .replace_self_type(engines, self_type);
-            if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
-                &type_engine.look_up_type_id(impl_method_signature_param.type_id),
+            if !type_engine.get(impl_method_param.type_id).eq(
+                &type_engine.get(impl_method_signature_param.type_id),
                 engines,
             ) {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
@@ -811,10 +811,10 @@ fn type_check_trait_implementation(
         impl_method
             .return_type
             .replace_self_type(engines, self_type);
-        if !type_engine.look_up_type_id(impl_method.return_type).eq(
-            &type_engine.look_up_type_id(impl_method_signature.return_type),
-            engines,
-        ) {
+        if !type_engine
+            .get(impl_method.return_type)
+            .eq(&type_engine.get(impl_method_signature.return_type), engines)
+        {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
@@ -977,7 +977,7 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (engines.te().look_up_type_id(x.type_id), x.span()))
+            .map(|x| (engines.te().get(x.type_id), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
@@ -987,7 +987,7 @@ fn check_for_unconstrained_type_parameters(
         generics_in_use.extend(check!(
             engines
                 .te()
-                .look_up_type_id(type_arg.type_id)
+                .get(type_arg.type_id)
                 .extract_nested_generics(engines, &type_arg.span),
             HashSet::new(),
             warnings,
@@ -997,7 +997,7 @@ fn check_for_unconstrained_type_parameters(
     generics_in_use.extend(check!(
         engines
             .te()
-            .look_up_type_id(self_type)
+            .get(self_type)
             .extract_nested_generics(engines, self_type_span),
         HashSet::new(),
         warnings,

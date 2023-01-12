@@ -97,13 +97,13 @@ impl TypeEngine {
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
-    pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+    pub fn get(&self, id: TypeId) -> TypeInfo {
         self.slab.get(id.index())
     }
 
     /// Denotes the given [TypeId] as being used with storage.
     pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.look_up_type_id(id));
+        self.storage_only_types.insert(self.get(id));
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
@@ -405,7 +405,7 @@ impl TypeEngine {
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-        match self.look_up_type_id(id) {
+        match self.get(id) {
             TypeInfo::Unknown => {
                 //panic!();
                 Err(TypeError::UnknownType {
@@ -434,7 +434,7 @@ impl TypeEngine {
         let mut errors = vec![];
         let engines = Engines::new(self, decl_engine);
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match self.look_up_type_id(type_id) {
+        let type_id = match self.get(type_id) {
             TypeInfo::Custom {
                 name,
                 type_arguments,

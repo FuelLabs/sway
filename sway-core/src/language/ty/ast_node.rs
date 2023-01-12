@@ -213,10 +213,10 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                type_engine.look_up_type_id(*return_type)
+                type_engine.get(*return_type)
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                type_engine.look_up_type_id(*return_type)
+                type_engine.get(*return_type)
             }
             TyAstNodeContent::SideEffect => TypeInfo::Tuple(Vec::new()),
         }
