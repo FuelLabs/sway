@@ -1,13 +1,15 @@
 use super::{
     asm_builder::AsmBuilder,
     checks::check_invalid_opcodes,
+    evm::EvmAsmBuilder,
     finalized_asm::FinalizedAsm,
+    fuel::FuelAsmBuilder,
     programs::{AbstractEntry, AbstractProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
 
-use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
+use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
 
 use sway_error::error::CompileError;
 use sway_ir::*;
@@ -27,7 +29,7 @@ pub fn compile_ir_to_asm(
 
     let module = ir.module_iter().next().unwrap();
     let abstract_program = check!(
-        compile_module_to_asm(RegisterSequencer::new(), ir, module),
+        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
         return err(warnings, errors),
         warnings,
         errors
@@ -87,6 +89,7 @@ fn compile_module_to_asm(
     reg_seqr: RegisterSequencer,
     context: &Context,
     module: Module,
+    build_config: Option<&BuildConfig>,
 ) -> CompileResult<AbstractProgram> {
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
@@ -95,7 +98,20 @@ fn compile_module_to_asm(
         Kind::Script => ProgramKind::Script,
     };
 
-    let mut builder = AsmBuilder::new(kind, DataSection::default(), reg_seqr, context);
+    let build_target = match build_config {
+        Some(cfg) => cfg.build_target,
+        None => BuildTarget::default(),
+    };
+
+    let mut builder: Box<dyn AsmBuilder> = match build_target {
+        BuildTarget::Fuel => Box::new(FuelAsmBuilder::new(
+            kind,
+            DataSection::default(),
+            reg_seqr,
+            context,
+        )),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, reg_seqr, context)),
+    };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.

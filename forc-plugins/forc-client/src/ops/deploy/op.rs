@@ -8,6 +8,7 @@ use fuel_gql_client::{
 };
 use futures::FutureExt;
 use pkg::BuiltPackage;
+use sway_core::BuildTarget;
 use std::path::PathBuf;
 use std::time::Duration;
 use sway_core::language::parsed::TreeType;
@@ -138,6 +139,7 @@ fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
             json_abi: cmd.minify_json_abi,
             json_storage_slots: cmd.minify_json_storage_slots,
         },
+        build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.clone(),
         release: cmd.release,
         time_phases: cmd.time_phases,

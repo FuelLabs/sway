@@ -7,6 +7,7 @@ use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
+use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
 
@@ -194,6 +195,7 @@ fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
             json_abi: cmd.minify_json_abi,
             json_storage_slots: cmd.minify_json_storage_slots,
         },
+        build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.clone(),
         release: cmd.release,
         time_phases: cmd.time_phases,

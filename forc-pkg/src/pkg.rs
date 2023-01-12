@@ -38,7 +38,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
+    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
@@ -313,6 +313,8 @@ pub struct BuildOpts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -2147,6 +2149,7 @@ fn dep_to_source_patched(
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
@@ -2154,6 +2157,7 @@ pub fn sway_build_config(
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
+        build_target,
     )
     .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
@@ -2294,12 +2298,17 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 pub fn compile_ast(
     engines: Engines<'_>,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
-    let sway_build_config =
-        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        build_profile,
+    )?;
     let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
@@ -2325,6 +2334,7 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     engines: Engines<'_>,
@@ -2351,7 +2361,7 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
+        sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
     );
     let terse_mode = build_profile.terse;
     let fail = |warnings, errors| {
@@ -2362,7 +2372,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, build_profile, namespace)?
+        compile_ast(engines, manifest, build_target, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2505,6 +2515,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         binary_outfile,
         debug_outfile,
         pkg,
+        build_target,
         ..
     } = &build_options;
 
@@ -2539,7 +2550,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     };
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, &build_profile, &outputs)?;
+    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2613,6 +2624,7 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
+    target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
@@ -2655,6 +2667,7 @@ pub fn build(
         let res = compile(
             pkg,
             manifest,
+            target,
             profile,
             dep_namespace,
             engines,
@@ -2833,6 +2846,7 @@ impl Programs {
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
+    build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
@@ -2861,7 +2875,7 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, include_tests, engines)?;
+        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
 
         let (lexed, parsed) = match value {
             None => {
@@ -2904,6 +2918,7 @@ pub fn check(
 /// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
@@ -2913,8 +2928,13 @@ pub fn parse(
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?
-        .include_tests(include_tests);
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        &profile,
+    )?
+    .include_tests(include_tests);
     Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 

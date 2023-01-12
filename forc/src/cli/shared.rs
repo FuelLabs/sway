@@ -1,6 +1,7 @@
 //! Sets of arguments that are shared between commands.
 
 use clap::Parser;
+use sway_core::BuildTarget;
 
 /// Args that can be shared between all commands that `build` a package. E.g. `build`, `test`,
 /// `deploy`.
@@ -53,6 +54,9 @@ pub struct Build {
     /// needs to be updated, Forc will exit with an error
     #[clap(long)]
     pub locked: bool,
+    /// Build target to use for code generation.
+    #[clap(long, value_enum, default_value_t=BuildTarget::default(), alias="target")]
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     #[clap(long)]
