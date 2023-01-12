@@ -51,4 +51,4 @@ cargo run --bin forc -- --help
 
 We welcome contributions to Sway!
 
-Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
+Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
