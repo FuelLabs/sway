@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 use super::*;
 use crate::engine_threading::*;
@@ -9,7 +9,7 @@ type DestinationType = TypeId;
 /// The [TypeMapping] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
 pub(crate) struct TypeMapping {
-    mapping: Vec<(SourceType, DestinationType)>,
+    mapping: BTreeMap<SourceType, DestinationType>,
 }
 
 impl DisplayWithEngines for TypeMapping {
@@ -130,8 +130,11 @@ impl TypeMapping {
             type_engine.look_up_type_id(superset),
             type_engine.look_up_type_id(subset),
         ) {
+            (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => TypeMapping {
+                mapping: BTreeMap::from([(superset, subset)]),
+            },
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
-                mapping: vec![(superset, subset)],
+                mapping: BTreeMap::from([(superset, subset)]),
             },
             (
                 TypeInfo::Custom {
@@ -241,17 +244,20 @@ impl TypeMapping {
             | (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery)
             | (TypeInfo::Str(_), TypeInfo::Str(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
-            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => {
-                TypeMapping { mapping: vec![] }
-            }
-            _ => TypeMapping { mapping: vec![] },
+            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeMapping {
+                mapping: BTreeMap::new(),
+            },
+            _ => TypeMapping {
+                mapping: BTreeMap::new(),
+            },
         }
     }
 
     /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
     /// and a list of [TypeId]s `type_arguments`, the generated [TypeMapping]
     /// is extended with the result from calling `from_superset_and_subset`
-    /// with each [SourceType]s and [DestinationType]s in the original [TypeMapping].
+    /// with each [SourceType]s and [DestinationType]s in the original
+    /// [TypeMapping].
     fn from_superset_and_subset_helper(
         type_engine: &TypeEngine,
         type_parameters: Vec<SourceType>,
@@ -281,7 +287,7 @@ impl TypeMapping {
         let mapping = type_parameters
             .into_iter()
             .zip(type_arguments.into_iter())
-            .collect::<Vec<_>>();
+            .collect();
         TypeMapping { mapping }
     }
 
@@ -309,7 +315,16 @@ impl TypeMapping {
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Placeholder(_) => None,
+            TypeInfo::Placeholder(_) => {
+                iter_for_match(engines, self, &type_info)
+                // for (source_type, dest_type) in type_mapping.mapping.iter() {
+                //     if let TypeInfo::Placeholder(r) = type_engine.look_up_type_id(source_type) {
+                //         if l.name_ident.as_str() == r.name_ident.as_str() {
+                //             return Some(*dest_type);
+                //         }
+                //     }
+                // }
+            }
             TypeInfo::Struct {
                 fields,
                 name,
