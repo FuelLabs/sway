@@ -199,7 +199,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(decl_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,

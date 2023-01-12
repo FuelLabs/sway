@@ -542,7 +542,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                type_engine.insert_type(
+                type_engine.insert(
                     decl_engine,
                     TypeInfo::Storage {
                         fields: storage_decl.fields_as_typed_struct_fields(),

@@ -134,8 +134,7 @@ impl TraitConstraint {
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = check!(
                 ctx.resolve_type_without_self(type_argument.type_id, &type_argument.span, None),
-                ctx.type_engine
-                    .insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                ctx.type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );

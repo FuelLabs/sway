@@ -54,7 +54,7 @@ impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        type_engine.insert_type(
+        type_engine.insert(
             decl_engine,
             TypeInfo::Struct {
                 name: self.name.clone(),

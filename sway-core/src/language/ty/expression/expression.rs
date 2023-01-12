@@ -506,7 +506,7 @@ impl TyExpression {
         let decl_engine = engines.de();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             span,
         }
     }

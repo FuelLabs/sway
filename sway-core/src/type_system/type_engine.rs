@@ -42,7 +42,7 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert_type(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -218,7 +218,7 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
@@ -519,7 +519,7 @@ impl TypeEngine {
                             name: name.to_string(),
                             span: name.span(),
                         });
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery)
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }
                 }
             }
@@ -534,11 +534,11 @@ impl TypeEngine {
                         namespace,
                         mod_path
                     ),
-                    self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                    self.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert_type(decl_engine, TypeInfo::Array(elem_ty, n))
+                self.insert(decl_engine, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
@@ -552,12 +552,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert_type(decl_engine, TypeInfo::Tuple(type_arguments))
+                self.insert(decl_engine, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };

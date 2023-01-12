@@ -120,7 +120,7 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert_type(
+        let type_id = type_engine.insert(
             decl_engine,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),

@@ -44,7 +44,7 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert_type(decl_engine, TypeInfo::SelfType);
+        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 

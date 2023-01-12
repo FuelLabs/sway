@@ -67,7 +67,7 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(decl_engine, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(decl_engine, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
@@ -337,7 +337,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(
+                    Some(type_engine.insert(
                         decl_engine,
                         TypeInfo::Struct {
                             fields,
@@ -376,7 +376,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(
+                    Some(type_engine.insert(
                         decl_engine,
                         TypeInfo::Enum {
                             variant_types,
@@ -391,7 +391,7 @@ impl TypeMapping {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert_type(decl_engine, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -407,7 +407,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(decl_engine, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -425,7 +425,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(decl_engine, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
                 } else {
                     None
                 }

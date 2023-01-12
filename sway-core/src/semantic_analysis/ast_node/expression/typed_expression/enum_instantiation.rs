@@ -58,7 +58,7 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),

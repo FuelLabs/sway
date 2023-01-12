@@ -121,7 +121,7 @@ impl TraitMap {
         }
 
         // check to see if adding this trait will produce a conflicting definition
-        let trait_type_id = type_engine.insert_type(
+        let trait_type_id = type_engine.insert(
             decl_engine,
             TypeInfo::Custom {
                 name: trait_name.suffix.clone(),
@@ -149,7 +149,7 @@ impl TraitMap {
                     },
                 ..
             } = map_trait_name;
-            let map_trait_type_id = type_engine.insert_type(
+            let map_trait_type_id = type_engine.insert(
                 decl_engine,
                 TypeInfo::Custom {
                     name: map_trait_name_suffix.clone(),
@@ -592,7 +592,7 @@ impl TraitMap {
                 } else if decider(&type_info, &type_engine.look_up_type_id(*map_type_id)) {
                     let type_mapping =
                         TypeMapping::from_superset_and_subset(type_engine, *map_type_id, *type_id);
-                    let new_self_type = type_engine.insert_type(decl_engine, TypeInfo::SelfType);
+                    let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
@@ -738,7 +738,7 @@ impl TraitMap {
                 trait_name: constraint_trait_name,
                 type_arguments: constraint_type_arguments,
             } = constraint;
-            let constraint_type_id = type_engine.insert_type(
+            let constraint_type_id = type_engine.insert(
                 decl_engine,
                 TypeInfo::Custom {
                     name: constraint_trait_name.suffix.clone(),
@@ -751,7 +751,7 @@ impl TraitMap {
             );
             for key in self.trait_impls.iter().map(|e| &e.key) {
                 let suffix = &key.name.suffix;
-                let map_trait_type_id = type_engine.insert_type(
+                let map_trait_type_id = type_engine.insert(
                     decl_engine,
                     TypeInfo::Custom {
                         name: suffix.name.clone(),
