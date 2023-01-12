@@ -315,16 +315,7 @@ impl TypeMapping {
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Placeholder(_) => {
-                iter_for_match(engines, self, &type_info)
-                // for (source_type, dest_type) in type_mapping.mapping.iter() {
-                //     if let TypeInfo::Placeholder(r) = type_engine.look_up_type_id(source_type) {
-                //         if l.name_ident.as_str() == r.name_ident.as_str() {
-                //             return Some(*dest_type);
-                //         }
-                //     }
-                // }
-            }
+            TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::Struct {
                 fields,
                 name,
