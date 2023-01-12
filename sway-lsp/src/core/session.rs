@@ -238,7 +238,8 @@ impl Session {
             let ident_range = token::get_range_from_span(&ident.clone().span());
             // Only check idents within the range of the warning span, where the ident matches the
             // token's ident.
-            if ident_range.end >= range.start && ident_range.end <= range.end {
+            if ident_range.end >= range.start && ident_range.end <= range.end && ident_matches_token
+            {
                 eprintln!("\n\nPAIRS token: {:?}", token.clone());
                 eprintln!("\nPAIRS ident: {:?}", ident.clone());
                 eprintln!("\nIDENT MATCHES: {}\n\n", ident_matches_token);
