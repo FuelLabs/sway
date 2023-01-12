@@ -72,8 +72,8 @@ impl ReplaceSelfType for TypeArgument {
     }
 }
 
-impl CopyTypes for TypeArgument {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TypeArgument {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst_types(type_mapping, engines);
     }
 }

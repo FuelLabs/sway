@@ -3,7 +3,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     engine_threading::*,
     language::ty,
-    type_system::{CopyTypes, TypeMapping},
+    type_system::{SubstTypes, TypeSubstMap},
     ReplaceSelfType, TypeId,
 };
 
@@ -52,11 +52,11 @@ impl Spanned for DeclId {
     }
 }
 
-impl CopyTypes for DeclId {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for DeclId {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
-        decl.copy_types(type_mapping, engines);
+        decl.subst_types(type_mapping, engines);
         decl_engine.replace(self.clone(), decl);
     }
 }
@@ -114,14 +114,14 @@ impl DeclId {
         self.0 = index;
     }
 
-    pub(crate) fn copy_types_and_insert_new(
+    pub(crate) fn subst_types_and_insert_new(
         &self,
-        type_mapping: &TypeMapping,
+        type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
     ) -> DeclId {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
-        decl.copy_types(type_mapping, engines);
+        decl.subst_types(type_mapping, engines);
         decl_engine
             .insert_wrapper(decl, self.1.clone())
             .with_parent(decl_engine, self.clone())

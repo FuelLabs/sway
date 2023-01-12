@@ -879,7 +879,7 @@ fn type_check_trait_implementation(
     // the trait name in the current impl block that we are type checking and
     // using the original decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
-    let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
             .map(|type_param| type_param.type_id)
@@ -901,7 +901,7 @@ fn type_check_trait_implementation(
             errors
         );
         method.replace_decls(&decl_mapping, engines);
-        method.copy_types(&type_mapping, engines);
+        method.subst_types(&type_mapping, engines);
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
             decl_engine

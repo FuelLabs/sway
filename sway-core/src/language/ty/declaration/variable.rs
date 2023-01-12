@@ -31,11 +31,11 @@ impl PartialEqWithEngines for TyVariableDeclaration {
     }
 }
 
-impl CopyTypes for TyVariableDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.return_type.copy_types(type_mapping, engines);
-        self.type_ascription.copy_types(type_mapping, engines);
-        self.body.copy_types(type_mapping, engines)
+impl SubstTypes for TyVariableDeclaration {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.return_type.subst_types(type_mapping, engines);
+        self.type_ascription.subst_types(type_mapping, engines);
+        self.body.subst_types(type_mapping, engines)
     }
 }
 

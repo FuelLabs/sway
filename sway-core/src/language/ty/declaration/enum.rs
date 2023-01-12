@@ -28,14 +28,14 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
-impl CopyTypes for TyEnumDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyEnumDeclaration {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst_types(type_mapping, engines));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst_types(type_mapping, engines));
     }
 }
 
@@ -143,9 +143,9 @@ impl PartialEqWithEngines for TyEnumVariant {
     }
 }
 
-impl CopyTypes for TyEnumVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyEnumVariant {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst_types(type_mapping, engines);
     }
 }
 

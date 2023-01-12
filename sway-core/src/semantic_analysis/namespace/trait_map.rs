@@ -8,8 +8,8 @@ use crate::{
     engine_threading::*,
     error::*,
     language::CallPath,
-    type_system::{CopyTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeMapping,
+    type_system::{SubstTypes, TypeId},
+    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
 };
 
 #[derive(Clone, Debug)]
@@ -589,7 +589,7 @@ impl TraitMap {
                     );
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
                     let type_mapping =
-                        TypeMapping::from_superset_and_subset(type_engine, *map_type_id, *type_id);
+                        TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
                     let trait_methods: TraitMethods = map_trait_methods
@@ -597,7 +597,7 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, decl_id)| {
                             let mut decl = decl_engine.get(decl_id.clone());
-                            decl.copy_types(&type_mapping, engines);
+                            decl.subst_types(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             (
                                 name,

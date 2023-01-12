@@ -32,10 +32,10 @@ impl PartialEqWithEngines for TyExpression {
     }
 }
 
-impl CopyTypes for TyExpression {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.return_type.copy_types(type_mapping, engines);
-        self.expression.copy_types(type_mapping, engines);
+impl SubstTypes for TyExpression {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.return_type.subst_types(type_mapping, engines);
+        self.expression.subst_types(type_mapping, engines);
     }
 }
 

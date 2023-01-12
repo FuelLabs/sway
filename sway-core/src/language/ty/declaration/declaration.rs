@@ -57,16 +57,16 @@ impl PartialEqWithEngines for TyDeclaration {
     }
 }
 
-impl CopyTypes for TyDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyDeclaration {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, engines),
-            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            ImplTrait(decl_id) => decl_id.copy_types(type_mapping, engines),
+            VariableDeclaration(ref mut var_decl) => var_decl.subst_types(type_mapping, engines),
+            FunctionDeclaration(ref mut decl_id) => decl_id.subst_types(type_mapping, engines),
+            TraitDeclaration(ref mut decl_id) => decl_id.subst_types(type_mapping, engines),
+            StructDeclaration(ref mut decl_id) => decl_id.subst_types(type_mapping, engines),
+            EnumDeclaration(ref mut decl_id) => decl_id.subst_types(type_mapping, engines),
+            ImplTrait(decl_id) => decl_id.subst_types(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)

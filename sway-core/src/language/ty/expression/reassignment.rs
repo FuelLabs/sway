@@ -24,10 +24,10 @@ impl PartialEqWithEngines for TyReassignment {
     }
 }
 
-impl CopyTypes for TyReassignment {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.rhs.copy_types(type_mapping, engines);
-        self.lhs_type.copy_types(type_mapping, engines);
+impl SubstTypes for TyReassignment {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.rhs.subst_types(type_mapping, engines);
+        self.lhs_type.subst_types(type_mapping, engines);
     }
 }
 

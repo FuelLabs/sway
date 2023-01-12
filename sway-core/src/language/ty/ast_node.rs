@@ -41,14 +41,14 @@ impl DisplayWithEngines for TyAstNode {
     }
 }
 
-impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyAstNode {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping, engines)
+                exp.subst_types(type_mapping, engines)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping, engines),
+            TyAstNodeContent::Declaration(ref mut decl) => decl.subst_types(type_mapping, engines),
+            TyAstNodeContent::Expression(ref mut expr) => expr.subst_types(type_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }

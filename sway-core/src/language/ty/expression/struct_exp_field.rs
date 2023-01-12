@@ -15,9 +15,9 @@ impl PartialEqWithEngines for TyStructExpressionField {
     }
 }
 
-impl CopyTypes for TyStructExpressionField {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.value.copy_types(type_mapping, engines);
+impl SubstTypes for TyStructExpressionField {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.value.subst_types(type_mapping, engines);
     }
 }
 

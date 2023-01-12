@@ -38,11 +38,11 @@ impl Spanned for TraitConstraint {
     }
 }
 
-impl CopyTypes for TraitConstraint {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TraitConstraint {
+    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst_types(type_mapping, engines));
     }
 }
 

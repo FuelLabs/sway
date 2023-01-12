@@ -5,7 +5,7 @@ use crate::{
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
-        CopyTypes, EnforceTypeArguments, MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeEngine,
 };
@@ -247,7 +247,7 @@ impl<'a> TypeCheckContext<'a> {
         call_site_span: &Span,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(

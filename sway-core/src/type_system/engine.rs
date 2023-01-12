@@ -14,7 +14,7 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
-use super::unifier::Unifier;
+use super::unify::Unifier;
 use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
@@ -138,14 +138,14 @@ impl TypeEngine {
     /// 2. `value` has type parameters + `type_arguments` is empty:
     ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
     ///         error
-    ///     2b. refresh the generic types with a [TypeMapping]
+    ///     2b. refresh the generic types with a [TypeSubstMapping]
     /// 3. `value` does have type parameters + `type_arguments` is nonempty:
     ///     3a. error
     /// 4. `value` has type parameters + `type_arguments` is nonempty:
     ///     4a. check to see that the type parameters and `type_arguments` have
     ///         the same length
     ///     4b. for each type argument in `type_arguments`, resolve the type
-    ///     4c. refresh the generic types with a [TypeMapping]
+    ///     4c. refresh the generic types with a [TypeSubstMapping]
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
@@ -158,7 +158,7 @@ impl TypeEngine {
         mod_path: &Path,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + SubstTypes,
     {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -177,8 +177,8 @@ impl TypeEngine {
                     return err(warnings, errors);
                 }
                 let type_mapping =
-                    TypeMapping::from_type_parameters(engines, value.type_parameters());
-                value.copy_types(&type_mapping, engines);
+                    TypeSubstMap::from_type_parameters(engines, value.type_parameters());
+                value.subst_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -223,7 +223,7 @@ impl TypeEngine {
                         errors
                     );
                 }
-                let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value
                         .type_parameters()
                         .iter()
@@ -234,7 +234,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping, engines);
+                value.subst_types(&type_mapping, engines);
                 ok((), warnings, errors)
             }
         }
