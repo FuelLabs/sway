@@ -490,7 +490,7 @@ impl ty::TyExpression {
             ctx,
             function_decl,
             call_path_binding.inner,
-            arguments,
+            Some(arguments),
             span,
         )
     }
@@ -1157,7 +1157,6 @@ impl ty::TyExpression {
             (false, Some(func_decl), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
-                let args = args.unwrap_or_default();
                 check!(
                     instantiate_function_application(
                         ctx,

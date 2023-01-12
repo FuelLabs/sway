@@ -35,6 +35,8 @@ pub(crate) fn instantiate_enum(
         errors
     );
 
+    // Return an error if enum variant is of type unit and it is called with parenthesis.
+    // args_opt.is_some() returns true when this variant was called with parenthesis.
     if type_engine
         .look_up_type_id(enum_variant.initial_type_id)
         .is_unit()
@@ -42,7 +44,7 @@ pub(crate) fn instantiate_enum(
     {
         errors.push(CompileError::UnitVariantWithParenthesesEnumInstantiator {
             span: enum_variant_name.span(),
-            ty: format!("{}::{}", enum_name.as_str(), enum_variant.name.as_str()),
+            ty: enum_variant.name.as_str().to_string(),
         });
         return err(warnings, errors);
     }
