@@ -149,7 +149,7 @@ impl ModuleInfo {
         }
     }
     /// Determines if a parent module exists.
-    fn has_parent(&self) -> bool {
+    pub(crate) fn has_parent(&self) -> bool {
         self.depth() > 1
     }
     /// The name of the project.
@@ -207,26 +207,5 @@ impl ModuleInfo {
     /// Create a new [ModuleInfo] from a vec.
     pub(crate) fn from_vec(vec: Vec<String>) -> Self {
         Self(vec)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ModuleInfo;
-
-    #[test]
-    fn test_parent() {
-        let project = String::from("project_name");
-        let module = String::from("module_name");
-        let mut module_vec = vec![project.clone(), module.clone()];
-
-        let module_info = ModuleInfo::from_vec(module_vec.clone());
-        let project_opt = module_info.parent();
-        assert_eq!(Some(&project), project_opt);
-
-        module_vec.pop();
-        let module_info = ModuleInfo::from_vec(module_vec);
-        let project_opt = module_info.parent();
-        assert_eq!(None, project_opt);
     }
 }

@@ -139,9 +139,7 @@ impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
             module_info: self.module_info.clone(),
-            href_path: self
-                .module_info
-                .to_html_shorthand_path_string(INDEX_FILENAME),
+            href_path: INDEX_FILENAME.to_owned(),
         }
     }
 }
@@ -265,7 +263,7 @@ fn context_section<'title, S: Renderable + 'static>(
     list: Vec<S>,
     title: &'title str,
 ) -> Box<dyn RenderBox + 'title> {
-    let lct = html_title_str(title);
+    let lct = html_title_string(title);
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title;
@@ -277,7 +275,7 @@ fn context_section<'title, S: Renderable + 'static>(
         }
     }
 }
-fn html_title_str(title: &str) -> String {
+fn html_title_string(title: &str) -> String {
     if title.contains(' ') {
         title
             .to_lowercase()
@@ -629,7 +627,7 @@ impl Renderable for Sidebar {
                     }
                 }
                 h2(class="location") {
-                    a(href="#") { : self.module_info.location(); }
+                    a(href=&self.href_path) { : self.module_info.location(); }
                 }
                 div(class="sidebar-elems") {
                     section {
