@@ -67,6 +67,13 @@ pub struct FuelAsmBuilder<'ir> {
     pub(super) cur_bytecode: Vec<Op>,
 }
 
+pub type FuelAsmBuilderResult = (
+    DataSection,
+    RegisterSequencer,
+    Vec<(Function, Label, AbstractInstructionSet, Option<DeclId>)>,
+    Vec<AbstractInstructionSet>,
+);
+
 impl<'ir> AsmBuilder for FuelAsmBuilder<'ir> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
@@ -124,7 +131,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
     }
 
     pub fn finalize(&self) -> AsmBuilderResult {
-        (
+        AsmBuilderResult::Fuel((
             self.data_section.clone(),
             self.reg_seqr,
             self.entries
@@ -139,7 +146,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 .into_iter()
                 .map(|ops| AbstractInstructionSet { ops })
                 .collect(),
-        )
+        ))
     }
 
     pub(super) fn compile_instruction(

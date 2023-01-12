@@ -22,7 +22,6 @@ pub use finalized_asm::{FinalizedAsm, FinalizedEntry};
 use abstract_instruction_set::*;
 use allocated_abstract_instruction_set::*;
 pub(crate) use data_section::*;
-use instruction_set::*;
 pub(crate) use programs::ProgramKind;
 use register_sequencer::*;
 

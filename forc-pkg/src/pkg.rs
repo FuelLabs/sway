@@ -86,6 +86,7 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
+    pub build_target: BuildTarget,
     pub json_abi_program: fuels_types::ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
@@ -2417,6 +2418,7 @@ pub fn compile(
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
             let bytecode = bytes;
             let built_package = BuiltPackage {
+                build_target,
                 json_abi_program,
                 storage_slots,
                 bytecode,

@@ -14,6 +14,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
+use sway_core::BuildTarget;
 
 use super::RunConfig;
 
@@ -123,27 +124,32 @@ pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
 ) -> Result<(ProgramState, Vec<Receipt>, BuiltPackage)> {
-    let storage = MemoryStorage::default();
+    match script.build_target {
+        BuildTarget::Fuel => {
+            let storage = MemoryStorage::default();
 
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let maturity = 1;
-    let script_data = script_data.unwrap_or_default();
-    let block_height = (u32::MAX >> 1) as u64;
-    let params = &ConsensusParameters {
-        // The default max length is 1MB which isn't enough for the bigger tests.
-        max_script_length: 64 * 1024 * 1024,
-        ..ConsensusParameters::DEFAULT
-    };
+            let rng = &mut StdRng::seed_from_u64(2322u64);
+            let maturity = 1;
+            let script_data = script_data.unwrap_or_default();
+            let block_height = (u32::MAX >> 1) as u64;
+            let params = &ConsensusParameters {
+                // The default max length is 1MB which isn't enough for the bigger tests.
+                max_script_length: 64 * 1024 * 1024,
+                ..ConsensusParameters::DEFAULT
+            };
 
-    let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
-        .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(maturity)
-        .finalize_checked(block_height as Word, params);
+            let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
+                .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+                .maturity(maturity)
+                .finalize_checked(block_height as Word, params);
 
-    let mut i = Interpreter::with_storage(storage, Default::default());
-    let transition = i.transact(tx)?;
-    Ok((*transition.state(), transition.receipts().to_vec(), script))
+            let mut i = Interpreter::with_storage(storage, Default::default());
+            let transition = i.transact(tx)?;
+            Ok((*transition.state(), transition.receipts().to_vec(), script))
+        }
+        BuildTarget::EVM => todo!(),
+    }
 }
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
@@ -152,6 +158,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     println!("Compiling {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
+        build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
                 "{}/src/e2e_vm_tests/test_programs/{}",

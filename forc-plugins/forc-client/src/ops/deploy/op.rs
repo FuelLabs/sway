@@ -8,10 +8,10 @@ use fuel_gql_client::{
 };
 use futures::FutureExt;
 use pkg::BuiltPackage;
-use sway_core::BuildTarget;
 use std::path::PathBuf;
 use std::time::Duration;
 use sway_core::language::parsed::TreeType;
+use sway_core::BuildTarget;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 

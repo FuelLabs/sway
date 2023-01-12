@@ -1,18 +1,13 @@
 use sway_ir::Function;
 
-use crate::{asm_lang::Label, decl_engine::DeclId, CompileResult};
+use crate::{asm_lang::Label, CompileResult};
 
-use super::{
-    abstract_instruction_set::AbstractInstructionSet, register_sequencer::RegisterSequencer,
-    DataSection,
-};
+use super::{evm::EvmAsmBuilderResult, fuel::FuelAsmBuilderResult};
 
-pub type AsmBuilderResult = (
-    DataSection,
-    RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet, Option<DeclId>)>,
-    Vec<AbstractInstructionSet>,
-);
+pub enum AsmBuilderResult {
+    Fuel(FuelAsmBuilderResult),
+    Evm(EvmAsmBuilderResult),
+}
 
 pub trait AsmBuilder {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label);

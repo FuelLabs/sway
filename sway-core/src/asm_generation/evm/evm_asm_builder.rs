@@ -12,13 +12,17 @@ use crate::{
     metadata::MetadataManager,
 };
 
-use sway_error::{error::CompileError, warning::CompileWarning};
-use sway_ir::*;
+use sway_error::error::CompileError;
+use sway_ir::{Context, *};
 use sway_types::Span;
+
+use etk_asm::ops::*;
 
 pub struct EvmAsmBuilder<'ir> {
     #[allow(dead_code)]
     program_kind: ProgramKind,
+
+    ops: Vec<etk_asm::ops::AbstractOp>,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -34,6 +38,10 @@ pub struct EvmAsmBuilder<'ir> {
 
     // Metadata manager for converting metadata to Spans, etc.
     md_mgr: MetadataManager,
+}
+
+pub struct EvmAsmBuilderResult {
+    pub ops: Vec<etk_asm::ops::AbstractOp>,
 }
 
 impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
@@ -58,14 +66,18 @@ impl<'ir> EvmAsmBuilder<'ir> {
         reg_seqr: RegisterSequencer,
         context: &'ir Context,
     ) -> Self {
-        EvmAsmBuilder {
+        let mut b = EvmAsmBuilder {
             program_kind,
+            ops: Vec::new(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
             context,
             md_mgr: MetadataManager::default(),
-        }
+        };
+        b.ops.push(AbstractOp::Label("main".into()));
+        b.ops.push(AbstractOp::new(Op::GetPc).unwrap());
+        b
     }
 
     fn empty_span() -> Span {
@@ -74,7 +86,9 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     pub fn finalize(&self) -> AsmBuilderResult {
-        todo!("");
+        AsmBuilderResult::Evm(EvmAsmBuilderResult {
+            ops: self.ops.clone(),
+        })
     }
 
     pub(super) fn compile_instruction(
@@ -200,15 +214,16 @@ impl<'ir> EvmAsmBuilder<'ir> {
         asm: &AsmBlock,
         asm_args: &[AsmArg],
     ) -> CompileResult<()> {
-        let warnings: Vec<CompileWarning> = Vec::new();
-        let errors: Vec<CompileError> = Vec::new();
-
-        ok((), warnings, errors)
+        todo!();
     }
 
-    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {}
+    fn compile_addr_of(&mut self, instr_val: &Value, arg: &Value) {
+        todo!();
+    }
 
-    fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {}
+    fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
+        todo!();
+    }
 
     fn compile_binary_op(
         &mut self,
@@ -217,11 +232,16 @@ impl<'ir> EvmAsmBuilder<'ir> {
         arg1: &Value,
         arg2: &Value,
     ) {
+        todo!();
     }
 
-    fn compile_branch(&mut self, to_block: &BranchToWithArgs) {}
+    fn compile_branch(&mut self, to_block: &BranchToWithArgs) {
+        todo!();
+    }
 
-    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type, offs: u64) {}
+    fn compile_cast_ptr(&mut self, instr_val: &Value, val: &Value, ty: &Type, offs: u64) {
+        todo!();
+    }
 
     fn compile_cmp(
         &mut self,
@@ -230,6 +250,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         lhs_value: &Value,
         rhs_value: &Value,
     ) {
+        todo!();
     }
 
     fn compile_conditional_branch(
@@ -238,10 +259,12 @@ impl<'ir> EvmAsmBuilder<'ir> {
         true_block: &BranchToWithArgs,
         false_block: &BranchToWithArgs,
     ) -> CompileResult<()> {
-        ok((), vec![], vec![])
+        todo!();
     }
 
-    fn compile_branch_to_phi_value(&mut self, to_block: &BranchToWithArgs) {}
+    fn compile_branch_to_phi_value(&mut self, to_block: &BranchToWithArgs) {
+        todo!();
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn compile_contract_call(
@@ -252,6 +275,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         asset_id: &Value,
         gas: &Value,
     ) {
+        todo!();
     }
 
     fn compile_extract_element(
@@ -261,21 +285,24 @@ impl<'ir> EvmAsmBuilder<'ir> {
         ty: &Aggregate,
         index_val: &Value,
     ) {
+        todo!();
     }
 
     fn compile_extract_value(&mut self, instr_val: &Value, aggregate_val: &Value, indices: &[u64]) {
+        todo!();
     }
 
     fn compile_get_storage_key(&mut self, instr_val: &Value) -> CompileResult<()> {
-        let warnings: Vec<CompileWarning> = Vec::new();
-        let errors: Vec<CompileError> = Vec::new();
-
-        ok((), warnings, errors)
+        todo!();
     }
 
-    fn compile_get_local(&mut self, instr_val: &Value, local_var: &LocalVar) {}
+    fn compile_get_local(&mut self, instr_val: &Value, local_var: &LocalVar) {
+        todo!();
+    }
 
-    fn compile_gtf(&mut self, instr_val: &Value, index: &Value, tx_field_id: u64) {}
+    fn compile_gtf(&mut self, instr_val: &Value, index: &Value, tx_field_id: u64) {
+        todo!();
+    }
 
     fn compile_insert_element(
         &mut self,
@@ -285,6 +312,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         value: &Value,
         index_val: &Value,
     ) {
+        todo!();
     }
 
     fn compile_insert_value(
@@ -294,12 +322,15 @@ impl<'ir> EvmAsmBuilder<'ir> {
         value: &Value,
         indices: &[u64],
     ) {
+        todo!();
     }
 
-    fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {}
+    fn compile_int_to_ptr(&mut self, instr_val: &Value, int_to_ptr_val: &Value) {
+        todo!();
+    }
 
     fn compile_load(&mut self, instr_val: &Value, src_val: &Value) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        todo!();
     }
 
     fn compile_mem_copy(
@@ -309,15 +340,24 @@ impl<'ir> EvmAsmBuilder<'ir> {
         src_val: &Value,
         byte_len: u64,
     ) {
+        todo!();
     }
 
-    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {}
+    fn compile_log(&mut self, instr_val: &Value, log_val: &Value, log_ty: &Type, log_id: &Value) {
+        todo!();
+    }
 
-    fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {}
+    fn compile_read_register(&mut self, instr_val: &Value, reg: &sway_ir::Register) {
+        todo!();
+    }
 
-    fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {}
+    fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
+        todo!();
+    }
 
-    fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {}
+    fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {
+        todo!();
+    }
 
     fn compile_smo(
         &mut self,
@@ -327,6 +367,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         output_index: &Value,
         coins: &Value,
     ) {
+        todo!();
     }
 
     fn compile_state_access_quad_word(
@@ -337,11 +378,11 @@ impl<'ir> EvmAsmBuilder<'ir> {
         number_of_slots: &Value,
         access_type: StateAccessType,
     ) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        todo!();
     }
 
     fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        todo!();
     }
 
     fn compile_state_store_word(
@@ -350,7 +391,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         store_val: &Value,
         key: &Value,
     ) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        todo!();
     }
 
     fn compile_store(
@@ -359,7 +400,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         dst_val: &Value,
         stored_val: &Value,
     ) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        todo!();
     }
 
     pub(super) fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
@@ -371,10 +412,14 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        ok((), Vec::new(), Vec::new())
+        ok((), vec![], vec![])
     }
 
-    pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {}
+    pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {
+        todo!();
+    }
 
-    pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {}
+    pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
+        todo!();
+    }
 }

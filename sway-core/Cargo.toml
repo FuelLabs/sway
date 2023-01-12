@@ -13,6 +13,7 @@ clap = { version = "3.1", features = ["derive"] }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
+etk-asm = { version = "0.2.1", features = ["backtraces"] }
 fuel-vm = { version = "0.22", features = ["serde"] }
 fuels-types = "0.33"
 hashbrown = "0.13.1"

@@ -1,10 +1,10 @@
 use super::{
-    asm_builder::AsmBuilder,
+    asm_builder::{AsmBuilder, AsmBuilderResult},
     checks::check_invalid_opcodes,
     evm::EvmAsmBuilder,
     finalized_asm::FinalizedAsm,
     fuel::FuelAsmBuilder,
-    programs::{AbstractEntry, AbstractProgram, ProgramKind},
+    programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
@@ -28,38 +28,8 @@ pub fn compile_ir_to_asm(
     let mut errors: Vec<CompileError> = Vec::new();
 
     let module = ir.module_iter().next().unwrap();
-    let abstract_program = check!(
-        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
-        println!("{abstract_program}\n");
-    }
-
-    let allocated_program = check!(
-        CompileResult::from(abstract_program.into_allocated_program()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
-        println!("{allocated_program}");
-    }
-
     let final_program = check!(
-        CompileResult::from(allocated_program.into_final_program()),
+        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
         return err(warnings, errors),
         warnings,
         errors
@@ -90,7 +60,7 @@ fn compile_module_to_asm(
     context: &Context,
     module: Module,
     build_config: Option<&BuildConfig>,
-) -> CompileResult<AbstractProgram> {
+) -> CompileResult<FinalProgram> {
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
         Kind::Library => ProgramKind::Library,
@@ -132,27 +102,62 @@ fn compile_module_to_asm(
     }
 
     // Get the compiled result and massage a bit for the AbstractProgram.
-    let (data_section, reg_seqr, entries, non_entries) = builder.finalize();
-    let entries = entries
-        .into_iter()
-        .map(|(func, label, ops, test_decl_id)| {
-            let selector = func.get_selector(context);
-            let name = func.get_name(context).to_string();
-            AbstractEntry {
-                test_decl_id,
-                selector,
-                label,
-                ops,
-                name,
-            }
-        })
-        .collect();
+    let result = builder.finalize();
+    let final_program = match result {
+        AsmBuilderResult::Fuel(result) => {
+            let (data_section, reg_seqr, entries, non_entries) = result;
+            let entries = entries
+                .into_iter()
+                .map(|(func, label, ops, test_decl_id)| {
+                    let selector = func.get_selector(context);
+                    let name = func.get_name(context).to_string();
+                    AbstractEntry {
+                        test_decl_id,
+                        selector,
+                        label,
+                        ops,
+                        name,
+                    }
+                })
+                .collect();
 
-    ok(
-        AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr),
-        warnings,
-        errors,
-    )
+            let abstract_program =
+                AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr);
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
+                println!("{abstract_program}\n");
+            }
+
+            let allocated_program = check!(
+                CompileResult::from(abstract_program.into_allocated_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
+                println!("{allocated_program}");
+            }
+
+            check!(
+                CompileResult::from(allocated_program.into_final_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+        AsmBuilderResult::Evm(result) => FinalProgram::Evm { ops: result.ops },
+    };
+
+    ok(final_program, warnings, errors)
 }
 
 // -------------------------------------------------------------------------------------------------
