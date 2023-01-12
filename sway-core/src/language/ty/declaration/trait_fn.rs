@@ -29,11 +29,11 @@ impl PartialEqWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.parameters
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
-        self.return_type.subst_types(type_mapping, engines);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.return_type.subst(type_mapping, engines);
     }
 }
 

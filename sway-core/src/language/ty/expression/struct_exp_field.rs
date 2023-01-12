@@ -16,8 +16,8 @@ impl PartialEqWithEngines for TyStructExpressionField {
 }
 
 impl SubstTypes for TyStructExpressionField {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.value.subst_types(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.value.subst(type_mapping, engines);
     }
 }
 

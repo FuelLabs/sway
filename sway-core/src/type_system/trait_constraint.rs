@@ -39,10 +39,10 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 

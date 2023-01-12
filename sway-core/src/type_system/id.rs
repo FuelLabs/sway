@@ -140,7 +140,7 @@ impl ReplaceSelfType for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             *self = matching_id;
         }

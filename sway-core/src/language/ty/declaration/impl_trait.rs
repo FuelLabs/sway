@@ -30,15 +30,14 @@ impl PartialEqWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
-        self.implementing_for_type_id
-            .subst_types(type_mapping, engines);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.implementing_for_type_id.subst(type_mapping, engines);
         self.methods
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 

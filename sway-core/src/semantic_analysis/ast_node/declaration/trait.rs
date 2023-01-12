@@ -258,7 +258,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.subst_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             impld_method_ids.insert(
                 method.name.clone(),
                 decl_engine.insert(method).with_parent(decl_engine, decl_id),
@@ -315,7 +315,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.replace_self_type(engines, type_id);
-            method.subst_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
                     .insert(method.to_dummy_func(Mode::NonAbi))
@@ -330,7 +330,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.replace_self_type(engines, type_id);
-            method.subst_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
                     .insert(method)

@@ -901,7 +901,7 @@ fn type_check_trait_implementation(
             errors
         );
         method.replace_decls(&decl_mapping, engines);
-        method.subst_types(&type_mapping, engines);
+        method.subst(&type_mapping, engines);
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
             decl_engine

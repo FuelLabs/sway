@@ -53,10 +53,10 @@ impl Spanned for DeclId {
 }
 
 impl SubstTypes for DeclId {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
-        decl.subst_types(type_mapping, engines);
+        decl.subst(type_mapping, engines);
         decl_engine.replace(self.clone(), decl);
     }
 }
@@ -121,7 +121,7 @@ impl DeclId {
     ) -> DeclId {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
-        decl.subst_types(type_mapping, engines);
+        decl.subst(type_mapping, engines);
         decl_engine
             .insert_wrapper(decl, self.1.clone())
             .with_parent(decl_engine, self.clone())

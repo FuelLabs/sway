@@ -4,11 +4,11 @@ use super::*;
 use crate::engine_threading::*;
 
 pub(crate) trait SubstTypes {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
 
-    fn subst_types(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         if !type_mapping.is_empty() {
-            self.subst_types_inner(type_mapping, engines);
+            self.subst_inner(type_mapping, engines);
         }
     }
 }

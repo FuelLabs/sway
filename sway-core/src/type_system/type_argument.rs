@@ -73,7 +73,7 @@ impl ReplaceSelfType for TypeArgument {
 }
 
 impl SubstTypes for TypeArgument {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst_types(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }

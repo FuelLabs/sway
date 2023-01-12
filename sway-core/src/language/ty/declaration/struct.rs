@@ -29,13 +29,13 @@ impl PartialEqWithEngines for TyStructDeclaration {
 }
 
 impl SubstTypes for TyStructDeclaration {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.subst_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -143,8 +143,8 @@ impl PartialEqWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst_types(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

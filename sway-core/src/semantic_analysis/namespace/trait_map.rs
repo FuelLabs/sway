@@ -597,7 +597,7 @@ impl TraitMap {
                         .into_iter()
                         .map(|(name, decl_id)| {
                             let mut decl = decl_engine.get(decl_id.clone());
-                            decl.subst_types(&type_mapping, engines);
+                            decl.subst(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             (
                                 name,

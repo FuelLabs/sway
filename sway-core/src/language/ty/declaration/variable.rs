@@ -32,10 +32,10 @@ impl PartialEqWithEngines for TyVariableDeclaration {
 }
 
 impl SubstTypes for TyVariableDeclaration {
-    fn subst_types_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.return_type.subst_types(type_mapping, engines);
-        self.type_ascription.subst_types(type_mapping, engines);
-        self.body.subst_types(type_mapping, engines)
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.return_type.subst(type_mapping, engines);
+        self.type_ascription.subst(type_mapping, engines);
+        self.body.subst(type_mapping, engines)
     }
 }
 

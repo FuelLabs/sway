@@ -178,7 +178,7 @@ impl TypeEngine {
                 }
                 let type_mapping =
                     TypeSubstMap::from_type_parameters(engines, value.type_parameters());
-                value.subst_types(&type_mapping, engines);
+                value.subst(&type_mapping, engines);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -234,7 +234,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.subst_types(&type_mapping, engines);
+                value.subst(&type_mapping, engines);
                 ok((), warnings, errors)
             }
         }
