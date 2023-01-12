@@ -113,7 +113,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type_with_self(
+        engines.te().resolve_with_self(
             engines.de(),
             type_id,
             self_type,
@@ -134,7 +134,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type(
+        engines.te().resolve(
             engines.de(),
             type_id,
             span,
@@ -182,7 +182,7 @@ impl Namespace {
 
         // resolve the type
         let type_id = check!(
-            type_engine.resolve_type(
+            type_engine.resolve(
                 decl_engine,
                 type_id,
                 &method_name.span(),

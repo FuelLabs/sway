@@ -209,7 +209,7 @@ impl TypeEngine {
                 }
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type(
+                        self.resolve(
                             decl_engine,
                             type_argument.type_id,
                             &type_argument.span,
@@ -420,7 +420,7 @@ impl TypeEngine {
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_type(
+    pub(crate) fn resolve(
         &self,
         decl_engine: &DeclEngine,
         type_id: TypeId,
@@ -525,7 +525,7 @@ impl TypeEngine {
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
-                    self.resolve_type(
+                    self.resolve(
                         decl_engine,
                         elem_ty.type_id,
                         span,
@@ -543,7 +543,7 @@ impl TypeEngine {
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type(
+                        self.resolve(
                             decl_engine,
                             type_argument.type_id,
                             span,
@@ -567,7 +567,7 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in `type_id`, then resolve `type_id`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_type_with_self(
+    pub(crate) fn resolve_with_self(
         &self,
         decl_engine: &DeclEngine,
         mut type_id: TypeId,
@@ -579,7 +579,7 @@ impl TypeEngine {
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.resolve_type(
+        self.resolve(
             decl_engine,
             type_id,
             span,
