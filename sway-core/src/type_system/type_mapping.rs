@@ -130,9 +130,6 @@ impl TypeMapping {
             type_engine.look_up_type_id(superset),
             type_engine.look_up_type_id(subset),
         ) {
-            (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => TypeMapping {
-                mapping: BTreeMap::from([(superset, subset)]),
-            },
             (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
                 mapping: BTreeMap::from([(superset, subset)]),
             },
