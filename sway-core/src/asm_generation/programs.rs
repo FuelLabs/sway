@@ -66,5 +66,6 @@ pub(super) enum FinalProgram {
     },
     Evm {
         ops: Vec<etk_asm::ops::AbstractOp>,
+        abi: Vec<ethabi::operation::Operation>,
     },
 }

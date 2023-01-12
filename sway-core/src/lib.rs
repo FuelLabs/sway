@@ -1,7 +1,7 @@
 #[macro_use]
 pub mod error;
 
-mod asm_generation;
+pub mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;

@@ -1,7 +1,7 @@
 use super::FinalProgram;
 
 use crate::{
-    asm_generation::{instruction_set::InstructionSet, DataSection},
+    asm_generation::{instruction_set::InstructionSet, DataSection, ProgramABI},
     FinalizedAsm, FinalizedEntry,
 };
 
@@ -26,14 +26,16 @@ impl FinalProgram {
                         test_decl_id,
                     })
                     .collect(),
+                abi: None,
             },
-            FinalProgram::Evm { ops } => FinalizedAsm {
+            FinalProgram::Evm { ops, abi } => FinalizedAsm {
                 data_section: DataSection {
                     ..Default::default()
                 },
                 program_section: InstructionSet::Evm { ops },
                 program_kind: super::ProgramKind::Script,
                 entries: vec![],
+                abi: Some(ProgramABI::Evm(abi)),
             },
         }
     }
@@ -45,7 +47,7 @@ impl std::fmt::Display for FinalProgram {
             FinalProgram::Fuel {
                 data_section, ops, ..
             } => write!(f, "{:?}\n{}", ops, data_section),
-            FinalProgram::Evm { ops } => write!(f, "{:?}", ops),
+            FinalProgram::Evm { ops, .. } => write!(f, "{:?}", ops),
         }
     }
 }

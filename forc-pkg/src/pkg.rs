@@ -26,6 +26,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    asm_generation::ProgramABI,
     decl_engine::DeclEngine,
     fuel_prelude::{
         fuel_crypto,
@@ -87,7 +88,7 @@ pub struct PinnedId(u64);
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
     pub build_target: BuildTarget,
-    pub json_abi_program: fuels_types::ProgramABI,
+    pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
@@ -374,19 +375,35 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        if !self.json_abi_program.functions.is_empty() {
-            let json_abi_program_stem = format!("{}-abi", pkg_name);
-            let json_abi_program_path = output_dir
-                .join(json_abi_program_stem)
-                .with_extension("json");
-            let file = File::create(json_abi_program_path)?;
-            let res = if minify.json_abi {
-                serde_json::to_writer(&file, &self.json_abi_program)
-            } else {
-                serde_json::to_writer_pretty(&file, &self.json_abi_program)
-            };
-            res?
+        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_path = output_dir
+            .join(json_abi_program_stem)
+            .with_extension("json");
+        match &self.json_abi_program {
+            ProgramABI::Fuel(json_abi_program) => {
+                if !json_abi_program.functions.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
+            ProgramABI::Evm(json_abi_program) => {
+                if !json_abi_program.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
         }
+
         info!("  Bytecode size is {} bytes.", self.bytecode.len());
         // Additional ops required depending on the program type
         match self.tree_type {
@@ -2384,12 +2401,6 @@ pub fn compile(
         tracing::info!("{:#?}", typed_program);
     }
 
-    let mut types = vec![];
-    let json_abi_program = time_expr!(
-        "generate JSON ABI program",
-        typed_program.generate_json_abi_program(engines.te(), &mut types)
-    );
-
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
@@ -2403,6 +2414,21 @@ pub fn compile(
         "compile ast to asm",
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
+
+    let json_abi_program = match build_target {
+        BuildTarget::Fuel => {
+            let mut types = vec![];
+            ProgramABI::Fuel(time_expr!(
+                "generate JSON ABI program",
+                typed_program.generate_json_abi_program(engines.te(), &mut types)
+            ))
+        }
+        BuildTarget::EVM => match &asm_res.value {
+            Some(ref v) => v.0.abi.as_ref().unwrap().clone(),
+            None => todo!(),
+        },
+    };
+
     let entries = asm_res
         .value
         .as_ref()
@@ -2688,7 +2714,9 @@ pub fn build(
             lib_namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(manifest.dir());
-        standardize_json_abi_types(&mut built_package.json_abi_program);
+        if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
+            standardize_json_abi_types(json_abi_program);
+        }
         if outputs.contains(&node) {
             built_packages.push((node, built_package));
         }

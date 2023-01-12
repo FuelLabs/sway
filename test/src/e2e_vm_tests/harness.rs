@@ -14,7 +14,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
-use sway_core::BuildTarget;
+use sway_core::{asm_generation::ProgramABI, BuildTarget};
 
 use super::RunConfig;
 
@@ -265,7 +265,10 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
 
 fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("ABI gen {} ...", file_name.bold());
-    let json_abi = serde_json::json!(built_package.json_abi_program);
+    let json_abi = match &built_package.json_abi_program {
+        ProgramABI::Fuel(abi) => serde_json::json!(abi),
+        ProgramABI::Evm(abi) => serde_json::json!(abi),
+    };
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",

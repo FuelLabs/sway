@@ -154,7 +154,10 @@ fn compile_module_to_asm(
                 errors
             )
         }
-        AsmBuilderResult::Evm(result) => FinalProgram::Evm { ops: result.ops },
+        AsmBuilderResult::Evm(result) => FinalProgram::Evm {
+            ops: result.ops,
+            abi: result.abi,
+        },
     };
 
     ok(final_program, warnings, errors)

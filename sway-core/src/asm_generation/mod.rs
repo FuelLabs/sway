@@ -2,6 +2,8 @@ use crate::asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*};
 
 use std::collections::BTreeSet;
 
+pub mod abi;
+pub use abi::*;
 mod abstract_instruction_set;
 mod allocated_abstract_instruction_set;
 pub mod asm_builder;
@@ -9,6 +11,7 @@ pub(crate) mod checks;
 pub(crate) mod compiler_constants;
 mod data_section;
 pub mod evm;
+pub use evm::*;
 mod finalized_asm;
 pub mod from_ir;
 pub mod fuel;

@@ -66,6 +66,7 @@ pub struct EvmAsmBuilder<'ir> {
 #[derive(Default, Debug)]
 pub struct EvmAsmSection {
     ops: Vec<etk_asm::ops::AbstractOp>,
+    abi: Vec<ethabi::operation::Operation>,
 }
 
 impl EvmAsmSection {
@@ -85,7 +86,10 @@ impl EvmAsmSection {
 pub struct EvmAsmBuilderResult {
     pub ops: Vec<etk_asm::ops::AbstractOp>,
     pub ops_runtime: Vec<etk_asm::ops::AbstractOp>,
+    pub abi: EvmAbiResult,
 }
+
+pub type EvmAbiResult = Vec<ethabi::operation::Operation>;
 
 impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
@@ -125,12 +129,14 @@ impl<'ir> EvmAsmBuilder<'ir> {
 
     pub fn finalize(&self) -> AsmBuilderResult {
         let mut global_ops = Vec::new();
+        let mut global_abi = Vec::new();
 
         let mut size = 0;
         let mut it = self.sections.iter().peekable();
         while let Some(section) = it.next() {
             size += section.size();
             global_ops.append(&mut section.ops.clone());
+            global_abi.append(&mut section.abi.clone());
 
             if it.peek().is_some() {
                 size += AbstractOp::Op(Op::Invalid).size().unwrap();
@@ -144,10 +150,12 @@ impl<'ir> EvmAsmBuilder<'ir> {
         // Generate the actual ctor section with the correct size..
         let mut ctor = self.generate_constructor(false, size, dummy.size());
         ctor.ops.append(&mut global_ops);
+        global_abi.append(&mut ctor.abi);
 
         AsmBuilderResult::Evm(EvmAsmBuilderResult {
             ops: ctor.ops.clone(),
             ops_runtime: ctor.ops,
+            abi: global_abi,
         })
     }
 
@@ -248,6 +256,10 @@ impl<'ir> EvmAsmBuilder<'ir> {
             .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
         s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
         s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+
+        s.abi.push(ethabi::operation::Operation::Constructor(
+            ethabi::Constructor { inputs: vec![] },
+        ));
 
         s
     }

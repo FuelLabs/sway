@@ -1,5 +1,5 @@
 use super::instruction_set::InstructionSet;
-use super::{DataSection, ProgramKind};
+use super::{DataSection, ProgramABI, ProgramKind};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclId;
 use crate::error::*;
@@ -21,6 +21,7 @@ pub struct FinalizedAsm {
     pub program_section: InstructionSet,
     pub program_kind: ProgramKind,
     pub entries: Vec<FinalizedEntry>,
+    pub abi: Option<ProgramABI>,
 }
 
 #[derive(Clone, Debug)]
