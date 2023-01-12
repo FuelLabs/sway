@@ -1,6 +1,6 @@
 use crate::{
-    declaration_engine::DeclarationEngine, engine_threading::*, language::ty,
-    metadata::MetadataManager, semantic_analysis::*, TypeEngine,
+    decl_engine::DeclEngine, engine_threading::*, language::ty, metadata::MetadataManager,
+    semantic_analysis::*, TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -18,7 +18,7 @@ use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
     pub(crate) type_engine: &'a TypeEngine,
-    pub(crate) declaration_engine: &'a DeclarationEngine,
+    pub(crate) decl_engine: &'a DeclEngine,
     pub(crate) context: &'a mut Context,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
@@ -86,7 +86,7 @@ pub(crate) fn compile_const_decl(
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { name, value, .. } = env
-                        .declaration_engine
+                        .decl_engine
                         .get_constant(decl_id.clone(), &name.span())?;
                     Some((name, value))
                 }
@@ -94,7 +94,7 @@ pub(crate) fn compile_const_decl(
             };
             if let Some((name, value)) = decl_name_value {
                 let const_val = compile_constant_expression(
-                    Engines::new(env.type_engine, env.declaration_engine),
+                    Engines::new(env.type_engine, env.decl_engine),
                     env.context,
                     env.md_mgr,
                     env.module,
@@ -147,10 +147,10 @@ pub(crate) fn compile_constant_expression_to_constant(
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
 ) -> Result<Constant, CompileError> {
-    let (type_engine, declaration_engine) = engines.unwrap();
+    let (type_engine, decl_engine) = engines.unwrap();
     let lookup = &mut LookupEnv {
         type_engine,
-        declaration_engine,
+        decl_engine,
         context,
         md_mgr,
         module,
@@ -210,7 +210,7 @@ fn const_eval_typed_expr(
 
             // TODO: Handle more than one statement in the block.
             let function_decl = lookup
-                .declaration_engine
+                .decl_engine
                 .get_function(function_decl_id.clone(), &expr.span)?;
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
@@ -305,7 +305,7 @@ fn const_eval_typed_expr(
             if !element_iter.all(|tid| {
                 lookup.type_engine.look_up_type_id(*tid).eq(
                     &lookup.type_engine.look_up_type_id(element_type_id),
-                    Engines::new(lookup.type_engine, lookup.declaration_engine),
+                    Engines::new(lookup.type_engine, lookup.decl_engine),
                 )
             }) {
                 // This shouldn't happen if the type checker did its job.

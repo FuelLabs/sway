@@ -6,7 +6,7 @@ mod asm_lang;
 mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
-pub mod declaration_engine;
+pub mod decl_engine;
 mod engine_threading;
 pub mod ir_generation;
 pub mod language;
@@ -749,12 +749,12 @@ fn dead_code_analysis<'a>(
     engines: Engines<'a>,
     program: &ty::TyProgram,
 ) -> CompileResult<ControlFlowGraph<'a>> {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let mut dead_code_graph = Default::default();
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(engines, &program.root, &tree_type, &mut dead_code_graph).flat_map(
         |_| {
-            let warnings = dead_code_graph.find_dead_code(declaration_engine);
+            let warnings = dead_code_graph.find_dead_code(decl_engine);
             ok(dead_code_graph, warnings, vec![])
         },
     )
@@ -815,11 +815,11 @@ fn module_return_path_analysis(
 
 #[test]
 fn test_basic_prog() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
         contract;
@@ -910,11 +910,11 @@ fn test_basic_prog() {
 }
 #[test]
 fn test_parenthesized() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
         contract;
@@ -935,13 +935,13 @@ fn test_parenthesized() {
 #[test]
 fn test_unary_ordering() {
     use crate::{
-        declaration_engine::DeclarationEngine,
+        decl_engine::DeclEngine,
         language::{self, parsed},
     };
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let prog = parse(
         r#"
     script;
