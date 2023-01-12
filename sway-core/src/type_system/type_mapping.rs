@@ -256,8 +256,7 @@ impl TypeMapping {
     /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
     /// and a list of [TypeId]s `type_arguments`, the generated [TypeMapping]
     /// is extended with the result from calling `from_superset_and_subset`
-    /// with each [SourceType]s and [DestinationType]s in the original
-    /// [TypeMapping].
+    /// with each [SourceType]s and [DestinationType]s in the original [TypeMapping].
     fn from_superset_and_subset_helper(
         type_engine: &TypeEngine,
         type_parameters: Vec<SourceType>,
