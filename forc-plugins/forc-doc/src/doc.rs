@@ -136,22 +136,6 @@ impl ModuleInfo {
             .last()
             .expect("There will always be at least the project name")
     }
-    /// The location of the parent of the current module.
-    /// Returns `None` if there is no parent.
-    pub(crate) fn parent(&self) -> Option<&String> {
-        match self.has_parent() {
-            true => {
-                let mut iter = self.0.iter();
-                iter.next_back();
-                iter.next_back()
-            }
-            false => None,
-        }
-    }
-    /// Determines if a parent module exists.
-    pub(crate) fn has_parent(&self) -> bool {
-        self.depth() > 1
-    }
     /// The name of the project.
     pub(crate) fn project_name(&self) -> &str {
         self.0.first().expect("Project name missing")
