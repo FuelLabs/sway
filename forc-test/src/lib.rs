@@ -135,7 +135,7 @@ impl BuiltTests {
                 let packages = workspace
                     .into_values()
                     .map(|built_pkg| {
-                        let path = built_pkg.manifest_file.path();
+                        let path = built_pkg.manifest_file.dir();
                         let patched_opts = opts.clone().patch_opts(path);
                         PackageTests::from_built_pkg(built_pkg, patched_opts)
                     })
