@@ -161,6 +161,15 @@
 </code></pre>
 <h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
 <p>The <code>logging</code> library provides a generic <code>log</code> function that can be imported using <code>use std::logging::log</code> and used to log variables of any type. Each call to <code>log</code> appends a <code>receipt</code> to the list of receipts. There are two types of receipts that a <code>log</code> can generate: <code>Log</code> and <code>LogData</code>.</p>
+<pre><code class="language-sway">fn log_values(){
+  // Generates a Log receipt
+  log(42);
+
+  // Generates a LogData receipt
+  let string = &quot;sway&quot;;
+  log(string);
+}
+</code></pre>
 <h3 id="log-receipt"><a class="header" href="#log-receipt"><code>Log</code> Receipt</a></h3>
 <p>The <code>Log</code> receipt is generated for <em>non-reference</em> types, namely <code>bool</code>, <code>u8</code>, <code>u16</code>, <code>u32</code>, and <code>u64</code>. For example, logging an integer variable <code>x</code> that holds the value <code>42</code> using <code>log(x)</code> may generate the following receipt:</p>
 <pre><code class="language-console">&quot;Log&quot;: {
