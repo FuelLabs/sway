@@ -14,6 +14,7 @@ pub struct CallParams {
 }
 
 // TODO : Replace with `from` when implemented
+/// Represent a contract ID as a Bytes, so it can be concatenated with payload
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     let mut target_bytes = Bytes::with_capacity(32);
     target_bytes.len = 32;
@@ -23,7 +24,7 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     target_bytes
 }
 
-/// Represent a raw pointer as a Bytes
+/// Represent a raw pointer as a Bytes, so it can be concatenated with payload
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 
     let mut bytes = Bytes::with_capacity(8);
@@ -38,6 +39,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 }
 
 /// Call a target contract with an already-encoded payload
+/// `payload` : The encoded payload to be called
 fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
     asm(r1: payload.buf.ptr, r2: call_params.coins, r3: call_params.asset_id, r4: call_params.gas) {
         call r1 r2 r3 r4;
@@ -51,12 +53,13 @@ fn create_payload(
     calldata: Bytes,
     single_value_type_arg: bool,
 ) -> Bytes {
-    // packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
     /*
-    bytes	type	    value	description
-    32	    byte[32]	to	    Contract ID to call.
-    8	    byte[8]	    param1	First parameter (function selector).
-    8	    byte[8]	    param2	Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
+    packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
+
+    bytes   type        value   description
+    32	    byte[32]    to      Contract ID to call.
+    8	    byte[8]	    param1  First parameter (function selector).
+    8	    byte[8]	    param2  Second parameter (abi-encoded calldata: value if value type, otherwise pointer to reference type).
     */
     require(function_selector.len() == 8, "function selector must be 8 bytes");
 
