@@ -30,7 +30,7 @@ impl Document {
 
         Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
     }
-    fn create_html_file_name<'name>(ty: &'name str, name: Option<&'name str>) -> String {
+    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
         match name {
             Some(name) => format!("{ty}.{name}.html"),
             None => {
@@ -138,8 +138,6 @@ impl ModuleInfo {
     }
     /// The location of the parent of the current module.
     /// Returns `None` if there is no parent.
-    ///
-    /// To be used in path navigation between modules.
     pub(crate) fn parent(&self) -> Option<&String> {
         match self.has_parent() {
             true => {
@@ -150,6 +148,7 @@ impl ModuleInfo {
             false => None,
         }
     }
+    /// Determines if a parent module exists.
     fn has_parent(&self) -> bool {
         self.depth() > 1
     }
@@ -158,7 +157,9 @@ impl ModuleInfo {
         self.0.first().expect("Project name missing")
     }
     /// Create a qualified path literal String that represents the full path to an item.
-    pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
+    ///
+    /// Example: `project_name::module::Item`
+    pub(crate) fn to_path_literal_string(&self, item_name: &str) -> String {
         let prefix = self.to_path_literal_prefix();
         match prefix.is_empty() {
             true => item_name.to_owned(),
@@ -166,6 +167,9 @@ impl ModuleInfo {
         }
     }
     /// Create a path literal prefix from the module prefixes.
+    /// Use in `to_path_literal_string()` to create a full literal path string.
+    ///
+    /// Example: `module::submodule`
     fn to_path_literal_prefix(&self) -> String {
         let mut iter = self.0.iter();
         iter.next(); // skip the project name
@@ -173,7 +177,9 @@ impl ModuleInfo {
     }
     /// Creates a String version of the path to an item,
     /// used in navigation between pages.
-    pub(crate) fn to_file_path_str(&self, file_name: &str) -> String {
+    ///
+    /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
+    pub(crate) fn to_file_path_string(&self, file_name: &str) -> String {
         let mut iter = self.0.iter();
         iter.next(); // skip the project_name
         let mut file_path = iter.collect::<PathBuf>();
@@ -185,7 +191,9 @@ impl ModuleInfo {
             .to_string()
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
-    pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
+    ///
+    /// This is only used for shorthand path syntax, e.g `../../file_name.html`.
+    pub(crate) fn to_html_shorthand_path_string(&self, file_name: &str) -> String {
         format!("{}{}", self.to_html_path_prefix(), file_name)
     }
     /// Create a path prefix `&str` for navigation from the `module.depth()`.

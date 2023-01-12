@@ -10,6 +10,7 @@ use sway_lsp::utils::markdown::format_docs;
 use sway_types::BaseIdent;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
+pub(crate) const INDEX_FILENAME: &str = "index.html";
 pub(crate) trait Renderable {
     fn render(self) -> Box<dyn RenderBox>;
 }
@@ -91,10 +92,10 @@ impl Renderable for ItemHeader {
             item_name,
         } = self;
 
-        let favicon = module_info.to_html_shorthand_path_str("assets/sway-logo.svg");
-        let normalize = module_info.to_html_shorthand_path_str("assets/normalize.css");
-        let swaydoc = module_info.to_html_shorthand_path_str("assets/swaydoc.css");
-        let ayu = module_info.to_html_shorthand_path_str("assets/ayu.css");
+        let favicon = module_info.to_html_shorthand_path_string("assets/sway-logo.svg");
+        let normalize = module_info.to_html_shorthand_path_string("assets/normalize.css");
+        let swaydoc = module_info.to_html_shorthand_path_string("assets/swaydoc.css");
+        let ayu = module_info.to_html_shorthand_path_string("assets/ayu.css");
 
         box_html! {
             head {
@@ -140,17 +141,7 @@ impl SidebarNav for ItemBody {
             module_info: self.module_info.clone(),
             href_path: self
                 .module_info
-                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
-            /*
-                The href_path will be the path to the parent module of the current module.
-                Currently we will use the All Doc path since the parent module index has yet to be created.
-
-                TODO: make a method for getting the parent path e.g:
-                let href_path = &self.module_info.iter();
-                href_path.rnext();
-
-                href_path: href_path.last().unwrap().
-            */
+                .to_html_shorthand_path_string(INDEX_FILENAME),
         }
     }
 }
@@ -462,8 +453,8 @@ impl AllDocItem {
         ItemLink {
             name: self
                 .module_info
-                .to_path_literal_str(self.item_name.as_str()),
-            hyperlink: self.module_info.to_file_path_str(&self.html_file_name),
+                .to_path_literal_string(self.item_name.as_str()),
+            hyperlink: self.module_info.to_file_path_string(&self.html_file_name),
         }
     }
 }
@@ -496,7 +487,7 @@ impl SidebarNav for AllDocIndex {
             module_info: self.project_name.clone(),
             href_path: self
                 .project_name
-                .to_html_shorthand_path_str(ALL_DOC_FILENAME),
+                .to_html_shorthand_path_string(ALL_DOC_FILENAME),
         }
     }
 }
@@ -628,7 +619,7 @@ impl Renderable for Sidebar {
     fn render(self) -> Box<dyn RenderBox> {
         let logo_path = self
             .module_info
-            .to_html_shorthand_path_str("assets/sway-logo.svg");
+            .to_html_shorthand_path_string("assets/sway-logo.svg");
 
         box_html! {
             nav(class="sidebar") {
