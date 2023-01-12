@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()error
+# check: main.sw:8:21
+# check: $()fn test_fn() -> u64 {
+# nextln: $()expected: bool
+# nextln: $()found:    u64
+# nextln: $()The definition of this function must match the one in the ABI "MethodTest" declaration.
