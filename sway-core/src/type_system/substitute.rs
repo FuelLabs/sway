@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::BTreeMap, fmt};
 
 use super::*;
 use crate::engine_threading::*;
@@ -19,7 +19,7 @@ type DestinationType = TypeId;
 /// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
 pub(crate) struct TypeSubstMap {
-    mapping: Vec<(SourceType, DestinationType)>,
+    mapping: BTreeMap<SourceType, DestinationType>,
 }
 
 impl DisplayWithEngines for TypeSubstMap {
@@ -138,7 +138,7 @@ impl TypeSubstMap {
     ) -> TypeSubstMap {
         match (type_engine.get(superset), type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
-                mapping: vec![(superset, subset)],
+                mapping: BTreeMap::from([(superset, subset)]),
             },
             (
                 TypeInfo::Custom {
@@ -248,10 +248,12 @@ impl TypeSubstMap {
             | (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery)
             | (TypeInfo::Str(_), TypeInfo::Str(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
-            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => {
-                TypeSubstMap { mapping: vec![] }
-            }
-            _ => TypeSubstMap { mapping: vec![] },
+            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
+                mapping: BTreeMap::new(),
+            },
+            _ => TypeSubstMap {
+                mapping: BTreeMap::new(),
+            },
         }
     }
 
@@ -288,7 +290,7 @@ impl TypeSubstMap {
         let mapping = type_parameters
             .into_iter()
             .zip(type_arguments.into_iter())
-            .collect::<Vec<_>>();
+            .collect();
         TypeSubstMap { mapping }
     }
 
@@ -316,7 +318,7 @@ impl TypeSubstMap {
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Placeholder(_) => None,
+            TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::Struct {
                 fields,
                 name,
