@@ -14,7 +14,7 @@ use crate::{
 use sway_error::{error::CompileError, type_error::TypeError, warning::CompileWarning};
 use sway_types::{span::Span, Ident, Spanned};
 
-use super::unify::Unifier;
+use super::unifier::Unifier;
 use super::unify_check::UnifyCheck;
 
 #[derive(Debug, Default)]
