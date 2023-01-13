@@ -29,7 +29,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{Ident, Spanned};
@@ -155,7 +155,7 @@ impl Session {
         let decl_engine = &*self.decl_engine.read();
         let engines = Engines::new(type_engine, decl_engine);
         let tests_enabled = true;
-        let results = pkg::check(&plan, true, tests_enabled, engines)
+        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
             .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
