@@ -235,8 +235,7 @@ impl Session {
             .find(|(ident, token)| {
                 let ident_range = token::get_range_from_span(&ident.clone().span());
                 // Only check idents within the range of the warning span.
-                if ident_range.end >= range.start && ident_range.end <= range.end
-                {
+                if ident_range.end >= range.start && ident_range.end <= range.end {
                     // Determine whether this is the right ident to highlight based on the
                     // warning type and the typed token type.
                     match warning.warning_content {
