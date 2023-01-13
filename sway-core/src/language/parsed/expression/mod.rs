@@ -9,7 +9,7 @@ mod match_branch;
 mod method_name;
 mod scrutinee;
 pub(crate) use asm::*;
-pub(crate) use match_branch::MatchBranch;
+pub use match_branch::MatchBranch;
 pub use method_name::MethodName;
 pub use scrutinee::*;
 use sway_ast::intrinsics::Intrinsic;

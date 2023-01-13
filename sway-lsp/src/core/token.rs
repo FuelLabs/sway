@@ -7,7 +7,7 @@ use sway_core::{
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, ImplTrait,
             MethodApplicationExpression, ReassignmentExpression, Scrutinee, StorageDeclaration,
             StorageField, StructDeclaration, StructExpression, StructExpressionField, StructField,
-            StructScrutineeField, TraitDeclaration, TraitFn, VariableDeclaration,
+            StructScrutineeField, Supertrait, TraitDeclaration, TraitFn, VariableDeclaration,
         },
         ty, Literal,
     },
@@ -44,6 +44,7 @@ pub enum AstToken {
     DelineatedPathExpression(DelineatedPathExpression),
     AbiCastExpression(AbiCastExpression),
     ReassignmentExpression(ReassignmentExpression),
+    Supertrait(Supertrait),
 
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),

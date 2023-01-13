@@ -8,17 +8,15 @@ use crate::{
 use sway_core::{
     language::{
         parsed::{
-            AbiCastExpression, AbiCastExpression, AbiDeclaration, AmbiguousPathExpression,
-            ArrayExpression, ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock,
-            ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
-            Expression, ExpressionKind, FunctionApplicationExpression, FunctionDeclaration,
-            FunctionParameter, IfExpression, ImplSelf, ImplTrait, IntrinsicFunctionExpression,
-            LazyOperatorExpression, MatchBranch, MatchExpression, MethodApplicationExpression,
+            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
+            ArrayIndexExpression, AstNode, AstNodeContent, CodeBlock, ConstantDeclaration,
+            Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
+            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
+            ImplSelf, ImplTrait, IntrinsicFunctionExpression, LazyOperatorExpression, MatchBranch,
             MethodApplicationExpression, MethodName, ReassignmentExpression, ReassignmentTarget,
-            Scrutinee, StorageAccessExpression, StorageDeclaration, StructDeclaration,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField,
-            SubfieldExpression, TraitDeclaration, TraitFn, TupleIndexExpression,
-            VariableDeclaration, WhileLoopExpression,
+            Scrutinee, StorageDeclaration, StorageField, StructDeclaration, StructExpression,
+            StructExpressionField, StructField, StructScrutineeField, SubfieldExpression,
+            Supertrait, TraitDeclaration, TraitFn, VariableDeclaration,
         },
         Literal,
     },
@@ -27,7 +25,7 @@ use sway_core::{
     TypeEngine, TypeInfo,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Spanned};
 
 pub struct ParsedTree<'a> {
     type_engine: &'a TypeEngine,
@@ -189,6 +187,11 @@ impl Parse for Expression {
                 kind_binding,
                 arguments,
             }) => {
+                tokens.insert_parsed(
+                    name,
+                    AstToken::Intrinsic(kind_binding.clone()),
+                    SymbolKind::Function,
+                );
                 arguments.iter().for_each(|argument| argument.parse(tokens));
             }
             ExpressionKind::WhileLoop(while_exp) => {
@@ -427,6 +430,19 @@ impl Parse for TypeParameter {
     }
 }
 
+impl Parse for StorageField {
+    fn parse(&self, tokens: &TokenMap) {
+        tokens.insert_parsed(
+            self.name,
+            AstToken::StorageField(self.clone()),
+            SymbolKind::Field,
+        );
+        self.type_info.parse(tokens);
+        self.initializer.parse(tokens);
+        self.attributes.parse(tokens);
+    }
+}
+
 impl Parse for FunctionParameter {
     fn parse(&self, tokens: &TokenMap) {
         tokens.insert_parsed(
@@ -509,6 +525,18 @@ impl Parse for ArrayExpression {
                 SymbolKind::NumericLiteral,
             );
         }
+    }
+}
+
+impl Parse for EnumVariant {
+    fn parse(&self, tokens: &TokenMap) {
+        tokens.insert_parsed(
+            self.name,
+            AstToken::EnumVariant(self.clone()),
+            SymbolKind::Variant,
+        );
+        self.type_info.parse(tokens);
+        self.attributes.parse(tokens);
     }
 }
 
@@ -705,6 +733,16 @@ impl Parse for ReassignmentExpression {
                 });
             }
         }
+    }
+}
+
+impl Parse for Supertrait {
+    fn parse(&self, tokens: &TokenMap) {
+        tokens.insert_parsed(
+            self.name.suffix,
+            AstToken::Supertrait(self.clone()),
+            SymbolKind::Trait,
+        );
     }
 }
 
