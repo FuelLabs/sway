@@ -11,6 +11,7 @@ use sway_types::BaseIdent;
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) const INDEX_FILENAME: &str = "index.html";
+pub(crate) const IDENTITY: &str = "#";
 pub(crate) trait Renderable {
     fn render(self) -> Box<dyn RenderBox>;
 }
@@ -138,6 +139,8 @@ pub(crate) struct ItemBody {
 impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
+            version_opt: None,
+            style: SidebarStyle::Item,
             module_info: self.module_info.clone(),
             href_path: INDEX_FILENAME.to_owned(),
         }
@@ -482,10 +485,10 @@ struct AllDocIndex {
 impl SidebarNav for AllDocIndex {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
+            version_opt: None,
+            style: SidebarStyle::AllDoc,
             module_info: self.project_name.clone(),
-            href_path: self
-                .project_name
-                .to_html_shorthand_path_string(ALL_DOC_FILENAME),
+            href_path: INDEX_FILENAME.to_owned(),
         }
     }
 }
@@ -604,12 +607,23 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
         }
     }
 }
+pub(crate) struct ModuleIndex {}
+pub(crate) struct ProjectIndex {}
+
 trait SidebarNav {
     /// Create sidebar component.
     fn sidebar(&self) -> Sidebar;
 }
+enum SidebarStyle {
+    AllDoc,
+    ProjectIndex,
+    ModuleIndex,
+    Item,
+}
 /// Sidebar component for quick navigation.
 struct Sidebar {
+    version_opt: Option<String>,
+    style: SidebarStyle,
     module_info: ModuleInfo,
     href_path: String,
 }
@@ -618,7 +632,47 @@ impl Renderable for Sidebar {
         let logo_path = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
-
+        let styled_content = match &self.style {
+            SidebarStyle::AllDoc => box_html! {
+                div(class="sidebar-elems") {
+                    section {}
+                }
+            }
+            .into_string()
+            .unwrap(),
+            SidebarStyle::ProjectIndex => {
+                let version = match self.version_opt {
+                    Some(ref v) => v.as_str(),
+                    None => "0.0.0",
+                };
+                box_html! {
+                    div(class="sidebar-elems") {
+                        div(class="block") {
+                            ul {
+                                li(class="version") {
+                                    : format!("Version {}", version);
+                                }
+                                li {
+                                    a(id="all-types", href=ALL_DOC_FILENAME) {
+                                        : "All Items";
+                                    }
+                                }
+                            }
+                        }
+                        section {
+                            // TODO: add connections between item contents and
+                            // sidebar nav. This will be dynamic e.g. "Variants"
+                            // for Enum, and "Fields" for Structs, and also will be different
+                            // based on the type of section e.g. Index, All or Item.
+                        }
+                    }
+                }
+                .into_string()
+                .unwrap()
+            }
+            SidebarStyle::ModuleIndex => box_html! {}.into_string().unwrap(),
+            SidebarStyle::Item => box_html! {}.into_string().unwrap(),
+        };
         box_html! {
             nav(class="sidebar") {
                 a(class="sidebar-logo", href=&self.href_path) {
@@ -629,14 +683,7 @@ impl Renderable for Sidebar {
                 h2(class="location") {
                     a(href=&self.href_path) { : self.module_info.location(); }
                 }
-                div(class="sidebar-elems") {
-                    section {
-                        // TODO: add connections between item contents and
-                        // sidebar nav. This will be dynamic e.g. "Variants"
-                        // for Enum, and "Fields" for Structs, and also will be different
-                        // based on the type of section e.g. Index, All or Item.
-                    }
-                }
+                : Raw(styled_content);
             }
         }
     }
