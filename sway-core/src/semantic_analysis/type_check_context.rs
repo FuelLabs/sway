@@ -5,7 +5,7 @@ use crate::{
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
-        CopyTypes, EnforceTypeArguments, MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeEngine,
 };
@@ -83,10 +83,10 @@ impl<'a> TypeCheckContext<'a> {
             namespace,
             type_engine,
             decl_engine,
-            type_annotation: type_engine.insert_type(decl_engine, TypeInfo::Unknown),
+            type_annotation: type_engine.insert(decl_engine, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert_type(decl_engine, TypeInfo::Contract),
+            self_type: type_engine.insert(decl_engine, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
@@ -247,7 +247,7 @@ impl<'a> TypeCheckContext<'a> {
         call_site_span: &Span,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(

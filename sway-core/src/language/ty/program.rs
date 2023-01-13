@@ -94,10 +94,7 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if matches!(
-                        ty_engine.look_up_type_id(implementing_for_type_id),
-                        TypeInfo::Contract
-                    ) {
+                    if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
                         for method_id in methods {
                             match decl_engine.get_function(method_id, &span) {
                                 Ok(method) => abi_entries.push(method),
@@ -172,7 +169,7 @@ impl TyProgram {
                     });
                 }
                 let main_func = mains.remove(0);
-                match ty_engine.look_up_type_id(main_func.return_type) {
+                match ty_engine.get(main_func.return_type) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
@@ -197,7 +194,7 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.look_up_type_id(main_func.return_type);
+                let main_return_type_info = ty_engine.get(main_func.return_type);
                 let nested_types = check!(
                     main_return_type_info
                         .clone()

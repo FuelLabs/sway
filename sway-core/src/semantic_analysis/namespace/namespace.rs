@@ -113,7 +113,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type_with_self(
+        engines.te().resolve_with_self(
             engines.de(),
             type_id,
             self_type,
@@ -134,7 +134,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type(
+        engines.te().resolve(
             engines.de(),
             type_id,
             span,
@@ -182,7 +182,7 @@ impl Namespace {
 
         // resolve the type
         let type_id = check!(
-            type_engine.resolve_type(
+            type_engine.resolve(
                 decl_engine,
                 type_id,
                 &method_name.span(),
@@ -191,7 +191,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -228,7 +228,7 @@ impl Namespace {
 
         if !args_buf
             .get(0)
-            .map(|x| type_engine.look_up_type_id(x.return_type))
+            .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {

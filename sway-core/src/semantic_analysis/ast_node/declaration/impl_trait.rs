@@ -68,7 +68,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(decl_engine, type_implementing_for),
+                type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -80,7 +80,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -176,7 +176,7 @@ impl ty::TyImplTrait {
                 );
 
                 if !type_engine
-                    .look_up_type_id(implementing_for_type_id)
+                    .get(implementing_for_type_id)
                     .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
@@ -477,7 +477,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(decl_engine, type_implementing_for),
+                type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -489,7 +489,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -513,7 +513,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -664,7 +664,7 @@ fn type_check_trait_implementation(
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
         // type check the function declaration
         let mut impl_method = check!(
@@ -743,8 +743,8 @@ fn type_check_trait_implementation(
             impl_method_param
                 .type_id
                 .replace_self_type(engines, self_type);
-            if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
-                &type_engine.look_up_type_id(impl_method_signature_param.type_id),
+            if !type_engine.get(impl_method_param.type_id).eq(
+                &type_engine.get(impl_method_signature_param.type_id),
                 engines,
             ) {
                 errors.push(CompileError::MismatchedTypeInInterfaceSurface {
@@ -811,10 +811,10 @@ fn type_check_trait_implementation(
         impl_method
             .return_type
             .replace_self_type(engines, self_type);
-        if !type_engine.look_up_type_id(impl_method.return_type).eq(
-            &type_engine.look_up_type_id(impl_method_signature.return_type),
-            engines,
-        ) {
+        if !type_engine
+            .get(impl_method.return_type)
+            .eq(&type_engine.get(impl_method_signature.return_type), engines)
+        {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method.return_type_span.clone(),
@@ -879,7 +879,7 @@ fn type_check_trait_implementation(
     // the trait name in the current impl block that we are type checking and
     // using the original decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
-    let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
             .map(|type_param| type_param.type_id)
@@ -901,7 +901,7 @@ fn type_check_trait_implementation(
             errors
         );
         method.replace_decls(&decl_mapping, engines);
-        method.copy_types(&type_mapping, engines);
+        method.subst(&type_mapping, engines);
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
             decl_engine
@@ -977,7 +977,7 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (engines.te().look_up_type_id(x.type_id), x.span()))
+            .map(|x| (engines.te().get(x.type_id), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
@@ -987,7 +987,7 @@ fn check_for_unconstrained_type_parameters(
         generics_in_use.extend(check!(
             engines
                 .te()
-                .look_up_type_id(type_arg.type_id)
+                .get(type_arg.type_id)
                 .extract_nested_generics(engines, &type_arg.span),
             HashSet::new(),
             warnings,
@@ -997,7 +997,7 @@ fn check_for_unconstrained_type_parameters(
     generics_in_use.extend(check!(
         engines
             .te()
-            .look_up_type_id(self_type)
+            .get(self_type)
             .extract_nested_generics(engines, self_type_span),
         HashSet::new(),
         warnings,
