@@ -1,0 +1,22 @@
+{
+  "jsonrpc": "2.0",
+  "method": "textDocument/publishDiagnostics",
+  "params": {
+    "diagnostics": [
+      {
+        "message": "This function is never called.",
+        "range": {
+          "end": {
+            "character": 12,
+            "line": 12
+          },
+          "start": {
+            "character": 3,
+            "line": 12
+          }
+        },
+        "severity": 2
+      }
+    ]
+  }
+}

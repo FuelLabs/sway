@@ -1,6 +1,10 @@
 #![allow(unused)]
-use std::{env, path::PathBuf};
-use tower_lsp::lsp_types::Url;
+use assert_json_diff::assert_json_include;
+use futures::StreamExt;
+use serde_json::Value;
+use std::{env, path::PathBuf, time::Duration};
+use tokio::task::JoinHandle;
+use tower_lsp::{lsp_types::Url, ClientSocket};
 
 pub(crate) fn sway_workspace_dir() -> PathBuf {
     env::current_dir().unwrap().parent().unwrap().to_path_buf()
@@ -16,8 +20,8 @@ pub(crate) fn e2e_test_dir() -> PathBuf {
         .join("struct_field_access")
 }
 
-pub(crate) fn sway_example_dir() -> PathBuf {
-    sway_workspace_dir().join("examples/storage_variables")
+pub(crate) fn test_fixtures_dir() -> PathBuf {
+    sway_workspace_dir().join("sway-lsp/test/fixtures")
 }
 
 pub(crate) fn doc_comments_dir() -> PathBuf {
@@ -32,4 +36,25 @@ pub(crate) fn get_absolute_path(path: &str) -> String {
 
 pub(crate) fn get_url(absolute_path: &str) -> Url {
     Url::parse(&format!("file://{}", &absolute_path)).expect("expected URL")
+}
+
+pub(crate) fn get_fixture(path: PathBuf) -> Value {
+    let text = std::fs::read_to_string(path).expect("Failed to read file");
+    serde_json::from_str::<Value>(&text).expect("Failed to parse JSON")
+}
+
+pub(crate) async fn assert_server_requests(
+    socket: ClientSocket,
+    expected_requests: Vec<Value>,
+    timeout: Option<Duration>,
+) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let request_stream = socket.take(expected_requests.len()).collect::<Vec<_>>();
+        let requests =
+            tokio::time::timeout(timeout.unwrap_or(Duration::from_secs(5)), request_stream)
+                .await
+                .expect("Timed out waiting for requests from server");
+
+        assert_json_include!(expected: expected_requests[0], actual: serde_json::to_value(requests[0].clone()).unwrap());
+    })
 }

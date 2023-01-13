@@ -618,9 +618,13 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{
+        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+    };
+    use assert_json_diff::assert_json_include;
+    use futures::{future, StreamExt, TryFutureExt};
     use serde_json::json;
-    use std::{borrow::Cow, fs, io::Read, path::PathBuf};
+    use std::{borrow::Cow, fs, io::Read, path::PathBuf, time::Duration};
     use tower::{Service, ServiceExt};
     use tower_lsp::{
         jsonrpc::{self, Id, Request, Response},
@@ -954,6 +958,23 @@ mod tests {
     async fn did_open() {
         let (mut service, _) = LspService::new(Backend::new);
         let _ = init_and_open(&mut service, e2e_test_dir()).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn publish_diagnostics_dead_code_warning() {
+        let (mut service, socket) = LspService::new(Backend::new);
+        let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
+        let expected_requests = vec![fixture];
+        let socket_handle = assert_server_requests(socket, expected_requests, None).await;
+        let _ = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("diagnostics/dead_code"),
+        )
+        .await;
+        socket_handle
+            .await
+            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
         shutdown_and_exit(&mut service).await;
     }
 

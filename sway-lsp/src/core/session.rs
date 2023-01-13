@@ -226,62 +226,52 @@ impl Session {
 
     pub fn ident_for_warning(&self, uri: &Url, warning: &CompileWarning) -> Option<Ident> {
         let range = token::get_range_from_span(&warning.span);
-        let mut tokens = self.token_map().tokens_for_file(uri);
-        let result = tokens.find(|(ident, token)| {
-            let mut ident_matches_token = false;
-            if Some(Ident::from(ident.clone()))
-                == token.declared_token_ident(&self.type_engine.read())
-            {
-                ident_matches_token = true;
-            }
-
-            let ident_range = token::get_range_from_span(&ident.clone().span());
-            // Only check idents within the range of the warning span, where the ident matches the
-            // token's ident.
-            if ident_range.end >= range.start && ident_range.end <= range.end && ident_matches_token
-            {
-                eprintln!("\n\nPAIRS token: {:?}", token.clone());
-                eprintln!("\nPAIRS ident: {:?}", ident.clone());
-                eprintln!("\nIDENT MATCHES: {}\n\n", ident_matches_token);
-
-                // Determine whether this is the right ident to highlight based on the
-                // warning type and the typed token type.
-                eprintln!("Dead decl Warning type: {:?}", warning.warning_content);
-                match warning.warning_content {
-                    Warning::DeadDeclaration => {
-                        eprintln!("Found dead declaration: {:?}", ident.clone());
-                        matches!(token.typed, Some(TypedAstToken::TypedDeclaration(_)))
+        let type_engine = self.type_engine.read();
+        let mut tokens = self
+            .token_map()
+            .matching_idents_and_tokens_for_file(uri, &type_engine);
+        tokens
+            .find(|(ident, token)| {
+                let ident_range = token::get_range_from_span(&ident.clone().span());
+                // Only check idents within the range of the warning span.
+                if ident_range.end >= range.start && ident_range.end <= range.end
+                // && ident_matches_token
+                {
+                    // Determine whether this is the right ident to highlight based on the
+                    // warning type and the typed token type.
+                    match warning.warning_content {
+                        Warning::DeadDeclaration => {
+                            matches!(token.typed, Some(TypedAstToken::TypedDeclaration(_)))
+                        }
+                        Warning::DeadFunctionDeclaration => {
+                            matches!(
+                                token.typed,
+                                Some(TypedAstToken::TypedFunctionDeclaration(_))
+                            )
+                        }
+                        Warning::DeadStructDeclaration => {
+                            matches!(
+                                token.typed,
+                                Some(TypedAstToken::TypedDeclaration(
+                                    ty::TyDeclaration::StructDeclaration(_)
+                                ))
+                            )
+                        }
+                        Warning::DeadTrait => {
+                            matches!(
+                                token.typed,
+                                Some(TypedAstToken::TypedDeclaration(
+                                    ty::TyDeclaration::TraitDeclaration(_)
+                                ))
+                            )
+                        }
+                        _ => false,
                     }
-                    Warning::DeadFunctionDeclaration => {
-                        matches!(
-                            token.typed,
-                            Some(TypedAstToken::TypedFunctionDeclaration(_))
-                        )
-                    }
-                    Warning::DeadStructDeclaration => {
-                        matches!(
-                            token.typed,
-                            Some(TypedAstToken::TypedDeclaration(
-                                ty::TyDeclaration::StructDeclaration(_)
-                            ))
-                        )
-                    }
-                    Warning::DeadTrait => {
-                        matches!(
-                            token.typed,
-                            Some(TypedAstToken::TypedDeclaration(
-                                ty::TyDeclaration::TraitDeclaration(_)
-                            ))
-                        )
-                    }
-                    _ => false,
+                } else {
+                    false
                 }
-            } else {
-                false
-            }
-        });
-
-        result.map(|(ident, _)| ident)
+            })
+            .map(|(ident, _)| ident)
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {

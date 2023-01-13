@@ -22,18 +22,39 @@ impl TokenMap {
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter()
-            .filter(|item| {
-                let (_, span) = item.key();
-                match span.path() {
-                    Some(path) => path.to_str() == Some(uri.path()),
-                    None => false,
+        self.iter().flat_map(|item| {
+            let ((ident, span), token) = item.pair();
+            span.path().and_then(|path| {
+                if path.to_str() == Some(uri.path()) {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
                 }
             })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
+        })
+    }
+
+    /// Return an Iterator of matching idents and tokens belonging to the provided [Url].
+    pub fn matching_idents_and_tokens_for_file<'s>(
+        &'s self,
+        uri: &'s Url,
+        type_engine: &'s TypeEngine,
+    ) -> impl 's + Iterator<Item = (Ident, Token)> {
+        self.iter().flat_map(|item| {
+            let ((ident, span), token) = item.pair();
+            span.path().and_then(|path| {
+                if path.to_str() == Some(uri.path())
+                        // Only include the pairs where the token's ident is the same as 
+                        // the pair's ident.
+                            && Some(Ident::from(ident.clone()))
+                                == token.declared_token_ident(type_engine)
+                {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
+                }
             })
+        })
     }
 
     /// Find all references in the TokenMap for a given token.
