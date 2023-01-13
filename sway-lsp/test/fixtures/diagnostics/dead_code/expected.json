@@ -4,15 +4,85 @@
   "params": {
     "diagnostics": [
       {
+        "message": "This declaration is never used.",
+        "range": {
+          "end": {
+            "character": 18,
+            "line": 12
+          },
+          "start": {
+            "character": 6,
+            "line": 12
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This declaration is never used.",
+        "range": {
+          "end": {
+            "character": 24,
+            "line": 13
+          },
+          "start": {
+            "character": 6,
+            "line": 13
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This struct is never used.",
+        "range": {
+          "end": {
+            "character": 22,
+            "line": 15
+          },
+          "start": {
+            "character": 7,
+            "line": 15
+          }
+        },
+        "severity": 2
+      },
+      {
         "message": "This function is never called.",
         "range": {
           "end": {
             "character": 12,
-            "line": 12
+            "line": 19
           },
           "start": {
             "character": 3,
-            "line": 12
+            "line": 19
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This function is never called.",
+        "range": {
+          "end": {
+            "character": 12,
+            "line": 23
+          },
+          "start": {
+            "character": 3,
+            "line": 23
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This declaration is never used.",
+        "range": {
+          "end": {
+            "character": 12,
+            "line": 27
+          },
+          "start": {
+            "character": 5,
+            "line": 27
           }
         },
         "severity": 2

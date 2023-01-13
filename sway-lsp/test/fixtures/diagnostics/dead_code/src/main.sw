@@ -10,6 +10,13 @@ impl MyContract for Contract {
     }
 }
 
+const NOT_USED_NUM = 15;
+const NOT_USED_WITH_TYPE: bool = true;
+
+struct not_used_struct {
+    a: bool,
+}
+
 fn not_used1() -> bool {
     return true;
 }
@@ -21,11 +28,4 @@ fn not_used2(input: u64) -> u64 {
 enum NotUsed {
     A: (),
     B: (),
-}
-
-const NOT_USED_NUM = 15;
-const NOT_USED_WITH_TYPE: bool = true;
-
-struct not_used_struct {
-    a: bool,
 }

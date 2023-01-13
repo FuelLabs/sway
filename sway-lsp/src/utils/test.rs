@@ -55,6 +55,17 @@ pub(crate) async fn assert_server_requests(
                 .await
                 .expect("Timed out waiting for requests from server");
 
-        assert_json_include!(expected: expected_requests[0], actual: serde_json::to_value(requests[0].clone()).unwrap());
+        assert_eq!(requests.len(), expected_requests.len());
+        for ((_, actual), expected) in requests.iter().enumerate().zip(expected_requests.iter()) {
+            assert_eq!(expected["method"], actual.method());
+
+            // Assert that all other expected fields are present without requiring
+            // all actual fields to be present. Specifically we need this for `uri`,
+            // which can't be hardcoded in the test.
+            assert_json_include!(
+                expected: expected,
+                actual: serde_json::to_value(actual.clone()).unwrap()
+            );
+        }
     })
 }
