@@ -1,6 +1,7 @@
-use crate::doc::{Documentation, ModuleInfo};
+use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
@@ -17,7 +18,7 @@ pub(crate) trait Renderable {
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_info: Vec<String>,
+    pub(crate) module_info: Vec<ModulePrefix>,
     pub(crate) html_file_name: String,
     pub(crate) file_contents: HTMLString,
 }
@@ -197,7 +198,7 @@ impl Renderable for ItemBody {
                                         // for uppercase naming like: "Enum"
                                         : format!("{} ", friendly_name);
                                         // TODO: add qualified path anchors
-                                        a(class=&decl_ty, href="#") {
+                                        a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
                                         }
                                     }
@@ -270,7 +271,7 @@ fn context_section<'title, S: Renderable + 'static>(
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title;
-            a(class="anchor", href=format!("#{}", lct));
+            a(class="anchor", href=format!("{}{}", IDENTITY, lct));
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
@@ -294,7 +295,7 @@ impl Renderable for TyStructField {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("#{}", struct_field_id));
+                a(class="anchor field", href=format!("{}{}", IDENTITY, struct_field_id));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -314,7 +315,7 @@ impl Renderable for TyStorageField {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("#{}", storage_field_id));
+                a(class="anchor field", href=format!("{}{}", IDENTITY, storage_field_id));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -334,7 +335,7 @@ impl Renderable for TyEnumVariant {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("#{}", enum_variant_id));
+                a(class="anchor field", href=format!("{}{}", IDENTITY, enum_variant_id));
                 code {
                     : format!("{}: ", self.name.as_str());
                     : self.type_span.as_str();
@@ -386,7 +387,7 @@ impl Renderable for TyTraitFn {
                 div(id=&method_id, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("#{}", method_id)) {
+                        a(class="fnname", href=format!("{}{}", IDENTITY, method_id)) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -452,7 +453,7 @@ struct AllDocItem {
 impl AllDocItem {
     fn link(&self) -> ItemLink {
         ItemLink {
-            name: self
+            path_literal: self
                 .module_info
                 .to_path_literal_string(self.item_name.as_str()),
             hyperlink: self.module_info.to_file_path_string(&self.html_file_name),
@@ -460,12 +461,25 @@ impl AllDocItem {
     }
 }
 /// Used for creating links.
-///
-/// This could be a path literal with a link e.g `proj_name::foo::Foo`,
-/// or just the item name: `Foo`.
 struct ItemLink {
-    name: String,
+    path_literal: String,
     hyperlink: String,
+}
+type ItemLinks = Vec<ItemLink>;
+/// Represents all of the possible titles and links
+/// belonging to an index or sidebar.
+enum Title {
+    Modules,
+    Structs(ItemLinks),
+    Enums(ItemLinks),
+    Traits(ItemLinks),
+    Abi(ItemLinks),
+    ContractStorage(ItemLinks),
+    Constants(ItemLinks),
+    Functions(ItemLinks),
+    Fields,
+    Variants,
+    RequiredMethods,
 }
 #[derive(Default, Clone)]
 struct AllDocs(Vec<AllDocItem>);
@@ -601,13 +615,15 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
         ul(class=format!("{} docblock", title.to_lowercase())) {
             @ for item in list_items {
                 li {
-                    a(href=item.hyperlink) { : item.name; }
+                    a(href=item.hyperlink) { : item.path_literal; }
                 }
             }
         }
     }
 }
-pub(crate) struct ModuleIndex {}
+pub(crate) struct ModuleIndex {
+    module_info: ModuleInfo,
+}
 pub(crate) struct ProjectIndex {}
 
 trait SidebarNav {
@@ -632,6 +648,18 @@ impl Renderable for Sidebar {
         let logo_path = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
+        let location = match &self.style {
+            SidebarStyle::AllDoc | SidebarStyle::ProjectIndex => {
+                format!("Project {}", &self.module_info.location())
+            }
+            SidebarStyle::ModuleIndex => {
+                format!("Module {}", &self.module_info.location())
+            }
+            SidebarStyle::Item => self.module_info.location().to_owned(),
+        };
+        // Unfortunately, match arms that return a closure, even if they are the same
+        // type, are incompatible. The work around is to return a String instead,
+        // and render it from Raw in the final output.
         let styled_content = match &self.style {
             SidebarStyle::AllDoc => box_html! {
                 div(class="sidebar-elems") {
@@ -670,8 +698,20 @@ impl Renderable for Sidebar {
                 .into_string()
                 .unwrap()
             }
-            SidebarStyle::ModuleIndex => box_html! {}.into_string().unwrap(),
-            SidebarStyle::Item => box_html! {}.into_string().unwrap(),
+            SidebarStyle::ModuleIndex => box_html! {
+                div(class="sidebar-elems") {
+                    section {}
+                }
+            }
+            .into_string()
+            .unwrap(),
+            SidebarStyle::Item => box_html! {
+                div(class="sidebar-elems") {
+                    section {}
+                }
+            }
+            .into_string()
+            .unwrap(),
         };
         box_html! {
             nav(class="sidebar") {
@@ -681,7 +721,7 @@ impl Renderable for Sidebar {
                     }
                 }
                 h2(class="location") {
-                    a(href=&self.href_path) { : self.module_info.location(); }
+                    a(href=&self.href_path) { : location; }
                 }
                 : Raw(styled_content);
             }
