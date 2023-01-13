@@ -12,7 +12,6 @@ storage {
     v: StorageVec<u64> = StorageVec {},
     u: StorageVec<StorageVec<u64>> = StorageVec {},
     map1: StorageMap<u32, u32> = StorageMap{},
-
     bad_type: StorageVec<Vec<bool>> = StorageVec {},
 }
 
