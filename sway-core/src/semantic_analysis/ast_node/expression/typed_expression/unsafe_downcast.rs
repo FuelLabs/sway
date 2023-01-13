@@ -19,7 +19,7 @@ pub(crate) fn instantiate_unsafe_downcast(
             expression: ty::TyExpressionVariant::EnumTag {
                 exp: Box::new(exp.clone()),
             },
-            return_type: type_engine.insert_type(
+            return_type: type_engine.insert(
                 decl_engine,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             ),
@@ -27,7 +27,7 @@ pub(crate) fn instantiate_unsafe_downcast(
         },
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(Literal::U64(variant.tag as u64)),
-            return_type: type_engine.insert_type(
+            return_type: type_engine.insert(
                 decl_engine,
                 TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             ),
