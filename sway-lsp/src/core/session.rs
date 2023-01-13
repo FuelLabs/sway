@@ -201,12 +201,12 @@ impl Session {
                 let warnings: Vec<CompileWarning> = ast_res
                     .warnings
                     .iter()
-                    .map(|w| {
-                        let ident = self.ident_for_warning(uri, &w);
-                        return CompileWarning {
-                            span: ident.map(|i| i.span()).unwrap_or(w.span()),
-                            warning_content: w.warning_content.clone(),
-                        };
+                    .map(|w| CompileWarning {
+                        span: self
+                            .ident_for_warning(uri, w)
+                            .map(|i| i.span())
+                            .unwrap_or_else(|| w.span()),
+                        warning_content: w.warning_content.clone(),
                     })
                     .collect();
 
@@ -224,6 +224,7 @@ impl Session {
         Ok(diagnostics)
     }
 
+    /// Finds the one ident to highlight for the given compiler warning.
     pub fn ident_for_warning(&self, uri: &Url, warning: &CompileWarning) -> Option<Ident> {
         let range = token::get_range_from_span(&warning.span);
         let type_engine = self.type_engine.read();

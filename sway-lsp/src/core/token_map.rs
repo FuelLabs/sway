@@ -44,10 +44,9 @@ impl TokenMap {
             let ((ident, span), token) = item.pair();
             span.path().and_then(|path| {
                 if path.to_str() == Some(uri.path())
-                        // Only include the pairs where the token's ident is the same as 
-                        // the pair's ident.
-                            && Some(Ident::from(ident.clone()))
-                                == token.declared_token_ident(type_engine)
+                    // Only include the pairs where the token's ident is the same as 
+                    // the pair's ident.
+                    && token.declared_token_ident(type_engine) == Some(ident.clone())
                 {
                     Some((ident.clone(), token.clone()))
                 } else {
