@@ -52,10 +52,7 @@ fn get_param_string(param: &TyFunctionParameter) -> String {
 fn get_return_type_string(engines: Engines<'_>, function_decl: TyTraitFn) -> String {
     let type_engine = engines.te();
     // Unit is the implicit return type for ABI functions.
-    if type_engine
-        .look_up_type_id(function_decl.return_type)
-        .is_unit()
-    {
+    if type_engine.get(function_decl.return_type).is_unit() {
         String::from("")
     } else {
         format!(" -> {}", function_decl.return_type_span.as_str())

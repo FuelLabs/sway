@@ -104,21 +104,6 @@ impl fmt::Display for Literal {
 }
 
 impl Literal {
-    #[allow(dead_code)]
-    pub(crate) fn as_type(&self) -> ResolvedType {
-        use Literal::*;
-        match self {
-            U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
-            U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
-            U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
-            U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-            Numeric(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-            String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
-            Boolean(_) => ResolvedType::Boolean,
-            B256(_) => ResolvedType::B256,
-        }
-    }
-
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
         engines: Engines<'_>,
