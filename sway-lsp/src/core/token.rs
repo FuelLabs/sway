@@ -2,11 +2,14 @@ use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
-            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            TraitFn,
+            AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ConstantDeclaration,
+            Declaration, DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, ImplTrait,
+            MethodApplicationExpression, ReassignmentExpression, Scrutinee, StorageDeclaration,
+            StorageField, StructDeclaration, StructExpression, StructExpressionField, StructField,
+            StructScrutineeField, TraitDeclaration, TraitFn, VariableDeclaration,
         },
-        ty,
+        ty, Literal,
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
@@ -21,20 +24,41 @@ use tower_lsp::lsp_types::{Position, Range};
 /// useful to the language server.
 #[derive(Debug, Clone)]
 pub enum AstToken {
+    VariableDeclaration(VariableDeclaration),
+    TraitDeclaration(TraitDeclaration),
+    StructDeclaration(StructDeclaration),
+    EnumDeclaration(EnumDeclaration),
+    ImplTrait(ImplTrait),
+    AbiDeclaration(AbiDeclaration),
+    ConstantDeclaration(ConstantDeclaration),
+    StorageDeclaration(StorageDeclaration),
     Declaration(Declaration),
     Expression(Expression),
+
+    FunctionApplicationExpression(FunctionApplicationExpression),
+    StructScrutineeField(StructScrutineeField),
     StructExpressionField(StructExpressionField),
+    StructExpression(StructExpression),
+    MethodApplicationExpression(MethodApplicationExpression),
+    AmbiguousPathExpression(AmbiguousPathExpression),
+    DelineatedPathExpression(DelineatedPathExpression),
+    AbiCastExpression(AbiCastExpression),
+    ReassignmentExpression(ReassignmentExpression),
+
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
+    TypeParameter(TypeParameter),
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
-    Reassignment(ReassignmentExpression),
+
     StorageField(StorageField),
     Scrutinee(Scrutinee),
-    Keyword(Ident),
     Intrinsic(Intrinsic),
     Attribute(Attribute),
+    Literal(Literal),
+    Keyword(Ident),
+    Ident(Ident),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
