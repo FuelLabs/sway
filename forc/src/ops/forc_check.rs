@@ -7,6 +7,7 @@ use sway_core::{language::ty, CompileResult, Engines};
 
 pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResult<ty::TyProgram>> {
     let CheckCommand {
+        build_target,
         path,
         offline_mode: offline,
         terse_mode,
@@ -26,7 +27,7 @@ pub fn check(command: CheckCommand, engines: Engines<'_>) -> Result<CompileResul
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let tests_enabled = !disable_tests;
 
-    let mut v = pkg::check(&plan, terse_mode, tests_enabled, engines)?;
+    let mut v = pkg::check(&plan, build_target, terse_mode, tests_enabled, engines)?;
     let res = v
         .pop()
         .expect("there is guaranteed to be at least one elem in the vector")

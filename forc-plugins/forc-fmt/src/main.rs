@@ -14,7 +14,7 @@ use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
 use forc_util::find_manifest_dir;
-use sway_core::BuildConfig;
+use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
 
@@ -69,6 +69,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, formatter: &mut Formatter) -> Result<
                     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
                         file.clone(),
                         manifest_path.clone(),
+                        BuildTarget::default(),
                     );
                     match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {
