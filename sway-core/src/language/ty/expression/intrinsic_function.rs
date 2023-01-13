@@ -25,13 +25,13 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
     }
 }
 
-impl CopyTypes for TyIntrinsicFunctionKind {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyIntrinsicFunctionKind {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         for arg in &mut self.arguments {
-            arg.copy_types(type_mapping, engines);
+            arg.subst(type_mapping, engines);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.copy_types(type_mapping, engines);
+            targ.type_id.subst(type_mapping, engines);
         }
     }
 }

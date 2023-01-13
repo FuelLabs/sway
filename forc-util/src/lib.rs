@@ -41,6 +41,24 @@ pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
+/// Continually go up in the file tree until a Forc manifest file is found and given predicate
+/// returns true.
+pub fn find_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+where
+    F: Fn(&Path) -> bool,
+{
+    find_manifest_dir(starter_path).and_then(|manifest_dir| {
+        // If given check satisifies return current dir otherwise start searching from the parent.
+        if f(&manifest_dir) {
+            Some(manifest_dir)
+        } else if let Some(parent_dir) = manifest_dir.parent() {
+            find_manifest_dir_with_check(parent_dir, f)
+        } else {
+            None
+        }
+    })
+}
+
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     Some(OsStr::new(constants::SWAY_EXTENSION)) == res

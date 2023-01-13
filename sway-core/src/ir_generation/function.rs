@@ -499,10 +499,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::IsReferenceType => {
                 let targ = type_arguments[0].clone();
-                let val = !self
-                    .type_engine
-                    .look_up_type_id(targ.type_id)
-                    .is_copy_type();
+                let val = !self.type_engine.get(targ.type_id).is_copy_type();
                 Ok(Constant::get_bool(context, val))
             }
             Intrinsic::GetStorageKey => {
@@ -569,11 +566,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 // Reinterpret the result of th `gtf` instruction (which is always `u64`) as type
                 // `T`. This requires an `int_to_ptr` instruction if `T` is a reference type.
-                if self
-                    .type_engine
-                    .look_up_type_id(target_type.type_id)
-                    .is_copy_type()
-                {
+                if self.type_engine.get(target_type.type_id).is_copy_type() {
                     Ok(gtf_reg)
                 } else {
                     Ok(self
@@ -1016,7 +1009,7 @@ impl<'eng> FnCompiler<'eng> {
                 let u64_ty = Type::get_uint64(context);
                 if self
                     .type_engine
-                    .look_up_type_id(ast_args[0].1.return_type)
+                    .get(ast_args[0].1.return_type)
                     .is_copy_type()
                 {
                     self.current_block
@@ -1577,7 +1570,7 @@ impl<'eng> FnCompiler<'eng> {
             let is_ref_primitive = fn_param.is_some()
                 && self
                     .type_engine
-                    .look_up_type_id(fn_param.unwrap().type_id)
+                    .get(fn_param.unwrap().type_id)
                     .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;

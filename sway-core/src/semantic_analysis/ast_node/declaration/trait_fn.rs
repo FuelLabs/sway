@@ -48,12 +48,12 @@ impl ty::TyTraitFn {
         // Type check the return type.
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
-                type_engine.insert_type(decl_engine, return_type),
+                type_engine.insert(decl_engine, return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

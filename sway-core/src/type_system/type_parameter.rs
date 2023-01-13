@@ -30,9 +30,7 @@ pub struct TypeParameter {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.name_ident.hash(state);
         self.trait_constraints.hash(state, type_engine);
     }
@@ -46,19 +44,19 @@ impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
     }
 }
 
-impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TypeParameter {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -120,7 +118,7 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert_type(
+        let type_id = type_engine.insert(
             decl_engine,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),

@@ -95,7 +95,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert_type(decl_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -103,7 +103,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -122,7 +122,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery)
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -267,9 +267,9 @@ fn test_function_selector_behavior() {
                 is_mutable: false,
                 mutability_span: Span::dummy(),
                 type_id: type_engine
-                    .insert_type(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 initial_type_id: type_engine
-                    .insert_type(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -277,12 +277,12 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(
+                type_id: type_engine.insert(
                     &decl_engine,
                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 ),
                 initial_type_id: type_engine
-                    .insert_type(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],

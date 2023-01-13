@@ -326,8 +326,8 @@ impl PartialEqWithEngines for TypeInfo {
                 .zip(r.iter())
                 .map(|(l, r)| {
                     type_engine
-                        .look_up_type_id(l.type_id)
-                        .eq(&type_engine.look_up_type_id(r.type_id), engines)
+                        .get(l.type_id)
+                        .eq(&type_engine.get(r.type_id), engines)
                 })
                 .all(|x| x),
             (
@@ -344,8 +344,8 @@ impl PartialEqWithEngines for TypeInfo {
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 type_engine
-                    .look_up_type_id(l0.type_id)
-                    .eq(&type_engine.look_up_type_id(r0.type_id), engines)
+                    .get(l0.type_id)
+                    .eq(&type_engine.get(r0.type_id), engines)
                     && l1.val() == r1.val()
             }
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
@@ -439,7 +439,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
         match self {
             TypeInfo::UnknownGeneric {
                 trait_constraints, ..
@@ -743,7 +743,7 @@ impl TypeInfo {
             }
             Array(elem_ty, length) => {
                 let name = type_engine
-                    .look_up_type_id(elem_ty.type_id)
+                    .get(elem_ty.type_id)
                     .to_selector_name(type_engine, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
@@ -766,7 +766,7 @@ impl TypeInfo {
     }
 
     pub fn is_uninhabited(&self, type_engine: &TypeEngine) -> bool {
-        let id_uninhabited = |id| type_engine.look_up_type_id(id).is_uninhabited(type_engine);
+        let id_uninhabited = |id| type_engine.get(id).is_uninhabited(type_engine);
 
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
@@ -788,7 +788,7 @@ impl TypeInfo {
             TypeInfo::Enum { variant_types, .. } => {
                 let mut found_unit_variant = false;
                 for variant_type in variant_types {
-                    let type_info = type_engine.look_up_type_id(variant_type.type_id);
+                    let type_info = type_engine.get(variant_type.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         continue;
                     }
@@ -803,7 +803,7 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let type_info = type_engine.look_up_type_id(field.type_id);
+                    let type_info = type_engine.get(field.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         return true;
                     }
@@ -816,7 +816,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let field_type = type_engine.look_up_type_id(field.type_id);
+                    let field_type = type_engine.get(field.type_id);
                     if field_type.is_uninhabited(type_engine) {
                         return true;
                     }
@@ -827,10 +827,7 @@ impl TypeInfo {
                 all_zero_sized
             }
             TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
-                    || type_engine
-                        .look_up_type_id(elem_ty.type_id)
-                        .is_zero_sized(type_engine)
+                length.val() == 0 || type_engine.get(elem_ty.type_id).is_zero_sized(type_engine)
             }
             _ => false,
         }
@@ -843,13 +840,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Tuple(fields) => fields.iter().all(|type_argument| {
                 type_engine
-                    .look_up_type_id(type_argument.type_id)
+                    .get(type_argument.type_id)
                     .can_safely_ignore(type_engine)
             }),
             TypeInfo::Array(elem_ty, length) => {
                 length.val() == 0
                     || type_engine
-                        .look_up_type_id(elem_ty.type_id)
+                        .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine)
             }
             TypeInfo::ErrorRecovery => true,
@@ -933,7 +930,7 @@ impl TypeInfo {
     pub(crate) fn extract_inner_types(&self, type_engine: &TypeEngine) -> HashSet<TypeId> {
         let helper = |type_id: TypeId| {
             let mut inner_types = HashSet::new();
-            match type_engine.look_up_type_id(type_id) {
+            match type_engine.get(type_id) {
                 TypeInfo::Enum {
                     type_parameters,
                     variant_types,
@@ -943,14 +940,14 @@ impl TypeInfo {
                     for type_param in type_parameters.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(type_param.type_id)
+                                .get(type_param.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
                     for variant in variant_types.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(variant.type_id)
+                                .get(variant.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -964,14 +961,14 @@ impl TypeInfo {
                     for type_param in type_parameters.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(type_param.type_id)
+                                .get(type_param.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(field.type_id)
+                                .get(field.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -982,7 +979,7 @@ impl TypeInfo {
                         for type_arg in type_arguments.iter() {
                             inner_types.extend(
                                 type_engine
-                                    .look_up_type_id(type_arg.type_id)
+                                    .get(type_arg.type_id)
                                     .extract_inner_types(type_engine),
                             );
                         }
@@ -990,18 +987,14 @@ impl TypeInfo {
                 }
                 TypeInfo::Array(elem_ty, _) => {
                     inner_types.insert(elem_ty.type_id);
-                    inner_types.extend(
-                        type_engine
-                            .look_up_type_id(type_id)
-                            .extract_inner_types(type_engine),
-                    );
+                    inner_types.extend(type_engine.get(type_id).extract_inner_types(type_engine));
                 }
                 TypeInfo::Tuple(elems) => {
                     inner_types.insert(type_id);
                     for elem in elems.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(elem.type_id)
+                                .get(elem.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -1011,7 +1004,7 @@ impl TypeInfo {
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .look_up_type_id(field.type_id)
+                                .get(field.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -1198,7 +1191,7 @@ impl TypeInfo {
                 for type_parameter in type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(type_parameter.type_id)
+                            .get(type_parameter.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1209,7 +1202,7 @@ impl TypeInfo {
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(variant_type.type_id)
+                            .get(variant_type.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1226,7 +1219,7 @@ impl TypeInfo {
                 for type_parameter in type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(type_parameter.type_id)
+                            .get(type_parameter.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1237,7 +1230,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(field.type_id)
+                            .get(field.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1250,7 +1243,7 @@ impl TypeInfo {
                 for type_argument in type_arguments.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(type_argument.type_id)
+                            .get(type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1262,7 +1255,7 @@ impl TypeInfo {
             TypeInfo::Array(elem_ty, _) => {
                 let mut nested_types = check!(
                     type_engine
-                        .look_up_type_id(elem_ty.type_id)
+                        .get(elem_ty.type_id)
                         .extract_nested_types(type_engine, span),
                     return err(warnings, errors),
                     warnings,
@@ -1274,7 +1267,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .look_up_type_id(field.type_id)
+                            .get(field.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1290,7 +1283,7 @@ impl TypeInfo {
                     for type_arg in trait_constraint.type_arguments.iter() {
                         let mut nested_types = check!(
                             type_engine
-                                .look_up_type_id(type_arg.type_id)
+                                .get(type_arg.type_id)
                                 .extract_nested_types(type_engine, span),
                             return err(warnings, errors),
                             warnings,
@@ -1464,8 +1457,8 @@ impl TypeInfo {
         match (self, other) {
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 type_engine
-                    .look_up_type_id(l0.type_id)
-                    .is_subset_of(&type_engine.look_up_type_id(r0.type_id), engines)
+                    .get(l0.type_id)
+                    .is_subset_of(&type_engine.get(r0.type_id), engines)
                     && l1.val() == r1.val()
             }
             (
@@ -1482,13 +1475,13 @@ impl TypeInfo {
                     .as_ref()
                     .unwrap_or(&vec![])
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_args
                     .as_ref()
                     .unwrap_or(&vec![])
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name && types_are_subset_of(engines, &l_types, &r_types)
             }
@@ -1514,11 +1507,11 @@ impl TypeInfo {
                     .collect::<Vec<_>>();
                 let l_types = l_type_parameters
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
                     && l_names == r_names
@@ -1540,11 +1533,11 @@ impl TypeInfo {
                 let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let l_types = l_type_parameters
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
                     && l_names == r_names
@@ -1553,11 +1546,11 @@ impl TypeInfo {
             (Self::Tuple(l_types), Self::Tuple(r_types)) => {
                 let l_types = l_types
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_types
                     .iter()
-                    .map(|x| type_engine.look_up_type_id(x.type_id))
+                    .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 types_are_subset_of(engines, &l_types, &r_types)
             }
@@ -1610,7 +1603,7 @@ impl TypeInfo {
                 } else {
                     check!(
                         type_engine
-                            .look_up_type_id(field.type_id)
+                            .get(field.type_id)
                             .apply_subfields(engines, rest, span),
                         return err(warnings, errors),
                         warnings,
