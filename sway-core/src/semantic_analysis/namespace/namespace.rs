@@ -167,6 +167,13 @@ impl Namespace {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
+        // If the type that we are looking for is the error recovery type, then
+        // we want to return the error case without creating a new error
+        // message.
+        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
+            return err(warnings, errors);
+        }
+
         // grab the local module
         let local_module = check!(
             self.root().check_submodule(&self.mod_path),
