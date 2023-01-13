@@ -1,8 +1,29 @@
 category = "fail"
 
 # check: $()error
-# check: main.sw:8:21
-# check: $()fn test_fn() -> u64 {
+# check: main.sw:10:31
+# check: $()fn wrong_return_type() -> u64 {
+# nextln: $()expected: bool
+# nextln: $()found:    u64
+# nextln: $()The definition of this function must match the one in the ABI "MethodTest" declaration.
+
+# check: $()error
+# check: main.sw:14:26
+# check: $()fn wrong_arg_type(x: u64) -> bool {
+# nextln: $()expected: bool
+# nextln: $()found:    u64
+# nextln: $()The definition of this function must match the one in the ABI "MethodTest" declaration.
+
+# check: $()error
+# check: main.sw:18:42
+# check: $()fn wrong_arg_type_and_return_type(x: u64) -> u64 {
+# nextln: $()expected: bool
+# nextln: $()found:    u64
+# nextln: $()The definition of this function must match the one in the ABI "MethodTest" declaration.
+
+# check: $()error
+# check: main.sw:18:50
+# check: $()fn wrong_arg_type_and_return_type(x: u64) -> u64 {
 # nextln: $()expected: bool
 # nextln: $()found:    u64
 # nextln: $()The definition of this function must match the one in the ABI "MethodTest" declaration.
