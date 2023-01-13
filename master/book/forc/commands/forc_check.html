@@ -142,7 +142,12 @@
 <p>This will essentially compile the packages without performing the final step of code generation,
 which is faster than running forc build.</p>
 <h2 id="usage"><a class="header" href="#usage">USAGE:</a></h2>
-<p>forc check [OPTIONS]</p>
+<p>forc check [OPTIONS] [BUILD_TARGET]</p>
+<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
+<p>&lt;<em>BUILD_TARGET</em>&gt;
+Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
 <h2 id="options"><a class="header" href="#options">OPTIONS:</a></h2>
 <p><code>--disable-tests</code> </p>
 <p>Disable checking unit tests</p>

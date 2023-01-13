@@ -3670,6 +3670,10 @@ custom_lib = { path = &quot;../custom_lib&quot; }
 <p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
 <p>Name of the build profile to use. If it is not specified, forc will use debug build
 profile</p>
+<p><code>--build-target</code> &lt;<em>BUILD_TARGET</em>&gt;</p>
+<p>Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -3738,7 +3742,12 @@ Bytecode size is 28 bytes.
 <p>This will essentially compile the packages without performing the final step of code generation,
 which is faster than running forc build.</p>
 <h2 id="usage-2"><a class="header" href="#usage-2">USAGE:</a></h2>
-<p>forc check [OPTIONS]</p>
+<p>forc check [OPTIONS] [BUILD_TARGET]</p>
+<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
+<p>&lt;<em>BUILD_TARGET</em>&gt;
+Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
 <h2 id="options-2"><a class="header" href="#options-2">OPTIONS:</a></h2>
 <p><code>--disable-tests</code> </p>
 <p>Disable checking unit tests</p>
@@ -3918,7 +3927,7 @@ $ tree
 <p>Create a new Forc project at <code>&lt;path&gt;</code></p>
 <h2 id="usage-6"><a class="header" href="#usage-6">USAGE:</a></h2>
 <p>forc new [OPTIONS] <PATH></p>
-<h2 id="args"><a class="header" href="#args">ARGS:</a></h2>
+<h2 id="args-1"><a class="header" href="#args-1">ARGS:</a></h2>
 <p>&lt;<em>PATH</em>&gt;</p>
 <p>The path at which the project directory will be created</p>
 <h2 id="options-6"><a class="header" href="#options-6">OPTIONS:</a></h2>
@@ -3958,7 +3967,7 @@ $ tree
 <p>Parse bytecode file into a debug format</p>
 <h2 id="usage-7"><a class="header" href="#usage-7">USAGE:</a></h2>
 <p>forc parse-bytecode [OPTIONS] &lt;FILE_PATH&gt;</p>
-<h2 id="args-1"><a class="header" href="#args-1">ARGS:</a></h2>
+<h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
 <p>&lt;<em>FILE_PATH</em>&gt;</p>
 <h2 id="options-7"><a class="header" href="#options-7">OPTIONS:</a></h2>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -4026,13 +4035,17 @@ failure in the case that a revert (<code>rvrt</code>) instruction is encountered
 it is considered a success.</p>
 <h2 id="usage-9"><a class="header" href="#usage-9">USAGE:</a></h2>
 <p>forc test [OPTIONS] [FILTER]</p>
-<h2 id="args-2"><a class="header" href="#args-2">ARGS:</a></h2>
+<h2 id="args-3"><a class="header" href="#args-3">ARGS:</a></h2>
 <p>&lt;<em>FILTER</em>&gt;
 When specified, only tests containing the given string will be executed</p>
 <h2 id="options-9"><a class="header" href="#options-9">OPTIONS:</a></h2>
 <p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
 <p>Name of the build profile to use. If it is not specified, forc will use debug build
 profile</p>
+<p><code>--build-target</code> &lt;<em>BUILD_TARGET</em>&gt;</p>
+<p>Build target to use for code generation</p>
+<p>[default: fuel]
+[possible values: fuel, evm]</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>-h</code>, <code>--help</code> </p>
@@ -4112,7 +4125,7 @@ will be used</p>
 <p>Create a new Forc project from a git template</p>
 <h2 id="usage-11"><a class="header" href="#usage-11">USAGE:</a></h2>
 <p>forc template [OPTIONS] &lt;PROJECT_NAME&gt;</p>
-<h2 id="args-3"><a class="header" href="#args-3">ARGS:</a></h2>
+<h2 id="args-4"><a class="header" href="#args-4">ARGS:</a></h2>
 <p>&lt;<em>PROJECT_NAME</em>&gt;</p>
 <p>The name of the project that will be created</p>
 <h2 id="options-11"><a class="header" href="#options-11">OPTIONS:</a></h2>
@@ -4201,13 +4214,13 @@ Server::run{addr=127.0.0.1:3030}: listening on http://127.0.0.1:3030
 <div style="break-before: page; page-break-before: always;"></div><h1 id="forc-deploy"><a class="header" href="#forc-deploy">forc-deploy</a></h1>
 <h2 id="usage-12"><a class="header" href="#usage-12">USAGE:</a></h2>
 <p>forc deploy [OPTIONS] [SIGNING_KEY]</p>
-<h2 id="args-4"><a class="header" href="#args-4">ARGS:</a></h2>
+<h2 id="args-5"><a class="header" href="#args-5">ARGS:</a></h2>
 <p>&lt;<em>SIGNING_KEY</em>&gt;
 Set the key to be used for signing</p>
 <h2 id="options-12"><a class="header" href="#options-12">OPTIONS:</a></h2>
 <p><code>--build-profile</code> &lt;<em>BUILD_PROFILE</em>&gt;</p>
-<p>Name of the build profile to use. If it is not specified, forc will use debug build
-profile</p>
+<p>Build target for code generation. Name of the build profile to use. If it is not
+specified, forc will use debug build profile</p>
 <p><code>-g</code>, <code>--debug-outfile</code> &lt;<em>DEBUG_OUTFILE</em>&gt;</p>
 <p>If set, outputs source file mapping in JSON format</p>
 <p><code>--gas-limit</code> &lt;<em>GAS_LIMIT</em>&gt;</p>
@@ -4273,7 +4286,7 @@ overrides network url in manifest file (if there is one)</p>
 <p>Run script project. Crafts a script transaction then sends it to a running node</p>
 <h2 id="usage-13"><a class="header" href="#usage-13">USAGE:</a></h2>
 <p>forc run [OPTIONS] [ARGS]</p>
-<h2 id="args-5"><a class="header" href="#args-5">ARGS:</a></h2>
+<h2 id="args-6"><a class="header" href="#args-6">ARGS:</a></h2>
 <p>&lt;<em>NODE_URL</em>&gt;
 URL of the Fuel Client Node</p>
 <p>[env: FUEL_NODE_URL=]</p>
