@@ -56,7 +56,7 @@ pub(crate) async fn assert_server_requests(
                 .expect("Timed out waiting for requests from server");
 
         assert_eq!(requests.len(), expected_requests.len());
-        for ((_, actual), expected) in requests.iter().enumerate().zip(expected_requests.iter()) {
+        for (actual, expected) in requests.iter().zip(expected_requests.iter()) {
             assert_eq!(expected["method"], actual.method());
 
             // Assert that all other expected fields are present without requiring
