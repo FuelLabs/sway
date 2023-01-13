@@ -16,7 +16,7 @@ impl ty::TyScrutinee {
         let decl_engine = ctx.decl_engine;
         match scrutinee {
             Scrutinee::CatchAll { span } => {
-                let type_id = type_engine.insert_type(decl_engine, TypeInfo::Unknown);
+                let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
                 let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,
@@ -27,7 +27,7 @@ impl ty::TyScrutinee {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
                     type_id: type_engine
-                        .insert_type(decl_engine, TypeInfo::Placeholder(dummy_type_param)),
+                        .insert(decl_engine, TypeInfo::Placeholder(dummy_type_param)),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -35,7 +35,7 @@ impl ty::TyScrutinee {
             Scrutinee::Literal { value, span } => {
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::Literal(value.clone()),
-                    type_id: type_engine.insert_type(decl_engine, value.to_typeinfo()),
+                    type_id: type_engine.insert(decl_engine, value.to_typeinfo()),
                     span,
                 };
                 ok(typed_scrutinee, warnings, errors)
@@ -100,7 +100,7 @@ fn type_check_variable(
         // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
-            type_id: type_engine.insert_type(decl_engine, TypeInfo::Unknown),
+            type_id: type_engine.insert(decl_engine, TypeInfo::Unknown),
             span,
         },
     };
@@ -309,7 +309,7 @@ fn type_check_tuple(
             errors
         ));
     }
-    let type_id = type_engine.insert_type(
+    let type_id = type_engine.insert(
         decl_engine,
         TypeInfo::Tuple(
             typed_elems

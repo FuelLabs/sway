@@ -58,18 +58,18 @@ pub(crate) fn struct_instantiation(
     // resolve the type of the struct decl
     let type_id = check!(
         ctx.resolve_type_with_self(
-            type_engine.insert_type(decl_engine, type_info),
+            type_engine.insert(decl_engine, type_info),
             &inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix)
         ),
-        type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
         warnings,
         errors
     );
 
     // extract the struct name and fields from the type info
-    let type_info = type_engine.look_up_type_id(type_id);
+    let type_info = type_engine.get(type_id);
     let (struct_name, struct_fields) = check!(
         type_info.expect_struct(engines, &span),
         return err(warnings, errors),
@@ -144,7 +144,7 @@ fn type_check_field_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text("")
-                    .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+                    .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
                 let value = check!(
                     ty::TyExpression::type_check(ctx, field.value.clone()),
                     continue,
@@ -167,7 +167,7 @@ fn type_check_field_arguments(
                     name: struct_field.name.clone(),
                     value: ty::TyExpression {
                         expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                        return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                         span: span.clone(),
                     },
                 });

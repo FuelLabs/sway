@@ -43,8 +43,8 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
             && self.body.eq(&other.body, engines)
             && self.parameters.eq(&other.parameters, engines)
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
@@ -52,16 +52,16 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
     }
 }
 
-impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyFunctionDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
-        self.return_type.copy_types(type_mapping, engines);
-        self.body.copy_types(type_mapping, engines);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.return_type.subst(type_mapping, engines);
+        self.body.subst(type_mapping, engines);
     }
 }
 
@@ -107,11 +107,11 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
         if self
             .type_parameters
             .iter()
-            .map(|type_param| type_engine.look_up_type_id(type_param.type_id))
+            .map(|type_param| type_engine.get(type_param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
             return false;
@@ -119,13 +119,13 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         if self
             .parameters
             .iter()
-            .map(|param| type_engine.look_up_type_id(param.type_id))
+            .map(|param| type_engine.get(param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
             return true;
         }
         if type_engine
-            .look_up_type_id(self.return_type)
+            .get(self.return_type)
             .eq(&type_parameter_info, engines)
         {
             return true;
@@ -199,7 +199,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(decl_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,
@@ -421,15 +421,15 @@ impl PartialEqWithEngines for TyFunctionParameter {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.is_mutable == other.is_mutable
     }
 }
 
-impl CopyTypes for TyFunctionParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyFunctionParameter {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

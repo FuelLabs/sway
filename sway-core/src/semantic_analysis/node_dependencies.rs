@@ -620,10 +620,7 @@ impl Dependencies {
         type_arguments: &[TypeArgument],
     ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
-            deps.gather_from_typeinfo(
-                type_engine,
-                &type_engine.look_up_type_id(type_argument.type_id),
-            )
+            deps.gather_from_typeinfo(type_engine, &type_engine.get(type_argument.type_id))
         })
     }
 
@@ -646,24 +643,19 @@ impl Dependencies {
                 }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
-                deps.gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(elem.type_id))
+                deps.gather_from_typeinfo(type_engine, &type_engine.get(elem.type_id))
             }),
-            TypeInfo::Array(elem_type, _) => self
-                .gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(elem_type.type_id)),
+            TypeInfo::Array(elem_type, _) => {
+                self.gather_from_typeinfo(type_engine, &type_engine.get(elem_type.type_id))
+            }
             TypeInfo::Struct { fields, .. } => {
                 self.gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(
-                        type_engine,
-                        &type_engine.look_up_type_id(field.type_id),
-                    )
+                    deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
                 })
             }
             TypeInfo::Enum { variant_types, .. } => {
                 self.gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(
-                        type_engine,
-                        &type_engine.look_up_type_id(variant.type_id),
-                    )
+                    deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
                 })
             }
             _ => self,

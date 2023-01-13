@@ -75,10 +75,10 @@ impl ty::TyCodeBlock {
                         }
                     }
 
-                    ctx.type_engine.insert_type(decl_engine, TypeInfo::Unknown)
+                    ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)
                 } else {
                     ctx.type_engine
-                        .insert_type(decl_engine, TypeInfo::Tuple(Vec::new()))
+                        .insert(decl_engine, TypeInfo::Tuple(Vec::new()))
                 }
             });
 

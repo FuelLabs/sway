@@ -75,7 +75,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
