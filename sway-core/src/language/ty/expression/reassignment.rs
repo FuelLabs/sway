@@ -24,10 +24,10 @@ impl PartialEqWithEngines for TyReassignment {
     }
 }
 
-impl CopyTypes for TyReassignment {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.rhs.copy_types(type_mapping, engines);
-        self.lhs_type.copy_types(type_mapping, engines);
+impl SubstTypes for TyReassignment {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.rhs.subst(type_mapping, engines);
+        self.lhs_type.subst(type_mapping, engines);
     }
 }
 
@@ -166,7 +166,7 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
     }
 }

@@ -45,7 +45,7 @@ cargo install forc fuel-core
 You can update the toolchain from source with Cargo with:
 
 ```sh
-cargo install forc fuel-core
+cargo update forc fuel-core
 ```
 
 #### Installing `forc` Plugins from Cargo

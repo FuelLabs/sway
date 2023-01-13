@@ -44,7 +44,7 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert_type(decl_engine, TypeInfo::SelfType);
+        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
@@ -237,7 +237,7 @@ impl ty::TyTraitDeclaration {
         }
 
         // Retrieve the implemented methods for this type.
-        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
                 .map(|type_param| type_param.type_id)
@@ -258,7 +258,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.copy_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             impld_method_ids.insert(
                 method.name.clone(),
                 decl_engine.insert(method).with_parent(decl_engine, decl_id),
@@ -297,7 +297,7 @@ impl ty::TyTraitDeclaration {
         // Retrieve the trait methods for this trait. Transform them into the
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
-        let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
                 .iter()
                 .map(|type_param| type_param.type_id)
@@ -315,7 +315,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.replace_self_type(engines, type_id);
-            method.copy_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
                     .insert(method.to_dummy_func(Mode::NonAbi))
@@ -330,7 +330,7 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             method.replace_self_type(engines, type_id);
-            method.copy_types(&type_mapping, engines);
+            method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
                     .insert(method)
