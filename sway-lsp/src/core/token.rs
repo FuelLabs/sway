@@ -146,7 +146,7 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
 pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
-    match type_engine.look_up_type_id(*type_id) {
+    match type_engine.get(*type_id) {
         TypeInfo::UnknownGeneric { name, .. }
         | TypeInfo::Enum { name, .. }
         | TypeInfo::Struct { name, .. }
@@ -166,7 +166,7 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
-            let type_info = type_engine.look_up_type_id(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info)
         }
         _ => SymbolKind::Unknown,

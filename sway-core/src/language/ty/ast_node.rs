@@ -41,14 +41,14 @@ impl DisplayWithEngines for TyAstNode {
     }
 }
 
-impl CopyTypes for TyAstNode {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyAstNode {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         match self.content {
             TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.copy_types(type_mapping, engines)
+                exp.subst(type_mapping, engines)
             }
-            TyAstNodeContent::Declaration(ref mut decl) => decl.copy_types(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.copy_types(type_mapping, engines),
+            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
+            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
             TyAstNodeContent::SideEffect => (),
         }
     }
@@ -213,10 +213,10 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
-                type_engine.look_up_type_id(*return_type)
+                type_engine.get(*return_type)
             }
             TyAstNodeContent::ImplicitReturnExpression(TyExpression { return_type, .. }) => {
-                type_engine.look_up_type_id(*return_type)
+                type_engine.get(*return_type)
             }
             TyAstNodeContent::SideEffect => TypeInfo::Tuple(Vec::new()),
         }
