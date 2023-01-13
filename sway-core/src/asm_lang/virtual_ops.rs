@@ -1311,7 +1311,7 @@ fn update_reg(
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 /// A label for a spot in the bytecode, to be later compiled to an offset.
-pub(crate) struct Label(pub(crate) usize);
+pub struct Label(pub(crate) usize);
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".{}", self.0)
