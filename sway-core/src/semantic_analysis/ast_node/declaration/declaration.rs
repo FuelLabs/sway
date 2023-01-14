@@ -309,6 +309,7 @@ impl ty::TyDeclaration {
                     initializer,
                     type_info_span,
                     attributes,
+                    span: field_span,
                     ..
                 } in fields
                 {
@@ -336,7 +337,7 @@ impl ty::TyDeclaration {
                         type_id,
                         type_span: type_info_span,
                         initializer,
-                        span: span.clone(),
+                        span: field_span,
                         attributes,
                     });
                 }
