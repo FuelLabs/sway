@@ -30,7 +30,7 @@ impl RenderedDocumentation {
     pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_docs: AllDocs = Default::default();
-        let mut module_map: BTreeMap<usize, Vec<DocItem>> = BTreeMap::new();
+        let mut module_map: BTreeMap<ModulePrefix, Vec<DocItem>> = BTreeMap::new();
         for doc in raw {
             let html_file_name = doc.html_file_name();
 
@@ -45,30 +45,50 @@ impl RenderedDocumentation {
                 module_info: doc.module_info.clone(),
                 html_file_name,
             };
-            match module_map.get_mut(&doc.module_info.depth()) {
+            // Here we gather all of the doc_items based on which module they belong to.
+            let location = doc.module_info.location().to_string();
+            match module_map.get_mut(&location) {
                 Some(doc_items) => doc_items.push(doc_item.clone()),
                 None => {
-                    module_map.insert(doc.module_info.depth(), vec![doc_item.clone()]);
+                    module_map.insert(location, vec![doc_item.clone()]);
                 }
             }
 
             all_docs.0.push(doc_item);
         }
         // ProjectIndex
-        let project_index = match module_map.get(&1usize) {
-            Some(project_docs) => ProjectIndex {
-                module_info: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
-                mod_docs: ModuleDocs(project_docs.to_owned()),
-            },
+        let root_module = ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]);
+        match module_map.get(root_module.location()) {
+            Some(project_docs) => rendered_docs.0.push(
+                ProjectIndex {
+                    module_info: root_module.clone(),
+                    mod_docs: ModuleDocs(project_docs.to_owned()),
+                }
+                .render(),
+            ),
             None => panic!("Project does not contain a root module."),
-        };
+        }
+        if module_map.len() > 1 {
+            module_map.remove_entry(root_module.location());
+
+            for (module, docs) in module_map {
+                rendered_docs.0.push(
+                    ModuleIndex {
+                        module_info: docs.first().unwrap().module_info.clone(),
+                        mod_docs: ModuleDocs(docs),
+                    }
+                    .render(),
+                )
+            }
+        }
+
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
             module_info: vec![],
             html_file_name: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
-                    project_name: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
+                    project_name: root_module,
                     all_docs,
                 }
                 .render(),
