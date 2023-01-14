@@ -6,9 +6,7 @@ use crate::{
         runnable::{Runnable, RunnableType},
     },
     core::{
-        document::TextDocument,
-        sync::SyncWorkspace,
-        token::{get_range_from_span, TypedAstToken},
+        document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
@@ -31,15 +29,12 @@ use sway_core::{
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{Ident, Spanned};
+use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
-
-use super::token;
 
 pub type Documents = DashMap<String, TextDocument>;
 pub type ProjectDirectory = PathBuf;
@@ -198,19 +193,7 @@ impl Session {
                 self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                let warnings: Vec<CompileWarning> = ast_res
-                    .warnings
-                    .iter()
-                    .map(|w| CompileWarning {
-                        span: self
-                            .ident_for_warning(uri, w)
-                            .map(|i| i.span())
-                            .unwrap_or_else(|| w.span()),
-                        warning_content: w.warning_content.clone(),
-                    })
-                    .collect();
-
-                diagnostics = get_diagnostics(&warnings, &ast_res.errors);
+                diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 let dependency = Dependency::new(&self.token_map);
@@ -222,55 +205,6 @@ impl Session {
             }
         }
         Ok(diagnostics)
-    }
-
-    /// Finds the one ident to highlight for the given compiler warning.
-    pub fn ident_for_warning(&self, uri: &Url, warning: &CompileWarning) -> Option<Ident> {
-        let range = token::get_range_from_span(&warning.span);
-        let type_engine = self.type_engine.read();
-        let mut tokens = self
-            .token_map()
-            .matching_idents_and_tokens_for_file(uri, &type_engine);
-        tokens
-            .find(|(ident, token)| {
-                let ident_range = token::get_range_from_span(&ident.clone().span());
-                // Only check idents within the range of the warning span.
-                if ident_range.end >= range.start && ident_range.end <= range.end {
-                    // Determine whether this is the right ident to highlight based on the
-                    // warning type and the typed token type.
-                    match warning.warning_content {
-                        Warning::DeadDeclaration => {
-                            matches!(token.typed, Some(TypedAstToken::TypedDeclaration(_)))
-                        }
-                        Warning::DeadFunctionDeclaration => {
-                            matches!(
-                                token.typed,
-                                Some(TypedAstToken::TypedFunctionDeclaration(_))
-                            )
-                        }
-                        Warning::DeadStructDeclaration => {
-                            matches!(
-                                token.typed,
-                                Some(TypedAstToken::TypedDeclaration(
-                                    ty::TyDeclaration::StructDeclaration(_)
-                                ))
-                            )
-                        }
-                        Warning::DeadTrait => {
-                            matches!(
-                                token.typed,
-                                Some(TypedAstToken::TypedDeclaration(
-                                    ty::TyDeclaration::TraitDeclaration(_)
-                                ))
-                            )
-                        }
-                        _ => false,
-                    }
-                } else {
-                    false
-                }
-            })
-            .map(|(ident, _)| ident)
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {

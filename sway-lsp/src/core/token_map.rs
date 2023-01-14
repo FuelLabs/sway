@@ -34,28 +34,6 @@ impl TokenMap {
         })
     }
 
-    /// Return an Iterator of matching idents and tokens belonging to the provided [Url].
-    pub fn matching_idents_and_tokens_for_file<'s>(
-        &'s self,
-        uri: &'s Url,
-        type_engine: &'s TypeEngine,
-    ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter().flat_map(|item| {
-            let ((ident, span), token) = item.pair();
-            span.path().and_then(|path| {
-                if path.to_str() == Some(uri.path())
-                    // Only include the pairs where the token's ident is the same as 
-                    // the pair's ident.
-                    && token.declared_token_ident(type_engine) == Some(ident.clone())
-                {
-                    Some((ident.clone(), token.clone()))
-                } else {
-                    None
-                }
-            })
-        })
-    }
-
     /// Find all references in the TokenMap for a given token.
     ///
     /// This is useful for the highlighting and renaming LSP capabilities.

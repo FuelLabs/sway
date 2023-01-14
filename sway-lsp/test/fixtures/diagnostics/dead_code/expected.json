@@ -4,15 +4,43 @@
   "params": {
     "diagnostics": [
       {
-        "message": "This declaration is never used.",
+        "message": "Enum variant B is never constructed.",
         "range": {
           "end": {
-            "character": 18,
-            "line": 12
+            "character": 5,
+            "line": 31
           },
           "start": {
-            "character": 6,
-            "line": 12
+            "character": 4,
+            "line": 31
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "Enum variant A is never constructed.",
+        "range": {
+          "end": {
+            "character": 5,
+            "line": 25
+          },
+          "start": {
+            "character": 4,
+            "line": 25
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "Enum variant B is never constructed.",
+        "range": {
+          "end": {
+            "character": 5,
+            "line": 26
+          },
+          "start": {
+            "character": 4,
+            "line": 26
           }
         },
         "severity": 2
@@ -25,8 +53,22 @@
             "line": 13
           },
           "start": {
-            "character": 6,
+            "character": 0,
             "line": 13
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This declaration is never used.",
+        "range": {
+          "end": {
+            "character": 38,
+            "line": 14
+          },
+          "start": {
+            "character": 0,
+            "line": 14
           }
         },
         "severity": 2
@@ -35,7 +77,7 @@
         "message": "This struct is never used.",
         "range": {
           "end": {
-            "character": 22,
+            "character": 20,
             "line": 15
           },
           "start": {
@@ -46,15 +88,57 @@
         "severity": 2
       },
       {
-        "message": "This function is never called.",
+        "message": "This struct field is never accessed.",
         "range": {
           "end": {
-            "character": 12,
-            "line": 19
+            "character": 5,
+            "line": 16
           },
           "start": {
-            "character": 3,
-            "line": 19
+            "character": 4,
+            "line": 16
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This struct field is never accessed.",
+        "range": {
+          "end": {
+            "character": 5,
+            "line": 17
+          },
+          "start": {
+            "character": 4,
+            "line": 17
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This trait is never implemented.",
+        "range": {
+          "end": {
+            "character": 17,
+            "line": 20
+          },
+          "start": {
+            "character": 6,
+            "line": 20
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This enum is never used.",
+        "range": {
+          "end": {
+            "character": 16,
+            "line": 24
+          },
+          "start": {
+            "character": 5,
+            "line": 24
           }
         },
         "severity": 2
@@ -64,11 +148,11 @@
         "range": {
           "end": {
             "character": 12,
-            "line": 23
+            "line": 34
           },
           "start": {
             "character": 3,
-            "line": 23
+            "line": 34
           }
         },
         "severity": 2
@@ -77,12 +161,26 @@
         "message": "This declaration is never used.",
         "range": {
           "end": {
-            "character": 12,
-            "line": 27
+            "character": 23,
+            "line": 35
           },
           "start": {
-            "character": 5,
-            "line": 27
+            "character": 4,
+            "line": 35
+          }
+        },
+        "severity": 2
+      },
+      {
+        "message": "This function is never called.",
+        "range": {
+          "end": {
+            "character": 12,
+            "line": 42
+          },
+          "start": {
+            "character": 3,
+            "line": 42
           }
         },
         "severity": 2
