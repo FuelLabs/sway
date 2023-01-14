@@ -586,13 +586,17 @@ impl Backend {
                         "typed" => {
                             Ok(program.typed.as_ref().and_then(|typed_program| {
                                 // Initialize the string with the AST from the root
-                                let mut formatted_ast =
-                                    format!("{:#?}", typed_program.root.all_nodes);
+                                let mut formatted_ast = debug::print_decl_engine_types(
+                                    &typed_program.root.all_nodes,
+                                    &session.decl_engine.read(),
+                                );
                                 for (ident, submodule) in &typed_program.root.submodules {
                                     if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        formatted_ast =
-                                            format!("{:#?}", submodule.module.all_nodes);
+                                        formatted_ast = debug::print_decl_engine_types(
+                                            &submodule.module.all_nodes,
+                                            &session.decl_engine.read(),
+                                        );
                                     }
                                 }
                                 let tmp_ast_path = Path::new("/tmp/typed_ast.rs");

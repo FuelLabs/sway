@@ -26,8 +26,8 @@ impl PartialEqWithEngines for TyConstantDeclaration {
             && self.value.eq(&other.value, engines)
             && self.visibility == other.visibility
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
             && self.attributes == other.attributes
             && self.span == other.span
     }

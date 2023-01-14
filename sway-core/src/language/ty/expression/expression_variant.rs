@@ -278,10 +278,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_field_to_access.eq(r_field_to_access, engines)
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::TupleElemAccess {
@@ -299,10 +298,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_elem_to_access_num == r_elem_to_access_num
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::EnumInstantiation {
@@ -373,8 +371,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
     }
 }
 
-impl CopyTypes for TyExpressionVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyExpressionVariant {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -385,32 +383,32 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping, engines));
+                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
                 let new_decl_id = function_decl_id
                     .clone()
-                    .copy_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new(type_mapping, engines);
                 function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types(type_mapping, engines);
-                (*rhs).copy_types(type_mapping, engines);
+                (*lhs).subst(type_mapping, engines);
+                (*rhs).subst(type_mapping, engines);
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             Array { contents } => contents
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             ArrayIndex { prefix, index } => {
-                (*prefix).copy_types(type_mapping, engines);
-                (*index).copy_types(type_mapping, engines);
+                (*prefix).subst(type_mapping, engines);
+                (*index).subst(type_mapping, engines);
             }
             StructExpression { fields, .. } => fields
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             CodeBlock(block) => {
-                block.copy_types(type_mapping, engines);
+                block.subst(type_mapping, engines);
             }
             FunctionParameter => (),
             IfExp {
@@ -418,10 +416,10 @@ impl CopyTypes for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.copy_types(type_mapping, engines);
-                then.copy_types(type_mapping, engines);
+                condition.subst(type_mapping, engines);
+                then.subst(type_mapping, engines);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types(type_mapping, engines);
+                    r#else.subst(type_mapping, engines);
                 }
             }
             AsmExpression {
@@ -430,7 +428,7 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.copy_types(type_mapping, engines));
+                    .for_each(|x| x.subst(type_mapping, engines));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -440,54 +438,54 @@ impl CopyTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping, engines);
-                field_to_access.copy_types(type_mapping, engines);
-                prefix.copy_types(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, engines);
+                field_to_access.subst(type_mapping, engines);
+                prefix.subst(type_mapping, engines);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping, engines);
-                prefix.copy_types(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, engines);
+                prefix.subst(type_mapping, engines);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.copy_types(type_mapping, engines);
+                enum_decl.subst(type_mapping, engines);
                 if let Some(ref mut contents) = contents {
-                    contents.copy_types(type_mapping, engines)
+                    contents.subst(type_mapping, engines)
                 };
             }
-            AbiCast { address, .. } => address.copy_types(type_mapping, engines),
+            AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.copy_types(type_mapping, engines);
+                kind.subst(type_mapping, engines);
             }
             EnumTag { exp } => {
-                exp.copy_types(type_mapping, engines);
+                exp.subst(type_mapping, engines);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.copy_types(type_mapping, engines);
-                variant.copy_types(type_mapping, engines);
+                exp.subst(type_mapping, engines);
+                variant.subst(type_mapping, engines);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.copy_types(type_mapping, engines);
-                body.copy_types(type_mapping, engines);
+                condition.subst(type_mapping, engines);
+                body.subst(type_mapping, engines);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.copy_types(type_mapping, engines),
+            Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             StorageReassignment(..) => (),
-            Return(stmt) => stmt.copy_types(type_mapping, engines),
+            Return(stmt) => stmt.subst(type_mapping, engines),
         }
     }
 }
