@@ -1,7 +1,6 @@
 use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
