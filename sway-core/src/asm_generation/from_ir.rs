@@ -1,13 +1,15 @@
 use super::{
-    asm_builder::AsmBuilder,
+    asm_builder::{AsmBuilder, AsmBuilderResult},
     checks::check_invalid_opcodes,
+    evm::EvmAsmBuilder,
     finalized_asm::FinalizedAsm,
-    programs::{AbstractEntry, AbstractProgram, ProgramKind},
+    fuel::FuelAsmBuilder,
+    programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
     register_sequencer::RegisterSequencer,
     DataId, DataSection,
 };
 
-use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
+use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
 
 use sway_error::error::CompileError;
 use sway_ir::*;
@@ -26,38 +28,8 @@ pub fn compile_ir_to_asm(
     let mut errors: Vec<CompileError> = Vec::new();
 
     let module = ir.module_iter().next().unwrap();
-    let abstract_program = check!(
-        compile_module_to_asm(RegisterSequencer::new(), ir, module),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
-        println!("{abstract_program}\n");
-    }
-
-    let allocated_program = check!(
-        CompileResult::from(abstract_program.into_allocated_program()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
-        println!("{allocated_program}");
-    }
-
     let final_program = check!(
-        CompileResult::from(allocated_program.into_final_program()),
+        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
         return err(warnings, errors),
         warnings,
         errors
@@ -87,7 +59,8 @@ fn compile_module_to_asm(
     reg_seqr: RegisterSequencer,
     context: &Context,
     module: Module,
-) -> CompileResult<AbstractProgram> {
+    build_config: Option<&BuildConfig>,
+) -> CompileResult<FinalProgram> {
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
         Kind::Library => ProgramKind::Library,
@@ -95,7 +68,20 @@ fn compile_module_to_asm(
         Kind::Script => ProgramKind::Script,
     };
 
-    let mut builder = AsmBuilder::new(kind, DataSection::default(), reg_seqr, context);
+    let build_target = match build_config {
+        Some(cfg) => cfg.build_target,
+        None => BuildTarget::default(),
+    };
+
+    let mut builder: Box<dyn AsmBuilder> = match build_target {
+        BuildTarget::Fuel => Box::new(FuelAsmBuilder::new(
+            kind,
+            DataSection::default(),
+            reg_seqr,
+            context,
+        )),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, reg_seqr, context)),
+    };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.
@@ -116,27 +102,65 @@ fn compile_module_to_asm(
     }
 
     // Get the compiled result and massage a bit for the AbstractProgram.
-    let (data_section, reg_seqr, entries, non_entries) = builder.finalize();
-    let entries = entries
-        .into_iter()
-        .map(|(func, label, ops, test_decl_id)| {
-            let selector = func.get_selector(context);
-            let name = func.get_name(context).to_string();
-            AbstractEntry {
-                test_decl_id,
-                selector,
-                label,
-                ops,
-                name,
-            }
-        })
-        .collect();
+    let result = builder.finalize();
+    let final_program = match result {
+        AsmBuilderResult::Fuel(result) => {
+            let (data_section, reg_seqr, entries, non_entries) = result;
+            let entries = entries
+                .into_iter()
+                .map(|(func, label, ops, test_decl_id)| {
+                    let selector = func.get_selector(context);
+                    let name = func.get_name(context).to_string();
+                    AbstractEntry {
+                        test_decl_id,
+                        selector,
+                        label,
+                        ops,
+                        name,
+                    }
+                })
+                .collect();
 
-    ok(
-        AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr),
-        warnings,
-        errors,
-    )
+            let abstract_program =
+                AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr);
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
+                println!("{abstract_program}\n");
+            }
+
+            let allocated_program = check!(
+                CompileResult::from(abstract_program.into_allocated_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
+                println!("{allocated_program}");
+            }
+
+            check!(
+                CompileResult::from(allocated_program.into_final_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+        AsmBuilderResult::Evm(result) => FinalProgram::Evm {
+            ops: result.ops,
+            abi: result.abi,
+        },
+    };
+
+    ok(final_program, warnings, errors)
 }
 
 // -------------------------------------------------------------------------------------------------

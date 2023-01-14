@@ -1,10 +1,5 @@
-use super::{
-    compiler_constants, ir_type_size_in_bytes, size_bytes_in_words,
-    size_bytes_round_up_to_word_alignment, AsmBuilder, ProgramKind,
-};
-
 use crate::{
-    asm_generation::{from_ir::*, Entry},
+    asm_generation::{compiler_constants, from_ir::*, Entry, ProgramKind},
     asm_lang::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
         VirtualImmediate24, VirtualOp,
@@ -12,11 +7,14 @@ use crate::{
     decl_engine::DeclId,
     error::*,
     fuel_prelude::fuel_asm::GTFArgs,
+    size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
 
 use sway_ir::*;
 
 use either::Either;
+
+use super::FuelAsmBuilder;
 
 /// A summary of the adopted calling convention:
 ///
@@ -51,7 +49,7 @@ use either::Either;
 ///   - Restore the general purpose registers from the stack.
 ///   - Jump to the return address.
 
-impl<'ir> AsmBuilder<'ir> {
+impl<'ir> FuelAsmBuilder<'ir> {
     pub(super) fn compile_call(&mut self, instr_val: &Value, function: &Function, args: &[Value]) {
         // Put the args into the args registers.
         for (idx, arg_val) in args.iter().enumerate() {
@@ -122,7 +120,7 @@ impl<'ir> AsmBuilder<'ir> {
         self.cur_bytecode.push(Op::jump_to_label(end_label));
     }
 
-    pub(crate) fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+    pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
         assert!(
             self.cur_bytecode.is_empty(),
             "can't do nested functions yet"

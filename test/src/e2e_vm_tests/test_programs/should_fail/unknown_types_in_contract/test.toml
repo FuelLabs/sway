@@ -1,0 +1,26 @@
+category = "fail"
+
+# check: $()error
+# nextln: main.sw:6:19
+# check: $()use std::vm::evm::EvmAddress;
+# nextln: $()Could not find symbol "EvmAddress" in this scope.
+
+# check: $()error
+# nextln: main.sw:9:27
+# check: $()fn test_function() -> EvmAddress;
+# nextln: $()Unknown type name "EvmAddress".
+
+# check: $()error
+# nextln: main.sw:12:17
+# check: $()fn test_it() -> EvmAddress {
+# nextln: $()Unknown type name "EvmAddress".
+
+# check: $()error
+# nextln: main.sw:13:5
+# check: $()EvmAddress::from
+# nextln: $()Unknown type name "EvmAddress".
+
+# check: $()error
+# nextln: main.sw:17:27
+# check: $()fn test_function() -> EvmAddress {
+# nextln: $()Unknown type name "EvmAddress".

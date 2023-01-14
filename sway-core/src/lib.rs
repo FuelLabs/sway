@@ -1,7 +1,7 @@
 #[macro_use]
 pub mod error;
 
-mod asm_generation;
+pub mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
@@ -22,7 +22,7 @@ use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::FinalizedEntry;
-pub use build_config::BuildConfig;
+pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use std::collections::HashMap;
