@@ -18,7 +18,7 @@ use std::{
     process::Command as Process,
     {fs, path::PathBuf},
 };
-use sway_core::{decl_engine::DeclEngine, Engines, TypeEngine};
+use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -61,10 +61,16 @@ pub fn main() -> Result<()> {
     let decl_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine);
     let tests_enabled = true;
-    let typed_program = match pkg::check(&plan, silent, tests_enabled, engines)?
-        .pop()
-        .and_then(|compilation| compilation.value)
-        .and_then(|programs| programs.typed)
+    let typed_program = match pkg::check(
+        &plan,
+        BuildTarget::default(),
+        silent,
+        tests_enabled,
+        engines,
+    )?
+    .pop()
+    .and_then(|compilation| compilation.value)
+    .and_then(|programs| programs.typed)
     {
         Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
