@@ -42,7 +42,7 @@ where
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
-    pub(crate) fn insert_type(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
+    pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
         let hash_builder = id_map.hasher().clone();
@@ -97,13 +97,13 @@ impl TypeEngine {
     }
 
     /// Performs a lookup of `id` into the [TypeEngine].
-    pub fn look_up_type_id(&self, id: TypeId) -> TypeInfo {
+    pub fn get(&self, id: TypeId) -> TypeInfo {
         self.slab.get(id.index())
     }
 
     /// Denotes the given [TypeId] as being used with storage.
     pub(crate) fn set_type_as_storage_only(&self, id: TypeId) {
-        self.storage_only_types.insert(self.look_up_type_id(id));
+        self.storage_only_types.insert(self.get(id));
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
@@ -138,14 +138,14 @@ impl TypeEngine {
     /// 2. `value` has type parameters + `type_arguments` is empty:
     ///     2a. if the [EnforceTypeArguments::Yes] variant is provided, then
     ///         error
-    ///     2b. refresh the generic types with a [TypeMapping]
+    ///     2b. refresh the generic types with a [TypeSubstMapping]
     /// 3. `value` does have type parameters + `type_arguments` is nonempty:
     ///     3a. error
     /// 4. `value` has type parameters + `type_arguments` is nonempty:
     ///     4a. check to see that the type parameters and `type_arguments` have
     ///         the same length
     ///     4b. for each type argument in `type_arguments`, resolve the type
-    ///     4c. refresh the generic types with a [TypeMapping]
+    ///     4c. refresh the generic types with a [TypeSubstMapping]
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn monomorphize<T>(
         &self,
@@ -158,7 +158,7 @@ impl TypeEngine {
         mod_path: &Path,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + SubstTypes,
     {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -177,8 +177,8 @@ impl TypeEngine {
                     return err(warnings, errors);
                 }
                 let type_mapping =
-                    TypeMapping::from_type_parameters(engines, value.type_parameters());
-                value.copy_types(&type_mapping, engines);
+                    TypeSubstMap::from_type_parameters(engines, value.type_parameters());
+                value.subst(&type_mapping, engines);
                 ok((), warnings, errors)
             }
             (true, false) => {
@@ -209,7 +209,7 @@ impl TypeEngine {
                 }
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type(
+                        self.resolve(
                             decl_engine,
                             type_argument.type_id,
                             &type_argument.span,
@@ -218,12 +218,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value
                         .type_parameters()
                         .iter()
@@ -234,7 +234,7 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.copy_types(&type_mapping, engines);
+                value.subst(&type_mapping, engines);
                 ok((), warnings, errors)
             }
         }
@@ -405,7 +405,7 @@ impl TypeEngine {
     }
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
-        match self.look_up_type_id(id) {
+        match self.get(id) {
             TypeInfo::Unknown => {
                 //panic!();
                 Err(TypeError::UnknownType {
@@ -420,7 +420,7 @@ impl TypeEngine {
     /// [TypeInfo::Custom] with either a monomorphized struct, monomorphized
     /// enum, or a reference to a type parameter.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_type(
+    pub(crate) fn resolve(
         &self,
         decl_engine: &DeclEngine,
         type_id: TypeId,
@@ -434,7 +434,7 @@ impl TypeEngine {
         let mut errors = vec![];
         let engines = Engines::new(self, decl_engine);
         let module_path = type_info_prefix.unwrap_or(mod_path);
-        let type_id = match self.look_up_type_id(type_id) {
+        let type_id = match self.get(type_id) {
             TypeInfo::Custom {
                 name,
                 type_arguments,
@@ -519,13 +519,13 @@ impl TypeEngine {
                             name: name.to_string(),
                             span: name.span(),
                         });
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery)
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }
                 }
             }
             TypeInfo::Array(mut elem_ty, n) => {
                 elem_ty.type_id = check!(
-                    self.resolve_type(
+                    self.resolve(
                         decl_engine,
                         elem_ty.type_id,
                         span,
@@ -534,16 +534,16 @@ impl TypeEngine {
                         namespace,
                         mod_path
                     ),
-                    self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                    self.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
-                self.insert_type(decl_engine, TypeInfo::Array(elem_ty, n))
+                self.insert(decl_engine, TypeInfo::Array(elem_ty, n))
             }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.type_id = check!(
-                        self.resolve_type(
+                        self.resolve(
                             decl_engine,
                             type_argument.type_id,
                             span,
@@ -552,12 +552,12 @@ impl TypeEngine {
                             namespace,
                             mod_path
                         ),
-                        self.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
                         warnings,
                         errors
                     );
                 }
-                self.insert_type(decl_engine, TypeInfo::Tuple(type_arguments))
+                self.insert(decl_engine, TypeInfo::Tuple(type_arguments))
             }
             _ => type_id,
         };
@@ -567,7 +567,7 @@ impl TypeEngine {
     /// Replace any instances of the [TypeInfo::SelfType] variant with
     /// `self_type` in `type_id`, then resolve `type_id`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_type_with_self(
+    pub(crate) fn resolve_with_self(
         &self,
         decl_engine: &DeclEngine,
         mut type_id: TypeId,
@@ -579,7 +579,7 @@ impl TypeEngine {
         mod_path: &Path,
     ) -> CompileResult<TypeId> {
         type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.resolve_type(
+        self.resolve(
             decl_engine,
             type_id,
             span,

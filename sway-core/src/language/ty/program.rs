@@ -110,10 +110,7 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if matches!(
-                        ty_engine.look_up_type_id(implementing_for_type_id),
-                        TypeInfo::Contract
-                    ) {
+                    if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
                         for method_id in methods {
                             match decl_engine.get_function(method_id, &span) {
                                 Ok(method) => abi_entries.push(method),
@@ -174,7 +171,37 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
+            parsed::TreeType::Contract => {
+                // Types containing raw_ptr are not allowed in storage (e.g Vec)
+                for decl in declarations.iter() {
+                    if let TyDeclaration::StorageDeclaration(decl_id) = decl {
+                        if let Ok(storage_decl) =
+                            decl_engine.get_storage(decl_id.clone(), &decl_id.span())
+                        {
+                            for field in storage_decl.fields.iter() {
+                                let type_info = ty_engine.get(field.type_id);
+                                let type_info_str = engines.help_out(&type_info).to_string();
+                                let raw_ptr_type = type_info
+                                    .extract_nested_types(ty_engine, &field.span)
+                                    .value
+                                    .and_then(|value| {
+                                        value
+                                            .into_iter()
+                                            .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                                    });
+                                if raw_ptr_type.is_some() {
+                                    errors.push(CompileError::TypeNotAllowedInContractStorage {
+                                        ty: type_info_str,
+                                        span: field.span.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TyProgramKind::Contract { abi_entries }
+            }
             parsed::TreeType::Library { name } => {
                 if !configurables.is_empty() {
                     errors.push(CompileError::ConfigurableInLibrary {
@@ -195,7 +222,7 @@ impl TyProgram {
                     });
                 }
                 let main_func = mains.remove(0);
-                match ty_engine.look_up_type_id(main_func.return_type) {
+                match ty_engine.get(main_func.return_type) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
@@ -220,7 +247,7 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.look_up_type_id(main_func.return_type);
+                let main_return_type_info = ty_engine.get(main_func.return_type);
                 let nested_types = check!(
                     main_return_type_info
                         .clone()

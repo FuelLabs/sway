@@ -1,0 +1,3 @@
+[[package]]
+name = 'contract_wrong_method_return_type'
+source = 'member'

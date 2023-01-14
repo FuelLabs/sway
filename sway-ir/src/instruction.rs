@@ -15,7 +15,7 @@ use crate::{
     block::Block,
     context::Context,
     function::Function,
-    irtype::{Aggregate, Type},
+    irtype::Type,
     local_var::LocalVar,
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
@@ -74,13 +74,13 @@ pub enum Instruction {
     /// Reading a specific element from an array.
     ExtractElement {
         array: Value,
-        ty: Aggregate,
+        ty: Type,
         index_val: Value,
     },
     /// Reading a specific field from (nested) structs.
     ExtractValue {
         aggregate: Value,
-        ty: Aggregate,
+        ty: Type,
         indices: Vec<u64>,
     },
     /// Umbrella instruction variant for FuelVM-specific instructions
@@ -90,14 +90,14 @@ pub enum Instruction {
     /// Writing a specific value to an array.
     InsertElement {
         array: Value,
-        ty: Aggregate,
+        ty: Type,
         value: Value,
         index_val: Value,
     },
     /// Writing a specific value to a (nested) struct field.
     InsertValue {
         aggregate: Value,
-        ty: Aggregate,
+        ty: Type,
         value: Value,
         indices: Vec<u64>,
     },
@@ -226,21 +226,25 @@ impl Instruction {
     /// `Ret` do not have a type.
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match self {
-            Instruction::AddrOf(_) => Some(Type::Uint(64)),
+            Instruction::AddrOf(_) => Some(Type::get_uint64(context)),
             Instruction::AsmBlock(asm_block, _) => Some(asm_block.get_type(context)),
             Instruction::BinaryOp { arg1, .. } => arg1.get_type(context),
             Instruction::BitCast(_, ty) => Some(*ty),
             Instruction::Call(function, _) => Some(context.functions[function.0].return_type),
             Instruction::CastPtr(_val, ty, _offs) => Some(*ty),
-            Instruction::Cmp(..) => Some(Type::Bool),
+            Instruction::Cmp(..) => Some(Type::get_bool(context)),
             Instruction::ContractCall { return_type, .. } => Some(*return_type),
-            Instruction::ExtractElement { ty, .. } => ty.get_elem_type(context),
-            Instruction::ExtractValue { ty, indices, .. } => ty.get_field_type(context, indices),
-            Instruction::FuelVm(FuelVmInstruction::GetStorageKey) => Some(Type::B256),
-            Instruction::FuelVm(FuelVmInstruction::Gtf { .. }) => Some(Type::Uint(64)),
-            Instruction::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::Unit),
-            Instruction::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::Uint(64)),
-            Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_)) => Some(Type::Uint(64)),
+            Instruction::ExtractElement { ty, .. } => ty.get_array_elem_type(context),
+            Instruction::ExtractValue { ty, indices, .. } => ty.get_indexed_type(context, indices),
+            Instruction::FuelVm(FuelVmInstruction::GetStorageKey) => Some(Type::get_b256(context)),
+            Instruction::FuelVm(FuelVmInstruction::Gtf { .. }) => Some(Type::get_uint64(context)),
+            Instruction::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
+            Instruction::FuelVm(FuelVmInstruction::ReadRegister(_)) => {
+                Some(Type::get_uint64(context))
+            }
+            Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_)) => {
+                Some(Type::get_uint64(context))
+            }
             Instruction::InsertElement { array, .. } => array.get_type(context),
             Instruction::InsertValue { aggregate, .. } => aggregate.get_type(context),
             Instruction::Load(ptr_val) => match &context.values[ptr_val.0].value {
@@ -251,7 +255,7 @@ impl Instruction {
             },
 
             // These can be recursed to via Load, so we return the pointer type.
-            Instruction::GetLocal(local_var) => Some(*local_var.get_type(context)),
+            Instruction::GetLocal(local_var) => Some(local_var.get_type(context)),
 
             // Used to re-interpret an integer as a pointer to some type so return the pointer type.
             Instruction::IntToPtr(_, ty) => Some(*ty),
@@ -262,12 +266,18 @@ impl Instruction {
             Instruction::FuelVm(FuelVmInstruction::Revert(..)) => None,
             Instruction::Ret(..) => None,
 
-            Instruction::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::Unit),
-            Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. }) => Some(Type::Unit),
-            Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. }) => Some(Type::Unit),
-            Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => Some(Type::Unit),
-            Instruction::MemCopy { .. } => Some(Type::Unit),
-            Instruction::Store { .. } => Some(Type::Unit),
+            Instruction::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
+            Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. }) => {
+                Some(Type::get_unit(context))
+            }
+            Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. }) => {
+                Some(Type::get_unit(context))
+            }
+            Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
+                Some(Type::get_unit(context))
+            }
+            Instruction::MemCopy { .. } => Some(Type::get_unit(context)),
+            Instruction::Store { .. } => Some(Type::get_unit(context)),
 
             // No-op is also no-type.
             Instruction::Nop => None,
@@ -275,37 +285,20 @@ impl Instruction {
     }
 
     /// Some [`Instruction`]s may have struct arguments.  Return it if so for this instruction.
-    pub fn get_aggregate(&self, context: &Context) -> Option<Aggregate> {
-        match self {
-            Instruction::Call(func, _args) => match &context.functions[func.0].return_type {
-                Type::Array(aggregate) => Some(*aggregate),
-                Type::Struct(aggregate) => Some(*aggregate),
-                _otherwise => None,
-            },
-            Instruction::GetLocal(local_var) => match local_var.get_type(context) {
-                Type::Array(aggregate) => Some(*aggregate),
-                Type::Struct(aggregate) => Some(*aggregate),
-                _otherwise => None,
-            },
-            Instruction::ExtractElement { ty, .. } => {
-                ty.get_elem_type(context).and_then(|ty| match ty {
-                    Type::Array(nested_aggregate) => Some(nested_aggregate),
-                    Type::Struct(nested_aggregate) => Some(nested_aggregate),
-                    _otherwise => None,
-                })
+    pub fn get_aggregate(&self, context: &Context) -> Option<Type> {
+        let ty = match self {
+            Instruction::Call(func, _args) => Some(context.functions[func.0].return_type),
+            Instruction::GetLocal(local_var) => Some(local_var.get_type(context)),
+            Instruction::ExtractElement { ty, .. } => ty.get_array_elem_type(context),
+            Instruction::ExtractValue { ty, indices, .. } =>
+            // This array is a field in a struct or element in an array.
+            {
+                ty.get_indexed_type(context, indices)
             }
-            Instruction::ExtractValue { ty, indices, .. } => {
-                // This array is a field in a struct or element in an array.
-                ty.get_field_type(context, indices).and_then(|ty| match ty {
-                    Type::Array(nested_aggregate) => Some(nested_aggregate),
-                    Type::Struct(nested_aggregate) => Some(nested_aggregate),
-                    _otherwise => None,
-                })
-            }
-
             // Unknown aggregate instruction.  Adding these as we come across them...
             _otherwise => None,
-        }
+        };
+        ty.filter(|ty| ty.is_array(context) || ty.is_struct(context))
     }
 
     pub fn get_operands(&self) -> Vec<Value> {
@@ -785,7 +778,7 @@ impl<'a> InstructionInserter<'a> {
         )
     }
 
-    pub fn extract_element(self, array: Value, ty: Aggregate, index_val: Value) -> Value {
+    pub fn extract_element(self, array: Value, ty: Type, index_val: Value) -> Value {
         make_instruction!(
             self,
             Instruction::ExtractElement {
@@ -796,7 +789,7 @@ impl<'a> InstructionInserter<'a> {
         )
     }
 
-    pub fn extract_value(self, aggregate: Value, ty: Aggregate, indices: Vec<u64>) -> Value {
+    pub fn extract_value(self, aggregate: Value, ty: Type, indices: Vec<u64>) -> Value {
         make_instruction!(
             self,
             Instruction::ExtractValue {
@@ -822,13 +815,7 @@ impl<'a> InstructionInserter<'a> {
         make_instruction!(self, Instruction::GetLocal(local_var))
     }
 
-    pub fn insert_element(
-        self,
-        array: Value,
-        ty: Aggregate,
-        value: Value,
-        index_val: Value,
-    ) -> Value {
+    pub fn insert_element(self, array: Value, ty: Type, value: Value, index_val: Value) -> Value {
         make_instruction!(
             self,
             Instruction::InsertElement {
@@ -843,7 +830,7 @@ impl<'a> InstructionInserter<'a> {
     pub fn insert_value(
         self,
         aggregate: Value,
-        ty: Aggregate,
+        ty: Type,
         value: Value,
         indices: Vec<u64>,
     ) -> Value {

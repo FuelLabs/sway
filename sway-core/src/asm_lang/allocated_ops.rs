@@ -421,7 +421,7 @@ impl fmt::Display for AllocatedOpcode {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct AllocatedOp {
+pub struct AllocatedOp {
     pub(crate) opcode: AllocatedOpcode,
     /// A descriptive comment for ASM readability
     pub(crate) comment: String,

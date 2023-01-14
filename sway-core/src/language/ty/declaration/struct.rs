@@ -28,14 +28,14 @@ impl PartialEqWithEngines for TyStructDeclaration {
     }
 }
 
-impl CopyTypes for TyStructDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyStructDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.fields
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -54,7 +54,7 @@ impl CreateTypeId for TyStructDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        type_engine.insert_type(
+        type_engine.insert(
             decl_engine,
             TypeInfo::Struct {
                 name: self.name.clone(),
@@ -124,9 +124,7 @@ pub struct TyStructField {
 impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
     }
 }
 
@@ -139,14 +137,14 @@ impl PartialEqWithEngines for TyStructField {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
     }
 }
 
-impl CopyTypes for TyStructField {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyStructField {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

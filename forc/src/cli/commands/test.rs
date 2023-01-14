@@ -135,6 +135,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             json_abi: cmd.build.minify_json_abi,
             json_storage_slots: cmd.build.minify_json_storage_slots,
         },
+        build_target: cmd.build.build_target,
         build_profile: cmd.build.build_profile,
         release: cmd.build.release,
         time_phases: cmd.build.time_phases,

@@ -61,10 +61,10 @@ impl DeclEngine {
         DeclId::new(self.slab.insert(decl_wrapper), span)
     }
 
-    /// Given a [DeclarationId] `index`, finds all the parents of `index` and
-    /// all the recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclarationId] have
-    /// already been found, we do not find them again.
+    /// Given a [DeclId] `index`, finds all the parents of `index` and all the
+    /// recursive parents of those parents, and so on. Does not perform
+    /// duplicated computation---if the parents of a [DeclId] have already been
+    /// found, we do not find them again.
     #[allow(clippy::map_entry)]
     pub(crate) fn find_all_parents(&self, engines: Engines<'_>, index: DeclId) -> Vec<DeclId> {
         let parents = self.parents.read().unwrap();
