@@ -1,6 +1,7 @@
 use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
+use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
@@ -29,6 +30,7 @@ impl RenderedDocumentation {
     pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_docs: AllDocs = Default::default();
+        let mut module_map: BTreeMap<usize, Vec<DocItem>> = BTreeMap::new();
         for doc in raw {
             let html_file_name = doc.html_file_name();
 
@@ -37,13 +39,29 @@ impl RenderedDocumentation {
                 html_file_name: html_file_name.clone(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
-            all_docs.0.push(AllDocItem {
+            let doc_item = DocItem {
                 item_name: doc.item_header.item_name.clone(),
                 ty_decl: doc.item_body.ty_decl.clone(),
-                module_info: doc.module_info,
+                module_info: doc.module_info.clone(),
                 html_file_name,
-            });
+            };
+            match module_map.get_mut(&doc.module_info.depth()) {
+                Some(doc_items) => doc_items.push(doc_item.clone()),
+                None => {
+                    module_map.insert(doc.module_info.depth(), vec![doc_item.clone()]);
+                }
+            }
+
+            all_docs.0.push(doc_item);
         }
+        // ProjectIndex
+        let project_index = match module_map.get(&1usize) {
+            Some(project_docs) => ProjectIndex {
+                module_info: ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]),
+                mod_docs: ModuleDocs(project_docs.to_owned()),
+            },
+            None => panic!("Project does not contain a root module."),
+        };
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
             module_info: vec![],
@@ -443,15 +461,16 @@ impl Renderable for TyTraitFn {
     }
 }
 #[derive(Clone)]
-struct AllDocItem {
+struct DocItem {
     item_name: BaseIdent,
     ty_decl: TyDeclaration,
     module_info: ModuleInfo,
     html_file_name: String,
 }
-impl AllDocItem {
+impl DocItem {
     fn link(&self) -> ItemLink {
         ItemLink {
+            name: self.item_name.as_str().to_owned(),
             path_literal: self
                 .module_info
                 .to_path_literal_string(self.item_name.as_str()),
@@ -461,6 +480,7 @@ impl AllDocItem {
 }
 /// Used for creating links.
 struct ItemLink {
+    name: String,
     path_literal: String,
     hyperlink: String,
 }
@@ -481,7 +501,7 @@ enum Title {
     RequiredMethods,
 }
 #[derive(Default, Clone)]
-struct AllDocs(Vec<AllDocItem>);
+struct AllDocs(Vec<DocItem>);
 impl AllDocs {
     /// A wrapper for `ModuleInfo::project_name()`.
     fn project_name(&self) -> &str {
@@ -620,10 +640,17 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
         }
     }
 }
+struct ModuleDocs(Vec<DocItem>);
+/// The index for all project modules.
 pub(crate) struct ModuleIndex {
     module_info: ModuleInfo,
+    mod_docs: ModuleDocs,
 }
-pub(crate) struct ProjectIndex {}
+/// The index for the project root.
+pub(crate) struct ProjectIndex {
+    module_info: ModuleInfo,
+    mod_docs: ModuleDocs,
+}
 
 trait SidebarNav {
     /// Create sidebar component.
