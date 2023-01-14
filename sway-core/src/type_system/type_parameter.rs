@@ -258,7 +258,7 @@ impl TypeParameter {
 
         if errors.is_empty() {
             let decl_mapping =
-                DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
+                DeclMapping::from_stub_and_impld_decl_ids(original_method_ids, impld_method_ids);
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
