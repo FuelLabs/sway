@@ -333,7 +333,7 @@ fn maybe_constant_to_doc(
     maybe_const_val: &Value,
 ) -> Doc {
     // Create a new doc only if value is new and unknown, and is a constant.
-    if !namer.is_known(maybe_const_val) && (maybe_const_val.is_constant(context)) {
+    if !namer.is_known(maybe_const_val) && maybe_const_val.is_constant(context) {
         constant_to_doc(context, md_namer, namer, maybe_const_val)
     } else {
         Doc::Empty

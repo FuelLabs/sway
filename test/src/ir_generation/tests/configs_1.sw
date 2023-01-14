@@ -18,8 +18,3 @@ fn main() -> u64 {
 // check: ret u64 $c0
 // check: $(config_name=$MD) = config_name "X"
 // check: $config_mds = ($MD $config_name)
-
-// ::check-asm::
-
-// regex: IMM=i\d+
-// regex: REG=\$r\d+

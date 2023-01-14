@@ -163,7 +163,7 @@ impl Entry {
         // If this corresponds to a configuration-time constants, then the entry names will be
         // available (i.e. `Some(..)`) and they must be the same before we can merge the two
         // entries. Otherwise, `self.name` and `entry.name` will be `None` in which case we're also
-        // allowed to merge the two entries (if they're values are equivalent of course).
+        // allowed to merge the two entries (if their values are equivalent of course).
         equiv_data(&self.value, &entry.value) && self.name == entry.name
     }
 }

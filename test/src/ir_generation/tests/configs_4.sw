@@ -24,6 +24,6 @@ fn main() -> (u64, u64, u64, u64) {
 // There should only be 3 data entries here. One shared by `A` and `B` and the
 // other two are for `X` and `Y` respectively
 
-// check: $DATA .word 42
-// check: $DATA .word 42
-// check: $DATA .word 42
+// check: $(d1=$DATA) .word 42
+// check: $(d2=$DATA) .word 42
+// check: $(d3=$DATA) .word 42

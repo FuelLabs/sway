@@ -165,7 +165,7 @@ pub(super) fn compile_constant_expression(
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
         let config_const_name =
-            md_mgr.config_const_name_to_md(context, &std::sync::Arc::from(name.as_str()));
+            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(name.as_str()));
         let metadata = md_combine(context, &span_id_idx, &config_const_name);
         Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
     }

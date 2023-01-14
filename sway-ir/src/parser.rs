@@ -48,7 +48,7 @@ mod ir_builder {
                 / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
-                = "contract" _ "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+                = "contract" _ "{" _ configs:init_config()* fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
                         configs,
