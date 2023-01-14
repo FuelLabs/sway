@@ -15,11 +15,13 @@ trait RequiredMethods {
 }
 impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
-        let mut ty_trait_fns: Vec<TyTraitFn> = Vec::new();
-        for decl_id in self.iter() {
-            ty_trait_fns.push(decl_engine.get_trait_fn(decl_id.clone(), &decl_id.span())?)
-        }
-        Ok(ty_trait_fns)
+        self.iter()
+            .map(|decl_id| {
+                decl_engine
+                    .get_trait_fn(decl_id.clone(), &decl_id.span())
+                    .map_err(|e| anyhow::anyhow!("{}", e))
+            })
+            .collect::<anyhow::Result<_>>()
     }
 }
 
@@ -49,13 +51,11 @@ impl Descriptor {
                 } else {
                     let item_name = struct_decl.name;
                     let attrs_opt = if !struct_decl.attributes.is_empty() {
-                        match attrsmap_to_html_str(struct_decl.attributes) {
-                            Ok(s) => Some(s),
-                            Err(e) => bail!("{}", e),
-                        }
+                        Some(attrsmap_to_html_str(struct_decl.attributes)?)
                     } else {
                         None
                     };
+
                     let context = (!struct_decl.fields.is_empty())
                         .then_some(ContextType::StructFields(struct_decl.fields));
 
@@ -86,13 +86,11 @@ impl Descriptor {
                 } else {
                     let item_name = enum_decl.name;
                     let attrs_opt = if !enum_decl.attributes.is_empty() {
-                        match attrsmap_to_html_str(enum_decl.attributes) {
-                            Ok(s) => Some(s),
-                            Err(e) => bail!("{}", e),
-                        }
+                        Some(attrsmap_to_html_str(enum_decl.attributes)?)
                     } else {
                         None
                     };
+
                     let context = (!enum_decl.variants.is_empty())
                         .then_some(ContextType::EnumVariants(enum_decl.variants));
 
@@ -123,13 +121,11 @@ impl Descriptor {
                 } else {
                     let item_name = trait_decl.name;
                     let attrs_opt = if !trait_decl.attributes.is_empty() {
-                        match attrsmap_to_html_str(trait_decl.attributes) {
-                            Ok(s) => Some(s),
-                            Err(e) => bail!("{}", e),
-                        }
+                        Some(attrsmap_to_html_str(trait_decl.attributes)?)
                     } else {
                         None
                     };
+
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
                             trait_decl.interface_surface.to_methods(decl_engine)?,
@@ -160,13 +156,11 @@ impl Descriptor {
                 let abi_decl = decl_engine.get_abi(decl_id.clone(), &decl_id.span())?;
                 let item_name = abi_decl.name;
                 let attrs_opt = if !abi_decl.attributes.is_empty() {
-                    match attrsmap_to_html_str(abi_decl.attributes) {
-                        Ok(s) => Some(s),
-                        Err(e) => bail!("{}", e),
-                    }
+                    Some(attrsmap_to_html_str(abi_decl.attributes)?)
                 } else {
                     None
                 };
+
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
                         abi_decl.interface_surface.to_methods(decl_engine)?,
@@ -196,13 +190,11 @@ impl Descriptor {
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
                 );
                 let attrs_opt = if !storage_decl.attributes.is_empty() {
-                    match attrsmap_to_html_str(storage_decl.attributes) {
-                        Ok(s) => Some(s),
-                        Err(e) => bail!("{}", e),
-                    }
+                    Some(attrsmap_to_html_str(storage_decl.attributes)?)
                 } else {
                     None
                 };
+
                 let context = (!storage_decl.fields.is_empty())
                     .then_some(ContextType::StorageFields(storage_decl.fields));
 
@@ -258,10 +250,7 @@ impl Descriptor {
                 } else {
                     let item_name = fn_decl.name;
                     let attrs_opt = if !fn_decl.attributes.is_empty() {
-                        match attrsmap_to_html_str(fn_decl.attributes) {
-                            Ok(s) => Some(s),
-                            Err(e) => bail!("{}", e),
-                        }
+                        Some(attrsmap_to_html_str(fn_decl.attributes)?)
                     } else {
                         None
                     };
@@ -293,10 +282,7 @@ impl Descriptor {
                 } else {
                     let item_name = const_decl.name;
                     let attrs_opt = if !const_decl.attributes.is_empty() {
-                        match attrsmap_to_html_str(const_decl.attributes) {
-                            Ok(s) => Some(s),
-                            Err(e) => bail!("{}", e),
-                        }
+                        Some(attrsmap_to_html_str(const_decl.attributes)?)
                     } else {
                         None
                     };

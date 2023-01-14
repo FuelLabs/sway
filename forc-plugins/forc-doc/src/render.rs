@@ -172,7 +172,8 @@ impl Renderable for ItemBody {
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
         let sidebar = sidebar.render()?;
-        let rendered_item_context = item_context.clone().render()?;
+        let context_is_some = item_context.context.is_some();
+        let item_context = item_context.render()?;
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -232,8 +233,8 @@ impl Renderable for ItemBody {
                                     }
                                 }
                             }
-                            @ if item_context.context.is_some() {
-                                : rendered_item_context;
+                            @ if context_is_some {
+                                : item_context;
                             }
                         }
                     }

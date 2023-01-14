@@ -136,66 +136,66 @@ pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
     pub(crate) fn location(&self) -> Result<&str> {
-        match self.0.last() {
-            Some(location) => Ok(location),
-            None => bail!("Expected Some module location, found None"),
-        }
+        self.0
+            .last()
+            .ok_or_else(|| anyhow::anyhow!("Expected Some module location, found None"))
     }
-    /// The location of the parent of the current module.
-    ///
-    /// To be used in path navigation between modules.
-    pub(crate) fn _parent(&mut self) -> Result<&str> {
-        self.0.pop();
-        self.location()
-    }
-    /// The name of the project.
-    pub(crate) fn project_name(&self) -> Result<&str> {
-        match self.0.first() {
-            Some(project_name) => Ok(project_name),
-            None => bail!("Project name missing"),
-        }
-    }
-    /// Create a qualified path literal String that represents the full path to an item.
-    pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
-        let prefix = self.to_path_literal_prefix();
-        match prefix.is_empty() {
-            true => item_name.to_owned(),
-            false => format!("{}::{}", prefix, item_name),
-        }
-    }
-    /// Create a path literal prefix from the module prefixes.
-    fn to_path_literal_prefix(&self) -> String {
-        let mut iter = self.0.iter();
-        iter.next(); // skip the project name
-        iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
-    }
-    /// Creates a String version of the path to an item,
-    /// used in navigation between pages.
-    pub(crate) fn to_file_path_str(&self, file_name: &str) -> Result<String> {
-        let mut iter = self.0.iter();
-        iter.next(); // skip the project_name
-        let mut file_path = iter.collect::<PathBuf>();
-        file_path.push(file_name);
+}
+/// The location of the parent of the current module.
+///
+/// To be used in path navigation between modules.
+pub(crate) fn _parent(&mut self) -> Result<&str> {
+    self.0.pop();
+    self.location()
+}
+/// The name of the project.
+pub(crate) fn project_name(&self) -> Result<&str> {
+    self.0
+        .last()
+        .ok_or_else(|| anyhow::anyhow!("Expected Some module location, found None"))
+}
 
-        match file_path.to_str() {
-            Some(path) => Ok(path.to_string()),
-            None => bail!("There will always be at least the item name"),
-        }
+/// Create a qualified path literal String that represents the full path to an item.
+pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
+    let prefix = self.to_path_literal_prefix();
+    match prefix.is_empty() {
+        true => item_name.to_owned(),
+        false => format!("{}::{}", prefix, item_name),
     }
-    /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
-    pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
-        format!("{}{}", self.to_html_path_prefix(), file_name)
-    }
-    /// Create a path prefix `&str` for navigation from the `module.depth()`.
-    fn to_html_path_prefix(&self) -> String {
-        (1..self.depth()).map(|_| "../").collect::<String>()
-    }
-    /// The depth of a module as `usize`.
-    pub(crate) fn depth(&self) -> usize {
-        self.0.len()
-    }
-    /// Create a new [ModuleInfo] from a vec.
-    pub(crate) fn from_vec(vec: Vec<String>) -> Self {
-        Self(vec)
-    }
+}
+/// Create a path literal prefix from the module prefixes.
+fn to_path_literal_prefix(&self) -> String {
+    let mut iter = self.0.iter();
+    iter.next(); // skip the project name
+    iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
+}
+/// Creates a String version of the path to an item,
+/// used in navigation between pages.
+pub(crate) fn to_file_path_str(&self, file_name: &str) -> Result<String> {
+    let mut iter = self.0.iter();
+    iter.next(); // skip the project_name
+    let mut file_path = iter.collect::<PathBuf>();
+    file_path.push(file_name);
+
+    file_path
+        .to_str()
+        .map(|file_path_str| file_path_str.to_string())
+        .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
+}
+/// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
+pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
+    format!("{}{}", self.to_html_path_prefix(), file_name)
+}
+/// Create a path prefix `&str` for navigation from the `module.depth()`.
+fn to_html_path_prefix(&self) -> String {
+    (1..self.depth()).map(|_| "../").collect::<String>()
+}
+/// The depth of a module as `usize`.
+pub(crate) fn depth(&self) -> usize {
+    self.0.len()
+}
+/// Create a new [ModuleInfo] from a vec.
+pub(crate) fn from_vec(vec: Vec<String>) -> Self {
+    Self(vec)
+}
 }
