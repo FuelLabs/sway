@@ -509,7 +509,7 @@ fn compile_fn_with_args(
             // Need to copy ref-type return values to the 'out' parameter.
             ret_val = compiler.compile_copy_to_last_arg(context, ret_val, None);
         }
-        if ret_type.eq(context, &Type::Unit) {
+        if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
         compiler.current_block.ins(context).ret(ret_val, ret_type);
