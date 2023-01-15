@@ -30,7 +30,8 @@ impl RenderedDocumentation {
     pub fn from(raw: Documentation) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_docs: AllDocs = Default::default();
-        let mut module_map: BTreeMap<ModulePrefix, Vec<DocItem>> = BTreeMap::new();
+        let mut module_map: BTreeMap<ModulePrefix, (Vec<DocItem>, Vec<ModulePrefix>)> =
+            BTreeMap::new();
         for doc in raw {
             let html_file_name = doc.html_file_name();
 
@@ -48,9 +49,17 @@ impl RenderedDocumentation {
             // Here we gather all of the doc_items based on which module they belong to.
             let location = doc.module_info.location().to_string();
             match module_map.get_mut(&location) {
-                Some(doc_items) => doc_items.push(doc_item.clone()),
+                Some((doc_items, _)) => doc_items.push(doc_item.clone()),
                 None => {
-                    module_map.insert(location, vec![doc_item.clone()]);
+                    module_map.insert(location.clone(), (vec![doc_item.clone()], vec![]));
+                }
+            }
+            if let Some(parent_module) = doc.module_info.parent() {
+                match module_map.get_mut(parent_module) {
+                    Some((_, child_modules)) => child_modules.push(location),
+                    None => {
+                        module_map.insert(parent_module.clone(), (vec![], vec![location]));
+                    }
                 }
             }
 
@@ -59,26 +68,38 @@ impl RenderedDocumentation {
         // ProjectIndex
         let root_module = ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]);
         match module_map.get(root_module.location()) {
-            Some(project_docs) => rendered_docs.0.push(
-                ProjectIndex {
-                    module_info: root_module.clone(),
-                    mod_docs: ModuleDocs(project_docs.to_owned()),
-                }
-                .render(),
-            ),
+            Some((doc_items, child_modules)) => rendered_docs.0.push(RenderedDocument {
+                module_info: vec![],
+                html_file_name: INDEX_FILENAME.to_string(),
+                file_contents: HTMLString::from(
+                    ProjectIndex {
+                        module_info: root_module.clone(),
+                        children: child_modules.to_owned(),
+                        module_docs: ModuleDocs(doc_items.to_owned()),
+                    }
+                    .render(),
+                ),
+            }),
             None => panic!("Project does not contain a root module."),
         }
         if module_map.len() > 1 {
             module_map.remove_entry(root_module.location());
 
-            for (module, docs) in module_map {
-                rendered_docs.0.push(
-                    ModuleIndex {
-                        module_info: docs.first().unwrap().module_info.clone(),
-                        mod_docs: ModuleDocs(docs),
-                    }
-                    .render(),
-                )
+            // ModuleIndex(s)
+            for (_, (doc_items, child_modules)) in module_map {
+                let module_info = doc_items.first().unwrap().module_info.clone();
+                rendered_docs.0.push(RenderedDocument {
+                    module_info: module_info.0.clone(),
+                    html_file_name: INDEX_FILENAME.to_string(),
+                    file_contents: HTMLString::from(
+                        ModuleIndex {
+                            module_info: module_info,
+                            children: child_modules.to_owned(),
+                            module_docs: ModuleDocs(doc_items),
+                        }
+                        .render(),
+                    ),
+                })
             }
         }
 
@@ -664,12 +685,24 @@ struct ModuleDocs(Vec<DocItem>);
 /// The index for all project modules.
 pub(crate) struct ModuleIndex {
     module_info: ModuleInfo,
-    mod_docs: ModuleDocs,
+    children: Vec<String>,
+    module_docs: ModuleDocs,
+}
+impl Renderable for ModuleIndex {
+    fn render(self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
 }
 /// The index for the project root.
 pub(crate) struct ProjectIndex {
     module_info: ModuleInfo,
-    mod_docs: ModuleDocs,
+    children: Vec<String>,
+    module_docs: ModuleDocs,
+}
+impl Renderable for ProjectIndex {
+    fn render(self) -> Box<dyn RenderBox> {
+        box_html! {}
+    }
 }
 
 trait SidebarNav {
