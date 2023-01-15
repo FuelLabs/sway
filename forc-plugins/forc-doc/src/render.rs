@@ -502,7 +502,7 @@ struct ItemLink {
 struct AllDocs(Vec<AllDocItem>);
 impl AllDocs {
     /// A wrapper for `ModuleInfo::project_name()`.
-    fn project_name(&self) -> Result<&str> {
+    fn project_name(&self) -> Result<&String> {
         self.0.first().unwrap().module_info.project_name()
     }
 }

@@ -3,7 +3,7 @@ use crate::{
     doc::{Document, ModuleInfo},
     render::{attrsmap_to_html_str, trim_fn_body, ContextType, ItemBody, ItemContext, ItemHeader},
 };
-use anyhow::{bail, Result};
+use anyhow::Result;
 use sway_core::{
     decl_engine::*,
     language::ty::{TyDeclaration, TyTraitFn},
