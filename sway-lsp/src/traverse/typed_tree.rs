@@ -649,7 +649,7 @@ impl<'a> TypedTree<'a> {
 
     fn collect_type_id(&self, type_id: TypeId, typed_token: &TypedAstToken, type_span: Span) {
         let type_engine = self.engines.te();
-        let type_info = type_engine.look_up_type_id(type_id);
+        let type_info = type_engine.get(type_id);
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
         match &type_info {
             TypeInfo::Array(type_arg, ..) => {

@@ -777,7 +777,7 @@ fn generic_params_opt_to_type_parameters(
             .into_inner()
             .into_iter()
             .map(|ident| {
-                let custom_type = type_engine.insert_type(
+                let custom_type = type_engine.insert(
                     decl_engine,
                     TypeInfo::Custom {
                         name: ident.clone(),
@@ -994,8 +994,7 @@ fn ty_to_type_argument(
     let type_engine = engines.te();
     let decl_engine = engines.de();
     let span = ty.span();
-    let initial_type_id =
-        type_engine.insert_type(decl_engine, ty_to_type_info(handler, engines, ty)?);
+    let initial_type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
@@ -1868,11 +1867,13 @@ fn storage_field_to_storage_field(
     } else {
         storage_field.ty.span()
     };
+    let span = storage_field.span();
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
         type_info: ty_to_type_info(handler, engines, storage_field.ty)?,
         type_info_span,
+        span,
         initializer: expr_to_expression(handler, engines, storage_field.initializer)?,
     };
     Ok(storage_field)
@@ -2951,7 +2952,7 @@ fn ty_to_type_parameter(
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert_type(decl_engine, TypeInfo::Unknown);
+            let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
@@ -2964,7 +2965,7 @@ fn ty_to_type_parameter(
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
-    let custom_type = type_engine.insert_type(
+    let custom_type = type_engine.insert(
         decl_engine,
         TypeInfo::Custom {
             name: name_ident.clone(),
@@ -3157,8 +3158,7 @@ fn generic_args_to_type_arguments(
         .into_iter()
         .map(|ty| {
             let span = ty.span();
-            let type_id =
-                type_engine.insert_type(decl_engine, ty_to_type_info(handler, engines, ty)?);
+            let type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
             Ok(TypeArgument {
                 type_id,
                 initial_type_id: type_id,

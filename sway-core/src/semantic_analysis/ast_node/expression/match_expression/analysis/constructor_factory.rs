@@ -25,7 +25,7 @@ impl ConstructorFactory {
         let mut errors = vec![];
         let possible_types = check!(
             type_engine
-                .look_up_type_id(type_id)
+                .get(type_id)
                 .extract_nested_types(type_engine, span),
             return err(warnings, errors),
             warnings,

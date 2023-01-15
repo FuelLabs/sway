@@ -390,8 +390,7 @@ fn convert_fn_param(
     param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, bool, Span), CompileError> {
     convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span).map(|ty| {
-        let by_ref =
-            param.is_reference && type_engine.look_up_type_id(param.type_id).is_copy_type();
+        let by_ref = param.is_reference && type_engine.get(param.type_id).is_copy_type();
         (param.name.as_str().into(), ty, by_ref, param.name.span())
     })
 }
@@ -431,7 +430,7 @@ fn compile_fn_with_args(
 
     let ret_type = convert_resolved_typeid(type_engine, context, return_type, return_type_span)?;
 
-    let returns_by_ref = !is_entry && !type_engine.look_up_type_id(*return_type).is_copy_type();
+    let returns_by_ref = !is_entry && !type_engine.get(*return_type).is_copy_type();
     if returns_by_ref {
         // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
         args.push((
@@ -510,7 +509,7 @@ fn compile_fn_with_args(
             // Need to copy ref-type return values to the 'out' parameter.
             ret_val = compiler.compile_copy_to_last_arg(context, ret_val, None);
         }
-        if ret_type.eq(context, &Type::Unit) {
+        if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
         compiler.current_block.ins(context).ret(ret_val, ret_type);

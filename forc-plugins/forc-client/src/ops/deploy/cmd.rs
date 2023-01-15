@@ -61,6 +61,9 @@ pub struct DeployCommand {
     /// If url is specified overrides network url in manifest file (if there is one).
     #[clap(long, short)]
     pub url: Option<String>,
+    /// Build target for code generation.
+    //#[clap(long)]
+    //pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     #[clap(long)]

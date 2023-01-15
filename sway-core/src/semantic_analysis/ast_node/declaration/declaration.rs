@@ -32,12 +32,12 @@ impl ty::TyDeclaration {
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert_type(decl_engine, type_ascription),
+                        type_engine.insert(decl_engine, type_ascription),
                         &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                         EnforceTypeArguments::Yes,
                         None
                     ),
-                    type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors
                 );
@@ -57,7 +57,7 @@ impl ty::TyDeclaration {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                let return_type = match type_engine.get(type_ascription) {
                     TypeInfo::UnsignedInteger(_) => type_ascription,
                     _ => body.return_type,
                 };
@@ -84,12 +84,12 @@ impl ty::TyDeclaration {
             }) => {
                 let type_ascription = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert_type(decl_engine, type_ascription),
+                        type_engine.insert(decl_engine, type_ascription),
                         &span,
                         EnforceTypeArguments::No,
                         None
                     ),
-                    type_engine.insert_type(decl_engine, TypeInfo::ErrorRecovery),
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                     warnings,
                     errors,
                 );
@@ -122,7 +122,7 @@ impl ty::TyDeclaration {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.look_up_type_id(type_ascription) {
+                let return_type = match type_engine.get(type_ascription) {
                     TypeInfo::UnsignedInteger(_) => type_ascription,
                     _ => value.return_type,
                 };
@@ -160,8 +160,8 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::FunctionDeclaration(fn_decl) => {
                 let span = fn_decl.span.clone();
-                let mut ctx = ctx
-                    .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+                let mut ctx =
+                    ctx.with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
                 let fn_decl = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
@@ -309,12 +309,13 @@ impl ty::TyDeclaration {
                     initializer,
                     type_info_span,
                     attributes,
+                    span: field_span,
                     ..
                 } in fields
                 {
                     let type_id = check!(
                         ctx.resolve_type_without_self(
-                            type_engine.insert_type(decl_engine, type_info),
+                            type_engine.insert(decl_engine, type_info),
                             &name.span(),
                             None
                         ),
@@ -336,7 +337,7 @@ impl ty::TyDeclaration {
                         type_id,
                         type_span: type_info_span,
                         initializer,
-                        span: span.clone(),
+                        span: field_span,
                         attributes,
                     });
                 }

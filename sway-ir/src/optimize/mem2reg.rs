@@ -33,10 +33,11 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     // types which can fit in 64-bits.
     let mut locals: HashSet<String> = function
         .locals_iter(context)
-        .filter(|(_, var)| match var.get_type(context) {
-            Type::Unit | Type::Bool => true,
-            Type::Uint(n) => *n <= 64,
-            _ => false,
+        .filter(|(_, var)| {
+            let ty = var.get_type(context);
+            ty.is_unit(context)
+                || ty.is_bool(context)
+                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
         })
         .map(|(name, _)| name.clone())
         .collect();
@@ -153,7 +154,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         {
             match get_validate_local_var(context, function, &dst_val) {
                 Some((local, var)) if safe_locals.contains(&local) => {
-                    worklist.push((local, *var.get_type(context), block));
+                    worklist.push((local, var.get_type(context), block));
                 }
                 _ => (),
             }

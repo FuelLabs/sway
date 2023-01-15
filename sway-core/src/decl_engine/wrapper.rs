@@ -6,14 +6,14 @@ use sway_types::{Span, Spanned};
 use crate::{
     engine_threading::*,
     language::ty,
-    type_system::{CopyTypes, TypeMapping},
+    type_system::{SubstTypes, TypeSubstMap},
     ReplaceSelfType, TypeId,
 };
 
 use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
-/// The [DeclarationWrapper] type is used in the [DeclarationEngine]
-/// as a means of placing all declaration types into the same type.
+/// The [DeclEngine] type is used in the [DeclarationEngine] as a means of
+/// placing all declaration types into the same type.
 #[derive(Clone, Debug)]
 pub enum DeclWrapper {
     // no-op variant to fulfill the default trait
@@ -62,19 +62,19 @@ impl fmt::Display for DeclWrapper {
     }
 }
 
-impl CopyTypes for DeclWrapper {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for DeclWrapper {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         match self {
             DeclWrapper::Unknown => {}
-            DeclWrapper::Function(decl) => decl.copy_types(type_mapping, engines),
-            DeclWrapper::Trait(decl) => decl.copy_types(type_mapping, engines),
-            DeclWrapper::TraitFn(decl) => decl.copy_types(type_mapping, engines),
-            DeclWrapper::ImplTrait(decl) => decl.copy_types(type_mapping, engines),
-            DeclWrapper::Struct(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Function(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::Trait(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::TraitFn(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::ImplTrait(decl) => decl.subst(type_mapping, engines),
+            DeclWrapper::Struct(decl) => decl.subst(type_mapping, engines),
             DeclWrapper::Storage(_) => {}
             DeclWrapper::Abi(_) => {}
             DeclWrapper::Constant(_) => {}
-            DeclWrapper::Enum(decl) => decl.copy_types(type_mapping, engines),
+            DeclWrapper::Enum(decl) => decl.subst(type_mapping, engines),
         }
     }
 }
