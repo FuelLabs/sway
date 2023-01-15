@@ -596,32 +596,34 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     .insert_data_value(Entry::from_constant(self.context, constant));
                 self.ptr_map.insert(*ptr, Storage::Data(data_id));
             } else {
-                match ptr.get_type(self.context) {
-                    Type::Unit | Type::Bool | Type::Uint(_) => {
+                let ptr_ty = ptr.get_type(self.context);
+                match ptr_ty.get_content(self.context) {
+                    TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 1;
                     }
-                    Type::Slice => {
+                    TypeContent::Slice => {
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 2;
                     }
-                    Type::B256 => {
+                    TypeContent::B256 => {
                         // XXX Like strings, should we just reserve space for a pointer?
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += 4;
                     }
-                    Type::String(n) => {
+                    TypeContent::String(n) => {
                         // Strings are always constant and used by reference, so we only store the
                         // pointer on the stack.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
                         stack_base += size_bytes_round_up_to_word_alignment!(n)
                     }
-                    ty @ (Type::Array(_) | Type::Struct(_) | Type::Union(_)) => {
+                    TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
                         // Store this aggregate at the current stack base.
                         self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
 
                         // Reserve space by incrementing the base.
-                        stack_base += size_bytes_in_words!(ir_type_size_in_bytes(self.context, ty));
+                        stack_base +=
+                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty));
                     }
                 };
             }
