@@ -40,3 +40,7 @@ category = "fail"
 # check: $()error
 # check: $()fn insert(mapping: StorageMap<u64, u64>) {
 # nextln: $()Type StorageMap<u64, u64> can only be declared directly as a storage field
+
+# check: $()error
+# check: $()bad_type: StorageVec<Vec<bool>> = StorageVec {},
+# nextln: $()The type "StorageVec<Vec<bool>>" is not allowed in storage.

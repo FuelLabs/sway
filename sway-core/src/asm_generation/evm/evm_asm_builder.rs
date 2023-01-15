@@ -480,7 +480,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         index_val: &Value,
     ) {
         todo!();
@@ -506,7 +506,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         value: &Value,
         index_val: &Value,
     ) {

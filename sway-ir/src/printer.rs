@@ -13,7 +13,6 @@ use crate::{
     context::Context,
     function::{Function, FunctionContent},
     instruction::{FuelVmInstruction, Instruction, Predicate, Register},
-    irtype::Type,
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
@@ -495,7 +494,7 @@ fn instruction_to_doc<'a>(
                     "{} = extract_element {}, {}, {}",
                     namer.name(context, ins_value),
                     namer.name(context, array),
-                    Type::Array(*ty).as_string(context),
+                    ty.as_string(context),
                     namer.name(context, index_val),
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -509,7 +508,7 @@ fn instruction_to_doc<'a>(
                     "{} = extract_value {}, {}, ",
                     namer.name(context, ins_value),
                     namer.name(context, aggregate),
-                    Type::Struct(*ty).as_string(context),
+                    ty.as_string(context),
                 ))
                 .append(Doc::list_sep(
                     indices
@@ -687,7 +686,7 @@ fn instruction_to_doc<'a>(
                         "{} = insert_element {}, {}, {}, {}",
                         namer.name(context, ins_value),
                         namer.name(context, array),
-                        Type::Array(*ty).as_string(context),
+                        ty.as_string(context),
                         namer.name(context, value),
                         namer.name(context, index_val),
                     ))
@@ -705,7 +704,7 @@ fn instruction_to_doc<'a>(
                         "{} = insert_value {}, {}, {}, ",
                         namer.name(context, ins_value),
                         namer.name(context, aggregate),
-                        Type::Struct(*ty).as_string(context),
+                        ty.as_string(context),
                         namer.name(context, value),
                     ))
                     .append(Doc::list_sep(

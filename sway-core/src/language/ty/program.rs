@@ -155,7 +155,37 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
+            parsed::TreeType::Contract => {
+                // Types containing raw_ptr are not allowed in storage (e.g Vec)
+                for decl in declarations.iter() {
+                    if let TyDeclaration::StorageDeclaration(decl_id) = decl {
+                        if let Ok(storage_decl) =
+                            decl_engine.get_storage(decl_id.clone(), &decl_id.span())
+                        {
+                            for field in storage_decl.fields.iter() {
+                                let type_info = ty_engine.get(field.type_id);
+                                let type_info_str = engines.help_out(&type_info).to_string();
+                                let raw_ptr_type = type_info
+                                    .extract_nested_types(ty_engine, &field.span)
+                                    .value
+                                    .and_then(|value| {
+                                        value
+                                            .into_iter()
+                                            .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                                    });
+                                if raw_ptr_type.is_some() {
+                                    errors.push(CompileError::TypeNotAllowedInContractStorage {
+                                        ty: type_info_str,
+                                        span: field.span.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TyProgramKind::Contract { abi_entries }
+            }
             parsed::TreeType::Library { name } => TyProgramKind::Library { name },
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.

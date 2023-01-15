@@ -196,40 +196,26 @@ pub enum StateAccessType {
 }
 
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    match ty {
-        Type::Unit | Type::Bool | Type::Uint(_) => 8,
-        Type::Slice => 16,
-        Type::B256 => 32,
-        Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
-        Type::Array(aggregate) => {
-            if let AggregateContent::ArrayType(el_ty, cnt) = aggregate.get_content(context) {
-                cnt * ir_type_size_in_bytes(context, el_ty)
-            } else {
-                unreachable!("Wrong content for array.")
-            }
+    match ty.get_content(context) {
+        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => 8,
+        TypeContent::Slice => 16,
+        TypeContent::B256 => 32,
+        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(*n),
+        TypeContent::Array(el_ty, cnt) => cnt * ir_type_size_in_bytes(context, el_ty),
+        TypeContent::Struct(field_tys) => {
+            // Sum up all the field sizes.
+            field_tys
+                .iter()
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .sum()
         }
-        Type::Struct(aggregate) => {
-            if let AggregateContent::FieldTypes(field_tys) = aggregate.get_content(context) {
-                // Sum up all the field sizes.
-                field_tys
-                    .iter()
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .sum()
-            } else {
-                unreachable!("Wrong content for struct.")
-            }
-        }
-        Type::Union(aggregate) => {
-            if let AggregateContent::FieldTypes(field_tys) = aggregate.get_content(context) {
-                // Find the max size for field sizes.
-                field_tys
-                    .iter()
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .max()
-                    .unwrap_or(0)
-            } else {
-                unreachable!("Wrong content for union.")
-            }
+        TypeContent::Union(field_tys) => {
+            // Find the max size for field sizes.
+            field_tys
+                .iter()
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .max()
+                .unwrap_or(0)
         }
     }
 }
@@ -240,44 +226,40 @@ pub(crate) fn aggregate_idcs_to_field_layout(
     ty: &Type,
     idcs: &[u64],
 ) -> ((u64, u64), Type) {
-    idcs.iter()
-        .fold(((0, 0), *ty), |((offs, _), ty), idx| match ty {
-            Type::Struct(aggregate) => {
-                let idx = *idx as usize;
-                let field_types = &aggregate.get_content(context).field_types();
-                let field_type = field_types[idx];
-                let field_offs_in_bytes = field_types
-                    .iter()
-                    .take(idx)
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .sum::<u64>();
-                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+    idcs.iter().fold(((0, 0), *ty), |((offs, _), ty), idx| {
+        if ty.is_struct(context) {
+            let idx = *idx as usize;
+            let field_types = ty.get_field_types(context);
+            let field_type = field_types[idx];
+            let field_offs_in_bytes = field_types
+                .iter()
+                .take(idx)
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .sum::<u64>();
+            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
 
+            (
                 (
-                    (
-                        offs + size_bytes_in_words!(field_offs_in_bytes),
-                        field_size_in_bytes,
-                    ),
-                    field_type,
-                )
-            }
-
-            Type::Union(aggregate) => {
-                let idx = *idx as usize;
-                let field_type = aggregate.get_content(context).field_types()[idx];
-                let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
-                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
-
-                // The union fields are at offset (union_size - variant_size) due to left padding.
+                    offs + size_bytes_in_words!(field_offs_in_bytes),
+                    field_size_in_bytes,
+                ),
+                field_type,
+            )
+        } else if ty.is_union(context) {
+            let idx = *idx as usize;
+            let field_type = ty.get_field_types(context)[idx];
+            let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
+            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+            // The union fields are at offset (union_size - variant_size) due to left padding.
+            (
                 (
-                    (
-                        offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
-                        field_size_in_bytes,
-                    ),
-                    field_type,
-                )
-            }
-
-            _otherwise => panic!("Attempt to access field in non-aggregate."),
-        })
+                    offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
+                    field_size_in_bytes,
+                ),
+                field_type,
+            )
+        } else {
+            panic!("Attempt to access field in non-aggregate.")
+        }
+    })
 }
