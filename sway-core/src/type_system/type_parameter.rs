@@ -10,6 +10,8 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
+use fuel_abi_types::program_abi;
+
 use std::{
     collections::BTreeMap,
     fmt,
@@ -157,13 +159,13 @@ impl TypeParameter {
     }
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `fuels_types::TypeDeclaration`.
+    /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
     pub(crate) fn get_json_type_parameter(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
+        types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> usize {
-        let type_parameter = fuels_types::TypeDeclaration {
+        let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
             type_field: self
                 .initial_type_id

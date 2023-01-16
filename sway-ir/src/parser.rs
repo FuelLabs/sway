@@ -34,9 +34,10 @@ mod ir_builder {
                 }
 
             rule script_or_predicate() -> IrAstModule
-                = kind:module_kind() "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+                = kind:module_kind() "{" _ configs:init_config()* _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
                         kind,
+                        configs,
                         fn_decls,
                         metadata
                     }
@@ -47,11 +48,23 @@ mod ir_builder {
                 / "predicate" _ { Kind::Predicate }
 
             rule contract() -> IrAstModule
-                = "contract" _ "{" _ fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
+                = "contract" _ "{" _ configs:init_config()* fn_decls:fn_decl()* "}" _ metadata:metadata_decls() {
                     IrAstModule {
                         kind: crate::module::Kind::Contract,
+                        configs,
                         fn_decls,
                         metadata
+                    }
+                }
+
+            rule init_config() -> IrAstConfig
+                = value_name:value_assign() "config" _ val_ty:ast_ty() cv:constant()
+                metadata:comma_metadata_idx()? {
+                    IrAstConfig {
+                        value_name,
+                        ty: val_ty,
+                        const_val: cv,
+                        metadata,
                     }
                 }
 
@@ -610,6 +623,7 @@ mod ir_builder {
     #[derive(Debug)]
     pub(super) struct IrAstModule {
         kind: Kind,
+        configs: Vec<IrAstConfig>,
         fn_decls: Vec<IrAstFnDecl>,
         metadata: Vec<(MdIdxRef, IrMetadatum)>,
     }
@@ -681,6 +695,14 @@ mod ir_builder {
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
+    }
+
+    #[derive(Debug)]
+    struct IrAstConfig {
+        value_name: String,
+        ty: IrAstTy,
+        const_val: IrAstConst,
+        metadata: Option<MdIdxRef>,
     }
 
     #[derive(Debug)]
@@ -824,9 +846,12 @@ mod ir_builder {
 
     pub(super) fn build_context(ir_ast_mod: IrAstModule) -> Result<Context, IrError> {
         let mut ctx = Context::default();
+        let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
+        let mut module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
-            module: Module::new(&mut ctx, ir_ast_mod.kind),
-            md_map: build_metadata_map(&mut ctx, ir_ast_mod.metadata),
+            module,
+            configs_map: build_configs_map(&mut ctx, &mut module, ir_ast_mod.configs, &md_map),
+            md_map,
             unresolved_calls: Vec::new(),
         };
 
@@ -840,6 +865,7 @@ mod ir_builder {
 
     struct IrBuilder {
         module: Module,
+        configs_map: HashMap<String, Value>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -883,8 +909,9 @@ mod ir_builder {
                 convert_md_idx(&fn_decl.metadata),
             );
 
-            // Gather all the (new) arg values by name into a map.
-            let mut arg_map = HashMap::<String, Value>::new();
+            // Gather all the (new) arg values by name into a map. Initialize this map with all
+            // config variables as they are globally available
+            let mut arg_map = self.configs_map.clone();
             let mut local_map = HashMap::<String, LocalVar>::new();
             for (ty, name, initializer) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
@@ -1312,6 +1339,31 @@ mod ir_builder {
             }
             Ok(())
         }
+    }
+
+    fn build_configs_map(
+        context: &mut Context,
+        module: &mut Module,
+        ir_configs: Vec<IrAstConfig>,
+        md_map: &HashMap<MdIdxRef, MetadataIndex>,
+    ) -> HashMap<String, Value> {
+        ir_configs
+            .iter()
+            .map(|config| {
+                let opt_metadata = config
+                    .metadata
+                    .map(|mdi| md_map.get(&mdi).unwrap())
+                    .copied();
+                let as_const = config
+                    .const_val
+                    .value
+                    .as_constant(context, config.ty.clone());
+                let config_val =
+                    Value::new_configurable(context, as_const).add_metadatum(context, opt_metadata);
+                module.add_global_configurable(context, config.value_name.clone(), config_val);
+                (config.value_name.clone(), config_val)
+            })
+            .collect()
     }
 
     /// Create the metadata for the module in `context` and generate a map from the parsed
