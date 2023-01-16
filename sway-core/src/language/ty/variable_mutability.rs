@@ -2,15 +2,12 @@ use crate::language::Visibility;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum VariableMutability {
-    // private + mutable
+    // mutable
     Mutable,
-    // private + referenceable + mutable
+    // referenceable + mutable
     RefMutable,
-    // private + immutable
+    // immutable
     Immutable,
-    // public + immutable
-    ExportedConst,
-    // public + mutable is invalid
 }
 
 impl Default for VariableMutability {
@@ -38,10 +35,7 @@ impl VariableMutability {
     }
 
     pub fn visibility(&self) -> Visibility {
-        match self {
-            VariableMutability::ExportedConst => Visibility::Public,
-            _ => Visibility::Private,
-        }
+        Visibility::Private
     }
 
     pub fn is_immutable(&self) -> bool {
