@@ -5,9 +5,19 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// The top-level `forc tx` command.
+#[derive(Debug, Parser, Deserialize, Serialize)]
+#[clap(about, version)]
+pub struct Command {
+    #[clap(long, short = 'o')]
+    pub output_path: Option<PathBuf>,
+    #[clap(subcommand)]
+    pub tx: Transaction,
+}
+
 /// Construct a transaction.
 #[derive(Debug, Parser, Deserialize, Serialize)]
-#[clap(version, about)]
+#[clap(name = "transaction")]
 pub enum Transaction {
     Create(Create),
     Script(Script),
@@ -295,7 +305,7 @@ pub struct OutputContractCreated {
     pub state_root: fuel_tx::Bytes32,
 }
 
-impl Transaction {
+impl Command {
     /// Parse a full `Transaction` including trailing inputs and outputs.
     pub fn try_parse() -> anyhow::Result<Self> {
         Self::try_parse_from_args(std::env::args())
@@ -335,7 +345,7 @@ impl Transaction {
         // Collect args until the first `input` or `output` is reached.
         let mut cmd = {
             let cmd_args = std::iter::from_fn(|| args.next_if(|s| !is_input_or_output(s)));
-            Transaction::parse_from(cmd_args)
+            Command::try_parse_from(cmd_args)?
         };
 
         // The remaining args (if any) are the inputs and outputs.
@@ -347,12 +357,12 @@ impl Transaction {
                 INPUT => {
                     let input =
                         Input::try_parse_from(args_til_next).context("failed to parse input")?;
-                    push_input(&mut cmd, input)?
+                    push_input(&mut cmd.tx, input)?
                 }
                 OUTPUT => {
                     let output =
                         Output::try_parse_from(args_til_next).context("failed to parse output")?;
-                    push_output(&mut cmd, output)
+                    push_output(&mut cmd.tx, output)
                 }
                 arg => bail!("unexpected argument {arg}, expected 'input' or 'output'"),
             }
@@ -604,7 +614,7 @@ fn test_parse_create() {
             --witness ADFD
             --witness DFDA
     "#;
-    dbg!(Transaction::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
+    dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
 
 #[test]
@@ -623,7 +633,7 @@ fn test_parse_script() {
             --witness DFDA
     "#
     );
-    dbg!(Transaction::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
+    dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
 
 #[test]
@@ -637,7 +647,7 @@ fn test_parse_mint_coin() {
     "#,
         tx_ptr
     );
-    dbg!(Transaction::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
+    dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
 
 #[test]
@@ -714,5 +724,5 @@ fn test_parse_create_inputs_outputs() {
     "#,
         tx_ptr, tx_ptr
     );
-    dbg!(Transaction::try_parse_from_args(args.split_whitespace().map(|s| s.to_string())).unwrap());
+    dbg!(Command::try_parse_from_args(args.split_whitespace().map(|s| s.to_string())).unwrap());
 }
