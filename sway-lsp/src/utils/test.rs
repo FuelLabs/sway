@@ -43,6 +43,10 @@ pub(crate) fn get_fixture(path: PathBuf) -> Value {
     serde_json::from_str::<Value>(&text).expect("Failed to parse JSON")
 }
 
+pub(crate) fn sway_example_dir() -> PathBuf {
+    sway_workspace_dir().join("examples/storage_variables")
+}
+
 pub(crate) async fn assert_server_requests(
     socket: ClientSocket,
     expected_requests: Vec<Value>,
