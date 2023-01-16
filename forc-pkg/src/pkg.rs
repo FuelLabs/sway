@@ -331,7 +331,7 @@ pub struct BuildOpts {
     pub time_phases: bool,
     /// Include all test functions within the build.
     pub tests: bool,
-    /// Inject map is used to insert constants to the specified packages.
+    /// List of constants to inject for each package.
     pub inject_map: ConstInjectionMap,
 }
 
