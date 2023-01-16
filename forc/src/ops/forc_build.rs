@@ -9,6 +9,7 @@ pub fn build(cmd: BuildCommand) -> Result<pkg::Built> {
 }
 
 fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
+    let inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.path,
@@ -34,5 +35,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         binary_outfile: cmd.build.binary_outfile,
         debug_outfile: cmd.build.debug_outfile,
         tests: cmd.tests,
+        inject_map
     }
 }

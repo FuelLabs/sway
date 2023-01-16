@@ -175,6 +175,7 @@ fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) ->
 }
 
 fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
+    let inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.path.clone(),
@@ -200,5 +201,6 @@ fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
         binary_outfile: cmd.binary_outfile.clone(),
         debug_outfile: cmd.debug_outfile.clone(),
         tests: false,
+        inject_map
     }
 }

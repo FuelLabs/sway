@@ -260,6 +260,7 @@ impl Distribution<TxMetadata> for Standard {
 impl Opts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
+        let inject_map = std::collections::HashMap::new();
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
@@ -270,6 +271,7 @@ impl Opts {
             release: self.release,
             time_phases: self.time_phases,
             tests: true,
+            inject_map
         }
     }
 

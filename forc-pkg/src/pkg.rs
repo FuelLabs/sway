@@ -303,6 +303,9 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
+type ConstName = String;
+type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
 pub struct BuildOpts {
@@ -324,6 +327,8 @@ pub struct BuildOpts {
     pub time_phases: bool,
     /// Include all test functions within the build.
     pub tests: bool,
+    /// Inject map is used to insert constants to the specified packages.
+    pub inject_map: ConstInjectionMap
 }
 
 impl GitSourceIndex {
@@ -632,6 +637,15 @@ impl BuildPlan {
             .iter()
             .cloned()
             .filter(|&n| self.graph[n].source == SourcePinned::Member)
+    }
+
+    /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
+    ///
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's pinned pkg will be yielded.
+    pub fn member_pinned_pkgs(&self) -> impl Iterator<Item = Pinned> + '_ {
+        let graph = self.graph();
+        self.member_nodes().map(|node| &graph[node]).cloned()
     }
 
     /// View the build plan's compilation graph.
@@ -2518,17 +2532,16 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
-/// Builds a project with given BuildOptions while injecting provided items to the namepsace of
-/// relevant package's namespace.
-pub fn inject_and_build_with_options(
+/// Builds a project with given BuildOptions.
+pub fn build_with_options(
     build_options: BuildOpts,
-    inject_map: HashMap<NodeIx, Vec<(String, ConfigTimeConstant)>>,
 ) -> Result<Built> {
     let BuildOpts {
         minify,
         binary_outfile,
         debug_outfile,
         pkg,
+        inject_map,
         ..
     } = &build_options;
 
@@ -2565,7 +2578,7 @@ pub fn inject_and_build_with_options(
 
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, &build_profile, &outputs, &inject_map)?;
+    let built_packages = build(&build_plan, &build_profile, &outputs, inject_map)?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2597,12 +2610,6 @@ pub fn inject_and_build_with_options(
     }
 }
 
-/// Builds a project with given BuildOptions.
-pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
-    // By default do not inject any item to any namespace.
-    let inject_map = HashMap::new();
-    inject_and_build_with_options(build_options, inject_map)
-}
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
 fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
@@ -2648,7 +2655,7 @@ pub fn build(
     plan: &BuildPlan,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    inject_map: &HashMap<NodeIx, Vec<(String, ConfigTimeConstant)>>,
+    inject_map: &ConstInjectionMap
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2671,7 +2678,7 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = if let Some(injected_ctc) = inject_map.get(&node) {
+        let constants = if let Some(injected_ctc) = inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(
                 injected_ctc
