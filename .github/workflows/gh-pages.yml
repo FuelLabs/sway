@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        doc-type: ['book', 'reference', 'forc']
+        doc_type: ['book', 'reference', 'forc']
     steps:
       - uses: actions/checkout@v2
 
