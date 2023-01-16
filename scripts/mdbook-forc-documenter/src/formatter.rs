@@ -39,8 +39,8 @@ pub fn is_arg(token: &str) -> bool {
     token.starts_with('<')
 }
 
-pub fn format_header_line(header_line: &str) -> String {
-    "\n# ".to_owned() + header_line.split_whitespace().next().unwrap() + "\n"
+pub fn format_header_line(command: &str) -> String {
+    "\n# forc-".to_owned() + command + "\n"
 }
 
 pub fn format_line(line: &str, has_parsed_subcommand_header: bool) -> String {

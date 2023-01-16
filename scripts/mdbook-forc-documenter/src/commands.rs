@@ -67,7 +67,7 @@ fn generate_documentation(subcommand: &str) -> Result<String> {
         }
 
         if index == 0 {
-            formatted_line.push_str(&format_header_line(line));
+            formatted_line.push_str(&format_header_line(subcommand));
         } else if index == 1 {
             formatted_line.push_str(line);
         } else {
@@ -104,5 +104,4 @@ mod tests {
             "forc explore",
             get_forc_command_from_file_name(OsString::from("forc_explore.md")),
         );
-    }
 }
