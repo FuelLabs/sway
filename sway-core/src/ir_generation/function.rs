@@ -1598,6 +1598,8 @@ impl<'eng> FnCompiler<'eng> {
             }
         } else if let Some(const_val) = self.module.get_global_constant(context, name) {
             Ok(const_val)
+        } else if let Some(config_val) = self.module.get_global_configurable(context, name) {
+            Ok(config_val)
         } else {
             Err(CompileError::InternalOwned(
                 format!("Unable to resolve variable '{name}'."),
@@ -1671,7 +1673,13 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<(), CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
-        let ty::TyConstantDeclaration { name, value, .. } = ast_const_decl;
+        // `is_configurable` should be `false` here.
+        let ty::TyConstantDeclaration {
+            name,
+            value,
+            is_configurable,
+            ..
+        } = ast_const_decl;
         let const_expr_val = compile_constant_expression(
             Engines::new(self.type_engine, self.decl_engine),
             context,
@@ -1679,7 +1687,9 @@ impl<'eng> FnCompiler<'eng> {
             self.module,
             None,
             Some(self),
+            &name,
             &value,
+            is_configurable,
         )?;
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
         let return_type =
@@ -1958,6 +1968,11 @@ impl<'eng> FnCompiler<'eng> {
             .filter(|c| c.ty.is_array(context))
         {
             Ok(*agg)
+        } else if let Some(Constant { ty: agg, .. }) = array_val
+            .get_configurable(context)
+            .filter(|c| c.ty.is_array(context))
+        {
+            Ok(*agg)
         } else {
             Err(CompileError::InternalOwned(
                 "Unsupported array value for index expression.".to_owned(),
@@ -2076,6 +2091,11 @@ impl<'eng> FnCompiler<'eng> {
             Ok(agg)
         } else if let Some(Constant { ty: agg, .. }) = struct_val
             .get_constant(context)
+            .filter(|c| c.ty.is_struct(context))
+        {
+            Ok(*agg)
+        } else if let Some(Constant { ty: agg, .. }) = struct_val
+            .get_configurable(context)
             .filter(|c| c.ty.is_struct(context))
         {
             Ok(*agg)
