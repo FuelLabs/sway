@@ -4,7 +4,7 @@ use sway_core::{
         parsed::{
             Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
             ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            TraitFn,
+            TraitFn, UseStatement,
         },
         ty,
     },
@@ -35,6 +35,7 @@ pub enum AstToken {
     Keyword(Ident),
     Intrinsic(Intrinsic),
     Attribute(Attribute),
+    UseStatement(UseStatement),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].

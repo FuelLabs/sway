@@ -18,10 +18,10 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-            TraitFn, TupleIndexExpression, WhileLoopExpression,
+            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
+            MatchExpression, MethodApplicationExpression, MethodName, ReassignmentTarget,
+            Scrutinee, StorageAccessExpression, StructExpression, StructScrutineeField,
+            SubfieldExpression, TraitFn, TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
         Literal,
     },
@@ -52,10 +52,46 @@ impl<'a> ParsedTree<'a> {
             | AstNodeContent::ImplicitReturnExpression(expression) => {
                 self.handle_expression(expression)
             }
+            AstNodeContent::UseStatement(use_statement) => self.handle_use_statement(use_statement),
             // TODO
             // handle other content types
             _ => {}
         };
+    }
+
+    fn handle_use_statement(&self, use_statement: &UseStatement) {
+        for ident in &use_statement.call_path {
+            self.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Module,
+                ),
+            );
+        }
+
+        match &use_statement.import_type {
+            ImportType::Star | ImportType::SelfImport => {}
+            ImportType::Item(ident) => {
+                self.tokens.insert(
+                    to_ident_key(ident),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+        }
+
+        if let Some(ident) = &use_statement.alias {
+            self.tokens.insert(
+                to_ident_key(ident),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Unknown,
+                ),
+            );
+        }
     }
 
     fn handle_function_declation(&self, func: &FunctionDeclaration) {
