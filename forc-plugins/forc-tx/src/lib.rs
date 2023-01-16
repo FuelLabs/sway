@@ -103,6 +103,7 @@ pub struct Gas {
 
 /// Transaction input.
 #[derive(Debug, Parser, Deserialize, Serialize)]
+#[clap(name = "input")]
 pub enum Input {
     Coin(InputCoin),
     Contract(InputContract),
@@ -212,6 +213,7 @@ pub struct TxPointer {
 
 /// Transaction output.
 #[derive(Debug, Parser, Deserialize, Serialize)]
+#[clap(name = "output")]
 pub enum Output {
     Coin(OutputCoin),
     Contract(OutputContract),
