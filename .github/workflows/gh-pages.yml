@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - bing/forc-reference
     tags:
       - v*
 
