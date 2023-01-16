@@ -801,7 +801,11 @@ impl TraitMap {
     }
 }
 
-pub fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: TypeId) -> bool {
+pub(crate) fn are_equal_minus_dynamic_types(
+    engines: Engines<'_>,
+    left: TypeId,
+    right: TypeId,
+) -> bool {
     if left.index() == right.index() {
         return true;
     }

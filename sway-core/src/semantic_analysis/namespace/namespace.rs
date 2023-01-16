@@ -240,7 +240,7 @@ impl Namespace {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut matching_method_decl_ids2: Vec<DeclId> = vec![];
+                let mut maybe_method_decl_id: Option<DeclId> = Option::None;
                 for decl_id in matching_method_decl_ids.clone().into_iter() {
                     let method = check!(
                         CompileResult::from(
@@ -255,16 +255,17 @@ impl Namespace {
                             !are_equal_minus_dynamic_types(engines, p.type_id, a.return_type)
                         })
                     {
-                        matching_method_decl_ids2.push(decl_id);
+                        maybe_method_decl_id = Some(decl_id);
+                        break;
                     }
                 }
-                if matching_method_decl_ids2.is_empty() {
+                if let Some(matching_method_decl_id) = maybe_method_decl_id {
+                    // In case one or more methods match the parameter types we return the first match.
+                    Some(matching_method_decl_id)
+                } else {
                     // When we can't match any method with parameter types we still return the first method found
                     // This was the behavior before introducing the parameter type matching
                     Some(matching_method_decl_ids[0].clone())
-                } else {
-                    // In case one or more methods match the parameter types we return the first match.
-                    Some(matching_method_decl_ids2[0].clone())
                 }
             }
             Ordering::Less => None,
