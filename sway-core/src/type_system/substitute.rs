@@ -3,20 +3,30 @@ use std::{collections::BTreeMap, fmt};
 use super::*;
 use crate::engine_threading::*;
 
+pub(crate) trait SubstTypes {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
+
+    fn subst(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        if !type_mapping.is_empty() {
+            self.subst_inner(type_mapping, engines);
+        }
+    }
+}
+
 type SourceType = TypeId;
 type DestinationType = TypeId;
 
-/// The [TypeMapping] is used to create a mapping between a [SourceType] (LHS)
+/// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
-pub(crate) struct TypeMapping {
+pub(crate) struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
 
-impl DisplayWithEngines for TypeMapping {
+impl DisplayWithEngines for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(
             f,
-            "TypeMapping {{ {} }}",
+            "TypeSubstMap {{ {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
@@ -32,11 +42,11 @@ impl DisplayWithEngines for TypeMapping {
     }
 }
 
-impl fmt::Debug for TypeMapping {
+impl fmt::Debug for TypeSubstMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "TypeMapping {{ {} }}",
+            "TypeSubstMap {{ {} }}",
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
@@ -46,20 +56,20 @@ impl fmt::Debug for TypeMapping {
     }
 }
 
-impl TypeMapping {
-    /// Returns `true` if the [TypeMapping] is empty.
+impl TypeSubstMap {
+    /// Returns `true` if the [TypeSubstMap] is empty.
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
     }
 
-    /// Constructs a new [TypeMapping] from a list of [TypeParameter]s
-    /// `type_parameters`. The [SourceType]s of the resulting [TypeMapping] are
+    /// Constructs a new [TypeSubstMap] from a list of [TypeParameter]s
+    /// `type_parameters`. The [SourceType]s of the resulting [TypeSubstMap] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
     /// new [TypeId]s created from a transformation upon `type_parameters`.
     pub(crate) fn from_type_parameters(
         engines: Engines<'_>,
         type_parameters: &[TypeParameter],
-    ) -> TypeMapping {
+    ) -> TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let mapping = type_parameters
@@ -67,17 +77,17 @@ impl TypeMapping {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert_type(decl_engine, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(decl_engine, TypeInfo::Placeholder(x.clone())),
                 )
             })
             .collect();
-        TypeMapping { mapping }
+        TypeSubstMap { mapping }
     }
 
-    /// Constructs a new [TypeMapping] from a superset [TypeId] and a subset
-    /// [TypeId]. The [SourceType]s of the resulting [TypeMapping] are the
+    /// Constructs a new [TypeSubstMap] from a superset [TypeId] and a subset
+    /// [TypeId]. The [SourceType]s of the resulting [TypeSubstMap] are the
     /// [TypeId]s from `superset` and the [DestinationType]s are the [TypeId]s
-    /// from `subset`. Thus, the resulting [TypeMapping] maps the type
+    /// from `subset`. Thus, the resulting [TypeSubstMap] maps the type
     /// parameters of the superset [TypeId] to the type parameters of the subset
     /// [TypeId], and is used in monomorphization.
     ///
@@ -105,10 +115,10 @@ impl TypeMapping {
     /// }
     /// ```
     ///
-    /// So then the resulting [TypeMapping] would look like:
+    /// So then the resulting [TypeSubstMap] would look like:
     ///
     /// ```ignore
-    /// TypeMapping {
+    /// TypeSubstMap {
     ///     mapping: [
     ///         (L, u64),
     ///         (R, bool)
@@ -116,21 +126,18 @@ impl TypeMapping {
     /// }
     /// ````
     ///
-    /// So, as we can see, the resulting [TypeMapping] is a mapping from the
+    /// So, as we can see, the resulting [TypeSubstMap] is a mapping from the
     /// type parameters of the `superset` to the type parameters of the
-    /// `subset`. This [TypeMapping] can be used to complete monomorphization on
+    /// `subset`. This [TypeSubstMap] can be used to complete monomorphization on
     /// methods, etc, that are implemented for the type of `superset` so that
     /// they can be used for `subset`.
     pub(crate) fn from_superset_and_subset(
         type_engine: &TypeEngine,
         superset: TypeId,
         subset: TypeId,
-    ) -> TypeMapping {
-        match (
-            type_engine.look_up_type_id(superset),
-            type_engine.look_up_type_id(subset),
-        ) {
-            (TypeInfo::UnknownGeneric { .. }, _) => TypeMapping {
+    ) -> TypeSubstMap {
+        match (type_engine.get(superset), type_engine.get(subset)) {
+            (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
             },
             (
@@ -150,7 +157,7 @@ impl TypeMapping {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
                     type_arguments,
@@ -170,7 +177,7 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
                     type_arguments,
@@ -190,14 +197,14 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
                     type_arguments,
                 )
             }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters
                         .iter()
@@ -207,7 +214,7 @@ impl TypeMapping {
                 )
             }
             (TypeInfo::Array(type_parameter, _), TypeInfo::Array(type_argument, _)) => {
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     vec![type_parameter.type_id],
                     vec![type_argument.type_id],
@@ -226,7 +233,7 @@ impl TypeMapping {
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeMapping::from_superset_and_subset_helper(
+                TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
                     type_arguments,
@@ -241,30 +248,30 @@ impl TypeMapping {
             | (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery)
             | (TypeInfo::Str(_), TypeInfo::Str(_))
             | (TypeInfo::UnsignedInteger(_), TypeInfo::UnsignedInteger(_))
-            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeMapping {
+            | (TypeInfo::ContractCaller { .. }, TypeInfo::ContractCaller { .. }) => TypeSubstMap {
                 mapping: BTreeMap::new(),
             },
-            _ => TypeMapping {
+            _ => TypeSubstMap {
                 mapping: BTreeMap::new(),
             },
         }
     }
 
-    /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
-    /// and a list of [TypeId]s `type_arguments`, the generated [TypeMapping]
+    /// Constructs a [TypeSubstMap] from a list of [TypeId]s `type_parameters`
+    /// and a list of [TypeId]s `type_arguments`, the generated [TypeSubstMap]
     /// is extended with the result from calling `from_superset_and_subset`
-    /// with each [SourceType]s and [DestinationType]s in the original [TypeMapping].
+    /// with each [SourceType]s and [DestinationType]s in the original [TypeSubstMap].
     fn from_superset_and_subset_helper(
         type_engine: &TypeEngine,
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
-    ) -> TypeMapping {
+    ) -> TypeSubstMap {
         let mut type_mapping =
-            TypeMapping::from_type_parameters_and_type_arguments(type_parameters, type_arguments);
+            TypeSubstMap::from_type_parameters_and_type_arguments(type_parameters, type_arguments);
 
         for (s, d) in type_mapping.mapping.clone().iter() {
             type_mapping.mapping.extend(
-                TypeMapping::from_superset_and_subset(type_engine, *s, *d)
+                TypeSubstMap::from_superset_and_subset(type_engine, *s, *d)
                     .mapping
                     .iter(),
             );
@@ -272,27 +279,27 @@ impl TypeMapping {
         type_mapping
     }
 
-    /// Constructs a [TypeMapping] from a list of [TypeId]s `type_parameters`
+    /// Constructs a [TypeSubstMap] from a list of [TypeId]s `type_parameters`
     /// and a list of [TypeId]s `type_arguments`. The [SourceType]s of the
-    /// resulting [TypeMapping] are the [TypeId]s from `type_parameters` and the
+    /// resulting [TypeSubstMap] are the [TypeId]s from `type_parameters` and the
     /// [DestinationType]s are the [TypeId]s from `type_arguments`.
     pub(crate) fn from_type_parameters_and_type_arguments(
         type_parameters: Vec<SourceType>,
         type_arguments: Vec<DestinationType>,
-    ) -> TypeMapping {
+    ) -> TypeSubstMap {
         let mapping = type_parameters
             .into_iter()
             .zip(type_arguments.into_iter())
             .collect();
-        TypeMapping { mapping }
+        TypeSubstMap { mapping }
     }
 
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
-    /// this [TypeMapping] and return it, if there is a match. Importantly, this
+    /// this [TypeSubstMap] and return it, if there is a match. Importantly, this
     /// function is recursive, so any `type_id` it's given will undergo
     /// recursive calls this function. For instance, in the case of
     /// [TypeInfo::Struct], both `fields` and `type_parameters` will recursively
-    /// call `find_match` (via calling [CopyTypes]).
+    /// call `find_match` (via calling [SubstTypes]).
     ///
     /// A match can be found in two different circumstances:
     /// - `type_id` is a [TypeInfo::Custom] or [TypeInfo::UnknownGeneric]
@@ -307,7 +314,7 @@ impl TypeMapping {
     pub(crate) fn find_match(&self, type_id: TypeId, engines: Engines<'_>) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        let type_info = type_engine.look_up_type_id(type_id);
+        let type_info = type_engine.get(type_id);
         match type_info {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
@@ -339,7 +346,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(
+                    Some(type_engine.insert(
                         decl_engine,
                         TypeInfo::Struct {
                             fields,
@@ -378,7 +385,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(
+                    Some(type_engine.insert(
                         decl_engine,
                         TypeInfo::Enum {
                             variant_types,
@@ -393,7 +400,7 @@ impl TypeMapping {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert_type(decl_engine, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
                 })
             }
             TypeInfo::Tuple(fields) => {
@@ -409,7 +416,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(decl_engine, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
                 } else {
                     None
                 }
@@ -427,7 +434,7 @@ impl TypeMapping {
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert_type(decl_engine, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
                 } else {
                     None
                 }
@@ -450,15 +457,12 @@ impl TypeMapping {
 
 fn iter_for_match(
     engines: Engines<'_>,
-    type_mapping: &TypeMapping,
+    type_mapping: &TypeSubstMap,
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
     let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine
-            .look_up_type_id(*source_type)
-            .eq(type_info, engines)
-        {
+        if type_engine.get(*source_type).eq(type_info, engines) {
             return Some(*dest_type);
         }
     }

@@ -57,9 +57,7 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(
-                            type_engine.insert_type(decl_engine, TypeInfo::Unknown),
-                        )
+                        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
@@ -159,7 +157,7 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+    let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
         TypeInfo::Struct { fields, .. } => fields,
         _ => vec![],
     };

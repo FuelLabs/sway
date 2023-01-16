@@ -46,14 +46,14 @@ impl DeclMapping {
         self.mapping.is_empty()
     }
 
-    pub(crate) fn from_original_and_new_decl_ids(
-        original_decl_ids: BTreeMap<Ident, DeclId>,
-        new_decl_ids: BTreeMap<Ident, DeclId>,
+    pub(crate) fn from_stub_and_impld_decl_ids(
+        stub_decl_ids: BTreeMap<Ident, DeclId>,
+        impld_decl_ids: BTreeMap<Ident, DeclId>,
     ) -> DeclMapping {
         let mut mapping = vec![];
-        for (original_decl_name, original_decl_id) in original_decl_ids.into_iter() {
-            if let Some(new_decl_id) = new_decl_ids.get(&original_decl_name) {
-                mapping.push((original_decl_id, new_decl_id.clone()));
+        for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {
+            if let Some(new_decl_id) = impld_decl_ids.get(&stub_decl_name) {
+                mapping.push((stub_decl_id, new_decl_id.clone()));
             }
         }
         DeclMapping { mapping }

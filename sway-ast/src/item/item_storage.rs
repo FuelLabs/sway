@@ -20,3 +20,15 @@ pub struct StorageField {
     pub eq_token: EqToken,
     pub initializer: Expr,
 }
+
+impl Spanned for StorageField {
+    fn span(&self) -> Span {
+        Span::join_all([
+            self.name.span(),
+            self.colon_token.span(),
+            self.ty.span(),
+            self.eq_token.span(),
+            self.initializer.span(),
+        ])
+    }
+}

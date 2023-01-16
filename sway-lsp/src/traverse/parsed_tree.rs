@@ -736,7 +736,7 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_type_arg(&self, type_argument: &TypeArgument, token: &Token) {
         let mut token = token.clone();
-        let type_info = self.type_engine.look_up_type_id(type_argument.type_id);
+        let type_info = self.type_engine.get(type_argument.type_id);
         match &type_info {
             TypeInfo::Array(type_arg, length) => {
                 token.kind = SymbolKind::NumericLiteral;

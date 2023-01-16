@@ -103,7 +103,7 @@ fn type_check_arguments(
             let ctx = ctx
                 .by_ref()
                 .with_help_text("")
-                .with_type_annotation(type_engine.insert_type(decl_engine, TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::TyExpression::error(arg.span(), engines),

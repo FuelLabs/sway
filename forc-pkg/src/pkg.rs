@@ -26,6 +26,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    asm_generation::ProgramABI,
     decl_engine::DeclEngine,
     fuel_prelude::{
         fuel_crypto,
@@ -38,7 +39,7 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
+    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::Ident;
@@ -86,7 +87,8 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
-    pub json_abi_program: fuels_types::ProgramABI,
+    pub build_target: BuildTarget,
+    pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
     pub entries: Vec<FinalizedEntry>,
@@ -316,6 +318,8 @@ pub struct BuildOpts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -328,7 +332,7 @@ pub struct BuildOpts {
     /// Include all test functions within the build.
     pub tests: bool,
     /// Inject map is used to insert constants to the specified packages.
-    pub inject_map: ConstInjectionMap
+    pub inject_map: ConstInjectionMap,
 }
 
 impl GitSourceIndex {
@@ -376,19 +380,35 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        if !self.json_abi_program.functions.is_empty() {
-            let json_abi_program_stem = format!("{}-abi", pkg_name);
-            let json_abi_program_path = output_dir
-                .join(json_abi_program_stem)
-                .with_extension("json");
-            let file = File::create(json_abi_program_path)?;
-            let res = if minify.json_abi {
-                serde_json::to_writer(&file, &self.json_abi_program)
-            } else {
-                serde_json::to_writer_pretty(&file, &self.json_abi_program)
-            };
-            res?
+        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_path = output_dir
+            .join(json_abi_program_stem)
+            .with_extension("json");
+        match &self.json_abi_program {
+            ProgramABI::Fuel(json_abi_program) => {
+                if !json_abi_program.functions.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
+            ProgramABI::Evm(json_abi_program) => {
+                if !json_abi_program.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
         }
+
         info!("  Bytecode size is {} bytes.", self.bytecode.len());
         // Additional ops required depending on the program type
         match self.tree_type {
@@ -2189,6 +2209,7 @@ fn dep_to_source_patched(
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
@@ -2196,6 +2217,7 @@ pub fn sway_build_config(
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
+        build_target,
     )
     .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
@@ -2336,12 +2358,17 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 pub fn compile_ast(
     engines: Engines<'_>,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
-    let sway_build_config =
-        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        build_profile,
+    )?;
     let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
@@ -2367,6 +2394,7 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
     engines: Engines<'_>,
@@ -2393,7 +2421,7 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
+        sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
     );
     let terse_mode = build_profile.terse;
     let fail = |warnings, errors| {
@@ -2404,7 +2432,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, build_profile, namespace)?
+        compile_ast(engines, manifest, build_target, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2414,12 +2442,6 @@ pub fn compile(
     if build_profile.print_ast {
         tracing::info!("{:#?}", typed_program);
     }
-
-    let mut types = vec![];
-    let json_abi_program = time_expr!(
-        "generate JSON ABI program",
-        typed_program.generate_json_abi_program(engines.te(), &mut types)
-    );
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
@@ -2434,6 +2456,21 @@ pub fn compile(
         "compile ast to asm",
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
+
+    let json_abi_program = match build_target {
+        BuildTarget::Fuel => {
+            let mut types = vec![];
+            ProgramABI::Fuel(time_expr!(
+                "generate JSON ABI program",
+                typed_program.generate_json_abi_program(engines.te(), &mut types)
+            ))
+        }
+        BuildTarget::EVM => match &asm_res.value {
+            Some(ref v) => v.0.abi.as_ref().unwrap().clone(),
+            None => todo!(),
+        },
+    };
+
     let entries = asm_res
         .value
         .as_ref()
@@ -2449,6 +2486,7 @@ pub fn compile(
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
             let bytecode = bytes;
             let built_package = BuiltPackage {
+                build_target,
                 json_abi_program,
                 storage_slots,
                 bytecode,
@@ -2533,15 +2571,14 @@ fn build_profile_from_opts(
 }
 
 /// Builds a project with given BuildOptions.
-pub fn build_with_options(
-    build_options: BuildOpts,
-) -> Result<Built> {
+pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let BuildOpts {
         minify,
         binary_outfile,
         debug_outfile,
         pkg,
         inject_map,
+        build_target,
         ..
     } = &build_options;
 
@@ -2578,7 +2615,13 @@ pub fn build_with_options(
 
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, &build_profile, &outputs, inject_map)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        inject_map,
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2609,7 +2652,6 @@ pub fn build_with_options(
         None => Ok(Built::Workspace(built_workspace)),
     }
 }
-
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
 fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
@@ -2653,9 +2695,10 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
+    target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    inject_map: &ConstInjectionMap
+    inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2706,6 +2749,7 @@ pub fn build(
         let res = compile(
             pkg,
             manifest,
+            target,
             profile,
             dep_namespace,
             engines,
@@ -2724,7 +2768,9 @@ pub fn build(
             lib_namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(manifest.dir());
-        standardize_json_abi_types(&mut built_package.json_abi_program);
+        if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
+            standardize_json_abi_types(json_abi_program);
+        }
         if outputs.contains(&node) {
             built_packages.push((node, built_package));
         }
@@ -2884,6 +2930,7 @@ impl Programs {
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
+    build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
@@ -2912,7 +2959,7 @@ pub fn check(
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, include_tests, engines)?;
+        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
 
         let (lexed, parsed) = match value {
             None => {
@@ -2955,6 +3002,7 @@ pub fn check(
 /// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
     engines: Engines<'_>,
@@ -2964,8 +3012,13 @@ pub fn parse(
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?
-        .include_tests(include_tests);
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        &profile,
+    )?
+    .include_tests(include_tests);
     Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 

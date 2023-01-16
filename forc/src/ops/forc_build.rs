@@ -30,11 +30,12 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             json_storage_slots: cmd.build.minify_json_storage_slots,
         },
         build_profile: cmd.build.build_profile,
+        build_target: cmd.build.build_target,
         release: cmd.build.release,
         time_phases: cmd.build.time_phases,
         binary_outfile: cmd.build.binary_outfile,
         debug_outfile: cmd.build.debug_outfile,
         tests: cmd.tests,
-        inject_map
+        inject_map,
     }
 }

@@ -126,21 +126,36 @@ impl TestContext {
                     }
                 };
 
-                let (state, receipts, pkg) = harness::runs_in_vm(compiled, script_data)?;
-                let result = match state {
-                    ProgramState::Return(v) => TestResult::Return(v),
-                    ProgramState::ReturnData(digest) => {
-                        // Find the ReturnData receipt matching the digest
-                        let receipt = receipts
-                            .iter()
-                            .find(|r| r.digest() == Some(&digest))
-                            .unwrap();
-                        // Get the data from the receipt
-                        let data = receipt.data().unwrap().to_vec();
-                        TestResult::ReturnData(data)
+                let result = harness::runs_in_vm(compiled.clone(), script_data)?;
+                let result = match result {
+                    harness::VMExecutionResult::Fuel(state, receipts) => {
+                        match state {
+                            ProgramState::Return(v) => TestResult::Return(v),
+                            ProgramState::ReturnData(digest) => {
+                                // Find the ReturnData receipt matching the digest
+                                let receipt = receipts
+                                    .iter()
+                                    .find(|r| r.digest() == Some(&digest))
+                                    .unwrap();
+                                // Get the data from the receipt
+                                let data = receipt.data().unwrap().to_vec();
+                                TestResult::ReturnData(data)
+                            }
+                            ProgramState::Revert(v) => TestResult::Revert(v),
+                        }
                     }
-                    ProgramState::Revert(v) => TestResult::Revert(v),
+                    harness::VMExecutionResult::Evm(state) => match state.exit_reason {
+                        revm::Return::Continue => todo!(),
+                        revm::Return::Stop => TestResult::Result(0),
+                        revm::Return::Return => todo!(),
+                        revm::Return::SelfDestruct => todo!(),
+                        revm::Return::Revert => TestResult::Revert(0),
+                        _ => {
+                            panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
+                        }
+                    },
                 };
+
                 if result != res {
                     Err(anyhow::Error::msg(format!(
                         "expected: {:?}\nactual: {:?}",
@@ -149,7 +164,7 @@ impl TestContext {
                 } else {
                     if validate_abi {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_abi(&name, &pkg)
+                            harness::test_json_abi(&name, &compiled)
                         })
                         .await;
                         result?;

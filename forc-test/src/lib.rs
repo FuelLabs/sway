@@ -5,7 +5,7 @@ use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::{Built, BuiltPackage};
 use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
-use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
+use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind, BuildTarget};
 use sway_types::{Span, Spanned};
 use tx::{AssetId, TxPointer, UtxoId};
 use vm::prelude::SecretKey;
@@ -91,6 +91,8 @@ pub struct Opts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -267,11 +269,12 @@ impl Opts {
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
+            build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
             time_phases: self.time_phases,
             tests: true,
-            inject_map
+            inject_map,
         }
     }
 
