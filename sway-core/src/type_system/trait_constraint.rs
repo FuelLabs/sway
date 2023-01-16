@@ -14,8 +14,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct TraitConstraint {
-    pub(crate) trait_name: CallPath,
-    pub(crate) type_arguments: Vec<TypeArgument>,
+    pub trait_name: CallPath,
+    pub type_arguments: Vec<TypeArgument>,
 }
 
 impl HashWithEngines for TraitConstraint {

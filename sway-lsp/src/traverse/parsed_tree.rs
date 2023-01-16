@@ -1,5 +1,5 @@
 use crate::{
-    core::token::{desugared_op, AstToken, SymbolKind},
+    core::token::{desugared_op, type_info_to_symbol_kind, AstToken, SymbolKind, TypeDefinition},
     traverse::{Parse, ParseContext},
 };
 use sway_core::{
@@ -18,8 +18,8 @@ use sway_core::{
         Literal,
     },
     transform::{AttributeKind, AttributesMap},
-    type_system::{TypeArgument, TypeParameter},
-    TypeInfo,
+    type_system::{TraitConstraint, TypeArgument, TypeParameter},
+    AbiName, TypeInfo,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Spanned};
@@ -394,29 +394,6 @@ impl Parse for FunctionApplicationExpression {
 impl Parse for CodeBlock {
     fn parse(&self, ctx: &ParseContext) {
         self.contents.iter().for_each(|node| node.parse(ctx));
-    }
-}
-
-impl Parse for TypeInfo {
-    fn parse(&self, ctx: &ParseContext) {
-        todo!();
-    }
-}
-
-impl Parse for TypeArgument {
-    fn parse(&self, ctx: &ParseContext) {
-        let type_info = ctx.engines.te().get(self.type_id);
-        type_info.parse(ctx);
-    }
-}
-
-impl Parse for TypeParameter {
-    fn parse(&self, ctx: &ParseContext) {
-        ctx.tokens.insert_parsed(
-            self.name_ident.clone(),
-            AstToken::TypeParameter(self.clone()),
-            SymbolKind::TypeParameter,
-        );
     }
 }
 

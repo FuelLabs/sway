@@ -2,14 +2,15 @@
 
 use crate::{
     core::token::{
-        to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
+        to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token, TypeDefinition,
+        TypedAstToken,
     },
-    traverse::ParseContext,
+    traverse::{Parse, ParseContext},
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    language::ty::{self, TyEnumVariant},
-    TypeId, TypeInfo,
+    language::ty::{self, TyEnumVariant, TyStructField},
+    AbiName, TraitConstraint, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -821,4 +822,148 @@ fn assign_type_to_token(
     token.kind = symbol_kind;
     token.typed = Some(typed_token);
     token.type_def = Some(TypeDefinition::TypeId(type_id));
+}
+
+impl Parse for TyStructField {
+    fn parse(&self, ctx: &ParseContext) {}
+}
+
+impl Parse for TypeArgument {
+    fn parse(&self, ctx: &ParseContext) {
+        let type_info = ctx.engines.te().get(self.type_id);
+        type_info.parse(ctx);
+    }
+}
+
+impl Parse for TypeParameter {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert_typed(
+            self.name_ident.clone(),
+            TypedAstToken::TypedParameter(self.clone()),
+            SymbolKind::TypeParameter,
+        );
+        let type_info = ctx.engines.te().get(self.type_id);
+        type_info.parse(ctx);
+        self.trait_constraints.iter().for_each(|trait_constraint| {
+            trait_constraint.parse(ctx);
+        });
+    }
+}
+
+impl Parse for TraitConstraint {
+    fn parse(&self, ctx: &ParseContext) {
+        self.trait_name.prefixes.iter().for_each(|prefix| {
+            ctx.tokens.insert_parsed(
+                prefix.clone(),
+                AstToken::Ident(prefix.clone()),
+                SymbolKind::Module,
+            );
+        });
+        ctx.tokens.insert_typed(
+            self.trait_name.suffix.clone(),
+            TypedAstToken::TraitConstraint(self.clone()),
+            SymbolKind::Trait,
+        );
+        self.type_arguments.iter().for_each(|type_arg| {
+            type_arg.parse(ctx);
+        });
+    }
+}
+
+impl Parse for TypeInfo {
+    fn parse(&self, ctx: &ParseContext) {
+        let mut symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &self);
+        let mut type_def = None;
+        let ident = match &self {
+            TypeInfo::UnknownGeneric {
+                name,
+                trait_constraints,
+            } => {
+                trait_constraints.iter().for_each(|trait_constraint| {
+                    trait_constraint.parse(ctx);
+                });
+                Some(Ident::new(name.span()))
+            }
+            TypeInfo::Placeholder(type_param) => {
+                type_param.parse(ctx);
+                None
+            }
+            TypeInfo::Str(length) => Some(Ident::new(length.span())),
+            TypeInfo::Enum {
+                name,
+                type_parameters,
+                variant_types,
+            } => {
+                type_parameters.iter().for_each(|type_param| {
+                    type_param.parse(ctx);
+                });
+                variant_types.iter().for_each(|enum_variant| {
+                    enum_variant.parse(ctx);
+                });
+                Some(name.clone())
+            }
+            TypeInfo::Struct {
+                name,
+                type_parameters,
+                fields,
+            } => {
+                type_parameters.iter().for_each(|type_param| {
+                    type_param.parse(ctx);
+                });
+                fields.iter().for_each(|field| {
+                    field.parse(ctx);
+                });
+                Some(name.clone())
+            }
+            TypeInfo::Tuple(type_arguments) => {
+                type_arguments.iter().for_each(|type_arg| {
+                    type_arg.parse(ctx);
+                });
+                None
+            }
+            TypeInfo::ContractCaller { abi_name, address } => {
+                if let Some(address) = address {
+                    address.parse(ctx);
+                }
+                if let AbiName::Known(abi_name) = abi_name {
+                    symbol_kind = SymbolKind::Trait;
+                    Some(abi_name.suffix.clone())
+                } else {
+                    None
+                }
+            }
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                type_def = Some(TypeDefinition::Ident(name.clone()));
+                if let Some(type_arguments) = type_arguments {
+                    type_arguments.iter().for_each(|type_arg| {
+                        type_arg.parse(ctx);
+                    });
+                }
+                Some(name.clone())
+            }
+            TypeInfo::Array(type_arg, length) => {
+                type_arg.parse(ctx);
+                symbol_kind = SymbolKind::NumericLiteral;
+                Some(Ident::new(length.span()))
+            }
+            TypeInfo::Storage { fields } => {
+                fields.iter().for_each(|field| {
+                    field.parse(ctx);
+                });
+                None
+            }
+            _ => None,
+        };
+        if let Some(ident) = ident {
+            ctx.tokens.insert_type_info(
+                ident,
+                TypedAstToken::TypeInfo(self.clone()),
+                symbol_kind,
+                type_def,
+            );
+        }
+    }
 }

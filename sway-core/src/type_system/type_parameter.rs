@@ -21,7 +21,7 @@ pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
     pub name_ident: Ident,
-    pub(crate) trait_constraints: Vec<TraitConstraint>,
+    pub trait_constraints: Vec<TraitConstraint>,
     pub(crate) trait_constraints_span: Span,
 }
 

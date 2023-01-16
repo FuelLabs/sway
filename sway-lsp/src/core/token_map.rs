@@ -1,4 +1,6 @@
-use crate::core::token::{self, to_ident_key, AstToken, SymbolKind, Token, TypedAstToken};
+use crate::core::token::{
+    self, to_ident_key, AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken,
+};
 use dashmap::DashMap;
 use sway_core::{language::ty, type_system::TypeId, Engines, TypeEngine};
 use sway_types::{Ident, Span, Spanned};
@@ -19,6 +21,20 @@ impl TokenMap {
 
     pub fn insert_parsed(&self, ident: Ident, token: AstToken, kind: SymbolKind) {
         self.insert(to_ident_key(&ident), Token::from_parsed(token, kind));
+    }
+
+    pub fn insert_typed(&self, ident: Ident, token: TypedAstToken, kind: SymbolKind) {
+        self.insert(to_ident_key(&ident), Token::from_typed(token, kind));
+    }
+
+    pub fn insert_type_info(
+        &self,
+        ident: Ident,
+        token: TypedAstToken,
+        kind: SymbolKind,
+        type_def: Option<TypeDefinition>,
+    ) {
+        self.insert(to_ident_key(&ident), Token::from_typed(token, kind));
     }
 
     /// Return an Iterator of tokens belonging to the provided [Url].

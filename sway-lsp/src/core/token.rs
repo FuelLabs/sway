@@ -12,7 +12,7 @@ use sway_core::{
         ty, Literal,
     },
     transform::Attribute,
-    type_system::{TypeId, TypeInfo, TypeParameter},
+    type_system::{TraitConstraint, TypeId, TypeInfo, TypeParameter},
     TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -75,8 +75,10 @@ pub enum TypedAstToken {
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
+    TraitConstraint(TraitConstraint),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
+    TypeInfo(TypeInfo),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
@@ -115,7 +117,7 @@ pub enum TypeDefinition {
 /// during traversal of the AST's.
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub parsed: AstToken,
+    pub parsed: Option<AstToken>,
     pub typed: Option<TypedAstToken>,
     pub type_def: Option<TypeDefinition>,
     pub kind: SymbolKind,
@@ -127,8 +129,17 @@ impl Token {
     /// [sway_core::language::parsed::ParseProgram] AST.
     pub fn from_parsed(token: AstToken, kind: SymbolKind) -> Self {
         Self {
-            parsed: token,
+            parsed: Some(token),
             typed: None,
+            type_def: None,
+            kind,
+        }
+    }
+
+    pub fn from_typed(token: TypedAstToken, kind: SymbolKind) -> Self {
+        Self {
+            parsed: None,
+            typed: Some(token),
             type_def: None,
             kind,
         }
