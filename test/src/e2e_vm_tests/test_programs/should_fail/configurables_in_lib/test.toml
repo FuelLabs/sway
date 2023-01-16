@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: $()C0: bool = true,
+# nextln: $()Configurable constants are not allowed in libraries.
+# nextln: $()C1: u64 = 42,

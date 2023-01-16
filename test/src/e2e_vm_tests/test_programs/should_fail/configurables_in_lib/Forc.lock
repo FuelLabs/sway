@@ -1,0 +1,3 @@
+[[package]]
+name = 'configurables_in_lib'
+source = 'member'
