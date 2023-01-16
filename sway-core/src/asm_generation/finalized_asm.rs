@@ -36,11 +36,18 @@ pub struct FinalizedEntry {
     pub test_decl_id: Option<DeclId>,
 }
 
+/// The bytecode for a sway program as well as the byte offsets of configuration-time constants in
+/// the bytecode.
+pub struct CompiledBytecode {
+    pub bytecode: Vec<u8>,
+    pub config_const_offsets: BTreeMap<String, u64>,
+}
+
 impl FinalizedAsm {
     pub(crate) fn to_bytecode_mut(
         &mut self,
         source_map: &mut SourceMap,
-    ) -> CompileResult<(Vec<u8>, BTreeMap<String, u64>)> {
+    ) -> CompileResult<CompiledBytecode> {
         match &self.program_section {
             InstructionSet::Fuel { ops } => {
                 to_bytecode_mut(ops, &mut self.data_section, source_map)
@@ -53,7 +60,14 @@ impl FinalizedAsm {
                         vec![CompileError::InternalOwned(e.to_string(), Span::dummy())],
                     )
                 } else {
-                    ok((assembler.take(), BTreeMap::new()), vec![], vec![])
+                    ok(
+                        CompiledBytecode {
+                            bytecode: assembler.take(),
+                            config_const_offsets: BTreeMap::new(),
+                        },
+                        vec![],
+                        vec![],
+                    )
                 }
             }
         }
@@ -79,7 +93,7 @@ fn to_bytecode_mut(
     ops: &Vec<AllocatedOp>,
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
-) -> CompileResult<(Vec<u8>, BTreeMap<String, u64>)> {
+) -> CompileResult<CompiledBytecode> {
     let mut errors = vec![];
 
     if ops.len() & 1 != 0 {
@@ -155,5 +169,12 @@ fn to_bytecode_mut(
 
     buf.append(&mut data_section);
 
-    ok((buf, config_offsets), vec![], errors)
+    ok(
+        CompiledBytecode {
+            bytecode: buf,
+            config_const_offsets: config_offsets,
+        },
+        vec![],
+        errors,
+    )
 }

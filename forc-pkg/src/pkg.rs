@@ -2441,7 +2441,10 @@ pub fn compile(
     );
 
     match bc_res.value {
-        Some(CompiledBytecode((bytes, config_offsets))) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode {
+            bytecode: bytes,
+            config_const_offsets: config_offsets,
+        }) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
