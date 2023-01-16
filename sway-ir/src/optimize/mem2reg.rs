@@ -7,9 +7,25 @@ use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
+pub struct Mem2RegPass;
+
+impl NamedPass for Mem2RegPass {
+    fn name() -> &'static str {
+        "mem2reg"
+    }
+
+    fn descr() -> &'static str {
+        "Promote local memory to SSA registers."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, promote_to_registers)
+    }
+}
+
 use crate::{
     compute_dom_fronts, dominator::compute_dom_tree, Block, BranchToWithArgs, Context, DomTree,
-    Function, Instruction, IrError, LocalVar, PostOrder, Type, Value, ValueDatum,
+    Function, Instruction, IrError, LocalVar, NamedPass, PostOrder, Type, Value, ValueDatum,
 };
 
 // Check if a value is a valid (for our optimization) local pointer
