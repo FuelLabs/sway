@@ -29,6 +29,9 @@ pub struct Command {
     pub build: cli::shared::Build,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
+    /// If set prints out the receipts for all the tests.
+    #[clap(long = "receipts")]
+    pub receipts: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> Result<()> {
@@ -36,11 +39,12 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         bail!("unit test filter not yet supported");
     }
 
+    let print_receipts = cmd.receipts;
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
     info!("   Running {} tests", built_tests.test_count());
-    let tested = built_tests.run()?;
+    let tested = built_tests.run(print_receipts)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
