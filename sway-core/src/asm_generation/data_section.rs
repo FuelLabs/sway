@@ -2,7 +2,10 @@ use crate::asm_generation::from_ir::ir_type_size_in_bytes;
 
 use sway_ir::{Constant, ConstantValue, Context};
 
-use std::fmt::{self, Write};
+use std::{
+    collections::BTreeMap,
+    fmt::{self, Write},
+};
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
@@ -10,6 +13,9 @@ use std::fmt::{self, Write};
 pub struct Entry {
     value: Datum,
     size: usize,
+    // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
+    // is `None`.
+    name: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -20,30 +26,45 @@ pub enum Datum {
 }
 
 impl Entry {
-    pub(crate) fn new_word(value: u64, size: Option<usize>) -> Entry {
+    pub(crate) fn new_word(value: u64, size: Option<usize>, name: Option<String>) -> Entry {
         Entry {
             value: Datum::Word(value),
             size: size.unwrap_or(8),
+            name,
         }
     }
 
-    pub(crate) fn new_byte_array(bytes: Vec<u8>, size: Option<usize>) -> Entry {
+    pub(crate) fn new_byte_array(
+        bytes: Vec<u8>,
+        size: Option<usize>,
+        name: Option<String>,
+    ) -> Entry {
         let size = size.unwrap_or(bytes.len());
         Entry {
             value: Datum::ByteArray(bytes),
             size,
+            name,
         }
     }
 
-    pub(crate) fn new_collection(elements: Vec<Entry>, size: Option<usize>) -> Entry {
+    pub(crate) fn new_collection(
+        elements: Vec<Entry>,
+        size: Option<usize>,
+        name: Option<String>,
+    ) -> Entry {
         let size = size.unwrap_or_else(|| elements.iter().map(|el| el.size).sum());
         Entry {
             value: Datum::Collection(elements),
             size,
+            name,
         }
     }
 
-    pub(crate) fn from_constant(context: &Context, constant: &Constant) -> Entry {
+    pub(crate) fn from_constant(
+        context: &Context,
+        constant: &Constant,
+        name: Option<String>,
+    ) -> Entry {
         // We have to do some painful special handling here for enums, which are tagged unions.
         // This really should be handled by the IR more explicitly and is something that will
         // hopefully be addressed by https://github.com/FuelLabs/sway/issues/2819#issuecomment-1256930392
@@ -60,15 +81,15 @@ impl Entry {
                 // we use unions (otherwise we should be generalising this a bit more).
                 if let ConstantValue::Struct(els) = &constant.value {
                     if els.len() == 2 {
-                        let tag_entry = Entry::from_constant(context, &els[0]);
+                        let tag_entry = Entry::from_constant(context, &els[0], None);
 
                         // Here's the special case.  We need to get the size of the union and
                         // attach it to this constant entry which will be one of the variants.
-                        let mut val_entry = Entry::from_constant(context, &els[1]);
+                        let mut val_entry = Entry::from_constant(context, &els[1], None);
                         val_entry.size = ir_type_size_in_bytes(context, &field_tys[1]) as usize;
 
                         // Return here from our special case.
-                        return Entry::new_collection(vec![tag_entry, val_entry], size);
+                        return Entry::new_collection(vec![tag_entry, val_entry], size, name);
                     }
                 }
             }
@@ -76,18 +97,19 @@ impl Entry {
 
         // Not a tagged union, no trickiness required.
         match &constant.value {
-            ConstantValue::Undef | ConstantValue::Unit => Entry::new_word(0, size),
-            ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size),
-            ConstantValue::Uint(u) => Entry::new_word(*u, size),
+            ConstantValue::Undef | ConstantValue::Unit => Entry::new_word(0, size, name),
+            ConstantValue::Bool(b) => Entry::new_word(u64::from(*b), size, name),
+            ConstantValue::Uint(u) => Entry::new_word(*u, size, name),
 
-            ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_vec(), size),
-            ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), size),
+            ConstantValue::B256(bs) => Entry::new_byte_array(bs.to_vec(), size, name),
+            ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), size, name),
 
             ConstantValue::Array(els) | ConstantValue::Struct(els) => Entry::new_collection(
                 els.iter()
-                    .map(|el| Entry::from_constant(context, el))
+                    .map(|el| Entry::from_constant(context, el, None))
                     .collect(),
                 size,
+                name,
             ),
         }
     }
@@ -138,7 +160,11 @@ impl Entry {
             }
         }
 
-        equiv_data(&self.value, &entry.value)
+        // If this corresponds to a configuration-time constants, then the entry names will be
+        // available (i.e. `Some(..)`) and they must be the same before we can merge the two
+        // entries. Otherwise, `self.name` and `entry.name` will be `None` in which case we're also
+        // allowed to merge the two entries (if their values are equivalent of course).
+        equiv_data(&self.value, &entry.value) && self.name == entry.name
     }
 }
 
@@ -156,15 +182,22 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
+    pub config_map: BTreeMap<String, u32>,
 }
 
 impl DataSection {
     /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
-    pub(crate) fn offset_to_id(&self, id: &DataId) -> usize {
+    pub(crate) fn data_id_to_offset(&self, id: &DataId) -> usize {
+        self.raw_data_id_to_offset(id.0)
+    }
+
+    /// Given a [DataId], calculate the offset _from the beginning of the data section_ to the data
+    /// in bytes.
+    pub(crate) fn raw_data_id_to_offset(&self, id: u32) -> usize {
         self.value_pairs
             .iter()
-            .take(id.0 as usize)
+            .take(id as usize)
             .map(|x| x.to_bytes().len())
             .sum()
     }
@@ -193,7 +226,7 @@ impl DataSection {
     /// in question.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
-        self.insert_data_value(Entry::new_word(pointer_value, None))
+        self.insert_data_value(Entry::new_word(pointer_value, None, None))
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type

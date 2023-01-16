@@ -407,7 +407,8 @@ impl AllocatedAbstractInstructionSet {
                     }
                     ControlFlowOp::LoadLabel(r1, ref lab) => {
                         let offset = label_offsets.get(lab).unwrap().offs;
-                        let data_id = data_section.insert_data_value(Entry::new_word(offset, None));
+                        let data_id =
+                            data_section.insert_data_value(Entry::new_word(offset, None, None));
                         realized_ops.push(RealizedOp {
                             opcode: AllocatedOpcode::LWDataId(r1, data_id),
                             owning_span,
