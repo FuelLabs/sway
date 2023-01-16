@@ -307,6 +307,8 @@ impl Namespace {
         is_impl_self: bool,
         engines: Engines<'a>,
     ) -> CompileResult<()> {
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
         let full_trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits.insert(
@@ -326,7 +328,8 @@ impl Namespace {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<DeclId> {
-        // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
+        // Use trait name with full path, improves consistency between
+        // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits

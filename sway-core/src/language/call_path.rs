@@ -49,6 +49,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 .prefixes
                 .iter()
                 .map(|x| x.span())
+                //LOC below should be removed when #21 goes in
                 .filter(|x| x.path() == self.suffix.span().path());
             Span::join(Span::join_all(prefixes_spans), self.suffix.span())
         }
