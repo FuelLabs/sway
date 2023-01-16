@@ -10,10 +10,12 @@ on:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
+      fail-fast: false
       matrix:
         doc-type: [book, reference, forc]
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
@@ -29,7 +31,9 @@ jobs:
         with:
           command: install
           args: --debug --path ./forc
+
       - name: Install Forc plugins
+        if: ${{ matrix.doc_type == 'forc' }}
         run: |
           cargo install --debug --path ./forc-plugins/forc-fmt 
           cargo install --debug --path ./forc-plugins/forc-lsp 
