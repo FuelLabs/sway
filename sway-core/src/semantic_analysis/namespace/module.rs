@@ -95,7 +95,11 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                handler, engines, const_item, attributes,
+                &to_parsed_lang::Context::default(),
+                handler,
+                engines,
+                const_item,
+                attributes,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
