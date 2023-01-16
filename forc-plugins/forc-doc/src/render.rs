@@ -686,6 +686,7 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
 struct ModuleDocs(Vec<DocItem>);
 /// The index for each project module.
 pub(crate) struct ModuleIndex {
+    /// used only for the root module
     version_opt: Option<String>,
     module_info: ModuleInfo,
     children: Vec<ModulePrefix>,
