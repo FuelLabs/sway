@@ -1,5 +1,6 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
+use forc_pkg::manifest::ManifestFile;
 use forc_util::{default_output_directory, find_manifest_dir};
 use std::path::PathBuf;
 use sway_utils::MANIFEST_FILE_NAME;
@@ -13,6 +14,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
     } else {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
+
     let manifest_dir = match find_manifest_dir(&this_dir) {
         Some(dir) => dir,
         None => {
@@ -23,11 +25,19 @@ pub fn clean(command: CleanCommand) -> Result<()> {
             )
         }
     };
+    let manifest = ManifestFile::from_dir(&manifest_dir)?;
+    // If this is a workspace collect all member paths and clean each of them.
+    let paths: Vec<PathBuf> = match manifest {
+        ManifestFile::Package(_) => std::iter::once(this_dir).collect(),
+        ManifestFile::Workspace(workspace) => workspace.member_paths()?.collect(),
+    };
 
-    // Clear `<project>/out` directory.
-    // Ignore I/O errors telling us `out_dir` isn't there.
-    let out_dir = default_output_directory(&manifest_dir);
-    let _ = std::fs::remove_dir_all(out_dir);
+    for member_path in paths {
+        // Clear `<project>/out` directory.
+        // Ignore I/O errors telling us `out_dir` isn't there.
+        let out_dir = default_output_directory(&member_path);
+        let _ = std::fs::remove_dir_all(out_dir);
+    }
 
     Ok(())
 }

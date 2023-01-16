@@ -20,7 +20,7 @@ mod programs;
 pub(crate) mod register_allocator;
 mod register_sequencer;
 
-pub use finalized_asm::{FinalizedAsm, FinalizedEntry};
+pub use finalized_asm::{CompiledBytecode, FinalizedAsm, FinalizedEntry};
 
 use abstract_instruction_set::*;
 use allocated_abstract_instruction_set::*;

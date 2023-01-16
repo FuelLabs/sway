@@ -1,6 +1,3 @@
-use sway_error::error::CompileError;
-use sway_types::*;
-
 use crate::{
     decl_engine::*,
     error::*,
@@ -11,11 +8,17 @@ use crate::{
     Engines,
 };
 
+use sway_error::error::CompileError;
+use sway_types::*;
+
+use fuel_abi_types::program_abi;
+
 #[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
     pub declarations: Vec<TyDeclaration>,
+    pub configurables: Vec<TyConstantDeclaration>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
@@ -28,7 +31,11 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
-    ) -> CompileResult<(TyProgramKind, Vec<TyDeclaration>)> {
+    ) -> CompileResult<(
+        TyProgramKind,
+        Vec<TyDeclaration>,
+        Vec<TyConstantDeclaration>,
+    )> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
@@ -37,6 +44,7 @@ impl TyProgram {
         let decl_engine = engines.de();
 
         // Validate all submodules
+        let mut configurables = Vec::<TyConstantDeclaration>::new();
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
@@ -77,6 +85,14 @@ impl TyProgram {
                     }
 
                     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                }
+                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
+                    match decl_engine.get_constant(decl_id.clone(), &node.span) {
+                        Ok(config_decl) if config_decl.is_configurable => {
+                            configurables.push(config_decl)
+                        }
+                        _ => {}
+                    }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
@@ -155,8 +171,45 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
-            parsed::TreeType::Library { name } => TyProgramKind::Library { name },
+            parsed::TreeType::Contract => {
+                // Types containing raw_ptr are not allowed in storage (e.g Vec)
+                for decl in declarations.iter() {
+                    if let TyDeclaration::StorageDeclaration(decl_id) = decl {
+                        if let Ok(storage_decl) =
+                            decl_engine.get_storage(decl_id.clone(), &decl_id.span())
+                        {
+                            for field in storage_decl.fields.iter() {
+                                let type_info = ty_engine.get(field.type_id);
+                                let type_info_str = engines.help_out(&type_info).to_string();
+                                let raw_ptr_type = type_info
+                                    .extract_nested_types(ty_engine, &field.span)
+                                    .value
+                                    .and_then(|value| {
+                                        value
+                                            .into_iter()
+                                            .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                                    });
+                                if raw_ptr_type.is_some() {
+                                    errors.push(CompileError::TypeNotAllowedInContractStorage {
+                                        ty: type_info_str,
+                                        span: field.span.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TyProgramKind::Contract { abi_entries }
+            }
+            parsed::TreeType::Library { name } => {
+                if !configurables.is_empty() {
+                    errors.push(CompileError::ConfigurableInLibrary {
+                        span: configurables[0].name.span(),
+                    });
+                }
+                TyProgramKind::Library { name }
+            }
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
@@ -239,7 +292,11 @@ impl TyProgram {
             }
             _ => (),
         }
-        ok((typed_program_kind, declarations), warnings, errors)
+        ok(
+            (typed_program_kind, declarations, configurables),
+            warnings,
+            errors,
+        )
     }
 
     /// Ensures there are no unresolved types or types awaiting resolution in the AST.
@@ -370,8 +427,8 @@ impl TyProgram {
     pub fn generate_json_abi_program(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> fuels_types::ProgramABI {
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> program_abi::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
@@ -380,11 +437,13 @@ impl TyProgram {
                     .collect();
                 let logged_types = self.generate_json_logged_types(type_engine, types);
                 let messages_types = self.generate_json_messages_types(type_engine, types);
-                fuels_types::ProgramABI {
+                let configurables = self.generate_json_configurables(type_engine, types);
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
             TyProgramKind::Script { main_function, .. }
@@ -392,18 +451,21 @@ impl TyProgram {
                 let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
                 let logged_types = self.generate_json_logged_types(type_engine, types);
                 let messages_types = self.generate_json_messages_types(type_engine, types);
-                fuels_types::ProgramABI {
+                let configurables = self.generate_json_configurables(type_engine, types);
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
-            _ => fuels_types::ProgramABI {
+            _ => program_abi::ProgramABI {
                 types: vec![],
                 functions: vec![],
                 logged_types: None,
                 messages_types: None,
+                configurables: None,
             },
         }
     }
@@ -411,13 +473,13 @@ impl TyProgram {
     fn generate_json_logged_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::LoggedType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the logged types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::LoggedType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the logged types
         let logged_types = self
             .logged_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -431,9 +493,9 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|(log_id, type_id)| fuels_types::LoggedType {
+            .map(|(log_id, type_id)| program_abi::LoggedType {
                 log_id: **log_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
@@ -445,13 +507,13 @@ impl TyProgram {
     fn generate_json_messages_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::MessageType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the messages types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::MessageType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the messages types
         let messages_types = self
             .messages_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -465,14 +527,67 @@ impl TyProgram {
         // Generate the JSON data for the messages types
         self.messages_types
             .iter()
-            .map(|(message_id, type_id)| fuels_types::MessageType {
+            .map(|(message_id, type_id)| program_abi::MessageType {
                 message_id: **message_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
                 },
             })
+            .collect()
+    }
+
+    fn generate_json_configurables(
+        &self,
+        type_engine: &TypeEngine,
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::Configurable> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
+        let configurables_types = self
+            .configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration { return_type, .. }| program_abi::TypeDeclaration {
+                    type_id: return_type.index(),
+                    type_field: return_type.get_json_type_str(type_engine, *return_type),
+                    components: return_type.get_json_type_components(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                    type_parameters: return_type.get_json_type_parameters(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                },
+            )
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(configurables_types);
+
+        // Generate the JSON data for the configurables types
+        self.configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration {
+                     name, return_type, ..
+                 }| program_abi::Configurable {
+                    name: name.to_string(),
+                    application: program_abi::TypeApplication {
+                        name: "".to_string(),
+                        type_id: return_type.index(),
+                        type_arguments: return_type.get_json_type_arguments(
+                            type_engine,
+                            types,
+                            *return_type,
+                        ),
+                    },
+                    offset: 0,
+                },
+            )
             .collect()
     }
 

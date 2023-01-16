@@ -7,7 +7,7 @@ use crate::{
 use super::types::{create_enum_aggregate, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
-use sway_ir::{Aggregate, Constant, Context, Type, Value};
+use sway_ir::{Constant, Context, Type, Value};
 use sway_types::span::Span;
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
@@ -29,17 +29,20 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
     }
 }
 
-pub(super) fn convert_literal_to_constant(ast_literal: &Literal) -> Constant {
+pub(super) fn convert_literal_to_constant(
+    context: &mut Context,
+    ast_literal: &Literal,
+) -> Constant {
     match ast_literal {
         // All integers are `u64`.  See comment above.
-        Literal::U8(n) => Constant::new_uint(64, *n as u64),
-        Literal::U16(n) => Constant::new_uint(64, *n as u64),
-        Literal::U32(n) => Constant::new_uint(64, *n as u64),
-        Literal::U64(n) => Constant::new_uint(64, *n),
-        Literal::Numeric(n) => Constant::new_uint(64, *n),
-        Literal::String(s) => Constant::new_string(s.as_str().as_bytes().to_vec()),
-        Literal::Boolean(b) => Constant::new_bool(*b),
-        Literal::B256(bs) => Constant::new_b256(*bs),
+        Literal::U8(n) => Constant::new_uint(context, 64, *n as u64),
+        Literal::U16(n) => Constant::new_uint(context, 64, *n as u64),
+        Literal::U32(n) => Constant::new_uint(context, 64, *n as u64),
+        Literal::U64(n) => Constant::new_uint(context, 64, *n),
+        Literal::Numeric(n) => Constant::new_uint(context, 64, *n),
+        Literal::String(s) => Constant::new_string(context, s.as_str().as_bytes().to_vec()),
+        Literal::Boolean(b) => Constant::new_bool(context, *b),
+        Literal::B256(bs) => Constant::new_b256(context, *bs),
     }
 }
 
@@ -89,11 +92,11 @@ fn convert_resolved_type(
 
     Ok(match ast_type {
         // All integers are `u64`, see comment in convert_literal_to_value() above.
-        TypeInfo::UnsignedInteger(_) => Type::Uint(64),
-        TypeInfo::Numeric => Type::Uint(64),
-        TypeInfo::Boolean => Type::Bool,
-        TypeInfo::B256 => Type::B256,
-        TypeInfo::Str(n) => Type::String(n.val() as u64),
+        TypeInfo::UnsignedInteger(_) => Type::get_uint64(context),
+        TypeInfo::Numeric => Type::get_uint64(context),
+        TypeInfo::Boolean => Type::get_bool(context),
+        TypeInfo::B256 => Type::get_b256(context),
+        TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
         TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
             type_engine,
             context,
@@ -102,33 +105,28 @@ fn convert_resolved_type(
                 .map(|field| field.type_id)
                 .collect::<Vec<_>>()
                 .as_slice(),
-        )
-        .map(Type::Struct)?,
+        )?,
         TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(type_engine, context, variant_types).map(Type::Struct)?
+            create_enum_aggregate(type_engine, context, variant_types)?
         }
         TypeInfo::Array(elem_type, length) => {
             let elem_type =
                 convert_resolved_typeid(type_engine, context, &elem_type.type_id, span)?;
-            Type::Array(Aggregate::new_array(
-                context,
-                elem_type,
-                length.val() as u64,
-            ))
+            Type::new_array(context, elem_type, length.val() as u64)
         }
         TypeInfo::Tuple(fields) => {
             if fields.is_empty() {
                 // XXX We've removed Unit from the core compiler, replaced with an empty Tuple.
                 // Perhaps the same should be done for the IR, although it would use an empty
                 // aggregate which might not make as much sense as a dedicated Unit type.
-                Type::Unit
+                Type::get_unit(context)
             } else {
                 let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(type_engine, context, new_fields).map(Type::Struct)?
+                create_tuple_aggregate(type_engine, context, new_fields)?
             }
         }
-        TypeInfo::RawUntypedPtr => Type::Uint(64),
-        TypeInfo::RawUntypedSlice => Type::Slice,
+        TypeInfo::RawUntypedPtr => Type::get_uint64(context),
+        TypeInfo::RawUntypedSlice => Type::get_slice(context),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

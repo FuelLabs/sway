@@ -361,28 +361,18 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     match decl {
         VariableDeclaration(var_decl) => {
-            let ty::TyVariableDeclaration {
-                name,
-                body,
-                mutability: is_mutable,
-                ..
-            } = &**var_decl;
-            if matches!(is_mutable, ty::VariableMutability::ExportedConst) {
-                graph.namespace.insert_constant(name.clone(), entry_node);
-                Ok(leaves.to_vec())
-            } else {
-                connect_expression(
-                    engines,
-                    &body.expression,
-                    graph,
-                    &[entry_node],
-                    exit_node,
-                    "variable instantiation",
-                    tree_type,
-                    body.clone().span,
-                    options,
-                )
-            }
+            let ty::TyVariableDeclaration { body, .. } = &**var_decl;
+            connect_expression(
+                engines,
+                &body.expression,
+                graph,
+                &[entry_node],
+                exit_node,
+                "variable instantiation",
+                tree_type,
+                body.clone().span,
+                options,
+            )
         }
         ConstantDeclaration(decl_id) => {
             let ty::TyConstantDeclaration { name, value, .. } =

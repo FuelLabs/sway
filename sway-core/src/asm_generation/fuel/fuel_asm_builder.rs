@@ -7,7 +7,7 @@ use crate::{
             aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
         },
         register_sequencer::RegisterSequencer,
-        DataSection, Entry, ProgramKind,
+        DataId, DataSection, Entry, ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclId,
@@ -483,7 +483,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
     fn compile_bitcast(&mut self, instr_val: &Value, bitcast_val: &Value, to_type: &Type) {
         let val_reg = self.value_to_register(bitcast_val);
-        let reg = if let Type::Bool = to_type {
+        let reg = if to_type.is_bool(self.context) {
             // This may not be necessary if we just treat a non-zero value as 'true'.
             let res_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
@@ -704,7 +704,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         index_val: &Value,
     ) {
         // Base register should pointer to some stack allocated memory.
@@ -719,7 +719,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let instr_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_type = ty.get_array_elem_type(self.context).unwrap();
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if self.is_copy_type(&elem_type) {
             self.cur_bytecode.push(Op {
@@ -755,7 +755,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             if elem_size > compiler_constants::TWELVE_BITS {
                 let size_data_id = self
                     .data_section
-                    .insert_data_value(Entry::new_word(elem_size, None));
+                    .insert_data_value(Entry::new_word(elem_size, None, None));
                 let size_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -912,9 +912,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
 
-        let data_id = self
-            .data_section
-            .insert_data_value(Entry::new_byte_array((*hashed_storage_slot).to_vec(), None));
+        let data_id = self.data_section.insert_data_value(Entry::new_byte_array(
+            (*hashed_storage_slot).to_vec(),
+            None,
+            None,
+        ));
 
         // Allocate a register for it, and a load instruction.
         let reg = self.reg_seqr.next();
@@ -992,7 +994,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         &mut self,
         instr_val: &Value,
         array: &Value,
-        ty: &Aggregate,
+        ty: &Type,
         value: &Value,
         index_val: &Value,
     ) {
@@ -1006,7 +1008,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        let elem_type = ty.get_elem_type(self.context).unwrap();
+        let elem_type = ty.get_array_elem_type(self.context).unwrap();
         let elem_size = ir_type_size_in_bytes(self.context, &elem_type);
         if self.is_copy_type(&elem_type) {
             self.cur_bytecode.push(Op {
@@ -1105,7 +1107,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         // Account for the padding if the final field type is a union and the value we're trying to
         // insert is smaller than the size of the union (i.e. we're inserting a small variant).
-        if matches!(field_type, Type::Union(_)) {
+        if field_type.is_union(self.context) {
             let field_size_in_words = size_bytes_in_words!(field_size_in_bytes);
             assert!(field_size_in_words >= value_size_in_words);
             insert_offs += field_size_in_words - value_size_in_words;
@@ -1224,7 +1226,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 }
                 Storage::Stack(word_offs) => {
                     let base_reg = self.locals_base_reg().clone();
-                    if self.is_copy_type(local_var.get_type(self.context)) {
+                    if self.is_copy_type(&local_var.get_type(self.context)) {
                         // Value can fit in a register, so we load the value.
                         if word_offs > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -1354,9 +1356,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
             // it.
             let size_reg = self.reg_seqr.next();
             let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
-            let size_data_id = self
-                .data_section
-                .insert_data_value(Entry::new_word(size_in_bytes, None));
+            let size_data_id =
+                self.data_section
+                    .insert_data_value(Entry::new_word(size_in_bytes, None, None));
 
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1407,7 +1409,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
     fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        if ret_type.eq(self.context, &Type::Unit) {
+        if ret_type.is_unit(self.context) {
             // Unit returns should always be zero, although because they can be omitted from
             // functions, the register is sometimes uninitialized. Manually return zero in this
             // case.
@@ -1430,7 +1432,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             } else {
                 // If the type is not a copy type then we use RETD to return data.
                 let size_reg = self.reg_seqr.next();
-                if ret_type.eq(self.context, &Type::Slice) {
+                if ret_type.is_slice(self.context) {
                     // If this is a slice then return what it points to.
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -1454,9 +1456,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     // First put the size into the data section, then add a LW to get it,
                     // then add a RETD which uses it.
                     let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
-                    let size_data_id = self
-                        .data_section
-                        .insert_data_value(Entry::new_word(size_in_bytes, None));
+                    let size_data_id = self.data_section.insert_data_value(Entry::new_word(
+                        size_in_bytes,
+                        None,
+                        None,
+                    ));
 
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1555,8 +1559,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
         access_type: StateAccessType,
     ) -> CompileResult<()> {
         // Make sure that both val and key are pointers to B256.
-        assert!(matches!(val.get_type(self.context), Some(Type::B256)));
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(val.get_type(self.context).is(Type::is_b256, self.context));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
         let key_var = self.resolve_ptr(key);
@@ -1567,7 +1571,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(var_ty.eq(self.context, &Type::B256));
+        assert!(var_ty.is_b256(self.context));
 
         let val_reg = if matches!(
             val.get_instruction(self.context),
@@ -1585,7 +1589,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             }
             let (local_val, local_val_ty, _offset) = local_val.value.unwrap();
             // Expect the ptr_ty for val to also be B256
-            assert!(local_val_ty.eq(self.context, &Type::B256));
+            assert!(local_val_ty.is_b256(self.context));
             match self.ptr_map.get(&local_val) {
                 Some(Storage::Stack(val_offset)) => {
                     let base_reg = self.locals_base_reg().clone();
@@ -1629,7 +1633,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
     fn compile_state_load_word(&mut self, instr_val: &Value, key: &Value) -> CompileResult<()> {
         // Make sure that the key is a pointers to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
 
         let key_var = self.resolve_ptr(key);
         if key_var.value.is_none() {
@@ -1639,7 +1643,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(var_ty.eq(self.context, &Type::B256));
+        assert!(var_ty.is_b256(self.context));
 
         let load_reg = self.reg_seqr.next();
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
@@ -1678,13 +1682,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
         key: &Value,
     ) -> CompileResult<()> {
         // Make sure that key is a pointer to B256.
-        assert!(matches!(key.get_type(self.context), Some(Type::B256)));
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
 
         // Make sure that store_val is a U64 value.
-        assert!(matches!(
-            store_val.get_type(self.context),
-            Some(Type::Uint(64))
-        ));
+        assert!(store_val
+            .get_type(self.context)
+            .is(Type::is_uint64, self.context));
         let store_reg = self.value_to_register(store_val);
 
         // Expect the get_ptr here to have type b256 and offset = 0???
@@ -1699,7 +1702,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         // Not expecting an offset here nor a pointer cast
         assert!(offset == 0);
-        assert!(key_var_ty.eq(self.context, &Type::B256));
+        assert!(key_var_ty.is_b256(self.context));
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         match self.ptr_map.get(&key_var) {
@@ -1742,15 +1745,16 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     let word_offs = *word_offs;
                     let store_type = local_var.get_type(self.context);
                     let store_size_in_words =
-                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, store_type));
-                    if self.is_copy_type(store_type) {
+                        size_bytes_in_words!(ir_type_size_in_bytes(self.context, &store_type));
+                    if self.is_copy_type(&store_type) {
                         let base_reg = self.locals_base_reg().clone();
 
                         // A single word can be stored with SW.
-                        let is_aggregate_var = matches!(
-                            local_var.get_type(self.context),
-                            Type::Array(_) | Type::Struct(_) | Type::Union(_)
-                        );
+                        let local_var_ty = local_var.get_type(self.context);
+                        let is_aggregate_var = local_var_ty.is_array(self.context)
+                            || local_var_ty.is_struct(self.context)
+                            || local_var_ty.is_union(self.context);
+
                         let stored_reg = if !is_aggregate_var {
                             // stored_reg is a value.
                             stored_reg
@@ -1873,7 +1877,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
     }
 
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Unit | Type::Bool | Type::Uint(_))
+        ty.is_unit(self.context) || ty.is_bool(self.context) | ty.is_uint(self.context)
     }
 
     fn resolve_ptr(&mut self, ptr_val: &Value) -> CompileResult<(LocalVar, Type, u64)> {
@@ -1882,7 +1886,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         match ptr_val.get_instruction(self.context) {
             // Return the local variable with its type and an offset of 0.
             Some(Instruction::GetLocal(local_var)) => ok(
-                (*local_var, *local_var.get_type(self.context), 0),
+                (*local_var, local_var.get_type(self.context), 0),
                 warnings,
                 errors,
             ),
@@ -1910,30 +1914,37 @@ impl<'ir> FuelAsmBuilder<'ir> {
         }
     }
 
-    fn initialise_constant(&mut self, constant: &Constant, span: Option<Span>) -> VirtualRegister {
+    fn initialise_constant(
+        &mut self,
+        constant: &Constant,
+        config_name: Option<String>,
+        span: Option<Span>,
+    ) -> (VirtualRegister, Option<DataId>) {
         match &constant.value {
             // Use cheaper $zero or $one registers if possible.
-            ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0) => {
-                VirtualRegister::Constant(ConstantRegister::Zero)
+            ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
+                if config_name.is_none() =>
+            {
+                (VirtualRegister::Constant(ConstantRegister::Zero), None)
             }
 
-            ConstantValue::Bool(true) | ConstantValue::Uint(1) => {
-                VirtualRegister::Constant(ConstantRegister::One)
+            ConstantValue::Bool(true) | ConstantValue::Uint(1) if config_name.is_none() => {
+                (VirtualRegister::Constant(ConstantRegister::One), None)
             }
 
             _otherwise => {
                 // Get the constant into the namespace.
-                let entry = Entry::from_constant(self.context, constant);
+                let entry = Entry::from_constant(self.context, constant, config_name);
                 let data_id = self.data_section.insert_data_value(entry);
 
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+                    opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id.clone())),
                     comment: "literal instantiation".into(),
                     owning_span: span,
                 });
-                reg
+                (reg, Some(data_id))
             }
         }
 
@@ -1957,12 +1968,32 @@ impl<'ir> FuelAsmBuilder<'ir> {
     // Get the reg corresponding to `value`. Returns None if the value is not in reg_map or is not
     // a constant.
     fn opt_value_to_register(&mut self, value: &Value) -> Option<VirtualRegister> {
-        self.reg_map.get(value).cloned().or_else(|| {
-            value.get_constant(self.context).map(|constant| {
-                let span = self.md_mgr.val_to_span(self.context, *value);
-                self.initialise_constant(constant, span)
+        self.reg_map
+            .get(value)
+            .cloned()
+            .or_else(|| {
+                value.get_constant(self.context).map(|constant| {
+                    let span = self.md_mgr.val_to_span(self.context, *value);
+                    self.initialise_constant(constant, None, span).0
+                })
             })
-        })
+            .or_else(|| {
+                value.get_configurable(self.context).map(|constant| {
+                    let span = self.md_mgr.val_to_span(self.context, *value);
+                    let config_name = self
+                        .md_mgr
+                        .md_to_config_const_name(self.context, value.get_metadata(self.context))
+                        .unwrap()
+                        .to_string();
+
+                    let initialized =
+                        self.initialise_constant(constant, Some(config_name.clone()), span);
+                    if let Some(data_id) = initialized.1 {
+                        self.data_section.config_map.insert(config_name, data_id.0);
+                    }
+                    initialized.0
+                })
+            })
     }
 
     // Same as `opt_value_to_register` but returns a new register if no register is found or if
