@@ -483,13 +483,13 @@ impl BuildPlan {
     pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
         let path = &build_options.pkg.path;
 
-        let this_dir = if let Some(ref path) = path {
+        let manifest_dir = if let Some(ref path) = path {
             PathBuf::from(path)
         } else {
             std::env::current_dir()?
         };
 
-        let manifest_file = ManifestFile::from_dir(&this_dir)?;
+        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
         let member_manifests = manifest_file.member_manifests()?;
         // Check if we have members to build so that we are not trying to build an empty workspace.
         if member_manifests.is_empty() {
