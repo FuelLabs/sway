@@ -1671,9 +1671,6 @@ version = "0.33.0"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
- "forc-pkg",
- "forc-tracing",
- "forc-util",
  "fuel-tx",
  "serde",
  "serde_json",

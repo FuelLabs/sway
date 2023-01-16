@@ -18,9 +18,6 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive", "env"] }
-forc-pkg = { version = "0.33.0", path = "../../forc-pkg" }
-forc-tracing = { version = "0.33.0", path = "../../forc-tracing" }
-forc-util = { version = "0.33.0", path = "../../forc-util" }
 fuel-tx = { version = "0.23" }
 serde = "1.0"
 serde_json = { version = "1" }
