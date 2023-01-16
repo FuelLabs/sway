@@ -345,17 +345,6 @@ impl Module {
                 if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
-                // if this is a const, insert it into the local namespace directly
-                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
-                    let ty::TyVariableDeclaration {
-                        mutability, name, ..
-                    } = &**var_decl;
-                    if mutability == &ty::VariableMutability::ExportedConst {
-                        self[dst]
-                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
-                        return ok((), warnings, errors);
-                    }
-                }
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
