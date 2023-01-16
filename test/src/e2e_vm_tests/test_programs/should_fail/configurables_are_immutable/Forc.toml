@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+implicit-std = false
+name = "configurables_are_immutable"
+entry = "main.sw"

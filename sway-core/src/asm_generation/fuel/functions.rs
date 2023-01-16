@@ -591,9 +591,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let mut stack_base = 0_u64;
         for (_name, ptr) in function.locals_iter(self.context) {
             if let Some(constant) = ptr.get_initializer(self.context) {
-                let data_id = self
-                    .data_section
-                    .insert_data_value(Entry::from_constant(self.context, constant));
+                let data_id = self.data_section.insert_data_value(Entry::from_constant(
+                    self.context,
+                    constant,
+                    None,
+                ));
                 self.ptr_map.insert(*ptr, Storage::Data(data_id));
             } else {
                 let ptr_ty = ptr.get_type(self.context);

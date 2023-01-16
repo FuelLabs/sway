@@ -9,11 +9,15 @@ use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
+    metadata::combine as md_combine,
     module::Module,
     value::Value,
     Instruction,
 };
-use sway_types::{ident::Ident, span::Spanned};
+use sway_types::{
+    ident::{BaseIdent, Ident},
+    span::Spanned,
+};
 use sway_utils::mapped_stack::MappedStack;
 
 pub(crate) struct LookupEnv<'a> {
@@ -77,22 +81,30 @@ pub(crate) fn compile_const_decl(
     // Check if it's a processed global constant.
     match (
         env.module.get_global_constant(env.context, name.as_str()),
+        env.module
+            .get_global_configurable(env.context, name.as_str()),
         env.module_ns,
     ) {
-        (Some(const_val), _) => Ok(Some(const_val)),
-        (None, Some(module_ns)) => {
+        (Some(const_val), _, _) => Ok(Some(const_val)),
+        (_, Some(config_val), _) => Ok(Some(config_val)),
+        (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let ty::TyConstantDeclaration { name, value, .. } = env
+                    let ty::TyConstantDeclaration {
+                        name,
+                        value,
+                        is_configurable,
+                        ..
+                    } = env
                         .decl_engine
                         .get_constant(decl_id.clone(), &name.span())?;
-                    Some((name, value))
+                    Some((name, value, is_configurable))
                 }
                 _otherwise => None,
             };
-            if let Some((name, value)) = decl_name_value {
+            if let Some((name, value, is_configurable)) = decl_name_value {
                 let const_val = compile_constant_expression(
                     Engines::new(env.type_engine, env.decl_engine),
                     env.context,
@@ -100,10 +112,23 @@ pub(crate) fn compile_const_decl(
                     env.module,
                     env.module_ns,
                     env.function_compiler,
+                    &name,
                     &value,
+                    is_configurable,
                 )?;
-                env.module
-                    .add_global_constant(env.context, name.as_str().to_owned(), const_val);
+                if !is_configurable {
+                    env.module.add_global_constant(
+                        env.context,
+                        name.as_str().to_owned(),
+                        const_val,
+                    );
+                } else {
+                    env.module.add_global_configurable(
+                        env.context,
+                        name.as_str().to_owned(),
+                        const_val,
+                    );
+                }
                 Ok(Some(const_val))
             } else {
                 Ok(None)
@@ -121,7 +146,9 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
+    name: &BaseIdent,
     const_expr: &ty::TyExpression,
+    is_configurable: bool,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
 
@@ -134,7 +161,14 @@ pub(super) fn compile_constant_expression(
         function_compiler,
         const_expr,
     )?;
-    Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
+    if !is_configurable {
+        Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
+    } else {
+        let config_const_name =
+            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(name.as_str()));
+        let metadata = md_combine(context, &span_id_idx, &config_const_name);
+        Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

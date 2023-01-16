@@ -20,8 +20,11 @@
 //!
 //!   #[foo(bar, bar)]
 
-use std::{collections::HashMap, sync::Arc};
 use sway_types::{Ident, Span};
+
+use fuel_abi_types::program_abi;
+
+use std::{collections::HashMap, sync::Arc};
 
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
@@ -49,7 +52,7 @@ pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
 
 pub(crate) fn generate_json_abi_attributes_map(
     attr_map: &AttributesMap,
-) -> Option<Vec<fuels_types::Attribute>> {
+) -> Option<Vec<program_abi::Attribute>> {
     if attr_map.is_empty() {
         None
     } else {
@@ -57,7 +60,7 @@ pub(crate) fn generate_json_abi_attributes_map(
             attr_map
                 .iter()
                 .flat_map(|(_attr_kind, attrs)| {
-                    attrs.iter().map(|attr| fuels_types::Attribute {
+                    attrs.iter().map(|attr| program_abi::Attribute {
                         name: attr.name.to_string(),
                         arguments: attr.args.iter().map(|arg| arg.to_string()).collect(),
                     })

@@ -7,7 +7,7 @@ use crate::{
             aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
         },
         register_sequencer::RegisterSequencer,
-        DataSection, Entry, ProgramKind,
+        DataId, DataSection, Entry, ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclId,
@@ -755,7 +755,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
             if elem_size > compiler_constants::TWELVE_BITS {
                 let size_data_id = self
                     .data_section
-                    .insert_data_value(Entry::new_word(elem_size, None));
+                    .insert_data_value(Entry::new_word(elem_size, None, None));
                 let size_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -912,9 +912,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let hashed_storage_slot = Hasher::hash(storage_slot_to_hash);
 
-        let data_id = self
-            .data_section
-            .insert_data_value(Entry::new_byte_array((*hashed_storage_slot).to_vec(), None));
+        let data_id = self.data_section.insert_data_value(Entry::new_byte_array(
+            (*hashed_storage_slot).to_vec(),
+            None,
+            None,
+        ));
 
         // Allocate a register for it, and a load instruction.
         let reg = self.reg_seqr.next();
@@ -1354,9 +1356,9 @@ impl<'ir> FuelAsmBuilder<'ir> {
             // it.
             let size_reg = self.reg_seqr.next();
             let size_in_bytes = ir_type_size_in_bytes(self.context, log_ty);
-            let size_data_id = self
-                .data_section
-                .insert_data_value(Entry::new_word(size_in_bytes, None));
+            let size_data_id =
+                self.data_section
+                    .insert_data_value(Entry::new_word(size_in_bytes, None, None));
 
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1454,9 +1456,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     // First put the size into the data section, then add a LW to get it,
                     // then add a RETD which uses it.
                     let size_in_bytes = ir_type_size_in_bytes(self.context, ret_type);
-                    let size_data_id = self
-                        .data_section
-                        .insert_data_value(Entry::new_word(size_in_bytes, None));
+                    let size_data_id = self.data_section.insert_data_value(Entry::new_word(
+                        size_in_bytes,
+                        None,
+                        None,
+                    ));
 
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LWDataId(size_reg.clone(), size_data_id)),
@@ -1910,30 +1914,37 @@ impl<'ir> FuelAsmBuilder<'ir> {
         }
     }
 
-    fn initialise_constant(&mut self, constant: &Constant, span: Option<Span>) -> VirtualRegister {
+    fn initialise_constant(
+        &mut self,
+        constant: &Constant,
+        config_name: Option<String>,
+        span: Option<Span>,
+    ) -> (VirtualRegister, Option<DataId>) {
         match &constant.value {
             // Use cheaper $zero or $one registers if possible.
-            ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0) => {
-                VirtualRegister::Constant(ConstantRegister::Zero)
+            ConstantValue::Unit | ConstantValue::Bool(false) | ConstantValue::Uint(0)
+                if config_name.is_none() =>
+            {
+                (VirtualRegister::Constant(ConstantRegister::Zero), None)
             }
 
-            ConstantValue::Bool(true) | ConstantValue::Uint(1) => {
-                VirtualRegister::Constant(ConstantRegister::One)
+            ConstantValue::Bool(true) | ConstantValue::Uint(1) if config_name.is_none() => {
+                (VirtualRegister::Constant(ConstantRegister::One), None)
             }
 
             _otherwise => {
                 // Get the constant into the namespace.
-                let entry = Entry::from_constant(self.context, constant);
+                let entry = Entry::from_constant(self.context, constant, config_name);
                 let data_id = self.data_section.insert_data_value(entry);
 
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id)),
+                    opcode: either::Either::Left(VirtualOp::LWDataId(reg.clone(), data_id.clone())),
                     comment: "literal instantiation".into(),
                     owning_span: span,
                 });
-                reg
+                (reg, Some(data_id))
             }
         }
 
@@ -1957,12 +1968,32 @@ impl<'ir> FuelAsmBuilder<'ir> {
     // Get the reg corresponding to `value`. Returns None if the value is not in reg_map or is not
     // a constant.
     fn opt_value_to_register(&mut self, value: &Value) -> Option<VirtualRegister> {
-        self.reg_map.get(value).cloned().or_else(|| {
-            value.get_constant(self.context).map(|constant| {
-                let span = self.md_mgr.val_to_span(self.context, *value);
-                self.initialise_constant(constant, span)
+        self.reg_map
+            .get(value)
+            .cloned()
+            .or_else(|| {
+                value.get_constant(self.context).map(|constant| {
+                    let span = self.md_mgr.val_to_span(self.context, *value);
+                    self.initialise_constant(constant, None, span).0
+                })
             })
-        })
+            .or_else(|| {
+                value.get_configurable(self.context).map(|constant| {
+                    let span = self.md_mgr.val_to_span(self.context, *value);
+                    let config_name = self
+                        .md_mgr
+                        .md_to_config_const_name(self.context, value.get_metadata(self.context))
+                        .unwrap()
+                        .to_string();
+
+                    let initialized =
+                        self.initialise_constant(constant, Some(config_name.clone()), span);
+                    if let Some(data_id) = initialized.1 {
+                        self.data_section.config_map.insert(config_name, data_id.0);
+                    }
+                    initialized.0
+                })
+            })
     }
 
     // Same as `opt_value_to_register` but returns a new register if no register is found or if
