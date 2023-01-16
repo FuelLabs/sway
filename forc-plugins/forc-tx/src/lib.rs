@@ -210,7 +210,7 @@ pub struct TxPointer {
     pub tx_ix: u16,
 }
 
-/// Transaction input.
+/// Transaction output.
 #[derive(Debug, Parser, Deserialize, Serialize)]
 pub enum Output {
     Coin(OutputCoin),
@@ -338,19 +338,20 @@ impl Transaction {
 
         // The remaining args (if any) are the inputs and outputs.
         while let Some(arg) = args.next() {
-            let args_til_next = std::iter::once(arg.clone())
-                .chain(std::iter::from_fn(|| args.next_if(|s| !is_input_or_output(s))));
+            let args_til_next = std::iter::once(arg.clone()).chain(std::iter::from_fn(|| {
+                args.next_if(|s| !is_input_or_output(s))
+            }));
             match &arg[..] {
                 INPUT => {
-                    let input = Input::try_parse_from(args_til_next)
-                        .context("failed to parse input")?;
+                    let input =
+                        Input::try_parse_from(args_til_next).context("failed to parse input")?;
                     push_input(&mut cmd, input)?
-                },
+                }
                 OUTPUT => {
-                    let output = Output::try_parse_from(args_til_next)
-                        .context("failed to parse output")?;
+                    let output =
+                        Output::try_parse_from(args_til_next).context("failed to parse output")?;
                     push_output(&mut cmd, output)
-                },
+                }
                 arg => bail!("unexpected argument {arg}, expected 'input' or 'output'"),
             }
         }
@@ -382,8 +383,7 @@ impl TryFrom<Create> for fuel_tx::Create {
         let storage_slots = {
             let file = std::fs::File::open(create.storage_slots)?;
             let reader = std::io::BufReader::new(file);
-            serde_json::from_reader(reader)
-                .context("failed to parse storage_slots file")?
+            serde_json::from_reader(reader).context("failed to parse storage_slots file")?
         };
         let inputs = create
             .inputs
@@ -480,17 +480,15 @@ impl TryFrom<Input> for fuel_tx::Input {
                     witness_ix,
                 } = coin;
                 match (witness_ix, predicate.bytecode, predicate.data) {
-                    (Some(witness_index), None, None) => {
-                        fuel_tx::Input::CoinSigned {
-                            utxo_id,
-                            owner,
-                            amount,
-                            asset_id,
-                            tx_pointer,
-                            maturity: maturity as fuel_tx::Word,
-                            witness_index,
-                        }
-                    }
+                    (Some(witness_index), None, None) => fuel_tx::Input::CoinSigned {
+                        utxo_id,
+                        owner,
+                        amount,
+                        asset_id,
+                        tx_pointer,
+                        maturity: maturity as fuel_tx::Word,
+                        witness_index,
+                    },
                     (None, Some(predicate), Some(predicate_data)) => {
                         fuel_tx::Input::CoinPredicate {
                             utxo_id,
@@ -528,17 +526,15 @@ impl TryFrom<Input> for fuel_tx::Input {
                 } = msg;
                 let data = std::fs::read(msg_data)?;
                 match (witness_ix, predicate.bytecode, predicate.data) {
-                    (Some(witness_index), None, None) => {
-                        fuel_tx::Input::MessageSigned {
-                            message_id,
-                            sender,
-                            recipient,
-                            amount,
-                            nonce,
-                            data,
-                            witness_index,
-                        }
-                    }
+                    (Some(witness_index), None, None) => fuel_tx::Input::MessageSigned {
+                        message_id,
+                        sender,
+                        recipient,
+                        amount,
+                        nonce,
+                        data,
+                        witness_index,
+                    },
                     (None, Some(predicate), Some(predicate_data)) => {
                         fuel_tx::Input::MessagePredicate {
                             message_id,
@@ -612,7 +608,8 @@ fn test_parse_create() {
 #[test]
 fn test_parse_script() {
     let receipts_root = fuel_tx::Bytes32::default();
-    let cmd = format!(r#"
+    let cmd = format!(
+        r#"
         forc-tx script
             --bytecode ./my-script/out/debug/my-script.bin
             --data ./my-script.dat
@@ -622,7 +619,8 @@ fn test_parse_script() {
             --receipts-root {receipts_root}
             --witness ADFD
             --witness DFDA
-    "#);
+    "#
+    );
     dbg!(Transaction::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
 
@@ -631,9 +629,12 @@ fn test_parse_mint_coin() {
     let tx_ptr = fuel_tx::TxPointer::default();
     let address = fuel_tx::Address::default();
     let asset_id = fuel_tx::AssetId::default();
-    let cmd = format!(r#"
+    let cmd = format!(
+        r#"
         forc-tx mint --tx-ptr {:X} output coin --to {address} --amount 100 --asset-id {asset_id}
-    "#, tx_ptr);
+    "#,
+        tx_ptr
+    );
     dbg!(Transaction::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
 
@@ -648,7 +649,8 @@ fn test_parse_create_inputs_outputs() {
     let msg_id = fuel_tx::MessageId::default();
     let sender = fuel_tx::Address::default();
     let recipient = fuel_tx::Address::default();
-    let args = format!(r#"
+    let args = format!(
+        r#"
         forc-tx create
             --bytecode ./my-contract/out/debug/my-contract.bin
             --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json
@@ -707,6 +709,8 @@ fn test_parse_create_inputs_outputs() {
             output contract-created
                 --contract-id {contract_id}
                 --state-root {state_root}
-    "#, tx_ptr, tx_ptr);
+    "#,
+        tx_ptr, tx_ptr
+    );
     dbg!(Transaction::try_parse_from_args(args.split_whitespace().map(|s| s.to_string())).unwrap());
 }
