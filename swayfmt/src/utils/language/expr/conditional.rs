@@ -153,6 +153,7 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
+
         write!(else_if_str, " {}", else_token.span().as_str())?;
         match &control_flow {
             ControlFlow::Continue(if_expr) => {

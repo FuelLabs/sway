@@ -220,7 +220,12 @@ fn get_comments_between_spans(
                 pre_context: unformatted_code[starting_position_for_context..comment_span.start]
                     .to_string(),
                 comment: comment.clone(),
-                post_context: get_post_context(unformatted_code, comment_span, next_line),
+                post_context: get_post_context(
+                    unformatted_code,
+                    starting_position_for_context,
+                    comment_span,
+                    next_line,
+                ),
             });
         }
     }
@@ -255,16 +260,18 @@ fn format_context(context: &str, threshold: usize) -> String {
 // We need to know the context after the comment as well.
 fn get_post_context(
     unformatted_code: &Arc<str>,
+    context_start: usize,
     comment_span: &ByteSpan,
     next_line: &str,
 ) -> Option<String> {
     if next_line.trim_start().starts_with("else") {
-        let else_token_start = next_line
-            .char_indices()
-            .find(|(_, c)| !c.is_whitespace())
-            .map(|(i, _)| i)
-            .unwrap_or_default();
-        Some(unformatted_code[comment_span.end..comment_span.end + else_token_start].to_string())
+        // We want to align the 'else' token with the above comment, so we take
+        // the spacing between the start of the comment context and the comment itself,
+        // and subtract by 1. 1 here is somewhat a magic number and should probably be
+        // better handled - this is a result of the format_else_opt() function in
+        // utils/language/expr/conditional.rs always formatting with a whitespace,
+        // so we want to take that away since this 'else' will be on a newline.
+        Some(unformatted_code[context_start..(comment_span.start - 1)].to_string())
     } else {
         // If we don't find anything to format in the context after, we simply
         // return an empty context.
