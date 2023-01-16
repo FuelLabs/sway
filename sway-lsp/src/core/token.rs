@@ -79,6 +79,8 @@ pub enum TypedAstToken {
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
     TypeInfo(TypeInfo),
+
+    GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

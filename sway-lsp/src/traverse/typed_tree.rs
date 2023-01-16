@@ -9,20 +9,232 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    language::ty::{self, TyEnumVariant, TyStructField},
+    language::ty::{
+        self, GenericTypeForFunctionScope, TyAstNode, TyAstNodeContent, TyDeclaration,
+        TyEnumVariant, TyExpression, TyExpressionVariant, TyStructField,
+    },
     AbiName, TraitConstraint, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
 use sway_types::{Ident, Span, Spanned};
 
-pub fn traverse_node(ctx: &ParseContext, node: &ty::TyAstNode) {
-    match &node.content {
-        ty::TyAstNodeContent::Declaration(declaration) => handle_declaration(ctx, declaration),
-        ty::TyAstNodeContent::Expression(expression)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
-            handle_expression(ctx, expression)
+pub fn parse(node: &TyAstNode, ctx: &ParseContext) {
+    node.parse(ctx);
+}
+
+impl Parse for TyAstNode {
+    fn parse(&self, ctx: &ParseContext) {
+        match &self.content {
+            TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
+            TyAstNodeContent::Expression(expression)
+            | TyAstNodeContent::ImplicitReturnExpression(expression) => expression.parse(ctx),
+            TyAstNodeContent::SideEffect => (),
+        };
+    }
+}
+
+impl Parse for TyDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        let decl_engine = ctx.engines.de();
+        let type_engine = ctx.engines.te();
+        match &self {
+            TyDeclaration::VariableDeclaration(variable) => {
+                variable.parse(ctx);
+            }
+            TyDeclaration::ConstantDeclaration(decl_id) => {
+                if let Ok(const_decl) = decl_engine.get_constant(decl_id.clone(), &decl_id.span()) {
+                    const_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                if let Ok(func_decl) = decl_engine.get_function(decl_id.clone(), &decl_id.span()) {
+                    func_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::TraitDeclaration(decl_id) => {
+                if let Ok(trait_decl) = decl_engine.get_trait(decl_id.clone(), &decl_id.span()) {
+                    trait_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::StructDeclaration(decl_id) => {
+                if let Ok(struct_decl) = decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
+                    struct_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::EnumDeclaration(decl_id) => {
+                if let Ok(enum_decl) = decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
+                    enum_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::ImplTrait(decl_id) => {
+                if let Ok(impl_trait) = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())
+                {
+                    impl_trait.parse(ctx);
+                }
+            }
+            TyDeclaration::AbiDeclaration(decl_id) => {
+                if let Ok(abi_decl) = decl_engine.get_abi(decl_id.clone(), &decl_id.span()) {
+                    abi_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::GenericTypeForFunctionScope(generic_type) => {
+                generic_type.parse(ctx);
+            }
+            ty::TyDeclaration::StorageDeclaration(decl_id) => {
+                if let Ok(storage_decl) = decl_engine.get_storage(decl_id.clone(), &decl_id.span())
+                {
+                    storage_decl.parse(ctx);
+                }
+            }
+            TyDeclaration::ErrorRecovery(_) => {}
         }
-        ty::TyAstNodeContent::SideEffect => (),
-    };
+    }
+}
+
+impl Parse for TyExpression {
+    fn parse(&self, ctx: &ParseContext) {
+        let decl_engine = ctx.engines.de();
+        match &self.expression {
+            TyExpressionVariant::Literal(literal) => {
+                literal.parse(ctx);
+            }
+            TyExpressionVariant::FunctionApplication(function_application) => {
+                function_application.parse(ctx);
+            }
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.parse(ctx);
+                rhs.parse(ctx);
+            }
+            TyExpressionVariant::VariableExpression { name, span, .. } => {
+                todo!()
+            }
+            TyExpressionVariant::Tuple { fields } => {
+                fields.iter().for_each(|exp| exp.parse(ctx));
+            }
+            TyExpressionVariant::Array { contents } => {
+                contents.iter().for_each(|exp| exp.parse(ctx));
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.parse(ctx);
+                index.parse(ctx);
+            }
+            TyExpressionVariant::StructExpression { fields, span, .. } => {
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(self.return_type));
+                }
+                fields.iter().for_each(|field| field.parse(ctx));
+            }
+            TyExpressionVariant::CodeBlock(code_block) => {
+                code_block.parse(ctx);
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.parse(ctx);
+                then.parse(ctx);
+                if let Some(else_exp) = r#else {
+                    else_exp.parse(ctx);
+                }
+            }
+            TyExpressionVariant::StructFieldAccess {
+                prefix,
+                field_to_access,
+                field_instantiation_span,
+                ..
+            } => {
+                prefix.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
+                }
+            }
+            TyExpressionVariant::TupleElemAccess {
+                prefix,
+                elem_to_access_span,
+                ..
+            } => {
+                prefix.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(elem_to_access_span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
+                }
+            }
+            TyExpressionVariant::EnumInstantiation {
+                enum_decl,
+                variant_name,
+                tag,
+                contents,
+                enum_instantiation_span,
+                variant_instantiation_span,
+            } => {
+                todo!();
+            }
+            TyExpressionVariant::AbiCast {
+                abi_name, address, ..
+            } => {
+                todo!();
+            }
+            TyExpressionVariant::StorageAccess(storage_access) => {
+                storage_access.parse(ctx);
+            }
+            TyExpressionVariant::IntrinsicFunction(intrinsic_function) => {
+                intrinsic_function.parse(ctx);
+            }
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.parse(ctx);
+            }
+            TyExpressionVariant::UnsafeDowncast { exp, variant } => {
+                exp.parse(ctx);
+                variant.parse(ctx);
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.parse(ctx);
+                body.parse(ctx);
+            }
+            TyExpressionVariant::Reassignment(reassignment) => {
+                reassignment.parse(ctx);
+            }
+            TyExpressionVariant::StorageReassignment(storage_reassignment) => {
+                storage_reassignment.parse(ctx);
+            }
+            TyExpressionVariant::Return(return_exp) => {
+                return_exp.parse(ctx);
+            }
+            TyExpressionVariant::FunctionParameter
+            | TyExpressionVariant::AsmExpression
+            | TyExpressionVariant::AbiName
+            | TyExpressionVariant::Break
+            | TyExpressionVariant::Continue => {}
+            _ => {}
+        }
+    }
+}
+
+impl Parse for GenericTypeForFunctionScope {
+    fn parse(&self, ctx: &ParseContext) {
+        let type_info = ctx.engines.te().get(*self.type_id);
+        type_info.parse(ctx);
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::GenericTypeForFunctionScope(self.clone()));
+        }
+    }
 }
 
 fn handle_declaration(ctx: &ParseContext, declaration: &ty::TyDeclaration) {

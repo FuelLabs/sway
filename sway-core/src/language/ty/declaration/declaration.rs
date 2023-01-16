@@ -23,9 +23,15 @@ pub enum TyDeclaration {
     AbiDeclaration(DeclId),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
+    GenericTypeForFunctionScope(GenericTypeForFunctionScope),
     ErrorRecovery(Span),
     StorageDeclaration(DeclId),
+}
+
+#[derive(Clone, Debug)]
+pub struct GenericTypeForFunctionScope {
+    pub name: Ident,
+    pub type_id: TypeId,
 }
 
 impl EqWithEngines for TyDeclaration {}
@@ -41,16 +47,9 @@ impl PartialEqWithEngines for TyDeclaration {
             (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, engines),
             (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, engines),
             (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, engines),
-            (
-                Self::GenericTypeForFunctionScope {
-                    name: xn,
-                    type_id: xti,
-                },
-                Self::GenericTypeForFunctionScope {
-                    name: yn,
-                    type_id: yti,
-                },
-            ) => xn == yn && xti == yti,
+            (Self::GenericTypeForFunctionScope(a), Self::GenericTypeForFunctionScope(b)) => {
+                a.name == b.name && a.type_id == b.type_id
+            }
             (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
             _ => false,
         }
@@ -110,7 +109,7 @@ impl Spanned for TyDeclaration {
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
-            GenericTypeForFunctionScope { name, .. } => name.span(),
+            GenericTypeForFunctionScope(decl) => decl.name.span(),
             ErrorRecovery(span) => span.clone(),
         }
     }
