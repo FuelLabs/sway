@@ -157,6 +157,9 @@ impl ModuleInfo {
     fn has_parent(&self) -> bool {
         self.depth() > 1
     }
+    pub(crate) fn is_root_module(&self) -> bool {
+        self.depth() == 1 && self.location() == self.project_name()
+    }
     /// Create a qualified path literal String that represents the full path to an item.
     ///
     /// Example: `project_name::module::Item`

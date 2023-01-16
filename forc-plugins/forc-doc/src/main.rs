@@ -83,7 +83,11 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(raw_docs);
+    let forc_version = match &pkg_manifest.project.forc_version {
+        Some(ver) => Some(format!("{}.{}.{}", ver.major, ver.minor, ver.patch)),
+        None => None,
+    };
+    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version);
 
     // write contents to outfile
     for doc in rendered_docs.0 {

@@ -27,7 +27,7 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: Documentation) -> RenderedDocumentation {
+    pub fn from(raw: Documentation, forc_version: Option<String>) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let mut all_docs: AllDocs = Default::default();
         let mut module_map: BTreeMap<ModulePrefix, (Vec<DocItem>, Vec<ModulePrefix>)> =
@@ -72,7 +72,8 @@ impl RenderedDocumentation {
                 module_info: vec![],
                 html_file_name: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
-                    ProjectIndex {
+                    ModuleIndex {
+                        version_opt: forc_version,
                         module_info: root_module.clone(),
                         children: child_modules.to_owned(),
                         module_docs: ModuleDocs(doc_items.to_owned()),
@@ -93,6 +94,7 @@ impl RenderedDocumentation {
                     html_file_name: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
+                            version_opt: None,
                             module_info: module_info,
                             children: child_modules.to_owned(),
                             module_docs: ModuleDocs(doc_items),
@@ -682,26 +684,129 @@ fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox
     }
 }
 struct ModuleDocs(Vec<DocItem>);
-/// The index for all project modules.
+/// The index for each project module.
 pub(crate) struct ModuleIndex {
+    version_opt: Option<String>,
     module_info: ModuleInfo,
-    children: Vec<String>,
+    children: Vec<ModulePrefix>,
     module_docs: ModuleDocs,
+}
+impl SidebarNav for ModuleIndex {
+    fn sidebar(&self) -> Sidebar {
+        let style = match self.module_info.is_root_module() {
+            true => SidebarStyle::ProjectIndex,
+            false => SidebarStyle::ModuleIndex,
+        };
+        Sidebar {
+            version_opt: self.version_opt.clone(),
+            style,
+            module_info: self.module_info.clone(),
+            href_path: INDEX_FILENAME.to_owned(),
+        }
+    }
 }
 impl Renderable for ModuleIndex {
     fn render(self) -> Box<dyn RenderBox> {
-        box_html! {}
-    }
-}
-/// The index for the project root.
-pub(crate) struct ProjectIndex {
-    module_info: ModuleInfo,
-    children: Vec<String>,
-    module_docs: ModuleDocs,
-}
-impl Renderable for ProjectIndex {
-    fn render(self) -> Box<dyn RenderBox> {
-        box_html! {}
+        // TODO: find a better way to do this
+        //
+        // we need to have a finalized list of links for the all doc
+        let mut struct_items: Vec<ItemLink> = Vec::new();
+        let mut enum_items: Vec<ItemLink> = Vec::new();
+        let mut trait_items: Vec<ItemLink> = Vec::new();
+        let mut abi_items: Vec<ItemLink> = Vec::new();
+        let mut storage_items: Vec<ItemLink> = Vec::new();
+        let mut fn_items: Vec<ItemLink> = Vec::new();
+        let mut const_items: Vec<ItemLink> = Vec::new();
+
+        for doc_item in &self.module_docs.0 {
+            use TyDeclaration::*;
+            match doc_item.ty_decl {
+                StructDeclaration(_) => struct_items.push(doc_item.link()),
+                EnumDeclaration(_) => enum_items.push(doc_item.link()),
+                TraitDeclaration(_) => trait_items.push(doc_item.link()),
+                AbiDeclaration(_) => abi_items.push(doc_item.link()),
+                StorageDeclaration(_) => storage_items.push(doc_item.link()),
+                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
+                ConstantDeclaration(_) => const_items.push(doc_item.link()),
+                _ => {} // TODO: ImplTraitDeclaration
+            }
+        }
+        let child_modules = self.children.clone();
+        let sidebar = self.sidebar();
+        box_html! {
+            head {
+                meta(charset="utf-8");
+                meta(name="viewport", content="width=device-width, initial-scale=1.0");
+                meta(name="generator", content="swaydoc");
+                meta(
+                    name="description",
+                    content="List of all items in this crate"
+                );
+                meta(name="keywords", content="sway, swaylang, sway-lang");
+                link(rel="icon", href="assets/sway-logo.svg");
+                title: "List of all items in this crate";
+                link(rel="stylesheet", type="text/css", href="assets/normalize.css");
+                link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href="assets/ayu.css");
+            }
+            body(class="swaydoc mod") {
+                : sidebar.render();
+                main {
+                    div(class="width-limiter") {
+                        div(class="sub-container") {
+                            nav(class="sub") {
+                                form(class="search-form") {
+                                    div(class="search-container") {
+                                        span;
+                                        input(
+                                            class="search-input",
+                                            name="search",
+                                            autocomplete="off",
+                                            spellcheck="false",
+                                            // TODO: Add functionality.
+                                            placeholder="Searchbar unimplemented, see issue #3480...",
+                                            type="search"
+                                        );
+                                        div(id="help-button", title="help", tabindex="-1") {
+                                            button(type="button") { : "?" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        section(id="main-content", class="content") {
+                            h1(class="fqn") {
+                                span(class="in-band") { : "List of all items" }
+                            }
+                            @ if !child_modules.is_empty() {
+                                : all_items_list("Modules".to_string(), child_modules)
+                            }
+                            @ if !storage_items.is_empty() {
+                                : all_items_list("Contract Storage".to_string(), storage_items);
+                            }
+                            @ if !abi_items.is_empty() {
+                                : all_items_list("Abi".to_string(), abi_items);
+                            }
+                            @ if !trait_items.is_empty() {
+                                : all_items_list("Traits".to_string(), trait_items);
+                            }
+                            @ if !struct_items.is_empty() {
+                                : all_items_list("Structs".to_string(), struct_items);
+                            }
+                            @ if !enum_items.is_empty() {
+                                : all_items_list("Enums".to_string(), enum_items);
+                            }
+                            @ if !fn_items.is_empty() {
+                                : all_items_list("Functions".to_string(), fn_items);
+                            }
+                            @ if !const_items.is_empty() {
+                                : all_items_list("Constants".to_string(), const_items);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
