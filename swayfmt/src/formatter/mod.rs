@@ -1393,7 +1393,7 @@ impl MyContract for Contract {
             true
         }
         // TODO remove this else when exhaustive ifs are checked for
-              else {
+                else {
             false
         }
     }
@@ -1421,7 +1421,7 @@ impl MyContract for Contract {
     }
 
     #[test]
-    fn test_comment_between_if_else_underindented() {
+    fn test_multiline_comment_between_if_else_underindented() {
         let sway_code_to_format = r#"contract;
 
 impl MyContract for Contract {
@@ -1429,7 +1429,8 @@ impl MyContract for Contract {
         if self == PrimaryColor::Blue {
             true
         }
-        // TODO remove this else when exhaustive ifs are checked for
+        // TODO
+        // remove this else when exhaustive ifs are checked for
     else {
             false
         }
@@ -1443,7 +1444,8 @@ impl MyContract for Contract {
         if self == PrimaryColor::Blue {
             true
         }
-        // TODO remove this else when exhaustive ifs are checked for
+        // TODO
+        // remove this else when exhaustive ifs are checked for
         else {
             false
         }
@@ -1463,7 +1465,7 @@ impl MyContract for Contract {
 
 impl MyContract for Contract {
     fn is_blue() -> bool {
-        if self == PrimaryColor::Blue { true }
+            if self == PrimaryColor::Blue { true }
         // TODO remove this else when exhaustive ifs are checked for
     else { false }
     }
