@@ -54,7 +54,7 @@ jobs:
 
       - name: Build ${{ matrix.doc_type }}
         run: |
-          if ${{ matrix.doc_type == 'forc' }} 
+          if ${{ matrix.doc_type == 'forc' }}; then
             MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/${{ matrix.doc_type }}
           else
             mdbook build docs/${{ matrix.doc_type }}
