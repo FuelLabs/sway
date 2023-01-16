@@ -1864,11 +1864,13 @@ fn storage_field_to_storage_field(
     } else {
         storage_field.ty.span()
     };
+    let span = storage_field.span();
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
         type_info: ty_to_type_info(handler, engines, storage_field.ty)?,
         type_info_span,
+        span,
         initializer: expr_to_expression(handler, engines, storage_field.initializer)?,
     };
     Ok(storage_field)

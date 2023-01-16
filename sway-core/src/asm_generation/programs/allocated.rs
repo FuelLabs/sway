@@ -1,6 +1,6 @@
 use super::{AllocatedProgram, FinalProgram};
 
-use crate::asm_generation::{AllocatedAbstractInstructionSet, InstructionSet};
+use crate::asm_generation::AllocatedAbstractInstructionSet;
 
 impl AllocatedProgram {
     pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
@@ -15,9 +15,7 @@ impl AllocatedProgram {
         let (realized_ops, mut label_offsets) = abstract_ops
             .relocate_control_flow(&self.data_section)
             .realize_labels(&mut self.data_section)?;
-        let ops = InstructionSet {
-            ops: realized_ops.pad_to_even(),
-        };
+        let ops = realized_ops.pad_to_even();
 
         // Collect the entry point offsets.
         let entries = self
@@ -32,7 +30,7 @@ impl AllocatedProgram {
             })
             .collect();
 
-        Ok(FinalProgram {
+        Ok(FinalProgram::Fuel {
             kind: self.kind,
             data_section: self.data_section,
             ops,
