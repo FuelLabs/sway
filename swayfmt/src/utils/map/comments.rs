@@ -265,12 +265,13 @@ fn get_post_context(
     next_line: &str,
 ) -> Option<String> {
     if next_line.trim_start().starts_with("else") {
-        // We want to align the 'else' token with the above comment, so we take
-        // the spacing between the start of the comment context and the comment itself,
-        // and subtract by 1. 1 here is somewhat a magic number and should probably be
-        // better handled - this is a result of the format_else_opt() function in
-        // utils/language/expr/conditional.rs always formatting with a whitespace,
-        // so we want to take that away since this 'else' will be on a newline.
+        // We want to align the 'else' token with the above comment, so this is just
+        // same as the pre_context subtracted by 1.
+        //
+        // 1 here is somewhat a magic number. This is a result of the format_else_opt()
+        // in utils/language/expr/conditional.rs always formatting with a whitespace.
+        // We want to take that away since this 'else' will always be on a newline,
+        // and will be overindented by one whitespace if left alone.
         Some(unformatted_code[context_start..(comment_span.start - 1)].to_string())
     } else {
         // If we don't find anything to format in the context after, we simply
