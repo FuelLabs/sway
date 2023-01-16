@@ -444,7 +444,7 @@ pub enum CompileError {
         expected: usize,
         received: usize,
     },
-    #[error("The function \"{method_name}\" was called without parenthesis.")]
+    #[error("The function \"{method_name}\" was called without parenthesis. Try adding ().")]
     MissingParenthesisForFunction { span: Span, method_name: Ident },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },

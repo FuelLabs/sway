@@ -7,7 +7,7 @@ category = "fail"
 # nextln: $()Could not find symbol "new" in this scope.
 
 # check: $()let b = lib_a::inner_lib::func;
-# nextln: $()The function "func" was called without parenthesis.
+# nextln: $()The function "func" was called without parenthesis. Try adding ().
 
 # check: $()let s = lib_a::inner_lib::S2::new2;
 # nextln: $()Could not find symbol "new2" in this scope.
