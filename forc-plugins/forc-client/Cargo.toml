@@ -19,7 +19,7 @@ fuel-gql-client = { version = "0.15", default-features = false }
 fuel-tx = { version = "0.23", features = ["builder"] }
 fuels-core = "0.33"
 fuels-signers = "0.33"
-fuels-types = "0.33"
+fuel-abi-types = "0.1"
 futures = "0.3"
 hex = "0.4.3"
 serde = "1.0"
