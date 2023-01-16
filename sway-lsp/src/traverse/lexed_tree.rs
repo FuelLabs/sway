@@ -1,14 +1,17 @@
-use crate::core::{
-    token::{to_ident_key, AstToken, SymbolKind, Token},
-    token_map::TokenMap,
+use crate::{
+    core::{
+        token::{to_ident_key, AstToken, SymbolKind, Token},
+        token_map::TokenMap,
+    },
+    traverse::Parse,
 };
 use std::ops::ControlFlow;
 use sway_ast::{
-    ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
-    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
-    ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
-    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty,
-    TypeField, UseTree,
+    ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
+    ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
+    IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
+    ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
+    PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
@@ -43,10 +46,6 @@ fn insert_keyword(tokens: &TokenMap, span: Span) {
     tokens.insert(to_ident_key(&ident), token);
 }
 
-pub trait Parse {
-    fn parse(&self, tokens: &TokenMap);
-}
-
 impl Parse for ItemKind {
     fn parse(&self, tokens: &TokenMap) {
         match self {
@@ -79,6 +78,9 @@ impl Parse for ItemKind {
             }
             ItemKind::Storage(item_storage) => {
                 item_storage.parse(tokens);
+            }
+            ItemKind::Configurable(item_configurable) => {
+                item_configurable.parse(tokens);
             }
         }
     }
@@ -366,6 +368,24 @@ impl Parse for ItemStorage {
 }
 
 impl Parse for StorageField {
+    fn parse(&self, tokens: &TokenMap) {
+        self.ty.parse(tokens);
+        self.initializer.parse(tokens);
+    }
+}
+
+impl Parse for ItemConfigurable {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.configurable_token.span());
+
+        self.fields
+            .get()
+            .into_iter()
+            .for_each(|field| field.value.parse(tokens));
+    }
+}
+
+impl Parse for ConfigurableField {
     fn parse(&self, tokens: &TokenMap) {
         self.ty.parse(tokens);
         self.initializer.parse(tokens);

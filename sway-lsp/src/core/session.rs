@@ -1,6 +1,7 @@
 use crate::{
     capabilities::{
         self,
+        diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
         runnable::{Runnable, RunnableType},
     },
@@ -20,19 +21,19 @@ use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
-    SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
+    TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -56,7 +57,7 @@ pub struct Session {
     pub runnables: DashMap<RunnableType, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
-    pub declaration_engine: RwLock<DeclarationEngine>,
+    pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
 }
 
@@ -68,7 +69,7 @@ impl Session {
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),
-            declaration_engine: <_>::default(),
+            decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
         }
     }
@@ -76,7 +77,7 @@ impl Session {
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
 
-        *self.declaration_engine.write() = <_>::default();
+        *self.decl_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
@@ -109,7 +110,7 @@ impl Session {
         &self.token_map
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
+    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -141,12 +142,15 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Diagnostics {
+            warnings: vec![],
+            errors: vec![],
+        };
         let type_engine = &*self.type_engine.read();
-        let declaration_engine = &*self.declaration_engine.read();
-        let engines = Engines::new(type_engine, declaration_engine);
+        let decl_engine = &*self.decl_engine.read();
+        let engines = Engines::new(type_engine, decl_engine);
         let tests_enabled = true;
-        let results = pkg::check(&plan, true, tests_enabled, engines)
+        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
             .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
@@ -189,15 +193,14 @@ impl Session {
                 self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                diagnostics =
-                    capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 let dependency = Dependency::new(&self.token_map);
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
                 self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(declaration_engine, an)
+                    dependency.collect_typed_declaration(decl_engine, an)
                 });
             }
         }
@@ -363,10 +366,7 @@ impl Session {
             .value
             .as_ref()
             .ok_or(LanguageServerError::FailedToParse {
-                diagnostics: capabilities::diagnostic::get_diagnostics(
-                    &ast_res.warnings,
-                    &ast_res.errors,
-                ),
+                diagnostics: get_diagnostics(&ast_res.warnings, &ast_res.errors),
             })
     }
 

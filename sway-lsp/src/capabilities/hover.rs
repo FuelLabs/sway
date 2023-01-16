@@ -32,10 +32,7 @@ pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option
     };
 
     let contents = hover_format(
-        Engines::new(
-            &session.type_engine.read(),
-            &session.declaration_engine.read(),
-        ),
+        Engines::new(&session.type_engine.read(), &session.decl_engine.read()),
         &decl_token,
         &decl_ident,
     );
@@ -96,7 +93,7 @@ fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
 }
 
 fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types::HoverContents {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
 
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
@@ -119,7 +116,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
                     .get_struct(decl_id.clone(), &decl.span())
                     .map(|struct_decl| {
                         format_visibility_hover(
@@ -129,7 +126,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                ty::TyDeclaration::TraitDeclaration(ref decl_id) => declaration_engine
+                ty::TyDeclaration::TraitDeclaration(ref decl_id) => decl_engine
                     .get_trait(decl_id.clone(), &decl.span())
                     .map(|trait_decl| {
                         format_visibility_hover(
@@ -139,7 +136,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                ty::TyDeclaration::EnumDeclaration(decl_id) => declaration_engine
+                ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
                     .get_enum(decl_id.clone(), &decl.span())
                     .map(|enum_decl| {
                         format_visibility_hover(

@@ -37,5 +37,6 @@ dep u128;
 dep u256;
 dep message;
 dep prelude;
+dep low_level_call;
 
 use core::*;

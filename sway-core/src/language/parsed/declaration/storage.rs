@@ -20,5 +20,6 @@ pub struct StorageField {
     pub attributes: transform::AttributesMap,
     pub type_info: TypeInfo,
     pub type_info_span: Span,
+    pub span: Span,
     pub initializer: Expression,
 }

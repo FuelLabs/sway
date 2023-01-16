@@ -117,7 +117,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
         // Replace this `cmp` instruction with a constant.
         inst_val.replace(
             context,
-            ValueDatum::Constant(Constant::new_bool(cn_replace)),
+            ValueDatum::Constant(Constant::new_bool(context, cn_replace)),
         );
         block.remove_instruction(context, inst_val);
         true

@@ -12,11 +12,11 @@ use sway_ast::{
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
-    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType, MatchBranchKind, Module,
-    ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern,
-    PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Traits,
-    Ty, TypeField, UseTree, WhereClause,
+    IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
+    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType,
+    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
+    Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -183,6 +183,15 @@ fn item_to_ast_nodes(
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(handler, engines, item_storage, attributes)?,
         )),
+        ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
+            handler,
+            engines,
+            item_configurable,
+            attributes,
+        )?
+        .into_iter()
+        .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
+        .collect(),
     };
 
     Ok(contents
@@ -686,6 +695,7 @@ pub(crate) fn item_const_to_constant_declaration(
         type_ascription_span,
         value: expr_to_expression(handler, engines, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
+        is_configurable: false,
         attributes,
         span,
     })
@@ -732,6 +742,46 @@ fn item_storage_to_storage_declaration(
     Ok(storage_declaration)
 }
 
+fn item_configurable_to_constant_declarations(
+    handler: &Handler,
+    engines: Engines<'_>,
+    item_configurable: ItemConfigurable,
+    _attributes: AttributesMap,
+) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
+    let declarations: Vec<ConstantDeclaration> = item_configurable
+        .fields
+        .into_inner()
+        .into_iter()
+        .map(|configurable_field| {
+            let attributes = item_attrs_to_map(handler, &configurable_field.attribute_list)?;
+            configurable_field_to_constant_declaration(
+                handler,
+                engines,
+                configurable_field.value,
+                attributes,
+            )
+        })
+        .collect::<Result<_, _>>()?;
+
+    // Make sure each configurable is declared once
+    let mut errors = Vec::new();
+    let mut names_of_declarations = std::collections::HashSet::new();
+    declarations.iter().for_each(|v| {
+        if !names_of_declarations.insert(v.name.clone()) {
+            errors.push(ConvertParseTreeError::DuplicateConfigurable {
+                name: v.name.clone(),
+                span: v.name.span(),
+            });
+        }
+    });
+
+    if let Some(errors) = emit_all(handler, errors) {
+        return Err(errors);
+    }
+
+    Ok(declarations)
+}
+
 fn type_field_to_struct_field(
     handler: &Handler,
     engines: Engines<'_>,
@@ -757,7 +807,7 @@ fn generic_params_opt_to_type_parameters(
     where_clause_opt: Option<WhereClause>,
 ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
 
     let trait_constraints = match where_clause_opt {
         Some(where_clause) => where_clause
@@ -774,8 +824,8 @@ fn generic_params_opt_to_type_parameters(
             .into_inner()
             .into_iter()
             .map(|ident| {
-                let custom_type = type_engine.insert_type(
-                    declaration_engine,
+                let custom_type = type_engine.insert(
+                    decl_engine,
                     TypeInfo::Custom {
                         name: ident.clone(),
                         type_arguments: None,
@@ -989,10 +1039,9 @@ fn ty_to_type_argument(
     ty: Ty,
 ) -> Result<TypeArgument, ErrorEmitted> {
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let span = ty.span();
-    let initial_type_id =
-        type_engine.insert_type(declaration_engine, ty_to_type_info(handler, engines, ty)?);
+    let initial_type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
@@ -1261,6 +1310,7 @@ fn expr_func_app_to_expression_kind(
         Some(intrinsic) if last.is_none() && !is_absolute => {
             return Ok(ExpressionKind::IntrinsicFunction(
                 IntrinsicFunctionExpression {
+                    name: call_seg.name,
                     kind_binding: TypeBinding {
                         inner: intrinsic,
                         type_arguments,
@@ -1864,14 +1914,41 @@ fn storage_field_to_storage_field(
     } else {
         storage_field.ty.span()
     };
+    let span = storage_field.span();
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
         type_info: ty_to_type_info(handler, engines, storage_field.ty)?,
         type_info_span,
+        span,
         initializer: expr_to_expression(handler, engines, storage_field.initializer)?,
     };
     Ok(storage_field)
+}
+
+fn configurable_field_to_constant_declaration(
+    handler: &Handler,
+    engines: Engines<'_>,
+    configurable_field: sway_ast::ConfigurableField,
+    attributes: AttributesMap,
+) -> Result<ConstantDeclaration, ErrorEmitted> {
+    let span = configurable_field.name.span();
+    let type_ascription_span = if let Ty::Path(path_type) = &configurable_field.ty {
+        path_type.prefix.name.span()
+    } else {
+        configurable_field.ty.span()
+    };
+
+    Ok(ConstantDeclaration {
+        name: configurable_field.name,
+        type_ascription: ty_to_type_info(handler, engines, configurable_field.ty)?,
+        type_ascription_span: Some(type_ascription_span),
+        value: expr_to_expression(handler, engines, configurable_field.initializer)?,
+        visibility: Visibility::Public,
+        is_configurable: true,
+        attributes,
+        span,
+    })
 }
 
 fn statement_to_ast_nodes(
@@ -2942,12 +3019,12 @@ fn ty_to_type_parameter(
     ty: Ty,
 ) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
 
     let name_ident = match ty {
         Ty::Path(path_type) => path_type_to_ident(handler, path_type)?,
         Ty::Infer { underscore_token } => {
-            let unknown_type = type_engine.insert_type(declaration_engine, TypeInfo::Unknown);
+            let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
             return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
@@ -2960,8 +3037,8 @@ fn ty_to_type_parameter(
         Ty::Array(..) => panic!("array types are not allowed in this position"),
         Ty::Str { .. } => panic!("str types are not allowed in this position"),
     };
-    let custom_type = type_engine.insert_type(
-        declaration_engine,
+    let custom_type = type_engine.insert(
+        decl_engine,
         TypeInfo::Custom {
             name: name_ident.clone(),
             type_arguments: None,
@@ -3145,7 +3222,7 @@ fn generic_args_to_type_arguments(
     generic_args: GenericArgs,
 ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
 
     generic_args
         .parameters
@@ -3153,8 +3230,7 @@ fn generic_args_to_type_arguments(
         .into_iter()
         .map(|ty| {
             let span = ty.span();
-            let type_id =
-                type_engine.insert_type(declaration_engine, ty_to_type_info(handler, engines, ty)?);
+            let type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
             Ok(TypeArgument {
                 type_id,
                 initial_type_id: type_id,

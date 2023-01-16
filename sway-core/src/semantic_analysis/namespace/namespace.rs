@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationId,
+    decl_engine::DeclId,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -113,7 +113,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type_with_self(
+        engines.te().resolve_with_self(
             engines.de(),
             type_id,
             self_type,
@@ -134,7 +134,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type(
+        engines.te().resolve(
             engines.de(),
             type_id,
             span,
@@ -160,12 +160,19 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclarationId> {
+    ) -> CompileResult<DeclId> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
+
+        // If the type that we are looking for is the error recovery type, then
+        // we want to return the error case without creating a new error
+        // message.
+        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
+            return err(warnings, errors);
+        }
 
         // grab the local module
         let local_module = check!(
@@ -182,8 +189,8 @@ impl Namespace {
 
         // resolve the type
         let type_id = check!(
-            type_engine.resolve_type(
-                declaration_engine,
+            type_engine.resolve(
+                decl_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
@@ -191,7 +198,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -212,9 +219,7 @@ impl Namespace {
 
         for decl_id in methods.into_iter() {
             let method = check!(
-                CompileResult::from(
-                    declaration_engine.get_function(decl_id.clone(), &decl_id.span())
-                ),
+                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -230,7 +235,7 @@ impl Namespace {
 
         if !args_buf
             .get(0)
-            .map(|x| type_engine.look_up_type_id(x.return_type))
+            .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {

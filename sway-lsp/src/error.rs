@@ -1,6 +1,7 @@
 use swayfmt::FormatterError;
 use thiserror::Error;
-use tower_lsp::lsp_types::Diagnostic;
+
+use crate::capabilities::diagnostic::Diagnostics;
 
 #[derive(Debug, Error)]
 pub enum LanguageServerError {
@@ -16,7 +17,7 @@ pub enum LanguageServerError {
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]
-    FailedToParse { diagnostics: Vec<Diagnostic> },
+    FailedToParse { diagnostics: Diagnostics },
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
 }

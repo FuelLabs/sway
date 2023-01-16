@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -9,6 +9,8 @@ use crate::{
 
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
+
+use fuel_abi_types::program_abi;
 
 use std::{
     collections::BTreeMap,
@@ -30,9 +32,7 @@ pub struct TypeParameter {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.name_ident.hash(state);
         self.trait_constraints.hash(state, type_engine);
     }
@@ -46,19 +46,19 @@ impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
     }
 }
 
-impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TypeParameter {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -98,7 +98,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         let TypeParameter {
             initial_type_id,
@@ -120,8 +120,8 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert_type(
-            declaration_engine,
+        let type_id = type_engine.insert(
+            decl_engine,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -159,13 +159,13 @@ impl TypeParameter {
     }
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `fuels_types::TypeDeclaration`.
+    /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
     pub(crate) fn get_json_type_parameter(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
+        types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> usize {
-        let type_parameter = fuels_types::TypeDeclaration {
+        let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
             type_field: self
                 .initial_type_id
@@ -190,8 +190,8 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+        let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+        let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -260,7 +260,7 @@ impl TypeParameter {
 
         if errors.is_empty() {
             let decl_mapping =
-                DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
+                DeclMapping::from_stub_and_impld_decl_ids(original_method_ids, impld_method_ids);
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -273,17 +273,14 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(
-    BTreeMap<Ident, DeclarationId>,
-    BTreeMap<Ident, DeclarationId>,
-)> {
+) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
 
     match ctx
         .namespace
@@ -293,9 +290,7 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(
-                    declaration_engine.get_trait(decl_id, &trait_name.suffix.span())
-                ),
+                CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

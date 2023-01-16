@@ -23,7 +23,7 @@ pub(crate) fn instantiate_enum(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
     let enum_variant = check!(
@@ -38,7 +38,7 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], type_engine.look_up_type_id(enum_variant.type_id)) {
+    match (&args[..], type_engine.get(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
                 return_type: enum_decl.create_type_id(engines),
@@ -58,9 +58,7 @@ pub(crate) fn instantiate_enum(
         ([single_expr], _) => {
             let ctx = ctx
                 .with_help_text("Enum instantiator must match its declared variant type.")
-                .with_type_annotation(
-                    type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-                );
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             let typed_expr = check!(
                 ty::TyExpression::type_check(ctx, single_expr.clone()),
                 return err(warnings, errors),
@@ -71,7 +69,7 @@ pub(crate) fn instantiate_enum(
             // unify the value of the argument with the variant
             check!(
                 CompileResult::from(type_engine.unify_adt(
-                    declaration_engine,
+                    decl_engine,
                     typed_expr.return_type,
                     enum_variant.type_id,
                     span,

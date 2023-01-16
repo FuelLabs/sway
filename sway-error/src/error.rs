@@ -674,6 +674,8 @@ pub enum CompileError {
     ConfigTimeConstantNotAConstDecl { span: Span },
     #[error("Configuration-time constant value is not a literal.")]
     ConfigTimeConstantNotALiteral { span: Span },
+    #[error("The type \"{ty}\" is not allowed in storage.")]
+    TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
     #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
@@ -711,6 +713,8 @@ pub enum CompileError {
         missing_impl_attribute: bool,
         span: Span,
     },
+    #[error("Configurable constants are not allowed in libraries.")]
+    ConfigurableInLibrary { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -889,6 +893,7 @@ impl Spanned for CompileError {
             ContinueOutsideLoop { span } => span.clone(),
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
+            TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
@@ -898,6 +903,7 @@ impl Spanned for CompileError {
             DisallowedWhileInPredicate { span } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
+            ConfigurableInLibrary { span } => span.clone(),
         }
     }
 }

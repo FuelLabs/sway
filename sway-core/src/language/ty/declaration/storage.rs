@@ -76,7 +76,7 @@ impl TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+        let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
             TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],
         };
@@ -173,8 +173,8 @@ impl PartialEqWithEngines for TyStorageField {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.initializer.eq(&other.initializer, engines)
     }
 }
