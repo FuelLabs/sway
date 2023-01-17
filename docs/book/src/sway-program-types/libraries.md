@@ -153,7 +153,7 @@ use external_library::mint;
 // `mint` from `external_library` is now available in `my_library`
 ```
 
-Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.
+Wildcard imports using `*` are supported, but it is generally recommended to use explicit imports where possible.
 
 > **Note**: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify `std` as an explicit dependency in `Forc.toml`.
 
