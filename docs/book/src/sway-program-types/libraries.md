@@ -143,7 +143,7 @@ external_library = { path = "../external_library" }
 
 Once the dependancy is added, you can import external libraries as follows:
 - Make sure the imports you want to add have the `pub` keyword (for instance: `pub fn mint() {}`)
-- Use the `use` keyword to selectively import our code from my_other_library
+- Use the `use` keyword to selectively import items from the library
 
 ```sway
 use external_library::mint;
