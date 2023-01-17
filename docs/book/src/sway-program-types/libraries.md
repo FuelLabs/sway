@@ -146,8 +146,6 @@ Once the dependancy is added, you can import external libraries as follows:
 - Use the `use` keyword to selectively import our code from my_other_library
 
 ```sway
-library my_library;
-
 use external_library::mint;
 
 // `mint` from `external_library` is now available in this file
