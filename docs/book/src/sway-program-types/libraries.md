@@ -110,6 +110,8 @@ As `internal_lib` is an internal library, it can be imported into `main.sw` as f
 dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
 
 use internal_lib::mint;
+
+`mint` from `internal_library` is now available in this file
 ```
 
 ### External Libraries
