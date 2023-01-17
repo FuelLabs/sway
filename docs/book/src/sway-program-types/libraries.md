@@ -119,7 +119,7 @@ External libraries are located outside the main `src` directory as shown below:
 ```bash
 $ tree
 .
-├── my_library
+├── my_project
 │   ├── Cargo.toml
 │   ├── Forc.toml
 │   └─── src
