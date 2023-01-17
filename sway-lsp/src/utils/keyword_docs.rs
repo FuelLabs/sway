@@ -1658,7 +1658,9 @@ impl KeywordDocs {
             keyword_docs.insert(name, documentation);
         });
 
-        Self { inner: keyword_docs }
+        Self {
+            inner: keyword_docs,
+        }
     }
 
     /// Returns the documentation for the given keyword.
