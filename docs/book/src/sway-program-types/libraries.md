@@ -89,7 +89,7 @@ There are two types of Sway libraries, based on their location and how they can 
 
 ### Internal Libraries
 
-Internal libraries are located within the main `src` directory with the main program files as shown below:
+Internal libraries are located within the project's `src` directory alongside `main.sw` as shown below:
 
 ```bash
 $ tree
