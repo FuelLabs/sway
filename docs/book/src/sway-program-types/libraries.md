@@ -111,7 +111,7 @@ dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal
 
 use internal_lib::mint;
 
-`mint` from `internal_library` is now available in this file
+// `mint` from `internal_library` is now available in this file
 ```
 
 ### External Libraries
