@@ -132,7 +132,7 @@ $ tree
         └── lib.sw
 ```
         
-As `external_lib` is outside the main `src` directory of `my_library`, it needs to be added as a dependancy in `Forc.toml` of `my_library` by adding the library path in the `dependancies` section as below in order to be imported:
+As `external_lib` is outside the `src` directory of `my_project`, it needs to be added as a dependency in the `Forc.toml` file of `my_project`, by adding the library path in the `dependencies` section as shown below, before it can be imported:
 
 ```toml
 [dependencies]
