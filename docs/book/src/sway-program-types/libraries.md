@@ -85,7 +85,7 @@ The `dep` keyword in the main library includes a dependency on another library, 
 
 ## Using Libraries
 
-There are two types of libraries categorised based on where it is located and how we can import them.
+There are two types of Sway libraries, based on their location and how they can be imported.
 
 ### Internal Libraries
 
