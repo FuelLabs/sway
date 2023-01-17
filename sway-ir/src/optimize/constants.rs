@@ -11,8 +11,24 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
-    BranchToWithArgs, Predicate,
+    BranchToWithArgs, NamedPass, Predicate,
 };
+
+pub struct ConstCombinePass;
+
+impl NamedPass for ConstCombinePass {
+    fn name() -> &'static str {
+        "constcombine"
+    }
+
+    fn descr() -> &'static str {
+        "constant folding."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, combine_constants)
+    }
+}
 
 /// Find constant expressions which can be reduced to fewer opterations.
 pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, IrError> {
@@ -117,7 +133,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
         // Replace this `cmp` instruction with a constant.
         inst_val.replace(
             context,
-            ValueDatum::Constant(Constant::new_bool(cn_replace)),
+            ValueDatum::Constant(Constant::new_bool(context, cn_replace)),
         );
         block.remove_instruction(context, inst_val);
         true

@@ -57,16 +57,16 @@ impl PartialEqWithEngines for TyDeclaration {
     }
 }
 
-impl CopyTypes for TyDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         use TyDeclaration::*;
         match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.copy_types(type_mapping, engines),
-            FunctionDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            TraitDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            StructDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            EnumDeclaration(ref mut decl_id) => decl_id.copy_types(type_mapping, engines),
-            ImplTrait(decl_id) => decl_id.copy_types(type_mapping, engines),
+            VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
+            FunctionDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            TraitDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            EnumDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            ImplTrait(decl_id) => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
             | ConstantDeclaration(_)
@@ -138,13 +138,12 @@ impl DisplayWithEngines for TyDeclaration {
                         VariableMutability::Mutable => builder.push_str("mut"),
                         VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
-                        VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
                     builder.push_str(
                         &engines
-                            .help_out(type_engine.look_up_type_id(*type_ascription))
+                            .help_out(type_engine.get(*type_ascription))
                             .to_string(),
                     );
                     builder.push_str(" = ");
@@ -542,7 +541,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                type_engine.insert_type(
+                type_engine.insert(
                     decl_engine,
                     TypeInfo::Storage {
                         fields: storage_decl.fields_as_typed_struct_fields(),

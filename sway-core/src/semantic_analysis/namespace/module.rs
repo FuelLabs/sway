@@ -350,16 +350,6 @@ impl Module {
                     let ty::TyVariableDeclaration {
                         mutability, name, ..
                     } = &**var_decl;
-                    if mutability == &ty::VariableMutability::ExportedConst {
-                        check!(
-                            self[dst]
-                                .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone()),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        return ok((), warnings, errors);
-                    }
                 }
 
                 if let ty::TyDeclaration::ConstantDeclaration(ref var_decl) = decl {

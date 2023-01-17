@@ -4,6 +4,7 @@ mod ir_generation;
 use anyhow::Result;
 use clap::Parser;
 use forc_tracing::init_tracing_subscriber;
+use sway_core::BuildTarget;
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -39,6 +40,10 @@ struct Cli {
     /// Intended for use in `CI` to ensure test lock files are up to date
     #[arg(long)]
     locked: bool,
+
+    /// Build target.
+    #[arg(long, visible_alias = "target")]
+    build_target: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -53,6 +58,7 @@ pub struct FilterConfig {
 
 #[derive(Debug, Clone)]
 pub struct RunConfig {
+    pub build_target: BuildTarget,
     pub locked: bool,
     pub verbose: bool,
 }
@@ -71,9 +77,18 @@ async fn main() -> Result<()> {
         contract_only: cli.contract_only,
         first_only: cli.first_only,
     };
+    let build_target = match cli.build_target {
+        Some(target) => match target.to_lowercase().as_str() {
+            "fuel" => BuildTarget::Fuel,
+            "evm" => BuildTarget::EVM,
+            _ => panic!("unexpected build target"),
+        },
+        None => BuildTarget::default(),
+    };
     let run_config = RunConfig {
         locked: cli.locked,
         verbose: cli.verbose,
+        build_target,
     };
 
     // Run E2E tests

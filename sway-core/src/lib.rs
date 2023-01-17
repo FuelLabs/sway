@@ -1,7 +1,7 @@
 #[macro_use]
 pub mod error;
 
-mod asm_generation;
+pub mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
@@ -21,15 +21,15 @@ use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
-pub use asm_generation::FinalizedEntry;
-pub use build_config::BuildConfig;
+pub use asm_generation::{CompiledBytecode, FinalizedEntry};
+pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Type, Value};
+use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -220,9 +220,6 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
 }
 
 pub struct CompiledAsm(pub FinalizedAsm);
-
-/// The bytecode for a sway program.
-pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
     engines: Engines<'_>,
@@ -595,7 +592,7 @@ pub fn inline_function_calls(
             arg_val
                 .get_argument_type_and_byref(ctx)
                 .map(|(ty, by_ref)| {
-                    by_ref || !matches!(ty, Type::Unit | Type::Bool | Type::Uint(_))
+                    by_ref || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
                 })
                 .unwrap_or(false)
         }) {
@@ -707,13 +704,13 @@ pub fn asm_to_bytecode(
 ) -> CompileResult<CompiledBytecode> {
     match value {
         Some(CompiledAsm(mut asm)) => {
-            let bytes = check!(
+            let compiled_bytecode = check!(
                 asm.to_bytecode_mut(source_map),
                 return err(warnings, errors),
                 warnings,
                 errors,
             );
-            ok(CompiledBytecode(bytes), warnings, errors)
+            ok(compiled_bytecode, warnings, errors)
         }
         None => err(warnings, errors),
     }

@@ -212,12 +212,7 @@ pub(crate) fn check_match_expression_usefulness(
     // branches in the match expression (i.e. no scrutinees to check), then
     // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
     // case.
-    if !engines
-        .te()
-        .look_up_type_id(type_id)
-        .has_valid_constructor()
-        && scrutinees.is_empty()
-    {
+    if !engines.te().get(type_id).has_valid_constructor() && scrutinees.is_empty() {
         let witness_report = WitnessReport::NoWitnesses;
         let arms_reachability = vec![];
         return ok((witness_report, arms_reachability), warnings, errors);

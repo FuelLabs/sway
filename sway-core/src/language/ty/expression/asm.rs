@@ -22,10 +22,10 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
     }
 }
 
-impl CopyTypes for TyAsmRegisterDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyAsmRegisterDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         if let Some(ref mut initializer) = self.initializer {
-            initializer.copy_types(type_mapping, engines)
+            initializer.subst(type_mapping, engines)
         }
     }
 }

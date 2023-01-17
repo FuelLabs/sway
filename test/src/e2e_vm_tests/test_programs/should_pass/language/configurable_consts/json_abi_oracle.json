@@ -1,0 +1,168 @@
+{
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      },
+      "name": "C0",
+      "offset": 3268
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 7,
+        "typeArguments": null
+      },
+      "name": "C1",
+      "offset": 3276
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      },
+      "name": "C2",
+      "offset": 3292
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      },
+      "name": "C3",
+      "offset": 3356
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": []
+      },
+      "name": "C4",
+      "offset": 3372
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": []
+      },
+      "name": "C5",
+      "offset": 3388
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": null
+      },
+      "name": "C6",
+      "offset": 3436
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "name": "C7",
+      "offset": 3460
+    }
+  ],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 7,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 4]",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "type": 7,
+          "typeArguments": null
+        },
+        {
+          "name": "B",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum MyEnum",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[4]",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "x",
+          "type": 7,
+          "typeArguments": null
+        },
+        {
+          "name": "y",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct MyStruct",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 7,
+      "typeParameters": null
+    }
+  ]
+}

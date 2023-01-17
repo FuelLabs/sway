@@ -64,7 +64,7 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.look_up_type_id(var.type_ascription);
+            let type_info = type_engine.get(var.type_ascription);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),

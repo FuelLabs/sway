@@ -2,7 +2,7 @@
 
 Thanks for your interest in contributing to Sway! This document outlines the process for installing and setting up the Sway toolchain for development, as well as some conventions on contributing to Sway.
 
-If you run into any difficulties getting started, you can always ask questions on our [Discord](https://discord.gg/xfpK4Pe).
+If you run into any difficulties getting started, you can always ask questions on our [Discourse](https://forum.fuel.network/).
 
 ## Building and setting up a development workspace
 

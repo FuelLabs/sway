@@ -2,8 +2,8 @@ use crate::asm_lang::{Label, VirtualRegister};
 /// The [RegisterSequencer] is basically an iterator over integers -- it distributes unique ids in
 /// the form of integers while ASM is being generated to ensure a monotonically increasing unique
 /// register Id for every virtual register that is used.
-#[derive(Default)]
-pub(crate) struct RegisterSequencer {
+#[derive(Clone, Copy, Default)]
+pub struct RegisterSequencer {
     next_register: usize,
     next_jump_label: usize,
 }

@@ -71,6 +71,7 @@ pub enum Warning {
     },
     OverridingTraitImplementation,
     DeadDeclaration,
+    DeadEnumDeclaration,
     DeadFunctionDeclaration,
     DeadStructDeclaration,
     DeadTrait,
@@ -196,6 +197,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
+            DeadEnumDeclaration => write!(f, "This enum is never used."),
             DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
