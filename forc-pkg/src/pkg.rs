@@ -2205,6 +2205,11 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
+    let node_idx = &graph[node];
+    namespace.name = Some(Ident::new_no_span(Box::leak(
+        node_idx.name.clone().into_boxed_str(),
+    )));
+
     // Add direct dependencies.
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
