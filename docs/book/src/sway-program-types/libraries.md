@@ -139,7 +139,7 @@ As `external_lib` is outside the `src` directory of `my_project`, it needs to be
 external_library = { path = "../external_library" }
 ```
 
-Once the dependancy is added, you can import external libraries as follows:
+Once the library dependency is added to the `toml` file, you can import items from it as follows:
 - Make sure the imports you want to add have the `pub` keyword (for instance: `pub fn mint() {}`)
 - Use the `use` keyword to selectively import items from the library
 
