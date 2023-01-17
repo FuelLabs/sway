@@ -159,7 +159,7 @@ Wildcard imports using `*` are supported, but it is always recommended to use ex
 
 ## Sway Libraries
 
-Sway Libraries is a collection of external libraries that you can import and make use of in your Fuel apps. These libraries are meant to be learning references of common use-cases valuable for dapp development.
+The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.
 
 Some Sway Libraries to try out:
 - [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof)
