@@ -107,7 +107,7 @@ As `internal_lib` is an internal library, it can be imported into `main.sw` as f
 - Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
-dep internal_lib;
+dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
 
 use internal_lib::mint;
 ```
