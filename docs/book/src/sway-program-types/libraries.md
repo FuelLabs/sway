@@ -140,7 +140,7 @@ external_library = { path = "../external_library" }
 ```
 
 Once the library dependency is added to the `toml` file, you can import items from it as follows:
-- Make sure the imports you want to add have the `pub` keyword (for instance: `pub fn mint() {}`)
+- Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
 - Use the `use` keyword to selectively import items from the library
 
 ```sway
