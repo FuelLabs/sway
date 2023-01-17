@@ -9,10 +9,7 @@ use crate::{
 
 use super::TraitMap;
 
-use sway_error::{
-    error::CompileError,
-    warning::{CompileWarning, Warning},
-};
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
@@ -25,7 +22,7 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDeclaration)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -106,39 +103,67 @@ impl Items {
         name: Ident,
         item: ty::TyDeclaration,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
         let mut errors = vec![];
-        // purposefully do not preemptively return errors so that the
-        // new definition allows later usages to compile
-        if let Some(decl) = self.symbols.get(&name) {
-            match item {
-                ty::TyDeclaration::VariableDeclaration { .. } => {
-                    if matches!(decl, ty::TyDeclaration::ConstantDeclaration { .. }) {
-                        errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
-                    }
-                }
-                ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. }
-                | ty::TyDeclaration::AbiDeclaration { .. }
-                | ty::TyDeclaration::TraitDeclaration { .. } => {
-                    errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
-                }
-                ty::TyDeclaration::ConstantDeclaration { .. } => {
-                    errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
-                }
-                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
-                    errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
-                }
-                _ => {
-                    warnings.push(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
-                    });
-                }
+
+        use ty::TyDeclaration::*;
+        match (self.symbols.get(&name), &item) {
+            (
+                Some(ConstantDeclaration { .. }),
+                VariableDeclaration { .. } | ConstantDeclaration { .. },
+            )
+            | (Some(VariableDeclaration { .. }), ConstantDeclaration { .. })
+            | (
+                Some(
+                    StructDeclaration { .. }
+                    | EnumDeclaration { .. }
+                    | TraitDeclaration { .. }
+                    | AbiDeclaration { .. },
+                ),
+                StructDeclaration { .. }
+                | EnumDeclaration { .. }
+                | TraitDeclaration { .. }
+                | AbiDeclaration { .. },
+            ) => {
+                errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
             }
+            (Some(GenericTypeForFunctionScope { .. }), GenericTypeForFunctionScope { .. }) => {
+                errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
+            }
+            _ => {}
         }
+        match (self.use_synonyms.get(&name), &item) {
+            (
+                Some((_, GlobImport::No, ConstantDeclaration { .. })),
+                VariableDeclaration { .. } | ConstantDeclaration { .. },
+            )
+            | (Some((_, GlobImport::No, VariableDeclaration { .. })), ConstantDeclaration { .. })
+            | (
+                Some((
+                    _,
+                    GlobImport::No,
+                    StructDeclaration { .. }
+                    | EnumDeclaration { .. }
+                    | TraitDeclaration { .. }
+                    | AbiDeclaration { .. },
+                )),
+                StructDeclaration { .. }
+                | EnumDeclaration { .. }
+                | TraitDeclaration { .. }
+                | AbiDeclaration { .. },
+            ) => {
+                errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
+            }
+            (
+                Some((_, GlobImport::No, GenericTypeForFunctionScope { .. })),
+                GenericTypeForFunctionScope { .. },
+            ) => {
+                errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
+            }
+            _ => {}
+        }
+
         self.symbols.insert(name, item);
-        ok((), warnings, errors)
+        ok((), vec![], errors)
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {

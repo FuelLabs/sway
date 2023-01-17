@@ -206,7 +206,7 @@ impl Module {
         );
 
         let implemented_traits = src_ns.implemented_traits.clone();
-        let mut symbols = vec![];
+        let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
                 decl.visibility(decl_engine),
@@ -215,7 +215,7 @@ impl Module {
                 errors
             );
             if visibility == Visibility::Public {
-                symbols.push(symbol.clone());
+                symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
@@ -223,10 +223,11 @@ impl Module {
         dst_ns
             .implemented_traits
             .extend(implemented_traits, engines);
-        for symbol in symbols {
-            dst_ns
-                .use_synonyms
-                .insert(symbol, (src.to_vec(), GlobImport::Yes));
+        for symbol_and_decl in symbols_and_decls {
+            dst_ns.use_synonyms.insert(
+                symbol_and_decl.0,
+                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1.clone()),
+            );
         }
 
         ok((), warnings, errors)
@@ -258,7 +259,11 @@ impl Module {
 
         let implemented_traits = src_ns.implemented_traits.clone();
         let use_synonyms = src_ns.use_synonyms.clone();
-        let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
+        let mut symbols_and_decls = src_ns
+            .use_synonyms
+            .iter()
+            .map(|(k, v)| (k.clone(), v.2.clone()))
+            .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
                 decl.visibility(decl_engine),
@@ -267,7 +272,7 @@ impl Module {
                 errors
             );
             if visibility == Visibility::Public {
-                symbols.push(symbol.clone());
+                symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
@@ -275,14 +280,18 @@ impl Module {
         dst_ns
             .implemented_traits
             .extend(implemented_traits, engines);
-        let mut try_add = |symbol, path| {
-            dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
+
+        let mut try_add = |symbol, path, decl: ty::TyDeclaration| {
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (path, GlobImport::Yes, decl));
         };
 
-        for symbol in symbols {
-            try_add(symbol, src.to_vec());
+        for symbol_and_decl in symbols_and_decls {
+            try_add(symbol_and_decl.0.clone(), src.to_vec(), symbol_and_decl.1);
         }
-        for (symbol, (mod_path, _)) in use_synonyms {
+
+        for (symbol, (mod_path, _, decl)) in use_synonyms {
             // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
             // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
             //
@@ -290,7 +299,7 @@ impl Module {
             // distinguishing between external and crate-relative paths?
             let mut src = src[..1].to_vec();
             src.extend(mod_path);
-            try_add(symbol, src);
+            try_add(symbol, src, decl);
         }
 
         ok((), warnings, errors)
@@ -345,33 +354,6 @@ impl Module {
                 if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
                 }
-                // if this is a const, insert it into the local namespace directly
-                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
-                    let ty::TyVariableDeclaration {
-                        mutability, name, ..
-                    } = &**var_decl;
-                }
-
-                if let ty::TyDeclaration::ConstantDeclaration(ref var_decl) = decl {
-                    let const_decl = check!(
-                        CompileResult::from(
-                            decl_engine.get_constant(var_decl.clone(), &var_decl.span())
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors,
-                    );
-                    check!(
-                        self[dst].insert_symbol(
-                            alias.unwrap_or_else(|| const_decl.name.clone()),
-                            decl.clone(),
-                        ),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    return ok((), warnings, errors);
-                }
 
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
@@ -385,13 +367,13 @@ impl Module {
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
-                let mut add_synonym = |name| {
-                    if let Some((_, GlobImport::No)) = dst_ns.use_synonyms.get(name) {
+                let add_synonym = |name| {
+                    if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
                         errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                     }
                     dst_ns
                         .use_synonyms
-                        .insert(name.clone(), (src.to_vec(), GlobImport::No));
+                        .insert(name.clone(), (src.to_vec(), GlobImport::No, decl));
                 };
                 match alias {
                     Some(alias) => {

@@ -143,15 +143,14 @@ impl ty::TyDeclaration {
                     span,
                 };
                 let typed_const_decl =
-                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl.clone()));
+                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
                 check!(
-                    ctx.namespace.insert_symbol(name.clone(), typed_const_decl),
+                    ctx.namespace
+                        .insert_symbol(name.clone(), typed_const_decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let typed_const_decl =
-                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
                 ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                 typed_const_decl
             }
