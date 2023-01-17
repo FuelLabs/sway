@@ -31,6 +31,7 @@ pub(crate) fn struct_instantiation(
             prefixes, suffix, ..
         },
         type_arguments,
+        prefix_type_arguments: _,
         span: inner_span,
     } = call_path_binding.clone();
 

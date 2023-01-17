@@ -1330,6 +1330,7 @@ fn method_call_fields_to_method_application_expression(
     let method_name_binding = TypeBinding {
         inner: MethodName::FromModule { method_name },
         type_arguments,
+        prefix_type_arguments: vec![],
         span,
     };
     let contract_call_params = match contract_args_opt {
@@ -1436,6 +1437,7 @@ fn expr_func_app_to_expression_kind(
                     kind_binding: TypeBinding {
                         inner: intrinsic,
                         type_arguments,
+                        prefix_type_arguments: vec![],
                         span: name_args_span(span, type_arguments_span),
                     },
                     arguments,
@@ -1461,6 +1463,7 @@ fn expr_func_app_to_expression_kind(
             let call_path_binding = TypeBinding {
                 inner: call_path,
                 type_arguments,
+                prefix_type_arguments: vec![],
                 span,
             };
             return Ok(ExpressionKind::FunctionApplication(Box::new(
@@ -1479,6 +1482,7 @@ fn expr_func_app_to_expression_kind(
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
         type_arguments: last_ty_args,
+        prefix_type_arguments: vec![],
     };
     let suffix = AmbiguousSuffix {
         before,
@@ -1493,6 +1497,7 @@ fn expr_func_app_to_expression_kind(
         span: name_args_span(call_path.span(), type_arguments_span),
         inner: call_path,
         type_arguments,
+        prefix_type_arguments: vec![],
     };
     Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
         AmbiguousPathExpression {
@@ -2030,6 +2035,7 @@ fn op_call(
             },
         },
         type_arguments: vec![],
+        prefix_type_arguments: vec![],
         span: op_span,
     };
     Ok(Expression {
@@ -2614,11 +2620,30 @@ fn path_expr_to_call_path_binding(
         ..
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
-    let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
+    let (prefixes, suffix, span, type_arguments, prefix_type_arguments) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
-            let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
-            for (_, call_path_prefix) in suffix {
-                let ident = path_expr_segment_to_ident(context, handler, &call_path_prefix)?;
+            let (prefix_ident, mut prefix_type_arguments) = if suffix.len() == 0 {
+                path_expr_segment_to_ident_or_type_argument(context, handler, engines, prefix)?
+            } else {
+                (
+                    path_expr_segment_to_ident(context, handler, &prefix)?,
+                    vec![],
+                )
+            };
+            let mut prefixes = vec![prefix_ident];
+            for (i, (_, call_path_prefix)) in suffix.iter().enumerate() {
+                let ident = if i == suffix.len() - 1 {
+                    let (prefix, prefix_ty_args) = path_expr_segment_to_ident_or_type_argument(
+                        context,
+                        handler,
+                        engines,
+                        call_path_prefix.clone(),
+                    )?;
+                    prefix_type_arguments = prefix_ty_args;
+                    prefix
+                } else {
+                    path_expr_segment_to_ident(context, handler, call_path_prefix)?
+                };
                 // note that call paths only support one set of type arguments per call path right
                 // now
                 prefixes.push(ident);
@@ -2630,13 +2655,13 @@ fn path_expr_to_call_path_binding(
                 engines,
                 call_path_suffix,
             )?;
-            (prefixes, suffix, span, ty_args)
+            (prefixes, suffix, span, ty_args, prefix_type_arguments)
         }
         None => {
             let span = prefix.span();
             let (suffix, ty_args) =
                 path_expr_segment_to_ident_or_type_argument(context, handler, engines, prefix)?;
-            (vec![], suffix, span, ty_args)
+            (vec![], suffix, span, ty_args, vec![])
         }
     };
     Ok(TypeBinding {
@@ -2646,6 +2671,7 @@ fn path_expr_to_call_path_binding(
             is_absolute,
         },
         type_arguments,
+        prefix_type_arguments,
         span,
     })
 }

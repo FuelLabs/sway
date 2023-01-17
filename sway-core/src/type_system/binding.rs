@@ -75,6 +75,7 @@ use super::{TypeArgument, TypeId};
 pub struct TypeBinding<T> {
     pub inner: T,
     pub type_arguments: Vec<TypeArgument>,
+    pub prefix_type_arguments: Vec<TypeArgument>,
     pub span: Span,
 }
 
@@ -98,6 +99,7 @@ impl<T> TypeBinding<T> {
         TypeBinding {
             inner: (),
             type_arguments: self.type_arguments,
+            prefix_type_arguments: self.prefix_type_arguments,
             span: self.span,
         }
     }
