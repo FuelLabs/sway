@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use proc_macro2::{TokenStream, TokenTree};
 use quote::ToTokens;
 use std::{collections::hash_map::HashMap, fmt::Write};
@@ -1653,7 +1655,7 @@ impl KeywordDocs {
             keyword.attrs.iter().for_each(|attr| {
                 let tokens = attr.tokens.to_token_stream();
                 let lit = extract_lit(tokens);
-                write!(documentation, "{}\n", lit).unwrap();
+                writeln!(documentation, "{}", lit).unwrap();
             });
             keyword_docs.insert(name, documentation);
         });
