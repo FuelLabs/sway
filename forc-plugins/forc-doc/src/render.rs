@@ -132,8 +132,6 @@ impl RenderedDocumentation {
                 let module_link = DocLink {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
-                    path_literal: None,
-                    alldoc_path: format!("{}/{}", location, INDEX_FILENAME),
                     html_filename: INDEX_FILENAME.to_owned(),
                 };
                 match module_map.get_mut(parent_module) {
@@ -459,43 +457,31 @@ pub(crate) struct ItemContext {
 }
 impl Renderable for ItemContext {
     fn render(self) -> Box<dyn RenderBox> {
-        const FIELDS: &str = "Fields";
-        const VARIANTS: &str = "Variants";
-        const REQUIRED_METHODS: &str = "Required Methods";
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => context_section(fields, FIELDS),
-            ContextType::StorageFields(fields) => context_section(fields, FIELDS),
-            ContextType::EnumVariants(variants) => context_section(variants, VARIANTS),
-            ContextType::RequiredMethods(methods) => context_section(methods, REQUIRED_METHODS),
+            ContextType::StructFields(fields) => context_section(fields, BlockTitle::Fields),
+            ContextType::StorageFields(fields) => context_section(fields, BlockTitle::Fields),
+            ContextType::EnumVariants(variants) => context_section(variants, BlockTitle::Variants),
+            ContextType::RequiredMethods(methods) => {
+                context_section(methods, BlockTitle::RequiredMethods)
+            }
         }
     }
 }
 /// Dynamically creates the context section of an item.
 fn context_section<'title, S: Renderable + 'static>(
     list: Vec<S>,
-    title: &'title str,
+    title: BlockTitle,
 ) -> Box<dyn RenderBox + 'title> {
-    let lct = html_title_string(title);
+    let lct = title.html_title_string();
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
-            : title;
+            : title.as_str();
             a(class="anchor", href=format!("{}{}", IDENTITY, lct));
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
             : item.render();
         }
-    }
-}
-fn html_title_string(title: &str) -> String {
-    if title.contains(' ') {
-        title
-            .to_lowercase()
-            .split_whitespace()
-            .collect::<Vec<&str>>()
-            .join("-")
-    } else {
-        title.to_lowercase()
     }
 }
 impl Renderable for TyStructField {
@@ -656,11 +642,6 @@ impl Renderable for TyTraitFn {
 pub(crate) struct DocLink {
     pub(crate) name: String,
     pub(crate) module_info: ModuleInfo,
-    /// The path literal syntax for the path to an ident
-    ///
-    /// `module::submodule::item`
-    pub(crate) path_literal: Option<String>,
-    pub(crate) alldoc_path: String,
     pub(crate) html_filename: String,
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -671,7 +652,7 @@ struct DocLinks {
 }
 impl Renderable for DocLinks {
     fn render(self) -> Box<dyn RenderBox> {
-        let item_list = match self.style {
+        let doc_links = match self.style {
             DocStyle::AllDoc => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
@@ -679,7 +660,12 @@ impl Renderable for DocLinks {
                         ul(class=format!("{} docblock", title.html_title_string())) {
                             @ for item in list_items {
                                 li {
-                                    a(href=item.alldoc_path) { : item.path_literal.unwrap(); }
+                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        : item.module_info.to_path_literal_string(
+                                            &item.name,
+                                            &item.module_info.project_name()
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -688,10 +674,55 @@ impl Renderable for DocLinks {
             }
             .into_string()
             .unwrap(),
-            _ => "dummy".to_string(),
+            DocStyle::ProjectIndex => box_html! {
+                @ for (title, list_items) in self.links {
+                    @ if !list_items.is_empty() {
+                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        ul(class=format!("{} docblock", title.html_title_string())) {
+                            @ for item in list_items {
+                                li {
+                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        @ if title == BlockTitle::Modules {
+                                            : item.name;
+                                        } else {
+                                            : item.module_info.to_path_literal_string(
+                                                &item.name,
+                                                &item.module_info.project_name()
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .into_string()
+            .unwrap(),
+            _ => box_html! {
+                @ for (title, list_items) in self.links {
+                    @ if !list_items.is_empty() {
+                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        ul(class=format!("{} docblock", title.html_title_string())) {
+                            @ for item in list_items {
+                                li {
+                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
+                                        : item.module_info.to_path_literal_string(
+                                            &item.name,
+                                            &item.module_info.location()
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .into_string()
+            .unwrap(),
         };
         box_html! {
-            : Raw(item_list);
+            : Raw(doc_links);
         }
     }
 }
@@ -743,7 +774,15 @@ impl BlockTitle {
         }
     }
     fn html_title_string(&self) -> String {
-        html_title_string(self.item_title_str())
+        if self.item_title_str().contains(' ') {
+            self.item_title_str()
+                .to_lowercase()
+                .split_whitespace()
+                .collect::<Vec<&str>>()
+                .join("-")
+        } else {
+            self.item_title_str().to_lowercase()
+        }
     }
 }
 #[derive(Clone)]

@@ -43,13 +43,6 @@ impl Document {
         DocLink {
             name: self.item_header.item_name.as_str().to_owned(),
             module_info: self.module_info.clone(),
-            path_literal: Some(
-                self.module_info
-                    .to_path_literal_string(self.item_header.item_name.as_str()),
-            ),
-            alldoc_path: self
-                .module_info
-                .to_alldoc_file_path_string(&self.html_filename()),
             html_filename: self.html_filename(),
         }
     }
@@ -178,8 +171,8 @@ impl ModuleInfo {
     /// Create a qualified path literal String that represents the full path to an item.
     ///
     /// Example: `project_name::module::Item`
-    pub(crate) fn to_path_literal_string(&self, item_name: &str) -> String {
-        let prefix = self.to_path_literal_prefix();
+    pub(crate) fn to_path_literal_string(&self, item_name: &str, location: &str) -> String {
+        let prefix = self.to_path_literal_prefix(location);
         match prefix.is_empty() {
             true => item_name.to_owned(),
             false => format!("{}::{}", prefix, item_name),
@@ -189,18 +182,26 @@ impl ModuleInfo {
     /// Use in `to_path_literal_string()` to create a full literal path string.
     ///
     /// Example: `module::submodule`
-    fn to_path_literal_prefix(&self) -> String {
+    fn to_path_literal_prefix(&self, location: &str) -> String {
         let mut iter = self.0.iter();
-        iter.next(); // skip the project name
+        while let Some(prefix) = iter.next() {
+            if prefix == &location {
+                break;
+            }
+        }
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
     }
     /// Creates a String version of the path to an item,
     /// used in navigation between pages.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_alldoc_file_path_string(&self, file_name: &str) -> String {
+    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> String {
         let mut iter = self.0.iter();
-        iter.next(); // skip the project_name
+        while let Some(prefix) = iter.next() {
+            if prefix == &location {
+                break;
+            }
+        }
         let mut file_path = iter.collect::<PathBuf>();
         file_path.push(file_name);
 
