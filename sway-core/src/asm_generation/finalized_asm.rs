@@ -10,8 +10,7 @@ use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
-use std::fmt;
-use std::io::Read;
+use std::{collections::BTreeMap, fmt, io::Read};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
@@ -37,8 +36,18 @@ pub struct FinalizedEntry {
     pub test_decl_id: Option<DeclId>,
 }
 
+/// The bytecode for a sway program as well as the byte offsets of configuration-time constants in
+/// the bytecode.
+pub struct CompiledBytecode {
+    pub bytecode: Vec<u8>,
+    pub config_const_offsets: BTreeMap<String, u64>,
+}
+
 impl FinalizedAsm {
-    pub(crate) fn to_bytecode_mut(&mut self, source_map: &mut SourceMap) -> CompileResult<Vec<u8>> {
+    pub(crate) fn to_bytecode_mut(
+        &mut self,
+        source_map: &mut SourceMap,
+    ) -> CompileResult<CompiledBytecode> {
         match &self.program_section {
             InstructionSet::Fuel { ops } => {
                 to_bytecode_mut(ops, &mut self.data_section, source_map)
@@ -51,7 +60,14 @@ impl FinalizedAsm {
                         vec![CompileError::InternalOwned(e.to_string(), Span::dummy())],
                     )
                 } else {
-                    ok(assembler.take(), vec![], vec![])
+                    ok(
+                        CompiledBytecode {
+                            bytecode: assembler.take(),
+                            config_const_offsets: BTreeMap::new(),
+                        },
+                        vec![],
+                        vec![],
+                    )
                 }
             }
         }
@@ -77,7 +93,7 @@ fn to_bytecode_mut(
     ops: &Vec<AllocatedOp>,
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
-) -> CompileResult<Vec<u8>> {
+) -> CompileResult<CompiledBytecode> {
     let mut errors = vec![];
 
     if ops.len() & 1 != 0 {
@@ -138,9 +154,27 @@ fn to_bytecode_mut(
         }
     }
 
+    let config_offsets = data_section
+        .config_map
+        .iter()
+        .map(|(name, id)| {
+            (
+                name.clone(),
+                offset_to_data_section_in_bytes + data_section.raw_data_id_to_offset(*id) as u64,
+            )
+        })
+        .collect::<BTreeMap<String, u64>>();
+
     let mut data_section = data_section.serialize_to_bytes();
 
     buf.append(&mut data_section);
 
-    ok(buf, vec![], errors)
+    ok(
+        CompiledBytecode {
+            bytecode: buf,
+            config_const_offsets: config_offsets,
+        },
+        vec![],
+        errors,
+    )
 }
