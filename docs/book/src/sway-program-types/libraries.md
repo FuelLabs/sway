@@ -150,7 +150,7 @@ library my_library;
 
 use external_library::mint;
 
-// `mint` from `external_library` is now available in `my_library`
+// `mint` from `external_library` is now available in this file
 ```
 
 Wildcard imports using `*` are supported, but it is generally recommended to use explicit imports where possible.
