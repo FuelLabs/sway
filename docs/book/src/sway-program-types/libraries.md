@@ -123,7 +123,7 @@ $ tree
 │   ├── Cargo.toml
 │   ├── Forc.toml
 │   └─── src
-│       └── lib.sw
+│       └── main.sw
 │
 └── external_lib
     ├── Cargo.toml
