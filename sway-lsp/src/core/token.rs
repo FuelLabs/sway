@@ -65,10 +65,20 @@ pub enum AstToken {
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
 #[derive(Debug, Clone)]
 pub enum TypedAstToken {
+    TypedVariableDeclaration(ty::TyVariableDeclaration),
+    TypedConstantDeclaration(ty::TyConstantDeclaration),
+    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
+    TypedTraitDeclaration(ty::TyTraitDeclaration),
+    TypedStructDeclaration(ty::TyStructDeclaration),
+    TypedEnumDeclaration(ty::TyEnumDeclaration),
+    TypedImplTrait(ty::TyImplTrait),
+    TypedAbiDeclaration(ty::TyAbiDeclaration),
+    TypedStorageDeclaration(ty::TyStorageDeclaration),
+    GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope),
+    TypedFunctionParameter(ty::TyFunctionParameter),
+
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
-    TypedFunctionDeclaration(ty::TyFunctionDeclaration),
-    TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
@@ -79,8 +89,7 @@ pub enum TypedAstToken {
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
     TypeInfo(TypeInfo),
-
-    GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope),
+    Ident(Ident),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

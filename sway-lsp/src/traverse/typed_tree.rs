@@ -10,8 +10,11 @@ use crate::{
 use dashmap::mapref::one::RefMut;
 use sway_core::{
     language::ty::{
-        self, GenericTypeForFunctionScope, TyAstNode, TyAstNodeContent, TyDeclaration,
-        TyEnumVariant, TyExpression, TyExpressionVariant, TyStructField,
+        self, GenericTypeForFunctionScope, TyAbiDeclaration, TyAstNode, TyAstNodeContent,
+        TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration, TyEnumVariant,
+        TyExpression, TyExpressionVariant, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait,
+        TyStorageDeclaration, TyStructDeclaration, TyStructField, TyTraitDeclaration, TyTraitFn,
+        TyVariableDeclaration,
     },
     AbiName, TraitConstraint, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
@@ -187,6 +190,9 @@ impl Parse for TyExpression {
             } => {
                 todo!();
             }
+            TyExpressionVariant::AbiName(abi_name) => {
+                abi_name.parse(ctx);
+            }
             TyExpressionVariant::StorageAccess(storage_access) => {
                 storage_access.parse(ctx);
             }
@@ -214,8 +220,7 @@ impl Parse for TyExpression {
                 return_exp.parse(ctx);
             }
             TyExpressionVariant::FunctionParameter
-            | TyExpressionVariant::AsmExpression
-            | TyExpressionVariant::AbiName
+            | TyExpressionVariant::AsmExpression { .. }
             | TyExpressionVariant::Break
             | TyExpressionVariant::Continue => {}
             _ => {}
@@ -223,9 +228,174 @@ impl Parse for TyExpression {
     }
 }
 
+impl Parse for TyVariableDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedVariableDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        if let Some(type_ascription_span) = &self.type_ascription_span {
+            self.type_ascription.parse(ctx);
+        }
+        self.body.parse(ctx);
+    }
+}
+
+impl Parse for TyConstantDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedConstantDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        if let Some(type_ascription_span) = &self.type_ascription_span {
+            self.return_type.parse(ctx);
+        }
+        self.value.parse(ctx);
+    }
+}
+
+impl Parse for TyFunctionDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedFunctionDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        self.body.contents.iter().for_each(|node| node.parse(ctx));
+        self.parameters.iter().for_each(|param| param.parse(ctx));
+        self.type_parameters
+            .iter()
+            .for_each(|param| param.parse(ctx));
+        self.return_type.parse(ctx);
+    }
+}
+
+impl Parse for TyTraitDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedTraitDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        self.interface_surface.iter().for_each(|decl_id| {
+            if let Ok(trait_fn) = ctx
+                .engines
+                .de()
+                .get_trait_fn(decl_id.clone(), &decl_id.span())
+            {
+                trait_fn.parse(ctx);
+            }
+        });
+    }
+}
+
+impl Parse for TyStructDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedStructDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name));
+        }
+        self.fields.iter().for_each(|field| field.parse(ctx));
+        self.type_parameters
+            .iter()
+            .for_each(|param| param.parse(ctx));
+    }
+}
+
+impl Parse for TyEnumDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedEnumDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        self.type_parameters
+            .iter()
+            .for_each(|param| param.parse(ctx));
+        self.variants.iter().for_each(|variant| variant.parse(ctx));
+    }
+}
+
+impl Parse for TyImplTrait {
+    fn parse(&self, ctx: &ParseContext) {
+        self.impl_type_parameters
+            .iter()
+            .for_each(|param| param.parse(ctx));
+        self.trait_name.prefixes.iter().for_each(|prefix| {
+            if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(&prefix)).try_unwrap() {
+                token.typed = Some(TypedAstToken::Ident(prefix.clone()));
+            }
+        });
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.trait_name.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedImplTrait(self.clone()));
+            token.type_def = Some(TypeDefinition::TypeId(self.implementing_for_type_id));
+        }
+        self.trait_type_arguments
+            .iter()
+            .for_each(|arg| arg.parse(ctx));
+        self.methods.iter().for_each(|decl_id| {
+            if let Ok(method) = ctx
+                .engines
+                .de()
+                .get_function(decl_id.clone(), &decl_id.span())
+            {
+                method.parse(ctx);
+            }
+        });
+        self.implementing_for_type_id.parse(ctx);
+    }
+}
+
+impl Parse for TyAbiDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedAbiDeclaration(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        self.interface_surface.iter().for_each(|decl_id| {
+            if let Ok(trait_fn) = ctx
+                .engines
+                .de()
+                .get_trait_fn(decl_id.clone(), &decl_id.span())
+            {
+                trait_fn.parse(ctx);
+            }
+        });
+    }
+}
+
 impl Parse for GenericTypeForFunctionScope {
     fn parse(&self, ctx: &ParseContext) {
-        let type_info = ctx.engines.te().get(*self.type_id);
+        let type_info = ctx.engines.te().get(self.type_id);
         type_info.parse(ctx);
         if let Some(mut token) = ctx
             .tokens
@@ -234,6 +404,61 @@ impl Parse for GenericTypeForFunctionScope {
         {
             token.typed = Some(TypedAstToken::GenericTypeForFunctionScope(self.clone()));
         }
+    }
+}
+
+impl Parse for TyStorageDeclaration {
+    fn parse(&self, ctx: &ParseContext) {
+        self.fields.iter().for_each(|field| field.parse(ctx));
+    }
+}
+
+impl Parse for TyFunctionParameter {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedFunctionParameter(self.clone()));
+            token.type_def = Some(TypeDefinition::TypeId(self.type_id));
+        }
+        self.type_id.parse(ctx);
+    }
+}
+
+impl Parse for TyTraitFn {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedTraitFn(self.clone()));
+            token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
+        }
+        self.parameters.iter().for_each(|param| param.parse(ctx));
+        self.return_type.parse(ctx);
+    }
+}
+
+impl Parse for TyEnumVariant {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedEnumVariant(self.clone()));
+            token.type_def = Some(TypeDefinition::TypeId(self.type_id));
+        }
+        self.type_id.parse(ctx);
+    }
+}
+
+impl Parse for TyCodeBlock {
+    fn parse(&self, ctx: &ParseContext) {
+        self.contents.iter().for_each(|node| node.parse(ctx));
     }
 }
 
