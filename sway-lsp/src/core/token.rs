@@ -80,6 +80,7 @@ pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedStructField(ty::TyStructField),
+    TypedStructExpressionField(ty::TyStructExpressionField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
     TypedStorageField(ty::TyStorageField),
@@ -90,6 +91,7 @@ pub enum TypedAstToken {
     TypedParameter(TypeParameter),
     TypeInfo(TypeInfo),
     Ident(Ident),
+    Literal(Literal),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

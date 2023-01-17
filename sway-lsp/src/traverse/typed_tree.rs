@@ -9,13 +9,13 @@ use crate::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    language::ty::{
+    language::{ty::{
         self, GenericTypeForFunctionScope, TyAbiDeclaration, TyAstNode, TyAstNodeContent,
         TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration, TyEnumVariant,
         TyExpression, TyExpressionVariant, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyStructField, TyTraitDeclaration, TyTraitFn,
-        TyVariableDeclaration,
-    },
+        TyVariableDeclaration,TyStructExpressionField,
+    }, Literal},
     AbiName, TraitConstraint, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -93,22 +93,70 @@ impl Parse for TyDeclaration {
     }
 }
 
+
 impl Parse for TyExpression {
     fn parse(&self, ctx: &ParseContext) {
         let decl_engine = ctx.engines.de();
         match &self.expression {
             TyExpressionVariant::Literal(literal) => {
-                literal.parse(ctx);
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(self.span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::Literal(literal.clone()));
+                }
             }
-            TyExpressionVariant::FunctionApplication(function_application) => {
-                function_application.parse(ctx);
+            TyExpressionVariant::FunctionApplication {
+                call_path,
+                contract_call_params,
+                arguments,
+                function_decl_id,
+                ..
+            } => {
+                call_path.prefixes.iter().for_each(|prefix| {
+                    if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(prefix)).try_unwrap() {
+                        token.typed = Some(TypedAstToken::Ident(prefix.clone()));
+                        token.type_def = Some(TypeDefinition::Ident(prefix.clone()));
+                    }
+                });
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&call_path.suffix))
+                    .try_unwrap()
+                {
+                    if let Ok(function_decl) =
+                        decl_engine.get_function(function_decl_id.clone(), &call_path.span())
+                    {
+                        function_decl.parse(ctx);
+                    }
+                }
+                contract_call_params.values().for_each(|param| param.parse(ctx));
+                arguments.iter().for_each(|(ident, exp)| {
+                    if let Some(mut token) = ctx.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
+                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                    }
+                    exp.parse(ctx);
+                });
+                if let Ok(function_decl) =
+                    decl_engine.get_function(function_decl_id.clone(), &call_path.span())
+                {
+                    function_decl.parse(ctx);
+                }
             }
             TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
                 lhs.parse(ctx);
                 rhs.parse(ctx);
             }
             TyExpressionVariant::VariableExpression { name, span, .. } => {
-                todo!()
+                if let Some(mut token) = ctx
+                    .tokens
+                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::Ident(name.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
+                }
             }
             TyExpressionVariant::Tuple { fields } => {
                 fields.iter().for_each(|exp| exp.parse(ctx));
@@ -129,7 +177,9 @@ impl Parse for TyExpression {
                     token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(self.return_type));
                 }
-                fields.iter().for_each(|field| field.parse(ctx));
+                fields.iter().for_each(|field| {
+                    parse_ty_struct_exp_field(ctx, field, self.return_type);
+                });
             }
             TyExpressionVariant::CodeBlock(code_block) => {
                 code_block.parse(ctx);
@@ -152,14 +202,7 @@ impl Parse for TyExpression {
                 ..
             } => {
                 prefix.parse(ctx);
-                if let Some(mut token) = ctx
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(field_instantiation_span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(self.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(field_to_access.name.clone()));
-                }
+                todo!();
             }
             TyExpressionVariant::TupleElemAccess {
                 prefix,
@@ -454,6 +497,29 @@ impl Parse for TyEnumVariant {
         }
         self.type_id.parse(ctx);
     }
+}
+
+fn parse_ty_struct_exp_field(ctx: &ParseContext, field: &TyStructExpressionField, type_id: TypeId) {
+    if let Some(mut token) = ctx
+        .tokens
+        .try_get_mut(&to_ident_key(&field.name))
+        .try_unwrap()
+    {
+        if let Some(struct_decl) = ctx
+            .tokens
+            .struct_declaration_of_type_id(ctx.engines, &type_id)
+        {
+            token.typed = Some(TypedAstToken::TypedStructExpressionField(field.clone()));
+
+            for decl_field in &struct_decl.fields {
+                if decl_field.name == field.name {
+                    token.type_def =
+                        Some(TypeDefinition::Ident(decl_field.name.clone()));
+                }
+            }
+        }
+    }
+    field.value.parse(ctx);
 }
 
 impl Parse for TyCodeBlock {
@@ -830,7 +896,7 @@ fn handle_expression(ctx: &ParseContext, expression: &ty::TyExpression) {
                 traverse_node(ctx, node);
             }
         }
-        ty::TyExpressionVariant::FunctionParameter { .. } => {}
+        ty::TyExpressionVariant::FunctionParameter => {}
         ty::TyExpressionVariant::IfExp {
             condition,
             then,
