@@ -26,7 +26,10 @@ sway-parse = { version = "0.34.0", path = "../sway-parse" }
 sway-types = { version = "0.34.0", path = "../sway-types" }
 sway-utils = { version = "0.34.0", path = "../sway-utils" }
 swayfmt = { version = "0.34.0", path = "../swayfmt" }
+syn = { version = "1.0.73", features = ["full"] }
+quote = "1.0.9"
 tempfile = "3"
+proc-macro2 = "1.0.5"
 thiserror = "1.0.30"
 tokio = { version = "1.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
 toml_edit = "0.19"
