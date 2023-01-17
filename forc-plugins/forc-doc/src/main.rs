@@ -99,7 +99,7 @@ pub fn main() -> Result<()> {
         }
 
         fs::create_dir_all(&doc_path)?;
-        doc_path.push(doc.html_file_name);
+        doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     // CSS, icons and logos

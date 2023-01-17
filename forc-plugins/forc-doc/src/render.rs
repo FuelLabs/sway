@@ -4,7 +4,8 @@ use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
-    TyDeclaration, TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
+    TyDeclaration::{self, *},
+    TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
@@ -19,7 +20,7 @@ pub(crate) trait Renderable {
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
     pub(crate) module_info: Vec<ModulePrefix>,
-    pub(crate) html_file_name: String,
+    pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
 #[derive(Default)]
@@ -29,54 +30,193 @@ impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
     pub fn from(raw: Documentation, forc_version: Option<String>) -> RenderedDocumentation {
         let mut rendered_docs: RenderedDocumentation = Default::default();
-        let mut all_docs: AllDocs = Default::default();
-        let mut module_map: BTreeMap<ModulePrefix, (Vec<DocItem>, Vec<ModulePrefix>)> =
+        let root_module = match raw.first() {
+            Some(doc) => ModuleInfo::from_vec(vec![doc.module_info.project_name().to_owned()]),
+            None => panic!("Project does not contain a root module"),
+        };
+        let mut all_docs = DocLinks {
+            style: DocStyle::AllDoc,
+            links: Default::default(),
+        };
+        let mut module_map: BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>> =
             BTreeMap::new();
         for doc in raw {
-            let html_file_name = doc.html_file_name();
-
             rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.0.clone(),
-                html_file_name: html_file_name.clone(),
+                module_info: doc.module_info.0.clone(), // fix this
+                html_filename: doc.html_filename(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
-            let doc_item = DocItem {
-                item_name: doc.item_header.item_name.clone(),
-                ty_decl: doc.item_body.ty_decl.clone(),
-                module_info: doc.module_info.clone(),
-                html_file_name,
-            };
-            // Here we gather all of the doc_items based on which module they belong to.
+            // Here we gather all of the `doc_links` based on which module they belong to.
             let location = doc.module_info.location().to_string();
             match module_map.get_mut(&location) {
-                Some((doc_items, _)) => doc_items.push(doc_item.clone()),
+                Some(doc_links) => {
+                    match doc.item_body.ty_decl {
+                        StructDeclaration(_) => match doc_links.get_mut(&BlockTitle::Structs) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
+                            }
+                        },
+                        EnumDeclaration(_) => match doc_links.get_mut(&BlockTitle::Enums) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
+                            }
+                        },
+                        TraitDeclaration(_) => match doc_links.get_mut(&BlockTitle::Traits) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
+                            }
+                        },
+                        AbiDeclaration(_) => match doc_links.get_mut(&BlockTitle::Abi) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
+                            }
+                        },
+                        StorageDeclaration(_) => {
+                            match doc_links.get_mut(&BlockTitle::ContractStorage) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                                }
+                            }
+                        }
+                        FunctionDeclaration(_) => match doc_links.get_mut(&BlockTitle::Functions) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                            }
+                        },
+                        ConstantDeclaration(_) => match doc_links.get_mut(&BlockTitle::Constants) {
+                            Some(links) => links.push(doc.link()),
+                            None => {
+                                doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                            }
+                        },
+                        _ => {} // TODO: ImplTraitDeclaration
+                    }
+                }
                 None => {
-                    module_map.insert(location.clone(), (vec![doc_item.clone()], vec![]));
+                    let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+                    match doc.item_body.ty_decl {
+                        StructDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
+                        }
+                        EnumDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
+                        }
+                        TraitDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
+                        }
+                        AbiDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
+                        }
+                        StorageDeclaration(_) => {
+                            doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                        }
+                        FunctionDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                        }
+                        ConstantDeclaration(_) => {
+                            doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                        }
+                        _ => {} // TODO: ImplTraitDeclaration
+                    }
+                    module_map.insert(location.clone(), doc_links);
                 }
             }
+            // create links to child modules
             if let Some(parent_module) = doc.module_info.parent() {
+                let module_link = DocLink {
+                    name: location.clone(),
+                    module_info: doc.module_info.to_owned(),
+                    path_literal: None,
+                    alldoc_path: format!("{}/{}", location, INDEX_FILENAME),
+                    html_filename: INDEX_FILENAME.to_owned(),
+                };
                 match module_map.get_mut(parent_module) {
-                    Some((_, child_modules)) => child_modules.push(location),
+                    Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
+                        Some(links) => links.push(module_link),
+                        None => {
+                            doc_links.insert(BlockTitle::Modules, vec![module_link]);
+                        }
+                    },
                     None => {
-                        module_map.insert(parent_module.clone(), (vec![], vec![location]));
+                        let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+                        doc_links.insert(BlockTitle::Modules, vec![module_link]);
+                        module_map.insert(parent_module.clone(), doc_links);
                     }
                 }
             }
-
-            all_docs.0.push(doc_item);
+            // above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow
+            match doc.item_body.ty_decl {
+                StructDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Structs) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
+                    }
+                },
+                EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
+                    }
+                },
+                TraitDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Traits) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
+                    }
+                },
+                AbiDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Abi) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
+                    }
+                },
+                StorageDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::ContractStorage)
+                {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs
+                            .links
+                            .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                    }
+                },
+                FunctionDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Functions) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs
+                            .links
+                            .insert(BlockTitle::Functions, vec![doc.link()]);
+                    }
+                },
+                ConstantDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Constants) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs
+                            .links
+                            .insert(BlockTitle::Constants, vec![doc.link()]);
+                    }
+                },
+                _ => {} // TODO: ImplTraitDeclaration
+            }
         }
         // ProjectIndex
-        let root_module = ModuleInfo::from_vec(vec![all_docs.project_name().to_owned()]);
         match module_map.get(root_module.location()) {
-            Some((doc_items, child_modules)) => rendered_docs.0.push(RenderedDocument {
+            Some(doc_links) => rendered_docs.0.push(RenderedDocument {
                 module_info: vec![],
-                html_file_name: INDEX_FILENAME.to_string(),
+                html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
                     ModuleIndex {
                         version_opt: forc_version,
                         module_info: root_module.clone(),
-                        children: child_modules.to_owned(),
-                        module_docs: ModuleDocs(doc_items.to_owned()),
+                        module_docs: DocLinks {
+                            style: DocStyle::ProjectIndex,
+                            links: doc_links.to_owned(),
+                        },
                     }
                     .render(),
                 ),
@@ -87,17 +227,25 @@ impl RenderedDocumentation {
             module_map.remove_entry(root_module.location());
 
             // ModuleIndex(s)
-            for (_, (doc_items, child_modules)) in module_map {
-                let module_info = doc_items.first().unwrap().module_info.clone();
+            for (_, doc_links) in module_map {
+                let module_info = match doc_links.values().last() {
+                    Some(doc_links) => match doc_links.first() {
+                        Some(doc_link) => doc_link.module_info.clone(),
+                        None => panic!("document is empty"),
+                    },
+                    None => panic!("document is empty"),
+                };
                 rendered_docs.0.push(RenderedDocument {
                     module_info: module_info.0.clone(),
-                    html_file_name: INDEX_FILENAME.to_string(),
+                    html_filename: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
                             version_opt: None,
-                            module_info: module_info,
-                            children: child_modules.to_owned(),
-                            module_docs: ModuleDocs(doc_items),
+                            module_info,
+                            module_docs: DocLinks {
+                                style: DocStyle::ModuleIndex,
+                                links: doc_links.to_owned(),
+                            },
                         }
                         .render(),
                     ),
@@ -108,7 +256,7 @@ impl RenderedDocumentation {
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
             module_info: vec![],
-            html_file_name: ALL_DOC_FILENAME.to_string(),
+            html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
                     project_name: root_module,
@@ -201,7 +349,7 @@ impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
             version_opt: None,
-            style: SidebarStyle::Item,
+            style: DocStyle::Item,
             module_info: self.module_info.clone(),
             href_path: INDEX_FILENAME.to_owned(),
         }
@@ -503,52 +651,99 @@ impl Renderable for TyTraitFn {
         }
     }
 }
-#[derive(Clone)]
-struct DocItem {
-    item_name: BaseIdent,
-    ty_decl: TyDeclaration,
-    module_info: ModuleInfo,
-    html_file_name: String,
+/// Used for creating links.
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub(crate) struct DocLink {
+    pub(crate) name: String,
+    pub(crate) module_info: ModuleInfo,
+    /// The path literal syntax for the path to an ident
+    ///
+    /// `module::submodule::item`
+    pub(crate) path_literal: Option<String>,
+    pub(crate) alldoc_path: String,
+    pub(crate) html_filename: String,
 }
-impl DocItem {
-    fn link(&self) -> ItemLink {
-        ItemLink {
-            name: self.item_name.as_str().to_owned(),
-            path_literal: self
-                .module_info
-                .to_path_literal_string(self.item_name.as_str()),
-            hyperlink: self.module_info.to_file_path_string(&self.html_file_name),
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+struct DocLinks {
+    style: DocStyle,
+    /// The title and link info for each doc item.
+    links: BTreeMap<BlockTitle, Vec<DocLink>>,
+}
+impl Renderable for DocLinks {
+    fn render(self) -> Box<dyn RenderBox> {
+        let item_list = match self.style {
+            DocStyle::AllDoc => box_html! {
+                @ for (title, list_items) in self.links {
+                    @ if !list_items.is_empty() {
+                        h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
+                        ul(class=format!("{} docblock", title.html_title_string())) {
+                            @ for item in list_items {
+                                li {
+                                    a(href=item.alldoc_path) { : item.path_literal.unwrap(); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .into_string()
+            .unwrap(),
+            _ => "dummy".to_string(),
+        };
+        box_html! {
+            : Raw(item_list);
         }
     }
 }
-/// Used for creating links.
-struct ItemLink {
-    name: String,
-    path_literal: String,
-    hyperlink: String,
-}
-type ItemLinks = Vec<ItemLink>;
-/// Represents all of the possible titles and links
+/// Represents all of the possible titles
 /// belonging to an index or sidebar.
-enum Title {
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum BlockTitle {
     Modules,
-    Structs(ItemLinks),
-    Enums(ItemLinks),
-    Traits(ItemLinks),
-    Abi(ItemLinks),
-    ContractStorage(ItemLinks),
-    Constants(ItemLinks),
-    Functions(ItemLinks),
+    Structs,
+    Enums,
+    Traits,
+    Abi,
+    ContractStorage,
+    Constants,
+    Functions,
     Fields,
     Variants,
     RequiredMethods,
 }
-#[derive(Default, Clone)]
-struct AllDocs(Vec<DocItem>);
-impl AllDocs {
-    /// A wrapper for `ModuleInfo::project_name()`.
-    fn project_name(&self) -> &str {
-        self.0.first().unwrap().module_info.project_name()
+impl BlockTitle {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::Modules => "Modules",
+            Self::Structs => "Structs",
+            Self::Enums => "Enums",
+            Self::Traits => "Traits",
+            Self::Abi => "Abi",
+            Self::ContractStorage => "Contract Storage",
+            Self::Constants => "Constants",
+            Self::Functions => "Functions",
+            Self::Fields => "Fields",
+            Self::Variants => "Variants",
+            Self::RequiredMethods => "Required Methods",
+        }
+    }
+    fn item_title_str(&self) -> &str {
+        match self {
+            Self::Modules => "Module",
+            Self::Structs => "Struct",
+            Self::Enums => "Enum",
+            Self::Traits => "Trait",
+            Self::Abi => "Abi",
+            Self::ContractStorage => "Contract Storage",
+            Self::Constants => "Constant",
+            Self::Functions => "Function",
+            Self::Fields => "Fields",
+            Self::Variants => "Variants",
+            Self::RequiredMethods => "Required Methods",
+        }
+    }
+    fn html_title_string(&self) -> String {
+        html_title_string(self.item_title_str())
     }
 }
 #[derive(Clone)]
@@ -556,13 +751,13 @@ struct AllDocIndex {
     /// A [ModuleInfo] with only the project name.
     project_name: ModuleInfo,
     /// All doc items.
-    all_docs: AllDocs,
+    all_docs: DocLinks,
 }
 impl SidebarNav for AllDocIndex {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
             version_opt: None,
-            style: SidebarStyle::AllDoc,
+            style: DocStyle::AllDoc,
             module_info: self.project_name.clone(),
             href_path: INDEX_FILENAME.to_owned(),
         }
@@ -571,30 +766,7 @@ impl SidebarNav for AllDocIndex {
 impl Renderable for AllDocIndex {
     /// crate level, all items belonging to a crate
     fn render(self) -> Box<dyn RenderBox> {
-        // TODO: find a better way to do this
-        //
-        // we need to have a finalized list of links for the all doc
-        let mut struct_items: Vec<ItemLink> = Vec::new();
-        let mut enum_items: Vec<ItemLink> = Vec::new();
-        let mut trait_items: Vec<ItemLink> = Vec::new();
-        let mut abi_items: Vec<ItemLink> = Vec::new();
-        let mut storage_items: Vec<ItemLink> = Vec::new();
-        let mut fn_items: Vec<ItemLink> = Vec::new();
-        let mut const_items: Vec<ItemLink> = Vec::new();
-
-        for doc_item in &self.all_docs.0 {
-            use TyDeclaration::*;
-            match doc_item.ty_decl {
-                StructDeclaration(_) => struct_items.push(doc_item.link()),
-                EnumDeclaration(_) => enum_items.push(doc_item.link()),
-                TraitDeclaration(_) => trait_items.push(doc_item.link()),
-                AbiDeclaration(_) => abi_items.push(doc_item.link()),
-                StorageDeclaration(_) => storage_items.push(doc_item.link()),
-                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
-                ConstantDeclaration(_) => const_items.push(doc_item.link()),
-                _ => {} // TODO: ImplTraitDeclaration
-            }
-        }
+        let doc_links = self.all_docs.clone().render();
         let sidebar = self.sidebar();
         box_html! {
             head {
@@ -641,27 +813,7 @@ impl Renderable for AllDocIndex {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
                             }
-                            @ if !storage_items.is_empty() {
-                                : all_items_list("Contract Storage".to_string(), storage_items);
-                            }
-                            @ if !abi_items.is_empty() {
-                                : all_items_list("Abi".to_string(), abi_items);
-                            }
-                            @ if !trait_items.is_empty() {
-                                : all_items_list("Traits".to_string(), trait_items);
-                            }
-                            @ if !struct_items.is_empty() {
-                                : all_items_list("Structs".to_string(), struct_items);
-                            }
-                            @ if !enum_items.is_empty() {
-                                : all_items_list("Enums".to_string(), enum_items);
-                            }
-                            @ if !fn_items.is_empty() {
-                                : all_items_list("Functions".to_string(), fn_items);
-                            }
-                            @ if !const_items.is_empty() {
-                                : all_items_list("Constants".to_string(), const_items);
-                            }
+                            : doc_links;
                         }
                     }
                 }
@@ -670,33 +822,18 @@ impl Renderable for AllDocIndex {
     }
 }
 
-/// Renders the items list from each item kind and adds the links to each file path
-fn all_items_list(title: String, list_items: Vec<ItemLink>) -> Box<dyn RenderBox> {
-    box_html! {
-        h3(id=format!("{title}")) { : title.clone(); }
-        ul(class=format!("{} docblock", title.to_lowercase())) {
-            @ for item in list_items {
-                li {
-                    a(href=item.hyperlink) { : item.path_literal; }
-                }
-            }
-        }
-    }
-}
-struct ModuleDocs(Vec<DocItem>);
 /// The index for each project module.
 pub(crate) struct ModuleIndex {
     /// used only for the root module
     version_opt: Option<String>,
     module_info: ModuleInfo,
-    children: Vec<ModulePrefix>,
-    module_docs: ModuleDocs,
+    module_docs: DocLinks,
 }
 impl SidebarNav for ModuleIndex {
     fn sidebar(&self) -> Sidebar {
         let style = match self.module_info.is_root_module() {
-            true => SidebarStyle::ProjectIndex,
-            false => SidebarStyle::ModuleIndex,
+            true => DocStyle::ProjectIndex,
+            false => DocStyle::ModuleIndex,
         };
         Sidebar {
             version_opt: self.version_opt.clone(),
@@ -708,32 +845,18 @@ impl SidebarNav for ModuleIndex {
 }
 impl Renderable for ModuleIndex {
     fn render(self) -> Box<dyn RenderBox> {
-        // TODO: find a better way to do this
-        //
-        // we need to have a finalized list of links for the all doc
-        let mut struct_items: Vec<ItemLink> = Vec::new();
-        let mut enum_items: Vec<ItemLink> = Vec::new();
-        let mut trait_items: Vec<ItemLink> = Vec::new();
-        let mut abi_items: Vec<ItemLink> = Vec::new();
-        let mut storage_items: Vec<ItemLink> = Vec::new();
-        let mut fn_items: Vec<ItemLink> = Vec::new();
-        let mut const_items: Vec<ItemLink> = Vec::new();
-
-        for doc_item in &self.module_docs.0 {
-            use TyDeclaration::*;
-            match doc_item.ty_decl {
-                StructDeclaration(_) => struct_items.push(doc_item.link()),
-                EnumDeclaration(_) => enum_items.push(doc_item.link()),
-                TraitDeclaration(_) => trait_items.push(doc_item.link()),
-                AbiDeclaration(_) => abi_items.push(doc_item.link()),
-                StorageDeclaration(_) => storage_items.push(doc_item.link()),
-                FunctionDeclaration(_) => fn_items.push(doc_item.link()),
-                ConstantDeclaration(_) => const_items.push(doc_item.link()),
-                _ => {} // TODO: ImplTraitDeclaration
-            }
-        }
-        let child_modules = self.children.clone();
+        let doc_links = self.module_docs.clone().render();
         let sidebar = self.sidebar();
+
+        let normalize = self
+            .module_info
+            .to_html_shorthand_path_string("assets/normalize.css");
+        let swaydoc = self
+            .module_info
+            .to_html_shorthand_path_string("assets/swaydoc.css");
+        let ayu = self
+            .module_info
+            .to_html_shorthand_path_string("assets/ayu.css");
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -741,14 +864,14 @@ impl Renderable for ModuleIndex {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content="List of all items in this crate"
+                    content="List of all items in this project"
                 );
                 meta(name="keywords", content="sway, swaylang, sway-lang");
                 link(rel="icon", href="assets/sway-logo.svg");
-                title: "List of all items in this crate";
-                link(rel="stylesheet", type="text/css", href="assets/normalize.css");
-                link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
-                link(rel="stylesheet", type="text/css", href="assets/ayu.css");
+                title: "List of all items in this project";
+                link(rel="stylesheet", type="text/css", href=normalize);
+                link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
+                link(rel="stylesheet", type="text/css", href=ayu);
             }
             body(class="swaydoc mod") {
                 : sidebar.render();
@@ -779,30 +902,7 @@ impl Renderable for ModuleIndex {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
                             }
-                            @ if !child_modules.is_empty() {
-                                : all_items_list("Modules".to_string(), child_modules)
-                            }
-                            @ if !storage_items.is_empty() {
-                                : all_items_list("Contract Storage".to_string(), storage_items);
-                            }
-                            @ if !abi_items.is_empty() {
-                                : all_items_list("Abi".to_string(), abi_items);
-                            }
-                            @ if !trait_items.is_empty() {
-                                : all_items_list("Traits".to_string(), trait_items);
-                            }
-                            @ if !struct_items.is_empty() {
-                                : all_items_list("Structs".to_string(), struct_items);
-                            }
-                            @ if !enum_items.is_empty() {
-                                : all_items_list("Enums".to_string(), enum_items);
-                            }
-                            @ if !fn_items.is_empty() {
-                                : all_items_list("Functions".to_string(), fn_items);
-                            }
-                            @ if !const_items.is_empty() {
-                                : all_items_list("Constants".to_string(), const_items);
-                            }
+                            : doc_links;
                         }
                     }
                 }
@@ -815,7 +915,8 @@ trait SidebarNav {
     /// Create sidebar component.
     fn sidebar(&self) -> Sidebar;
 }
-enum SidebarStyle {
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum DocStyle {
     AllDoc,
     ProjectIndex,
     ModuleIndex,
@@ -824,7 +925,7 @@ enum SidebarStyle {
 /// Sidebar component for quick navigation.
 struct Sidebar {
     version_opt: Option<String>,
-    style: SidebarStyle,
+    style: DocStyle,
     module_info: ModuleInfo,
     href_path: String,
 }
@@ -834,26 +935,26 @@ impl Renderable for Sidebar {
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
         let location = match &self.style {
-            SidebarStyle::AllDoc | SidebarStyle::ProjectIndex => {
+            DocStyle::AllDoc | DocStyle::ProjectIndex => {
                 format!("Project {}", &self.module_info.location())
             }
-            SidebarStyle::ModuleIndex => {
+            DocStyle::ModuleIndex => {
                 format!("Module {}", &self.module_info.location())
             }
-            SidebarStyle::Item => self.module_info.location().to_owned(),
+            DocStyle::Item => self.module_info.location().to_owned(),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
-            SidebarStyle::AllDoc => box_html! {
+            DocStyle::AllDoc => box_html! {
                 div(class="sidebar-elems") {
                     section {}
                 }
             }
             .into_string()
             .unwrap(),
-            SidebarStyle::ProjectIndex => {
+            DocStyle::ProjectIndex => {
                 let version = match self.version_opt {
                     Some(ref v) => v.as_str(),
                     None => "0.0.0",
@@ -883,14 +984,14 @@ impl Renderable for Sidebar {
                 .into_string()
                 .unwrap()
             }
-            SidebarStyle::ModuleIndex => box_html! {
+            DocStyle::ModuleIndex => box_html! {
                 div(class="sidebar-elems") {
                     section {}
                 }
             }
             .into_string()
             .unwrap(),
-            SidebarStyle::Item => box_html! {
+            DocStyle::Item => box_html! {
                 div(class="sidebar-elems") {
                     section {}
                 }

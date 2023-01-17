@@ -1,6 +1,6 @@
 use crate::{
     descriptor::Descriptor,
-    render::{ItemBody, ItemHeader, Renderable},
+    render::{DocLink, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
@@ -21,21 +21,36 @@ pub(crate) struct Document {
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
-    pub(crate) fn html_file_name(&self) -> String {
+    pub(crate) fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
         let name = match &self.item_body.ty_decl {
             StorageDeclaration(_) => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 
-        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
+        Document::create_html_filename(self.item_body.ty_decl.doc_name(), name)
     }
-    fn create_html_file_name(ty: &str, name: Option<&str>) -> String {
+    fn create_html_filename(ty: &str, name: Option<&str>) -> String {
         match name {
             Some(name) => format!("{ty}.{name}.html"),
             None => {
                 format!("{ty}.html") // storage does not have an Ident
             }
+        }
+    }
+    /// Generate link info used in navigation between docs.
+    pub(crate) fn link(&self) -> DocLink {
+        DocLink {
+            name: self.item_header.item_name.as_str().to_owned(),
+            module_info: self.module_info.clone(),
+            path_literal: Some(
+                self.module_info
+                    .to_path_literal_string(self.item_header.item_name.as_str()),
+            ),
+            alldoc_path: self
+                .module_info
+                .to_alldoc_file_path_string(&self.html_filename()),
+            html_filename: self.html_filename(),
         }
     }
     /// Gather [Documentation] from the [TyProgram].
@@ -127,7 +142,7 @@ impl Renderable for Document {
     }
 }
 pub(crate) type ModulePrefix = String;
-#[derive(Clone)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
@@ -183,7 +198,7 @@ impl ModuleInfo {
     /// used in navigation between pages.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_file_path_string(&self, file_name: &str) -> String {
+    pub(crate) fn to_alldoc_file_path_string(&self, file_name: &str) -> String {
         let mut iter = self.0.iter();
         iter.next(); // skip the project_name
         let mut file_path = iter.collect::<PathBuf>();
