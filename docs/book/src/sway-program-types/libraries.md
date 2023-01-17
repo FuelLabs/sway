@@ -98,7 +98,7 @@ $ tree
 ├── Forc.toml
 └── src
     ├── internal_lib.sw
-    └── my_library.sw
+    └── main.sw
 ```
 
 
