@@ -155,7 +155,7 @@ Wildcard imports using `*` are supported, but it is generally recommended to use
 
 > **Note**: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify `std` as an explicit dependency in `Forc.toml`.
 
-## Sway Libraries
+## Reference Sway Libraries
 
 The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.
 
