@@ -306,6 +306,9 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
+type ConstName = String;
+type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
 pub struct BuildOpts {
@@ -329,6 +332,8 @@ pub struct BuildOpts {
     pub time_phases: bool,
     /// Include all test functions within the build.
     pub tests: bool,
+    /// List of constants to inject for each package.
+    pub inject_map: ConstInjectionMap,
 }
 
 impl GitSourceIndex {
@@ -492,6 +497,34 @@ pub struct SourcePinnedParseError;
 pub type DependencyName = String;
 
 impl BuildPlan {
+    /// Create a new build plan for the project from the build options provided.
+    ///
+    /// To do so, it tries to read the manifet file at the target path and creates the plan with
+    /// `BuildPlan::from_lock_and_manifest`.
+    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
+        let path = &build_options.pkg.path;
+
+        let manifest_dir = if let Some(ref path) = path {
+            PathBuf::from(path)
+        } else {
+            std::env::current_dir()?
+        };
+
+        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let member_manifests = manifest_file.member_manifests()?;
+        // Check if we have members to build so that we are not trying to build an empty workspace.
+        if member_manifests.is_empty() {
+            bail!("No member found to build")
+        }
+        let lock_path = manifest_file.lock_path()?;
+        Self::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            build_options.pkg.locked,
+            build_options.pkg.offline,
+        )
+    }
+
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
@@ -625,6 +658,15 @@ impl BuildPlan {
             .iter()
             .cloned()
             .filter(|&n| self.graph[n].source == SourcePinned::Member)
+    }
+
+    /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
+    ///
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's pinned pkg will be yielded.
+    pub fn member_pinned_pkgs(&self) -> impl Iterator<Item = Pinned> + '_ {
+        let graph = self.graph();
+        self.member_nodes().map(|node| &graph[node]).cloned()
     }
 
     /// View the build plan's compilation graph.
@@ -2205,6 +2247,11 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
+    let node_idx = &graph[node];
+    namespace.name = Some(Ident::new_no_span(Box::leak(
+        node_idx.name.clone().into_boxed_str(),
+    )));
+
     // Add direct dependencies.
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
@@ -2543,57 +2590,58 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
-/// Builds a project with given BuildOptions
+/// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
-    let path = &build_options.pkg.path;
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
     let BuildOpts {
         minify,
         binary_outfile,
         debug_outfile,
         pkg,
+        inject_map,
         build_target,
         ..
     } = &build_options;
 
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    let member_manifests = manifest_file.member_manifests()?;
-    // Check if we have members to build so that we are not trying to build an empty workspace.
-    if member_manifests.is_empty() {
-        bail!("No member found to build")
-    }
-    let lock_path = manifest_file.lock_path()?;
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        build_options.pkg.locked,
-        build_options.pkg.offline,
-    )?;
+    let current_dir = std::env::current_dir()?;
+    let path = &build_options
+        .pkg
+        .path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| current_dir);
+
+    let build_plan = BuildPlan::from_build_opts(&build_options)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
+
+    // Check if manifest used to create the build plan is one of the member manifests or a
+    // workspace manifest.
+    let curr_manifest = manifest_map
+        .values()
+        .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
     let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
-
     // If this is a workspace we want to have all members in the output.
-    let outputs = match &manifest_file {
-        ManifestFile::Package(pkg_manifest) => std::iter::once(
+    let outputs = match curr_manifest {
+        Some(pkg_manifest) => std::iter::once(
             build_plan
                 .find_member_index(&pkg_manifest.project.name)
                 .ok_or_else(|| anyhow!("Cannot found project node in the graph"))?,
         )
         .collect(),
-        ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
+        None => build_plan.member_nodes().collect(),
     };
+
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        inject_map,
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2614,14 +2662,14 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         built_workspace.insert(pinned.name.clone(), built_package);
     }
 
-    match manifest_file {
-        ManifestFile::Package(pkg_manifest) => {
+    match curr_manifest {
+        Some(pkg_manifest) => {
             let built_pkg = built_workspace
                 .remove(&pkg_manifest.project.name)
                 .expect("package didn't exist in workspace");
             Ok(Built::Package(Box::new(built_pkg)))
         }
-        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspace)),
+        None => Ok(Built::Workspace(built_workspace)),
     }
 }
 
@@ -2670,6 +2718,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2692,7 +2741,17 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
+        let constants = if let Some(injected_ctc) = inject_map.get(pkg) {
+            let mut constants = manifest.config_time_constants();
+            constants.extend(
+                injected_ctc
+                    .iter()
+                    .map(|(name, ctc)| (name.clone(), ctc.clone())),
+            );
+            constants
+        } else {
+            manifest.config_time_constants()
+        };
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,

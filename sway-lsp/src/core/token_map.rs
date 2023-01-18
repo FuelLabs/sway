@@ -22,18 +22,16 @@ impl TokenMap {
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter()
-            .filter(|item| {
-                let (_, span) = item.key();
-                match span.path() {
-                    Some(path) => path.to_str() == Some(uri.path()),
-                    None => false,
+        self.iter().flat_map(|item| {
+            let ((ident, span), token) = item.pair();
+            span.path().and_then(|path| {
+                if path.to_str() == Some(uri.path()) {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
                 }
             })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
+        })
     }
 
     /// Find all references in the TokenMap for a given token.
