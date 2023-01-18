@@ -71,12 +71,10 @@ pub enum Warning {
     },
     OverridingTraitImplementation,
     DeadDeclaration,
-    DeadConstantDeclaration,
     DeadEnumDeclaration,
     DeadFunctionDeclaration,
     DeadStructDeclaration,
     DeadTrait,
-    DeadVariableDeclaration,
     UnreachableCode,
     DeadEnumVariant {
         variant_name: Ident,
@@ -199,7 +197,6 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
-            DeadConstantDeclaration => write!(f, "This constant is never used."),
             DeadEnumDeclaration => write!(f, "This enum is never used."),
             DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
@@ -208,7 +205,6 @@ impl fmt::Display for Warning {
                 write!(f, "Enum variant {} is never constructed.", variant_name)
             }
             DeadTrait => write!(f, "This trait is never implemented."),
-            DeadVariableDeclaration => write!(f, "This variable is never used."),
             DeadMethod => write!(f, "This method is never called."),
             StructFieldNeverRead => write!(f, "This struct field is never accessed."),
             ShadowingReservedRegister { reg_name } => write!(
