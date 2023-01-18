@@ -10,6 +10,7 @@ pub use items::Items;
 pub use module::Module;
 pub use namespace::Namespace;
 pub use root::Root;
+pub(crate) use trait_map::are_equal_minus_dynamic_types;
 pub(super) use trait_map::TraitMap;
 
 use sway_types::Ident;

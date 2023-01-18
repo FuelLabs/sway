@@ -8,7 +8,7 @@ use crate::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
 
 use fuel_abi_types::program_abi;
 
@@ -191,7 +191,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+        let mut impld_method_ids: BTreeMap<IdentUnique, DeclId> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -228,13 +228,17 @@ impl TypeParameter {
                     errors
                 );
                 original_method_ids.extend(trait_original_method_ids);
-                impld_method_ids.extend(trait_impld_method_ids);
+                for (key, value) in trait_impld_method_ids {
+                    impld_method_ids.insert(key.into(), value);
+                }
             }
         }
 
         if errors.is_empty() {
-            let decl_mapping =
-                DeclMapping::from_stub_and_impld_decl_ids(original_method_ids, impld_method_ids);
+            let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids_unique(
+                original_method_ids,
+                impld_method_ids,
+            );
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
