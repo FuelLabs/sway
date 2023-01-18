@@ -1692,6 +1692,11 @@ fn construct_dead_code_warning_from_node(
                 Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
                 Err(_) => span.clone(),
             };
+
+            println!("ConstantDeclaration: {:#?}", node);
+            println!("span: {:#?}", span);
+            println!("warning_span: {:#?}", warning_span);
+
             CompileWarning {
                 span: warning_span,
                 warning_content: Warning::DeadDeclaration,
@@ -1699,11 +1704,17 @@ fn construct_dead_code_warning_from_node(
         }
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
-            ..
-        } => CompileWarning {
-            span: decl.name.span(),
-            warning_content: Warning::DeadDeclaration,
-        },
+            span,
+        } => {
+            println!("VariableDeclaration: {:#?}", node);
+            println!("span: {:#?}", span);
+            println!("decl.name: {:#?}", decl.name);
+
+            CompileWarning {
+                span: decl.name.span(),
+                warning_content: Warning::DeadDeclaration,
+            }
+        }
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
