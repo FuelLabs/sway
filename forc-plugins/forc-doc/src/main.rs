@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, INDEX_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -121,7 +121,7 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(ALL_DOC_FILENAME);
+        let path = doc_path.join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {
