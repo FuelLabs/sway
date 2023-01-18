@@ -23,7 +23,7 @@ pub(crate) fn instantiate_function_application(
     let engines = ctx.engines();
 
     if arguments.is_none() {
-        errors.push(CompileError::MissingParenthesisForFunction {
+        errors.push(CompileError::MissingParenthesesForFunction {
             method_name: call_path.suffix.clone(),
             span: call_path.span(),
         });
