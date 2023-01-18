@@ -861,7 +861,7 @@ impl Renderable for AllDocIndex {
     }
 }
 
-/// The index for each project module.
+/// The index for each module in a Sway project.
 pub(crate) struct ModuleIndex {
     /// used only for the root module
     version_opt: Option<String>,
@@ -896,6 +896,9 @@ impl Renderable for ModuleIndex {
         let ayu = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.css");
+        let favicon = self
+            .module_info
+            .to_html_shorthand_path_string("assets/sway-logo.svg");
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -903,11 +906,11 @@ impl Renderable for ModuleIndex {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content="List of all items in this project"
+                    content="List of all items in this module"
                 );
                 meta(name="keywords", content="sway, swaylang, sway-lang");
-                link(rel="icon", href="assets/sway-logo.svg");
-                title: "List of all items in this project";
+                link(rel="icon", href=favicon);
+                title: "List of all items in this module";
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -970,17 +973,23 @@ struct Sidebar {
 }
 impl Renderable for Sidebar {
     fn render(self) -> Box<dyn RenderBox> {
-        let logo_path = self
+        let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
-        let location = match &self.style {
+        let location_with_prefix = match &self.style {
             DocStyle::AllDoc | DocStyle::ProjectIndex => {
-                format!("Project {}", &self.module_info.location())
+                format!("Project {}", self.module_info.location())
             }
-            DocStyle::ModuleIndex => {
-                format!("Module {}", &self.module_info.location())
-            }
-            DocStyle::Item => self.module_info.location().to_owned(),
+            DocStyle::ModuleIndex | DocStyle::Item => format!(
+                "{} {}",
+                BlockTitle::Modules.item_title_str(),
+                self.module_info.location()
+            ),
+        };
+        let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
+            DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
+            DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
+            DocStyle::ModuleIndex => (format!("../{}", INDEX_FILENAME), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1040,13 +1049,13 @@ impl Renderable for Sidebar {
         };
         box_html! {
             nav(class="sidebar") {
-                a(class="sidebar-logo", href=&self.href_path) {
+                a(class="sidebar-logo", href=&logo_path_to_parent) {
                     div(class="logo-container") {
-                        img(class="sway-logo", src=logo_path, alt="logo");
+                        img(class="sway-logo", src=path_to_logo, alt="logo");
                     }
                 }
                 h2(class="location") {
-                    a(href=&self.href_path) { : location; }
+                    a(href=path_to_parent_or_self) { : location_with_prefix; }
                 }
                 : Raw(styled_content);
             }
