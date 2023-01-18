@@ -354,6 +354,7 @@ impl SidebarNav for ItemBody {
             style: DocStyle::Item,
             module_info: self.module_info.clone(),
             href_path: INDEX_FILENAME.to_owned(),
+            nav: self.item_context.to_doclinks(),
         }
     }
 }
@@ -458,6 +459,75 @@ pub(crate) struct ItemContext {
     pub(crate) context: Option<ContextType>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
+}
+impl ItemContext {
+    fn to_doclinks(&self) -> DocLinks {
+        let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
+        if let Some(context) = &self.context {
+            match context {
+                ContextType::StructFields(fields) => {
+                    let doc_links = fields
+                        .iter()
+                        .map(|field| DocLink {
+                            name: field.name.as_str().to_string(),
+                            module_info: ModuleInfo::from_vec(vec![]),
+                            html_filename: format!(
+                                "{}structfield.{}",
+                                IDENTITY,
+                                field.name.as_str()
+                            ),
+                        })
+                        .collect();
+                    links.insert(BlockTitle::Fields, doc_links);
+                }
+                ContextType::StorageFields(fields) => {
+                    let doc_links = fields
+                        .iter()
+                        .map(|field| DocLink {
+                            name: field.name.as_str().to_string(),
+                            module_info: ModuleInfo::from_vec(vec![]),
+                            html_filename: format!(
+                                "{}storagefield.{}",
+                                IDENTITY,
+                                field.name.as_str()
+                            ),
+                        })
+                        .collect();
+                    links.insert(BlockTitle::Fields, doc_links);
+                }
+                ContextType::EnumVariants(variants) => {
+                    let doc_links = variants
+                        .iter()
+                        .map(|variant| DocLink {
+                            name: variant.name.as_str().to_string(),
+                            module_info: ModuleInfo::from_vec(vec![]),
+                            html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
+                        })
+                        .collect();
+                    links.insert(BlockTitle::Variants, doc_links);
+                }
+                ContextType::RequiredMethods(methods) => {
+                    let doc_links = methods
+                        .iter()
+                        .map(|method| DocLink {
+                            name: method.name.as_str().to_string(),
+                            module_info: ModuleInfo::from_vec(vec![]),
+                            html_filename: format!(
+                                "{}structfield.{}",
+                                IDENTITY,
+                                method.name.as_str()
+                            ),
+                        })
+                        .collect();
+                    links.insert(BlockTitle::RequiredMethods, doc_links);
+                }
+            }
+        }
+        DocLinks {
+            style: DocStyle::Item,
+            links,
+        }
+    }
 }
 impl Renderable for ItemContext {
     fn render(self) -> Box<dyn RenderBox> {
@@ -778,14 +848,14 @@ impl BlockTitle {
         }
     }
     fn html_title_string(&self) -> String {
-        if self.item_title_str().contains(' ') {
-            self.item_title_str()
+        if self.as_str().contains(' ') {
+            self.as_str()
                 .to_lowercase()
                 .split_whitespace()
                 .collect::<Vec<&str>>()
                 .join("-")
         } else {
-            self.item_title_str().to_lowercase()
+            self.as_str().to_lowercase()
         }
     }
 }
@@ -804,6 +874,7 @@ impl SidebarNav for AllDocIndex {
             style: DocStyle::AllDoc,
             module_info: self.project_name.clone(),
             href_path: INDEX_FILENAME.to_owned(),
+            nav: self.all_docs.clone(),
         }
     }
 }
@@ -883,6 +954,7 @@ impl SidebarNav for ModuleIndex {
             style,
             module_info: self.module_info.clone(),
             href_path: INDEX_FILENAME.to_owned(),
+            nav: self.module_docs.clone(),
         }
     }
 }
@@ -989,7 +1061,10 @@ struct Sidebar {
     version_opt: Option<String>,
     style: DocStyle,
     module_info: ModuleInfo,
+    /// the path to the current module
     href_path: String,
+    /// support for page navigation
+    nav: DocLinks,
 }
 impl Renderable for Sidebar {
     fn render(self) -> Box<dyn RenderBox> {
@@ -1015,14 +1090,8 @@ impl Renderable for Sidebar {
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
-            DocStyle::AllDoc => box_html! {
-                div(class="sidebar-elems") {
-                    section {}
-                }
-            }
-            .into_string()
-            .unwrap(),
             DocStyle::ProjectIndex => {
+                let nav_links = self.nav.links;
                 let version = match self.version_opt {
                     Some(ref v) => v.as_str(),
                     None => "0.0.0",
@@ -1042,26 +1111,38 @@ impl Renderable for Sidebar {
                             }
                         }
                         section {
-                            // TODO: add connections between item contents and
-                            // sidebar nav. This will be dynamic e.g. "Variants"
-                            // for Enum, and "Fields" for Structs, and also will be different
-                            // based on the type of section e.g. Index, All or Item.
+                            div(class="block") {
+                                ul {
+                                    @ for (title, _) in nav_links {
+                                        li {
+                                            a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                                : title.as_str();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
                 .into_string()
                 .unwrap()
             }
-            DocStyle::ModuleIndex => box_html! {
+            _ => box_html! {
                 div(class="sidebar-elems") {
-                    section {}
-                }
-            }
-            .into_string()
-            .unwrap(),
-            DocStyle::Item => box_html! {
-                div(class="sidebar-elems") {
-                    section {}
+                    section {
+                        div(class="block") {
+                            ul {
+                                @ for (title, _) in self.nav.links {
+                                    li {
+                                        a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                            : title.as_str();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .into_string()
