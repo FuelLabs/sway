@@ -41,6 +41,9 @@ pub struct Module {
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
+    /// Name of the module, package name for root module, library name for other modules.
+    /// Library name used is the same as declared in `library name;`.
+    pub name: Option<Ident>,
 }
 
 impl Module {
@@ -143,7 +146,8 @@ impl Module {
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
+    pub fn insert_submodule(&mut self, name: String, mut submodule: Module) {
+        submodule.name = Some(Ident::new_no_span(Box::leak(name.clone().into_boxed_str())));
         self.submodules.insert(name, submodule);
     }
 
@@ -344,17 +348,6 @@ impl Module {
                 );
                 if visibility != Visibility::Public {
                     errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
-                }
-                // if this is a const, insert it into the local namespace directly
-                if let ty::TyDeclaration::VariableDeclaration(ref var_decl) = decl {
-                    let ty::TyVariableDeclaration {
-                        mutability, name, ..
-                    } = &**var_decl;
-                    if mutability == &ty::VariableMutability::ExportedConst {
-                        self[dst]
-                            .insert_symbol(alias.unwrap_or_else(|| name.clone()), decl.clone());
-                        return ok((), warnings, errors);
-                    }
                 }
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations

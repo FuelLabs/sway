@@ -11,6 +11,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, user_forc_directory,
 };
+use fuel_abi_types::program_abi;
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -2204,6 +2205,11 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
+    let node_idx = &graph[node];
+    namespace.name = Some(Ident::new_no_span(Box::leak(
+        node_idx.name.clone().into_boxed_str(),
+    )));
+
     // Add direct dependencies.
     let mut core_added = false;
     for edge in graph.edges_directed(node, Direction::Outgoing) {
@@ -2415,7 +2421,7 @@ pub fn compile(
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
 
-    let json_abi_program = match build_target {
+    let mut json_abi_program = match build_target {
         BuildTarget::Fuel => {
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
@@ -2440,8 +2446,22 @@ pub fn compile(
     );
 
     match bc_res.value {
-        Some(CompiledBytecode(bytes)) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode {
+            bytecode: bytes,
+            config_const_offsets: config_offsets,
+        }) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+
+            if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
+                for (config, offset) in config_offsets {
+                    if let Some(ref mut configurables) = json_abi_program.configurables {
+                        if let Some(idx) = configurables.iter().position(|c| c.name == config) {
+                            configurables[idx].offset = offset
+                        }
+                    }
+                }
+            }
+
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 build_target,
@@ -2727,18 +2747,18 @@ pub fn build(
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
 /// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
+fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
     loop {
         // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // A vector containing unique `fuels_types::TypeDeclaration`s.
+        // A vector containing unique `program_abi::TypeDeclaration`s.
         //
-        // Two `fuels_types::TypeDeclaration` are deemed the same if the have the same
+        // Two `program_abi::TypeDeclaration` are deemed the same if the have the same
         // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
         // different).
-        let mut deduped_types: Vec<fuels_types::TypeDeclaration> = Vec::new();
+        let mut deduped_types: Vec<program_abi::TypeDeclaration> = Vec::new();
 
         // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
         // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
@@ -2762,11 +2782,11 @@ fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
 
         json_abi_program.types = deduped_types;
 
-        // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
+        // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
-    // Sort the `fuels_types::TypeDeclaration`s
+    // Sort the `program_abi::TypeDeclaration`s
     json_abi_program
         .types
         .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
@@ -2778,16 +2798,16 @@ fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
         decl.type_id = ix;
     }
 
-    // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
+    // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
     update_all_types(json_abi_program, &old_to_new_id);
 }
 
-/// Recursively updates the type IDs used in a fuels_types::ProgramABI
+/// Recursively updates the type IDs used in a program_abi::ProgramABI
 fn update_all_types(
-    json_abi_program: &mut fuels_types::ProgramABI,
+    json_abi_program: &mut program_abi::ProgramABI,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
-    // Update all `fuels_types::TypeApplication`s in every function
+    // Update all `program_abi::TypeApplication`s in every function
     for func in json_abi_program.functions.iter_mut() {
         for input in func.inputs.iter_mut() {
             update_json_type_application(input, old_to_new_id);
@@ -2796,7 +2816,7 @@ fn update_all_types(
         update_json_type_application(&mut func.output, old_to_new_id);
     }
 
-    // Update all `fuels_types::TypeDeclaration`
+    // Update all `program_abi::TypeDeclaration`
     for decl in json_abi_program.types.iter_mut() {
         update_json_type_declaration(decl, old_to_new_id);
     }
@@ -2810,12 +2830,17 @@ fn update_all_types(
             update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
     }
+    if let Some(configurables) = &mut json_abi_program.configurables {
+        for logged_type in configurables.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
+    }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from
+/// Recursively updates the type IDs used in a `program_abi::TypeApplication` given a HashMap from
 /// old to new IDs
 fn update_json_type_application(
-    type_application: &mut fuels_types::TypeApplication,
+    type_application: &mut program_abi::TypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
@@ -2829,10 +2854,10 @@ fn update_json_type_application(
     }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from
+/// Recursively updates the type IDs used in a `program_abi::TypeDeclaration` given a HashMap from
 /// old to new IDs
 fn update_json_type_declaration(
-    type_declaration: &mut fuels_types::TypeDeclaration,
+    type_declaration: &mut program_abi::TypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(params) = &mut type_declaration.type_parameters {

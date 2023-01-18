@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0119DF11C9A6FAEB'
+
+[[package]]
+name = 'dead_code'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.33.0#2b2b4b117c4f6a5e762e368af0dfc6896fa31e7d'
+dependencies = ['core']

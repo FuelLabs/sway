@@ -129,6 +129,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
 
 [[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1624,7 +1634,7 @@ dependencies = [
  "fd-lock",
  "forc-tracing",
  "forc-util",
- "fuels-types",
+ "fuel-abi-types",
  "git2",
  "hex",
  "petgraph",
@@ -1705,6 +1715,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "fuel-abi-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af523c38969b431b33b06a82756659c9a07ea9aa185cb8a770c15fd5c95a0da6"
+dependencies = [
+ "proc-macro2",
+ "serde",
+ "strum_macros",
 ]
 
 [[package]]
@@ -4521,8 +4542,8 @@ dependencies = [
  "either",
  "ethabi",
  "etk-asm",
+ "fuel-abi-types",
  "fuel-vm",
- "fuels-types",
  "hashbrown 0.13.1",
  "hex",
  "im",
@@ -4587,6 +4608,7 @@ name = "sway-lsp"
 version = "0.33.0"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
  "async-trait",
  "dashmap",
  "forc-pkg",

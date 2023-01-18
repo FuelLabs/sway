@@ -138,7 +138,6 @@ impl DisplayWithEngines for TyDeclaration {
                         VariableMutability::Mutable => builder.push_str("mut"),
                         VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
-                        VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
