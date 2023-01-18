@@ -1659,6 +1659,7 @@ version = "0.33.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
+ "forc-util",
  "fuel-tx",
  "fuel-vm",
  "rand",
@@ -1695,6 +1696,9 @@ dependencies = [
  "anyhow",
  "dirs 3.0.2",
  "forc-tracing",
+ "fuel-tx",
+ "hex",
+ "serde_json",
  "sway-core",
  "sway-error",
  "sway-types",

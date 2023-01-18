@@ -13,7 +13,10 @@ annotate-snippets = { version = "0.9", features = ["color"] }
 ansi_term = "0.12"
 anyhow = "1"
 dirs = "3.0.2"
+fuel-tx = { version = "0.23", features = ["builder"] }
 forc-tracing = { version = "0.33.1", path = "../forc-tracing" }
+hex = "0.4.3"
+serde_json = "1.0.73"
 sway-core = { version = "0.33.1", path = "../sway-core" }
 sway-error = { version = "0.33.1", path = "../sway-error" }
 sway-types = { version = "0.33.1", path = "../sway-types" }
