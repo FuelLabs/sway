@@ -2160,7 +2160,7 @@ impl MyOwnedContract for Contract {
 <p>The following is an example of how to properly revoke ownership of a contract:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn revoke_ownership() {
-        storage.owner = Option::None();
+        storage.owner = Option::None;
     }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>

@@ -181,7 +181,7 @@ impl MyOwnedContract for Contract {
 <p>The following is an example of how to properly revoke ownership of a contract:</p>
 <pre><code class="language-sway">    #[storage(write)]
     fn revoke_ownership() {
-        storage.owner = Option::None();
+        storage.owner = Option::None;
     }
 </code></pre>
 
