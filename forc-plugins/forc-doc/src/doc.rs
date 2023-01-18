@@ -184,8 +184,8 @@ impl ModuleInfo {
     /// Example: `module::submodule`
     fn to_path_literal_prefix(&self, location: &str) -> String {
         let mut iter = self.0.iter();
-        while let Some(prefix) = iter.next() {
-            if prefix == &location {
+        for prefix in iter.by_ref() {
+            if prefix == location {
                 break;
             }
         }
@@ -197,8 +197,8 @@ impl ModuleInfo {
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
     pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> String {
         let mut iter = self.0.iter();
-        while let Some(prefix) = iter.next() {
-            if prefix == &location {
+        for prefix in iter.by_ref() {
+            if prefix == location {
                 break;
             }
         }

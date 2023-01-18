@@ -663,7 +663,7 @@ impl Renderable for DocLinks {
                                     a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
                                         : item.module_info.to_path_literal_string(
                                             &item.name,
-                                            &item.module_info.project_name()
+                                            item.module_info.project_name()
                                         );
                                     }
                                 }
@@ -687,7 +687,7 @@ impl Renderable for DocLinks {
                                         } else {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
-                                                &item.module_info.project_name()
+                                                item.module_info.project_name()
                                             );
                                         }
                                     }
@@ -709,7 +709,7 @@ impl Renderable for DocLinks {
                                     a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
                                         : item.module_info.to_path_literal_string(
                                             &item.name,
-                                            &item.module_info.location()
+                                            item.module_info.location()
                                         );
                                     }
                                 }
