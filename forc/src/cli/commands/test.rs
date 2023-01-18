@@ -36,11 +36,11 @@ pub struct Command {
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug)]
 pub struct PrintCommand {
-    /// If set, the log receipts are formatted.
-    #[clap(long = "pretty")]
+    #[clap(long = "pretty-print", short = 'r')]
+    /// Pretty-print the logs emiited from tests.
     pub pretty_print: bool,
-    /// If set, `Log` and `LogData` receipts are printed for tests.
-    #[clap(long = "log")]
+    /// Print `Log` and `LogData` receipts for tests.
+    #[clap(long = "logs", short = 'l')]
     pub print_logs: bool,
 }
 
