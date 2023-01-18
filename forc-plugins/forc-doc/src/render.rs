@@ -136,7 +136,11 @@ impl RenderedDocumentation {
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
-                        Some(links) => links.push(module_link),
+                        Some(links) => {
+                            if !links.contains(&module_link) {
+                                links.push(module_link)
+                            }
+                        }
                         None => {
                             doc_links.insert(BlockTitle::Modules, vec![module_link]);
                         }
