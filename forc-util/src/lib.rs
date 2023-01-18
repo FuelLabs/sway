@@ -230,7 +230,6 @@ fn format_err(err: &CompileError) {
         });
 
         let (mut start, end) = err.span().line_col();
-        println!("Error!");
         let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
         let slices = vec![Slice {
             source: input,
@@ -283,7 +282,6 @@ fn format_warning(err: &CompileWarning) {
     }
 
     let (mut start, end) = err.span.line_col();
-    println!("Warning!");
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
@@ -324,12 +322,6 @@ fn construct_window<'a>(
     end_ix: &mut usize,
     input: &'a str,
 ) -> &'a str {
-    println!("start: {:?}", start);
-    println!("end: {:?}", end);
-    println!("start_ix: {:?}", start_ix);
-    println!("end_ix: {:?}", end_ix);
-    println!("input: {:?}", input);
-
     // how many lines to prepend or append to the highlighted region in the window
     const NUM_LINES_BUFFER: usize = 2;
 
@@ -368,15 +360,10 @@ fn construct_window<'a>(
     let start_ix_bytes = *start_ix - std::cmp::min(calculated_start_ix, *start_ix);
     let end_ix_bytes = *end_ix - std::cmp::min(calculated_start_ix, *end_ix);
     // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
-
-    println!("calculated_start_ix: {:?}", calculated_start_ix);
-    println!("start_ix_bytes: {:?}", start_ix_bytes);
-    println!("end_ix_bytes: {:?}", end_ix_bytes);
-
     *start_ix = input[calculated_start_ix..(calculated_start_ix + start_ix_bytes)]
         .chars()
         .count();
-    *end_ix = input[calculated_start_ix..(calculated_start_ix + end_ix_bytes)]
+    *end_ix = input[calculated_end_ix..(calculated_start_ix + end_ix_bytes)]
         .chars()
         .count();
 
