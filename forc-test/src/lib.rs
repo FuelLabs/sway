@@ -137,7 +137,7 @@ impl BuiltTests {
                 let packages = workspace
                     .into_values()
                     .map(|built_pkg| {
-                        let path = built_pkg.manifest_file.path();
+                        let path = built_pkg.manifest_file.dir();
                         let patched_opts = opts.clone().patch_opts(path);
                         PackageTests::from_built_pkg(built_pkg, patched_opts)
                     })
@@ -262,6 +262,7 @@ impl Distribution<TxMetadata> for Standard {
 impl Opts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
+        let inject_map = std::collections::HashMap::new();
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
@@ -273,6 +274,7 @@ impl Opts {
             release: self.release,
             time_phases: self.time_phases,
             tests: true,
+            inject_map,
         }
     }
 
