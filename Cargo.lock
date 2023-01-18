@@ -1676,6 +1676,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-tx"
+version = "0.33.0"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "fuel-tx",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "forc-util"
 version = "0.33.0"
 dependencies = [
