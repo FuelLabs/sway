@@ -1699,7 +1699,7 @@ fn construct_dead_code_warning_from_node(
 
             CompileWarning {
                 span: warning_span,
-                warning_content: Warning::DeadDeclaration,
+                warning_content: Warning::DeadConstantDeclaration,
             }
         }
         ty::TyAstNode {
@@ -1712,7 +1712,7 @@ fn construct_dead_code_warning_from_node(
 
             CompileWarning {
                 span: decl.name.span(),
-                warning_content: Warning::DeadDeclaration,
+                warning_content: Warning::DeadVariableDeclaration,
             }
         }
         ty::TyAstNode {

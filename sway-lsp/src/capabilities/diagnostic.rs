@@ -47,6 +47,7 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
     match warning {
         Warning::StructFieldNeverRead
         | Warning::DeadDeclaration
+        | Warning::DeadConstantDeclaration
         | Warning::DeadEnumDeclaration
         | Warning::DeadEnumVariant { .. }
         | Warning::DeadFunctionDeclaration
@@ -55,6 +56,7 @@ fn get_warning_diagnostic_tags(warning: &Warning) -> Option<Vec<DiagnosticTag>> 
         | Warning::DeadStorageDeclarationForFunction { .. }
         | Warning::DeadStructDeclaration
         | Warning::DeadTrait
+        | Warning::DeadVariableDeclaration
         | Warning::MatchExpressionUnreachableArm
         | Warning::UnreachableCode
         | Warning::UnusedReturnValue { .. } => Some(vec![DiagnosticTag::UNNECESSARY]),
