@@ -650,10 +650,10 @@ impl ReplaceDecls for TyExpressionVariant {
                         if fn_decl.parameters.len() != arguments.len() {
                             continue;
                         }
-                        for i in 0..arguments.len() {
+                        for (i, argument) in arguments.iter().enumerate() {
                             if !are_equal_minus_dynamic_types(
                                 engines,
-                                arguments[i].1.return_type,
+                                argument.1.return_type,
                                 fn_decl.parameters[i].type_id,
                             ) {
                                 continue 'decls;
