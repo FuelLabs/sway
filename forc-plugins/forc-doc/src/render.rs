@@ -637,7 +637,7 @@ impl Renderable for TyTraitFn {
         }
     }
 }
-/// Used for creating links.
+/// Used for creating links between docs.
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct DocLink {
     pub(crate) name: String,
@@ -785,6 +785,7 @@ impl BlockTitle {
         }
     }
 }
+/// Project level, all items belonging to a project
 #[derive(Clone)]
 struct AllDocIndex {
     /// A [ModuleInfo] with only the project name.
@@ -803,7 +804,6 @@ impl SidebarNav for AllDocIndex {
     }
 }
 impl Renderable for AllDocIndex {
-    /// crate level, all items belonging to a crate
     fn render(self) -> Box<dyn RenderBox> {
         let doc_links = self.all_docs.clone().render();
         let sidebar = self.sidebar();
@@ -814,11 +814,11 @@ impl Renderable for AllDocIndex {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content="List of all items in this crate"
+                    content="List of all items in this project"
                 );
                 meta(name="keywords", content="sway, swaylang, sway-lang");
                 link(rel="icon", href="assets/sway-logo.svg");
-                title: "List of all items in this crate";
+                title: "List of all items in this project";
                 link(rel="stylesheet", type="text/css", href="assets/normalize.css");
                 link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
@@ -886,7 +886,15 @@ impl Renderable for ModuleIndex {
     fn render(self) -> Box<dyn RenderBox> {
         let doc_links = self.module_docs.clone().render();
         let sidebar = self.sidebar();
+        let title_prefix = match self.module_docs.style {
+            DocStyle::ProjectIndex => "Project ",
+            DocStyle::ModuleIndex => "Module ",
+            _ => unreachable!("Module Index can only be either a project or module at this time."),
+        };
 
+        let favicon = self
+            .module_info
+            .to_html_shorthand_path_string("assets/sway-logo.svg");
         let normalize = self
             .module_info
             .to_html_shorthand_path_string("assets/normalize.css");
@@ -896,9 +904,7 @@ impl Renderable for ModuleIndex {
         let ayu = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.css");
-        let favicon = self
-            .module_info
-            .to_html_shorthand_path_string("assets/sway-logo.svg");
+
         box_html! {
             head {
                 meta(charset="utf-8");
@@ -906,11 +912,14 @@ impl Renderable for ModuleIndex {
                 meta(name="generator", content="swaydoc");
                 meta(
                     name="description",
-                    content="List of all items in this module"
+                    content=format!(
+                        "API documentation for the Sway `{}` module in `{}`.",
+                        self.module_info.location(), self.module_info.project_name(),
+                    )
                 );
-                meta(name="keywords", content="sway, swaylang, sway-lang");
+                meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", self.module_info.location()));
                 link(rel="icon", href=favicon);
-                title: "List of all items in this module";
+                title: format!("{} in {} - Sway", self.module_info.location(), self.module_info.project_name());
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -941,8 +950,15 @@ impl Renderable for ModuleIndex {
                             }
                         }
                         section(id="main-content", class="content") {
-                            h1(class="fqn") {
-                                span(class="in-band") { : "List of all items" }
+                            div(class="main-heading") {
+                                h1(class="fqn") {
+                                    span(class="in-band") {
+                                        : title_prefix;
+                                        a(class="module", href=IDENTITY) {
+                                            : self.module_info.location();
+                                        }
+                                    }
+                                }
                             }
                             : doc_links;
                         }
