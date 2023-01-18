@@ -283,7 +283,9 @@ fn format_warning(err: &CompileWarning) {
     }
 
     let (mut start, end) = err.span.line_col();
-    println!("Warning!");
+    println!("Warning! {:?}", err);
+    println!("Warning content {:?}", err.warning_content);
+
     let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
     let snippet = Snippet {
         title: Some(Annotation {
