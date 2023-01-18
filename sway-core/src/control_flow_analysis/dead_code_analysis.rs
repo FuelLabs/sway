@@ -1701,12 +1701,19 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
             span,
         } => {
-            if span.path().is_none() {
+            // In rare cases, variable declaration spans don't have a path, so we need to check for that
+            if decl.name.span().path().is_some() {
+                CompileWarning {
+                    span: decl.name.span(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else if span.path().is_some() {
+                CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else {
                 return None;
-            }
-            CompileWarning {
-                span: decl.name.span(),
-                warning_content: Warning::DeadDeclaration,
             }
         }
         ty::TyAstNode {
