@@ -363,7 +363,7 @@ fn construct_window<'a>(
     *start_ix = input[calculated_start_ix..(calculated_start_ix + start_ix_bytes)]
         .chars()
         .count();
-    *end_ix = input[calculated_end_ix..(calculated_start_ix + end_ix_bytes)]
+    *end_ix = input[calculated_end_ix..(calculated_end_ix + end_ix_bytes)]
         .chars()
         .count();
 
