@@ -2,7 +2,7 @@
 
 The _Sway toolchain_ is sufficient to compile Sway smart contracts. Otherwise, note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required, which is packaged together with the _Sway toolchain_ together as the _Fuel toolchain_.
 
-## Install via Precompiled Binaries (Recommended)
+## Install via Pre-compiled Binaries (Recommended)
 
 Installing via pre-compiled release binaries is the recommended way to get up and running with the Sway toolchain. Pre-compiled binaries for Linux and macOS are available. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
 
