@@ -238,7 +238,7 @@ mod tests {
     fn test_parent() {
         let project = String::from("project_name");
         let module = String::from("module_name");
-        let mut module_vec = vec![project.clone(), module.clone()];
+        let mut module_vec = vec![project.clone(), module];
 
         let module_info = ModuleInfo::from_vec(module_vec.clone());
         let project_opt = module_info.parent();
