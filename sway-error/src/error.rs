@@ -716,7 +716,7 @@ pub enum CompileError {
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
     #[error("The name `{name}` is defined multiple times")]
-    NameDefinedMultipleTimes { name: Ident },
+    NameDefinedMultipleTimes { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -906,7 +906,7 @@ impl Spanned for CompileError {
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
-            NameDefinedMultipleTimes { name } => name.span(),
+            NameDefinedMultipleTimes { span, .. } => span.clone(),
         }
     }
 }

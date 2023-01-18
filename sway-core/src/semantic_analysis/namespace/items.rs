@@ -124,9 +124,7 @@ impl Items {
                     | EnumDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
-                ) => {
-                    errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
-                }
+                ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
                 // Generic parameter shadowing another generic parameter
                 (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });

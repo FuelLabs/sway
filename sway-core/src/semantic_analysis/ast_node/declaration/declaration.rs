@@ -145,8 +145,7 @@ impl ty::TyDeclaration {
                 let typed_const_decl =
                     ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
                 check!(
-                    ctx.namespace
-                        .insert_symbol(name.clone(), typed_const_decl.clone()),
+                    ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

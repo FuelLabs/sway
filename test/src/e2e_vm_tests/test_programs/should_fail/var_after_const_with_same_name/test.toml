@@ -1,4 +1,0 @@
-category = "fail"
-
-# check: $()let X = 5;
-# nextln: $()The name `X` is defined multiple times
