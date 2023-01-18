@@ -1684,6 +1684,27 @@ fn construct_dead_code_warning_from_node(
             }
         }
         ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_constant(decl_id.clone(), span) {
+                Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
+            ..
+        } => CompileWarning {
+            span: decl.name.span(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
         } => match decl_engine.get_impl_trait(decl_id.clone(), span) {
