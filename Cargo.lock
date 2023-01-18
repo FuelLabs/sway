@@ -1573,7 +1573,6 @@ dependencies = [
  "futures",
  "hex",
  "serde",
- "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
