@@ -120,6 +120,7 @@ pub async fn deploy_pkg(
 }
 
 fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
+    let inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.path.clone(),
@@ -146,5 +147,6 @@ fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
         binary_outfile: cmd.binary_outfile.clone(),
         debug_outfile: cmd.debug_outfile.clone(),
         tests: false,
+        inject_map,
     }
 }
