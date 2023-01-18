@@ -100,61 +100,47 @@ impl Items {
     ) -> CompileResult<()> {
         let mut errors = vec![];
 
-        use ty::TyDeclaration::*;
-        match (self.symbols.get(&name), &item) {
-            (
-                Some(ConstantDeclaration { .. }),
-                VariableDeclaration { .. } | ConstantDeclaration { .. },
-            )
-            | (Some(VariableDeclaration { .. }), ConstantDeclaration { .. })
-            | (
-                Some(
+        let append_shadowing_error =
+            |decl: &ty::TyDeclaration, item: &ty::TyDeclaration, errors: &mut Vec<CompileError>| {
+                use ty::TyDeclaration::*;
+                match (decl, &item) {
+                // variable shadowing a constant
+                // constant shadowing a constant
+                (
+                    ConstantDeclaration { .. },
+                    VariableDeclaration { .. } | ConstantDeclaration { .. },
+                )
+                // constant shadowing a variable
+                | (VariableDeclaration { .. }, ConstantDeclaration { .. })
+                // type shadowing another type
+                // trait/abi shadowing another trait/abi
+                // type shadowing a trait/abi or vice versa
+                | (
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
-                ),
-                StructDeclaration { .. }
-                | EnumDeclaration { .. }
-                | TraitDeclaration { .. }
-                | AbiDeclaration { .. },
-            ) => {
-                errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
+                    StructDeclaration { .. }
+                    | EnumDeclaration { .. }
+                    | TraitDeclaration { .. }
+                    | AbiDeclaration { .. },
+                ) => {
+                    errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
+                }
+                // Generic parameter shadowing another generic parameter
+                (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
+                    errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
+                }
+                _ => {}
             }
-            (Some(GenericTypeForFunctionScope { .. }), GenericTypeForFunctionScope { .. }) => {
-                errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
-            }
-            _ => {}
+            };
+
+        if let Some(decl) = self.symbols.get(&name) {
+            append_shadowing_error(decl, &item, &mut errors);
         }
-        match (self.use_synonyms.get(&name), &item) {
-            (
-                Some((_, GlobImport::No, ConstantDeclaration { .. })),
-                VariableDeclaration { .. } | ConstantDeclaration { .. },
-            )
-            | (Some((_, GlobImport::No, VariableDeclaration { .. })), ConstantDeclaration { .. })
-            | (
-                Some((
-                    _,
-                    GlobImport::No,
-                    StructDeclaration { .. }
-                    | EnumDeclaration { .. }
-                    | TraitDeclaration { .. }
-                    | AbiDeclaration { .. },
-                )),
-                StructDeclaration { .. }
-                | EnumDeclaration { .. }
-                | TraitDeclaration { .. }
-                | AbiDeclaration { .. },
-            ) => {
-                errors.push(CompileError::NameDefinedMultipleTimes { name: name.clone() });
-            }
-            (
-                Some((_, GlobImport::No, GenericTypeForFunctionScope { .. })),
-                GenericTypeForFunctionScope { .. },
-            ) => {
-                errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
-            }
-            _ => {}
+
+        if let Some((_, GlobImport::No, decl)) = self.use_synonyms.get(&name) {
+            append_shadowing_error(decl, &item, &mut errors);
         }
 
         self.symbols.insert(name, item);

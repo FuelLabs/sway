@@ -151,7 +151,6 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                ctx.namespace.insert_symbol(name, typed_const_decl.clone());
                 typed_const_decl
             }
             parsed::Declaration::EnumDeclaration(decl) => {

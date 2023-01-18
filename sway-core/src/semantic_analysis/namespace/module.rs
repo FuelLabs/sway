@@ -230,7 +230,7 @@ impl Module {
         for symbol_and_decl in symbols_and_decls {
             dst_ns.use_synonyms.insert(
                 symbol_and_decl.0,
-                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1.clone()),
+                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
             );
         }
 
@@ -266,7 +266,7 @@ impl Module {
         let mut symbols_and_decls = src_ns
             .use_synonyms
             .iter()
-            .map(|(k, v)| (k.clone(), v.2.clone()))
+            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
@@ -292,7 +292,7 @@ impl Module {
         };
 
         for symbol_and_decl in symbols_and_decls {
-            try_add(symbol_and_decl.0.clone(), src.to_vec(), symbol_and_decl.1);
+            try_add(symbol_and_decl.0, src.to_vec(), symbol_and_decl.1);
         }
 
         for (symbol, (mod_path, _, decl)) in use_synonyms {
