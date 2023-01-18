@@ -42,7 +42,7 @@ use std::{
 };
 
 pub fn convert_parse_tree(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     module: Module,
@@ -63,7 +63,7 @@ pub fn convert_module_kind(kind: &ModuleKind) -> TreeType {
 }
 
 pub fn module_to_sway_parse_tree(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     module: Module,
@@ -93,7 +93,7 @@ fn ast_node_is_test_fn(node: &AstNode) -> bool {
 }
 
 fn item_to_ast_nodes(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item: Item,
@@ -215,7 +215,7 @@ fn item_to_ast_nodes(
 }
 
 fn item_use_to_use_statements(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     item_use: ItemUse,
 ) -> Result<Vec<UseStatement>, ErrorEmitted> {
@@ -301,7 +301,7 @@ fn emit_all(handler: &Handler, errors: Vec<ConvertParseTreeError>) -> Option<Err
 }
 
 fn item_struct_to_struct_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_struct: ItemStruct,
@@ -359,7 +359,7 @@ fn item_struct_to_struct_declaration(
 }
 
 fn item_enum_to_enum_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_enum: ItemEnum,
@@ -417,7 +417,7 @@ fn item_enum_to_enum_declaration(
 }
 
 fn item_fn_to_function_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_fn: ItemFn,
@@ -457,7 +457,7 @@ fn item_fn_to_function_declaration(
 }
 
 fn get_attributed_purity(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     attributes: &AttributesMap,
 ) -> Result<Purity, ErrorEmitted> {
@@ -491,7 +491,7 @@ fn get_attributed_purity(
 }
 
 fn item_trait_to_trait_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_trait: ItemTrait,
@@ -551,7 +551,7 @@ fn item_trait_to_trait_declaration(
 }
 
 fn item_impl_to_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_impl: ItemImpl,
@@ -610,7 +610,7 @@ fn item_impl_to_declaration(
 }
 
 fn path_type_to_call_path_and_type_arguments(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     PathType {
@@ -649,7 +649,7 @@ fn path_type_to_call_path_and_type_arguments(
 }
 
 fn item_abi_to_abi_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_abi: ItemAbi,
@@ -713,7 +713,7 @@ fn item_abi_to_abi_declaration(
 }
 
 pub(crate) fn item_const_to_constant_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_const: ItemConst,
@@ -746,7 +746,7 @@ pub(crate) fn item_const_to_constant_declaration(
 }
 
 fn item_storage_to_storage_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_storage: ItemStorage,
@@ -794,7 +794,7 @@ fn item_storage_to_storage_declaration(
 }
 
 fn item_configurable_to_constant_declarations(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_configurable: ItemConfigurable,
@@ -848,7 +848,7 @@ fn item_configurable_to_constant_declarations(
 }
 
 fn type_field_to_struct_field(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     type_field: TypeField,
@@ -867,7 +867,7 @@ fn type_field_to_struct_field(
 }
 
 fn generic_params_opt_to_type_parameters(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
@@ -952,7 +952,7 @@ fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
 }
 
 fn type_field_to_enum_variant(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     type_field: TypeField,
@@ -978,7 +978,7 @@ fn type_field_to_enum_variant(
 }
 
 fn braced_code_block_contents_to_code_block(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     braced_code_block_contents: Braces<CodeBlockContents>,
@@ -1004,7 +1004,7 @@ fn braced_code_block_contents_to_code_block(
 }
 
 fn fn_args_to_function_parameters(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_args: FnArgs,
@@ -1078,7 +1078,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 }
 
 fn ty_to_type_info(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
@@ -1109,7 +1109,7 @@ fn ty_to_type_info(
 }
 
 fn ty_to_type_argument(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
@@ -1128,7 +1128,7 @@ fn ty_to_type_argument(
 }
 
 fn fn_signature_to_trait_fn(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_signature: FnSignature,
@@ -1158,7 +1158,7 @@ fn fn_signature_to_trait_fn(
 }
 
 fn traits_to_call_paths(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     traits: Traits,
@@ -1178,7 +1178,7 @@ fn traits_to_call_paths(
 }
 
 fn traits_to_supertraits(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     traits: Traits,
 ) -> Result<Vec<Supertrait>, ErrorEmitted> {
@@ -1191,7 +1191,7 @@ fn traits_to_supertraits(
 }
 
 fn path_type_to_call_path(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_type: PathType,
 ) -> Result<CallPath, ErrorEmitted> {
@@ -1224,7 +1224,7 @@ fn path_type_to_call_path(
 }
 
 fn expr_to_ast_node(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr: Expr,
@@ -1249,7 +1249,7 @@ fn expr_to_ast_node(
 }
 
 fn abi_cast_args_to_abi_cast_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     args: Parens<AbiCastArgs>,
@@ -1261,7 +1261,7 @@ fn abi_cast_args_to_abi_cast_expression(
 }
 
 fn struct_path_and_fields_to_struct_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path: PathExpr,
@@ -1289,7 +1289,7 @@ fn struct_path_and_fields_to_struct_expression(
 }
 
 fn method_call_fields_to_method_application_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     target: Box<Expr>,
@@ -1337,7 +1337,7 @@ fn method_call_fields_to_method_application_expression(
 }
 
 fn expr_func_app_to_expression_kind(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     func: Box<Expr>,
@@ -1366,7 +1366,7 @@ fn expr_func_app_to_expression_kind(
 
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
 
-    let convert_ty_args = |generics_opt: Option<(_, GenericArgs)>| {
+    let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
         Ok(match generics_opt {
             Some((_, generic_args)) => {
                 let span = generic_args.span();
@@ -1403,7 +1403,7 @@ fn expr_func_app_to_expression_kind(
         None => start,
     };
 
-    let (type_arguments, type_arguments_span) = convert_ty_args(call_seg.generics_opt)?;
+    let (type_arguments, type_arguments_span) = convert_ty_args(context, call_seg.generics_opt)?;
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
@@ -1452,7 +1452,7 @@ fn expr_func_app_to_expression_kind(
 
     // Ambiguous call. Could be a method call or a normal function call.
     // We don't know until type checking what `last` refers to, so let's defer.
-    let (last_ty_args, last_ty_args_span) = convert_ty_args(last.generics_opt)?;
+    let (last_ty_args, last_ty_args_span) = convert_ty_args(context, last.generics_opt)?;
     let before = TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
@@ -1481,7 +1481,7 @@ fn expr_func_app_to_expression_kind(
 }
 
 fn expr_to_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr: Expr,
@@ -2021,7 +2021,7 @@ fn op_call(
 }
 
 fn storage_field_to_storage_field(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     storage_field: sway_ast::StorageField,
@@ -2045,7 +2045,7 @@ fn storage_field_to_storage_field(
 }
 
 fn configurable_field_to_constant_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     configurable_field: sway_ast::ConfigurableField,
@@ -2071,7 +2071,7 @@ fn configurable_field_to_constant_declaration(
 }
 
 fn statement_to_ast_nodes(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     statement: Statement,
@@ -2101,7 +2101,7 @@ fn statement_to_ast_nodes(
 }
 
 fn fn_arg_to_function_parameter(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_arg: FnArg,
@@ -2158,7 +2158,7 @@ fn fn_arg_to_function_parameter(
 }
 
 fn expr_to_length(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     expr: Expr,
 ) -> Result<Length, ErrorEmitted> {
@@ -2166,7 +2166,11 @@ fn expr_to_length(
     Ok(Length::new(expr_to_usize(context, handler, expr)?, span))
 }
 
-fn expr_to_usize(_context: &Context, handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {
+fn expr_to_usize(
+    _context: &mut Context,
+    handler: &Handler,
+    expr: Expr,
+) -> Result<usize, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
         Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
@@ -2194,7 +2198,7 @@ fn expr_to_usize(_context: &Context, handler: &Handler, expr: Expr) -> Result<us
 }
 
 fn path_type_to_supertrait(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_type: PathType,
 ) -> Result<Supertrait, ErrorEmitted> {
@@ -2240,7 +2244,7 @@ fn path_type_to_supertrait(
 }
 
 fn path_type_segment_to_ident(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     PathTypeSegment { name, generics_opt }: PathTypeSegment,
 ) -> Result<Ident, ErrorEmitted> {
@@ -2256,7 +2260,7 @@ fn path_type_segment_to_ident(
 /// Similar to [path_type_segment_to_ident],
 /// but allows for the item to be either type arguments _or_ an ident.
 fn path_expr_segment_to_ident_or_type_argument(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     PathExprSegment { name, generics_opt }: PathExprSegment,
@@ -2269,7 +2273,7 @@ fn path_expr_segment_to_ident_or_type_argument(
 }
 
 fn path_expr_segment_to_ident(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     PathExprSegment { name, generics_opt }: &PathExprSegment,
 ) -> Result<Ident, ErrorEmitted> {
@@ -2283,7 +2287,7 @@ fn path_expr_segment_to_ident(
 }
 
 fn path_expr_to_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
@@ -2313,7 +2317,7 @@ fn path_expr_to_expression(
 }
 
 fn braced_code_block_contents_to_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     braced_code_block_contents: Braces<CodeBlockContents>,
@@ -2332,7 +2336,7 @@ fn braced_code_block_contents_to_expression(
 }
 
 fn if_expr_to_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     if_expr: IfExpr,
@@ -2433,7 +2437,7 @@ fn if_expr_to_expression(
 ///
 /// Throws an error when given `<Foo as Bar>::baz`.
 fn path_root_opt_to_bool(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
 ) -> Result<bool, ErrorEmitted> {
@@ -2450,7 +2454,7 @@ fn path_root_opt_to_bool(
 }
 
 fn literal_to_literal(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     literal: sway_ast::Literal,
 ) -> Result<Literal, ErrorEmitted> {
@@ -2578,7 +2582,7 @@ fn literal_to_literal(
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
 fn path_expr_to_call_path_binding(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path_expr: PathExpr,
@@ -2627,7 +2631,7 @@ fn path_expr_to_call_path_binding(
 }
 
 fn path_expr_to_call_path(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_expr: PathExpr,
 ) -> Result<CallPath, ErrorEmitted> {
@@ -2661,7 +2665,7 @@ fn path_expr_to_call_path(
 }
 
 fn expr_struct_field_to_struct_expression_field(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr_struct_field: ExprStructField,
@@ -2682,7 +2686,7 @@ fn expr_struct_field_to_struct_expression_field(
 }
 
 fn expr_tuple_descriptor_to_expressions(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr_tuple_descriptor: ExprTupleDescriptor,
@@ -2701,7 +2705,7 @@ fn expr_tuple_descriptor_to_expressions(
 }
 
 fn asm_block_to_asm_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     asm_block: AsmBlock,
@@ -2754,7 +2758,7 @@ fn asm_block_to_asm_expression(
 }
 
 fn match_branch_to_match_branch(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     match_branch: sway_ast::MatchBranch,
@@ -2781,13 +2785,13 @@ fn match_branch_to_match_branch(
 }
 
 fn statement_let_to_ast_nodes(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     statement_let: StatementLet,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     fn unfold(
-        context: &Context,
+        context: &mut Context,
         handler: &Handler,
         engines: Engines<'_>,
         pattern: Pattern,
@@ -3044,7 +3048,7 @@ fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement 
 
 #[allow(dead_code)]
 fn generic_args_to_type_parameters(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
@@ -3058,7 +3062,7 @@ fn generic_args_to_type_parameters(
 }
 
 fn asm_register_declaration_to_asm_register_declaration(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
@@ -3082,7 +3086,7 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
 }
 
 fn pattern_to_scrutinee(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     pattern: Pattern,
 ) -> Result<Scrutinee, ErrorEmitted> {
@@ -3184,7 +3188,7 @@ fn pattern_to_scrutinee(
 
 #[allow(dead_code)]
 fn ty_to_type_parameter(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
@@ -3226,7 +3230,7 @@ fn ty_to_type_parameter(
 
 #[allow(dead_code)]
 fn path_type_to_ident(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_type: PathType,
 ) -> Result<Ident, ErrorEmitted> {
@@ -3242,7 +3246,7 @@ fn path_type_to_ident(
 }
 
 fn path_expr_to_ident(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     path_expr: PathExpr,
 ) -> Result<Ident, ErrorEmitted> {
@@ -3261,7 +3265,7 @@ fn path_expr_to_ident(
 }
 
 fn pattern_struct_field_to_struct_scrutinee_field(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     pattern_struct_field: PatternStructField,
 ) -> Result<StructScrutineeField, ErrorEmitted> {
@@ -3288,7 +3292,7 @@ fn pattern_struct_field_to_struct_scrutinee_field(
 }
 
 fn assignable_to_expression(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     assignable: Assignable,
@@ -3381,7 +3385,7 @@ fn assignable_to_expression(
 }
 
 fn assignable_to_reassignment_target(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     assignable: Assignable,
@@ -3410,7 +3414,7 @@ fn assignable_to_reassignment_target(
 }
 
 fn generic_args_to_type_arguments(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
@@ -3436,7 +3440,7 @@ fn generic_args_to_type_arguments(
 }
 
 fn ty_tuple_descriptor_to_type_arguments(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty_tuple_descriptor: TyTupleDescriptor,
@@ -3455,7 +3459,7 @@ fn ty_tuple_descriptor_to_type_arguments(
 }
 
 fn path_type_to_type_info(
-    context: &Context,
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path_type: PathType,
@@ -3562,7 +3566,7 @@ where
 }
 
 fn item_attrs_to_map(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
@@ -3616,7 +3620,7 @@ fn item_attrs_to_map(
 }
 
 fn error_if_self_param_is_not_allowed(
-    _context: &Context,
+    _context: &mut Context,
     handler: &Handler,
     parameters: &[FunctionParameter],
     fn_kind: &str,

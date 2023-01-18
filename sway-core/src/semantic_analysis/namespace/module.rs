@@ -95,7 +95,7 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                &to_parsed_lang::Context::default(),
+                &mut to_parsed_lang::Context::default(),
                 handler,
                 engines,
                 const_item,
