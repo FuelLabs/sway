@@ -114,7 +114,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
     match input_type(index) {
         Input::Coin => Option::Some(__gtf::<u64>(index, GTF_INPUT_COIN_AMOUNT)),
         Input::Message => Option::Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_AMOUNT)),
-        Input::Contract => return Option::None,
+        Input::Contract => Option::None,
     }
 }
 
@@ -157,7 +157,7 @@ pub fn input_asset_id(index: u64) -> Option<ContractId> {
     match input_type(index) {
         Input::Coin => Option::Some(ContractId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
         Input::Message => Option::Some(BASE_ASSET_ID),
-        Input::Contract => return Option::None,
+        Input::Contract => Option::None,
     }
 }
 
