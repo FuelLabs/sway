@@ -1319,22 +1319,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethabi"
-version = "18.0.0"
-source = "git+https://github.com/FuelLabs/ethabi.git?rev=00a8fdb133d51b99eabbf9db7b7d55bad75becd7#00a8fdb133d51b99eabbf9db7b7d55bad75becd7"
-dependencies = [
- "ethereum-types",
- "hex",
- "once_cell",
- "regex",
- "serde",
- "serde_json",
- "sha3 0.10.6",
- "thiserror",
- "uint",
-]
-
-[[package]]
 name = "ethbloom"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1804,6 +1788,23 @@ dependencies = [
  "serde",
  "sha2 0.10.6",
  "zeroize",
+]
+
+[[package]]
+name = "fuel-ethabi"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4ad09e8685a72f0c004f4ca74f799d0e7f3d0a883cac0a8de6b6c5d6d0a2c75"
+dependencies = [
+ "ethereum-types",
+ "hex",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha3 0.10.6",
+ "thiserror",
+ "uint",
 ]
 
 [[package]]
@@ -4551,9 +4552,9 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "ethabi",
  "etk-asm",
  "fuel-abi-types",
+ "fuel-ethabi",
  "fuel-vm",
  "hashbrown 0.13.1",
  "hex",
