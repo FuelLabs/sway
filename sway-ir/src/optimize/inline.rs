@@ -17,8 +17,30 @@ use crate::{
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument,
+    BlockArgument, NamedPass,
 };
+
+pub struct InlinePass;
+
+impl NamedPass for InlinePass {
+    fn name() -> &'static str {
+        "inline"
+    }
+
+    fn descr() -> &'static str {
+        "inline function calls."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        // For now we inline everything into `main()`.  Eventually we can be more selective.
+        let main_fn = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .find(|f| f.get_name(ir) == "main")
+            .unwrap();
+        inline_all_function_calls(ir, &main_fn)
+    }
+}
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
 ///
