@@ -358,7 +358,7 @@ fn construct_window<'a>(
     let calculated_end_ix = calculated_end_ix.unwrap_or(input.len());
 
     let start_ix_bytes = *start_ix - std::cmp::min(calculated_start_ix, *start_ix);
-    let end_ix_bytes = *end_ix - std::cmp::min(calculated_start_ix, *end_ix);
+    let end_ix_bytes = *end_ix - std::cmp::min(calculated_end_ix, *end_ix);
     // We want the start_ix and end_ix in terms of chars and not bytes, so translate.
     *start_ix = input[calculated_start_ix..(calculated_start_ix + start_ix_bytes)]
         .chars()
