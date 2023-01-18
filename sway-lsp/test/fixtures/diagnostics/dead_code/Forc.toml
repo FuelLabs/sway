@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "dead_code"
 
 [dependencies]
+std = { path = "../../../../../sway-lib-std" }
