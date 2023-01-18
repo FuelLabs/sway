@@ -80,6 +80,7 @@ impl ty::TyDeclaration {
                 value,
                 visibility,
                 attributes,
+                is_configurable,
                 span,
             }) => {
                 let type_ascription = check!(
@@ -133,6 +134,7 @@ impl ty::TyDeclaration {
                     return_type,
                     attributes,
                     type_ascription_span,
+                    is_configurable,
                     span,
                 };
                 let typed_const_decl =
