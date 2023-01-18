@@ -10,8 +10,24 @@
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, BranchToWithArgs,
+    value::ValueDatum, BranchToWithArgs, NamedPass,
 };
+
+pub struct SimplifyCfgPass;
+
+impl NamedPass for SimplifyCfgPass {
+    fn name() -> &'static str {
+        "simplifycfg"
+    }
+
+    fn descr() -> &'static str {
+        "merge or remove redundant blocks."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, simplify_cfg)
+    }
+}
 
 pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
