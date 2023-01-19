@@ -9,3 +9,6 @@ pub const FAILED_TRANSFER_TO_ADDRESS_SIGNAL = 0xffff_ffff_ffff_0001;
 
 /// revert with this value for a failing call to std::message::send_message.
 pub const FAILED_SEND_MESSAGE_SIGNAL = 0xffff_ffff_ffff_0002;
+
+/// the value passed to __revert intrinsic when calling revert() with a reference type.
+pub const REVERT_WITH_LOG_SIGNAL = 0xffff_ffff_ffff_0003;
