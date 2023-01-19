@@ -27,8 +27,21 @@ use tracing::info;
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
+    #[clap(flatten)]
+    pub test_print: PrintCommand,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
+}
+
+/// The set of options provided for controlling output of a test.
+#[derive(Parser, Debug)]
+pub struct PrintCommand {
+    #[clap(long = "pretty-print", short = 'r')]
+    /// Pretty-print the logs emiited from tests.
+    pub pretty_print: bool,
+    /// Print `Log` and `LogData` receipts for tests.
+    #[clap(long = "logs", short = 'l')]
+    pub print_logs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> Result<()> {
@@ -36,11 +49,12 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         bail!("unit test filter not yet supported");
     }
 
+    let test_print_opts = test_print_opts_from_cmd(&cmd);
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
     info!("   Running {} tests", built_tests.test_count());
-    let tested = built_tests.run()?;
+    let tested = built_tests.run(&test_print_opts)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
@@ -141,5 +155,12 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         time_phases: cmd.build.time_phases,
         binary_outfile: cmd.build.binary_outfile,
         debug_outfile: cmd.build.debug_outfile,
+    }
+}
+
+fn test_print_opts_from_cmd(cmd: &Command) -> forc_test::TestPrintOpts {
+    forc_test::TestPrintOpts {
+        pretty_print: cmd.test_print.pretty_print,
+        print_logs: cmd.test_print.print_logs,
     }
 }

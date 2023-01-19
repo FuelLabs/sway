@@ -416,6 +416,8 @@ pub enum CompileError {
     MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
+    #[error("The enum variant `{ty}` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().")]
+    UnitVariantWithParenthesesEnumInstantiator { span: Span, ty: String },
     #[error("Cannot find trait \"{name}\" in this scope.")]
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
@@ -442,6 +444,8 @@ pub enum CompileError {
         expected: usize,
         received: usize,
     },
+    #[error("The function \"{method_name}\" was called without parentheses. Try adding ().")]
+    MissingParenthesesForFunction { span: Span, method_name: Ident },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
@@ -815,10 +819,12 @@ impl Spanned for CompileError {
             ImportMustBeLibrary { span, .. } => span.clone(),
             MoreThanOneEnumInstantiator { span, .. } => span.clone(),
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
+            UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
+            MissingParenthesesForFunction { span, .. } => span.clone(),
             InvalidAbiType { span, .. } => span.clone(),
             NotAnAbi { span, .. } => span.clone(),
             ImplAbiForNonContract { span, .. } => span.clone(),
