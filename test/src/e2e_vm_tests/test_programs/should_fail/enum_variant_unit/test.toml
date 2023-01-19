@@ -1,0 +1,22 @@
+category = "fail"
+
+# check: $()let b = func;
+# nextln: $()Identifier "func" was used as a variable, but it is actually a function.
+
+# check: $()let s = S::new;
+# nextln: $()Could not find symbol "new" in this scope.
+
+# check: $()let b = lib_a::inner_lib::func;
+# nextln: $()The function "func" was called without parentheses. Try adding ().
+
+# check: $()let s = lib_a::inner_lib::S2::new2;
+# nextln: $()Could not find symbol "new2" in this scope.
+
+# check: $()let n: Option<u64> = Option::None();
+# nextln: $()The enum variant `None` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().
+
+# check: $()let n = Option::None::<u64>();
+# nextln: $()The enum variant `None` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().
+
+# check: $()let n = lib_a::inner_lib::MyEnum::VariantA();
+# nextln: $()The enum variant `VariantA` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().

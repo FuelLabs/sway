@@ -490,7 +490,7 @@ impl ty::TyExpression {
             ctx,
             function_decl,
             call_path_binding.inner,
-            arguments,
+            Some(arguments),
             span,
         )
     }
@@ -1033,7 +1033,8 @@ impl ty::TyExpression {
                 type_arguments,
                 span: path_span,
             };
-            let mut res = Self::type_check_delineated_path(ctx, call_path_binding, span, args);
+            let mut res =
+                Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
 
             // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
             // So, we would need, but don't have, parametric modules to apply arguments to.
@@ -1069,7 +1070,7 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
-        args: Vec<Expression>,
+        args: Option<Vec<Expression>>,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
