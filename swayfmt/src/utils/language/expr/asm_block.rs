@@ -150,8 +150,8 @@ impl Format for Instruction {
         for arg in self.register_arg_idents() {
             write!(formatted_code, " {}", arg.as_str())?
         }
-        if let Some(ident) = self.immediate_ident_opt() {
-            write!(formatted_code, " {}", ident.as_str())?
+        for imm in self.immediate_idents() {
+            write!(formatted_code, " {}", imm.as_str())?
         }
         Ok(())
     }
