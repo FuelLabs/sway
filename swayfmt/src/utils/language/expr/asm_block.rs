@@ -140,6 +140,23 @@ impl Format for AsmRegisterDeclaration {
     }
 }
 
+impl Format for Instruction {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        _formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        write!(formatted_code, "{:<4}", &self.op_code_ident().as_str())?;
+        for arg in self.register_arg_idents() {
+            write!(formatted_code, " {}", arg.as_str())?
+        }
+        if let Some(ident) = self.immediate_ident_opt() {
+            write!(formatted_code, " {}", ident.as_str())?
+        }
+        Ok(())
+    }
+}
+
 impl Format for AsmBlockContents {
     fn format(
         &self,
@@ -147,13 +164,13 @@ impl Format for AsmBlockContents {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         for (instruction, semicolon_token) in self.instructions.iter() {
-            writeln!(
+            write!(
                 formatted_code,
-                "{}{}{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
-                instruction.span().as_str(),
-                semicolon_token.span().as_str()
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?
             )?;
+            instruction.format(formatted_code, formatter)?;
+            writeln!(formatted_code, "{}", semicolon_token.span().as_str())?
         }
         if let Some(final_expr) = &self.final_expr_opt {
             if formatter.shape.code_line.line_style == LineStyle::Multiline {
