@@ -1,6 +1,7 @@
 # Libraries
 
 Libraries in Sway are files used to define new common behavior. The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html) that is made implicitly available to all Forc projects created using `forc new`.
+
 ## Writing Libraries
 
 Libraries are defined using the `library` keyword at the beginning of a file, followed by a name so that they can be imported.
@@ -101,10 +102,10 @@ $ tree
     └── main.sw
 ```
 
-
 As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
-- Use the `dep` keyword followed by the library name to make the internal library a dependancy
-- Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
+
+* Use the `dep` keyword followed by the library name to make the internal library a dependancy
+* Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
 dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
@@ -142,8 +143,9 @@ external_library = { path = "../external_library" }
 ```
 
 Once the library dependency is added to the `toml` file, you can import items from it as follows:
-- Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
-- Use the `use` keyword to selectively import items from the library
+
+* Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
+* Use the `use` keyword to selectively import items from the library
 
 ```sway
 use external_library::mint;
@@ -160,12 +162,13 @@ Wildcard imports using `*` are supported, but it is generally recommended to use
 The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.
 
 Some Sway Libraries to try out:
-- [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof)
-- [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft)
-- [String](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string)
-- [Signed Integers](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers)
-- [Unsigned Fixed Point Number](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp)
-- [StorageMapVec](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec)
+
+* [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof)
+* [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft)
+* [String](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string)
+* [Signed Integers](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers)
+* [Unsigned Fixed Point Number](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp)
+* [StorageMapVec](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec)
 
 ### Example
 
@@ -179,8 +182,10 @@ use sway_libs::nft::{
     approve,
 };
 ```
+
 Once imported, you can use the following basic functionality of the library in your smart contract:
-- Minting tokens
-- Transfering tokens
-- Retrieving owner of a token
-- Approving users to transfer a token
+
+* Minting tokens
+* Transfering tokens
+* Retrieving owner of a token
+* Approving users to transfer a token
