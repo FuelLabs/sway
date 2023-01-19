@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-2C926E0DE5E7A78F'
+
+[[package]]
+name = 'enum_variant_unit'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-2C926E0DE5E7A78F'
+dependencies = ['core']

@@ -103,7 +103,7 @@ impl<T> MyOption<T> {
   }
 
   fn none() -> Self {
-    MyOption::None::<T>(())
+    MyOption::None::<T>
   }
 
   fn to_result(self) -> MyResult<T> {
