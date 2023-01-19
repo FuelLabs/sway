@@ -435,6 +435,48 @@ impl Bytes {
     pub fn is_empty(self) -> bool {
         self.len == 0
     }
+
+    /// Returns the SHA-2-256 hash of the elements.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(1);
+    /// bytes.push(2);
+    /// bytes.push(3);
+    /// let sha256_hash = bytes.sha256();
+    /// ```
+    pub fn sha256(self) -> b256 {
+        let mut result_buffer: b256 = b256::min();
+        asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
+            s256 hash ptr bytes;
+            hash: b256
+        }
+    }
+
+    /// Returns the KECCAK-256 hash of the elements.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(1);
+    /// bytes.push(2);
+    /// bytes.push(3);
+    /// let keccak256_hash = bytes.keccak256();
+    /// ```
+    pub fn keccak256(self) -> b256 {
+        let mut result_buffer: b256 = b256::min();
+        asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
+            k256 hash ptr bytes;
+            hash: b256 
+        }
+    }
 }
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
@@ -912,4 +954,30 @@ fn test_eq() {
 
     other.swap(0, 1);
     assert(bytes != other);
+}
+
+#[test()]
+fn test_sha256() {
+    use ::hash::sha256;
+    let (mut bytes, a, b, c) = setup();
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+
+    assert(sha256(362268190631264256) == bytes.sha256());
+}
+
+#[test()]
+fn test_keccak256() {
+    use ::hash::keccak256;
+    let (mut bytes, a, b, c) = setup();
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+
+    assert(keccak256(362268190631264256) == bytes.keccak256());
 }
