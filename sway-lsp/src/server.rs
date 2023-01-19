@@ -334,7 +334,7 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((_, session)) => {
                 // Construct code lenses for runnable functions
-                session
+                let _ = session
                     .runnables
                     .try_get(&capabilities::runnable::RunnableType::MainFn)
                     .try_unwrap()
