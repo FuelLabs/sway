@@ -474,7 +474,7 @@ impl Bytes {
         let mut result_buffer: b256 = b256::min();
         asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
             k256 hash ptr bytes;
-            hash: b256 
+            hash: b256
         }
     }
 }
