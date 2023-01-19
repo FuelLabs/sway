@@ -235,7 +235,7 @@ impl Namespace {
         }
 
         let matching_method_decl_id = match matching_method_decl_ids.len().cmp(&1) {
-            Ordering::Equal => Some(matching_method_decl_ids[0].clone()),
+            Ordering::Equal => matching_method_decl_ids.get(0).cloned(),
             Ordering::Greater => {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
@@ -265,7 +265,7 @@ impl Namespace {
                 } else {
                     // When we can't match any method with parameter types we still return the first method found
                     // This was the behavior before introducing the parameter type matching
-                    Some(matching_method_decl_ids[0].clone())
+                    matching_method_decl_ids.get(0).cloned()
                 }
             }
             Ordering::Less => None,
