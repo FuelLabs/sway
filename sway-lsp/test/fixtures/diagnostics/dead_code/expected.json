@@ -15,7 +15,10 @@
             "line": 31
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "Enum variant A is never constructed.",
@@ -29,7 +32,10 @@
             "line": 25
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "Enum variant B is never constructed.",
@@ -43,35 +49,44 @@
             "line": 26
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
+      },
+      {
+        "message": "This declaration is never used.",
+        "range": {
+          "end": {
+            "character": 18,
+            "line": 13
+          },
+          "start": {
+            "character": 6,
+            "line": 13
+          }
+        },
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This declaration is never used.",
         "range": {
           "end": {
             "character": 24,
-            "line": 13
-          },
-          "start": {
-            "character": 0,
-            "line": 13
-          }
-        },
-        "severity": 2
-      },
-      {
-        "message": "This declaration is never used.",
-        "range": {
-          "end": {
-            "character": 38,
             "line": 14
           },
           "start": {
-            "character": 0,
+            "character": 6,
             "line": 14
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This struct is never used.",
@@ -85,7 +100,10 @@
             "line": 15
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This struct field is never accessed.",
@@ -99,7 +117,10 @@
             "line": 16
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This struct field is never accessed.",
@@ -113,7 +134,10 @@
             "line": 17
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This trait is never implemented.",
@@ -127,7 +151,10 @@
             "line": 20
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This enum is never used.",
@@ -141,7 +168,10 @@
             "line": 24
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This function is never called.",
@@ -155,21 +185,27 @@
             "line": 34
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This declaration is never used.",
         "range": {
           "end": {
-            "character": 23,
+            "character": 18,
             "line": 35
           },
           "start": {
-            "character": 4,
+            "character": 8,
             "line": 35
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       },
       {
         "message": "This function is never called.",
@@ -183,7 +219,10 @@
             "line": 42
           }
         },
-        "severity": 2
+        "severity": 2,
+        "tags": [
+          1
+        ]
       }
     ]
   }
