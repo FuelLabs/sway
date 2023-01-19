@@ -57,8 +57,56 @@
       "logId": 5,
       "loggedType": {
         "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 6,
+      "loggedType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 7,
+      "loggedType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 8,
+      "loggedType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 9,
+      "loggedType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": 10,
+      "loggedType": {
+        "name": "",
         "type": 2,
         "typeArguments": []
+      }
+    },
+    {
+      "logId": 11,
+      "loggedType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
       }
     }
   ],
