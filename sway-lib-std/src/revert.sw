@@ -31,13 +31,13 @@ use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 /// ```
 pub fn revert<T>(code: T) {
     if !__is_reference_type::<T>() {
-        __revert(code);
+        // cast code as a u64 so we can pass it to __revert
+        __revert(asm(r1: code) { r1: u64 });
     } else {
         log(code);
         __revert(REVERT_WITH_LOG_SIGNAL);
     }
 }
-
 /// Checks if the given `condition` is `true` and if not, logs `value` and reverts.
 ///
 /// ### Arguments
