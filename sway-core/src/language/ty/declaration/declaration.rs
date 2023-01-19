@@ -138,7 +138,6 @@ impl DisplayWithEngines for TyDeclaration {
                         VariableMutability::Mutable => builder.push_str("mut"),
                         VariableMutability::RefMutable => builder.push_str("ref mut"),
                         VariableMutability::Immutable => {}
-                        VariableMutability::ExportedConst => builder.push_str("pub const"),
                     }
                     builder.push_str(name.as_str());
                     builder.push_str(": ");
@@ -489,7 +488,7 @@ impl TyDeclaration {
             EnumDeclaration(_) => "enum",
             TraitDeclaration(_) => "trait",
             AbiDeclaration(_) => "abi",
-            StorageDeclaration(_) => "storage",
+            StorageDeclaration(_) => "contract_storage",
             ImplTrait(_) => "impl_trait",
             FunctionDeclaration(_) => "fn",
             ConstantDeclaration(_) => "constant",

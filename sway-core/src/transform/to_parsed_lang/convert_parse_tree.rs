@@ -1492,7 +1492,7 @@ fn expr_to_expression(
             kind: ExpressionKind::Error(part_spans),
             span,
         },
-        Expr::Path(path_expr) => path_expr_to_expression(context, handler, path_expr)?,
+        Expr::Path(path_expr) => path_expr_to_expression(context, handler, engines, path_expr)?,
         Expr::Literal(literal) => Expression {
             kind: ExpressionKind::Literal(literal_to_literal(context, handler, literal)?),
             span,
@@ -2289,6 +2289,7 @@ fn path_expr_segment_to_ident(
 fn path_expr_to_expression(
     context: &mut Context,
     handler: &Handler,
+    engines: Engines<'_>,
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = path_expr.span();
@@ -2299,16 +2300,12 @@ fn path_expr_to_expression(
             span,
         }
     } else {
-        let call_path = path_expr_to_call_path(context, handler, path_expr)?;
-        let call_path_binding = TypeBinding {
-            inner: call_path.clone(),
-            type_arguments: vec![],
-            span: call_path.span(),
-        };
+        let call_path_binding =
+            path_expr_to_call_path_binding(context, handler, engines, path_expr)?;
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
-                args: Vec::new(),
+                args: None,
             })),
             span,
         }
