@@ -1,7 +1,7 @@
 library revert;
 
 use ::logging::log;
-use ::error_signals::FAILED_REQUIRE_SIGNAL;
+use ::error_signals::{FAILED_REQUIRE_SIGNAL, REVERT_WITH_LOG_SIGNAL};
 
 /// Context-dependent:
 /// will panic if used in a predicate
@@ -29,8 +29,13 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///     }
 /// }
 /// ```
-pub fn revert(code: u64) {
-    __revert(code)
+pub fn revert<T>(code: T) {
+    if !__is_reference_type::<T>() {
+        __revert(code);
+    } else {
+        log(code);
+        __revert(REVERT_WITH_LOG_SIGNAL);
+    }
 }
 
 /// Checks if the given `condition` is `true` and if not, logs `value` and reverts.
