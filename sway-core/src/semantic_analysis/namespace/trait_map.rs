@@ -191,12 +191,6 @@ impl TraitMap {
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset {
-                let type_args_are_equal = trait_type_args.len() == map_trait_type_args.len()
-                    && !trait_type_args
-                        .iter()
-                        .zip(map_trait_type_args.iter())
-                        .any(|(a1, a2)| !a1.eq(a2, engines));
-
                 for (name, decl_id) in trait_methods.iter() {
                     if let Some(map_trait_method_decl_id) = map_trait_methods.get(name) {
                         let method = check!(
@@ -216,7 +210,8 @@ impl TraitMap {
                             warnings,
                             errors
                         );
-                        if !type_args_are_equal
+                        if !traits_are_subset
+                            && !is_impl_self
                             && (method.parameters.len() != map_trait_method.parameters.len()
                                 || method
                                     .parameters
