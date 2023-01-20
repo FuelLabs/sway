@@ -859,7 +859,7 @@ impl WorkspaceManifest {
         if !duplciate_pkg_lines.is_empty() {
             let error_message = duplciate_pkg_lines.join("\n");
             bail!(
-                "Duplicate package names detected in the workspace:\n {}",
+                "Duplicate package names detected in the workspace:\n\n{}",
                 error_message
             );
         }
