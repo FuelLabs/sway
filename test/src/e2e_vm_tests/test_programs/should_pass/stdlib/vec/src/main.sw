@@ -68,72 +68,72 @@ fn main() -> bool {
     test_vector::<u8>(0_u8, 1_u8, 2_u8, 3_u8, 4_u8, 5_u8, 6_u8, 7_u8, 8_u8);
 
     // test Vec<b256>
-    // test_vector::<b256>(B256_0, B256_1, B256_2, B256_3, B256_4, B256_5, B256_6, B256_7, B256_8);
+    test_vector::<b256>(B256_0, B256_1, B256_2, B256_3, B256_4, B256_5, B256_6, B256_7, B256_8);
     
-    // // test Vec<SimpleStruct>
-    // test_vector::<SimpleStruct>(
-    //     SimpleStruct { x: 0_u32, y: B256_0 },
-    //     SimpleStruct { x: 1_u32, y: B256_1 },
-    //     SimpleStruct { x: 2_u32, y: B256_2 },
-    //     SimpleStruct { x: 3_u32, y: B256_3 },
-    //     SimpleStruct { x: 4_u32, y: B256_4 },
-    //     SimpleStruct { x: 5_u32, y: B256_5 },
-    //     SimpleStruct { x: 6_u32, y: B256_6 },
-    //     SimpleStruct { x: 7_u32, y: B256_7 },
-    //     SimpleStruct { x: 8_u32, y: B256_8 },
-    // );
+    // test Vec<SimpleStruct>
+    test_vector::<SimpleStruct>(
+        SimpleStruct { x: 0_u32, y: B256_0 },
+        SimpleStruct { x: 1_u32, y: B256_1 },
+        SimpleStruct { x: 2_u32, y: B256_2 },
+        SimpleStruct { x: 3_u32, y: B256_3 },
+        SimpleStruct { x: 4_u32, y: B256_4 },
+        SimpleStruct { x: 5_u32, y: B256_5 },
+        SimpleStruct { x: 6_u32, y: B256_6 },
+        SimpleStruct { x: 7_u32, y: B256_7 },
+        SimpleStruct { x: 8_u32, y: B256_8 },
+    );
 
-    // // test Vec<SimpleEnum>
-    // test_vector::<SimpleEnum>(
-    //     SimpleEnum::Y(B256_0),
-    //     SimpleEnum::X,
-    //     SimpleEnum::Z((B256_1, B256_2)),
-    //     SimpleEnum::Y(B256_1),
-    //     SimpleEnum::Y(B256_2),
-    //     SimpleEnum::Z((B256_3, B256_4)),
-    //     SimpleEnum::Z((B256_5, B256_5)),
-    //     SimpleEnum::Y(B256_8),
-    //     SimpleEnum::X,
-    // );
+    // test Vec<SimpleEnum>
+    test_vector::<SimpleEnum>(
+        SimpleEnum::Y(B256_0),
+        SimpleEnum::X,
+        SimpleEnum::Z((B256_1, B256_2)),
+        SimpleEnum::Y(B256_1),
+        SimpleEnum::Y(B256_2),
+        SimpleEnum::Z((B256_3, B256_4)),
+        SimpleEnum::Z((B256_5, B256_5)),
+        SimpleEnum::Y(B256_8),
+        SimpleEnum::X,
+    );
 
-    // // test Vec<u16, b256)>
-    // test_vector::<(u16, b256)>(
-    //     (0_u16, B256_0),
-    //     (1_u16, B256_1),
-    //     (2_u16, B256_2),
-    //     (3_u16, B256_3),
-    //     (4_u16, B256_4),
-    //     (5_u16, B256_5),
-    //     (6_u16, B256_6),
-    //     (7_u16, B256_7),
-    //     (8_u16, B256_8),
-    // );
+    // test Vec<u16, b256)>
+    test_vector::<(u16, b256)>(
+        (0_u16, B256_0),
+        (1_u16, B256_1),
+        (2_u16, B256_2),
+        (3_u16, B256_3),
+        (4_u16, B256_4),
+        (5_u16, B256_5),
+        (6_u16, B256_6),
+        (7_u16, B256_7),
+        (8_u16, B256_8),
+    );
 
-    // // test Vec<str[4]>
-    // test_vector::<str[4]>(
-    //     "fuel",
-    //     "john",
-    //     "nick",
-    //     "adam",
-    //     "emma",
-    //     "sway",
-    //     "gmgn",
-    //     "kekw",
-    //     "meow",
-    // );
+    // test Vec<str[4]>
+    test_vector::<str[4]>(
+        "fuel",
+        "john",
+        "nick",
+        "adam",
+        "emma",
+        "sway",
+        "gmgn",
+        "kekw",
+        "meow",
+    );
 
-    // // test Vec<[u64; 3]>
-    // test_vector::<[u64; 3]>(
-    //     [0, 1, 2],
-    //     [3, 4, 5],
-    //     [6, 7, 8],
-    //     [9, 10, 11],
-    //     [12, 13, 14],
-    //     [15, 16, 17],
-    //     [18, 19, 20],
-    //     [21, 22, 23],
-    //     [24, 25, 26],
-    // );
+    // test Vec<[u64; 3]>
+    test_vector::<[u64; 3]>(
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [9, 10, 11],
+        [12, 13, 14],
+        [15, 16, 17],
+        [18, 19, 20],
+        [21, 22, 23],
+        [24, 25, 26],
+    );
 
     true
 }
