@@ -70,7 +70,12 @@ impl ty::TyDeclaration {
                         type_ascription,
                         type_ascription_span,
                     }));
-                ctx.namespace.insert_symbol(name, typed_var_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_var_decl
             }
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {
@@ -80,6 +85,7 @@ impl ty::TyDeclaration {
                 value,
                 visibility,
                 attributes,
+                is_configurable,
                 span,
             }) => {
                 let type_ascription = check!(
@@ -133,11 +139,17 @@ impl ty::TyDeclaration {
                     return_type,
                     attributes,
                     type_ascription_span,
+                    is_configurable,
                     span,
                 };
                 let typed_const_decl =
                     ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
-                ctx.namespace.insert_symbol(name, typed_const_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_const_decl
             }
             parsed::Declaration::EnumDeclaration(decl) => {

@@ -21,7 +21,7 @@ use crate::language::Inline;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
-pub use asm_generation::FinalizedEntry;
+pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
@@ -100,7 +100,12 @@ fn parse_in_memory(
     src: Arc<str>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let module = sway_parse::parse_file(handler, src, None)?;
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(
+        &mut to_parsed_lang::Context::default(),
+        handler,
+        engines,
+        module.clone(),
+    )?;
     let submodules = Default::default();
     let root = parsed::ParseModule { tree, submodules };
     let lexed_program = lexed::LexedProgram::new(
@@ -198,7 +203,12 @@ fn parse_module_tree(
     let submodules = parse_submodules(handler, engines, &module, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
-    let (kind, tree) = to_parsed_lang::convert_parse_tree(handler, engines, module.clone())?;
+    let (kind, tree) = to_parsed_lang::convert_parse_tree(
+        &mut to_parsed_lang::Context::default(),
+        handler,
+        engines,
+        module.clone(),
+    )?;
 
     let lexed = lexed::LexedModule {
         tree: module,
@@ -220,9 +230,6 @@ fn module_path(parent_module_dir: &Path, dep: &sway_ast::Dependency) -> PathBuf 
 }
 
 pub struct CompiledAsm(pub FinalizedAsm);
-
-/// The bytecode for a sway program.
-pub struct CompiledBytecode(pub Vec<u8>);
 
 pub fn parsed_to_ast(
     engines: Engines<'_>,
@@ -707,13 +714,13 @@ pub fn asm_to_bytecode(
 ) -> CompileResult<CompiledBytecode> {
     match value {
         Some(CompiledAsm(mut asm)) => {
-            let bytes = check!(
+            let compiled_bytecode = check!(
                 asm.to_bytecode_mut(source_map),
                 return err(warnings, errors),
                 warnings,
                 errors,
             );
-            ok(CompiledBytecode(bytes), warnings, errors)
+            ok(compiled_bytecode, warnings, errors)
         }
         None => err(warnings, errors),
     }

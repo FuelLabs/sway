@@ -129,6 +129,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
 
 [[package]]
+name = "assert-json-diff"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47e4f2b81832e72834d7518d8487a0396a28cc408186a2e8854c0f98011faf12"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "assert_matches"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1309,22 +1319,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethabi"
-version = "18.0.0"
-source = "git+https://github.com/FuelLabs/ethabi.git?rev=00a8fdb133d51b99eabbf9db7b7d55bad75becd7#00a8fdb133d51b99eabbf9db7b7d55bad75becd7"
-dependencies = [
- "ethereum-types",
- "hex",
- "once_cell",
- "regex",
- "serde",
- "serde_json",
- "sha3 0.10.6",
- "thiserror",
- "uint",
-]
-
-[[package]]
 name = "ethbloom"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1515,7 +1509,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1547,7 +1541,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1563,7 +1557,6 @@ dependencies = [
  "futures",
  "hex",
  "serde",
- "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -1573,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 4.0.32",
@@ -1592,7 +1585,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1608,7 +1601,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1618,13 +1611,13 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "fd-lock",
  "forc-tracing",
  "forc-util",
- "fuels-types",
+ "fuel-abi-types",
  "git2",
  "hex",
  "petgraph",
@@ -1645,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -1658,7 +1651,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -1666,14 +1659,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-tx"
+version = "0.33.1"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "fuel-tx",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "forc-util"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
  "dirs 3.0.2",
  "forc-tracing",
+ "fuel-tx",
+ "hex",
+ "serde_json",
  "sway-core",
  "sway-error",
  "sway-types",
@@ -1705,6 +1712,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "fuel-abi-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af523c38969b431b33b06a82756659c9a07ea9aa185cb8a770c15fd5c95a0da6"
+dependencies = [
+ "proc-macro2",
+ "serde",
+ "strum_macros",
 ]
 
 [[package]]
@@ -1772,6 +1790,23 @@ dependencies = [
  "serde",
  "sha2 0.10.6",
  "zeroize",
+]
+
+[[package]]
+name = "fuel-ethabi"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4ad09e8685a72f0c004f4ca74f799d0e7f3d0a883cac0a8de6b6c5d6d0a2c75"
+dependencies = [
+ "ethereum-types",
+ "hex",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha3 0.10.6",
+ "thiserror",
+ "uint",
 ]
 
 [[package]]
@@ -4503,7 +4538,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "sway-ast"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4513,16 +4548,16 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "clap 3.2.23",
  "derivative",
  "dirs 3.0.2",
  "either",
- "ethabi",
  "etk-asm",
+ "fuel-abi-types",
+ "fuel-ethabi",
  "fuel-vm",
- "fuels-types",
  "hashbrown 0.13.1",
  "hex",
  "im",
@@ -4548,7 +4583,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4560,7 +4595,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "filecheck",
@@ -4574,7 +4609,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4584,9 +4619,10 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
  "async-trait",
  "dashmap",
  "forc-pkg",
@@ -4616,7 +4652,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4632,7 +4668,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4643,11 +4679,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.33.0"
+version = "0.33.1"
 
 [[package]]
 name = "swayfmt"
-version = "0.33.0"
+version = "0.33.1"
 dependencies = [
  "anyhow",
  "forc-tracing",

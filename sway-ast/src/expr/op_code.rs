@@ -32,6 +32,18 @@ macro_rules! push_register_arg_idents (
     };
 );
 
+macro_rules! push_immediate_idents (
+    ($vec_name:ident, ()) => {};
+    ($vec_name:ident, ($arg_name_head:ident: reg, $($arg_name:ident: $arg_ty:tt,)*)) => {
+        let _ = $arg_name_head;
+        push_immediate_idents!($vec_name, ($($arg_name: $arg_ty,)*))
+    };
+    ($vec_name:ident, ($arg_name_head:ident: imm, $($arg_name:ident: $arg_ty:tt,)*)) => {
+        $vec_name.push(Ident::new($arg_name_head.span()));
+        push_immediate_idents!($vec_name, ($($arg_name: $arg_ty,)*))
+    };
+);
+
 macro_rules! ignore_remaining (
     () => {};
     ($arg_name_head:ident: $arg_ty_head:tt, $($arg_name:ident: $arg_ty:tt,)*) => {{
@@ -130,6 +142,19 @@ macro_rules! define_op_codes (
                     },)*
                 }
             }
+
+            #[allow(clippy::vec_init_then_push)]
+            pub fn immediate_idents(&self) -> Vec<Ident> {
+                match self {
+                    $(Instruction::$op_name { $($arg_name,)* .. } => {
+                        #[allow(unused_mut)]
+                        let mut ret = Vec::new();
+                        push_immediate_idents!(ret, ($($arg_name: $arg_ty,)*));
+                        ret
+                    },)*
+                }
+            }
+
         }
 
         impl Spanned for Instruction {
