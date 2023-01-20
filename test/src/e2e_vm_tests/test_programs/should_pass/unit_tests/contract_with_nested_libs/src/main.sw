@@ -1,6 +1,15 @@
-library lib;
+contract;
 
 dep inner;
+
+abi MyContract {
+    fn foo();
+}
+
+impl MyContract for Contract {
+    fn foo() { }
+}
+
 
 #[test]
 fn test_meaning_of_life() {

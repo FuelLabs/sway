@@ -299,7 +299,7 @@ impl TyProgram {
         )
     }
 
-    /// Ensures there are no unresolved types or types awaiting resolution in the AST.
+    /// Collect various type information such as unresolved types and types of logged data
     pub(crate) fn collect_types_metadata(
         &mut self,
         ctx: &mut CollectTypesMetadataContext,
@@ -307,147 +307,107 @@ impl TyProgram {
         let mut warnings = vec![];
         let mut errors = vec![];
         let decl_engine = ctx.decl_engine;
-        // Get all of the entry points for this tree type. For libraries, that's everything
-        // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        let metadata = match &self.kind {
-            TyProgramKind::Library { .. } => {
-                let mut ret = vec![];
-                // Look through `root` and all of its submodules
-                for module in std::iter::once(&self.root).chain(
-                    self.root
-                        .submodules_recursive()
-                        .into_iter()
-                        .map(|(_, submod)| &submod.module),
-                ) {
-                    for node in module.all_nodes.iter() {
-                        let public = check!(
-                            node.is_public(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let is_test = check!(
-                            node.is_test_function(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if public || is_test {
-                            ret.append(&mut check!(
-                                node.collect_types_metadata(ctx),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                    }
-                }
+        let mut metadata = vec![];
 
-
-                ret
+        // First, look into all entry points that are not unit tests.
+        match &self.kind {
+            // For scripts and predicates, collect metadata for all the types starting with
+            // `main()` as the only entry point
+            TyProgramKind::Script { main_function, .. }
+            | TyProgramKind::Predicate { main_function, .. } => {
+                metadata.append(&mut check!(
+                    main_function.collect_types_metadata(ctx),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
-            TyProgramKind::Script { .. } => {
-                let mut data = vec![];
-                for module in std::iter::once(&self.root).chain(
-                    self.root
-                        .submodules_recursive()
-                        .into_iter()
-                        .map(|(_, submod)| &submod.module),
-                ) {
-                    for node in module.all_nodes.iter() {
-                        let is_main = check!(
-                            node.is_main_function(decl_engine, parsed::TreeType::Script),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let is_test = check!(
-                            node.is_test_function(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if is_main || is_test {
-                            data.append(&mut check!(
-                                node.collect_types_metadata(ctx),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                    }
-                }
-                data
-            }
-            TyProgramKind::Predicate { .. } => {
-                let mut data = vec![];
-                for module in std::iter::once(&self.root).chain(
-                    self.root
-                        .submodules_recursive()
-                        .into_iter()
-                        .map(|(_, submod)| &submod.module),
-                ) {
-                    for node in module.all_nodes.iter() {
-                        let is_main = check!(
-                            node.is_main_function(decl_engine, parsed::TreeType::Predicate),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        let is_test = check!(
-                            node.is_test_function(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if is_main || is_test {
-                            data.append(&mut check!(
-                                node.collect_types_metadata(ctx),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                    }
-                }
-                data
-            }
+            // For contracts, collect metadata for all the types starting with each ABI method as
+            // an entry point.
             TyProgramKind::Contract { abi_entries, .. } => {
-                let mut data = vec![];
-                for module in std::iter::once(&self.root).chain(
-                    self.root
-                        .submodules_recursive()
-                        .into_iter()
-                        .map(|(_, submod)| &submod.module),
-                ) {
-                    for node in module.all_nodes.iter() {
-                        let is_test = check!(
-                            node.is_test_function(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if is_test {
-                            data.append(&mut check!(
-                                node.collect_types_metadata(ctx),
-                                return err(warnings, errors),
-                                warnings,
-                                errors
-                            ));
-                        }
-                    }
-                }
                 for entry in abi_entries.iter() {
-                    data.append(&mut check!(
+                    metadata.append(&mut check!(
                         entry.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
                 }
-                data
             }
-        };
+            // For libraries, collect metadata for all the types starting with each `pub` node as
+            // an entry point. Also dig into all the submodules of a library because nodes in those
+            // submodules can also be entry points.
+            TyProgramKind::Library { .. } => {
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let is_public = check!(
+                            node.is_public(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let is_generic_function = check!(
+                            node.is_generic_function(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if is_public {
+                            let node_metadata = check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            metadata.append(
+                                &mut node_metadata
+                                    .iter()
+                                    .filter(|m| {
+                                        // Generic functions are allowed to have unresolved types
+                                        // so filter those
+                                        !(is_generic_function
+                                            && matches!(m, TypeMetadata::UnresolvedType(..)))
+                                    })
+                                    .cloned()
+                                    .collect::<Vec<TypeMetadata>>(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Now consider unit tests: all unit test are considered entry points regardless of the
+        // program type
+        for module in std::iter::once(&self.root).chain(
+            self.root
+                .submodules_recursive()
+                .into_iter()
+                .map(|(_, submod)| &submod.module),
+        ) {
+            for node in module.all_nodes.iter() {
+                let is_test_function = check!(
+                    node.is_test_function(decl_engine),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if is_test_function {
+                    metadata.append(&mut check!(
+                        node.collect_types_metadata(ctx),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+            }
+        }
+
         if errors.is_empty() {
             ok(metadata, warnings, errors)
         } else {

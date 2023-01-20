@@ -1,6 +1,8 @@
-library lib;
+script;
 
 dep inner;
+
+fn main() { }
 
 #[test]
 fn test_meaning_of_life() {
