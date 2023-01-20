@@ -50,6 +50,7 @@ impl ty::TyScrutinee {
                     name_ident: BaseIdent::new_with_override("_".into(), span.clone()),
                     trait_constraints: vec![],
                     trait_constraints_span: Span::dummy(),
+                    is_from_parent: false,
                 };
                 let typed_scrutinee = ty::TyScrutinee {
                     variant: ty::TyScrutineeVariant::CatchAll,
