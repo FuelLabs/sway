@@ -3,4 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "repeated_trait_declaration"
+name = "multiple_config_blocks"

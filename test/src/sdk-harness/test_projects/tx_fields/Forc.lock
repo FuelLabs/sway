@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-27E68A56D8B295DA'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-27E68A56D8B295DA'
+dependencies = ['core']
+
+[[package]]
+name = 'tx_predicate'
+source = 'member'
+dependencies = ['std']
