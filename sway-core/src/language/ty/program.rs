@@ -89,7 +89,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
                     match decl_engine.get_constant(decl_id.clone(), &node.span) {
                         Ok(config_decl) if config_decl.is_configurable => {
-                            configurables.push(config_decl)
+                            configurables.push(config_decl);
                         }
                         _ => {}
                     }
