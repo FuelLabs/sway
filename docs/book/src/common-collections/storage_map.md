@@ -55,7 +55,9 @@ Here, `value1` will have the value that's associated with the first address, and
 * The default value for a struct is a struct of the default values of its components.
 * The default value for an enum is an instance of its first variant containing the default for its associated value.
 
-## Storage maps with multiple keys
+## Limitations
+
+### Storage maps with multiple keys
 
 You might find yourself needing a `StorageMap<K1, V1>` where the type `V1` is itself another `StorageMap<K2, V2>`. This is not allowed in Sway. The right approach is to use a single `StorageMap<K, V>` where `K` is a tuple `(K1, K2)`. For example:
 
@@ -63,9 +65,9 @@ You might find yourself needing a `StorageMap<K1, V1>` where the type `V1` is it
 {{#include ../../../../examples/storage_map/src/main.sw:storage_map_tuple_key}}
 ```
 
-## Limitations
+### Storage maps as components of complex types
 
-It is not currently allowed to have a `StorageMap<K, V>` as a component of a complex type such as a struct or an enum. For example, the code below is not legal:
+It is currently not possible to have a `StorageMap<K, V>` as a component of a complex type such as a struct or an enum. For example, the code below is not legal:
 
 ```sway
 Struct Wrapper {
@@ -80,3 +82,39 @@ storage {
 
 storage.w.map1.insert(..);
 ```
+
+### Storage maps within storage maps
+
+It is currently not possible to use somthing like StorageMap<K, StorageVec> directly in Sway. The workaround for this is to use a Sway reference library called [StorageMapVec](https://github.com/FuelLabs/sway-libs/tree/master/libs/storagemapvec) such as below:
+
+```sway
+use storagemapvec::StorageMapVec;
+
+storage {
+    mapvec: StorageMapVec<u64, u64> = StorageMapVec {},
+}
+
+abi MyContract {
+    #[storage(read, write)]
+    fn push(key: u64, value: u64);
+
+    #[storage(read)]
+    fn get(key: u64, index: u64);
+}
+
+impl MyContract for Contract {
+    #[storage(read, write)]
+    fn push(key: u64, value: u64) {
+        // this will push the value to the vec, which is accessible with the key
+        storage.mapvec.push(key, value);
+    }
+
+    #[storage(read)]
+    fn get(key: u64, index: u64) {
+        // this will retrieve the vec at given key, and then retrieve the value at given index from that vec
+        storage.mapvec.get(key, index)
+    }
+}
+```
+
+Please note that the [StorageMapVec](https://github.com/FuelLabs/sway-libs/tree/master/libs/storagemapvec) is a temporary workaround for using complex storage variants and will be deprecated once the desired functionality is supported directly in Sway.
