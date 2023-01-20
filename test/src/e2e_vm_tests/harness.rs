@@ -226,8 +226,7 @@ pub(crate) async fn compile_and_run_unit_tests(
             },
             ..Default::default()
         })?;
-        let test_print_opts = forc_test::TestPrintOpts::default();
-        let tested = built_tests.run(&test_print_opts)?;
+        let tested = built_tests.run()?;
 
         match tested {
             forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),

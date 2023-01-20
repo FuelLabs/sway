@@ -3,4 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
-name = "repeated_abi_declaration"
+name = "shadowed_consts_and_vars_alias"

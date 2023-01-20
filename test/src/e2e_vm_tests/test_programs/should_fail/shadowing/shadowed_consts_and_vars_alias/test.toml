@@ -1,0 +1,9 @@
+category = "fail"
+
+#check: $()error
+
+#check: $()const Y = 7;
+#nextln: $()The name `Y` is defined multiple times
+
+#check: $()let Y = 4;
+#nextln: $()The name `Y` is defined multiple times
