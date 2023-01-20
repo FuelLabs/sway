@@ -126,7 +126,7 @@ impl<T> Vec<T> {
         let end = self.buf.ptr().add::<T>(self.len);
 
         // Write `value` at pointer `end`
-        end.write(value);
+        end.write::<T>(value);
 
         // Increment length.
         self.len += 1;
@@ -186,14 +186,14 @@ impl<T> Vec<T> {
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if self.len <= index {
-            return Option::None::<T>();
+            return Option::None::<T>;
         };
 
         // Get a pointer to the desired element using `index`
         let ptr = self.buf.ptr().add::<T>(index);
 
         // Read from `ptr`
-        Option::Some(ptr.read())
+        Option::Some(ptr.read::<T>())
     }
 
     /// Returns the number of elements in the vector, also referred to
@@ -261,7 +261,7 @@ impl<T> Vec<T> {
 
         // Read the value at `index`
         let ptr = buf_start.add::<T>(index);
-        let ret = ptr.read();
+        let ret = ptr.read::<T>();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
@@ -317,7 +317,7 @@ impl<T> Vec<T> {
         }
 
         // Write `element` at pointer `index`
-        index_ptr.write(element);
+        index_ptr.write::<T>(element);
 
         // Increment length.
         self.len += 1;
@@ -346,7 +346,7 @@ impl<T> Vec<T> {
             return Option::None;
         }
         self.len -= 1;
-        Option::Some(self.buf.ptr().add::<T>(self.len).read())
+        Option::Some(self.buf.ptr().add::<T>(self.len).read::<T>())
     }
 
     /// Swaps two elements.
@@ -385,9 +385,9 @@ impl<T> Vec<T> {
         let element1_ptr = self.buf.ptr().add::<T>(element1_index);
         let element2_ptr = self.buf.ptr().add::<T>(element2_index);
 
-        let element1_val = element1_ptr.read();
+        let element1_val: T = element1_ptr.read::<T>();
         element2_ptr.copy_to::<T>(element1_ptr, 1);
-        element2_ptr.write(element1_val);
+        element2_ptr.write::<T>(element1_val);
     }
 
     /// Updates an element at position `index` with a new element `value`
@@ -420,7 +420,7 @@ impl<T> Vec<T> {
 
         let index_ptr = self.buf.ptr().add::<T>(index);
 
-        index_ptr.write(value);
+        index_ptr.write::<T>(value);
     }
 }
 

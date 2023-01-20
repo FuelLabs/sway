@@ -1,10 +1,5 @@
 use crate::{
-    declaration_engine::{declaration_id::DeclarationId, DeclarationEngine},
-    engine_threading::Engines,
-    error::*,
-    language::{ty, CallPath},
-    namespace::*,
-    type_system::*,
+    decl_engine::*, engine_threading::Engines, error::*, language::ty, namespace::*, type_system::*,
 };
 
 use super::TraitMap;
@@ -45,7 +40,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclarationId>,
+    pub(crate) declared_storage: Option<DeclId>,
 }
 
 impl Items {
@@ -64,13 +59,11 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -86,7 +79,7 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclarationId) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
@@ -141,42 +134,6 @@ impl Items {
             .ok_or_else(|| CompileError::SymbolNotFound { name: name.clone() })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn insert_trait_implementation<'a>(
-        &mut self,
-        trait_name: CallPath,
-        trait_type_args: Vec<TypeArgument>,
-        type_id: TypeId,
-        methods: &[DeclarationId],
-        impl_span: &Span,
-        is_impl_self: bool,
-        engines: Engines<'a>,
-    ) -> CompileResult<()> {
-        let new_prefixes = if trait_name.prefixes.is_empty() {
-            self.use_synonyms
-                .get(&trait_name.suffix)
-                .map(|us| &us.0)
-                .unwrap_or(&trait_name.prefixes)
-                .clone()
-        } else {
-            trait_name.prefixes
-        };
-        let trait_name = CallPath {
-            prefixes: new_prefixes,
-            suffix: trait_name.suffix,
-            is_absolute: trait_name.is_absolute,
-        };
-        self.implemented_traits.insert(
-            trait_name,
-            trait_type_args,
-            type_id,
-            methods,
-            impl_span,
-            is_impl_self,
-            engines,
-        )
-    }
-
     pub(crate) fn insert_trait_implementation_for_type(
         &mut self,
         engines: Engines<'_>,
@@ -189,19 +146,9 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclarationId> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
-    }
-
-    pub(crate) fn get_methods_for_type_and_trait_name(
-        &self,
-        engines: Engines<'_>,
-        type_id: TypeId,
-        trait_name: &CallPath,
-    ) -> Vec<DeclarationId> {
-        self.implemented_traits
-            .get_methods_for_type_and_trait_name(engines, type_id, trait_name)
     }
 
     pub(crate) fn has_storage_declared(&self) -> bool {
@@ -210,7 +157,7 @@ impl Items {
 
     pub(crate) fn get_storage_field_descriptors(
         &self,
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
         let mut warnings = vec![];
@@ -218,9 +165,7 @@ impl Items {
         match self.declared_storage {
             Some(ref decl_id) => {
                 let storage = check!(
-                    CompileResult::from(
-                        declaration_engine.get_storage(decl_id.clone(), access_span)
-                    ),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors

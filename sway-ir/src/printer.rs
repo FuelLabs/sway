@@ -13,7 +13,6 @@ use crate::{
     context::Context,
     function::{Function, FunctionContent},
     instruction::{FuelVmInstruction, Instruction, Predicate, Register},
-    irtype::Type,
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
@@ -104,6 +103,7 @@ fn module_to_doc<'a>(
     md_namer: &mut MetadataNamer,
     module: &'a ModuleContent,
 ) -> Doc {
+    let mut global_namer = GlobalNamer::new();
     Doc::line(Doc::Text(format!(
         "{} {{",
         match module.kind {
@@ -115,6 +115,21 @@ fn module_to_doc<'a>(
     )))
     .append(Doc::indent(
         4,
+        Doc::List(
+            module
+                .global_configurable
+                .values()
+                .map(|value| config_to_doc(context, md_namer, &mut global_namer, value))
+                .collect(),
+        ),
+    ))
+    .append(if !module.global_configurable.is_empty() {
+        Doc::line(Doc::Empty)
+    } else {
+        Doc::Empty
+    })
+    .append(Doc::indent(
+        4,
         Doc::list_sep(
             module
                 .functions
@@ -123,7 +138,7 @@ fn module_to_doc<'a>(
                     function_to_doc(
                         context,
                         md_namer,
-                        &mut Namer::new(*function),
+                        &mut Namer::new(*function, global_namer.clone()),
                         &context.functions[function.0],
                     )
                 })
@@ -261,6 +276,30 @@ fn block_to_doc<'a>(
             .map(|ins| instruction_to_doc(context, md_namer, namer, block, ins))
             .collect(),
     ))
+}
+
+fn config_to_doc(
+    context: &Context,
+    md_namer: &mut MetadataNamer,
+    global_namer: &mut GlobalNamer,
+    const_val: &Value,
+) -> Doc {
+    if let ValueContent {
+        value: ValueDatum::Configurable(configurable),
+        metadata,
+    } = &context.values[const_val.0]
+    {
+        Doc::line(
+            Doc::text(format!(
+                "{} = config {}",
+                global_namer.name(context, const_val),
+                configurable.as_lit_string(context)
+            ))
+            .append(md_namer.md_idx_to_doc(context, metadata)),
+        )
+    } else {
+        unreachable!("Not a constant value.")
+    }
 }
 
 fn constant_to_doc(
@@ -495,7 +534,7 @@ fn instruction_to_doc<'a>(
                     "{} = extract_element {}, {}, {}",
                     namer.name(context, ins_value),
                     namer.name(context, array),
-                    Type::Array(*ty).as_string(context),
+                    ty.as_string(context),
                     namer.name(context, index_val),
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
@@ -509,7 +548,7 @@ fn instruction_to_doc<'a>(
                     "{} = extract_value {}, {}, ",
                     namer.name(context, ins_value),
                     namer.name(context, aggregate),
-                    Type::Struct(*ty).as_string(context),
+                    ty.as_string(context),
                 ))
                 .append(Doc::list_sep(
                     indices
@@ -687,7 +726,7 @@ fn instruction_to_doc<'a>(
                         "{} = insert_element {}, {}, {}, {}",
                         namer.name(context, ins_value),
                         namer.name(context, array),
-                        Type::Array(*ty).as_string(context),
+                        ty.as_string(context),
                         namer.name(context, value),
                         namer.name(context, index_val),
                     ))
@@ -705,7 +744,7 @@ fn instruction_to_doc<'a>(
                         "{} = insert_value {}, {}, {}, ",
                         namer.name(context, ins_value),
                         namer.name(context, aggregate),
-                        Type::Struct(*ty).as_string(context),
+                        ty.as_string(context),
                         namer.name(context, value),
                     ))
                     .append(Doc::list_sep(
@@ -912,17 +951,52 @@ impl Constant {
     }
 }
 
+#[derive(Clone)]
+struct GlobalNamer {
+    names: HashMap<Value, String>,
+    next_configurable_idx: u64,
+}
+
+impl GlobalNamer {
+    fn new() -> Self {
+        GlobalNamer {
+            names: HashMap::new(),
+            next_configurable_idx: 0,
+        }
+    }
+
+    fn name(&mut self, context: &Context, value: &Value) -> String {
+        match &context.values[value.0].value {
+            ValueDatum::Configurable(_) => self.default_configurable_name(value),
+            _ => todo!(),
+        }
+    }
+
+    fn default_configurable_name(&mut self, value: &Value) -> String {
+        self.names.get(value).cloned().unwrap_or_else(|| {
+            let new_name = format!("c{}", self.next_configurable_idx);
+            self.next_configurable_idx += 1;
+            self.names.insert(*value, new_name.clone());
+            new_name
+        })
+    }
+}
+
 struct Namer {
     function: Function,
 
+    // To make things easier, each `Namer` also gets a `GlobalNamer` which includes all globally
+    // available names (such as config constants).
+    global_namer: GlobalNamer,
     names: HashMap<Value, String>,
     next_value_idx: u64,
 }
 
 impl Namer {
-    fn new(function: Function) -> Self {
+    fn new(function: Function, global_namer: GlobalNamer) -> Self {
         Namer {
             function,
+            global_namer,
             names: HashMap::new(),
             next_value_idx: 0,
         }
@@ -935,6 +1009,7 @@ impl Namer {
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
+            ValueDatum::Configurable(_) => self.global_namer.name(context, value),
             ValueDatum::Constant(_) => self.default_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
         }

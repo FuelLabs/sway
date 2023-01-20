@@ -1,7 +1,10 @@
 mod function_parameter;
 
 pub use function_parameter::*;
-use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
 
 use crate::{
     error::*,
@@ -35,8 +38,17 @@ impl ty::TyFunctionDeclaration {
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
+
+        // If functions aren't allowed in this location, return an error.
+        if ctx.functions_disallowed() {
+            errors.push(CompileError::Unimplemented(
+                "Nested function definitions are not allowed at this time.",
+                span,
+            ));
+            return err(warnings, errors);
+        }
 
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
@@ -48,7 +60,11 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+        let mut fn_ctx = ctx
+            .by_ref()
+            .scoped(&mut fn_namespace)
+            .with_purity(purity)
+            .disallow_functions();
 
         // type check the type parameters, which will also insert them into the namespace
         let mut new_type_parameters = vec![];
@@ -79,7 +95,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -87,7 +103,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -106,7 +122,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery)
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -120,20 +136,12 @@ impl ty::TyFunctionDeclaration {
             .flat_map(|node| node.gather_return_statements())
             .collect();
 
-        // unify the types of the return statements with the function return type
-        for stmt in return_statements {
-            append!(
-                fn_ctx
-                    .by_ref()
-                    .with_type_annotation(return_type)
-                    .with_help_text(
-                        "Return statement must return the declared function return type."
-                    )
-                    .unify_with_self(stmt.return_type, &stmt.span),
-                warnings,
-                errors
-            );
-        }
+        check!(
+            unify_return_statements(fn_ctx.by_ref(), &return_statements, return_type),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         let (visibility, is_contract_call) = if is_method {
             if is_in_impl_self {
@@ -179,13 +187,50 @@ impl ty::TyFunctionDeclaration {
     }
 }
 
+/// Unifies the types of the return statements and the return type of the
+/// function declaration.
+fn unify_return_statements(
+    ctx: TypeCheckContext,
+    return_statements: &[&ty::TyExpression],
+    return_type: TypeId,
+) -> CompileResult<()> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+
+    for stmt in return_statements.iter() {
+        check!(
+            CompileResult::from(type_engine.unify_with_self(
+                decl_engine,
+                stmt.return_type,
+                return_type,
+                ctx.self_type(),
+                &stmt.span,
+                "Return statement must return the declared function return type.",
+                None,
+            )),
+            continue,
+            warnings,
+            errors
+        );
+    }
+
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{declaration_engine::DeclarationEngine, language::Visibility};
+    use crate::{decl_engine::DeclEngine, language::Visibility};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
@@ -221,14 +266,10 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
-                initial_type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
+                type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                initial_type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -236,14 +277,12 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(
-                    &declaration_engine,
+                type_id: type_engine.insert(
+                    &decl_engine,
                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 ),
-                initial_type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
+                initial_type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],

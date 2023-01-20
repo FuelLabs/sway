@@ -81,6 +81,8 @@ pub enum ConvertParseTreeError {
     DuplicateEnumVariant { name: Ident, span: Span },
     #[error("storage field \"{name}\" already declared")]
     DuplicateStorageField { name: Ident, span: Span },
+    #[error("configurable \"{name}\" already declared")]
+    DuplicateConfigurable { name: Ident, span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
@@ -97,6 +99,10 @@ pub enum ConvertParseTreeError {
     CannotAnnotateDependency { span: Span },
     #[error("Expected dependency at the beginning before any other items.")]
     ExpectedDependencyAtBeginning { span: Span },
+    #[error("Ref expressions are not supported yet.")]
+    RefExprNotYetSupported { span: Span },
+    #[error("Deref expressions are not supported yet.")]
+    DerefExprNotYetSupported { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -141,6 +147,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateConfigurable { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),
@@ -149,6 +156,8 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
             ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
+            ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
+            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
         }
     }
 }

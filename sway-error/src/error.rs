@@ -416,6 +416,8 @@ pub enum CompileError {
     MoreThanOneEnumInstantiator { span: Span, ty: String },
     #[error("This enum variant represents the unit type, so it should not be instantiated with any value.")]
     UnnecessaryEnumInstantiator { span: Span },
+    #[error("The enum variant `{ty}` is of type `unit`, so its constructor does not take arguments or parentheses. Try removing the ().")]
+    UnitVariantWithParenthesesEnumInstantiator { span: Span, ty: String },
     #[error("Cannot find trait \"{name}\" in this scope.")]
     TraitNotFound { name: String, span: Span },
     #[error("This expression is not valid on the left hand side of a reassignment.")]
@@ -442,6 +444,8 @@ pub enum CompileError {
         expected: usize,
         received: usize,
     },
+    #[error("The function \"{method_name}\" was called without parentheses. Try adding ().")]
+    MissingParenthesesForFunction { span: Span, method_name: Ident },
     #[error("This type is invalid in a function selector. A contract ABI function selector must be a known sized type, not generic.")]
     InvalidAbiType { span: Span },
     #[error("This is a {actually_is}, not an ABI. An ABI cast requires a valid ABI to cast the address to.")]
@@ -674,6 +678,8 @@ pub enum CompileError {
     ConfigTimeConstantNotAConstDecl { span: Span },
     #[error("Configuration-time constant value is not a literal.")]
     ConfigTimeConstantNotALiteral { span: Span },
+    #[error("The type \"{ty}\" is not allowed in storage.")]
+    TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
     RefMutableNotAllowedInMain { param_name: Ident },
     #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
@@ -711,6 +717,8 @@ pub enum CompileError {
         missing_impl_attribute: bool,
         span: Span,
     },
+    #[error("Configurable constants are not allowed in libraries.")]
+    ConfigurableInLibrary { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -809,10 +817,12 @@ impl Spanned for CompileError {
             ImportMustBeLibrary { span, .. } => span.clone(),
             MoreThanOneEnumInstantiator { span, .. } => span.clone(),
             UnnecessaryEnumInstantiator { span, .. } => span.clone(),
+            UnitVariantWithParenthesesEnumInstantiator { span, .. } => span.clone(),
             TraitNotFound { span, .. } => span.clone(),
             InvalidExpressionOnLhs { span, .. } => span.clone(),
             TooManyArgumentsForFunction { span, .. } => span.clone(),
             TooFewArgumentsForFunction { span, .. } => span.clone(),
+            MissingParenthesesForFunction { span, .. } => span.clone(),
             InvalidAbiType { span, .. } => span.clone(),
             NotAnAbi { span, .. } => span.clone(),
             ImplAbiForNonContract { span, .. } => span.clone(),
@@ -889,6 +899,7 @@ impl Spanned for CompileError {
             ContinueOutsideLoop { span } => span.clone(),
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
+            TypeNotAllowedInContractStorage { span, .. } => span.clone(),
             RefMutableNotAllowedInMain { param_name } => param_name.span(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
@@ -898,6 +909,7 @@ impl Spanned for CompileError {
             DisallowedWhileInPredicate { span } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
+            ConfigurableInLibrary { span } => span.clone(),
         }
     }
 }

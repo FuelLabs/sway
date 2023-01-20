@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, INDEX_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -16,10 +16,9 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
-    sync::Arc,
     {fs, path::PathBuf},
 };
-use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
+use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
@@ -59,36 +58,49 @@ pub fn main() -> Result<()> {
     let plan =
         pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)?;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
-    let typed_program = match pkg::check(&plan, silent, engines)?
-        .pop()
-        .and_then(|compilation| compilation.value)
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
+    let tests_enabled = true;
+    let typed_program = match pkg::check(
+        &plan,
+        BuildTarget::default(),
+        silent,
+        tests_enabled,
+        engines,
+    )?
+    .pop()
+    .and_then(|compilation| compilation.value)
+    .and_then(|programs| programs.typed)
     {
-        Some((_, Some(typed_program))) => typed_program,
+        Some(typed_program) => typed_program,
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
-        &declaration_engine,
+        &decl_engine,
         project_name,
         &typed_program,
         no_deps,
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(Arc::new(declaration_engine), raw_docs);
+    let forc_version = pkg_manifest
+        .project
+        .forc_version
+        .as_ref()
+        .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
+    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version);
 
     // write contents to outfile
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
-        for prefix in doc.module_prefix {
+        for prefix in doc.module_info {
             if &prefix != project_name {
                 doc_path.push(prefix);
             }
         }
 
         fs::create_dir_all(&doc_path)?;
-        doc_path.push(doc.file_name);
+        doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     // CSS, icons and logos
@@ -109,7 +121,7 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(ALL_DOC_FILENAME);
+        let path = doc_path.join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {

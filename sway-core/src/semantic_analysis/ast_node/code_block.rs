@@ -9,7 +9,7 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         // Create a temp namespace for checking within the code block scope.
         let mut code_block_namespace = ctx.namespace.clone();
@@ -39,7 +39,7 @@ impl ty::TyCodeBlock {
         let block_type = evaluated_contents
             .iter()
             .find_map(|node| {
-                if node.deterministically_aborts(declaration_engine, true) {
+                if node.deterministically_aborts(decl_engine, true) {
                     node_deterministically_aborts = true;
                 };
                 match node {
@@ -70,18 +70,15 @@ impl ty::TyCodeBlock {
 
                     if let Some(ty::TyDeclaration::EnumDeclaration(never_decl_id)) = never_decl_opt
                     {
-                        if let Ok(never_decl) =
-                            declaration_engine.get_enum(never_decl_id.clone(), &span)
-                        {
+                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id.clone(), &span) {
                             return never_decl.create_type_id(ctx.engines());
                         }
                     }
 
-                    ctx.type_engine
-                        .insert_type(declaration_engine, TypeInfo::Unknown)
+                    ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)
                 } else {
                     ctx.type_engine
-                        .insert_type(declaration_engine, TypeInfo::Tuple(Vec::new()))
+                        .insert(decl_engine, TypeInfo::Tuple(Vec::new()))
                 }
             });
 

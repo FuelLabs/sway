@@ -16,7 +16,7 @@ fn main() -> bool {
     assert(foo);
 
     let param2 = (
-        Location::Earth(()),
+        Location::Earth,
         3u64
     );
     let bar = the_abi.bug2(param2);

@@ -29,10 +29,11 @@ impl ty::TyProgram {
         let mod_res = ty::TyModule::type_check(ctx, root);
         mod_res.flat_map(|root| {
             let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
-            res.map(|(kind, declarations)| Self {
+            res.map(|(kind, declarations, configurables)| Self {
                 kind,
                 root,
                 declarations,
+                configurables,
                 storage_slots: vec![],
                 logged_types: vec![],
                 messages_types: vec![],
@@ -49,7 +50,7 @@ impl ty::TyProgram {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match &self.kind {
             ty::TyProgramKind::Contract { .. } => {
                 let storage_decl = self
@@ -62,7 +63,7 @@ impl ty::TyProgram {
                     Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
                         let decl = check!(
                             CompileResult::from(
-                                declaration_engine.get_storage(decl_id.clone(), &decl_id.span())
+                                decl_engine.get_storage(decl_id.clone(), &decl_id.span())
                             ),
                             return err(warnings, errors),
                             warnings,

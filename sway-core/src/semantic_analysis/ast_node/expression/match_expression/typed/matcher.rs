@@ -74,18 +74,22 @@ pub(crate) fn matcher(
     } = scrutinee;
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
     // unify the type of the scrutinee with the type of the expression
-    append!(
-        type_engine.unify(declaration_engine, type_id, exp.return_type, &span, ""),
+    check!(
+        CompileResult::from(type_engine.unify(
+            decl_engine,
+            type_id,
+            exp.return_type,
+            &span,
+            "",
+            None
+        )),
+        return err(warnings, errors),
         warnings,
         errors
     );
-
-    if !errors.is_empty() {
-        return err(warnings, errors);
-    }
 
     match variant {
         ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),

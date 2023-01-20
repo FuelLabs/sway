@@ -1,11 +1,11 @@
 use crate::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     engine_threading::*,
     language::{parsed::TreeType, Purity},
     namespace::Path,
     semantic_analysis::{ast_node::Mode, Namespace},
     type_system::{
-        CopyTypes, EnforceTypeArguments, MonomorphizeHelper, TypeArgument, TypeId, TypeInfo,
+        EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
     CompileResult, CompileWarning, TypeEngine,
 };
@@ -28,7 +28,7 @@ pub struct TypeCheckContext<'a> {
     pub(crate) type_engine: &'a TypeEngine,
 
     /// The declaration engine holds declarations.
-    pub(crate) declaration_engine: &'a DeclarationEngine,
+    pub(crate) decl_engine: &'a DeclEngine,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -57,6 +57,11 @@ pub struct TypeCheckContext<'a> {
     /// Provides the kind of the module.
     /// This is useful for example to throw an error when while loops are present in predicates.
     kind: TreeType,
+
+    /// Indicates when semantic analysis should disallow functions. (i.e.
+    /// disallowing functions from being defined inside of another function
+    /// body).
+    disallow_functions: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -73,18 +78,19 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
-        let (type_engine, declaration_engine) = engines.unwrap();
+        let (type_engine, decl_engine) = engines.unwrap();
         Self {
             namespace,
             type_engine,
-            declaration_engine,
-            type_annotation: type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
+            decl_engine,
+            type_annotation: type_engine.insert(decl_engine, TypeInfo::Unknown),
             help_text: "",
             // TODO: Contract? Should this be passed in based on program kind (aka TreeType)?
-            self_type: type_engine.insert_type(declaration_engine, TypeInfo::Contract),
+            self_type: type_engine.insert(decl_engine, TypeInfo::Contract),
             mode: Mode::NonAbi,
             purity: Purity::default(),
             kind: TreeType::Contract,
+            disallow_functions: false,
         }
     }
 
@@ -106,7 +112,8 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind.clone(),
             type_engine: self.type_engine,
-            declaration_engine: self.declaration_engine,
+            decl_engine: self.decl_engine,
+            disallow_functions: self.disallow_functions,
         }
     }
 
@@ -121,7 +128,8 @@ impl<'a> TypeCheckContext<'a> {
             purity: self.purity,
             kind: self.kind,
             type_engine: self.type_engine,
-            declaration_engine: self.declaration_engine,
+            decl_engine: self.decl_engine,
+            disallow_functions: self.disallow_functions,
         }
     }
 
@@ -141,7 +149,7 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = namespace.enter_submodule(dep_name);
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
-            Engines::new(self.type_engine, self.declaration_engine),
+            Engines::new(self.type_engine, self.decl_engine),
         );
         with_submod_ctx(submod_ctx)
     }
@@ -179,6 +187,24 @@ impl<'a> TypeCheckContext<'a> {
         Self { self_type, ..self }
     }
 
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `disallow_functions` set to `true`.
+    pub(crate) fn disallow_functions(self) -> Self {
+        Self {
+            disallow_functions: true,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with
+    /// `disallow_functions` set to `false`.
+    pub(crate) fn allow_functions(self) -> Self {
+        Self {
+            disallow_functions: false,
+            ..self
+        }
+    }
+
     // A set of accessor methods. We do this rather than making the fields `pub` in order to ensure
     // that these are only updated via the `with_*` methods that produce a new `TypeCheckContext`.
 
@@ -206,6 +232,10 @@ impl<'a> TypeCheckContext<'a> {
         self.self_type
     }
 
+    pub(crate) fn functions_disallowed(&self) -> bool {
+        self.disallow_functions
+    }
+
     // Provide some convenience functions around the inner context.
 
     /// Short-hand for calling the `monomorphize` function in the type engine
@@ -217,11 +247,11 @@ impl<'a> TypeCheckContext<'a> {
         call_site_span: &Span,
     ) -> CompileResult<()>
     where
-        T: MonomorphizeHelper + CopyTypes,
+        T: MonomorphizeHelper + SubstTypes,
     {
         let mod_path = self.namespace.mod_path.clone();
         self.type_engine.monomorphize(
-            self.declaration_engine,
+            self.decl_engine,
             value,
             type_arguments,
             enforce_type_arguments,
@@ -269,17 +299,18 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         self.type_engine.unify_with_self(
-            self.declaration_engine,
+            self.decl_engine,
             ty,
             self.type_annotation(),
             self.self_type(),
             span,
             self.help_text(),
+            None,
         )
     }
 
     /// Get the engines needed for engine threading.
     pub(crate) fn engines(&self) -> Engines<'a> {
-        Engines::new(self.type_engine, self.declaration_engine)
+        Engines::new(self.type_engine, self.decl_engine)
     }
 }

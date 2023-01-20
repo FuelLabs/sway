@@ -4,10 +4,17 @@ mod r#final;
 
 use super::{
     register_sequencer::RegisterSequencer, AbstractInstructionSet, AllocatedAbstractInstructionSet,
-    DataSection, InstructionSet,
+    DataSection,
 };
 
-use crate::{asm_lang::Label, declaration_engine::DeclarationId};
+use crate::{
+    asm_lang::{allocated_ops::AllocatedOp, Label},
+    decl_engine::DeclId,
+};
+
+mod ethabi {
+    pub use fuel_ethabi::*;
+}
 
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;
@@ -40,7 +47,7 @@ pub(super) struct AbstractEntry {
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
     pub(super) name: FnName,
-    pub(super) test_decl_id: Option<DeclarationId>,
+    pub(super) test_decl_id: Option<DeclId>,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -50,13 +57,19 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
-    entries: Vec<(SelectorOpt, Label, FnName, Option<DeclarationId>)>,
+    entries: Vec<(SelectorOpt, Label, FnName, Option<DeclId>)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
-pub(super) struct FinalProgram {
-    kind: ProgramKind,
-    data_section: DataSection,
-    ops: InstructionSet,
-    entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclarationId>)>,
+pub(super) enum FinalProgram {
+    Fuel {
+        kind: ProgramKind,
+        data_section: DataSection,
+        ops: Vec<AllocatedOp>,
+        entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclId>)>,
+    },
+    Evm {
+        ops: Vec<etk_asm::ops::AbstractOp>,
+        abi: Vec<ethabi::operation::Operation>,
+    },
 }

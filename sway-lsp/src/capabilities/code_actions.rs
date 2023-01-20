@@ -27,7 +27,7 @@ pub(crate) fn code_actions(
             .and_then(|decl| match decl {
                 TyDeclaration::AbiDeclaration(ref decl_id) => Some(
                     session
-                        .declaration_engine
+                        .decl_engine
                         .read()
                         .get_abi(decl_id.clone(), &decl_id.span()),
                 ),
@@ -37,10 +37,7 @@ pub(crate) fn code_actions(
             .and_then(|result| {
                 result.ok().map(|abi_decl| {
                     vec![abi_impl_code_action(
-                        Engines::new(
-                            &session.type_engine.read(),
-                            &session.declaration_engine.read(),
-                        ),
+                        Engines::new(&session.type_engine.read(), &session.decl_engine.read()),
                         abi_decl,
                         text_document.uri,
                     )]

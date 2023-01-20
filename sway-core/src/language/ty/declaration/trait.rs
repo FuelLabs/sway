@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::DeclarationId,
+    decl_engine::DeclId,
     engine_threading::*,
     language::{parsed, Visibility},
     transform,
@@ -12,8 +12,8 @@ use crate::{
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub interface_surface: Vec<DeclarationId>,
-    pub methods: Vec<DeclarationId>,
+    pub interface_surface: Vec<DeclId>,
+    pub methods: Vec<DeclId>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
@@ -34,17 +34,17 @@ impl PartialEqWithEngines for TyTraitDeclaration {
     }
 }
 
-impl CopyTypes for TyTraitDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyTraitDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.interface_surface
             .iter_mut()
             .for_each(|function_decl_id| {
                 let new_decl_id = function_decl_id
                     .clone()
-                    .copy_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new(type_mapping, engines);
                 function_decl_id.replace_id(*new_decl_id);
             });
         // we don't have to type check the methods because it hasn't been type checked yet

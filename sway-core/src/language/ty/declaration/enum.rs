@@ -28,14 +28,14 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
-impl CopyTypes for TyEnumDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyEnumDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -53,9 +53,9 @@ impl ReplaceSelfType for TyEnumDeclaration {
 impl CreateTypeId for TyEnumDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
-        type_engine.insert_type(
-            declaration_engine,
+        let decl_engine = engines.de();
+        type_engine.insert(
+            decl_engine,
             TypeInfo::Enum {
                 name: self.name.clone(),
                 variant_types: self.variants.clone(),
@@ -123,9 +123,7 @@ pub struct TyEnumVariant {
 impl HashWithEngines for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.tag.hash(state);
     }
 }
@@ -139,15 +137,15 @@ impl PartialEqWithEngines for TyEnumVariant {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.tag == other.tag
     }
 }
 
-impl CopyTypes for TyEnumVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyEnumVariant {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

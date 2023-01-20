@@ -18,7 +18,7 @@ impl Eq for Error {
 }
 
 fn test_none_ok_or<T, E>(_val: T, default: E) where E: Eq {
-    match Option::None::<T>().ok_or(default) {
+    match Option::None::<T>.ok_or(default) {
         Result::Ok(_) => revert(0),
         Result::Err(e) => assert(default == e),
     }
