@@ -89,7 +89,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
                     match decl_engine.get_constant(decl_id.clone(), &node.span) {
                         Ok(config_decl) if config_decl.is_configurable => {
-                            configurables.push(config_decl);
+                            configurables.push(config_decl)
                         }
                         _ => {}
                     }
@@ -312,98 +312,129 @@ impl TyProgram {
         let metadata = match &self.kind {
             TyProgramKind::Library { .. } => {
                 let mut ret = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let public = check!(
-                        node.is_public(decl_engine),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(decl_engine),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if public || is_test {
-                        ret.append(&mut check!(
-                            node.collect_types_metadata(ctx),
+                // Look through `root` and all of its submodules
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let public = check!(
+                            node.is_public(decl_engine),
                             return err(warnings, errors),
                             warnings,
                             errors
-                        ));
+                        );
+                        let is_test = check!(
+                            node.is_test_function(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if public || is_test {
+                            ret.append(&mut check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ));
+                        }
                     }
                 }
+
+
                 ret
             }
             TyProgramKind::Script { .. } => {
                 let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_main = check!(
-                        node.is_main_function(decl_engine, parsed::TreeType::Script),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(decl_engine),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_main || is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let is_main = check!(
+                            node.is_main_function(decl_engine, parsed::TreeType::Script),
                             return err(warnings, errors),
                             warnings,
                             errors
-                        ));
+                        );
+                        let is_test = check!(
+                            node.is_test_function(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if is_main || is_test {
+                            data.append(&mut check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ));
+                        }
                     }
                 }
                 data
             }
             TyProgramKind::Predicate { .. } => {
                 let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_main = check!(
-                        node.is_main_function(decl_engine, parsed::TreeType::Predicate),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(decl_engine),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_main || is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let is_main = check!(
+                            node.is_main_function(decl_engine, parsed::TreeType::Predicate),
                             return err(warnings, errors),
                             warnings,
                             errors
-                        ));
+                        );
+                        let is_test = check!(
+                            node.is_test_function(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if is_main || is_test {
+                            data.append(&mut check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ));
+                        }
                     }
                 }
                 data
             }
             TyProgramKind::Contract { abi_entries, .. } => {
                 let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_test = check!(
-                        node.is_test_function(decl_engine),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let is_test = check!(
+                            node.is_test_function(decl_engine),
                             return err(warnings, errors),
                             warnings,
                             errors
-                        ));
+                        );
+                        if is_test {
+                            data.append(&mut check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            ));
+                        }
                     }
                 }
                 for entry in abi_entries.iter() {
