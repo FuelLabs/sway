@@ -450,7 +450,7 @@ impl Bytes {
     /// let sha256_hash = bytes.sha256();
     /// ```
     pub fn sha256(self) -> b256 {
-        let mut result_buffer: b256 = b256::min();
+        let mut result_buffer = b256::min();
         asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
             s256 hash ptr bytes;
             hash: b256
@@ -471,7 +471,7 @@ impl Bytes {
     /// let keccak256_hash = bytes.keccak256();
     /// ```
     pub fn keccak256(self) -> b256 {
-        let mut result_buffer: b256 = b256::min();
+        let mut result_buffer = b256::min();
         asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
             k256 hash ptr bytes;
             hash: b256
@@ -966,6 +966,7 @@ fn test_sha256() {
     bytes.push(0u8);
     bytes.push(0u8);
 
+    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(sha256(362268190631264256) == bytes.sha256());
 }
 
@@ -979,5 +980,6 @@ fn test_keccak256() {
     bytes.push(0u8);
     bytes.push(0u8);
 
+    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(keccak256(362268190631264256) == bytes.keccak256());
 }
