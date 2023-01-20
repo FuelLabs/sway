@@ -1,0 +1,63 @@
+category = "fail"
+
+#check: $()error
+
+#check: $()struct MyStruct1
+#nextln: $()The name `MyStruct1` is defined multiple times
+#nextln: $()enum MyStruct1
+
+#check: $()enum MyStruct1
+#nextln: $()The name `MyStruct1` is defined multiple times
+#nextln: $()trait MyStruct1
+
+#check: $()trait MyStruct1
+#nextln: $()The name `MyStruct1` is defined multiple times
+#check: $()abi MyStruct1
+
+#check: $()abi MyStruct1
+#nextln: $()The name `MyStruct1` is defined multiple times
+
+#check: $()struct MyEnum1
+#nextln: $()The name `MyEnum1` is defined multiple times
+#nextln: $()enum MyEnum1
+
+#check: $()enum MyEnum1
+#nextln: $()The name `MyEnum1` is defined multiple times
+#nextln: $()trait MyEnum1
+
+#check: $()trait MyEnum1
+#nextln: $()The name `MyEnum1` is defined multiple times
+#check: $()abi MyEnum1
+
+#check: $()abi MyEnum1
+#nextln: $()The name `MyEnum1` is defined multiple times
+
+#check: $()struct MyTrait1
+#nextln: $()The name `MyTrait1` is defined multiple times
+#nextln: $()enum MyTrait1
+
+#check: $()enum MyTrait1
+#nextln: $()The name `MyTrait1` is defined multiple times
+#nextln: $()trait MyTrait1
+
+#check: $()trait MyTrait1
+#nextln: $()The name `MyTrait1` is defined multiple times
+#check: $()abi MyTrait1
+
+#check: $()abi MyTrait1
+#nextln: $()The name `MyTrait1` is defined multiple times
+
+#check: $()struct MyAbi1
+#nextln: $()The name `MyAbi1` is defined multiple times
+#nextln: $()enum MyAbi1
+
+#check: $()enum MyAbi1
+#nextln: $()The name `MyAbi1` is defined multiple times
+#nextln: $()trait MyAbi1
+
+#check: $()trait MyAbi1
+#nextln: $()The name `MyAbi1` is defined multiple times
+#check: $()abi MyAbi1
+
+#check: $()abi MyAbi1
+#nextln: $()The name `MyAbi1` is defined multiple times
