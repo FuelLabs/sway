@@ -336,6 +336,21 @@ pub struct BuildOpts {
     pub inject_map: ConstInjectionMap,
 }
 
+impl BuildOpts {
+    /// Return a `BuildOpts` with modified `tests` field.
+    pub fn include_tests(self, include_tests: bool) -> BuildOpts {
+        BuildOpts {
+            tests: include_tests,
+            ..self
+        }
+    }
+
+    /// Return a `BuildOpts` with modified `injection_map` field.
+    pub fn injection_map(self, inject_map: ConstInjectionMap) -> BuildOpts {
+        BuildOpts { inject_map, ..self }
+    }
+}
+
 impl GitSourceIndex {
     pub fn new(time: i64, git_reference: GitReference, commit_hash: String) -> GitSourceIndex {
         GitSourceIndex {
@@ -2674,7 +2689,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
+pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
     let mut storage_slots = built_package.storage_slots.clone();
