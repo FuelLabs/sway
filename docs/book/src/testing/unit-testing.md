@@ -91,4 +91,4 @@ fn test_fail() {
 }
 ```
 
-> **Note:** Running `forc test` will inject `CONTRACT_ID` constant to the namepsace of the contract which can be used with `abi` cast for contract calls. 
+> **Note:** Running `forc test` will inject `CONTRACT_ID` constant to the namepsace of the contract which can be used with `abi` cast for contract calls.
