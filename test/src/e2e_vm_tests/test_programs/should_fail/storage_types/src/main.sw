@@ -18,6 +18,12 @@ storage {
 abi MyContract {
     #[storage(read, write)]
     fn main() -> u64;
+
+    #[storage(read)]
+    fn return_storage_map() -> StorageMap<u32, u32>;
+
+    #[storage(read)]
+    fn return_storage_vec() -> StorageVec<u64>;
 }
 
 impl MyContract for Contract {
@@ -36,9 +42,24 @@ impl MyContract for Contract {
 
        1
     }
+
+    #[storage(read)]
+    fn return_storage_map() -> StorageMap<u32, u32> {
+        storage.map1
+    }
+
+    #[storage(read)]
+    fn return_storage_vec() -> StorageVec<u64> {
+        storage.v
+    }
 }
 
 #[storage(write)]
 fn insert(mapping: StorageMap<u64, u64>) {
     mapping.insert(1, 1);
+}
+
+#[storage(read)]
+fn return_storage_vec_standalone_fn() -> StorageVec<u64> {
+    storage.v
 }
