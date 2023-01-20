@@ -19,7 +19,7 @@ pub(crate) trait Renderable {
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_info: Vec<ModulePrefix>,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
             BTreeMap::new();
         for doc in raw {
             rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.0.clone(), // fix this
+                module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
@@ -209,7 +209,7 @@ impl RenderedDocumentation {
         // ProjectIndex
         match module_map.get(root_module.location()) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
-                module_info: vec![],
+                module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
                     ModuleIndex {
@@ -238,7 +238,7 @@ impl RenderedDocumentation {
                     None => panic!("document is empty"),
                 };
                 rendered_docs.0.push(RenderedDocument {
-                    module_info: module_info.0.clone(),
+                    module_info: module_info.clone(),
                     html_filename: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
@@ -257,7 +257,7 @@ impl RenderedDocumentation {
 
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
-            module_info: vec![],
+            module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
