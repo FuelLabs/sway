@@ -4,10 +4,7 @@ use crate::{
 
 use super::TraitMap;
 
-use sway_error::{
-    error::CompileError,
-    warning::{CompileWarning, Warning},
-};
+use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
@@ -20,7 +17,7 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDeclaration>;
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport)>;
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDeclaration)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// The set of items that exist within some lexical scope via declaration or importing.
@@ -101,31 +98,51 @@ impl Items {
         name: Ident,
         item: ty::TyDeclaration,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
         let mut errors = vec![];
-        // purposefully do not preemptively return errors so that the
-        // new definition allows later usages to compile
-        if self.symbols.get(&name).is_some() {
-            match item {
-                ty::TyDeclaration::EnumDeclaration { .. }
-                | ty::TyDeclaration::StructDeclaration { .. }
-                | ty::TyDeclaration::AbiDeclaration { .. }
-                | ty::TyDeclaration::TraitDeclaration { .. } => {
-                    errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
-                }
-                ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
+
+        let append_shadowing_error =
+            |decl: &ty::TyDeclaration, item: &ty::TyDeclaration, errors: &mut Vec<CompileError>| {
+                use ty::TyDeclaration::*;
+                match (decl, &item) {
+                // variable shadowing a constant
+                // constant shadowing a constant
+                (
+                    ConstantDeclaration { .. },
+                    VariableDeclaration { .. } | ConstantDeclaration { .. },
+                )
+                // constant shadowing a variable
+                | (VariableDeclaration { .. }, ConstantDeclaration { .. })
+                // type shadowing another type
+                // trait/abi shadowing another trait/abi
+                // type shadowing a trait/abi or vice versa
+                | (
+                    StructDeclaration { .. }
+                    | EnumDeclaration { .. }
+                    | TraitDeclaration { .. }
+                    | AbiDeclaration { .. },
+                    StructDeclaration { .. }
+                    | EnumDeclaration { .. }
+                    | TraitDeclaration { .. }
+                    | AbiDeclaration { .. },
+                ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
+                // Generic parameter shadowing another generic parameter
+                (GenericTypeForFunctionScope { .. }, GenericTypeForFunctionScope { .. }) => {
                     errors.push(CompileError::GenericShadowsGeneric { name: name.clone() });
                 }
-                _ => {
-                    warnings.push(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::ShadowsOtherSymbol { name: name.clone() },
-                    });
-                }
+                _ => {}
             }
+            };
+
+        if let Some(decl) = self.symbols.get(&name) {
+            append_shadowing_error(decl, &item, &mut errors);
         }
+
+        if let Some((_, GlobImport::No, decl)) = self.use_synonyms.get(&name) {
+            append_shadowing_error(decl, &item, &mut errors);
+        }
+
         self.symbols.insert(name, item);
-        ok((), warnings, errors)
+        ok((), vec![], errors)
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
