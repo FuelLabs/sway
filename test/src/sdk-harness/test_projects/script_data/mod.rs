@@ -1,7 +1,9 @@
 use assert_matches::assert_matches;
-use fuels::contract::execution_script::ExecutableFuelCall;
-use fuels::prelude::*;
-use fuels::tx::{ConsensusParameters, Receipt, Transaction};
+use fuels::{
+    contract::execution_script::ExecutableFuelCall,
+    prelude::*,
+    tx::{ConsensusParameters, Receipt, Transaction},
+};
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
     let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");

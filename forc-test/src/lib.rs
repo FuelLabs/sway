@@ -5,7 +5,7 @@ use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::{Built, BuiltPackage};
 use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
-use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
+use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind, BuildTarget};
 use sway_types::{Span, Spanned};
 use tx::{AssetId, TxPointer, UtxoId};
 use vm::prelude::SecretKey;
@@ -46,6 +46,8 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: TestPassCondition,
+    /// Emitted `Recipt`s during the execution of the test.
+    pub logs: Vec<fuel_tx::Receipt>,
 }
 
 /// The possible conditions for a test result to be considered "passing".
@@ -91,6 +93,8 @@ pub struct Opts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -100,6 +104,13 @@ pub struct Opts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+}
+
+/// The set of options provided for controlling logs printed for each test.
+#[derive(Default, Clone)]
+pub struct TestPrintOpts {
+    pub pretty_print: bool,
+    pub print_logs: bool,
 }
 
 /// The required common metadata for building a transaction to deploy a contract or run a test.
@@ -135,7 +146,7 @@ impl BuiltTests {
                 let packages = workspace
                     .into_values()
                     .map(|built_pkg| {
-                        let path = built_pkg.manifest_file.path();
+                        let path = built_pkg.manifest_file.dir();
                         let patched_opts = opts.clone().patch_opts(path);
                         PackageTests::from_built_pkg(built_pkg, patched_opts)
                     })
@@ -194,14 +205,25 @@ impl<'a> PackageTests {
                     u32::try_from(entry.imm).expect("test instruction offset out of range");
                 let name = entry.fn_name.clone();
                 let test_setup = self.setup()?;
-                let (state, duration) = exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+                let (state, duration, receipts) =
+                    exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+
+                // Only retain `Log` and `LogData` receipts.
+                let logs = receipts
+                    .into_iter()
+                    .filter(|receipt| {
+                        matches!(receipt, fuel_tx::Receipt::Log { .. })
+                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                    })
+                    .collect();
+
                 let test_decl_id = entry
                     .test_decl_id
                     .clone()
                     .expect("test entry point is missing declaration id");
                 let span = test_decl_id.span();
                 let test_function_decl = pkg_with_tests
-                    .declaration_engine
+                    .decl_engine
                     .get_function(test_decl_id, &span)
                     .expect("declaration engine is missing function declaration for test");
                 let condition = test_pass_condition(&test_function_decl)?;
@@ -211,6 +233,7 @@ impl<'a> PackageTests {
                     span,
                     state,
                     condition,
+                    logs,
                 })
             })
             .collect::<anyhow::Result<_>>()?;
@@ -260,16 +283,19 @@ impl Distribution<TxMetadata> for Standard {
 impl Opts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
+        let inject_map = std::collections::HashMap::new();
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
+            build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
             time_phases: self.time_phases,
             tests: true,
+            inject_map,
         }
     }
 
@@ -477,7 +503,11 @@ fn exec_test(
     bytecode: &[u8],
     test_offset: u32,
     test_setup: TestSetup,
-) -> (vm::state::ProgramState, std::time::Duration) {
+) -> (
+    vm::state::ProgramState,
+    std::time::Duration,
+    Vec<fuel_tx::Receipt>,
+) {
     let storage = test_setup.storage;
     let contract_id = test_setup.contract_id;
 
@@ -524,5 +554,7 @@ fn exec_test(
     let transition = interpreter.transact(tx).unwrap();
     let duration = start.elapsed();
     let state = *transition.state();
-    (state, duration)
+    let receipts = transition.receipts().to_vec();
+
+    (state, duration, receipts)
 }

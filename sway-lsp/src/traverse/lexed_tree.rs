@@ -1,14 +1,17 @@
-use crate::core::{
-    token::{to_ident_key, AstToken, SymbolKind, Token},
-    token_map::TokenMap,
+use crate::{
+    core::{
+        token::{to_ident_key, AstToken, SymbolKind, Token},
+        token_map::TokenMap,
+    },
+    traverse::Parse,
 };
 use std::ops::ControlFlow;
 use sway_ast::{
-    ty::TyTupleDescriptor, Assignable, CodeBlockContents, Expr, ExprArrayDescriptor,
-    ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
-    ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse,
-    MatchBranchKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty,
-    TypeField, UseTree,
+    ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
+    ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
+    IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
+    ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
+    PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
@@ -23,11 +26,13 @@ impl<'a> LexedTree<'a> {
     }
 
     pub fn parse(&self, lexed_program: &LexedProgram) {
+        insert_keyword(self.tokens, lexed_program.root.tree.kind.span());
         for item in &lexed_program.root.tree.items {
             item.value.parse(self.tokens);
         }
 
         for (.., dep) in &lexed_program.root.submodules {
+            insert_keyword(self.tokens, dep.module.tree.kind.span());
             for item in &dep.module.tree.items {
                 item.value.parse(self.tokens);
             }
@@ -39,10 +44,6 @@ fn insert_keyword(tokens: &TokenMap, span: Span) {
     let ident = Ident::new(span);
     let token = Token::from_parsed(AstToken::Keyword(ident.clone()), SymbolKind::Keyword);
     tokens.insert(to_ident_key(&ident), token);
-}
-
-pub trait Parse {
-    fn parse(&self, tokens: &TokenMap);
 }
 
 impl Parse for ItemKind {
@@ -77,6 +78,9 @@ impl Parse for ItemKind {
             }
             ItemKind::Storage(item_storage) => {
                 item_storage.parse(tokens);
+            }
+            ItemKind::Configurable(item_configurable) => {
+                item_configurable.parse(tokens);
             }
         }
     }
@@ -364,6 +368,24 @@ impl Parse for ItemStorage {
 }
 
 impl Parse for StorageField {
+    fn parse(&self, tokens: &TokenMap) {
+        self.ty.parse(tokens);
+        self.initializer.parse(tokens);
+    }
+}
+
+impl Parse for ItemConfigurable {
+    fn parse(&self, tokens: &TokenMap) {
+        insert_keyword(tokens, self.configurable_token.span());
+
+        self.fields
+            .get()
+            .into_iter()
+            .for_each(|field| field.value.parse(tokens));
+    }
+}
+
+impl Parse for ConfigurableField {
     fn parse(&self, tokens: &TokenMap) {
         self.ty.parse(tokens);
         self.initializer.parse(tokens);

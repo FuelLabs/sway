@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
+use forc_util::format_log_receipts;
 use fuel_gql_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
@@ -7,6 +8,7 @@ use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
+use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
 
@@ -55,7 +57,7 @@ pub async fn run_pkg(
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
     let input_data = command.data.as_deref().unwrap_or("");
-    let data = format_hex_data(input_data);
+    let data = input_data.strip_prefix("0x").unwrap_or(input_data);
     let script_data = hex::decode(data).expect("Invalid hex");
 
     let node_url = command
@@ -131,50 +133,15 @@ async fn send_tx(
 
     match outputs {
         Ok(logs) => {
-            print_receipt_output(&logs, pretty_print)?;
+            info!("{}", format_log_receipts(&logs, pretty_print)?);
             Ok(logs)
         }
         Err(e) => bail!("{e}"),
     }
 }
 
-// cut '0x' from the start
-fn format_hex_data(data: &str) -> &str {
-    data.strip_prefix("0x").unwrap_or(data)
-}
-
-fn print_receipt_output(receipts: &Vec<fuel_tx::Receipt>, pretty_print: bool) -> Result<()> {
-    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
-    for (rec_index, receipt) in receipts.iter().enumerate() {
-        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
-            anyhow!(
-                "Serialized receipts does not contain {} th index",
-                rec_index
-            )
-        })?;
-        match receipt {
-            fuel_tx::Receipt::LogData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
-                    *v = hex::encode(data).into();
-                }
-            }
-            fuel_tx::Receipt::ReturnData { data, .. } => {
-                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
-                    *v = hex::encode(data).into();
-                }
-            }
-            _ => {}
-        }
-    }
-    if pretty_print {
-        info!("{}", serde_json::to_string_pretty(&receipt_to_json_array)?);
-    } else {
-        info!("{}", serde_json::to_string(&receipt_to_json_array)?);
-    }
-    Ok(())
-}
-
 fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
+    let inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
             path: cmd.path.clone(),
@@ -194,11 +161,13 @@ fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
             json_abi: cmd.minify_json_abi,
             json_storage_slots: cmd.minify_json_storage_slots,
         },
+        build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.clone(),
         release: cmd.release,
         time_phases: cmd.time_phases,
         binary_outfile: cmd.binary_outfile.clone(),
         debug_outfile: cmd.debug_outfile.clone(),
         tests: false,
+        inject_map,
     }
 }

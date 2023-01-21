@@ -1,6 +1,6 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities,
+    capabilities::{self, diagnostic::Diagnostics},
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
@@ -67,7 +67,10 @@ impl Backend {
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
-                    vec![]
+                    Diagnostics {
+                        warnings: vec![],
+                        errors: vec![],
+                    }
                 }
             }
         };
@@ -103,6 +106,9 @@ fn capabilities() -> ServerCapabilities {
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -145,20 +151,31 @@ impl Backend {
         uri: &Url,
         workspace_uri: &Url,
         session: Arc<Session>,
-        diagnostics: Vec<Diagnostic>,
+        diagnostics: Diagnostics,
     ) {
         let diagnostics_res = {
-            let debug = &self.config.read().debug;
+            let mut diagnostics_to_publish = vec![];
+            let config = &self.config.read();
             let tokens = session.token_map().tokens_for_file(uri);
-            match debug.show_collected_tokens_as_warnings {
-                Warnings::Default => diagnostics,
+            match config.debug.show_collected_tokens_as_warnings {
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
+                Warnings::Parsed => diagnostics_to_publish
+                    .extend(debug::generate_warnings_for_parsed_tokens(tokens)),
+                Warnings::Typed => {
+                    diagnostics_to_publish.extend(debug::generate_warnings_for_typed_tokens(tokens))
+                }
+                Warnings::Default => {}
             }
+            if config.diagnostic.show_warnings {
+                diagnostics_to_publish.extend(diagnostics.warnings);
+            }
+            if config.diagnostic.show_errors {
+                diagnostics_to_publish.extend(diagnostics.errors);
+            }
+            diagnostics_to_publish
         };
 
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -305,6 +322,36 @@ impl LanguageServer for Backend {
                 params.text_document,
                 &temp_uri,
             )),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
+    async fn code_lens(&self, params: CodeLensParams) -> jsonrpc::Result<Option<Vec<CodeLens>>> {
+        let mut result = vec![];
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((_, session)) => {
+                // Construct code lenses for runnable functions
+                let _ = session
+                    .runnables
+                    .try_get(&capabilities::runnable::RunnableType::MainFn)
+                    .try_unwrap()
+                    .map(|item| {
+                        let runnable = item.value();
+                        result.push(CodeLens {
+                            range: runnable.range,
+                            command: Some(Command {
+                                command: "sway.runScript".to_string(),
+                                arguments: None,
+                                title: "▶\u{fe0e} Run".to_string(),
+                            }),
+                            data: None,
+                        });
+                    });
+                Ok(Some(result))
+            }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
@@ -474,38 +521,22 @@ impl Backend {
         }
     }
 
+    // TODO: Delete this method once the client code calling it has been removed.
     pub async fn runnables(
         &self,
-        params: RunnableParams,
+        _params: RunnableParams,
     ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((_, session)) => {
-                let ranges = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        vec![(runnable.range, format!("{}", runnable.tree_type))]
-                    });
-
-                Ok(ranges)
-            }
-            Err(err) => {
-                tracing::error!("{}", err.to_string());
-                Ok(None)
-            }
-        }
+        Ok(None)
     }
 
     /// This method is triggered by a command palette request in VScode
-    /// The 2 commands are: "show parsed ast" or "show typed ast"
+    /// The 3 commands are: "show lexed ast", "show parsed ast" or "show typed ast"
     ///
-    /// If either command is executed, the client requests this method
+    /// If any of these commands are executed, the client requests this method
     /// by calling the "sway/show_ast".
     ///
     /// The function expects the URI of the current open file where the
-    /// request was made, and if the "parsed" or "typed" ast was requested.
+    /// request was made, and if the "lexed", "parsed" or "typed" ast was requested.
     ///
     /// A formatted AST is written to a temporary file and the URI is
     /// returned to the client so it can be opened and displayed in a
@@ -532,52 +563,62 @@ impl Backend {
                         None
                     };
 
+                // Returns true if the current path matches the path of a submodule
+                let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
+                    ident.span().path().map(|a| a.deref()) == path.as_ref()
+                };
+
                 {
                     let program = session.compiled_program.read();
                     match params.ast_kind.as_str() {
-                        "parsed" => {
-                            match program.parsed {
-                                Some(ref parsed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", parsed_program.root.tree.root_nodes);
-
-                                    for (ident, submodule) in &parsed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                        "lexed" => {
+                            Ok(program.lexed.as_ref().and_then(|lexed_program| {
+                                let mut formatted_ast = format!("{:#?}", program.lexed);
+                                for (ident, submodule) in &lexed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.tree.root_nodes);
-                                        }
+                                        formatted_ast = format!("{:#?}", submodule.module.tree);
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                let tmp_ast_path = Path::new("/tmp/lexed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
+                        }
+                        "parsed" => {
+                            Ok(program.parsed.as_ref().and_then(|parsed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast =
+                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+                                for (ident, submodule) in &parsed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
+                                        // overwrite the root AST with the submodule AST
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.tree.root_nodes);
+                                    }
+                                }
+                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
                         }
                         "typed" => {
-                            match program.typed {
-                                Some(ref typed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", typed_program.root.all_nodes);
-
-                                    for (ident, submodule) in &typed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                            Ok(program.typed.as_ref().and_then(|typed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast = debug::print_decl_engine_types(
+                                    &typed_program.root.all_nodes,
+                                    &session.decl_engine.read(),
+                                );
+                                for (ident, submodule) in &typed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.all_nodes);
-                                        }
+                                        formatted_ast = debug::print_decl_engine_types(
+                                            &submodule.module.all_nodes,
+                                            &session.decl_engine.read(),
+                                        );
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
+                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                            }))
                         }
                         _ => Ok(None),
                     }
@@ -594,7 +635,10 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{
+        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+    };
+    use assert_json_diff::assert_json_eq;
     use serde_json::json;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
@@ -633,8 +677,8 @@ mod tests {
         let params = json!({ "capabilities": capabilities() });
         let initialize = build_request_with_id("initialize", params, 1);
         let response = call_request(service, initialize.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_json_eq!(expected, response.ok().unwrap());
         initialize
     }
 
@@ -647,8 +691,8 @@ mod tests {
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
         let response = call_request(service, shutdown.clone()).await;
-        let ok = Response::from_ok(1.into(), json!(null));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!(null));
+        assert_json_eq!(expected, response.ok().unwrap());
         shutdown
     }
 
@@ -721,8 +765,8 @@ mod tests {
         });
         let show_ast = build_request_with_id("sway/show_ast", params, 1);
         let response = call_request(service, show_ast.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
+        assert_json_eq!(expected, response.ok().unwrap());
         show_ast
     }
 
@@ -766,7 +810,7 @@ mod tests {
         });
         let definition = build_request_with_id("textDocument/definition", params, id);
         let response = call_request(service, definition.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             id.into(),
             json!({
                 "range": {
@@ -782,7 +826,7 @@ mod tests {
                 "uri": uri,
             }),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         definition
     }
 
@@ -798,7 +842,7 @@ mod tests {
         });
         let hover = build_request_with_id("textDocument/hover", params, 1);
         let response = call_request(service, hover.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!({
                 "contents": {
@@ -817,7 +861,7 @@ mod tests {
                 }
             }),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         hover
     }
 
@@ -848,7 +892,7 @@ mod tests {
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
         let response = call_request(service, highlight.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!([{
                     "range": {
@@ -864,8 +908,93 @@ mod tests {
                 }
             ]),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         highlight
+    }
+
+    async fn code_action_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "range" : {
+                "start":{
+                    "line": 27,
+                    "character": 4
+                },
+                "end":{
+                    "line": 27,
+                    "character": 9
+                },
+            },
+            "context": {
+                "diagnostics": [],
+                "triggerKind": 2
+            }
+        });
+        let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+        let response = call_request(service, code_action.clone()).await;
+        let uri_string = uri.to_string();
+        let expected = Response::from_ok(
+            1.into(),
+            json!([{
+                "data": uri,
+                "edit": {
+                  "changes": {
+                    uri_string: [
+                      {
+                        "newText": "\nimpl FooABI for Contract {\n    /// This is the `main` method on the `FooABI` abi\n    fn main() -> u64 {}\n}\n",
+                        "range": {
+                          "end": {
+                            "character": 0,
+                            "line": 31
+                          },
+                          "start": {
+                            "character": 0,
+                            "line": 31
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "kind": "refactor",
+                "title": "Generate impl for contract"
+            }]),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
+        code_action
+    }
+
+    async fn code_lens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
+        let response = call_request(service, code_lens.clone()).await;
+        let expected = Response::from_ok(
+            1.into(),
+            json!([{
+                "command": {
+                    "command": "sway.runScript",
+                    "title":"▶︎ Run"
+                },
+                "range": {
+                    "end": {
+                        "character": 7,
+                        "line": 4
+                    },
+                    "start": {
+                        "character": 3,
+                        "line":4
+                    }
+                }
+            }]),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
+        code_lens
     }
 
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
@@ -978,6 +1107,23 @@ mod tests {
         shutdown_and_exit(&mut service).await;
     }
 
+    #[tokio::test]
+    async fn publish_diagnostics_dead_code_warning() {
+        let (mut service, socket) = LspService::new(Backend::new);
+        let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
+        let expected_requests = vec![fixture];
+        let socket_handle = assert_server_requests(socket, expected_requests, None).await;
+        let _ = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("diagnostics/dead_code"),
+        )
+        .await;
+        socket_handle
+            .await
+            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
+        shutdown_and_exit(&mut service).await;
+    }
+
     // This macro allows us to spin up a server / client for testing
     // It initializes and performs the necessary handshake and then loads
     // the sway example that was passed into `example_dir`.
@@ -994,17 +1140,19 @@ mod tests {
     }
 
     macro_rules! lsp_capability_test {
-        ($test:ident, $capability:expr) => {
+        ($test:ident, $capability:expr, $dir:expr) => {
             #[tokio::test]
             async fn $test() {
-                test_lsp_capability!(doc_comments_dir(), $capability);
+                test_lsp_capability!($dir(), $capability);
             }
         };
     }
 
-    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
-    lsp_capability_test!(document_symbol, document_symbol_request);
-    lsp_capability_test!(format, format_request);
-    lsp_capability_test!(hover, hover_request);
-    lsp_capability_test!(highlight, highlight_request);
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request, doc_comments_dir);
+    lsp_capability_test!(document_symbol, document_symbol_request, doc_comments_dir);
+    lsp_capability_test!(format, format_request, doc_comments_dir);
+    lsp_capability_test!(hover, hover_request, doc_comments_dir);
+    lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
+    lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
+    lsp_capability_test!(code_lens, code_lens_request, e2e_test_dir);
 }

@@ -7,9 +7,25 @@ use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
+pub struct Mem2RegPass;
+
+impl NamedPass for Mem2RegPass {
+    fn name() -> &'static str {
+        "mem2reg"
+    }
+
+    fn descr() -> &'static str {
+        "Promote local memory to SSA registers."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, promote_to_registers)
+    }
+}
+
 use crate::{
     compute_dom_fronts, dominator::compute_dom_tree, Block, BranchToWithArgs, Context, DomTree,
-    Function, Instruction, IrError, LocalVar, PostOrder, Type, Value, ValueDatum,
+    Function, Instruction, IrError, LocalVar, NamedPass, PostOrder, Type, Value, ValueDatum,
 };
 
 // Check if a value is a valid (for our optimization) local pointer
@@ -33,10 +49,11 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     // types which can fit in 64-bits.
     let mut locals: HashSet<String> = function
         .locals_iter(context)
-        .filter(|(_, var)| match var.get_type(context) {
-            Type::Unit | Type::Bool => true,
-            Type::Uint(n) => *n <= 64,
-            _ => false,
+        .filter(|(_, var)| {
+            let ty = var.get_type(context);
+            ty.is_unit(context)
+                || ty.is_bool(context)
+                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
         })
         .map(|(name, _)| name.clone())
         .collect();
@@ -153,7 +170,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         {
             match get_validate_local_var(context, function, &dst_val) {
                 Some((local, var)) if safe_locals.contains(&local) => {
-                    worklist.push((local, *var.get_type(context), block));
+                    worklist.push((local, var.get_type(context), block));
                 }
                 _ => (),
             }

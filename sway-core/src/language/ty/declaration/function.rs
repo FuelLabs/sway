@@ -1,8 +1,7 @@
 use sha2::{Digest, Sha256};
-use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed, ty::*, Inline, Purity, Visibility},
@@ -10,7 +9,12 @@ use crate::{
     type_system::*,
 };
 
-use sway_types::constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME};
+use fuel_abi_types::program_abi;
+
+use sway_types::{
+    constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
+    Ident, Span, Spanned,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyFunctionDeclaration {
@@ -43,8 +47,8 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
             && self.body.eq(&other.body, engines)
             && self.parameters.eq(&other.parameters, engines)
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
@@ -52,16 +56,16 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
     }
 }
 
-impl CopyTypes for TyFunctionDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyFunctionDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
-        self.return_type.copy_types(type_mapping, engines);
-        self.body.copy_types(type_mapping, engines);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.return_type.subst(type_mapping, engines);
+        self.body.subst(type_mapping, engines);
     }
 }
 
@@ -107,11 +111,11 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let type_parameter_info = type_engine.look_up_type_id(type_parameter.type_id);
+        let type_parameter_info = type_engine.get(type_parameter.type_id);
         if self
             .type_parameters
             .iter()
-            .map(|type_param| type_engine.look_up_type_id(type_param.type_id))
+            .map(|type_param| type_engine.get(type_param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
             return false;
@@ -119,13 +123,13 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         if self
             .parameters
             .iter()
-            .map(|param| type_engine.look_up_type_id(param.type_id))
+            .map(|param| type_engine.get(param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
             return true;
         }
         if type_engine
-            .look_up_type_id(self.return_type)
+            .get(self.return_type)
             .eq(&type_parameter_info, engines)
         {
             return true;
@@ -189,7 +193,7 @@ impl TyFunctionDeclaration {
         engines: Engines<'_>,
     ) -> TyFunctionDeclaration {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -199,7 +203,7 @@ impl TyFunctionDeclaration {
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,
@@ -296,13 +300,13 @@ impl TyFunctionDeclaration {
     pub(crate) fn generate_json_abi_function(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> fuels_types::ABIFunction {
-        // A list of all `fuels_types::TypeDeclaration`s needed for inputs
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> program_abi::ABIFunction {
+        // A list of all `program_abi::TypeDeclaration`s needed for inputs
         let input_types = self
             .parameters
             .iter()
-            .map(|x| fuels_types::TypeDeclaration {
+            .map(|x| program_abi::TypeDeclaration {
                 type_id: x.initial_type_id.index(),
                 type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
                 components: x.initial_type_id.get_json_type_components(
@@ -316,8 +320,8 @@ impl TyFunctionDeclaration {
             })
             .collect::<Vec<_>>();
 
-        // The single `fuels_types::TypeDeclaration` needed for the output
-        let output_type = fuels_types::TypeDeclaration {
+        // The single `program_abi::TypeDeclaration` needed for the output
+        let output_type = program_abi::TypeDeclaration {
             type_id: self.initial_return_type.index(),
             type_field: self
                 .initial_return_type
@@ -339,12 +343,12 @@ impl TyFunctionDeclaration {
         types.push(output_type);
 
         // Generate the JSON data for the function
-        fuels_types::ABIFunction {
+        program_abi::ABIFunction {
             name: self.name.as_str().to_string(),
             inputs: self
                 .parameters
                 .iter()
-                .map(|x| fuels_types::TypeApplication {
+                .map(|x| program_abi::TypeApplication {
                     name: x.name.to_string(),
                     type_id: x.initial_type_id.index(),
                     type_arguments: x.initial_type_id.get_json_type_arguments(
@@ -354,7 +358,7 @@ impl TyFunctionDeclaration {
                     ),
                 })
                 .collect(),
-            output: fuels_types::TypeApplication {
+            output: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: self.initial_return_type.index(),
                 type_arguments: self.initial_return_type.get_json_type_arguments(
@@ -421,15 +425,15 @@ impl PartialEqWithEngines for TyFunctionParameter {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.is_mutable == other.is_mutable
     }
 }
 
-impl CopyTypes for TyFunctionParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyFunctionParameter {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

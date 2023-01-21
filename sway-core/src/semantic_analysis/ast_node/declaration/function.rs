@@ -38,7 +38,7 @@ impl ty::TyFunctionDeclaration {
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
@@ -95,7 +95,7 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert_type(declaration_engine, return_type);
+        let initial_return_type = type_engine.insert(decl_engine, return_type);
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
                 initial_return_type,
@@ -103,7 +103,7 @@ impl ty::TyFunctionDeclaration {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -122,7 +122,7 @@ impl ty::TyFunctionDeclaration {
                 ty::TyCodeBlock::type_check(fn_ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
-                    type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery)
+                    type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
                 ),
                 warnings,
                 errors
@@ -198,12 +198,12 @@ fn unify_return_statements(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
     for stmt in return_statements.iter() {
         check!(
             CompileResult::from(type_engine.unify_with_self(
-                declaration_engine,
+                decl_engine,
                 stmt.return_type,
                 return_type,
                 ctx.self_type(),
@@ -226,11 +226,11 @@ fn unify_return_statements(
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{declaration_engine::DeclarationEngine, language::Visibility};
+    use crate::{decl_engine::DeclEngine, language::Visibility};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
@@ -266,14 +266,10 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
-                initial_type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
+                type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                initial_type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
             ty::TyFunctionParameter {
@@ -281,14 +277,12 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert_type(
-                    &declaration_engine,
+                type_id: type_engine.insert(
+                    &decl_engine,
                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
                 ),
-                initial_type_id: type_engine.insert_type(
-                    &declaration_engine,
-                    TypeInfo::Str(Length::new(5, Span::dummy())),
-                ),
+                initial_type_id: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                 type_span: Span::dummy(),
             },
         ],

@@ -212,12 +212,7 @@ pub(crate) fn check_match_expression_usefulness(
     // branches in the match expression (i.e. no scrutinees to check), then
     // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
     // case.
-    if !engines
-        .te()
-        .look_up_type_id(type_id)
-        .has_valid_constructor()
-        && scrutinees.is_empty()
-    {
+    if !engines.te().get(type_id).has_valid_constructor() && scrutinees.is_empty() {
         let witness_report = WitnessReport::NoWitnesses;
         let arms_reachability = vec![];
         return ok((witness_report, arms_reachability), warnings, errors);
@@ -432,7 +427,8 @@ fn is_useful_wildcard(
             //        (3.4)
             match (&witness_report, wr) {
                 (WitnessReport::NoWitnesses, WitnessReport::NoWitnesses) => {}
-                (WitnessReport::NoWitnesses, wr) => {
+                (WitnessReport::Witnesses(_), WitnessReport::NoWitnesses) => {}
+                (WitnessReport::NoWitnesses, wr @ WitnessReport::Witnesses(_)) => {
                     let (pat, wr) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
                         return err(warnings, errors),
@@ -445,7 +441,7 @@ fn is_useful_wildcard(
                     witness_report = wr;
                 }
                 (_, wr) => {
-                    let (pat, _) = check!(
+                    let (pat, wr) = check!(
                         WitnessReport::split_into_leading_constructor(wr, c_k, span),
                         return err(warnings, errors),
                         warnings,
@@ -454,6 +450,7 @@ fn is_useful_wildcard(
                     if !pat_stack.contains(&pat) {
                         pat_stack.push(pat);
                     }
+                    witness_report = WitnessReport::join_witness_reports(witness_report, wr);
                 }
             }
         }

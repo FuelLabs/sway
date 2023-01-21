@@ -1,12 +1,12 @@
 use crate::{
     descriptor::Descriptor,
-    render::{ItemBody, ItemHeader, Renderable},
+    render::{DocLink, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
 use std::path::PathBuf;
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
 };
 
@@ -21,16 +21,16 @@ pub(crate) struct Document {
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
-    pub(crate) fn html_file_name(&self) -> String {
+    pub(crate) fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
         let name = match &self.item_body.ty_decl {
             StorageDeclaration(_) => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 
-        Document::create_html_file_name(self.item_body.ty_decl.doc_name(), name)
+        Document::create_html_filename(self.item_body.ty_decl.doc_name(), name)
     }
-    fn create_html_file_name<'name>(ty: &'name str, name: Option<&'name str>) -> String {
+    fn create_html_filename(ty: &str, name: Option<&str>) -> String {
         match name {
             Some(name) => format!("{ty}.{name}.html"),
             None => {
@@ -38,9 +38,17 @@ impl Document {
             }
         }
     }
+    /// Generate link info used in navigation between docs.
+    pub(crate) fn link(&self) -> DocLink {
+        DocLink {
+            name: self.item_header.item_name.as_str().to_owned(),
+            module_info: self.module_info.clone(),
+            html_filename: self.html_filename(),
+        }
+    }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
         no_deps: bool,
@@ -51,7 +59,7 @@ impl Document {
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
-                    declaration_engine,
+                    decl_engine,
                     decl,
                     ModuleInfo::from_vec(vec![project_name.to_owned()]),
                     document_private_items,
@@ -68,7 +76,7 @@ impl Document {
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = ModuleInfo::from_vec(vec![project_name.to_owned()]);
                 Document::from_ty_submodule(
-                    declaration_engine,
+                    decl_engine,
                     typed_submodule,
                     &mut docs,
                     &module_prefix,
@@ -80,7 +88,7 @@ impl Document {
         Ok(docs)
     }
     fn from_ty_submodule(
-        declaration_engine: &DeclarationEngine,
+        decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
         module_prefix: &ModuleInfo,
@@ -93,7 +101,7 @@ impl Document {
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
-                    declaration_engine,
+                    decl_engine,
                     decl,
                     new_submodule_prefix.clone(),
                     document_private_items,
@@ -107,7 +115,7 @@ impl Document {
         // if there is another submodule we need to go a level deeper
         if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
             Document::from_ty_submodule(
-                declaration_engine,
+                decl_engine,
                 submodule,
                 docs,
                 &new_submodule_prefix,
@@ -127,7 +135,7 @@ impl Renderable for Document {
     }
 }
 pub(crate) type ModulePrefix = String;
-#[derive(Clone)]
+#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
@@ -136,36 +144,64 @@ impl ModuleInfo {
             .last()
             .expect("There will always be at least the project name")
     }
-    /// The location of the parent of the current module.
-    ///
-    /// To be used in path navigation between modules.
-    pub(crate) fn _parent(&mut self) -> &str {
-        self.0.pop();
-        self.location()
-    }
     /// The name of the project.
     pub(crate) fn project_name(&self) -> &str {
         self.0.first().expect("Project name missing")
     }
+    /// The location of the parent of the current module.
+    ///
+    /// Returns `None` if there is no parent.
+    pub(crate) fn parent(&self) -> Option<&String> {
+        match self.has_parent() {
+            true => {
+                let mut iter = self.0.iter();
+                iter.next_back();
+                iter.next_back()
+            }
+            false => None,
+        }
+    }
+    /// Determines if the current module has a parent module.
+    fn has_parent(&self) -> bool {
+        self.depth() > 1
+    }
+    pub(crate) fn is_root_module(&self) -> bool {
+        self.location() == self.project_name()
+    }
     /// Create a qualified path literal String that represents the full path to an item.
-    pub(crate) fn to_path_literal_str(&self, item_name: &str) -> String {
-        let prefix = self.to_path_literal_prefix();
+    ///
+    /// Example: `project_name::module::Item`
+    pub(crate) fn to_path_literal_string(&self, item_name: &str, location: &str) -> String {
+        let prefix = self.to_path_literal_prefix(location);
         match prefix.is_empty() {
             true => item_name.to_owned(),
             false => format!("{}::{}", prefix, item_name),
         }
     }
     /// Create a path literal prefix from the module prefixes.
-    fn to_path_literal_prefix(&self) -> String {
+    /// Use in `to_path_literal_string()` to create a full literal path string.
+    ///
+    /// Example: `module::submodule`
+    fn to_path_literal_prefix(&self, location: &str) -> String {
         let mut iter = self.0.iter();
-        iter.next(); // skip the project name
+        for prefix in iter.by_ref() {
+            if prefix == location {
+                break;
+            }
+        }
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
     }
     /// Creates a String version of the path to an item,
     /// used in navigation between pages.
-    pub(crate) fn to_file_path_str(&self, file_name: &str) -> String {
+    ///
+    /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
+    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> String {
         let mut iter = self.0.iter();
-        iter.next(); // skip the project_name
+        for prefix in iter.by_ref() {
+            if prefix == location {
+                break;
+            }
+        }
         let mut file_path = iter.collect::<PathBuf>();
         file_path.push(file_name);
 
@@ -175,7 +211,9 @@ impl ModuleInfo {
             .to_string()
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
-    pub(crate) fn to_html_shorthand_path_str(&self, file_name: &str) -> String {
+    ///
+    /// This is only used for shorthand path syntax, e.g `../../file_name.html`.
+    pub(crate) fn to_html_shorthand_path_string(&self, file_name: &str) -> String {
         format!("{}{}", self.to_html_path_prefix(), file_name)
     }
     /// Create a path prefix `&str` for navigation from the `module.depth()`.
@@ -189,5 +227,26 @@ impl ModuleInfo {
     /// Create a new [ModuleInfo] from a vec.
     pub(crate) fn from_vec(vec: Vec<String>) -> Self {
         Self(vec)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ModuleInfo;
+
+    #[test]
+    fn test_parent() {
+        let project = String::from("project_name");
+        let module = String::from("module_name");
+        let mut module_vec = vec![project.clone(), module];
+
+        let module_info = ModuleInfo::from_vec(module_vec.clone());
+        let project_opt = module_info.parent();
+        assert_eq!(Some(&project), project_opt);
+
+        module_vec.pop();
+        let module_info = ModuleInfo::from_vec(module_vec);
+        let project_opt = module_info.parent();
+        assert_eq!(None, project_opt);
     }
 }

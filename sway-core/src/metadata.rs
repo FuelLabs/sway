@@ -3,7 +3,7 @@ use crate::language::{Inline, Purity};
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
 use sway_types::Span;
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 
 ///! IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
 ///! and ASM generation (converting the metadata back again).  Here we consolidate all of
@@ -21,6 +21,7 @@ pub(crate) struct MetadataManager {
     md_storage_key_cache: HashMap<MetadataIndex, u64>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
     md_test_decl_index_cache: HashMap<MetadataIndex, usize>,
+    md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<*const PathBuf, MetadataIndex>,
@@ -28,6 +29,7 @@ pub(crate) struct MetadataManager {
     storage_key_md_cache: HashMap<u64, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
     test_decl_index_md_cache: HashMap<usize, MetadataIndex>,
+    config_const_name_md_cache: HashMap<Rc<str>, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -189,6 +191,30 @@ impl MetadataManager {
         })
     }
 
+    pub(crate) fn md_to_config_const_name(
+        &mut self,
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+    ) -> Option<Rc<str>> {
+        Self::for_each_md_idx(context, md_idx, |md_idx| {
+            self.md_config_const_name_cache
+                .get(&md_idx)
+                .cloned()
+                .or_else(|| {
+                    md_idx
+                        .get_content(context)
+                        .unwrap_struct("config_name", 1)
+                        .and_then(|fields| {
+                            fields[0].unwrap_string().map(|name| {
+                                let name: Rc<str> = Rc::from(name);
+                                self.md_config_const_name_cache.insert(md_idx, name.clone());
+                                name
+                            })
+                        })
+                })
+        })
+    }
+
     pub(crate) fn val_to_span(&mut self, context: &Context, value: Value) -> Option<Span> {
         self.md_to_span(context, value.get_metadata(context))
     }
@@ -336,6 +362,27 @@ impl MetadataManager {
                 let md_idx = MetadataIndex::new_string(context, path.to_string_lossy());
 
                 self.file_loc_md_cache.insert(Arc::as_ptr(path), md_idx);
+
+                Some(md_idx)
+            })
+    }
+
+    pub(crate) fn config_const_name_to_md(
+        &mut self,
+        context: &mut Context,
+        name: &Rc<str>,
+    ) -> Option<MetadataIndex> {
+        self.config_const_name_md_cache
+            .get(name)
+            .copied()
+            .or_else(|| {
+                let md_idx = MetadataIndex::new_struct(
+                    context,
+                    "config_name",
+                    vec![Metadatum::String(name.to_string())],
+                );
+
+                self.config_const_name_md_cache.insert(name.clone(), md_idx);
 
                 Some(md_idx)
             })

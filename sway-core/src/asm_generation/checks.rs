@@ -9,14 +9,19 @@ use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::asm_lang::*;
 use crate::error::*;
 
+use super::instruction_set::InstructionSet;
+
 /// Checks for disallowed opcodes in non-contract code.
 /// i.e., if this is a script or predicate, we can't use certain contract opcodes.
 /// See https://github.com/FuelLabs/sway/issues/350 for details.
 pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
-    match asm.program_kind {
-        ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
-        ProgramKind::Script => check_script_opcodes(&asm.program_section.ops[..]),
-        ProgramKind::Predicate => check_predicate_opcodes(&asm.program_section.ops[..]),
+    match &asm.program_section {
+        InstructionSet::Fuel { ops } => match asm.program_kind {
+            ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
+            ProgramKind::Script => check_script_opcodes(&ops[..]),
+            ProgramKind::Predicate => check_predicate_opcodes(&ops[..]),
+        },
+        InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
     }
 }
 

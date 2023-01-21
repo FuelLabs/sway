@@ -39,8 +39,8 @@ pub(crate) fn inlay_hints(
     }
 
     let type_engine = session.type_engine.read();
-    let declaration_engine = session.declaration_engine.read();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = session.decl_engine.read();
+    let engines = Engines::new(&type_engine, &decl_engine);
 
     let hints: Vec<lsp_types::InlayHint> = session
         .token_map()
@@ -64,7 +64,7 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.look_up_type_id(var.type_ascription);
+            let type_info = type_engine.get(var.type_ascription);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),

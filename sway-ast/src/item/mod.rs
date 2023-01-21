@@ -1,6 +1,7 @@
 use crate::priv_prelude::*;
 
 pub mod item_abi;
+pub mod item_configurable;
 pub mod item_const;
 pub mod item_enum;
 pub mod item_fn;
@@ -34,6 +35,7 @@ pub enum ItemKind {
     Abi(ItemAbi),
     Const(ItemConst),
     Storage(ItemStorage),
+    Configurable(ItemConfigurable),
 }
 
 impl Spanned for ItemKind {
@@ -49,6 +51,7 @@ impl Spanned for ItemKind {
             ItemKind::Abi(item_abi) => item_abi.span(),
             ItemKind::Const(item_const) => item_const.span(),
             ItemKind::Storage(item_storage) => item_storage.span(),
+            ItemKind::Configurable(item_configurable) => item_configurable.span(),
         }
     }
 }
