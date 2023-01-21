@@ -28,7 +28,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    transform::{AttributeKind, AttributesMap, First},
+    transform::First,
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::Spanned;
