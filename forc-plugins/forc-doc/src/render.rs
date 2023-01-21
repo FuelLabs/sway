@@ -689,7 +689,7 @@ impl Renderable for TyTraitFn {
                                     : "mut ";
                                 }
                                 @ if param.is_self() {
-                                    : "self, "
+                                    : "self"
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
