@@ -69,3 +69,26 @@ pub(crate) fn generate_json_abi_attributes_map(
         )
     }
 }
+
+pub trait First {
+    /// Returns the first attribute by span, or None if there are no attributes.
+    fn first(&self) -> Option<(&AttributeKind, &Attribute)>;
+}
+
+impl First for AttributesMap {
+    fn first(&self) -> Option<(&AttributeKind, &Attribute)> {
+        let mut first: Option<(&AttributeKind, &Attribute)> = None;
+        for (kind, attrs) in self.iter() {
+            for attr in attrs {
+                if let Some((_, first_attr)) = first {
+                    if attr.span.start() < first_attr.span.start() {
+                        first = Some((kind, attr));
+                    }
+                } else {
+                    first = Some((kind, attr));
+                }
+            }
+        }
+        first
+    }
+}

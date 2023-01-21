@@ -3,7 +3,7 @@ use crate::{
         self,
         diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
-        runnable::{Runnable, RunnableType},
+        runnable::{Runnable, RunnableKind},
     },
     core::{
         document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
@@ -19,6 +19,7 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
+use serde_json::json;
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -27,6 +28,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
+    transform::{AttributeKind, AttributesMap, First},
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::Spanned;
@@ -54,7 +56,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<RunnableType, Runnable>,
+    pub runnables: DashMap<RunnableKind, Runnable>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
@@ -372,13 +374,37 @@ impl Session {
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
+        // Insert runnable test functions.
+        let decl_engine = &*self.decl_engine.read();
+        for (i, (decl, _)) in (0..).zip(typed_program.test_fns(decl_engine)) {
+            // Get the span of the first attribute if it exists, otherwise use the span of the function name.
+            let span = decl
+                .attributes
+                .first()
+                .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            let arguments = vec![json!({ "name": decl.name.to_string() })];
+            let runnable = Runnable::new(
+                RunnableKind::TestFn(i),
+                get_range_from_span(&span),
+                typed_program.kind.tree_type(),
+                Some(arguments),
+            );
+            self.runnables.insert(runnable.kind, runnable);
+        }
+
+        // Insert runnable main function if the program is a script.
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
         {
             let main_fn_location = get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-            self.runnables.insert(RunnableType::MainFn, runnable);
+            let runnable = Runnable::new(
+                RunnableKind::MainFn,
+                main_fn_location,
+                typed_program.kind.tree_type(),
+                None,
+            );
+            self.runnables.insert(runnable.kind, runnable);
         }
     }
 

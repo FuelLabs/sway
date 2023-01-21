@@ -334,22 +334,14 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((_, session)) => {
                 // Construct code lenses for runnable functions
-                let _ = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        result.push(CodeLens {
-                            range: runnable.range,
-                            command: Some(Command {
-                                command: "sway.runScript".to_string(),
-                                arguments: None,
-                                title: "▶\u{fe0e} Run".to_string(),
-                            }),
-                            data: None,
-                        });
+                session.runnables.iter().for_each(|item| {
+                    let runnable = item.value();
+                    result.push(CodeLens {
+                        range: runnable.range,
+                        command: Some(runnable.command()),
+                        data: None,
                     });
+                });
                 Ok(Some(result))
             }
             Err(err) => {
