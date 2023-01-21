@@ -784,7 +784,7 @@ impl Renderable for DocLinks {
                                         div(class="item-right docblock-short") {
                                             : item.preview_opt.unwrap();
                                         }
-                                    } 
+                                    }
                                 }
                             }
                         }
@@ -812,7 +812,7 @@ impl Renderable for DocLinks {
                                         div(class="item-right docblock-short") {
                                             : item.preview_opt.unwrap();
                                         }
-                                    } 
+                                    }
                                 }
                             }
                         }
