@@ -228,7 +228,7 @@ pub trait Spanned {
     fn span(&self) -> Span;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,

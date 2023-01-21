@@ -1,6 +1,6 @@
 use crate::{
     language::{parsed::*, *},
-    transform::attribute::*,
+    transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
     Engines,
 };
@@ -38,19 +38,17 @@ use std::{
     iter,
     mem::MaybeUninit,
     ops::ControlFlow,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
+    sync::Arc,
 };
 
 pub fn convert_parse_tree(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     module: Module,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = convert_module_kind(&module.kind);
-    let tree = module_to_sway_parse_tree(handler, engines, module)?;
+    let tree = module_to_sway_parse_tree(context, handler, engines, module)?;
     Ok((tree_type, tree))
 }
 
@@ -65,6 +63,7 @@ pub fn convert_module_kind(kind: &ModuleKind) -> TreeType {
 }
 
 pub fn module_to_sway_parse_tree(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     module: Module,
@@ -74,7 +73,8 @@ pub fn module_to_sway_parse_tree(
         let mut root_nodes: Vec<AstNode> = vec![];
         let mut prev_item: Option<Annotated<ItemKind>> = None;
         for item in module.items {
-            let ast_nodes = item_to_ast_nodes(handler, engines, item.clone(), true, prev_item)?;
+            let ast_nodes =
+                item_to_ast_nodes(context, handler, engines, item.clone(), true, prev_item)?;
             root_nodes.extend(ast_nodes);
             prev_item = Some(item);
         }
@@ -93,13 +93,14 @@ fn ast_node_is_test_fn(node: &AstNode) -> bool {
 }
 
 fn item_to_ast_nodes(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item: Item,
     is_root: bool,
     prev_item: Option<Annotated<ItemKind>>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
-    let attributes = item_attrs_to_map(handler, &item.attribute_list)?;
+    let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
 
     let decl = |d| vec![AstNodeContent::Declaration(d)];
 
@@ -150,20 +151,21 @@ fn item_to_ast_nodes(
             let incl_stmt = dependency_to_include_statement(&dependency);
             vec![AstNodeContent::IncludeStatement(incl_stmt)]
         }
-        ItemKind::Use(item_use) => item_use_to_use_statements(handler, item_use)?
+        ItemKind::Use(item_use) => item_use_to_use_statements(context, handler, item_use)?
             .into_iter()
             .map(AstNodeContent::UseStatement)
             .collect(),
         ItemKind::Struct(item_struct) => decl(Declaration::StructDeclaration(
-            item_struct_to_struct_declaration(handler, engines, item_struct, attributes)?,
+            item_struct_to_struct_declaration(context, handler, engines, item_struct, attributes)?,
         )),
         ItemKind::Enum(item_enum) => decl(Declaration::EnumDeclaration(
-            item_enum_to_enum_declaration(handler, engines, item_enum, attributes)?,
+            item_enum_to_enum_declaration(context, handler, engines, item_enum, attributes)?,
         )),
         ItemKind::Fn(item_fn) => {
             let function_declaration =
-                item_fn_to_function_declaration(handler, engines, item_fn, attributes)?;
+                item_fn_to_function_declaration(context, handler, engines, item_fn, attributes)?;
             error_if_self_param_is_not_allowed(
+                context,
                 handler,
                 &function_declaration.parameters,
                 "a free function",
@@ -171,19 +173,28 @@ fn item_to_ast_nodes(
             decl(Declaration::FunctionDeclaration(function_declaration))
         }
         ItemKind::Trait(item_trait) => decl(Declaration::TraitDeclaration(
-            item_trait_to_trait_declaration(handler, engines, item_trait, attributes)?,
+            item_trait_to_trait_declaration(context, handler, engines, item_trait, attributes)?,
         )),
-        ItemKind::Impl(item_impl) => decl(item_impl_to_declaration(handler, engines, item_impl)?),
+        ItemKind::Impl(item_impl) => decl(item_impl_to_declaration(
+            context, handler, engines, item_impl,
+        )?),
         ItemKind::Abi(item_abi) => decl(Declaration::AbiDeclaration(item_abi_to_abi_declaration(
-            handler, engines, item_abi, attributes,
+            context, handler, engines, item_abi, attributes,
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
-            item_const_to_constant_declaration(handler, engines, item_const, attributes)?,
+            item_const_to_constant_declaration(context, handler, engines, item_const, attributes)?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
-            item_storage_to_storage_declaration(handler, engines, item_storage, attributes)?,
+            item_storage_to_storage_declaration(
+                context,
+                handler,
+                engines,
+                item_storage,
+                attributes,
+            )?,
         )),
         ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
+            context,
             handler,
             engines,
             item_configurable,
@@ -204,6 +215,7 @@ fn item_to_ast_nodes(
 }
 
 fn item_use_to_use_statements(
+    _context: &mut Context,
     handler: &Handler,
     item_use: ItemUse,
 ) -> Result<Vec<UseStatement>, ErrorEmitted> {
@@ -289,6 +301,7 @@ fn emit_all(handler: &Handler, errors: Vec<ConvertParseTreeError>) -> Option<Err
 }
 
 fn item_struct_to_struct_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_struct: ItemStruct,
@@ -302,8 +315,8 @@ fn item_struct_to_struct_declaration(
         .into_inner()
         .into_iter()
         .map(|type_field| {
-            let attributes = item_attrs_to_map(handler, &type_field.attribute_list)?;
-            type_field_to_struct_field(handler, engines, type_field.value, attributes)
+            let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
+            type_field_to_struct_field(context, handler, engines, type_field.value, attributes)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -333,6 +346,7 @@ fn item_struct_to_struct_declaration(
         attributes,
         fields,
         type_parameters: generic_params_opt_to_type_parameters(
+            context,
             handler,
             engines,
             item_struct.generics,
@@ -345,6 +359,7 @@ fn item_struct_to_struct_declaration(
 }
 
 fn item_enum_to_enum_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_enum: ItemEnum,
@@ -358,8 +373,8 @@ fn item_enum_to_enum_declaration(
         .into_iter()
         .enumerate()
         .map(|(tag, type_field)| {
-            let attributes = item_attrs_to_map(handler, &type_field.attribute_list)?;
-            type_field_to_enum_variant(handler, engines, type_field.value, attributes, tag)
+            let attributes = item_attrs_to_map(context, handler, &type_field.attribute_list)?;
+            type_field_to_enum_variant(context, handler, engines, type_field.value, attributes, tag)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -387,6 +402,7 @@ fn item_enum_to_enum_declaration(
     let enum_declaration = EnumDeclaration {
         name: item_enum.name,
         type_parameters: generic_params_opt_to_type_parameters(
+            context,
             handler,
             engines,
             item_enum.generics,
@@ -401,6 +417,7 @@ fn item_enum_to_enum_declaration(
 }
 
 fn item_fn_to_function_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_fn: ItemFn,
@@ -415,22 +432,24 @@ fn item_fn_to_function_declaration(
         },
     };
     Ok(FunctionDeclaration {
-        purity: get_attributed_purity(handler, &attributes)?,
+        purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         name: item_fn.fn_signature.name,
         visibility: pub_token_opt_to_visibility(item_fn.fn_signature.visibility),
-        body: braced_code_block_contents_to_code_block(handler, engines, item_fn.body)?,
+        body: braced_code_block_contents_to_code_block(context, handler, engines, item_fn.body)?,
         parameters: fn_args_to_function_parameters(
+            context,
             handler,
             engines,
             item_fn.fn_signature.arguments.into_inner(),
         )?,
         span,
         return_type: match item_fn.fn_signature.return_type_opt {
-            Some((_right_arrow, ty)) => ty_to_type_info(handler, engines, ty)?,
+            Some((_right_arrow, ty)) => ty_to_type_info(context, handler, engines, ty)?,
             None => TypeInfo::Tuple(Vec::new()),
         },
         type_parameters: generic_params_opt_to_type_parameters(
+            context,
             handler,
             engines,
             item_fn.fn_signature.generics,
@@ -441,6 +460,7 @@ fn item_fn_to_function_declaration(
 }
 
 fn get_attributed_purity(
+    _context: &mut Context,
     handler: &Handler,
     attributes: &AttributesMap,
 ) -> Result<Purity, ErrorEmitted> {
@@ -474,6 +494,7 @@ fn get_attributed_purity(
 }
 
 fn item_trait_to_trait_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_trait: ItemTrait,
@@ -481,6 +502,7 @@ fn item_trait_to_trait_declaration(
 ) -> Result<TraitDeclaration, ErrorEmitted> {
     let span = item_trait.span();
     let type_parameters = generic_params_opt_to_type_parameters(
+        context,
         handler,
         engines,
         item_trait.generics,
@@ -492,8 +514,8 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|(fn_signature, _)| {
-                let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
-                fn_signature_to_trait_fn(handler, engines, fn_signature.value, attributes)
+                let attributes = item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
+                fn_signature_to_trait_fn(context, handler, engines, fn_signature.value, attributes)
             })
             .collect::<Result<_, _>>()?
     };
@@ -503,14 +525,20 @@ fn item_trait_to_trait_declaration(
             .into_inner()
             .into_iter()
             .map(|item_fn| {
-                let attributes = item_attrs_to_map(handler, &item_fn.attribute_list)?;
-                item_fn_to_function_declaration(handler, engines, item_fn.value, attributes)
+                let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
+                item_fn_to_function_declaration(
+                    context,
+                    handler,
+                    engines,
+                    item_fn.value,
+                    attributes,
+                )
             })
             .collect::<Result<_, _>>()?,
     };
     let supertraits = match item_trait.super_traits {
         None => Vec::new(),
-        Some((_colon_token, traits)) => traits_to_supertraits(handler, traits)?,
+        Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
     };
     let visibility = pub_token_opt_to_visibility(item_trait.visibility);
     Ok(TraitDeclaration {
@@ -526,24 +554,26 @@ fn item_trait_to_trait_declaration(
 }
 
 fn item_impl_to_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
     let type_implementing_for_span = item_impl.ty.span();
-    let type_implementing_for = ty_to_type_info(handler, engines, item_impl.ty)?;
+    let type_implementing_for = ty_to_type_info(context, handler, engines, item_impl.ty)?;
     let functions = item_impl
         .contents
         .into_inner()
         .into_iter()
         .map(|item| {
-            let attributes = item_attrs_to_map(handler, &item.attribute_list)?;
-            item_fn_to_function_declaration(handler, engines, item.value, attributes)
+            let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
+            item_fn_to_function_declaration(context, handler, engines, item.value, attributes)
         })
         .collect::<Result<_, _>>()?;
 
     let impl_type_parameters = generic_params_opt_to_type_parameters(
+        context,
         handler,
         engines,
         item_impl.generic_params_opt,
@@ -553,7 +583,7 @@ fn item_impl_to_declaration(
     match item_impl.trait_opt {
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
-                path_type_to_call_path_and_type_arguments(handler, engines, path_type)?;
+                path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
             let impl_trait = ImplTrait {
                 impl_type_parameters,
                 trait_name,
@@ -583,6 +613,7 @@ fn item_impl_to_declaration(
 }
 
 fn path_type_to_call_path_and_type_arguments(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     PathType {
@@ -596,9 +627,9 @@ fn path_type_to_call_path_and_type_arguments(
         Some((_, last)) => {
             // Gather the idents of the prefix, i.e. all segments but the last one.
             let mut before = Vec::with_capacity(suffix.len() + 1);
-            before.push(path_type_segment_to_ident(handler, prefix)?);
+            before.push(path_type_segment_to_ident(context, handler, prefix)?);
             for (_, seg) in suffix {
-                before.push(path_type_segment_to_ident(handler, seg)?);
+                before.push(path_type_segment_to_ident(context, handler, seg)?);
             }
             (before, last)
         }
@@ -607,11 +638,13 @@ fn path_type_to_call_path_and_type_arguments(
     let call_path = CallPath {
         prefixes,
         suffix: suffix.name,
-        is_absolute: path_root_opt_to_bool(handler, root_opt)?,
+        is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
     };
 
     let ty_args = match suffix.generics_opt {
-        Some((_, generic_args)) => generic_args_to_type_arguments(handler, engines, generic_args)?,
+        Some((_, generic_args)) => {
+            generic_args_to_type_arguments(context, handler, engines, generic_args)?
+        }
         None => vec![],
     };
 
@@ -619,6 +652,7 @@ fn path_type_to_call_path_and_type_arguments(
 }
 
 fn item_abi_to_abi_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_abi: ItemAbi,
@@ -633,10 +667,17 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|(fn_signature, _semicolon_token)| {
-                    let attributes = item_attrs_to_map(handler, &fn_signature.attribute_list)?;
-                    let trait_fn =
-                        fn_signature_to_trait_fn(handler, engines, fn_signature.value, attributes)?;
+                    let attributes =
+                        item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
+                    let trait_fn = fn_signature_to_trait_fn(
+                        context,
+                        handler,
+                        engines,
+                        fn_signature.value,
+                        attributes,
+                    )?;
                     error_if_self_param_is_not_allowed(
+                        context,
                         handler,
                         &trait_fn.parameters,
                         "an ABI method signature",
@@ -651,14 +692,16 @@ fn item_abi_to_abi_declaration(
                 .into_inner()
                 .into_iter()
                 .map(|item_fn| {
-                    let attributes = item_attrs_to_map(handler, &item_fn.attribute_list)?;
+                    let attributes = item_attrs_to_map(context, handler, &item_fn.attribute_list)?;
                     let function_declaration = item_fn_to_function_declaration(
+                        context,
                         handler,
                         engines,
                         item_fn.value,
                         attributes,
                     )?;
                     error_if_self_param_is_not_allowed(
+                        context,
                         handler,
                         &function_declaration.parameters,
                         "a method provided by ABI",
@@ -673,6 +716,7 @@ fn item_abi_to_abi_declaration(
 }
 
 pub(crate) fn item_const_to_constant_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_const: ItemConst,
@@ -681,7 +725,7 @@ pub(crate) fn item_const_to_constant_declaration(
     let span = item_const.span();
     let (type_ascription, type_ascription_span) = match item_const.ty_opt {
         Some((_colon_token, ty)) => {
-            let type_ascription = ty_to_type_info(handler, engines, ty.clone())?;
+            let type_ascription = ty_to_type_info(context, handler, engines, ty.clone())?;
             let type_ascription_span = if let Ty::Path(path_type) = &ty {
                 path_type.prefix.name.span()
             } else {
@@ -696,7 +740,7 @@ pub(crate) fn item_const_to_constant_declaration(
         name: item_const.name,
         type_ascription,
         type_ascription_span,
-        value: expr_to_expression(handler, engines, item_const.expr)?,
+        value: expr_to_expression(context, handler, engines, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
         attributes,
@@ -705,6 +749,7 @@ pub(crate) fn item_const_to_constant_declaration(
 }
 
 fn item_storage_to_storage_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_storage: ItemStorage,
@@ -717,8 +762,14 @@ fn item_storage_to_storage_declaration(
         .into_inner()
         .into_iter()
         .map(|storage_field| {
-            let attributes = item_attrs_to_map(handler, &storage_field.attribute_list)?;
-            storage_field_to_storage_field(handler, engines, storage_field.value, attributes)
+            let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
+            storage_field_to_storage_field(
+                context,
+                handler,
+                engines,
+                storage_field.value,
+                attributes,
+            )
         })
         .collect::<Result<_, _>>()?;
 
@@ -746,18 +797,31 @@ fn item_storage_to_storage_declaration(
 }
 
 fn item_configurable_to_constant_declarations(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     item_configurable: ItemConfigurable,
     _attributes: AttributesMap,
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
+    let mut errors = Vec::new();
+
+    dbg!(context.module_has_configurable_block());
+
+    if context.module_has_configurable_block() {
+        errors.push(ConvertParseTreeError::MultipleConfigurableBlocksInModule {
+            span: item_configurable.span(),
+        });
+    }
+
     let declarations: Vec<ConstantDeclaration> = item_configurable
         .fields
         .into_inner()
         .into_iter()
         .map(|configurable_field| {
-            let attributes = item_attrs_to_map(handler, &configurable_field.attribute_list)?;
+            let attributes =
+                item_attrs_to_map(context, handler, &configurable_field.attribute_list)?;
             configurable_field_to_constant_declaration(
+                context,
                 handler,
                 engines,
                 configurable_field.value,
@@ -767,7 +831,6 @@ fn item_configurable_to_constant_declarations(
         .collect::<Result<_, _>>()?;
 
     // Make sure each configurable is declared once
-    let mut errors = Vec::new();
     let mut names_of_declarations = std::collections::HashSet::new();
     declarations.iter().for_each(|v| {
         if !names_of_declarations.insert(v.name.clone()) {
@@ -782,10 +845,13 @@ fn item_configurable_to_constant_declarations(
         return Err(errors);
     }
 
+    context.set_module_has_configurable_block(true);
+
     Ok(declarations)
 }
 
 fn type_field_to_struct_field(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     type_field: TypeField,
@@ -796,7 +862,7 @@ fn type_field_to_struct_field(
     let struct_field = StructField {
         name: type_field.name,
         attributes,
-        type_info: ty_to_type_info(handler, engines, type_field.ty)?,
+        type_info: ty_to_type_info(context, handler, engines, type_field.ty)?,
         span,
         type_span,
     };
@@ -804,6 +870,7 @@ fn type_field_to_struct_field(
 }
 
 fn generic_params_opt_to_type_parameters(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
@@ -865,7 +932,7 @@ fn generic_params_opt_to_type_parameters(
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
 
         param_to_edit.trait_constraints.extend(
-            traits_to_call_paths(handler, engines, bounds)?
+            traits_to_call_paths(context, handler, engines, bounds)?
                 .into_iter()
                 .map(|(trait_name, type_arguments)| TraitConstraint {
                     trait_name,
@@ -888,6 +955,7 @@ fn pub_token_opt_to_visibility(pub_token_opt: Option<PubToken>) -> Visibility {
 }
 
 fn type_field_to_enum_variant(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     type_field: TypeField,
@@ -904,7 +972,7 @@ fn type_field_to_enum_variant(
     let enum_variant = EnumVariant {
         name: type_field.name,
         attributes,
-        type_info: ty_to_type_info(handler, engines, type_field.ty)?,
+        type_info: ty_to_type_info(context, handler, engines, type_field.ty)?,
         type_span,
         tag,
         span,
@@ -913,6 +981,7 @@ fn type_field_to_enum_variant(
 }
 
 fn braced_code_block_contents_to_code_block(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     braced_code_block_contents: Braces<CodeBlockContents>,
@@ -922,11 +991,11 @@ fn braced_code_block_contents_to_code_block(
     let contents = {
         let mut contents = Vec::new();
         for statement in code_block_contents.statements {
-            let ast_nodes = statement_to_ast_nodes(handler, engines, statement)?;
+            let ast_nodes = statement_to_ast_nodes(context, handler, engines, statement)?;
             contents.extend(ast_nodes);
         }
         if let Some(expr) = code_block_contents.final_expr_opt {
-            let final_ast_node = expr_to_ast_node(handler, engines, *expr, false)?;
+            let final_ast_node = expr_to_ast_node(context, handler, engines, *expr, false)?;
             contents.push(final_ast_node);
         }
         contents
@@ -938,6 +1007,7 @@ fn braced_code_block_contents_to_code_block(
 }
 
 fn fn_args_to_function_parameters(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_args: FnArgs,
@@ -945,7 +1015,7 @@ fn fn_args_to_function_parameters(
     let function_parameters = match fn_args {
         FnArgs::Static(args) => args
             .into_iter()
-            .map(|fn_arg| fn_arg_to_function_parameter(handler, engines, fn_arg))
+            .map(|fn_arg| fn_arg_to_function_parameter(context, handler, engines, fn_arg))
             .collect::<Result<_, _>>()?,
         FnArgs::NonStatic {
             self_token,
@@ -969,7 +1039,8 @@ fn fn_args_to_function_parameters(
             }];
             if let Some((_comma_token, args)) = args_opt {
                 for arg in args {
-                    let function_parameter = fn_arg_to_function_parameter(handler, engines, arg)?;
+                    let function_parameter =
+                        fn_arg_to_function_parameter(context, handler, engines, arg)?;
                     function_parameters.push(function_parameter);
                 }
             }
@@ -1010,14 +1081,16 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
 }
 
 fn ty_to_type_info(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
 ) -> Result<TypeInfo, ErrorEmitted> {
     let type_info = match ty {
-        Ty::Path(path_type) => path_type_to_type_info(handler, engines, path_type)?,
+        Ty::Path(path_type) => path_type_to_type_info(context, handler, engines, path_type)?,
         Ty::Tuple(parenthesized_ty_tuple_descriptor) => {
             TypeInfo::Tuple(ty_tuple_descriptor_to_type_arguments(
+                context,
                 handler,
                 engines,
                 parenthesized_ty_tuple_descriptor.into_inner(),
@@ -1026,17 +1099,20 @@ fn ty_to_type_info(
         Ty::Array(bracketed_ty_array_descriptor) => {
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
             TypeInfo::Array(
-                ty_to_type_argument(handler, engines, *ty_array_descriptor.ty)?,
-                expr_to_length(handler, *ty_array_descriptor.length)?,
+                ty_to_type_argument(context, handler, engines, *ty_array_descriptor.ty)?,
+                expr_to_length(context, handler, *ty_array_descriptor.length)?,
             )
         }
-        Ty::Str { length, .. } => TypeInfo::Str(expr_to_length(handler, *length.into_inner())?),
+        Ty::Str { length, .. } => {
+            TypeInfo::Str(expr_to_length(context, handler, *length.into_inner())?)
+        }
         Ty::Infer { .. } => TypeInfo::Unknown,
     };
     Ok(type_info)
 }
 
 fn ty_to_type_argument(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
@@ -1044,7 +1120,8 @@ fn ty_to_type_argument(
     let type_engine = engines.te();
     let decl_engine = engines.de();
     let span = ty.span();
-    let initial_type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
+    let initial_type_id =
+        type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
@@ -1054,6 +1131,7 @@ fn ty_to_type_argument(
 }
 
 fn fn_signature_to_trait_fn(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_signature: FnSignature,
@@ -1065,15 +1143,16 @@ fn fn_signature_to_trait_fn(
     };
     let trait_fn = TraitFn {
         name: fn_signature.name,
-        purity: get_attributed_purity(handler, &attributes)?,
+        purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
         parameters: fn_args_to_function_parameters(
+            context,
             handler,
             engines,
             fn_signature.arguments.into_inner(),
         )?,
         return_type: match fn_signature.return_type_opt {
-            Some((_right_arrow_token, ty)) => ty_to_type_info(handler, engines, ty)?,
+            Some((_right_arrow_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
             None => TypeInfo::Tuple(Vec::new()),
         },
         return_type_span,
@@ -1082,35 +1161,40 @@ fn fn_signature_to_trait_fn(
 }
 
 fn traits_to_call_paths(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     traits: Traits,
 ) -> Result<Vec<(CallPath, Vec<TypeArgument>)>, ErrorEmitted> {
     let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
+        context,
         handler,
         engines,
         traits.prefix,
     )?];
     for (_add_token, suffix) in traits.suffixes {
-        let supertrait = path_type_to_call_path_and_type_arguments(handler, engines, suffix)?;
+        let supertrait =
+            path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
     Ok(parsed_traits)
 }
 
 fn traits_to_supertraits(
+    context: &mut Context,
     handler: &Handler,
     traits: Traits,
 ) -> Result<Vec<Supertrait>, ErrorEmitted> {
-    let mut supertraits = vec![path_type_to_supertrait(handler, traits.prefix)?];
+    let mut supertraits = vec![path_type_to_supertrait(context, handler, traits.prefix)?];
     for (_add_token, suffix) in traits.suffixes {
-        let supertrait = path_type_to_supertrait(handler, suffix)?;
+        let supertrait = path_type_to_supertrait(context, handler, suffix)?;
         supertraits.push(supertrait);
     }
     Ok(supertraits)
 }
 
 fn path_type_to_call_path(
+    context: &mut Context,
     handler: &Handler,
     path_type: PathType,
 ) -> Result<CallPath, ErrorEmitted> {
@@ -1119,23 +1203,23 @@ fn path_type_to_call_path(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
-            let mut prefixes = vec![path_type_segment_to_ident(handler, prefix)?];
+            let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
             for (_double_colon_token, call_path_prefix) in suffix {
-                let ident = path_type_segment_to_ident(handler, call_path_prefix)?;
+                let ident = path_type_segment_to_ident(context, handler, call_path_prefix)?;
                 prefixes.push(ident);
             }
             CallPath {
                 prefixes,
-                suffix: path_type_segment_to_ident(handler, call_path_suffix)?,
+                suffix: path_type_segment_to_ident(context, handler, call_path_suffix)?,
                 is_absolute,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
-            suffix: path_type_segment_to_ident(handler, prefix)?,
+            suffix: path_type_segment_to_ident(context, handler, prefix)?,
             is_absolute,
         },
     };
@@ -1143,6 +1227,7 @@ fn path_type_to_call_path(
 }
 
 fn expr_to_ast_node(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr: Expr,
@@ -1150,7 +1235,7 @@ fn expr_to_ast_node(
 ) -> Result<AstNode, ErrorEmitted> {
     let span = expr.span();
     let ast_node = {
-        let expression = expr_to_expression(handler, engines, expr)?;
+        let expression = expr_to_expression(context, handler, engines, expr)?;
         if !is_statement {
             AstNode {
                 content: AstNodeContent::ImplicitReturnExpression(expression),
@@ -1167,29 +1252,36 @@ fn expr_to_ast_node(
 }
 
 fn abi_cast_args_to_abi_cast_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     args: Parens<AbiCastArgs>,
 ) -> Result<Box<AbiCastExpression>, ErrorEmitted> {
     let AbiCastArgs { name, address, .. } = args.into_inner();
-    let abi_name = path_type_to_call_path(handler, name)?;
-    let address = Box::new(expr_to_expression(handler, engines, *address)?);
+    let abi_name = path_type_to_call_path(context, handler, name)?;
+    let address = Box::new(expr_to_expression(context, handler, engines, *address)?);
     Ok(Box::new(AbiCastExpression { abi_name, address }))
 }
 
 fn struct_path_and_fields_to_struct_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path: PathExpr,
     fields: Braces<Punctuated<ExprStructField, CommaToken>>,
 ) -> Result<Box<StructExpression>, ErrorEmitted> {
-    let call_path_binding = path_expr_to_call_path_binding(handler, engines, path)?;
+    let call_path_binding = path_expr_to_call_path_binding(context, handler, engines, path)?;
     let fields = {
         fields
             .into_inner()
             .into_iter()
             .map(|expr_struct_field| {
-                expr_struct_field_to_struct_expression_field(handler, engines, expr_struct_field)
+                expr_struct_field_to_struct_expression_field(
+                    context,
+                    handler,
+                    engines,
+                    expr_struct_field,
+                )
             })
             .collect::<Result<_, _>>()?
     };
@@ -1200,6 +1292,7 @@ fn struct_path_and_fields_to_struct_expression(
 }
 
 fn method_call_fields_to_method_application_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     target: Box<Expr>,
@@ -1208,7 +1301,7 @@ fn method_call_fields_to_method_application_expression(
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<Box<MethodApplicationExpression>, ErrorEmitted> {
     let (method_name, type_arguments) =
-        path_expr_segment_to_ident_or_type_argument(handler, engines, path_seg)?;
+        path_expr_segment_to_ident_or_type_argument(context, handler, engines, path_seg)?;
 
     let span = match &*type_arguments {
         [] => method_name.span(),
@@ -1226,13 +1319,18 @@ fn method_call_fields_to_method_application_expression(
             .into_inner()
             .into_iter()
             .map(|expr_struct_field| {
-                expr_struct_field_to_struct_expression_field(handler, engines, expr_struct_field)
+                expr_struct_field_to_struct_expression_field(
+                    context,
+                    handler,
+                    engines,
+                    expr_struct_field,
+                )
             })
             .collect::<Result<_, _>>()?,
     };
     let arguments = iter::once(*target)
         .chain(args.into_inner().into_iter())
-        .map(|expr| expr_to_expression(handler, engines, expr))
+        .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
     Ok(Box::new(MethodApplicationExpression {
         method_name_binding,
@@ -1242,6 +1340,7 @@ fn method_call_fields_to_method_application_expression(
 }
 
 fn expr_func_app_to_expression_kind(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     func: Box<Expr>,
@@ -1268,13 +1367,14 @@ fn expr_func_app_to_expression_kind(
         }
     };
 
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
 
-    let convert_ty_args = |generics_opt: Option<(_, GenericArgs)>| {
+    let convert_ty_args = |context: &mut Context, generics_opt: Option<(_, GenericArgs)>| {
         Ok(match generics_opt {
             Some((_, generic_args)) => {
                 let span = generic_args.span();
-                let ty_args = generic_args_to_type_arguments(handler, engines, generic_args)?;
+                let ty_args =
+                    generic_args_to_type_arguments(context, handler, engines, generic_args)?;
                 (ty_args, Some(span))
             }
             None => <_>::default(),
@@ -1288,7 +1388,7 @@ fn expr_func_app_to_expression_kind(
             let mut last = prefix;
             let mut prefix = Vec::with_capacity(suffix.len());
             for (_, seg) in suffix {
-                prefix.push(path_expr_segment_to_ident(handler, &last)?);
+                prefix.push(path_expr_segment_to_ident(context, handler, &last)?);
                 last = seg;
             }
             (prefix, Some(last), call_path_suffix)
@@ -1298,7 +1398,7 @@ fn expr_func_app_to_expression_kind(
     let arguments = args
         .into_inner()
         .into_iter()
-        .map(|expr| expr_to_expression(handler, engines, expr))
+        .map(|expr| expr_to_expression(context, handler, engines, expr))
         .collect::<Result<_, _>>()?;
 
     let name_args_span = |start, end: Option<_>| match end {
@@ -1306,7 +1406,7 @@ fn expr_func_app_to_expression_kind(
         None => start,
     };
 
-    let (type_arguments, type_arguments_span) = convert_ty_args(call_seg.generics_opt)?;
+    let (type_arguments, type_arguments_span) = convert_ty_args(context, call_seg.generics_opt)?;
 
     // Route intrinsic calls to different AST node.
     match Intrinsic::try_from_str(call_seg.name.as_str()) {
@@ -1355,7 +1455,7 @@ fn expr_func_app_to_expression_kind(
 
     // Ambiguous call. Could be a method call or a normal function call.
     // We don't know until type checking what `last` refers to, so let's defer.
-    let (last_ty_args, last_ty_args_span) = convert_ty_args(last.generics_opt)?;
+    let (last_ty_args, last_ty_args_span) = convert_ty_args(context, last.generics_opt)?;
     let before = TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
@@ -1384,6 +1484,7 @@ fn expr_func_app_to_expression_kind(
 }
 
 fn expr_to_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr: Expr,
@@ -1394,21 +1495,23 @@ fn expr_to_expression(
             kind: ExpressionKind::Error(part_spans),
             span,
         },
-        Expr::Path(path_expr) => path_expr_to_expression(handler, path_expr)?,
+        Expr::Path(path_expr) => path_expr_to_expression(context, handler, engines, path_expr)?,
         Expr::Literal(literal) => Expression {
-            kind: ExpressionKind::Literal(literal_to_literal(handler, literal)?),
+            kind: ExpressionKind::Literal(literal_to_literal(context, handler, literal)?),
             span,
         },
         Expr::AbiCast { args, .. } => {
-            let abi_cast_expression = abi_cast_args_to_abi_cast_expression(handler, engines, args)?;
+            let abi_cast_expression =
+                abi_cast_args_to_abi_cast_expression(context, handler, engines, args)?;
             Expression {
                 kind: ExpressionKind::AbiCast(abi_cast_expression),
                 span,
             }
         }
         Expr::Struct { path, fields } => {
-            let struct_expression =
-                struct_path_and_fields_to_struct_expression(handler, engines, path, fields)?;
+            let struct_expression = struct_path_and_fields_to_struct_expression(
+                context, handler, engines, path, fields,
+            )?;
             Expression {
                 kind: ExpressionKind::Struct(struct_expression),
                 span,
@@ -1416,6 +1519,7 @@ fn expr_to_expression(
         }
         Expr::Tuple(parenthesized_expr_tuple_descriptor) => {
             let fields = expr_tuple_descriptor_to_expressions(
+                context,
                 handler,
                 engines,
                 parenthesized_expr_tuple_descriptor.into_inner(),
@@ -1425,16 +1529,21 @@ fn expr_to_expression(
                 span,
             }
         }
-        Expr::Parens(parens) => expr_to_expression(handler, engines, *parens.into_inner())?,
-        Expr::Block(braced_code_block_contents) => {
-            braced_code_block_contents_to_expression(handler, engines, braced_code_block_contents)?
+        Expr::Parens(parens) => {
+            expr_to_expression(context, handler, engines, *parens.into_inner())?
         }
+        Expr::Block(braced_code_block_contents) => braced_code_block_contents_to_expression(
+            context,
+            handler,
+            engines,
+            braced_code_block_contents,
+        )?,
         Expr::Array(bracketed_expr_array_descriptor) => {
             match bracketed_expr_array_descriptor.into_inner() {
                 ExprArrayDescriptor::Sequence(exprs) => {
                     let contents = exprs
                         .into_iter()
-                        .map(|expr| expr_to_expression(handler, engines, expr))
+                        .map(|expr| expr_to_expression(context, handler, engines, expr))
                         .collect::<Result<_, _>>()?;
                     let array_expression = ArrayExpression {
                         contents,
@@ -1446,9 +1555,9 @@ fn expr_to_expression(
                     }
                 }
                 ExprArrayDescriptor::Repeat { value, length, .. } => {
-                    let expression = expr_to_expression(handler, engines, *value)?;
+                    let expression = expr_to_expression(context, handler, engines, *value)?;
                     let length_span = length.span();
-                    let length = expr_to_usize(handler, *length)?;
+                    let length = expr_to_usize(context, handler, *length)?;
                     let contents = iter::repeat_with(|| expression.clone())
                         .take(length)
                         .collect();
@@ -1464,7 +1573,7 @@ fn expr_to_expression(
             }
         }
         Expr::Asm(asm_block) => {
-            let asm_expression = asm_block_to_asm_expression(handler, engines, asm_block)?;
+            let asm_expression = asm_block_to_asm_expression(context, handler, engines, asm_block)?;
             Expression {
                 kind: ExpressionKind::Asm(asm_expression),
                 span,
@@ -1472,7 +1581,7 @@ fn expr_to_expression(
         }
         Expr::Return { expr_opt, .. } => {
             let expression = match expr_opt {
-                Some(expr) => expr_to_expression(handler, engines, *expr)?,
+                Some(expr) => expr_to_expression(context, handler, engines, *expr)?,
                 None => Expression {
                     kind: ExpressionKind::Tuple(Vec::new()),
                     span: span.clone(),
@@ -1483,22 +1592,19 @@ fn expr_to_expression(
                 span,
             }
         }
-        Expr::If(if_expr) => if_expr_to_expression(handler, engines, if_expr)?,
+        Expr::If(if_expr) => if_expr_to_expression(context, handler, engines, if_expr)?,
         Expr::Match {
             value, branches, ..
         } => {
-            let value = expr_to_expression(handler, engines, *value)?;
+            let value = expr_to_expression(context, handler, engines, *value)?;
             let var_decl_span = value.span();
 
             // Generate a deterministic name for the variable returned by the match expression.
-            // Because the parser is single threaded, the name generated below will be stable.
-            static COUNTER: AtomicUsize = AtomicUsize::new(0);
             let match_return_var_name = format!(
                 "{}{}",
                 MATCH_RETURN_VAR_NAME_PREFIX,
-                COUNTER.load(Ordering::SeqCst)
+                context.next_match_expression_return_var_unique_suffix(),
             );
-            COUNTER.fetch_add(1, Ordering::SeqCst);
             let var_decl_name = Ident::new_with_override(
                 Box::leak(match_return_var_name.into_boxed_str()),
                 var_decl_span.clone(),
@@ -1513,7 +1619,7 @@ fn expr_to_expression(
                     .into_inner()
                     .into_iter()
                     .map(|match_branch| {
-                        match_branch_to_match_branch(handler, engines, match_branch)
+                        match_branch_to_match_branch(context, handler, engines, match_branch)
                     })
                     .collect::<Result<_, _>>()?
             };
@@ -1552,19 +1658,24 @@ fn expr_to_expression(
             condition, block, ..
         } => Expression {
             kind: ExpressionKind::WhileLoop(WhileLoopExpression {
-                condition: Box::new(expr_to_expression(handler, engines, *condition)?),
-                body: braced_code_block_contents_to_code_block(handler, engines, block)?,
+                condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
+                body: braced_code_block_contents_to_code_block(context, handler, engines, block)?,
             }),
             span,
         },
         Expr::FuncApp { func, args } => {
-            let kind = expr_func_app_to_expression_kind(handler, engines, func, args)?;
+            let kind = expr_func_app_to_expression_kind(context, handler, engines, func, args)?;
             Expression { kind, span }
         }
         Expr::Index { target, arg } => Expression {
             kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(expr_to_expression(handler, engines, *target)?),
-                index: Box::new(expr_to_expression(handler, engines, *arg.into_inner())?),
+                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
+                index: Box::new(expr_to_expression(
+                    context,
+                    handler,
+                    engines,
+                    *arg.into_inner(),
+                )?),
             }),
             span,
         },
@@ -1577,6 +1688,7 @@ fn expr_to_expression(
         } => {
             let method_application_expression =
                 method_call_fields_to_method_application_expression(
+                    context,
                     handler,
                     engines,
                     target,
@@ -1620,7 +1732,7 @@ fn expr_to_expression(
                     field_names: field_names.into_iter().rev().cloned().collect(),
                 }),
                 None => ExpressionKind::Subfield(SubfieldExpression {
-                    prefix: Box::new(expr_to_expression(handler, engines, *target)?),
+                    prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
                     field_to_access: name,
                 }),
             };
@@ -1633,7 +1745,7 @@ fn expr_to_expression(
             ..
         } => Expression {
             kind: ExpressionKind::TupleIndex(TupleIndexExpression {
-                prefix: Box::new(expr_to_expression(handler, engines, *target)?),
+                prefix: Box::new(expr_to_expression(context, handler, engines, *target)?),
                 index: match usize::try_from(field) {
                     Ok(index) => index,
                     Err(..) => {
@@ -1659,7 +1771,7 @@ fn expr_to_expression(
             return Err(handler.emit_err(error.into()));
         }
         Expr::Not { bang_token, expr } => {
-            let expr = expr_to_expression(handler, engines, *expr)?;
+            let expr = expr_to_expression(context, handler, engines, *expr)?;
             op_call("not", bang_token.span(), span, &[expr])?
         }
         Expr::Pow {
@@ -1667,8 +1779,8 @@ fn expr_to_expression(
             double_star_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("pow", double_star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Mul {
@@ -1676,8 +1788,8 @@ fn expr_to_expression(
             star_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("multiply", star_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Div {
@@ -1685,8 +1797,8 @@ fn expr_to_expression(
             forward_slash_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("divide", forward_slash_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Modulo {
@@ -1694,8 +1806,8 @@ fn expr_to_expression(
             percent_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("modulo", percent_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Add {
@@ -1703,8 +1815,8 @@ fn expr_to_expression(
             add_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("add", add_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Sub {
@@ -1712,8 +1824,8 @@ fn expr_to_expression(
             sub_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("subtract", sub_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shl {
@@ -1721,8 +1833,8 @@ fn expr_to_expression(
             shl_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("lsh", shl_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Shr {
@@ -1730,8 +1842,8 @@ fn expr_to_expression(
             shr_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("rsh", shr_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitAnd {
@@ -1739,8 +1851,8 @@ fn expr_to_expression(
             ampersand_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("binary_and", ampersand_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitXor {
@@ -1748,8 +1860,8 @@ fn expr_to_expression(
             caret_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("binary_xor", caret_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::BitOr {
@@ -1757,8 +1869,8 @@ fn expr_to_expression(
             pipe_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("binary_or", pipe_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::Equal {
@@ -1766,8 +1878,8 @@ fn expr_to_expression(
             double_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("eq", double_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::NotEqual {
@@ -1775,8 +1887,8 @@ fn expr_to_expression(
             bang_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("neq", bang_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThan {
@@ -1784,8 +1896,8 @@ fn expr_to_expression(
             less_than_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("lt", less_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThan {
@@ -1793,8 +1905,8 @@ fn expr_to_expression(
             greater_than_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("gt", greater_than_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LessThanEq {
@@ -1802,8 +1914,8 @@ fn expr_to_expression(
             less_than_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("le", less_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::GreaterThanEq {
@@ -1811,23 +1923,23 @@ fn expr_to_expression(
             greater_than_eq_token,
             rhs,
         } => {
-            let lhs = expr_to_expression(handler, engines, *lhs)?;
-            let rhs = expr_to_expression(handler, engines, *rhs)?;
+            let lhs = expr_to_expression(context, handler, engines, *lhs)?;
+            let rhs = expr_to_expression(context, handler, engines, *rhs)?;
             op_call("ge", greater_than_eq_token.span(), span, &vec![lhs, rhs])?
         }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
                 op: LazyOp::And,
-                lhs: Box::new(expr_to_expression(handler, engines, *lhs)?),
-                rhs: Box::new(expr_to_expression(handler, engines, *rhs)?),
+                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs)?),
+                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
             }),
             span,
         },
         Expr::LogicalOr { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
                 op: LazyOp::Or,
-                lhs: Box::new(expr_to_expression(handler, engines, *lhs)?),
-                rhs: Box::new(expr_to_expression(handler, engines, *rhs)?),
+                lhs: Box::new(expr_to_expression(context, handler, engines, *lhs)?),
+                rhs: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
             }),
             span,
         },
@@ -1842,20 +1954,25 @@ fn expr_to_expression(
         } => match op_variant {
             ReassignmentOpVariant::Equals => Expression {
                 kind: ExpressionKind::Reassignment(ReassignmentExpression {
-                    lhs: assignable_to_reassignment_target(handler, engines, assignable)?,
-                    rhs: Box::new(expr_to_expression(handler, engines, *expr)?),
+                    lhs: assignable_to_reassignment_target(context, handler, engines, assignable)?,
+                    rhs: Box::new(expr_to_expression(context, handler, engines, *expr)?),
                 }),
                 span,
             },
             op_variant => {
-                let lhs = assignable_to_reassignment_target(handler, engines, assignable.clone())?;
+                let lhs = assignable_to_reassignment_target(
+                    context,
+                    handler,
+                    engines,
+                    assignable.clone(),
+                )?;
                 let rhs = Box::new(op_call(
                     op_variant.core_name(),
                     op_span,
                     span.clone(),
                     &vec![
-                        assignable_to_expression(handler, engines, assignable)?,
-                        expr_to_expression(handler, engines, *expr)?,
+                        assignable_to_expression(context, handler, engines, assignable)?,
+                        expr_to_expression(context, handler, engines, *expr)?,
                     ],
                 )?);
                 Expression {
@@ -1907,6 +2024,7 @@ fn op_call(
 }
 
 fn storage_field_to_storage_field(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     storage_field: sway_ast::StorageField,
@@ -1921,15 +2039,16 @@ fn storage_field_to_storage_field(
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
-        type_info: ty_to_type_info(handler, engines, storage_field.ty)?,
+        type_info: ty_to_type_info(context, handler, engines, storage_field.ty)?,
         type_info_span,
         span,
-        initializer: expr_to_expression(handler, engines, storage_field.initializer)?,
+        initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
     };
     Ok(storage_field)
 }
 
 fn configurable_field_to_constant_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     configurable_field: sway_ast::ConfigurableField,
@@ -1944,9 +2063,9 @@ fn configurable_field_to_constant_declaration(
 
     Ok(ConstantDeclaration {
         name: configurable_field.name,
-        type_ascription: ty_to_type_info(handler, engines, configurable_field.ty)?,
+        type_ascription: ty_to_type_info(context, handler, engines, configurable_field.ty)?,
         type_ascription_span: Some(type_ascription_span),
-        value: expr_to_expression(handler, engines, configurable_field.initializer)?,
+        value: expr_to_expression(context, handler, engines, configurable_field.initializer)?,
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,
@@ -1955,16 +2074,17 @@ fn configurable_field_to_constant_declaration(
 }
 
 fn statement_to_ast_nodes(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     statement: Statement,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let ast_nodes = match statement {
         Statement::Let(statement_let) => {
-            statement_let_to_ast_nodes(handler, engines, statement_let)?
+            statement_let_to_ast_nodes(context, handler, engines, statement_let)?
         }
         Statement::Item(item) => {
-            let nodes = item_to_ast_nodes(handler, engines, item, false, None)?;
+            let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
             nodes.iter().fold(Ok(()), |res, node| {
                 if ast_node_is_test_fn(node) {
                     let span = node.span.clone();
@@ -1976,12 +2096,15 @@ fn statement_to_ast_nodes(
             })?;
             nodes
         }
-        Statement::Expr { expr, .. } => vec![expr_to_ast_node(handler, engines, expr, true)?],
+        Statement::Expr { expr, .. } => {
+            vec![expr_to_ast_node(context, handler, engines, expr, true)?]
+        }
     };
     Ok(ast_nodes)
 }
 
 fn fn_arg_to_function_parameter(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     fn_arg: FnArg,
@@ -2031,18 +2154,26 @@ fn fn_arg_to_function_parameter(
         is_reference: reference.is_some(),
         is_mutable: mutable.is_some(),
         mutability_span,
-        type_info: ty_to_type_info(handler, engines, fn_arg.ty)?,
+        type_info: ty_to_type_info(context, handler, engines, fn_arg.ty)?,
         type_span,
     };
     Ok(function_parameter)
 }
 
-fn expr_to_length(handler: &Handler, expr: Expr) -> Result<Length, ErrorEmitted> {
+fn expr_to_length(
+    context: &mut Context,
+    handler: &Handler,
+    expr: Expr,
+) -> Result<Length, ErrorEmitted> {
     let span = expr.span();
-    Ok(Length::new(expr_to_usize(handler, expr)?, span))
+    Ok(Length::new(expr_to_usize(context, handler, expr)?, span))
 }
 
-fn expr_to_usize(handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {
+fn expr_to_usize(
+    _context: &mut Context,
+    handler: &Handler,
+    expr: Expr,
+) -> Result<usize, ErrorEmitted> {
     let span = expr.span();
     let value = match expr {
         Expr::Literal(sway_ast::Literal::Int(lit_int)) => {
@@ -2070,6 +2201,7 @@ fn expr_to_usize(handler: &Handler, expr: Expr) -> Result<usize, ErrorEmitted> {
 }
 
 fn path_type_to_supertrait(
+    context: &mut Context,
     handler: &Handler,
     path_type: PathType,
 ) -> Result<Supertrait, ErrorEmitted> {
@@ -2078,12 +2210,12 @@ fn path_type_to_supertrait(
         prefix,
         mut suffix,
     } = path_type;
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
     let (prefixes, call_path_suffix) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
-            let mut prefixes = vec![path_type_segment_to_ident(handler, prefix)?];
+            let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
             for (_, call_path_prefix) in suffix {
-                let ident = path_type_segment_to_ident(handler, call_path_prefix)?;
+                let ident = path_type_segment_to_ident(context, handler, call_path_prefix)?;
                 prefixes.push(ident);
             }
             (prefixes, call_path_suffix)
@@ -2115,6 +2247,7 @@ fn path_type_to_supertrait(
 }
 
 fn path_type_segment_to_ident(
+    _context: &mut Context,
     handler: &Handler,
     PathTypeSegment { name, generics_opt }: PathTypeSegment,
 ) -> Result<Ident, ErrorEmitted> {
@@ -2130,18 +2263,20 @@ fn path_type_segment_to_ident(
 /// Similar to [path_type_segment_to_ident],
 /// but allows for the item to be either type arguments _or_ an ident.
 fn path_expr_segment_to_ident_or_type_argument(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     PathExprSegment { name, generics_opt }: PathExprSegment,
 ) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
     let type_args = match generics_opt {
-        Some((_, x)) => generic_args_to_type_arguments(handler, engines, x)?,
+        Some((_, x)) => generic_args_to_type_arguments(context, handler, engines, x)?,
         None => Default::default(),
     };
     Ok((name, type_args))
 }
 
 fn path_expr_segment_to_ident(
+    _context: &mut Context,
     handler: &Handler,
     PathExprSegment { name, generics_opt }: &PathExprSegment,
 ) -> Result<Ident, ErrorEmitted> {
@@ -2155,27 +2290,25 @@ fn path_expr_segment_to_ident(
 }
 
 fn path_expr_to_expression(
+    context: &mut Context,
     handler: &Handler,
+    engines: Engines<'_>,
     path_expr: PathExpr,
 ) -> Result<Expression, ErrorEmitted> {
     let span = path_expr.span();
     let expression = if path_expr.root_opt.is_none() && path_expr.suffix.is_empty() {
-        let name = path_expr_segment_to_ident(handler, &path_expr.prefix)?;
+        let name = path_expr_segment_to_ident(context, handler, &path_expr.prefix)?;
         Expression {
             kind: ExpressionKind::Variable(name),
             span,
         }
     } else {
-        let call_path = path_expr_to_call_path(handler, path_expr)?;
-        let call_path_binding = TypeBinding {
-            inner: call_path.clone(),
-            type_arguments: vec![],
-            span: call_path.span(),
-        };
+        let call_path_binding =
+            path_expr_to_call_path_binding(context, handler, engines, path_expr)?;
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
                 call_path_binding,
-                args: Vec::new(),
+                args: None,
             })),
             span,
         }
@@ -2184,13 +2317,18 @@ fn path_expr_to_expression(
 }
 
 fn braced_code_block_contents_to_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     braced_code_block_contents: Braces<CodeBlockContents>,
 ) -> Result<Expression, ErrorEmitted> {
     let span = braced_code_block_contents.span();
-    let code_block =
-        braced_code_block_contents_to_code_block(handler, engines, braced_code_block_contents)?;
+    let code_block = braced_code_block_contents_to_code_block(
+        context,
+        handler,
+        engines,
+        braced_code_block_contents,
+    )?;
     Ok(Expression {
         kind: ExpressionKind::CodeBlock(code_block),
         span,
@@ -2198,6 +2336,7 @@ fn braced_code_block_contents_to_expression(
 }
 
 fn if_expr_to_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     if_expr: IfExpr,
@@ -2212,7 +2351,7 @@ fn if_expr_to_expression(
     let then_block_span = then_block.span();
     let then_block = Expression {
         kind: ExpressionKind::CodeBlock(braced_code_block_contents_to_code_block(
-            handler, engines, then_block,
+            context, handler, engines, then_block,
         )?),
         span: then_block_span.clone(),
     };
@@ -2222,13 +2361,14 @@ fn if_expr_to_expression(
             let expression = match tail {
                 ControlFlow::Break(braced_code_block_contents) => {
                     braced_code_block_contents_to_expression(
+                        context,
                         handler,
                         engines,
                         braced_code_block_contents,
                     )?
                 }
                 ControlFlow::Continue(if_expr) => {
-                    if_expr_to_expression(handler, engines, *if_expr)?
+                    if_expr_to_expression(context, handler, engines, *if_expr)?
                 }
             };
             Some(expression)
@@ -2237,14 +2377,14 @@ fn if_expr_to_expression(
     let expression = match condition {
         IfCondition::Expr(condition) => Expression {
             kind: ExpressionKind::If(IfExpression {
-                condition: Box::new(expr_to_expression(handler, engines, *condition)?),
+                condition: Box::new(expr_to_expression(context, handler, engines, *condition)?),
                 then: Box::new(then_block),
                 r#else: else_block.map(Box::new),
             }),
             span,
         },
         IfCondition::Let { lhs, rhs, .. } => {
-            let scrutinee = pattern_to_scrutinee(handler, *lhs)?;
+            let scrutinee = pattern_to_scrutinee(context, handler, *lhs)?;
             let scrutinee_span = scrutinee.span();
             let mut branches = vec![MatchBranch {
                 scrutinee,
@@ -2283,7 +2423,7 @@ fn if_expr_to_expression(
             });
             Expression {
                 kind: ExpressionKind::Match(MatchExpression {
-                    value: Box::new(expr_to_expression(handler, engines, *rhs)?),
+                    value: Box::new(expr_to_expression(context, handler, engines, *rhs)?),
                     branches,
                 }),
                 span,
@@ -2297,6 +2437,7 @@ fn if_expr_to_expression(
 ///
 /// Throws an error when given `<Foo as Bar>::baz`.
 fn path_root_opt_to_bool(
+    _context: &mut Context,
     handler: &Handler,
     root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
 ) -> Result<bool, ErrorEmitted> {
@@ -2313,6 +2454,7 @@ fn path_root_opt_to_bool(
 }
 
 fn literal_to_literal(
+    _context: &mut Context,
     handler: &Handler,
     literal: sway_ast::Literal,
 ) -> Result<Literal, ErrorEmitted> {
@@ -2440,6 +2582,7 @@ fn literal_to_literal(
 /// Use this when converting a call path that could potentially include type arguments, i.e. the
 /// turbofish.
 fn path_expr_to_call_path_binding(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path_expr: PathExpr,
@@ -2450,25 +2593,29 @@ fn path_expr_to_call_path_binding(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
     let (prefixes, suffix, span, type_arguments) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
-            let mut prefixes = vec![path_expr_segment_to_ident(handler, &prefix)?];
+            let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
             for (_, call_path_prefix) in suffix {
-                let ident = path_expr_segment_to_ident(handler, &call_path_prefix)?;
+                let ident = path_expr_segment_to_ident(context, handler, &call_path_prefix)?;
                 // note that call paths only support one set of type arguments per call path right
                 // now
                 prefixes.push(ident);
             }
             let span = call_path_suffix.span();
-            let (suffix, ty_args) =
-                path_expr_segment_to_ident_or_type_argument(handler, engines, call_path_suffix)?;
+            let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(
+                context,
+                handler,
+                engines,
+                call_path_suffix,
+            )?;
             (prefixes, suffix, span, ty_args)
         }
         None => {
             let span = prefix.span();
             let (suffix, ty_args) =
-                path_expr_segment_to_ident_or_type_argument(handler, engines, prefix)?;
+                path_expr_segment_to_ident_or_type_argument(context, handler, engines, prefix)?;
             (vec![], suffix, span, ty_args)
         }
     };
@@ -2484,6 +2631,7 @@ fn path_expr_to_call_path_binding(
 }
 
 fn path_expr_to_call_path(
+    context: &mut Context,
     handler: &Handler,
     path_expr: PathExpr,
 ) -> Result<CallPath, ErrorEmitted> {
@@ -2493,23 +2641,23 @@ fn path_expr_to_call_path(
         mut suffix,
         ..
     } = path_expr;
-    let is_absolute = path_root_opt_to_bool(handler, root_opt)?;
+    let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
     let call_path = match suffix.pop() {
         Some((_double_colon_token, call_path_suffix)) => {
-            let mut prefixes = vec![path_expr_segment_to_ident(handler, &prefix)?];
+            let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
             for (_double_colon_token, call_path_prefix) in suffix {
-                let ident = path_expr_segment_to_ident(handler, &call_path_prefix)?;
+                let ident = path_expr_segment_to_ident(context, handler, &call_path_prefix)?;
                 prefixes.push(ident);
             }
             CallPath {
                 prefixes,
-                suffix: path_expr_segment_to_ident(handler, &call_path_suffix)?,
+                suffix: path_expr_segment_to_ident(context, handler, &call_path_suffix)?,
                 is_absolute,
             }
         }
         None => CallPath {
             prefixes: Vec::new(),
-            suffix: path_expr_segment_to_ident(handler, &prefix)?,
+            suffix: path_expr_segment_to_ident(context, handler, &prefix)?,
             is_absolute,
         },
     };
@@ -2517,13 +2665,14 @@ fn path_expr_to_call_path(
 }
 
 fn expr_struct_field_to_struct_expression_field(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr_struct_field: ExprStructField,
 ) -> Result<StructExpressionField, ErrorEmitted> {
     let span = expr_struct_field.span();
     let value = match expr_struct_field.expr_opt {
-        Some((_colon_token, expr)) => expr_to_expression(handler, engines, *expr)?,
+        Some((_colon_token, expr)) => expr_to_expression(context, handler, engines, *expr)?,
         None => Expression {
             kind: ExpressionKind::Variable(expr_struct_field.field_name.clone()),
             span: span.clone(),
@@ -2537,6 +2686,7 @@ fn expr_struct_field_to_struct_expression_field(
 }
 
 fn expr_tuple_descriptor_to_expressions(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     expr_tuple_descriptor: ExprTupleDescriptor,
@@ -2544,9 +2694,9 @@ fn expr_tuple_descriptor_to_expressions(
     let expressions = match expr_tuple_descriptor {
         ExprTupleDescriptor::Nil => Vec::new(),
         ExprTupleDescriptor::Cons { head, tail, .. } => {
-            let mut expressions = vec![expr_to_expression(handler, engines, *head)?];
+            let mut expressions = vec![expr_to_expression(context, handler, engines, *head)?];
             for expr in tail {
-                expressions.push(expr_to_expression(handler, engines, expr)?);
+                expressions.push(expr_to_expression(context, handler, engines, expr)?);
             }
             expressions
         }
@@ -2555,6 +2705,7 @@ fn expr_tuple_descriptor_to_expressions(
 }
 
 fn asm_block_to_asm_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     asm_block: AsmBlock,
@@ -2568,7 +2719,7 @@ fn asm_block_to_asm_expression(
             };
             let returns = Some((asm_register, asm_final_expr.register.span()));
             let return_type = match asm_final_expr.ty_opt {
-                Some((_colon_token, ty)) => ty_to_type_info(handler, engines, ty)?,
+                Some((_colon_token, ty)) => ty_to_type_info(context, handler, engines, ty)?,
                 None => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             };
             (returns, return_type)
@@ -2582,6 +2733,7 @@ fn asm_block_to_asm_expression(
             .into_iter()
             .map(|asm_register_declaration| {
                 asm_register_declaration_to_asm_register_declaration(
+                    context,
                     handler,
                     engines,
                     asm_register_declaration,
@@ -2606,35 +2758,40 @@ fn asm_block_to_asm_expression(
 }
 
 fn match_branch_to_match_branch(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     match_branch: sway_ast::MatchBranch,
 ) -> Result<MatchBranch, ErrorEmitted> {
     let span = match_branch.span();
     Ok(MatchBranch {
-        scrutinee: pattern_to_scrutinee(handler, match_branch.pattern)?,
+        scrutinee: pattern_to_scrutinee(context, handler, match_branch.pattern)?,
         result: match match_branch.kind {
             MatchBranchKind::Block { block, .. } => {
                 let span = block.span();
                 Expression {
                     kind: ExpressionKind::CodeBlock(braced_code_block_contents_to_code_block(
-                        handler, engines, block,
+                        context, handler, engines, block,
                     )?),
                     span,
                 }
             }
-            MatchBranchKind::Expr { expr, .. } => expr_to_expression(handler, engines, expr)?,
+            MatchBranchKind::Expr { expr, .. } => {
+                expr_to_expression(context, handler, engines, expr)?
+            }
         },
         span,
     })
 }
 
 fn statement_let_to_ast_nodes(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     statement_let: StatementLet,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     fn unfold(
+        context: &mut Context,
         handler: &Handler,
         engines: Engines<'_>,
         pattern: Pattern,
@@ -2660,7 +2817,7 @@ fn statement_let_to_ast_nodes(
                 let (type_ascription, type_ascription_span) = match ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
-                        let type_ascription = ty_to_type_info(handler, engines, ty)?;
+                        let type_ascription = ty_to_type_info(context, handler, engines, ty)?;
                         (type_ascription, Some(type_ascription_span))
                     }
                     None => (TypeInfo::Unknown, None),
@@ -2694,12 +2851,12 @@ fn statement_let_to_ast_nodes(
             Pattern::Struct { path, fields, .. } => {
                 let mut ast_nodes = Vec::new();
 
-                // Generate a deterministic name for the destructured struct
-                // Because the parser is single threaded, the name generated below will be stable.
-                static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let destructured_name =
-                    format!("{}{}", DESTRUCTURE_PREFIX, COUNTER.load(Ordering::SeqCst));
-                COUNTER.fetch_add(1, Ordering::SeqCst);
+                // Generate a deterministic name for the destructured field
+                let destructured_name = format!(
+                    "{}{}",
+                    DESTRUCTURE_PREFIX,
+                    context.next_destructured_struct_unique_suffix()
+                );
                 let destructure_name = Ident::new_with_override(
                     Box::leak(destructured_name.into_boxed_str()),
                     path.prefix.name.span(),
@@ -2711,7 +2868,8 @@ fn statement_let_to_ast_nodes(
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
-                        let type_ascription = ty_to_type_info(handler, engines, ty.clone())?;
+                        let type_ascription =
+                            ty_to_type_info(context, handler, engines, ty.clone())?;
                         (type_ascription, Some(type_ascription_span))
                     }
                     None => (TypeInfo::Unknown, None),
@@ -2764,6 +2922,7 @@ fn statement_let_to_ast_nodes(
                     // recursively create variable declarations for the subpatterns on the LHS
                     // and add them to the ast nodes
                     ast_nodes.extend(unfold(
+                        context,
                         handler,
                         engines,
                         recursive_pattern,
@@ -2784,10 +2943,11 @@ fn statement_let_to_ast_nodes(
                 let mut ast_nodes = Vec::new();
 
                 // Generate a deterministic name for the tuple.
-                // Because the parser is single threaded, the name generated below will be stable.
-                static COUNTER: AtomicUsize = AtomicUsize::new(0);
-                let tuple_name = format!("{}{}", TUPLE_NAME_PREFIX, COUNTER.load(Ordering::SeqCst));
-                COUNTER.fetch_add(1, Ordering::SeqCst);
+                let tuple_name = format!(
+                    "{}{}",
+                    TUPLE_NAME_PREFIX,
+                    context.next_destructured_tuple_unique_suffix()
+                );
                 let tuple_name =
                     Ident::new_with_override(Box::leak(tuple_name.into_boxed_str()), span.clone());
 
@@ -2797,7 +2957,8 @@ fn statement_let_to_ast_nodes(
                 let (type_ascription, type_ascription_span) = match &ty_opt {
                     Some(ty) => {
                         let type_ascription_span = ty.span();
-                        let type_ascription = ty_to_type_info(handler, engines, ty.clone())?;
+                        let type_ascription =
+                            ty_to_type_info(context, handler, engines, ty.clone())?;
                         (type_ascription, Some(type_ascription_span))
                     }
                     None => (TypeInfo::Unknown, None),
@@ -2843,6 +3004,7 @@ fn statement_let_to_ast_nodes(
                     // recursively create variable declarations for the subpatterns on the LHS
                     // and add them to the ast nodes
                     ast_nodes.extend(unfold(
+                        context,
                         handler,
                         engines,
                         pattern,
@@ -2864,8 +3026,9 @@ fn statement_let_to_ast_nodes(
         Ok(ast_nodes)
     }
     let span = statement_let.span();
-    let initial_expression = expr_to_expression(handler, engines, statement_let.expr)?;
+    let initial_expression = expr_to_expression(context, handler, engines, statement_let.expr)?;
     unfold(
+        context,
         handler,
         engines,
         statement_let.pattern,
@@ -2885,6 +3048,7 @@ fn dependency_to_include_statement(dependency: &Dependency) -> IncludeStatement 
 
 #[allow(dead_code)]
 fn generic_args_to_type_parameters(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
@@ -2893,11 +3057,12 @@ fn generic_args_to_type_parameters(
         .parameters
         .into_inner()
         .into_iter()
-        .map(|x| ty_to_type_parameter(handler, engines, x))
+        .map(|x| ty_to_type_parameter(context, handler, engines, x))
         .collect()
 }
 
 fn asm_register_declaration_to_asm_register_declaration(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     asm_register_declaration: sway_ast::AsmRegisterDeclaration,
@@ -2906,7 +3071,7 @@ fn asm_register_declaration_to_asm_register_declaration(
         name: asm_register_declaration.register,
         initializer: asm_register_declaration
             .value_opt
-            .map(|(_colon_token, expr)| expr_to_expression(handler, engines, *expr))
+            .map(|(_colon_token, expr)| expr_to_expression(context, handler, engines, *expr))
             .transpose()?,
     })
 }
@@ -2920,7 +3085,11 @@ fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
     }
 }
 
-fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee, ErrorEmitted> {
+fn pattern_to_scrutinee(
+    context: &mut Context,
+    handler: &Handler,
+    pattern: Pattern,
+) -> Result<Scrutinee, ErrorEmitted> {
     let span = pattern.span();
     let scrutinee = match pattern {
         Pattern::Wildcard { underscore_token } => Scrutinee::CatchAll {
@@ -2936,11 +3105,11 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
             Scrutinee::Variable { name, span }
         }
         Pattern::Literal(literal) => Scrutinee::Literal {
-            value: literal_to_literal(handler, literal)?,
+            value: literal_to_literal(context, handler, literal)?,
             span,
         },
         Pattern::Constant(path_expr) => {
-            let call_path = path_expr_to_call_path(handler, path_expr)?;
+            let call_path = path_expr_to_call_path(context, handler, path_expr)?;
             let call_path_span = call_path.span();
             Scrutinee::EnumScrutinee {
                 call_path,
@@ -2959,8 +3128,8 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
                 }
             };
             Scrutinee::EnumScrutinee {
-                call_path: path_expr_to_call_path(handler, path)?,
-                value: Box::new(pattern_to_scrutinee(handler, value)?),
+                call_path: path_expr_to_call_path(context, handler, path)?,
+                value: Box::new(pattern_to_scrutinee(context, handler, value)?),
                 span,
             }
         }
@@ -2991,11 +3160,13 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
 
             let scrutinee_fields = fields
                 .into_iter()
-                .map(|field| pattern_struct_field_to_struct_scrutinee_field(handler, field))
+                .map(|field| {
+                    pattern_struct_field_to_struct_scrutinee_field(context, handler, field)
+                })
                 .collect::<Result<_, _>>()?;
 
             Scrutinee::StructScrutinee {
-                struct_name: path_expr_to_ident(handler, path)?,
+                struct_name: path_expr_to_ident(context, handler, path)?,
                 fields: { scrutinee_fields },
                 span,
             }
@@ -3005,7 +3176,7 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
                 pat_tuple
                     .into_inner()
                     .into_iter()
-                    .map(|pattern| pattern_to_scrutinee(handler, pattern))
+                    .map(|pattern| pattern_to_scrutinee(context, handler, pattern))
                     .collect::<Result<_, _>>()?
             },
             span,
@@ -3017,6 +3188,7 @@ fn pattern_to_scrutinee(handler: &Handler, pattern: Pattern) -> Result<Scrutinee
 
 #[allow(dead_code)]
 fn ty_to_type_parameter(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
@@ -3025,7 +3197,7 @@ fn ty_to_type_parameter(
     let decl_engine = engines.de();
 
     let name_ident = match ty {
-        Ty::Path(path_type) => path_type_to_ident(handler, path_type)?,
+        Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
             let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
             return Ok(TypeParameter {
@@ -3057,7 +3229,11 @@ fn ty_to_type_parameter(
 }
 
 #[allow(dead_code)]
-fn path_type_to_ident(handler: &Handler, path_type: PathType) -> Result<Ident, ErrorEmitted> {
+fn path_type_to_ident(
+    context: &mut Context,
+    handler: &Handler,
+    path_type: PathType,
+) -> Result<Ident, ErrorEmitted> {
     let PathType {
         root_opt,
         prefix,
@@ -3066,10 +3242,14 @@ fn path_type_to_ident(handler: &Handler, path_type: PathType) -> Result<Ident, E
     if root_opt.is_some() || !suffix.is_empty() {
         panic!("types with paths aren't currently supported");
     }
-    path_type_segment_to_ident(handler, prefix)
+    path_type_segment_to_ident(context, handler, prefix)
 }
 
-fn path_expr_to_ident(handler: &Handler, path_expr: PathExpr) -> Result<Ident, ErrorEmitted> {
+fn path_expr_to_ident(
+    context: &mut Context,
+    handler: &Handler,
+    path_expr: PathExpr,
+) -> Result<Ident, ErrorEmitted> {
     let span = path_expr.span();
     let PathExpr {
         root_opt,
@@ -3081,10 +3261,11 @@ fn path_expr_to_ident(handler: &Handler, path_expr: PathExpr) -> Result<Ident, E
         let error = ConvertParseTreeError::PathsNotSupportedHere { span };
         return Err(handler.emit_err(error.into()));
     }
-    path_expr_segment_to_ident(handler, &prefix)
+    path_expr_segment_to_ident(context, handler, &prefix)
 }
 
 fn pattern_struct_field_to_struct_scrutinee_field(
+    context: &mut Context,
     handler: &Handler,
     pattern_struct_field: PatternStructField,
 ) -> Result<StructScrutineeField, ErrorEmitted> {
@@ -3101,7 +3282,7 @@ fn pattern_struct_field_to_struct_scrutinee_field(
             let struct_scrutinee_field = StructScrutineeField::Field {
                 field: field_name,
                 scrutinee: pattern_opt
-                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(handler, *pattern))
+                    .map(|(_colon_token, pattern)| pattern_to_scrutinee(context, handler, *pattern))
                     .transpose()?,
                 span,
             };
@@ -3111,6 +3292,7 @@ fn pattern_struct_field_to_struct_scrutinee_field(
 }
 
 fn assignable_to_expression(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     assignable: Assignable,
@@ -3123,8 +3305,15 @@ fn assignable_to_expression(
         },
         Assignable::Index { target, arg } => Expression {
             kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(assignable_to_expression(handler, engines, *target)?),
-                index: Box::new(expr_to_expression(handler, engines, *arg.into_inner())?),
+                prefix: Box::new(assignable_to_expression(
+                    context, handler, engines, *target,
+                )?),
+                index: Box::new(expr_to_expression(
+                    context,
+                    handler,
+                    engines,
+                    *arg.into_inner(),
+                )?),
             }),
             span,
         },
@@ -3158,7 +3347,9 @@ fn assignable_to_expression(
                 }
                 None => Expression {
                     kind: ExpressionKind::Subfield(SubfieldExpression {
-                        prefix: Box::new(assignable_to_expression(handler, engines, *target)?),
+                        prefix: Box::new(assignable_to_expression(
+                            context, handler, engines, *target,
+                        )?),
                         field_to_access: name,
                     }),
                     span,
@@ -3180,7 +3371,9 @@ fn assignable_to_expression(
             };
             Expression {
                 kind: ExpressionKind::TupleIndex(TupleIndexExpression {
-                    prefix: Box::new(assignable_to_expression(handler, engines, *target)?),
+                    prefix: Box::new(assignable_to_expression(
+                        context, handler, engines, *target,
+                    )?),
                     index,
                     index_span: field_span,
                 }),
@@ -3192,6 +3385,7 @@ fn assignable_to_expression(
 }
 
 fn assignable_to_reassignment_target(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     assignable: Assignable,
@@ -3215,11 +3409,12 @@ fn assignable_to_reassignment_target(
             Assignable::TupleFieldProjection { .. } => break,
         }
     }
-    let expression = assignable_to_expression(handler, engines, assignable)?;
+    let expression = assignable_to_expression(context, handler, engines, assignable)?;
     Ok(ReassignmentTarget::VariableExpression(Box::new(expression)))
 }
 
 fn generic_args_to_type_arguments(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
@@ -3233,7 +3428,8 @@ fn generic_args_to_type_arguments(
         .into_iter()
         .map(|ty| {
             let span = ty.span();
-            let type_id = type_engine.insert(decl_engine, ty_to_type_info(handler, engines, ty)?);
+            let type_id =
+                type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
             Ok(TypeArgument {
                 type_id,
                 initial_type_id: type_id,
@@ -3244,6 +3440,7 @@ fn generic_args_to_type_arguments(
 }
 
 fn ty_tuple_descriptor_to_type_arguments(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     ty_tuple_descriptor: TyTupleDescriptor,
@@ -3251,9 +3448,9 @@ fn ty_tuple_descriptor_to_type_arguments(
     let type_arguments = match ty_tuple_descriptor {
         TyTupleDescriptor::Nil => vec![],
         TyTupleDescriptor::Cons { head, tail, .. } => {
-            let mut type_arguments = vec![ty_to_type_argument(handler, engines, *head)?];
+            let mut type_arguments = vec![ty_to_type_argument(context, handler, engines, *head)?];
             for ty in tail.into_iter() {
-                type_arguments.push(ty_to_type_argument(handler, engines, ty)?);
+                type_arguments.push(ty_to_type_argument(context, handler, engines, ty)?);
             }
             type_arguments
         }
@@ -3262,6 +3459,7 @@ fn ty_tuple_descriptor_to_type_arguments(
 }
 
 fn path_type_to_type_info(
+    context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     path_type: PathType,
@@ -3303,7 +3501,7 @@ fn path_type_to_type_info(
                 };
                 let abi_name = match generic_ty {
                     Ty::Path(path_type) => {
-                        let call_path = path_type_to_call_path(handler, path_type)?;
+                        let call_path = path_type_to_call_path(context, handler, path_type)?;
                         AbiName::Known(call_path)
                     }
                     Ty::Infer { .. } => AbiName::Deferred,
@@ -3320,7 +3518,7 @@ fn path_type_to_type_info(
             } else {
                 let type_arguments = match generics_opt {
                     Some((_double_colon_token, generic_args)) => {
-                        generic_args_to_type_arguments(handler, engines, generic_args)?
+                        generic_args_to_type_arguments(context, handler, engines, generic_args)?
                     }
                     None => Vec::new(),
                 };
@@ -3368,6 +3566,7 @@ where
 }
 
 fn item_attrs_to_map(
+    _context: &mut Context,
     handler: &Handler,
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
@@ -3421,6 +3620,7 @@ fn item_attrs_to_map(
 }
 
 fn error_if_self_param_is_not_allowed(
+    _context: &mut Context,
     handler: &Handler,
     parameters: &[FunctionParameter],
     fn_kind: &str,
