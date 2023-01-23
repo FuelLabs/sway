@@ -18,6 +18,7 @@ pub(crate) struct Document {
     pub(crate) module_info: ModuleInfo,
     pub(crate) item_header: ItemHeader,
     pub(crate) item_body: ItemBody,
+    pub(crate) raw_attributes: Option<String>,
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
@@ -44,6 +45,20 @@ impl Document {
             name: self.item_header.item_name.as_str().to_owned(),
             module_info: self.module_info.clone(),
             html_filename: self.html_filename(),
+            preview_opt: self.preview_opt(),
+        }
+    }
+    fn preview_opt(&self) -> Option<String> {
+        match &self.raw_attributes {
+            Some(description) => {
+                if description.len() > 200 {
+                    let (first, _) = description.split_at(75);
+                    Some(format!("{}...", first.trim_end()))
+                } else {
+                    Some(description.to_string())
+                }
+            }
+            None => None,
         }
     }
     /// Gather [Documentation] from the [TyProgram].

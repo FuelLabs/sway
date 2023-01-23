@@ -65,6 +65,7 @@ impl TyStorageDeclaration {
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: first_field.clone(),
+                    span: first_field.span(),
                 });
                 return err(warnings, errors);
             }
@@ -109,6 +110,7 @@ impl TyStorageDeclaration {
                         field_name: field.clone(),
                         available_fields: available_fields.join(", "),
                         struct_name: type_checked_buf.last().unwrap().name.clone(),
+                        span: field.span(),
                     });
                     return err(warnings, errors);
                 }
