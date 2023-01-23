@@ -352,11 +352,8 @@ pub(crate) fn type_check_method_application(
 
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
-    let trait_map = ctx
-        .namespace
-        .implemented_traits
-        .filter_by_type(method.return_type, engines);
-    ctx.namespace.implemented_traits.extend(trait_map, engines);
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, method.return_type);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

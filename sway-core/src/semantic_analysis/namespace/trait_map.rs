@@ -807,7 +807,6 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
                 trait_constraints: etc,
             },
         ) => rn.as_str() == en.as_str() && rtc.eq(&etc, engines),
-        // (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => false,
         (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
 
         // these cases may contain dynamic types
