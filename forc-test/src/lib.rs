@@ -146,7 +146,7 @@ impl BuiltTests {
     /// Contracts are already compiled once without tests included to do `CONTRACT_ID` injection. `built_contracts` map holds already compiled contracts so that they can be matched with their "tests included" version.
     pub(crate) fn from_built(
         built: Built,
-        built_contracts: HashMap<String, BuiltPackage>,
+        built_contracts: HashMap<pkg::Pinned, BuiltPackage>,
     ) -> anyhow::Result<BuiltTests> {
         let built = match built {
             Built::Package(built_pkg) => {
@@ -181,14 +181,14 @@ impl<'a> PackageTests {
     /// If the `BuiltPackage` is a contract, match the contract with the contract's
     fn from_built_pkg(
         built_pkg: BuiltPackage,
-        built_contracts: &HashMap<String, BuiltPackage>,
+        built_contracts: &HashMap<pkg::Pinned, BuiltPackage>,
     ) -> anyhow::Result<PackageTests> {
         let tree_type = &built_pkg.tree_type;
-        let built_pkg_name = &built_pkg.pkg_name;
         let package_test = match tree_type {
             sway_core::language::parsed::TreeType::Contract => {
+                let built_pkg_descriptor = &built_pkg.built_pkg_descriptor;
                 let built_contract_without_tests = built_contracts
-                    .get(built_pkg_name)
+                    .get(&built_pkg_descriptor.pinned)
                     .ok_or_else(|| anyhow::anyhow!("missing built contract without tests"))?;
                 let contract_to_test = ContractToTest {
                     tests_included: built_pkg,
@@ -386,9 +386,7 @@ fn build_contracts_without_tests(
                 .expect("missing manifest for member to test");
             (pinned_pkg, pkg_manifest)
         })
-        .filter(|(_, pkg_manifest)| {
-            matches!(pkg_manifest.program_type(), Ok(TreeType::Contract))
-        })
+        .filter(|(_, pkg_manifest)| matches!(pkg_manifest.program_type(), Ok(TreeType::Contract)))
         .map(|(pinned_pkg, pkg_manifest)| {
             let pkg_path = pkg_manifest.dir();
             let build_opts_without_tests = opts
@@ -417,7 +415,7 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     for (pinned_contract, built_contract) in built_contracts_without_tests {
         let built_contract = built_contract?;
         let contract_id = pkg::contract_id(&built_contract, &fuel_tx::Salt::zeroed());
-        built_contracts.insert(pinned_contract.name.clone(), built_contract);
+        built_contracts.insert(pinned_contract.clone(), built_contract);
 
         // Construct namespace with contract id
         let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();

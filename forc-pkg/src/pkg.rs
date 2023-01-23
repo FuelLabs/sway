@@ -97,7 +97,17 @@ pub struct BuiltPackage {
     source_map: SourceMap,
     pub pkg_name: String,
     pub decl_engine: DeclEngine,
+    pub built_pkg_descriptor: BuiltPackageDescriptor,
+}
+
+/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
+/// package can be retrieved later on.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageDescriptor {
+    /// The manifest file of the package.
     pub manifest_file: PackageManifestFile,
+    /// The pinned version of the package.
+    pub pinned: Pinned,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2524,6 +2534,10 @@ pub fn compile(
                 }
             }
 
+            let built_pkg_descriptor = BuiltPackageDescriptor {
+                manifest_file: manifest.clone(),
+                pinned: pkg.clone(),
+            };
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 build_target,
@@ -2535,7 +2549,7 @@ pub fn compile(
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 decl_engine: engines.de().clone(),
-                manifest_file: manifest.clone(),
+                built_pkg_descriptor,
             };
             Ok((built_package, namespace))
         }
