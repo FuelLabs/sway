@@ -1,12 +1,12 @@
-use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
-use pkg::{Built, BuiltPackage};
+use pkg::{Built, BuiltPackage, TestPassCondition};
 use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
-use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind, BuildTarget};
-use sway_types::{Span, Spanned};
+use sway_core::BuildTarget;
+use sway_types::Span;
 use tx::{AssetId, TxPointer, UtxoId};
 use vm::prelude::SecretKey;
 
@@ -45,16 +45,9 @@ pub struct TestResult {
     /// The resulting state after executing the test function.
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
-    pub condition: TestPassCondition,
+    pub condition: pkg::TestPassCondition,
     /// Emitted `Recipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
-}
-
-/// The possible conditions for a test result to be considered "passing".
-#[derive(Debug)]
-pub enum TestPassCondition {
-    ShouldRevert,
-    ShouldNotRevert,
 }
 
 /// A package or a workspace that has been built, ready for test execution.
@@ -197,13 +190,13 @@ impl<'a> PackageTests {
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
-            .entries
+            .pkg_entries
             .iter()
             .filter(|entry| entry.is_test())
             .map(|entry| {
                 let offset =
-                    u32::try_from(entry.imm).expect("test instruction offset out of range");
-                let name = entry.fn_name.clone();
+                    u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
+                let name = entry.finalized.fn_name.clone();
                 let test_setup = self.setup()?;
                 let (state, duration, receipts) =
                     exec_test(&pkg_with_tests.bytecode, offset, test_setup);
@@ -217,16 +210,9 @@ impl<'a> PackageTests {
                     })
                     .collect();
 
-                let test_decl_id = entry
-                    .test_decl_id
-                    .clone()
-                    .expect("test entry point is missing declaration id");
-                let span = test_decl_id.span();
-                let test_function_decl = pkg_with_tests
-                    .decl_engine
-                    .get_function(test_decl_id, &span)
-                    .expect("declaration engine is missing function declaration for test");
-                let condition = test_pass_condition(&test_function_decl)?;
+                let test_entry = entry.expect_test_entry()?;
+                let span = test_entry.span;
+                let condition = test_entry.pass_condition; 
                 Ok(TestResult {
                     name,
                     duration,
@@ -353,7 +339,7 @@ impl BuiltTests {
         pkgs.iter()
             .map(|pkg| {
                 pkg.built_pkg_with_tests()
-                    .entries
+                    .pkg_entries
                     .iter()
                     .filter(|e| e.is_test())
                     .count()
@@ -422,26 +408,6 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
         storage: storage_after_deploy.clone(),
         contract_id: Some(contract_id),
     })
-}
-
-fn test_pass_condition(
-    test_function_decl: &TyFunctionDeclaration,
-) -> anyhow::Result<TestPassCondition> {
-    let test_args: HashSet<String> = test_function_decl
-        .attributes
-        .get(&AttributeKind::Test)
-        .expect("test declaration is missing test attribute")
-        .iter()
-        .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
-        .collect();
-    let test_name = &test_function_decl.name;
-    if test_args.is_empty() {
-        Ok(TestPassCondition::ShouldNotRevert)
-    } else if test_args.get("should_revert").is_some() {
-        Ok(TestPassCondition::ShouldRevert)
-    } else {
-        anyhow::bail!("Invalid test argument(s) for test: {test_name}.")
-    }
 }
 
 /// Build the given package and run its tests, returning the results.
