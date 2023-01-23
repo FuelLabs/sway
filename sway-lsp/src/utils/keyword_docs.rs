@@ -24,12 +24,6 @@ impl KeywordDocs {
             /// The keyword `pub` makes any module, function, or data structure accessible from inside
             /// of external modules. The `pub` keyword may also be used in a `use` declaration to re-export
             /// an identifier from a namespace.
-            ///
-            /// For more information on the `pub` keyword, please see the visibility section
-            /// of the [reference] and for some examples, see [Rust by Example].
-            ///
-            /// [reference]:../reference/visibility-and-privacy.html?highlight=pub#visibility-and-privacy
-            /// [Rust by Example]:../rust-by-example/mod/visibility.html
             mod pub_keyword {}
         };
 
@@ -53,109 +47,42 @@ impl KeywordDocs {
             ///   * Nesting groups of the previous features multiple times,
             ///     such as `use a::b::{self as ab, c, d::{*, e::f}};`
             ///   * Reexporting with visibility modifiers such as `pub use a::b;`
-            ///   * Importing with `_` to only import the methods of a trait without binding it to a name
-            ///     (to avoid conflict for example): `use ::std::io::Read as _;`.
-            ///
-            /// Using path qualifiers like [`crate`], [`super`] or [`self`] is supported: `use crate::a::b;`.
-            ///
-            /// Note that when the wildcard `*` is used on a type, it does not import its methods (though
-            /// for `enum`s it imports the variants, as shown in the example below).
-            ///
-            /// ```compile_fail,edition2018
-            /// enum ExampleEnum {
-            ///     VariantA,
-            ///     VariantB,
-            /// }
-            ///
-            /// impl ExampleEnum {
-            ///     fn new() -> Self {
-            ///         Self::VariantA
-            ///     }
-            /// }
-            ///
-            /// use ExampleEnum::*;
-            ///
-            /// // Compiles.
-            /// let _ = VariantA;
-            ///
-            /// // Does not compile !
-            /// let n = new();
-            /// ```
-            ///
-            /// For more information on `use` and paths in general, see the [Reference].
-            ///
-            /// The differences about paths and the `use` keyword between the 2015 and 2018 editions
-            /// can also be found in the [Reference].
-            ///
-            /// [`crate`]: keyword.crate.html
-            /// [`self`]: keyword.self.html
-            /// [`super`]: keyword.super.html
-            /// [Reference]: ../reference/items/use-declarations.html
             mod use_keyword {}
         };
 
         let as_keyword: ItemMod = parse_quote! {
             /// Cast between types, or rename an import.
             ///
-            /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
-            /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
-            /// other pointers.
-            ///
-            /// ```sway
-            /// let thing1: u8 = 89.0 as u8;
-            /// assert_eq!('B' as u32, 66);
-            /// assert_eq!(thing1 as char, 'Y');
-            /// let thing2: f32 = thing1 as f32 + 10.5;
-            /// assert_eq!(true as u8 + thing2 as u8, 100);
-            /// ```
-            ///
             /// In general, any cast that can be performed via ascribing the type can also be done using `as`,
             /// so instead of writing `let x: u32 = 123`, you can write `let x = 123 as u32` (note: `let x: u32
-            /// = 123` would be best in that situation). The same is not true in the other direction, however;
-            /// explicitly using `as` allows a few more coercions that aren't allowed implicitly, such as
-            /// changing the type of a raw pointer or turning closures into raw pointers.
-            ///
-            /// `as` can be seen as the primitive for `From` and `Into`: `as` only works  with primitives
-            /// (`u8`, `bool`, `str`, pointers, ...) whereas `From` and `Into`  also works with types like
-            /// `String` or `Vec`.
+            /// = 123` would be best in that situation). The same is not true in the other direction
             ///
             /// `as` can also be used with the `_` placeholder when the destination type can be inferred. Note
             /// that this can cause inference breakage and usually such code should use an explicit type for
-            /// both clarity and stability. This is most useful when converting pointers using `as *const _` or
-            /// `as *mut _` though the [`cast`][const-cast] method is recommended over `as *const _` and it is
-            /// [the same][mut-cast] for `as *mut _`: those methods make the intent clearer.
+            /// both clarity and stability.
             ///
-            /// `as` is also used to rename imports in [`use`] and [`extern crate`][`crate`] statements:
+            /// `as` is also used to rename imports in [`use`] statements:
             ///
+            /// ```sway
+            /// use foo::Foo as MyFoo;
             /// ```
-            /// # #[allow(unused_imports)]
-            /// use std::{mem as memory, net as network};
-            /// // Now you can use the names `memory` and `network` to refer to `std::mem` and `std::net`.
-            /// ```
-            /// For more information on what `as` is capable of, see the [Reference].
-            ///
-            /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
-            /// [`crate`]: keyword.crate.html
-            /// [`use`]: keyword.use.html
-            /// [const-cast]: pointer::cast
-            /// [mut-cast]: primitive.pointer.html#method.cast-1
             mod as_keyword {}
         };
 
         let struct_keyword: ItemMod = parse_quote! {
             /// A type that is composed of other types.
             ///
-            /// Structs in Rust come in three flavors: Structs with named fields, tuple structs, and unit
+            /// Structs in Sway come in three flavors: Structs with named fields, tuple structs, and unit
             /// structs.
             ///
-            /// ```rust
+            /// ```sway
             /// struct Regular {
-            ///     field1: f32,
-            ///     field2: String,
+            ///     field1: u8,
+            ///     field2: u32,
             ///     pub field3: bool
             /// }
             ///
-            /// struct Tuple(u32, String);
+            /// struct Tuple(u32, u64);
             ///
             /// struct Unit;
             /// ```
@@ -183,11 +110,11 @@ impl KeywordDocs {
             /// `new()`, but when that isn't available (or you're writing the constructor itself), struct
             /// literal syntax is used:
             ///
-            /// ```rust
-            /// # struct Foo { field1: f32, field2: String, etc: bool }
+            /// ```sway
+            /// # struct Foo { field1: u8, field2: u32, etc: bool }
             /// let example = Foo {
-            ///     field1: 42.0,
-            ///     field2: "blah".to_string(),
+            ///     field1: 42,
+            ///     field2: 1024,
             ///     etc: true,
             /// };
             /// ```
@@ -200,37 +127,24 @@ impl KeywordDocs {
             /// name, the assignment can be simplified from `field: field` into simply `field`. The following
             /// example of a hypothetical constructor demonstrates this:
             ///
-            /// ```rust
+            /// ```sway
             /// struct User {
-            ///     name: String,
+            ///     age: u8,
             ///     admin: bool,
             /// }
             ///
             /// impl User {
-            ///     pub fn new(name: String) -> Self {
+            ///     pub fn new(age: u8) -> Self {
             ///         Self {
-            ///             name,
+            ///             age,
             ///             admin: false,
             ///         }
             ///     }
             /// }
             /// ```
             ///
-            /// Another shortcut for struct instantiation is available, used when you need to make a new
-            /// struct that has the same values as most of a previous struct of the same type, called struct
-            /// update syntax:
-            ///
-            /// ```rust
-            /// # struct Foo { field1: String, field2: () }
-            /// # let thing = Foo { field1: "".to_string(), field2: () };
-            /// let updated_thing = Foo {
-            ///     field1: "a new value".to_string(),
-            ///     ..thing
-            /// };
-            /// ```
-            ///
             /// Tuple structs are instantiated in the same way as tuples themselves, except with the struct's
-            /// name as a prefix: `Foo(123, false, 0.1)`.
+            /// name as a prefix: `Foo(123, false, 26)`.
             ///
             /// Empty structs are instantiated with just their name, and don't need anything else. `let thing =
             /// EmptyStruct;`
@@ -240,25 +154,18 @@ impl KeywordDocs {
             /// Structs are always written in CamelCase, with few exceptions. While the trailing comma on a
             /// struct's list of fields can be omitted, it's usually kept for convenience in adding and
             /// removing fields down the line.
-            ///
-            /// For more information on structs, take a look at the [Rust Book][book] or the
-            /// [Reference][reference].
-            ///
-            /// [`PhantomData`]: marker::PhantomData
-            /// [book]: ../book/ch05-01-defining-structs.html
-            /// [reference]: ../reference/items/structs.html
             mod struct_keyword {}
         };
 
         let enum_keyword: ItemMod = parse_quote! {
             /// A type that can be any one of several variants.
             ///
-            /// Enums in Rust are similar to those of other compiled languages like C, but have important
-            /// differences that make them considerably more powerful. What Rust calls enums are more commonly
+            /// Enums in Sway are similar to those of other compiled languages like C, but have important
+            /// differences that make them considerably more powerful. What Sway calls enums are more commonly
             /// known as [Algebraic Data Types][ADT] if you're coming from a functional programming background.
             /// The important detail is that each enum variant can have data to go along with it.
             ///
-            /// ```rust
+            /// ```sway
             /// # struct Coord;
             /// enum SimpleEnum {
             ///     FirstVariant,
@@ -277,7 +184,7 @@ impl KeywordDocs {
             ///     Something(u32),
             ///     LotsOfThings {
             ///         usual_struct_stuff: bool,
-            ///         blah: String,
+            ///         blah: u8,
             ///     }
             /// }
             ///
@@ -294,14 +201,10 @@ impl KeywordDocs {
             /// When data follows along with a variant, such as with rust's built-in [`Option`] type, the data
             /// is added as the type describes, for example `Option::Some(123)`. The same follows with
             /// struct-like variants, with things looking like `ComplexEnum::LotsOfThings { usual_struct_stuff:
-            /// true, blah: "hello!".to_string(), }`. Empty Enums are similar to [`!`] in that they cannot be
+            /// true, blah: 245, }`. Empty Enums are similar to [`!`] in that they cannot be
             /// instantiated at all, and are used mainly to mess with the type system in interesting ways.
             ///
-            /// For more information, take a look at the [Rust Book] or the [Reference]
-            ///
             /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
-            /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
-            /// [Reference]: ../reference/items/enumerations.html
             mod enum_keyword {}
         };
 
@@ -314,28 +217,15 @@ impl KeywordDocs {
             /// In paths, `self` can be used to refer to the current module, either in a
             /// [`use`] statement or in a path to access an element:
             ///
-            /// ```
-            /// # #![allow(unused_imports)]
-            /// use std::io::{self, Read};
+            /// ```sway
+            /// use std::contract_id::{self, ContractId};
             /// ```
             ///
             /// Is functionally the same as:
             ///
-            /// ```
-            /// # #![allow(unused_imports)]
-            /// use std::io;
-            /// use std::io::Read;
-            /// ```
-            ///
-            /// Using `self` to access an element in the current module:
-            ///
-            /// ```
-            /// # #![allow(dead_code)]
-            /// # fn main() {}
-            /// fn foo() {}
-            /// fn bar() {
-            ///     self::foo()
-            /// }
+            /// ```sway
+            /// use std::contract_id;
+            /// use std::contract_id::ContractId;
             /// ```
             ///
             /// `self` as the current receiver for a method allows to omit the parameter
@@ -351,57 +241,22 @@ impl KeywordDocs {
             ///         Self(0)
             ///     }
             ///
-            ///     // Consuming `self`.
-            ///     fn consume(self) -> Self {
-            ///         Self(self.0 + 1)
-            ///     }
-            ///
             ///     // Borrowing `self`.
-            ///     fn borrow(&self) -> &i32 {
-            ///         &self.0
+            ///     fn value(&self) -> i32 {
+            ///         self.0
             ///     }
             ///
-            ///     // Borrowing `self` mutably.
-            ///     fn borrow_mut(&mut self) -> &mut i32 {
-            ///         &mut self.0
+            ///     // Updating `self` mutably.
+            ///     fn clear(ref mut self) {
+            ///         self.0 = 0
             ///     }
             /// }
-            ///
-            /// // This method must be called with a `Type::` prefix.
-            /// let foo = Foo::new();
-            /// assert_eq!(foo.0, 0);
-            ///
-            /// // Those two calls produces the same result.
-            /// let foo = Foo::consume(foo);
-            /// assert_eq!(foo.0, 1);
-            /// let foo = foo.consume();
-            /// assert_eq!(foo.0, 2);
-            ///
-            /// // Borrowing is handled automatically with the second syntax.
-            /// let borrow_1 = Foo::borrow(&foo);
-            /// let borrow_2 = foo.borrow();
-            /// assert_eq!(borrow_1, borrow_2);
-            ///
-            /// // Borrowing mutably is handled automatically too with the second syntax.
-            /// let mut foo = Foo::new();
-            /// *Foo::borrow_mut(&mut foo) += 1;
-            /// assert_eq!(foo.0, 1);
-            /// *foo.borrow_mut() += 1;
-            /// assert_eq!(foo.0, 2);
             /// ```
-            ///
-            /// Note that this automatic conversion when calling `foo.method()` is not
-            /// limited to the examples above. See the [Reference] for more information.
-            ///
-            /// [`use`]: keyword.use.html
-            /// [Reference]: ../reference/items/associated-items.html#methods
             mod self_keyword {}
         };
 
         let fn_keyword: ItemMod = parse_quote! {
-            /// A function or function pointer.
-            ///
-            /// Functions are the primary way code is executed within Rust. Function blocks, usually just
+            /// Functions are the primary way code is executed within Sway. Function blocks, usually just
             /// called functions, can be defined in a variety of different places and be assigned many
             /// different attributes and modifiers.
             ///
@@ -409,14 +264,14 @@ impl KeywordDocs {
             /// but most functions will end up being inside [`impl`] blocks, either on another type itself, or
             /// as a trait impl for that type.
             ///
-            /// ```rust
+            /// ```sway
             /// fn standalone_function() {
             ///     // code
             /// }
             ///
-            /// pub fn public_thing(argument: bool) -> String {
+            /// pub fn public_thing(argument: bool) -> bool {
             ///     // code
-            ///     # "".to_string()
+            ///     true
             /// }
             ///
             /// struct Thing {
@@ -436,32 +291,14 @@ impl KeywordDocs {
             /// functions can also declare a list of type parameters along with trait bounds that they fall
             /// into.
             ///
-            /// ```rust
-            /// fn generic_function<T: Clone>(x: T) -> (T, T, T) {
-            ///     (x.clone(), x.clone(), x.clone())
-            /// }
-            ///
-            /// fn generic_where<T>(x: T) -> T
-            ///     where T: std::ops::Add<Output = T> + Copy
-            /// {
-            ///     x + x + x
-            /// }
+            /// ```sway
+            /// fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: MyAdd {
+            ///    MyPoint {
+            ///        x: a.x.my_add(b.x),
+            ///        y: a.y.my_add(b.y),
+            ///    }
+            ///}
             /// ```
-            ///
-            /// Declaring trait bounds in the angle brackets is functionally identical to using a `where`
-            /// clause. It's up to the programmer to decide which works better in each situation, but `where`
-            /// tends to be better when things get longer than one line.
-            ///
-            /// Along with being made public via `pub`, `fn` can also have an [`extern`] added for use in
-            /// FFI.
-            ///
-            /// For more information on the various types of functions and how they're used, consult the [Rust
-            /// book] or the [Reference].
-            ///
-            /// [`impl`]: keyword.impl.html
-            /// [`extern`]: keyword.extern.html
-            /// [Rust book]: ../book/ch03-03-how-functions-work.html
-            /// [Reference]: ../reference/items/functions.html
             mod fn_keyword {}
         };
 
@@ -483,17 +320,14 @@ impl KeywordDocs {
             ///
             /// Traits can serve as markers or carry other logical semantics that
             /// aren't expressed through their items. When a type implements that
-            /// trait it is promising to uphold its contract. [`Send`] and [`Sync`] are two
-            /// such marker traits present in the standard library.
-            ///
-            /// See the [Reference][Ref-Traits] for a lot more information on traits.
+            /// trait it is promising to uphold its contract.
             ///
             /// # Examples
             ///
             /// Traits are declared using the `trait` keyword. Types can implement them
             /// using [`impl`] `Trait` [`for`] `Type`:
             ///
-            /// ```rust
+            /// ```sway
             /// trait Zero {
             ///     const ZERO: Self;
             ///     fn is_zero(&self) -> bool;
@@ -1161,8 +995,7 @@ impl KeywordDocs {
             /// The primary use for the `let` keyword is in `let` statements, which are used to introduce a new
             /// set of variables into the current scope, as given by a pattern.
             ///
-            /// ```rust
-            /// # #![allow(unused_assignments)]
+            /// ```sway
             /// let thing1: i32 = 100;
             /// let thing2 = 200 + thing1;
             ///
@@ -1180,7 +1013,7 @@ impl KeywordDocs {
             ///     a: true,
             ///     b: 10004,
             /// };
-            /// assert!(a);
+            /// asset(a == true);
             /// ```
             ///
             /// The pattern is most commonly a single variable, which means no pattern matching is done and
@@ -1463,40 +1296,17 @@ impl KeywordDocs {
             /// When `break` is encountered, execution of the associated loop body is
             /// immediately terminated.
             ///
-            /// ```rust
-            /// let mut last = 0;
+            /// ```sway
+            /// let mut x = 0;
             ///
-            /// for x in 1..100 {
+            /// for x < 100 {
             ///     if x > 12 {
             ///         break;
             ///     }
-            ///     last = x;
+            ///     x += 1;
             /// }
             ///
-            /// assert_eq!(last, 12);
-            /// println!("{last}");
-            /// ```
-            ///
-            /// A break expression is normally associated with the innermost loop enclosing the
-            /// `break` but a label can be used to specify which enclosing loop is affected.
-            ///
-            /// ```rust
-            /// 'outer: for i in 1..=5 {
-            ///     println!("outer iteration (i): {i}");
-            ///
-            ///     '_inner: for j in 1..=200 {
-            ///         println!("    inner iteration (j): {j}");
-            ///         if j >= 3 {
-            ///             // breaks from inner loop, lets outer loop continue.
-            ///             break;
-            ///         }
-            ///         if i >= 2 {
-            ///             // breaks from outer loop, and directly to "Bye".
-            ///             break 'outer;
-            ///         }
-            ///     }
-            /// }
-            /// println!("Bye.");
+            /// assert(x == 12);
             /// ```
             ///
             /// When associated with `loop`, a break expression may be used to return a value from that loop.
@@ -1534,20 +1344,20 @@ impl KeywordDocs {
             /// When `continue` is encountered, the current iteration is terminated, returning control to the
             /// loop head, typically continuing with the next iteration.
             ///
-            /// ```rust
+            /// ```sway
             /// // Printing odd numbers by skipping even ones
             /// for number in 1..=10 {
             ///     if number % 2 == 0 {
             ///         continue;
             ///     }
-            ///     println!("{number}");
+            ///     log(number);
             /// }
             /// ```
             ///
             /// Like `break`, `continue` is normally associated with the innermost enclosing loop, but labels
             /// may be used to specify the affected loop.
             ///
-            /// ```rust
+            /// ```sway
             /// // Print Odd numbers under 30 with unit <= 5
             /// 'tens: for ten in 0..3 {
             ///     '_units: for unit in 0..=9 {
@@ -1561,10 +1371,6 @@ impl KeywordDocs {
             ///     }
             /// }
             /// ```
-            ///
-            /// See [continue expressions] from the reference for more details.
-            ///
-            /// [continue expressions]: ../reference/expressions/loop-expr.html#continue-expressions
             mod continue_keyword {}
         };
 
