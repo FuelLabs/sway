@@ -60,6 +60,11 @@ fn run() -> Result<()> {
         }
     } else if is_sway_file(&path) {
         format_single_file(&path)?;
+    } else {
+        bail!(
+            "Invalid directory or file for formatting: '{}'",
+            path.display()
+        );
     }
 
     Ok(())
