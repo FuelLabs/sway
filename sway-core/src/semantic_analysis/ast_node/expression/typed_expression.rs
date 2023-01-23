@@ -446,12 +446,14 @@ impl ty::TyExpression {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
@@ -1189,7 +1191,8 @@ impl ty::TyExpression {
             }
             (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: call_path_binding.inner.suffix,
+                    name: call_path_binding.inner.suffix.clone(),
+                    span: call_path_binding.inner.suffix.span(),
                 });
                 return err(warnings, errors);
             }
@@ -1642,7 +1645,7 @@ impl ty::TyExpression {
                                 errors
                             );
                             if !variable_decl.mutability.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
+                                errors.push(CompileError::AssignmentToNonMutable { name, span });
                                 return err(warnings, errors);
                             }
                             break (name, variable_decl.body.return_type);
