@@ -160,14 +160,14 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
-        let written = maybe_write_comments_from_map(
+        let comments_written = maybe_write_comments_from_map(
             &mut else_if_str,
             if_expr.then_block.span().end(),
             else_token.span().start(),
             formatter,
         )?;
 
-        if written {
+        if comments_written {
             write!(
                 else_if_str,
                 "{}",
