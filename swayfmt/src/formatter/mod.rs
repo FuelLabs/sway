@@ -1,5 +1,6 @@
 use self::shape::Shape;
 use crate::parse::parse_file;
+use crate::utils::map::comments::{comment_map_from_src, CommentMap};
 use crate::utils::map::{
     comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
 };
@@ -16,6 +17,7 @@ pub(crate) mod shape;
 pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
+    pub comment_map: CommentMap,
 }
 
 pub type FormattedCode = String;
@@ -62,6 +64,9 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
+        // Collect Span -> Comment mapping from unformatted input.
+        self.comment_map = comment_map_from_src(Arc::from(src.clone()))?;
+
         let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
 
@@ -74,6 +79,7 @@ impl Formatter {
             Arc::from(formatted_code.clone()),
             path.clone(),
             &mut formatted_code,
+            &mut self.comment_map,
         )?;
         // Add newline sequences
         handle_newlines(

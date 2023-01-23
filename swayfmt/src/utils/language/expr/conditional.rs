@@ -1,4 +1,5 @@
 use crate::{
+    comments::{get_comments_between, maybe_write_comments_from_map},
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -23,8 +24,14 @@ impl Format for IfExpr {
                 .shape
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
+                let comments =
+                    get_comments_between(self.span().start(), self.span().end(), formatter);
                 // check if the entire expression could fit into a single line
-                let full_width_line_style = get_full_width_line_style(self, formatter)?;
+                let full_width_line_style = if !comments.is_empty() {
+                    LineStyle::Multiline
+                } else {
+                    get_full_width_line_style(self, formatter)?
+                };
                 if full_width_line_style == LineStyle::Inline && self.else_opt.is_some() {
                     formatter
                         .shape
@@ -153,7 +160,23 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
-        write!(else_if_str, " {}", else_token.span().as_str())?;
+        let written = maybe_write_comments_from_map(
+            &mut else_if_str,
+            if_expr.then_block.span().end(),
+            else_token.span().start(),
+            formatter,
+        )?;
+
+        if written {
+            write!(
+                else_if_str,
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
+        } else {
+            write!(else_if_str, " ")?;
+        }
+        write!(else_if_str, "{}", else_token.span().as_str())?;
         match &control_flow {
             ControlFlow::Continue(if_expr) => {
                 write!(else_if_str, " ")?;
