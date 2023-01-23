@@ -26,7 +26,6 @@ pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter)
 pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<Comment> {
     let mut comments = vec![];
     let iter = formatter.comment_map.clone().into_keys();
-    println!("finding comments between {} and {} ", start, end);
 
     for bs in iter {
         if bs.start > start && bs.end < end {
