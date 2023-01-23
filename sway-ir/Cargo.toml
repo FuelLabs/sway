@@ -17,3 +17,4 @@ rustc-hash = "1.1.0"
 sway-ir-macros = { version = "0.33.0", path = "sway-ir-macros" }
 sway-types = { version = "0.33.0", path = "../sway-types" }
 sway-utils = { version = "0.33.0", path = "../sway-utils" }
+downcast-rs = "1.2.0"

@@ -17,28 +17,23 @@ use crate::{
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument, NamedPass,
+    BlockArgument, Pass, TransformPass,
 };
 
-pub struct InlinePass;
+pub fn create_inline_pass() -> Pass {
+    Pass::TransformPass(TransformPass {
+        name: "inline",
+        descr: "inline function calls.",
+        run: inline_calls,
+    })
+}
 
-impl NamedPass for InlinePass {
-    fn name() -> &'static str {
-        "inline"
-    }
-
-    fn descr() -> &'static str {
-        "inline function calls."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        // For now we inline everything into `main()`.  Eventually we can be more selective.
-        let main_fn = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .find(|f| f.get_name(ir) == "main")
-            .unwrap();
-        inline_all_function_calls(ir, &main_fn)
+pub fn inline_calls(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+    // For now we inline everything into `main()`.  Eventually we can be more selective.
+    if function.get_name(context) == "main" {
+        inline_all_function_calls(context, function)
+    } else {
+        Ok(false)
     }
 }
 

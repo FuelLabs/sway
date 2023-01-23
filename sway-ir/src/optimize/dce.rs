@@ -5,24 +5,18 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
-use crate::{Block, Context, Function, Instruction, IrError, Module, NamedPass, Value, ValueDatum};
+use crate::{
+    Block, Context, Function, Instruction, IrError, Module, Pass, TransformPass, Value, ValueDatum,
+};
 
 use std::collections::{HashMap, HashSet};
 
-pub struct DCEPass;
-
-impl NamedPass for DCEPass {
-    fn name() -> &'static str {
-        "dce"
-    }
-
-    fn descr() -> &'static str {
-        "Dead code elimination."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, dce)
-    }
+pub fn create_dce_pass() -> Pass {
+    Pass::TransformPass(TransformPass {
+        name: "dce",
+        descr: "Dead code elimination.",
+        run: dce,
+    })
 }
 
 fn can_eliminate_instruction(context: &Context, val: Value) -> bool {

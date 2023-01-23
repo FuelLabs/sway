@@ -11,23 +11,15 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
-    BranchToWithArgs, NamedPass, Predicate,
+    BranchToWithArgs, Pass, Predicate, TransformPass,
 };
 
-pub struct ConstCombinePass;
-
-impl NamedPass for ConstCombinePass {
-    fn name() -> &'static str {
-        "constcombine"
-    }
-
-    fn descr() -> &'static str {
-        "constant folding."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, combine_constants)
-    }
+pub fn create_const_combine_pass() -> Pass {
+    Pass::TransformPass(TransformPass {
+        name: "constcombine",
+        descr: "constant folding.",
+        run: combine_constants,
+    })
 }
 
 /// Find constant expressions which can be reduced to fewer opterations.
