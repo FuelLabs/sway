@@ -10,6 +10,7 @@ description = "Sway intermediate representation."
 
 [dependencies]
 anyhow = "1.0"
+downcast-rs = "1.2.0"
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"
@@ -17,4 +18,3 @@ rustc-hash = "1.1.0"
 sway-ir-macros = { version = "0.33.1", path = "sway-ir-macros" }
 sway-types = { version = "0.33.1", path = "../sway-types" }
 sway-utils = { version = "0.33.1", path = "../sway-utils" }
-downcast-rs = "1.2.0"
