@@ -186,6 +186,7 @@ pub(crate) fn type_check_method_application(
                     None => {
                         errors.push(CompileError::StorageFieldDoesNotExist {
                             name: first_field.clone(),
+                            span: first_field.span(),
                         });
                         return err(warnings, errors);
                     }
@@ -348,6 +349,11 @@ pub(crate) fn type_check_method_application(
         .zip(args_buf.into_iter())
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
+
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, method.return_type);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
