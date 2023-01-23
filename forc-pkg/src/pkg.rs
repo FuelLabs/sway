@@ -338,16 +338,16 @@ pub struct BuildOpts {
 
 impl BuildOpts {
     /// Return a `BuildOpts` with modified `tests` field.
-    pub fn include_tests(self, include_tests: bool) -> BuildOpts {
-        BuildOpts {
+    pub fn include_tests(self, include_tests: bool) -> Self {
+        Self {
             tests: include_tests,
             ..self
         }
     }
 
     /// Return a `BuildOpts` with modified `injection_map` field.
-    pub fn injection_map(self, inject_map: ConstInjectionMap) -> BuildOpts {
-        BuildOpts { inject_map, ..self }
+    pub fn const_injection_map(self, inject_map: ConstInjectionMap) -> Self {
+        Self { inject_map, ..self }
     }
 }
 

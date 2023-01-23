@@ -373,6 +373,9 @@ impl BuiltTests {
 }
 
 /// First builds the package or workspace, ready for execution.
+///
+/// If the workspace contains contracts, those contracts will be built first without tests
+/// in order to determine their `CONTRACT_ID`s and enable contract calling.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.clone().into_build_opts();
 

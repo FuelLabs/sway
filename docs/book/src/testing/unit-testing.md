@@ -91,4 +91,4 @@ fn test_fail() {
 }
 ```
 
-> **Note:** Running `forc test` will inject `CONTRACT_ID` constant to the namepsace of the contract which can be used with `abi` cast for contract calls.
+> **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
