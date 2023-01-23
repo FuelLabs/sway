@@ -13,7 +13,7 @@ pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     mut function_decl: ty::TyFunctionDeclaration,
     call_path: CallPath,
-    arguments: Vec<Expression>,
+    arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -21,6 +21,15 @@ pub(crate) fn instantiate_function_application(
 
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+
+    if arguments.is_none() {
+        errors.push(CompileError::MissingParenthesesForFunction {
+            method_name: call_path.suffix.clone(),
+            span: call_path.span(),
+        });
+        return err(warnings, errors);
+    }
+    let arguments = arguments.unwrap_or_default();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {

@@ -167,6 +167,13 @@ impl Namespace {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
+        // If the type that we are looking for is the error recovery type, then
+        // we want to return the error case without creating a new error
+        // message.
+        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
+            return err(warnings, errors);
+        }
+
         // grab the local module
         let local_module = check!(
             self.root().check_submodule(&self.mod_path),
@@ -287,6 +294,46 @@ impl Namespace {
             namespace: self,
             parent_mod_path,
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_trait_implementation<'a>(
+        &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: &[DeclId],
+        impl_span: &Span,
+        is_impl_self: bool,
+        engines: Engines<'a>,
+    ) -> CompileResult<()> {
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        let full_trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits.insert(
+            full_trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+            engines,
+        )
+    }
+
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &mut self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclId> {
+        // Use trait name with full path, improves consistency between
+        // this get and inserting in `insert_trait_implementation`.
+        let trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

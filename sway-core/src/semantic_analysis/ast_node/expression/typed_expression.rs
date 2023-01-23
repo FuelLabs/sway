@@ -446,12 +446,14 @@ impl ty::TyExpression {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
@@ -490,7 +492,7 @@ impl ty::TyExpression {
             ctx,
             function_decl,
             call_path_binding.inner,
-            arguments,
+            Some(arguments),
             span,
         )
     }
@@ -1033,7 +1035,8 @@ impl ty::TyExpression {
                 type_arguments,
                 span: path_span,
             };
-            let mut res = Self::type_check_delineated_path(ctx, call_path_binding, span, args);
+            let mut res =
+                Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
 
             // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
             // So, we would need, but don't have, parametric modules to apply arguments to.
@@ -1069,7 +1072,7 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
-        args: Vec<Expression>,
+        args: Option<Vec<Expression>>,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1188,7 +1191,8 @@ impl ty::TyExpression {
             }
             (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: call_path_binding.inner.suffix,
+                    name: call_path_binding.inner.suffix.clone(),
+                    span: call_path_binding.inner.suffix.span(),
                 });
                 return err(warnings, errors);
             }
@@ -1641,7 +1645,7 @@ impl ty::TyExpression {
                                 errors
                             );
                             if !variable_decl.mutability.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
+                                errors.push(CompileError::AssignmentToNonMutable { name, span });
                                 return err(warnings, errors);
                             }
                             break (name, variable_decl.body.return_type);

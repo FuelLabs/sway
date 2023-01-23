@@ -14,7 +14,7 @@ use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
 use forc_util::find_manifest_dir;
-use sway_core::BuildConfig;
+use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
 
@@ -50,12 +50,17 @@ fn run() -> Result<()> {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let mut formatter = Formatter::from_dir(&dir)?;
-    format_pkg_at_dir(app, &dir, &mut formatter)
+    let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
+    for (_, member_path) in manifest_file.member_manifests()? {
+        let member_dir = member_path.dir();
+        let mut formatter = Formatter::from_dir(member_dir)?;
+        format_pkg_at_dir(&app, &dir, &mut formatter)?;
+    }
+    Ok(())
 }
 
 /// Format the package at the given directory.
-fn format_pkg_at_dir(app: App, dir: &Path, formatter: &mut Formatter) -> Result<()> {
+fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result<()> {
     match find_manifest_dir(dir) {
         Some(path) => {
             let manifest_path = path.clone();
@@ -69,6 +74,7 @@ fn format_pkg_at_dir(app: App, dir: &Path, formatter: &mut Formatter) -> Result<
                     let build_config = BuildConfig::root_from_file_name_and_manifest_path(
                         file.clone(),
                         manifest_path.clone(),
+                        BuildTarget::default(),
                     );
                     match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {

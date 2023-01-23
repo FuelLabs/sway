@@ -1,0 +1,18 @@
+category = "fail"
+
+# check: error_deduplication/src/main.sw:4:16
+# check: $()let y = if x { 42 } else { 43 };
+# nextln: $()Variable "x" does not exist in this scope.
+
+# check: error_deduplication/src/main.sw:5:8
+# check: $()if x { y } else { y }
+# nextln: $()Variable "x" does not exist in this scope.
+
+# check: error_deduplication/src/main.sw:8:4
+# check: $()fn foo() {}
+# nextln: $()Function "foo" was already defined in scope.
+
+# check: error_deduplication/src/main.sw:9:4
+# check: $()fn foo() {}
+# nextln: $()fn foo() {}
+# nextln: $()Function "foo" was already defined in scope.

@@ -4,10 +4,17 @@ mod r#final;
 
 use super::{
     register_sequencer::RegisterSequencer, AbstractInstructionSet, AllocatedAbstractInstructionSet,
-    DataSection, InstructionSet,
+    DataSection,
 };
 
-use crate::{asm_lang::Label, decl_engine::DeclId};
+use crate::{
+    asm_lang::{allocated_ops::AllocatedOp, Label},
+    decl_engine::DeclId,
+};
+
+mod ethabi {
+    pub use fuel_ethabi::*;
+}
 
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;
@@ -54,9 +61,15 @@ pub(super) struct AllocatedProgram {
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
-pub(super) struct FinalProgram {
-    kind: ProgramKind,
-    data_section: DataSection,
-    ops: InstructionSet,
-    entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclId>)>,
+pub(super) enum FinalProgram {
+    Fuel {
+        kind: ProgramKind,
+        data_section: DataSection,
+        ops: Vec<AllocatedOp>,
+        entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclId>)>,
+    },
+    Evm {
+        ops: Vec<etk_asm::ops::AbstractOp>,
+        abi: Vec<ethabi::operation::Operation>,
+    },
 }

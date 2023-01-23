@@ -19,7 +19,7 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -27,7 +27,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::Spanned;
 use sway_utils::helpers::get_sway_files;
@@ -150,7 +150,7 @@ impl Session {
         let decl_engine = &*self.decl_engine.read();
         let engines = Engines::new(type_engine, decl_engine);
         let tests_enabled = true;
-        let results = pkg::check(&plan, true, tests_enabled, engines)
+        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
             .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {

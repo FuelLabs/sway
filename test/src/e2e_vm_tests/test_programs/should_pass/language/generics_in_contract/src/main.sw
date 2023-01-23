@@ -17,7 +17,7 @@ storage {
 impl TicTacToe for Contract {
     #[storage(write)]
     fn new_game() {
-        storage.game_boards.insert(1, Option::None::<Identity>());
+        storage.game_boards.insert(1, Option::None::<Identity>);
         storage.game_boards.insert(1, Option::None);
     }
 }
