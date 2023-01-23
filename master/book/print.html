@@ -841,7 +841,7 @@ fn main() {
 <li>The default value for <code>asset_id</code> is <code>ZERO_B256</code>.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="libraries"><a class="header" href="#libraries">Libraries</a></h1>
-<p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a>.</p>
+<p>Libraries in Sway are files used to define new common behavior. The most prominent example of this is the <a href="sway-program-types/../introduction/standard_library.html">Sway Standard Library</a> that is made implicitly available to all Forc projects created using <code>forc new</code>.</p>
 <h2 id="writing-libraries"><a class="header" href="#writing-libraries">Writing Libraries</a></h2>
 <p>Libraries are defined using the <code>library</code> keyword at the beginning of a file, followed by a name so that they can be imported.</p>
 <pre><code class="language-sway">library my_library;
@@ -904,17 +904,88 @@ dep constants;
 </code></pre>
 <p>The <code>dep</code> keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The <code>dep</code> keyword simply makes the library a dependency and fully accessible within the current context.</p>
 <h2 id="using-libraries"><a class="header" href="#using-libraries">Using Libraries</a></h2>
-<p>Libraries can be imported using the <code>use</code> keyword and with a <code>::</code> separating the name of the library and the import.</p>
-<p>Here is an example of importing the <code>get&lt;T&gt;</code> and <code>store&lt;T&gt;</code> functions from the <code>storage</code> library.</p>
-<pre><code class="language-sway">use std::storage::{get, store};
+<p>There are two types of Sway libraries, based on their location and how they can be imported.</p>
+<h3 id="internal-libraries"><a class="header" href="#internal-libraries">Internal Libraries</a></h3>
+<p>Internal libraries are located within the project's <code>src</code> directory alongside <code>main.sw</code> as shown below:</p>
+<pre><code class="language-bash">$ tree
+.
+├── Cargo.toml
+├── Forc.toml
+└── src
+    ├── internal_lib.sw
+    └── main.sw
 </code></pre>
-<p>Wildcard imports using <code>*</code> are supported, but it is always recommended to use explicit imports where possible.</p>
-<p>Libraries <em>other than the standard library</em> have to be added as a dependency in <code>Forc.toml</code>. This can be done by adding a path to the library in the <code>[dependencies]</code> section. For example:</p>
-<pre><code class="language-toml">wallet_lib = { path = &quot;/path/to/wallet_lib&quot; }
+<p>As <code>internal_lib</code> is an internal library, it can be imported into <code>main.sw</code> as follows:</p>
+<ul>
+<li>Use the <code>dep</code> keyword followed by the library name to make the internal library a dependancy</li>
+<li>Use the <code>use</code> keyword with a <code>::</code> separating the name of the library and the imported item(s)</li>
+</ul>
+<pre><code class="language-sway">dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
+
+use internal_lib::mint;
+
+// `mint` from `internal_library` is now available in this file
 </code></pre>
+<h3 id="external-libraries"><a class="header" href="#external-libraries">External Libraries</a></h3>
+<p>External libraries are located outside the main <code>src</code> directory as shown below:</p>
+<pre><code class="language-bash">$ tree
+.
+├── my_project
+│   ├── Cargo.toml
+│   ├── Forc.toml
+│   └─── src
+│       └── main.sw
+│
+└── external_lib
+    ├── Cargo.toml
+    ├── Forc.toml
+    └─── src
+        └── lib.sw
+</code></pre>
+<p>As <code>external_lib</code> is outside the <code>src</code> directory of <code>my_project</code>, it needs to be added as a dependency in the <code>Forc.toml</code> file of <code>my_project</code>, by adding the library path in the <code>dependencies</code> section as shown below, before it can be imported:</p>
+<pre><code class="language-toml">[dependencies]
+external_library = { path = &quot;../external_library&quot; }
+</code></pre>
+<p>Once the library dependency is added to the <code>toml</code> file, you can import items from it as follows:</p>
+<ul>
+<li>Make sure the item you want imported are declared with the <code>pub</code> keyword (if applicable, for instance: <code>pub fn mint() {}</code>)</li>
+<li>Use the <code>use</code> keyword to selectively import items from the library</li>
+</ul>
+<pre><code class="language-sway">use external_library::mint;
+
+// `mint` from `external_library` is now available in this file
+</code></pre>
+<p>Wildcard imports using <code>*</code> are supported, but it is generally recommended to use explicit imports where possible.</p>
 <blockquote>
 <p><strong>Note</strong>: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify <code>std</code> as an explicit dependency in <code>Forc.toml</code>.</p>
 </blockquote>
+<h2 id="reference-sway-libraries"><a class="header" href="#reference-sway-libraries">Reference Sway Libraries</a></h2>
+<p>The repository <a href="https://github.com/FuelLabs/sway-libs/"><code>sway-libs</code></a> is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.</p>
+<p>Some Sway Libraries to try out:</p>
+<ul>
+<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof">Binary Merkle Proof</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft">Non-Fungible Token</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string">String</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers">Signed Integers</a></li>
+<li><a href="https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp">Unsigned Fixed Point Number</a></li>
+<li><a href="https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec">StorageMapVec</a></li>
+</ul>
+<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
+<p>You can import and use a Sway Library such as the <a href="https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft">NFT</a> library just like any other external library.</p>
+<pre><code class="language-sway">use sway_libs::nft::{
+    mint,
+    transfer,
+    owner_of,
+    approve,
+};
+</code></pre>
+<p>Once imported, you can use the following basic functionality of the library in your smart contract:</p>
+<ul>
+<li>Minting tokens</li>
+<li>Transfering tokens</li>
+<li>Retrieving owner of a token</li>
+<li>Approving users to transfer a token</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="scripts"><a class="header" href="#scripts">Scripts</a></h1>
 <p>A script is runnable bytecode on the chain which executes once to perform some task. It does not represent ownership of any resources and it cannot be called by a contract. A script can return a single value of any type.</p>
 <p>Scripts are state-aware in that while they have no persistent storage (because they only exist during the transaction) they can call contracts and act based upon the returned values and results.</p>
@@ -2166,7 +2237,7 @@ impl MyOwnedContract for Contract {
 <div style="break-before: page; page-break-before: always;"></div><h1 id="calling-contracts"><a class="header" href="#calling-contracts">Calling Contracts</a></h1>
 <p>Smart contracts can be <em>called</em> by other contracts or scripts. In the FuelVM, this is done primarily with the <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#call-call-contract"><code>call</code></a> instruction.</p>
 <p>Sway provides a nice way to manage callable interfaces with its <code>abi</code> system. The Fuel ABI specification can be found <a href="https://fuellabs.github.io/fuel-specs/master/protocol/abi">here</a>.</p>
-<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
 <p>Here is an example of a contract calling another contract in Sway. A script can call a contract in the same way.</p>
 <pre><code class="language-sway">// ./contract_a.sw
 contract;
@@ -3728,7 +3799,7 @@ build-profile.</p>
 <p>Output the time elapsed over each part of the compilation process</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-2"><a class="header" href="#example-2">EXAMPLE</a></h2>
+<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
 <p>Compile the sway files of the current project.</p>
 <pre><code class="language-console">$ forc build
 Compiled script &quot;my-fuel-project&quot;.
@@ -3911,7 +3982,7 @@ creates a basic contract program</p>
 <p>Use verbose output</p>
 <p><code>--workspace</code> </p>
 <p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-3"><a class="header" href="#example-3">EXAMPLE</a></h2>
+<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
 <pre><code class="language-console">$ mkdir my-fuel-project
 $ cd my-fuel-project
 $ forc init
@@ -3952,7 +4023,7 @@ creates a basic contract program</p>
 <p>Use verbose output</p>
 <p><code>--workspace</code> </p>
 <p>Adding this flag creates an empty workspace<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-4"><a class="header" href="#example-4">EXAMPLE</a></h2>
+<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
 <pre><code class="language-console">$ forc new my-fuel-project
 $ cd my-fuel-project
 $ tree
@@ -3978,7 +4049,7 @@ $ tree
 <p>Silence all output</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-5"><a class="header" href="#example-5">EXAMPLE</a></h2>
+<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
 <p>We can try this command with the initial project created using <code>forc init</code>, with the counter template:</p>
 <pre><code class="language-sh">forc new --template counter counter
 cd counter
@@ -4145,7 +4216,7 @@ will be used</p>
 <p>The template url, should be a git repo [default: https://github.com/fuellabs/sway]</p>
 <p><code>-v</code>, <code>--verbose</code> </p>
 <p>Use verbose output<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-6"><a class="header" href="#example-6">EXAMPLE</a></h2>
+<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
 <pre><code class="language-sh">forc template --url https://github.com/owner/template/ --project_name my_example_project
 </code></pre>
 <p>The command above fetches the <code>HEAD</code> of the <code>template</code> repo and searches for <code>Forc.toml</code> at the root of the fetched repo. It will fetch the repo and prepare a new <code>Forc.toml</code> with the new project name. Outputs everything to <code>current_dir/project_name</code>.</p>
@@ -4282,7 +4353,7 @@ overrides network url in manifest file (if there is one)</p>
 <p>Do not sign the transaction</p>
 <p><code>-V</code>, <code>--version</code> </p>
 <p>Print version information<!-- markdownlint-disable MD041 --></p>
-<h2 id="example-7"><a class="header" href="#example-7">EXAMPLE</a></h2>
+<h2 id="example-8"><a class="header" href="#example-8">EXAMPLE</a></h2>
 <p>You can use <code>forc deploy</code>, which triggers a contract deployment transaction and sends it to a running node.</p>
 <p>Alternatively, you can deploy your Sway contract programmatically using <a href="https://github.com/FuelLabs/fuels-rs">fuels-rs</a>, our Rust SDK.</p>
 <p>You can find an example within our <a href="https://fuellabs.github.io/fuels-rs/latest/getting-started/basics.html#deploying-a-sway-contract">fuels-rs book</a>.</p>
