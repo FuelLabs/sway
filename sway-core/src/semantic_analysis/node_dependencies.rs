@@ -493,9 +493,10 @@ impl Dependencies {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
+                let args_vec = args.clone().unwrap_or_default();
                 self.gather_from_call_path(&call_path_binding.inner, true, false)
                     .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
-                    .gather_from_iter(args.iter(), |deps, arg| {
+                    .gather_from_iter(args_vec.iter(), |deps, arg| {
                         deps.gather_from_expr(type_engine, arg)
                     })
             }

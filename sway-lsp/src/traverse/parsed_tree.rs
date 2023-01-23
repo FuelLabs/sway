@@ -645,8 +645,10 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
 
-                for exp in args {
-                    self.handle_expression(exp);
+                if let Some(args_vec) = args.as_ref() {
+                    args_vec.iter().for_each(|exp| {
+                        self.handle_expression(exp);
+                    });
                 }
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {

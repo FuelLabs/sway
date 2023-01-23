@@ -200,7 +200,11 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::FunctionDeclaration(decl_id) => {
             let ty::TyFunctionDeclaration {
-                body, parameters, ..
+                body,
+                parameters,
+                return_type,
+                return_type_span,
+                ..
             } = check!(
                 CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl.span())),
                 return err(warnings, errors),
@@ -221,6 +225,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                     errors
                 );
             }
+            check!(
+                check_type(engines, return_type, return_type_span, false),
+                (),
+                warnings,
+                errors
+            );
         }
         ty::TyDeclaration::AbiDeclaration(_) | ty::TyDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
@@ -234,12 +244,28 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for method_id in methods {
                 match decl_engine.get_function(method_id, &span) {
-                    Ok(method) => check!(
-                        validate_decls_for_storage_only_types_in_codeblock(engines, &method.body),
-                        continue,
-                        warnings,
-                        errors
-                    ),
+                    Ok(method) => {
+                        check!(
+                            validate_decls_for_storage_only_types_in_codeblock(
+                                engines,
+                                &method.body
+                            ),
+                            continue,
+                            warnings,
+                            errors
+                        );
+                        check!(
+                            check_type(
+                                engines,
+                                method.return_type,
+                                method.return_type_span.clone(),
+                                false
+                            ),
+                            (),
+                            warnings,
+                            errors
+                        )
+                    }
                     Err(err) => errors.push(err),
                 };
             }
