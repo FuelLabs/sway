@@ -350,6 +350,14 @@ pub(crate) fn type_check_method_application(
         .map(|(param, arg)| (param.name.clone(), arg))
         .collect::<Vec<(_, _)>>();
 
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    let trait_map = ctx
+        .namespace
+        .implemented_traits
+        .filter_by_type(method.return_type, engines);
+    ctx.namespace.implemented_traits.extend(trait_map, engines);
+
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
