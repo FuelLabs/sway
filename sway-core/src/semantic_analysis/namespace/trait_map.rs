@@ -619,19 +619,6 @@ impl TraitMap {
         trait_map
     }
 
-    /// Filters the contents of `self` to exclude elements that are superset
-    /// types of the given `type_id`. This function is used when handling trait
-    /// constraints and is coupled with `filter_by_type` and
-    /// `filter_by_type_item_import`.
-    pub(crate) fn filter_against_type(&mut self, engines: Engines<'_>, type_id: TypeId) {
-        let type_engine = engines.te();
-        self.trait_impls.retain(|e| {
-            !type_engine
-                .get(type_id)
-                .is_subset_of(&type_engine.get(e.key.type_id), engines)
-        });
-    }
-
     /// Find the entries in `self` that are equivalent to `type_id`.
     ///
     /// Notes:

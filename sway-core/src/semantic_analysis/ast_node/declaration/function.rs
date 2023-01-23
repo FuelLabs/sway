@@ -39,7 +39,6 @@ impl ty::TyFunctionDeclaration {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -168,20 +167,6 @@ impl ty::TyFunctionDeclaration {
             is_contract_call,
             purity,
         };
-
-        // // Retrieve the implemented traits for the type of the return type and
-        // // insert them in the broader namespace. We don't want to include any
-        // // type parameters, so we filter them out.
-        // let mut return_type_namespace = fn_ctx
-        //     .namespace
-        //     .implemented_traits
-        //     .filter_by_type(function_decl.return_type, fn_ctx.engines());
-        // for type_param in function_decl.type_parameters.iter() {
-        //     return_type_namespace.filter_against_type(engines, type_param.type_id);
-        // }
-        // ctx.namespace
-        //     .implemented_traits
-        //     .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
     }

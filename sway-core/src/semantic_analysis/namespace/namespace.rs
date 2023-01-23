@@ -225,10 +225,6 @@ impl Namespace {
                 errors
             );
             if &method.name == method_name {
-                // // if we find the method that we are looking for, we also need
-                // // to retrieve the impl definitions for the return type so that
-                // // the user can string together method calls
-                // self.insert_trait_implementation_for_type(engines, method.return_type);
                 return ok(decl_id, warnings, errors);
             }
         }
