@@ -186,6 +186,7 @@ pub(crate) fn type_check_method_application(
                     None => {
                         errors.push(CompileError::StorageFieldDoesNotExist {
                             name: first_field.clone(),
+                            span: first_field.span(),
                         });
                         return err(warnings, errors);
                     }

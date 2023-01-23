@@ -1,6 +1,6 @@
 # Libraries
 
-Libraries in Sway are files used to define new common behavior. The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html).
+Libraries in Sway are files used to define new common behavior. The most prominent example of this is the [Sway Standard Library](../introduction/standard_library.html) that is made implicitly available to all Forc projects created using `forc new`.
 
 ## Writing Libraries
 
@@ -86,20 +86,106 @@ The `dep` keyword in the main library includes a dependency on another library, 
 
 ## Using Libraries
 
-Libraries can be imported using the `use` keyword and with a `::` separating the name of the library and the import.
+There are two types of Sway libraries, based on their location and how they can be imported.
 
-Here is an example of importing the `get<T>` and `store<T>` functions from the `storage` library.
+### Internal Libraries
+
+Internal libraries are located within the project's `src` directory alongside `main.sw` as shown below:
+
+```bash
+$ tree
+.
+├── Cargo.toml
+├── Forc.toml
+└── src
+    ├── internal_lib.sw
+    └── main.sw
+```
+
+As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
+
+* Use the `dep` keyword followed by the library name to make the internal library a dependancy
+* Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
-use std::storage::{get, store};
+dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
+
+use internal_lib::mint;
+
+// `mint` from `internal_library` is now available in this file
 ```
 
-Wildcard imports using `*` are supported, but it is always recommended to use explicit imports where possible.
+### External Libraries
 
-Libraries _other than the standard library_ have to be added as a dependency in `Forc.toml`. This can be done by adding a path to the library in the `[dependencies]` section. For example:
+External libraries are located outside the main `src` directory as shown below:
+
+```bash
+$ tree
+.
+├── my_project
+│   ├── Cargo.toml
+│   ├── Forc.toml
+│   └─── src
+│       └── main.sw
+│
+└── external_lib
+    ├── Cargo.toml
+    ├── Forc.toml
+    └─── src
+        └── lib.sw
+```
+
+As `external_lib` is outside the `src` directory of `my_project`, it needs to be added as a dependency in the `Forc.toml` file of `my_project`, by adding the library path in the `dependencies` section as shown below, before it can be imported:
 
 ```toml
-wallet_lib = { path = "/path/to/wallet_lib" }
+[dependencies]
+external_library = { path = "../external_library" }
 ```
 
+Once the library dependency is added to the `toml` file, you can import items from it as follows:
+
+* Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
+* Use the `use` keyword to selectively import items from the library
+
+```sway
+use external_library::mint;
+
+// `mint` from `external_library` is now available in this file
+```
+
+Wildcard imports using `*` are supported, but it is generally recommended to use explicit imports where possible.
+
 > **Note**: the standard library is implicitly available to all Forc projects, that is, you are not required to manually specify `std` as an explicit dependency in `Forc.toml`.
+
+## Reference Sway Libraries
+
+The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.
+
+Some Sway Libraries to try out:
+
+* [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof)
+* [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft)
+* [String](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string)
+* [Signed Integers](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers)
+* [Unsigned Fixed Point Number](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp)
+* [StorageMapVec](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec)
+
+### Example
+
+You can import and use a Sway Library such as the [NFT](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft) library just like any other external library.
+
+```sway
+use sway_libs::nft::{
+    mint,
+    transfer,
+    owner_of,
+    approve,
+};
+```
+
+Once imported, you can use the following basic functionality of the library in your smart contract:
+
+* Minting tokens
+* Transfering tokens
+* Retrieving owner of a token
+* Approving users to transfer a token
