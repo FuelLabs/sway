@@ -1,9 +1,11 @@
 use crate::{
     core::{
         session::Session,
-        token::{get_range_from_span, to_ident_key, Token, TypedAstToken},
+        token::{get_range_from_span, to_ident_key, SymbolKind, Token, TypedAstToken},
     },
-    utils::{attributes::doc_comment_attributes, markdown, markup::Markup},
+    utils::{
+        attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
+    },
 };
 use std::sync::Arc;
 use sway_core::{
@@ -14,9 +16,27 @@ use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{self, Position, Url};
 
 /// Extracts the hover information for a token at the current position.
-pub fn hover_data(session: Arc<Session>, url: Url, position: Position) -> Option<lsp_types::Hover> {
+pub fn hover_data(
+    session: Arc<Session>,
+    keyword_docs: &KeywordDocs,
+    url: Url,
+    position: Position,
+) -> Option<lsp_types::Hover> {
     let (ident, token) = session.token_map().token_at_position(&url, position)?;
     let range = get_range_from_span(&ident.span());
+
+    // check if our token is a keyword
+    if token.kind == SymbolKind::Keyword {
+        let documentation = keyword_docs.get(ident.as_str()).unwrap();
+        let s = documentation.replace("///", "\n").trim_start().to_owned();
+        let content = Markup::new().maybe_add_sway_block(None).text(&s);
+        let contents = lsp_types::HoverContents::Markup(markup_content(content));
+        return Some(lsp_types::Hover {
+            contents,
+            range: Some(range),
+        });
+    }
+
     let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
         Some(decl_ident) => {
             let decl_token = session
@@ -97,6 +117,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
 
     let token_name: String = ident.as_str().into();
     let doc_comment = format_doc_attributes(token);
+    eprintln!("doc_commment {:#?}", doc_comment);
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
         let type_name = format!("{}", engines.help_out(type_id));

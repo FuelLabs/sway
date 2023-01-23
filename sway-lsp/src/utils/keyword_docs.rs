@@ -9,7 +9,8 @@ use syn::{parse_quote, ItemMod};
 
 /// Documentation for sway keywords.
 /// Primarily used for showing documentation on LSP hover requests.
-struct KeywordDocs {
+#[derive(Debug)]
+pub struct KeywordDocs {
     /// Key = keyword
     /// Value = documentation
     inner: HashMap<String, String>,
@@ -138,6 +139,7 @@ impl KeywordDocs {
             /// [`use`]: keyword.use.html
             /// [const-cast]: pointer::cast
             /// [mut-cast]: primitive.pointer.html#method.cast-1
+            mod as_keyword {}
         };
 
         let struct_keyword: ItemMod = parse_quote! {

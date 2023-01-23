@@ -4,7 +4,7 @@ use crate::{
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
-    utils::debug,
+    utils::{debug, keyword_docs::KeywordDocs},
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
@@ -27,6 +27,7 @@ use tracing::metadata::LevelFilter;
 pub struct Backend {
     pub client: Client,
     pub config: RwLock<Config>,
+    pub keyword_docs: KeywordDocs,
     sessions: DashMap<PathBuf, Arc<Session>>,
 }
 
@@ -34,10 +35,12 @@ impl Backend {
     pub fn new(client: Client) -> Self {
         let sessions = DashMap::new();
         let config = RwLock::new(Default::default());
+        let keyword_docs = KeywordDocs::new();
 
         Backend {
             client,
             config,
+            keyword_docs,
             sessions,
         }
     }
@@ -302,7 +305,12 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document_position_params.text_document.uri) {
             Ok((uri, session)) => {
                 let position = params.text_document_position_params.position;
-                Ok(capabilities::hover::hover_data(session, uri, position))
+                Ok(capabilities::hover::hover_data(
+                    session,
+                    &self.keyword_docs,
+                    uri,
+                    position,
+                ))
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
