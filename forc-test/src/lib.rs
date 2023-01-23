@@ -194,8 +194,8 @@ impl<'a> PackageTests {
             .iter()
             .filter(|entry| entry.is_test())
             .map(|entry| {
-                let offset =
-                    u32::try_from(entry.finalized.imm).expect("test instruction offset out of range");
+                let offset = u32::try_from(entry.finalized.imm)
+                    .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
                 let test_setup = self.setup()?;
                 let (state, duration, receipts) =
@@ -212,7 +212,7 @@ impl<'a> PackageTests {
 
                 let test_entry = entry.expect_test_entry()?;
                 let span = test_entry.span;
-                let condition = test_entry.pass_condition; 
+                let condition = test_entry.pass_condition;
                 Ok(TestResult {
                     name,
                     duration,

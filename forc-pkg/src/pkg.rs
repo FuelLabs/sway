@@ -40,10 +40,11 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine, transform::AttributeKind,
+    transform::AttributeKind,
+    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
-use sway_types::{Ident, Spanned, Span};
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -98,7 +99,6 @@ pub struct BuiltPackage {
     pub pkg_name: String,
     pub manifest_file: PackageManifestFile,
 }
-
 
 /// Represents a package entry point.
 #[derive(Debug, Clone)]
@@ -2511,7 +2511,10 @@ pub fn compile(
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
     let decl_engine = engines.de();
-    let pkg_entries = entries.iter().map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine)).collect::<anyhow::Result<_>>()?;
+    let pkg_entries = entries
+        .iter()
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2553,11 +2556,12 @@ pub fn compile(
 }
 
 impl PkgEntry {
-
     /// Tries to retrieve the `PkgEntry` as a `PkgTestEntry`, panics otherwise.
     pub fn expect_test_entry(&self) -> Result<PkgTestEntry> {
         match &self.kind {
-            PkgEntryKind::Main => bail!("expected pkg entry to be pointing to a test, it is pointing to the main function"),
+            PkgEntryKind::Main => bail!(
+                "expected pkg entry to be pointing to a test, it is pointing to the main function"
+            ),
             PkgEntryKind::Test(test_entry) => Ok(test_entry.clone()),
         }
     }
@@ -2567,12 +2571,15 @@ impl PkgEntry {
         matches!(self.kind, PkgEntryKind::Test(_))
     }
 
-    fn from_finalized_entry(finalized_entry: &FinalizedEntry, decl_engine: &DeclEngine) -> Result<Self> {
+    fn from_finalized_entry(
+        finalized_entry: &FinalizedEntry,
+        decl_engine: &DeclEngine,
+    ) -> Result<Self> {
         let pkg_entry_kind = match &finalized_entry.test_decl_id {
             Some(test_decl_id) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?; 
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
                 PkgEntryKind::Test(pkg_test_entry)
-            },
+            }
             None => PkgEntryKind::Main,
         };
 
@@ -2584,10 +2591,9 @@ impl PkgEntry {
 }
 
 impl PkgTestEntry {
-
     fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
         let span = decl_id.span();
-        let test_function_decl = decl_engine.get_function(decl_id, &span)?; 
+        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
 
         let test_args: HashSet<String> = test_function_decl
             .attributes
@@ -2608,14 +2614,10 @@ impl PkgTestEntry {
 
         Ok(Self {
             pass_condition,
-            span
+            span,
         })
-
     }
-
 }
-
-
 
 /// The suffix that helps identify the file which contains the hash of the binary file created when
 /// scripts are built_package.

@@ -360,7 +360,10 @@ impl Module {
                     errors
                 );
                 if visibility != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.clone(),
+                        span: item.span(),
+                    });
                 }
 
                 let type_id = decl.return_type(engines, &item.span()).value;
@@ -394,7 +397,10 @@ impl Module {
                 };
             }
             None => {
-                errors.push(CompileError::SymbolNotFound { name: item.clone() });
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.clone(),
+                    span: item.span(),
+                });
                 return err(warnings, errors);
             }
         };
