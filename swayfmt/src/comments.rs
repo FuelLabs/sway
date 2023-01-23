@@ -4,7 +4,7 @@ use sway_types::Spanned;
 
 use crate::{formatter::FormattedCode, Formatter, FormatterError};
 
-// Given a span start, a span end and a CommentMap, return references to all comments
+// Given a start, an end and a CommentMap, return references to all comments
 // contained within a given start and end of a span, in an exclusive range.
 pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<&Comment> {
     let mut comments = vec![];
@@ -21,7 +21,7 @@ pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter)
     comments
 }
 
-// Given a span start, a span end and a CommentMap, removes and returns all comments in a
+// Given a start, an end and a CommentMap, removes and returns all comments in a
 // CommentMap contained within a given start and end of a span, in an exclusive range.
 pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<Comment> {
     let mut comments = vec![];
@@ -38,6 +38,9 @@ pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter
     comments
 }
 
+// Writes comments between a given start and end and removes them from the formatter's CommentMap.
+// This returns Ok(true) on successful execution AND comments were written, but returns
+// Ok(false) on successful execution without any comments written. Returns Err on failure.
 pub fn maybe_write_comments_from_map(
     formatted_code: &mut FormattedCode,
     start: usize,
