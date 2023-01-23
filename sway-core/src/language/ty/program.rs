@@ -80,8 +80,10 @@ impl TyProgram {
                     }
 
                     if !fn_declarations.insert(func.name.clone()) {
-                        errors
-                            .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
+                        errors.push(CompileError::MultipleDefinitionsOfFunction {
+                            name: func.name.clone(),
+                            span: func.name.span(),
+                        });
                     }
 
                     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
@@ -219,6 +221,7 @@ impl TyProgram {
                 if mains.len() > 1 {
                     errors.push(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
+                        span: mains.last().unwrap().name.span(),
                     });
                 }
                 let main_func = mains.remove(0);
@@ -241,6 +244,7 @@ impl TyProgram {
                 if mains.len() > 1 {
                     errors.push(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
+                        span: mains.last().unwrap().name.span(),
                     });
                 }
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
@@ -286,6 +290,7 @@ impl TyProgram {
                     if param.is_reference && param.is_mutable {
                         errors.push(CompileError::RefMutableNotAllowedInMain {
                             param_name: param.name.clone(),
+                            span: param.name.span(),
                         })
                     }
                 }
