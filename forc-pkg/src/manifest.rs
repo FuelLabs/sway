@@ -836,19 +836,14 @@ impl WorkspaceManifest {
             }
             let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
             let pkg_name = member_manifest_file.manifest.project.name;
-            if let Some(paths) = pkg_name_to_paths.get_mut(&pkg_name) {
-                paths.push(member_path);
-            } else {
-                pkg_name_to_paths.insert(pkg_name, vec![member_path]);
-            }
+            pkg_name_to_paths.entry(pkg_name).or_default().push(member_path);
         }
 
         // Check for duplicate pkg name entries in member manifests of this workspace.
         let duplciate_pkg_lines = pkg_name_to_paths
             .iter()
             .filter(|(_, paths)| paths.len() > 1)
-            .map(|(pkg_name, _)| pkg_name)
-            .map(|pkg_name| {
+            .map(|(pkg_name, _)| {
                 let duplicate_paths = pkg_name_to_paths
                     .get(pkg_name)
                     .expect("missing duplicate paths");
