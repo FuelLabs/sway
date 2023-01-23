@@ -1,4 +1,5 @@
 use sway_error::error::CompileError;
+use sway_types::Spanned;
 
 use crate::{
     error::*,
@@ -45,6 +46,7 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }
@@ -64,6 +66,7 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }

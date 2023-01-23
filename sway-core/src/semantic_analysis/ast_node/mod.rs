@@ -146,6 +146,7 @@ pub(crate) fn reassign_storage_subfield(
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
                 name: first_field.clone(),
+                span: first_field.span(),
             });
             return err(warnings, errors);
         }
@@ -192,6 +193,7 @@ pub(crate) fn reassign_storage_subfield(
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
                     struct_name: type_checked_buf.last().unwrap().name.clone(),
+                    span: field.span(),
                 });
                 return err(warnings, errors);
             }
