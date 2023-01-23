@@ -4,8 +4,8 @@ use sway_types::Spanned;
 
 use crate::{formatter::FormattedCode, Formatter, FormatterError};
 
-// Given a Span and a CommentMap, return all comments contained
-// in the span.
+// Given a Span and a CommentMap, return references to all comments contained
+// within a given start and end of a span, in an exclusive range.
 pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<&Comment> {
     let mut comments = vec![];
     let iter = formatter.comment_map.clone().into_keys();
@@ -21,8 +21,8 @@ pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter)
     comments
 }
 
-// Given a Span and a CommentMap, return all comments contained
-// in the span.
+// Given a Span and a CommentMap, removes and returns all comments in a CommentMap
+// contained within a given start and end of a span, in an exclusive range.
 pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<Comment> {
     let mut comments = vec![];
     let iter = formatter.comment_map.clone().into_keys();
