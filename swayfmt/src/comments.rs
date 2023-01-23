@@ -6,7 +6,7 @@ use crate::{formatter::FormattedCode, Formatter, FormatterError};
 
 // Given a start, an end and a CommentMap, return references to all comments
 // contained within a given start and end of a span, in an exclusive range.
-pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<&Comment> {
+pub fn get_comments_between(start: usize, end: usize, formatter: &Formatter) -> Vec<&Comment> {
     let mut comments = vec![];
     let iter = formatter.comment_map.clone().into_keys();
 
@@ -26,7 +26,6 @@ pub fn get_comments_between(start: usize, end: usize, formatter: &mut Formatter)
 pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<Comment> {
     let mut comments = vec![];
     let iter = formatter.comment_map.clone().into_keys();
-
     for bs in iter {
         if bs.start > start && bs.end < end {
             if let Some(comment) = formatter.comment_map.remove(&bs) {
