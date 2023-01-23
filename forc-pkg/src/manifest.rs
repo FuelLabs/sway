@@ -836,7 +836,10 @@ impl WorkspaceManifest {
             }
             let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
             let pkg_name = member_manifest_file.manifest.project.name;
-            pkg_name_to_paths.entry(pkg_name).or_default().push(member_path);
+            pkg_name_to_paths
+                .entry(pkg_name)
+                .or_default()
+                .push(member_path);
         }
 
         // Check for duplicate pkg name entries in member manifests of this workspace.
@@ -847,7 +850,7 @@ impl WorkspaceManifest {
                 let duplicate_paths = pkg_name_to_paths
                     .get(pkg_name)
                     .expect("missing duplicate paths");
-                format!("{}: {:?}", pkg_name, duplicate_paths)
+                format!("{}: {:#?}", pkg_name, duplicate_paths)
             })
             .collect::<Vec<_>>();
 
