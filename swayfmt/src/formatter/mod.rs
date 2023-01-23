@@ -65,7 +65,7 @@ impl Formatter {
         let mut raw_formatted_code = String::with_capacity(src.len());
 
         // Collect Span -> Comment mapping from unformatted input.
-        self.comment_map = comment_map_from_src(Arc::from(src.clone()))?;
+        self.comment_map = comment_map_from_src(Arc::from(src))?;
 
         let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;

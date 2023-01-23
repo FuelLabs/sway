@@ -151,7 +151,7 @@ fn add_comments(
         let comments_found = get_comments_between_spans(
             previous_unformatted_comment_span,
             unformatted_comment_span,
-            &comment_map,
+            comment_map,
             &unformatted_code,
         );
         if !comments_found.is_empty() {
