@@ -22,6 +22,7 @@ dep address;
 dep identity;
 dep vec;
 dep bytes;
+dep b256;
 dep tx;
 dep inputs;
 dep outputs;
