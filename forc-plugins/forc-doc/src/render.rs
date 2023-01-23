@@ -1233,7 +1233,7 @@ pub(crate) fn trim_fn_body(f: String) -> String {
 }
 
 /// Checks if some raw html (rendered from markdown) contains a header.
-/// If it does, it splits at the header and returns the slice that preceeded the it.
+/// If it does, it splits at the header and returns the slice that preceeded it.
 pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
     const H1: &str = "<h1>";
     const H2: &str = "<h2>";
