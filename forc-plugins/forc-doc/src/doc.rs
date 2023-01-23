@@ -1,6 +1,6 @@
 use crate::{
     descriptor::Descriptor,
-    render::{DocLink, ItemBody, ItemHeader, Renderable},
+    render::{split_at_markdown_header, DocLink, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
@@ -49,17 +49,27 @@ impl Document {
         }
     }
     fn preview_opt(&self) -> Option<String> {
-        match &self.raw_attributes {
-            Some(description) => {
-                if description.len() > 200 {
-                    let (first, _) = description.split_at(75);
-                    Some(format!("{}...", first.trim_end()))
-                } else {
-                    Some(description.to_string())
+        self.raw_attributes.as_ref().map(|description| {
+            let preview = split_at_markdown_header(description);
+            if preview.len() > 100 && preview.contains("</p>") {
+                match preview.find("</p>") {
+                    Some(index) => {
+                        let preview = preview.split_at(index + 5).0;
+                        if preview.len() > 100 && preview.contains("\n") {
+                            match preview.find("\n") {
+                                Some(index) => preview.split_at(index).0.to_string(),
+                                None => unreachable!("Previous logic prevents this panic"),
+                            }
+                        } else {
+                            preview.to_string()
+                        }
+                    }
+                    None => unreachable!("Previous logic prevents this panic"),
                 }
+            } else {
+                preview.to_string()
             }
-            None => None,
-        }
+        })
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(

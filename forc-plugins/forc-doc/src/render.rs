@@ -750,7 +750,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -782,7 +782,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -810,7 +810,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -1229,5 +1229,61 @@ pub(crate) fn trim_fn_body(f: String) -> String {
     match f.find('{') {
         Some(index) => f.split_at(index).0.to_string(),
         None => f,
+    }
+}
+
+pub(crate) enum MarkdownHeader {
+    H1,
+    H2,
+    H3,
+    H4,
+    H5,
+}
+impl MarkdownHeader {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::H1 => "<h1>",
+            Self::H2 => "<h2>",
+            Self::H3 => "<h3>",
+            Self::H4 => "<h4>",
+            Self::H5 => "<h5>",
+        }
+    }
+}
+/// Checks if some raw html (rendered from markdown) contains a header.
+/// If it does, it splits at the header and returns the slice that preceeded the it.
+pub(crate) fn split_at_markdown_header(s: &str) -> &str {
+    if s.contains(MarkdownHeader::H1.as_str()) {
+        let v: Vec<_> = s.split(MarkdownHeader::H1.as_str()).collect();
+        match v.first() {
+            Some(s) => s,
+            None => panic!("expected some &str"),
+        }
+    } else if s.contains(MarkdownHeader::H2.as_str()) {
+        let v: Vec<_> = s.split(MarkdownHeader::H2.as_str()).collect();
+        match v.first() {
+            Some(s) => s,
+            None => panic!("expected some &str"),
+        }
+    } else if s.contains(MarkdownHeader::H3.as_str()) {
+        let v: Vec<_> = s.split(MarkdownHeader::H3.as_str()).collect();
+        match v.first() {
+            Some(s) => s,
+            None => panic!("expected some &str"),
+        }
+    } else if s.contains(MarkdownHeader::H4.as_str()) {
+        let v: Vec<_> = s.split(MarkdownHeader::H4.as_str()).collect();
+        match v.first() {
+            Some(s) => s,
+            None => panic!("expected some &str"),
+        }
+    } else if s.contains(MarkdownHeader::H5.as_str()) {
+        let v: Vec<_> = s.split(MarkdownHeader::H5.as_str()).collect();
+        match v.first() {
+            Some(s) => s,
+            None => panic!("expected some &str"),
+        }
+    } else {
+        s
     }
 }
