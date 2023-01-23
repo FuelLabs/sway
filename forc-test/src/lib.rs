@@ -46,6 +46,8 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: TestPassCondition,
+    /// Emitted `Recipt`s during the execution of the test.
+    pub logs: Vec<fuel_tx::Receipt>,
 }
 
 /// The possible conditions for a test result to be considered "passing".
@@ -102,6 +104,13 @@ pub struct Opts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+}
+
+/// The set of options provided for controlling logs printed for each test.
+#[derive(Default, Clone)]
+pub struct TestPrintOpts {
+    pub pretty_print: bool,
+    pub print_logs: bool,
 }
 
 /// The required common metadata for building a transaction to deploy a contract or run a test.
@@ -196,7 +205,18 @@ impl<'a> PackageTests {
                     u32::try_from(entry.imm).expect("test instruction offset out of range");
                 let name = entry.fn_name.clone();
                 let test_setup = self.setup()?;
-                let (state, duration) = exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+                let (state, duration, receipts) =
+                    exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+
+                // Only retain `Log` and `LogData` receipts.
+                let logs = receipts
+                    .into_iter()
+                    .filter(|receipt| {
+                        matches!(receipt, fuel_tx::Receipt::Log { .. })
+                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                    })
+                    .collect();
+
                 let test_decl_id = entry
                     .test_decl_id
                     .clone()
@@ -213,6 +233,7 @@ impl<'a> PackageTests {
                     span,
                     state,
                     condition,
+                    logs,
                 })
             })
             .collect::<anyhow::Result<_>>()?;
@@ -482,7 +503,11 @@ fn exec_test(
     bytecode: &[u8],
     test_offset: u32,
     test_setup: TestSetup,
-) -> (vm::state::ProgramState, std::time::Duration) {
+) -> (
+    vm::state::ProgramState,
+    std::time::Duration,
+    Vec<fuel_tx::Receipt>,
+) {
     let storage = test_setup.storage;
     let contract_id = test_setup.contract_id;
 
@@ -529,5 +554,7 @@ fn exec_test(
     let transition = interpreter.transact(tx).unwrap();
     let duration = start.elapsed();
     let state = *transition.state();
-    (state, duration)
+    let receipts = transition.receipts().to_vec();
+
+    (state, duration, receipts)
 }

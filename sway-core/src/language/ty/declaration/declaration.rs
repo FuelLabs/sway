@@ -488,7 +488,7 @@ impl TyDeclaration {
             EnumDeclaration(_) => "enum",
             TraitDeclaration(_) => "trait",
             AbiDeclaration(_) => "abi",
-            StorageDeclaration(_) => "storage",
+            StorageDeclaration(_) => "contract_storage",
             ImplTrait(_) => "impl_trait",
             FunctionDeclaration(_) => "fn",
             ConstantDeclaration(_) => "constant",

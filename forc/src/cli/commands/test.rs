@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::TestedPackage;
+use forc_util::format_log_receipts;
 use tracing::info;
 
 /// Run the Sway unit tests for the current project.
@@ -27,8 +28,21 @@ use tracing::info;
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
+    #[clap(flatten)]
+    pub test_print: TestPrintOpts,
     /// When specified, only tests containing the given string will be executed.
     pub filter: Option<String>,
+}
+
+/// The set of options provided for controlling output of a test.
+#[derive(Parser, Debug, Clone)]
+pub struct TestPrintOpts {
+    #[clap(long = "pretty-print", short = 'r')]
+    /// Pretty-print the logs emiited from tests.
+    pub pretty_print: bool,
+    /// Print `Log` and `LogData` receipts for tests.
+    #[clap(long = "logs", short = 'l')]
+    pub print_logs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> Result<()> {
@@ -36,6 +50,7 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
         bail!("unit test filter not yet supported");
     }
 
+    let test_print_opts = cmd.test_print.clone();
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
@@ -49,17 +64,17 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
             for pkg in pkgs {
                 let built = &pkg.built.pkg_name;
                 info!("\n   tested -- {built}\n");
-                print_tested_pkg(&pkg)?;
+                print_tested_pkg(&pkg, &test_print_opts)?;
             }
             info!("\n   Finished in {:?}", duration);
         }
-        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg)?,
+        forc_test::Tested::Package(pkg) => print_tested_pkg(&pkg, &test_print_opts)?,
     };
 
     Ok(())
 }
 
-fn print_tested_pkg(pkg: &TestedPackage) -> Result<()> {
+fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
     let mut failed_test_details = Vec::new();
@@ -75,6 +90,13 @@ fn print_tested_pkg(pkg: &TestedPackage) -> Result<()> {
             color.paint(state),
             test.duration
         );
+
+        // If logs are enabled, print them.
+        if test_print_opts.print_logs {
+            let logs = &test.logs;
+            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
+            info!("{}", formatted_logs);
+        }
 
         // If the test is failing, save details.
         if !test_passed {
