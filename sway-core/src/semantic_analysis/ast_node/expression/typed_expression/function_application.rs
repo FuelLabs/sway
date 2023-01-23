@@ -61,6 +61,11 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, function_decl.return_type);
+
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
