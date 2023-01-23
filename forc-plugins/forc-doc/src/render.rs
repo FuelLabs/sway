@@ -1232,58 +1232,45 @@ pub(crate) fn trim_fn_body(f: String) -> String {
     }
 }
 
-pub(crate) enum MarkdownHeader {
-    H1,
-    H2,
-    H3,
-    H4,
-    H5,
-}
-impl MarkdownHeader {
-    fn as_str(&self) -> &str {
-        match self {
-            Self::H1 => "<h1>",
-            Self::H2 => "<h2>",
-            Self::H3 => "<h3>",
-            Self::H4 => "<h4>",
-            Self::H5 => "<h5>",
-        }
-    }
-}
 /// Checks if some raw html (rendered from markdown) contains a header.
 /// If it does, it splits at the header and returns the slice that preceeded the it.
-pub(crate) fn split_at_markdown_header(s: &str) -> &str {
-    if s.contains(MarkdownHeader::H1.as_str()) {
-        let v: Vec<_> = s.split(MarkdownHeader::H1.as_str()).collect();
+pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
+    const H1: &str = "<h1>";
+    const H2: &str = "<h2>";
+    const H3: &str = "<h3>";
+    const H4: &str = "<h4>";
+    const H5: &str = "<h5>";
+    if raw_html.contains(H1) {
+        let v: Vec<_> = raw_html.split(H1).collect();
         match v.first() {
             Some(s) => s,
             None => panic!("expected some &str"),
         }
-    } else if s.contains(MarkdownHeader::H2.as_str()) {
-        let v: Vec<_> = s.split(MarkdownHeader::H2.as_str()).collect();
+    } else if raw_html.contains(H2) {
+        let v: Vec<_> = raw_html.split(H2).collect();
         match v.first() {
             Some(s) => s,
             None => panic!("expected some &str"),
         }
-    } else if s.contains(MarkdownHeader::H3.as_str()) {
-        let v: Vec<_> = s.split(MarkdownHeader::H3.as_str()).collect();
+    } else if raw_html.contains(H3) {
+        let v: Vec<_> = raw_html.split(H3).collect();
         match v.first() {
             Some(s) => s,
             None => panic!("expected some &str"),
         }
-    } else if s.contains(MarkdownHeader::H4.as_str()) {
-        let v: Vec<_> = s.split(MarkdownHeader::H4.as_str()).collect();
+    } else if raw_html.contains(H4) {
+        let v: Vec<_> = raw_html.split(H4).collect();
         match v.first() {
             Some(s) => s,
             None => panic!("expected some &str"),
         }
-    } else if s.contains(MarkdownHeader::H5.as_str()) {
-        let v: Vec<_> = s.split(MarkdownHeader::H5.as_str()).collect();
+    } else if raw_html.contains(H5) {
+        let v: Vec<_> = raw_html.split(H5).collect();
         match v.first() {
             Some(s) => s,
             None => panic!("expected some &str"),
         }
     } else {
-        s
+        raw_html
     }
 }

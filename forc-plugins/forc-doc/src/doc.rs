@@ -55,8 +55,8 @@ impl Document {
                 match preview.find("</p>") {
                     Some(index) => {
                         let preview = preview.split_at(index + 5).0;
-                        if preview.len() > 100 && preview.contains("\n") {
-                            match preview.find("\n") {
+                        if preview.len() > 100 && preview.contains('\n') {
+                            match preview.find('\n') {
                                 Some(index) => preview.split_at(index).0.to_string(),
                                 None => unreachable!("Previous logic prevents this panic"),
                             }
