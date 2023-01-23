@@ -31,7 +31,7 @@ pub struct App {
     /// - Exits with `1` and prints a diff if formatting is required.
     #[clap(short, long)]
     pub check: bool,
-    /// Path to the project, if not specified, current working directory will be used.
+    /// Path to a project or a single .sw file. If not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
 }
@@ -46,16 +46,40 @@ fn main() {
 
 fn run() -> Result<()> {
     let app = App::parse();
-    let dir = match app.path.clone() {
+    let mut formatter = Formatter::default();
+    let path = app.path.as_ref();
+    let p = match path {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
-    let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
-    for (_, member_path) in manifest_file.member_manifests()? {
-        let member_dir = member_path.dir();
-        let mut formatter = Formatter::from_dir(member_dir)?;
-        format_pkg_at_dir(&app, &dir, &mut formatter)?;
+
+    if p.is_dir() {
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&p)?;
+        for (_, member_path) in manifest_file.member_manifests()? {
+            let member_dir = member_path.dir();
+            let mut formatter = Formatter::from_dir(member_dir)?;
+            format_pkg_at_dir(&app, &p, &mut formatter)?;
+        }
+    } else {
+        format_single_file(&p);
     }
+
+    Ok(())
+}
+
+fn format_single_file(path: &Path) -> Result<()> {
+    let mut formatter = Formatter::default();
+    if let Ok(file_content) = fs::read_to_string(&path) {
+        match Formatter::format(&mut formatter, file_content.into(), None) {
+            Ok(formatted_content) => {
+                format_file(&path, &formatted_content)?;
+            }
+            Err(err) => {
+                error!("{}\n", err);
+            }
+        }
+    }
+
     Ok(())
 }
 
