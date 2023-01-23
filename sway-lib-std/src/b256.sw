@@ -15,7 +15,7 @@ use ::option::Option;
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() > 32 {
-            Option::None::<b256>
+            Option::None::<Self>
         } else {
             let mut val: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
             let ptr = __addr_of(val);
