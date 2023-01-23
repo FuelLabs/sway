@@ -13,7 +13,7 @@ use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
-use forc_util::find_manifest_dir;
+use forc_util::{find_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
@@ -58,7 +58,7 @@ fn run() -> Result<()> {
             let mut formatter = Formatter::from_dir(member_dir)?;
             format_pkg_at_dir(&app, &path, &mut formatter)?;
         }
-    } else {
+    } else if is_sway_file(&path) {
         format_single_file(&path)?;
     }
 
