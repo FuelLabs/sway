@@ -133,6 +133,7 @@ impl RenderedDocumentation {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
                     html_filename: INDEX_FILENAME.to_owned(),
+                    preview_opt: None,
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
@@ -476,6 +477,7 @@ impl ItemContext {
                                 IDENTITY,
                                 field.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Fields, doc_links);
@@ -491,6 +493,7 @@ impl ItemContext {
                                 IDENTITY,
                                 field.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Fields, doc_links);
@@ -502,6 +505,7 @@ impl ItemContext {
                             name: variant.name.as_str().to_string(),
                             module_info: ModuleInfo::from_vec(vec![]),
                             html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Variants, doc_links);
@@ -517,6 +521,7 @@ impl ItemContext {
                                 IDENTITY,
                                 method.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::RequiredMethods, doc_links);
@@ -572,7 +577,7 @@ impl Renderable for TyStructField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -592,7 +597,7 @@ impl Renderable for TyStorageField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -611,7 +616,7 @@ impl Renderable for TyEnumVariant {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -717,6 +722,7 @@ pub(crate) struct DocLink {
     pub(crate) name: String,
     pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
+    pub(crate) preview_opt: Option<String>,
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct DocLinks {
@@ -731,14 +737,21 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
-                                        : item.module_info.to_path_literal_string(
-                                            &item.name,
-                                            item.module_info.project_name()
-                                        );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                            : item.module_info.to_path_literal_string(
+                                                &item.name,
+                                                item.module_info.project_name()
+                                            );
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : item.preview_opt.unwrap();
+                                        }
                                     }
                                 }
                             }
@@ -752,17 +765,24 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
-                                        @ if title == BlockTitle::Modules {
-                                            : item.name;
-                                        } else {
-                                            : item.module_info.to_path_literal_string(
-                                                &item.name,
-                                                item.module_info.project_name()
-                                            );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                            @ if title == BlockTitle::Modules {
+                                                : item.name;
+                                            } else {
+                                                : item.module_info.to_path_literal_string(
+                                                    &item.name,
+                                                    item.module_info.project_name()
+                                                );
+                                            }
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : item.preview_opt.unwrap();
                                         }
                                     }
                                 }
@@ -777,14 +797,21 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
-                                        : item.module_info.to_path_literal_string(
-                                            &item.name,
-                                            item.module_info.location()
-                                        );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
+                                            : item.module_info.to_path_literal_string(
+                                                &item.name,
+                                                item.module_info.location()
+                                            );
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : item.preview_opt.unwrap();
+                                        }
                                     }
                                 }
                             }
@@ -1163,29 +1190,39 @@ impl Renderable for Sidebar {
         }
     }
 }
+pub(crate) trait DocStrings {
+    fn to_html_string(&self) -> String;
+    fn to_raw_string(&self) -> String;
+}
 /// Creates an HTML String from an [AttributesMap]
-pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
-    let attributes = attributes.get(&AttributeKind::DocComment);
-    let mut docs = String::new();
+impl DocStrings for AttributesMap {
+    fn to_html_string(&self) -> String {
+        let docs = self.to_raw_string();
 
-    if let Some(vec_attrs) = attributes {
-        for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
-            writeln!(docs, "{}", ident.as_str())
-                .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
-        }
+        let mut options = ComrakOptions::default();
+        options.render.hardbreaks = true;
+        options.render.github_pre_lang = true;
+        options.extension.strikethrough = true;
+        options.extension.table = true;
+        options.extension.autolink = true;
+        options.extension.superscript = true;
+        options.extension.footnotes = true;
+        options.parse.smart = true;
+        options.parse.default_info_string = Some("sway".into());
+        markdown_to_html(&format_docs(&docs), &options)
     }
+    fn to_raw_string(&self) -> String {
+        let attributes = self.get(&AttributeKind::DocComment);
+        let mut docs = String::new();
 
-    let mut options = ComrakOptions::default();
-    options.render.hardbreaks = true;
-    options.render.github_pre_lang = true;
-    options.extension.strikethrough = true;
-    options.extension.table = true;
-    options.extension.autolink = true;
-    options.extension.superscript = true;
-    options.extension.footnotes = true;
-    options.parse.smart = true;
-    options.parse.default_info_string = Some("sway".into());
-    markdown_to_html(&format_docs(&docs), &options)
+        if let Some(vec_attrs) = attributes {
+            for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
+                writeln!(docs, "{}", ident.as_str())
+                    .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
+            }
+        }
+        docs
+    }
 }
 /// Takes a formatted String fn and returns only the function signature.
 pub(crate) fn trim_fn_body(f: String) -> String {
