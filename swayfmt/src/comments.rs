@@ -39,17 +39,17 @@ pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter
 }
 
 pub fn maybe_write_comments_from_map(
-    to: &mut FormattedCode,
+    formatted_code: &mut FormattedCode,
     start: usize,
     end: usize,
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
     let comments = take_comments_between(start, end, formatter);
     if !comments.is_empty() {
-        writeln!(to)?;
+        writeln!(formatted_code)?;
         for comment in comments {
             writeln!(
-                to,
+                formatted_code,
                 "{}{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
                 comment.span().as_str(),
