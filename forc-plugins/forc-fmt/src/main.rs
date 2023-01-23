@@ -46,22 +46,20 @@ fn main() {
 
 fn run() -> Result<()> {
     let app = App::parse();
-    let mut formatter = Formatter::default();
-    let path = app.path.as_ref();
-    let p = match path {
+    let path = match app.path.as_ref() {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
 
-    if p.is_dir() {
-        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&p)?;
+    if path.is_dir() {
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&path)?;
         for (_, member_path) in manifest_file.member_manifests()? {
             let member_dir = member_path.dir();
             let mut formatter = Formatter::from_dir(member_dir)?;
-            format_pkg_at_dir(&app, &p, &mut formatter)?;
+            format_pkg_at_dir(&app, &path, &mut formatter)?;
         }
     } else {
-        format_single_file(&p);
+        format_single_file(&path)?;
     }
 
     Ok(())
