@@ -327,8 +327,7 @@ impl Backend {
                         match program.module {
                             Some(ref module) => {
                                 // Initialize the string with the AST from the root
-                                let formatted_ast: String =
-                                    format!("{:#?}", module);
+                                let formatted_ast: String = format!("{:#?}", module);
 
                                 let module_ast_path = params.save_path.join("module.rs");
                                 Ok(write_ast_to_file(module_ast_path.as_path(), &formatted_ast))
@@ -406,7 +405,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/language")
-            //.join("struct_field_access")
+        //.join("struct_field_access")
     }
 
     #[allow(dead_code)]
@@ -416,7 +415,7 @@ mod tests {
             .parent()
             .unwrap()
             .join("examples")
-            //.join("storage_variables")
+        //.join("storage_variables")
     }
 
     fn load_sway_example(manifest_dir: &PathBuf) -> Option<(Url, String)> {
@@ -425,9 +424,9 @@ mod tests {
         if let Ok(mut file) = fs::File::open(&src_path) {
             let mut sway_program = String::new();
             file.read_to_string(&mut sway_program).unwrap();
-    
+
             let uri = Url::from_file_path(src_path).unwrap();
-    
+
             Some((uri, sway_program))
         } else {
             None
@@ -493,7 +492,12 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url, kind: String, save_dir: &Path) -> Request {
+    async fn show_ast_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        kind: String,
+        save_dir: &Path,
+    ) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri
@@ -610,20 +614,22 @@ mod tests {
 
         // ignore the "window/logMessage" notification: "Initializing the Sway Language Server"
         let _ = messages.next().await;
-        
+
         let ast_folder = Path::new("/Users/joshuabatty/Desktop/sway_asts");
         fs::create_dir(ast_folder).unwrap();
 
-        let e2e_dir = sway_example_dir();// e2e_test_dir();
-        let mut entries = fs::read_dir(&e2e_dir).unwrap()
+        let e2e_dir = sway_example_dir(); // e2e_test_dir();
+        let mut entries = fs::read_dir(&e2e_dir)
+            .unwrap()
             .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>().unwrap();
+            .collect::<Result<Vec<_>, std::io::Error>>()
+            .unwrap();
 
         // The order in which `read_dir` returns entries is not guaranteed. If reproducible
         // ordering is required the entries should be explicitly sorted.
 
         entries.sort();
-        
+
         for entry in entries {
             let manifest_dir = entry;
             let example_name = manifest_dir.file_name().unwrap();
@@ -637,7 +643,7 @@ mod tests {
                             Err(_) => continue,
                         }
                         (uri, sway_program)
-                    },
+                    }
                     None => continue,
                 };
 
@@ -651,23 +657,26 @@ mod tests {
                 let _ = messages.next().await;
 
                 // send "sway/show_typed_ast" request
-                let print_module_ast = show_ast_request(&mut service, &uri, "module".to_string(), &example_dir);
+                let print_module_ast =
+                    show_ast_request(&mut service, &uri, "module".to_string(), &example_dir);
                 if let Err(_) = timeout(Duration::from_millis(10), print_module_ast).await {
                     eprintln!("print_module_ast: did not receive value within 10 ms");
                 }
 
-                let print_parsed_ast = show_ast_request(&mut service, &uri, "parsed".to_string(), &example_dir);
+                let print_parsed_ast =
+                    show_ast_request(&mut service, &uri, "parsed".to_string(), &example_dir);
                 if let Err(_) = timeout(Duration::from_millis(10), print_parsed_ast).await {
                     eprintln!("print_parsed_ast: did not receive value within 10 ms");
                 }
 
-                let print_typed_ast = show_ast_request(&mut service, &uri, "typed".to_string(), &example_dir);
+                let print_typed_ast =
+                    show_ast_request(&mut service, &uri, "typed".to_string(), &example_dir);
                 if let Err(_) = timeout(Duration::from_millis(10), print_typed_ast).await {
                     eprintln!("print_typed_ast: did not receive value within 10 ms");
                 }
 
                 eprintln!("example_name = {:?}", example_name);
-            } 
+            }
         }
 
         // send "shutdown" request

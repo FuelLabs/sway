@@ -6,9 +6,9 @@ use crate::{
     },
     core::{
         document::{DocumentError, TextDocument},
+        parse_items,
         token::{Token, TokenMap, TypeDefinition},
         {traverse_parse_tree, traverse_typed_tree},
-        parse_items,
     },
     sway_config::SwayConfig,
     utils,
