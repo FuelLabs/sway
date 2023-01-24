@@ -466,6 +466,29 @@ impl TyDeclaration {
         }
     }
 
+    /// friendly type name string used for error reporting.
+    pub fn friendly_name(&self, engines: &Engines) -> String {
+        use TyDeclaration::*;
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
+        match self {
+            ImplTrait(decl_id) => {
+                let decl = decl_engine
+                    .get_impl_trait(decl_id.clone(), &Span::dummy())
+                    .unwrap();
+                let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
+                format!(
+                    "{} for {}",
+                    self.get_decl_ident(decl_engine)
+                        .map_or(String::from(""), |f| f.as_str().to_string()),
+                    implementing_for_type_id.json_abi_str(type_engine)
+                )
+            }
+            _ => self
+                .get_decl_ident(decl_engine)
+                .map_or(String::from(""), |f| f.as_str().to_string()),
+        }
+    }
 
     /// friendly type name string used for error reporting.
     pub fn friendly_type_name(&self) -> &'static str {
