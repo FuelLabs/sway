@@ -5,6 +5,7 @@ use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
 use ::option::Option;
+use ::convert::From;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -647,6 +648,23 @@ impl core::ops::Eq for Bytes {
     }
 }
 
+impl From<raw_slice> for Bytes {
+    fn from(slice: raw_slice) -> Bytes {
+        let buf = RawBytes {
+            ptr: slice.ptr(),
+            cap: slice.raw_bytes_len(),
+        };
+        Self {
+            buf,
+            len: buf.cap,
+        }
+    }
+
+    fn into(self) -> raw_slice {
+        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////
@@ -982,4 +1000,25 @@ fn test_keccak256() {
 
     // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(keccak256(362268190631264256) == bytes.keccak256());
+}
+
+#[test()]
+fn test_from_raw_slice() {
+    let val: b256 = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice = raw_slice::from_raw_bytes_parts(__addr_of(val), 32);
+    let b = Bytes::from(slice);
+    assert(b.len() == 32);
+    assert(b.buf.ptr == __addr_of(val));
+    assert(b.buf.capacity() == 32);
+}
+
+#[test()]
+fn test_into_raw_slice() {
+    let val: b256 = 0x3497297632836282349729763283628234972976328362823497297632836282;
+    let slice_1 = raw_slice::from_raw_bytes_parts(__addr_of(val), 32);
+    let mut bytes = Bytes::from(slice_1);
+
+    let slice_2: raw_slice = bytes.into();
+    assert(slice_1.ptr() == slice_2.ptr());
+    assert(slice_1.raw_bytes_len() == slice_2.raw_bytes_len());
 }
