@@ -135,7 +135,16 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         let decl_engine = engines.de();
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(engines, ("Program exit".to_string()).into()));
+        let mut entry_points = vec![];
+        let mut non_entry_points = vec![];
         for ast_entrypoint in module_nodes {
+            if ast_entrypoint.is_entry_point(decl_engine, tree_type)? {
+                entry_points.push(ast_entrypoint);
+            } else {
+                non_entry_points.push(ast_entrypoint);
+            }
+        }
+        for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (l_leaves, _new_exit_node) = connect_node(
                 engines,
                 ast_entrypoint,
