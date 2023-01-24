@@ -1,5 +1,8 @@
 use crate::{
-    asm_generation::{register_allocator, AllocatedAbstractInstructionSet, RegisterSequencer},
+    asm_generation::fuel::{
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
+        register_sequencer::RegisterSequencer,
+    },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
         AllocatedAbstractOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,

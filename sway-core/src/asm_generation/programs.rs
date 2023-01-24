@@ -2,9 +2,10 @@ mod r#abstract;
 mod allocated;
 mod r#final;
 
-use super::{
-    register_sequencer::RegisterSequencer, AbstractInstructionSet, AllocatedAbstractInstructionSet,
-    DataSection,
+use super::fuel::{
+    abstract_instruction_set::AbstractInstructionSet,
+    allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, data_section::DataSection,
+    register_sequencer::RegisterSequencer,
 };
 
 use crate::{

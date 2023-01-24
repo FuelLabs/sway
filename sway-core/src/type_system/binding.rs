@@ -82,6 +82,16 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
+impl<T> TypeBinding<T> {
+    pub fn strip_inner(self) -> TypeBinding<()> {
+        TypeBinding {
+            inner: (),
+            type_arguments: self.type_arguments,
+            span: self.span,
+        }
+    }
+}
+
 impl TypeBinding<CallPath<(TypeInfo, Span)>> {
     pub(crate) fn type_check_with_type_info(
         &self,

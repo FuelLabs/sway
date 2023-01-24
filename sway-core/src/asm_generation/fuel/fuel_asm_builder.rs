@@ -1,13 +1,16 @@
 use crate::{
     asm_generation::{
-        abstract_instruction_set::AbstractInstructionSet,
         asm_builder::{AsmBuilder, AsmBuilderResult},
-        compiler_constants,
         from_ir::{
             aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
         },
-        register_sequencer::RegisterSequencer,
-        DataId, DataSection, Entry, ProgramKind,
+        fuel::{
+            abstract_instruction_set::AbstractInstructionSet,
+            compiler_constants,
+            data_section::{DataId, DataSection, Entry},
+            register_sequencer::RegisterSequencer,
+        },
+        ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclId,
