@@ -17,7 +17,7 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw() {
         let sender = msg_sender().unwrap();
-        let bal = storage.balances.get(sender);
+        let bal = storage.balances.get(sender).unwrap_or(0);
 
         assert(bal > 0);
 
@@ -32,4 +32,3 @@ impl MyContract for Contract {
         storage.vec.clear();
     }
 }
-

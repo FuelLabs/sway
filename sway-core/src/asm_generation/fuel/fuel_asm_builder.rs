@@ -1620,16 +1620,24 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => {
-                    VirtualOp::SRWQ(val_reg, was_slot_set_reg, key_reg, number_of_slots_reg)
-                }
-                StateAccessType::Write => {
-                    VirtualOp::SWWQ(key_reg, was_slot_set_reg, val_reg, number_of_slots_reg)
-                }
+                StateAccessType::Read => VirtualOp::SRWQ(
+                    val_reg,
+                    was_slot_set_reg.clone(),
+                    key_reg,
+                    number_of_slots_reg,
+                ),
+                StateAccessType::Write => VirtualOp::SWWQ(
+                    key_reg,
+                    was_slot_set_reg.clone(),
+                    val_reg,
+                    number_of_slots_reg,
+                ),
             }),
             comment: "quad word state access".into(),
             owning_span,
         });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }
@@ -1716,13 +1724,19 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(
+                        key_reg,
+                        was_slot_set_reg.clone(),
+                        store_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
             }
             _ => unreachable!("Unexpected storage locations for key and store_val"),
         }
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }
