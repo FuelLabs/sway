@@ -10,12 +10,14 @@ library alloc;
 /// ```
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ///                                               $hp^  ^VM_MAX_RAM
-///
+/// ```
 /// After allocating with `let ptr = alloc::<u64>(1)`:
+/// ```
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ///                       $hp^  ^ptr                    ^VM_MAX_RAM
-///
+/// ```
 /// After writing with `sw(ptr, u64::max())`:
+/// ```
 /// ... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
 ///                       $hp^  ^ptr                    ^VM_MAX_RAM
 /// ```
