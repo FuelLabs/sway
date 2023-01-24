@@ -56,64 +56,64 @@ abi StorageTest {
     #[storage(write)]
     fn store_bool(value: bool);
     #[storage(read)]
-    fn get_bool() -> bool;
+    fn get_bool() -> Option<bool>;
     #[storage(write)]
     fn store_u8(value: u8);
     #[storage(read)]
-    fn get_u8() -> u8;
+    fn get_u8() -> Option<u8>;
     #[storage(write)]
     fn store_u16(value: u16);
     #[storage(read)]
-    fn get_u16() -> u16;
+    fn get_u16() -> Option<u16>;
     #[storage(write)]
     fn store_u32(value: u32);
     #[storage(read)]
-    fn get_u32() -> u32;
+    fn get_u32() -> Option<u32>;
     #[storage(write)]
     fn store_u64(value: u64);
     #[storage(read)]
-    fn get_u64() -> u64;
+    fn get_u64() -> Option<u64>;
     #[storage(write)]
     fn store_b256(value: b256);
     #[storage(read)]
-    fn get_b256() -> b256;
+    fn get_b256() -> Option<b256>;
 
     #[storage(write)]
     fn store_small_struct(value: SmallStruct);
     #[storage(read)]
-    fn get_small_struct() -> SmallStruct;
+    fn get_small_struct() -> Option<SmallStruct>;
     #[storage(write)]
     fn store_medium_struct(value: MediumStruct);
     #[storage(read)]
-    fn get_medium_struct() -> MediumStruct;
+    fn get_medium_struct() -> Option<MediumStruct>;
     #[storage(write)]
     fn store_large_struct(value: LargeStruct);
     #[storage(read)]
-    fn get_large_struct() -> LargeStruct;
+    fn get_large_struct() -> Option<LargeStruct>;
     #[storage(write)]
     fn store_very_large_struct(value: VeryLargeStruct);
     #[storage(read)]
-    fn get_very_large_struct() -> VeryLargeStruct;
+    fn get_very_large_struct() -> Option<VeryLargeStruct>;
 
     #[storage(write)]
     fn store_enum(value: StorageEnum);
     #[storage(read)]
-    fn get_enum() -> StorageEnum;
+    fn get_enum() -> Option<StorageEnum>;
 
     #[storage(write)]
     fn store_tuple(value: (b256, u8, b256));
     #[storage(read)]
-    fn get_tuple() -> (b256, u8, b256);
+    fn get_tuple() -> Option<(b256, u8, b256)>;
 
     #[storage(write)]
     fn store_string(value: str[31]);
     #[storage(read)]
-    fn get_string() -> str[31];
+    fn get_string() -> Option<str[31]>;
 
     #[storage(write)]
     fn store_array();
     #[storage(read)]
-    fn get_array() -> [b256; 3];
+    fn get_array() -> Option<[b256; 3]>;
 
     #[storage(read, write)]
     fn storage_in_call() -> u64;
@@ -126,8 +126,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_bool() -> bool {
-        get(S_1)
+    fn get_bool() -> Option<bool> {
+        get::<bool>(S_1)
     }
 
     #[storage(write)]
@@ -136,8 +136,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_u8() -> u8 {
-        get(S_2)
+    fn get_u8() -> Option<u8> {
+        get::<u8>(S_2)
     }
 
     #[storage(write)]
@@ -146,8 +146,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_u16() -> u16 {
-        get(S_3)
+    fn get_u16() -> Option<u16> {
+        get::<u16>(S_3)
     }
 
     #[storage(write)]
@@ -156,8 +156,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_u32() -> u32 {
-        get(S_4)
+    fn get_u32() -> Option<u32> {
+        get::<u32>(S_4)
     }
 
     #[storage(write)]
@@ -166,8 +166,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_u64() -> u64 {
-        get(S_5)
+    fn get_u64() -> Option<u64> {
+        get::<u64>(S_5)
     }
 
     #[storage(write)]
@@ -176,8 +176,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_b256() -> b256 {
-        get(S_6)
+    fn get_b256() -> Option<b256> {
+        get::<b256>(S_6)
     }
 
     #[storage(write)]
@@ -186,8 +186,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_small_struct() -> SmallStruct {
-        get(S_8)
+    fn get_small_struct() -> Option<SmallStruct> {
+        get::<SmallStruct>(S_8)
     }
 
     #[storage(write)]
@@ -196,8 +196,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_medium_struct() -> MediumStruct {
-        get(S_9)
+    fn get_medium_struct() -> Option<MediumStruct> {
+        get::<MediumStruct>(S_9)
     }
 
     #[storage(write)]
@@ -206,8 +206,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_large_struct() -> LargeStruct {
-        get(S_9)
+    fn get_large_struct() -> Option<LargeStruct> {
+        get::<LargeStruct>(S_9)
     }
 
     #[storage(write)]
@@ -216,8 +216,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_very_large_struct() -> VeryLargeStruct {
-        get(S_10)
+    fn get_very_large_struct() -> Option<VeryLargeStruct> {
+        get::<VeryLargeStruct>(S_10)
     }
 
     #[storage(write)]
@@ -226,8 +226,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_enum() -> StorageEnum {
-        get(S_11)
+    fn get_enum() -> Option<StorageEnum> {
+        get::<StorageEnum>(S_11)
     }
 
     #[storage(write)]
@@ -236,8 +236,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_tuple() -> (b256, u8, b256) {
-        get(S_12)
+    fn get_tuple() -> Option<(b256, u8, b256)> {
+        get::<(b256, u8, b256)>(S_12)
     }
 
     #[storage(write)]
@@ -246,8 +246,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_string() -> str[31] {
-        get(S_13)
+    fn get_string() -> Option<str[31]> {
+        get::<str[31]>(S_13)
     }
 
     // Passing arrays into contract methods is not working at the moment
@@ -262,8 +262,8 @@ impl StorageTest for Contract {
     }
 
     #[storage(read)]
-    fn get_array() -> [b256; 3] {
-        get(S_14)
+    fn get_array() -> Option<[b256; 3]> {
+        get::<[b256; 3]>(S_14)
     }
 
     #[storage(read, write)]
@@ -299,6 +299,6 @@ fn non_inlined_function(arg: u32) -> bool {
         z: arg,
     });
 
-    let ls: LargeStruct = get(S_15);
+    let ls = get::<LargeStruct>(S_15).unwrap();
     ls.x == arg
 }

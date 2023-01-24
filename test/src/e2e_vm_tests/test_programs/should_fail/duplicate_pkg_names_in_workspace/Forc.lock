@@ -1,0 +1,7 @@
+[[package]]
+name = 'contract'
+source = 'member'
+
+[[package]]
+name = 'contract2'
+source = 'member'

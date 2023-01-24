@@ -15,7 +15,6 @@ macro_rules! calldata {
     }
 }
 
-
 // Load abi from json
 abigen!(
     TestContract,
@@ -69,14 +68,14 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
     // Launch a local network and deploy the contract
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
-            Some(1), /* Single wallet */
-            Some(1), /* Single coin (UTXO) */
+            Some(1),             /* Single wallet */
+            Some(1),             /* Single coin (UTXO) */
             Some(1_000_000_000), /* Amount per coin */
         ),
         None,
         None,
     )
-        .await;
+    .await;
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::deploy(
@@ -88,8 +87,8 @@ async fn get_contract_instance() -> (TestContract, ContractId, WalletUnlocked) {
                 .to_string(),
         )),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     let instance = TestContract::new(id.clone(), wallet.clone());
 
@@ -145,7 +144,8 @@ async fn can_call_with_multiple_args() {
 async fn can_call_with_multiple_args_complex() {
     let (instance, id, wallet) = get_contract_instance().await;
 
-    let function_selector = fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
+    let function_selector =
+        fn_selector!(set_value_multiple_complex(MyStruct, SizedAsciiString::<4>));
     let calldata = calldata!(
         MyStruct {
             a: true,

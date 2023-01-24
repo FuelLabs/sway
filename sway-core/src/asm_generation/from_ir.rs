@@ -1,12 +1,13 @@
 use super::{
     asm_builder::{AsmBuilder, AsmBuilderResult},
-    checks::check_invalid_opcodes,
     evm::EvmAsmBuilder,
-    finalized_asm::FinalizedAsm,
-    fuel::FuelAsmBuilder,
+    finalized_asm::{check_invalid_opcodes, FinalizedAsm},
+    fuel::{
+        data_section::{DataId, DataSection},
+        fuel_asm_builder::FuelAsmBuilder,
+        register_sequencer::RegisterSequencer,
+    },
     programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
-    register_sequencer::RegisterSequencer,
-    DataId, DataSection,
 };
 
 use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
@@ -80,7 +81,7 @@ fn compile_module_to_asm(
             reg_seqr,
             context,
         )),
-        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, reg_seqr, context)),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, context)),
     };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
