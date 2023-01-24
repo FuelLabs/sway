@@ -39,7 +39,7 @@ impl StorageMapExample for Contract {
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
 
-        let value1 = storage.map.get(addr1);
+        let value1 = storage.map.get(addr1).unwrap_or(0);
     }
     // ANCHOR_END: storage_map_get
 }

@@ -3,13 +3,8 @@ use std::fmt::{self, Debug};
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    error::*,
-    language::{parsed, ty::*},
-    transform::AttributeKind,
-    type_system::*,
-    types::DeterministicallyAborts,
+    decl_engine::*, engine_threading::*, error::*, language::ty::*, transform::AttributeKind,
+    type_system::*, types::DeterministicallyAborts,
 };
 
 pub trait GetDeclIdent {
@@ -150,13 +145,8 @@ impl TyAstNode {
         ok(public, warnings, errors)
     }
 
-    /// Naive check to see if this node is a function declaration of a function called `main` if
-    /// the [TreeType] is Script or Predicate.
-    pub(crate) fn is_main_function(
-        &self,
-        decl_engine: &DeclEngine,
-        tree_type: parsed::TreeType,
-    ) -> CompileResult<bool> {
+    /// Check to see if this node is a function declaration with generic type parameters.
+    pub(crate) fn is_generic_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match &self {
@@ -165,18 +155,15 @@ impl TyAstNode {
                 content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
                 ..
             } => {
-                let TyFunctionDeclaration { name, .. } = check!(
+                let TyFunctionDeclaration {
+                    type_parameters, ..
+                } = check!(
                     CompileResult::from(decl_engine.get_function(decl_id.clone(), span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                let is_main = name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
-                    && matches!(
-                        tree_type,
-                        parsed::TreeType::Script | parsed::TreeType::Predicate
-                    );
-                ok(is_main, warnings, errors)
+                ok(!type_parameters.is_empty(), warnings, errors)
             }
             _ => ok(false, warnings, errors),
         }

@@ -62,7 +62,7 @@ impl ty::TyExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name_binding = TypeBinding {
+        let mut method_name_binding = TypeBinding {
             inner: MethodName::FromTrait {
                 call_path: call_path.clone(),
             },
@@ -71,7 +71,7 @@ impl ty::TyExpression {
         };
         let arguments = VecDeque::from(arguments);
         let decl_id = check!(
-            resolve_method_name(ctx, &method_name_binding, arguments.clone()),
+            resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -106,6 +106,7 @@ impl ty::TyExpression {
                 function_decl_id: decl_id,
                 self_state_idx: None,
                 selector: None,
+                type_binding: None,
             },
             return_type,
             span,
@@ -491,7 +492,7 @@ impl ty::TyExpression {
         instantiate_function_application(
             ctx,
             function_decl,
-            call_path_binding.inner,
+            call_path_binding,
             Some(arguments),
             span,
         )
@@ -1150,7 +1151,15 @@ impl ty::TyExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args, &span),
+                    instantiate_enum(
+                        ctx,
+                        enum_decl,
+                        enum_name,
+                        variant_name,
+                        args,
+                        call_path_binding.strip_inner(),
+                        &span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1160,13 +1169,7 @@ impl ty::TyExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(
-                        ctx,
-                        func_decl,
-                        call_path_binding.inner,
-                        args,
-                        span
-                    ),
+                    instantiate_function_application(ctx, func_decl, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors

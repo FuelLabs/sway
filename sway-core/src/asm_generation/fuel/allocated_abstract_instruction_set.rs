@@ -4,7 +4,11 @@ use crate::asm_lang::{
     VirtualImmediate18, VirtualImmediate24,
 };
 
-use super::{compiler_constants as consts, DataSection, Entry, RealizedAbstractInstructionSet};
+use super::{
+    abstract_instruction_set::RealizedAbstractInstructionSet,
+    compiler_constants as consts,
+    data_section::{DataSection, Entry},
+};
 
 use sway_types::span::Span;
 
