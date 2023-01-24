@@ -299,7 +299,6 @@ fn non_inlined_function(arg: u32) -> bool {
         z: arg,
     });
 
-    let ls:Option<LargeStruct> = get::<LargeStruct>(S_15);
-    let ls = ls.unwrap();
+    let ls = get::<LargeStruct>(S_15).unwrap();
     ls.x == arg
 }

@@ -10,14 +10,12 @@ impl<K, V> MyStorageMap<K, V> {
     #[storage(read)]
     fn to_vec1(self, key: K) -> Vec<V> {
         let k = sha256((key, __get_storage_key()));
-        let len: Option<u64> = get::<u64>(k);
-        let len = len.unwrap_or(0);
+        let len = get::<u64>(k).unwrap_or(0);
         let mut i = 0;
         let mut vec: Vec<V> = Vec::new();
         while len > i {
             let k = sha256((key, i, __get_storage_key()));
-            let item: Option<K> = get::<K>(k);
-            let item = item.unwrap();
+            let item = get::<K>(k).unwrap();
             vec.push(item); // <-----
             i += 1;
         }
@@ -29,14 +27,12 @@ impl<K, V> MyStorageMap<K, V> {
     #[storage(read)]
     fn to_vec2(self, key: K) -> Vec<V> {
         let k = sha256((key, __get_storage_key()));
-        let len: Option<u64> = get::<u64>(k);
-        let len = len.unwrap_or(0);
+        let len = get::<u64>(k).unwrap_or(0);
         let mut i = 0;
         let mut vec/*: Vec<V>*/ = Vec::new();
         while len > i {
             let k = sha256((key, i, __get_storage_key()));
-            let item: Option<K> = get::<K>(k);
-            let item = item.unwrap();
+            let item = get::<K>(k).unwrap();
             vec.push(item); // <-----
             i += 1;
         }

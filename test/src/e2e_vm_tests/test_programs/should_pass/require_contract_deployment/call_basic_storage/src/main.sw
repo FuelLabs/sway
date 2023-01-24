@@ -2,7 +2,7 @@ script;
 use basic_storage_abi::{BasicStorage, Quad};
 
 fn main() -> u64 {
-    let addr = abi(BasicStorage, 0xb4c4881f821432ab39878315b002cf7da1cf7ac6e245cef69217e232d29f592d);
+    let addr = abi(BasicStorage, 0x1e66c3e3db1dcb7af3a01f166d1b6404c91043ed651e5ecd080c5427fc431a9d);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 
@@ -10,8 +10,7 @@ fn main() -> u64 {
     let res:Option<u64> = addr.get_u64(key);
     assert(res.is_none()); // nothing to read just yet
     addr.store_u64(key, value);
-    let res:Option<u64> = addr.get_u64(key);
-    assert(res.unwrap() == value);
+    assert(addr.get_u64(key).unwrap() == value);
 
     /* Test single word storage intrinsics */
     let key = 0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;

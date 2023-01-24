@@ -47,7 +47,7 @@ pub fn store<T>(key: b256, value: T) {
 /// If the value size is larger than 8 bytes it is read to a heap buffer which is leaked for the
 /// duration of the program.
 ///
-/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise, 
+/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
 /// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
 ///
 /// ### Arguments
@@ -141,7 +141,7 @@ impl<K, V> StorageMap<K, V> {
 
     /// Retrieves a value previously stored using a key
     ///
-    /// If no value was previously stored at `key`, `Option::None` is returned. Otherwise, 
+    /// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
     /// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
     ///
     /// ### Arguments
@@ -199,8 +199,7 @@ impl<V> StorageVec<V> {
     #[storage(read, write)]
     pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
         let key = sha256((len, __get_storage_key()));
@@ -232,8 +231,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn pop(self) -> Option<V> {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
@@ -273,8 +271,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
@@ -320,8 +317,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
@@ -379,8 +375,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
@@ -429,8 +424,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
@@ -477,8 +471,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        let len = len.unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap();
 
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
@@ -535,8 +528,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn len(self) -> u64 {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        len.unwrap()
+        get::<u64>(__get_storage_key()).unwrap()
     }
 
     /// Checks whether the len is 0 or not
@@ -564,8 +556,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn is_empty(self) -> bool {
-        let len: Option<u64> = get::<u64>(__get_storage_key());
-        len.unwrap() == 0
+        get::<u64>(__get_storage_key()).unwrap() == 0
     }
 
     /// Sets the len to 0

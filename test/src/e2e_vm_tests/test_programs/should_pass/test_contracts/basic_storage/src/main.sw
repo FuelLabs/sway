@@ -100,13 +100,11 @@ fn test_storage() {
 
     let x: u64 = 64;
     store(key, x);
-    let res:Option<u64> = get::<u64>(key);
-    assert(x == res.unwrap());
+    assert(x == get::<u64>(key).unwrap());
 
     let y: b256 = 0x1101010101010101010101010101010101010101010101010101010101010101;
     store(key, y);
-    let res:Option<b256> = get::<b256>(key);
-    assert(y == res.unwrap());
+    assert(y == get::<b256>(key).unwrap());
 
     let s: S = S {
         x: 1,
@@ -123,31 +121,26 @@ fn test_storage() {
         },
     };
     store(key, s);
-    let s_:Option<S> = get::<S>(key);
-    let s_ = s_.unwrap();
+    let s_ = get::<S>(key).unwrap();
     assert(s.x == s_.x && s.y == s_.y && s.z == s_.z);
     assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean); 
     assert(s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
 
     let boolean: bool = true;
     store(key, boolean);
-    let res:Option<bool> = get::<bool>(key);
-    assert(boolean == res.unwrap());
+    assert(boolean == get::<bool>(key).unwrap());
 
     let int8: u8 = 8;
     store(key, int8);
-    let res:Option<u8> = get::<u8>(key);
-    assert(int8 == res.unwrap());
+    assert(int8 == get::<u8>(key).unwrap());
 
     let int16: u16 = 16;
     store(key, int16);
-    let res:Option<u16> = get::<u16>(key);
-    assert(int16 == res.unwrap());
+    assert(int16 == get::<u16>(key).unwrap());
 
     let int32: u32 = 32;
     store(key, int32);
-    let res:Option<u32> = get::<u32>(key);
-    assert(int32 == res.unwrap());
+    assert(int32 == get::<u32>(key).unwrap());
 
     let e: E = E::B(T {
         x: 1,
@@ -159,8 +152,7 @@ fn test_storage() {
         int32: 6,
     });
     store(key, e);
-    let e_:Option<E> = get::<E>(key);
-    let e_ = e_.unwrap();
+    let e_ = get::<E>(key).unwrap();
     match (e, e_) {
         (
 
@@ -191,8 +183,7 @@ fn test_storage() {
 
     let e2: E = E::A(777);
     store(key, e2);
-    let e2_:Option<E> = get::<E>(key);
-    let e2_ = e2_.unwrap();
+    let e2_ = get::<E>(key).unwrap();
     match (e2, e2_) {
         (E::A(i1), E::A(i2)) => {
             assert(i1 == i2);
