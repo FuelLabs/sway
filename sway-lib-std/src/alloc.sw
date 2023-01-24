@@ -1,11 +1,10 @@
-//! Library for allocating memory.
-//! Inspired from: https://doc.rust-lang.org/std/alloc/index.html
+//! A library for allocating memory inspired by [Rust's std::alloc](https://doc.rust-lang.org/std/alloc/index.html).
 library alloc;
 
 /// Allocates zeroed memory on the heap.
 ///
-/// In FuelVM, the heap begins at `VM_MAX_RAM - 1` and grows downward.
-/// Heap pointer `$hp` will always point to unallocated space.
+/// In the FuelVM, the heap begins at `VM_MAX_RAM - 1` and grows downward.
+/// The heap pointer, `$hp`, will always point to unallocated space.
 ///
 /// Initially the heap will look like this:
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |

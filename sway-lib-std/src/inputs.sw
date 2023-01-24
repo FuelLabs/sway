@@ -1,5 +1,5 @@
 //! Getters for fields on transaction inputs.
-//! This includes InputCoins, InputMessages and InputContracts.
+//! This includes `InputCoins`, `InputMessages` and `InputContracts`.
 library inputs;
 
 use ::address::Address;
@@ -21,9 +21,8 @@ use core::ops::Eq;
 
 const GTF_INPUT_TYPE = 0x101;
 
-////////////////////////////////////////
 // GTF Opcode const selectors
-////////////////////////////////////////
+//
 // pub const GTF_INPUT_COIN_TX_ID = 0x102;
 // pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
 pub const GTF_INPUT_COIN_OWNER = 0x104;
@@ -77,9 +76,8 @@ impl Eq for Input {
     }
 }
 
-////////////////////////////////////////
 // General Inputs
-////////////////////////////////////////
+//
 /// Get the type of the input at `index`.
 pub fn input_type(index: u64) -> Input {
     match __gtf::<u8>(index, GTF_INPUT_TYPE) {
@@ -90,7 +88,7 @@ pub fn input_type(index: u64) -> Input {
     }
 }
 
-/// Get the transaction inputs count
+/// Get the transaction inputs count.
 pub fn input_count() -> u8 {
     match tx_type() {
         Transaction::Script => __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT),
@@ -150,8 +148,8 @@ pub fn input_predicate_data<T>(index: u64) -> T {
     }
 }
 
-/// If the input's type is `InputCoin` return the asset id as an `Option::Some(id)`.
-/// If the input's type is `InputMessage` return the base asset id as an `Option::Some(id)`.
+/// If the input's type is `InputCoin` return the asset ID as an `Option::Some(id)`.
+/// If the input's type is `InputMessage` return the `BASE_ASSET_ID` as an `Option::Some(id)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_asset_id(index: u64) -> Option<ContractId> {
     match input_type(index) {
@@ -229,9 +227,8 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
     }
 }
 
-////////////////////////////////////////
 // Coin Inputs
-////////////////////////////////////////
+//
 /// Get the maturity from the input at `index`.
 /// If the input's type is `InputCoin`,
 /// return the index as an `Option::Some(u32)`.
@@ -243,10 +240,9 @@ pub fn input_maturity(index: u64) -> Option<u32> {
     }
 }
 
-////////////////////////////////////////
 // Message Inputs
-////////////////////////////////////////
-/// Get the message id of the input message at `index`.
+//
+/// Get the message ID of the input message at `index`.
 pub fn input_message_msg_id(index: u64) -> b256 {
     assert(valid_input_type(index, Input::Message));
     __gtf::<b256>(index, GTF_INPUT_MESSAGE_MESSAGE_ID)

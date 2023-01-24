@@ -1,4 +1,4 @@
-//! The bytes type is used when a colection of tightly-packed arbitrary bytes is needed.
+//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library bytes;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
@@ -21,7 +21,7 @@ impl RawBytes {
     }
 
     /// Creates a `RawBytes` (on the heap) with exactly the capacity (in bytes) specified.
-    /// This is equivalent to calling `RawBytes::new` when `capacity` is zero.
+    /// This is equivalent to calling `RawBytes::new()` when `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc_bytes(capacity),
@@ -39,7 +39,7 @@ impl RawBytes {
         self.cap
     }
 
-    /// Grow the capacity of the Bytes by doubling its current capacity. The
+    /// Grow the capacity of `Bytes` by doubling its current capacity. The
     /// `realloc_bytes` function allocates memory on the heap and copies
     /// the data from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
@@ -57,7 +57,7 @@ pub struct Bytes {
 impl Bytes {
     /// Constructs a new, empty `Bytes`.
     ///
-    /// The Bytes will not allocate until elements are pushed onto it.
+    /// The `Bytes` will not allocate until elements are pushed onto it.
     ///
     /// ### Examples
     ///
@@ -79,9 +79,9 @@ impl Bytes {
     /// Constructs a new, empty `Bytes` with the specified capacity.
     ///
     /// The `Bytes` will be able to hold exactly `capacity` bytes without
-    /// reallocating. If `capacity` is zero, the Bytes will not allocate.
+    /// reallocating. If `capacity` is zero, the `Bytes` will not allocate.
     ///
-    /// It is important to note that although the returned Bytes has the
+    /// It is important to note that although the returned `Bytes` has the
     /// capacity specified, the vector will have a zero length.
     ///
     /// ### Examples
@@ -102,7 +102,7 @@ impl Bytes {
         }
     }
 
-    /// Appends an element to the back of a Bytes collection.
+    /// Appends an element to the back of a `Bytes` collection.
     ///
     /// ### Examples
     ///
@@ -133,7 +133,7 @@ impl Bytes {
         self.len += 1;
     }
 
-    /// Removes the last element from a `Bytes` and returns it, or [`None`] if it
+    /// Removes the last element from a `Bytes` and returns it, or `None` if it
     /// is empty.
     ///
     /// ### Examples
@@ -341,7 +341,7 @@ impl Bytes {
     ///
     /// ### Reverts
     ///
-    /// * If `element1_index` or `element2_index` is greater than or equal to the length of Bytes.
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
     ///
     /// ### Examples
     ///
@@ -399,7 +399,7 @@ impl Bytes {
         self.len
     }
 
-    /// Clears the Bytes, removing all values.
+    /// Clears the `Bytes`, removing all values.
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the Bytes.
@@ -586,7 +586,7 @@ impl Bytes {
         second
     }
 
-    /// Joins two Bytes into a single larger Bytes.
+    /// Joins two `Bytes` into a single larger `Bytes`.
     ///
     /// ### Arguments
     ///

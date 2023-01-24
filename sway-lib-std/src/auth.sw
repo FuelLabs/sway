@@ -12,7 +12,7 @@ pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
 }
 
-/// Returns `true` if the caller is external (i.e. a script).
+/// Returns `true` if the caller is external (i.e. a `script`).
 /// Otherwise, returns `false`.
 /// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 pub fn caller_is_external() -> bool {
@@ -22,7 +22,7 @@ pub fn caller_is_external() -> bool {
     }
 }
 
-/// If caller is internal, returns the contract ID of the caller.
+/// If the caller is internal, returns the contract ID of the caller.
 /// Otherwise, undefined behavior.
 pub fn caller_contract_id() -> ContractId {
     ContractId::from(asm(r1) {
@@ -43,7 +43,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 }
 
 /// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
-/// TransactionScript if they all share the same owner.
+/// `TransactionScript` if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
     let mut candidate = Option::None::<Address>;

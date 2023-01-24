@@ -1,15 +1,15 @@
 //! Error handling with the `Result` type.
 //!
-//! [`Result<T, E>`][`Result`] is the type used for returning and propagating
-//! errors. It is an enum with the variants, [`Ok(T)`], representing
-//! success and containing a value, and [`Err(E)`], representing error
+//! `Result<T, E>``Result` is the type used for returning and propagating
+//! errors. It is an enum with the variants, `Ok(T)`, representing
+//! success and containing a value, and `Err(E)`, representing error
 //! and containing an error value.
 //! 
-//! Functions return [`Result`] whenever errors are expected and recoverable. In
-//! the `std` crate, [`Result`] is most prominently used for `Identity`
+//! Functions return `Result` whenever errors are expected and recoverable. In
+//! the `std` crate, `Result` is most prominently used for `Identity`
 //! interactions and cryptographic operations.
 //! 
-//! A simple function returning [`Result`] might be defined and used like so:
+//! A simple function returning `Result` might be defined and used like so:
 //! 
 //! ```
 //! enum Version {
@@ -32,48 +32,45 @@
 //! 
 //! # Method overview
 //! 
-//! In addition to working with pattern matching, [`Result`] provides a variety
+//! In addition to working with pattern matching, `Result` provides a variety
 //! of methods.
 //! 
 //! ## Querying the variant
 //! 
-//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`] is
-//! [`Ok`] or [`Err`], respectively.
+//! The `is_ok` and `is_err` methods return `true` if the `Result` is
+//! `Ok` or `Err`, respectively.
 //! 
-//! [`is_ok`]: Result::is_ok
-//! [`is_err`]: Result::is_err
+//! `is_ok` : `Result::is_ok()`.
+//! `is_err`: `Result::is_err()`.
 //! 
 //! ## Extracting the contained value
 //! 
-//! These methods exctract the contained value in a [`Result<T,E>`] when it is
-//! the [`Ok`] variant. If the [`Result`] is [`Err`]:
+//! These methods exctract the contained value in a `Result<T,E>` when it is
+//! the `Ok` variant. If the `Result` is `Err`:
 //! 
-//! * [`unwrap`] reverts
-//! * [`unwrap_or`] returns the default provided value
+//! * `unwrap` reverts.
+//! * `unwrap_or` returns the default provided value.
 //! 
-//! [`unwrap`] Result::unwrap
-//! [`unwrap_or`] Result::unwrap_or
+//! `unwrap`   : `Result::unwrap()`
+//! `unwrap_or`: `Result::unwrap_or()`
 library result;
 
 use ::revert::revert;
 
-/// `Result` is a type that represents either success ([`Ok`]) or failure
-/// ([`Err`]).
+/// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 pub enum Result<T, E> {
-    /// Contains the success value
+    /// Contains the success value.
     Ok: T,
-    /// Contains the error value
+    /// Contains the error value.
     Err: E,
 }
 
-/////////////////////////////////////////////////////////////////////////////
 // Type implementation
-/////////////////////////////////////////////////////////////////////////////
+//
 impl<T, E> Result<T, E> {
-    /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
-    /////////////////////////////////////////////////////////////////////////
-    /// Returns `true` if the result is [`Ok`].
+    //
+    /// Returns `true` if the result is `Ok`.
     /// 
     /// # Examples
     /// 
