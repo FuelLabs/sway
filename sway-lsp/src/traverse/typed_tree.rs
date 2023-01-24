@@ -514,6 +514,7 @@ impl Parse for TyStorageAccess {
 
 impl Parse for TyStorageAccessDescriptor {
     fn parse(&self, ctx: &ParseContext) {
+        todo!("check that self.name has the same span as self.span");
         if let Some(mut token) = ctx
             .tokens
             .try_get_mut(&to_ident_key(&self.name))
