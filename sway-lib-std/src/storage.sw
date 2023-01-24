@@ -200,7 +200,7 @@ impl<V> StorageVec<V> {
     #[storage(read, write)]
     pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
         let key = sha256((len, __get_storage_key()));
@@ -232,7 +232,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn pop(self) -> Option<V> {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
@@ -272,7 +272,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
@@ -318,7 +318,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
@@ -376,7 +376,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
@@ -425,7 +425,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
@@ -472,7 +472,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key()).unwrap();
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
