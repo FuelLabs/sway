@@ -75,30 +75,30 @@ __state_load_word(key: b256) -> u64
 ___
 
 ```sway
-__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)
+__state_load_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool
 ```
 
-**Description:** Reads `slots` number of slots (`b256` each) from storage starting at key `key` and stores them in memory starting at address `ptr`
+**Description:** Reads `slots` number of slots (`b256` each) from storage starting at key `key` and stores them in memory starting at address `ptr`. Returns a Boolean describing whether all the storage slots were previously set.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__state_store_word(key: b256, val: u64)
+__state_store_word(key: b256, val: u64) -> bool
 ```
 
-**Description:** Stores a single word `val` into storage at key `key`.
+**Description:** Stores a single word `val` into storage at key `key`. Returns a Boolean describing whether the store slot was previously set.
 
 **Constraints:** None.
 
 ___
 
 ```sway
-__state_store_quad(key: b256, ptr: raw_ptr, slots: u64)
+__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool
 ```
 
-**Description:** Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory into storage starting at key `key`.
+**Description:** Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory into storage starting at key `key`. Returns a Boolean describing whether the first storage slot was previously set.
 
 **Constraints:** None.
 

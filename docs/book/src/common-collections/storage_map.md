@@ -45,15 +45,7 @@ We can get a value out of the storage map by providing its `key` to the `get` me
 {{#include ../../../../examples/storage_map/src/main.sw:storage_map_get}}
 ```
 
-Here, `value1` will have the value that's associated with the first address, and the result will be `42`. You might expect `get` to return an `Option<V>` where the return value would be `None` if the value does not exist. However, that is not case for `StorageMap`. In fact, storage maps have no way of knowing whether `insert` has been called with a given key or not as it would be too expensive to keep track of that information. Instead, a default value whose byte-representation is all zeros is returned if `get` is called with a key that has no value in the map. Note that each type interprets that default value differently:
-
-* The default value for a `bool` is `false`.
-* The default value for a integers is `0`.
-* The default value for a `b256` is `0x0000000000000000000000000000000000000000000000000000000000000000`.
-* The default value for a `str[n]` is a string of `Null` characters.
-* The default value for a tuple is a tuple of the default values of its components.
-* The default value for a struct is a struct of the default values of its components.
-* The default value for an enum is an instance of its first variant containing the default for its associated value.
+Here, `value1` will have the value that's associated with the first address, and the result will be `42`. The `get` method returns an `Option<V>`; if there’s no value for that key in the storage map, `get` will return `Option::None`. This program handles the `Option` by calling `unwrap_or` to set `value1` to zero if `map` doesn't have an entry for the key.
 
 ## Storage maps with multiple keys
 
