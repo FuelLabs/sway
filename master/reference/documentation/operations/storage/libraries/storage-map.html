@@ -155,19 +155,20 @@ storage {
 </code></pre>
 <p>There are two <code>storage</code> variables: <code>balance</code> &amp; <code>user</code>. <code>balance</code> takes a single value as the key while <code>user</code> wraps two values into a <a href="../../../language/built-ins/tuples.html">tuple</a> and uses that as a key.</p>
 <h2 id="reading-from-storage"><a class="header" href="#reading-from-storage">Reading from Storage</a></h2>
-<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve.</p>
+<p>Retrieving data from a storage variable is done through the <code>.get(key)</code> method. That is to say that we state which storage variable we would like to read from and append <code>.get()</code> to the end while providing the key for the data that we want to retrieve. The method <code>get</code> returns an <code>Option</code>; if there is no value for <code>key</code> in the map, <code>get</code> will return <code>Option::None</code>.</p>
 <p>In this example we wrap the <a href="../../namespace/identity.html"><code>Identity</code></a> of the caller with their provided <code>id</code> into a <a href="../../../language/built-ins/tuples.html">tuple</a> and use that as the key.</p>
 <pre><code class="language-sway">#[storage(read)]
 fn reading_from_storage(id: u64) {
-    let user = storage.user.get((msg_sender().unwrap(), id));
+    let user = storage.user.get((msg_sender().unwrap(), id)).unwrap_or(0);
 }
 </code></pre>
+<p>This contract method handles the returned <code>Option</code> by calling <code>unwrap_or</code> to set <code>user</code> to zero if the map <code>user</code> doesn't have an entry for the key.</p>
 <h2 id="writing-to-storage"><a class="header" href="#writing-to-storage">Writing to Storage</a></h2>
 <p>Writing to storage is similar to <a href="#reading-from-storage">reading</a>. The difference is that we use a different method <code>.insert(key, value)</code>.</p>
 <p>In this example we retrieve the balance of the caller and then increment their balance by 1.</p>
 <pre><code class="language-sway">#[storage(read, write)]
 fn writing_to_storage() {
-    let balance = storage.balance.get(msg_sender().unwrap());
+    let balance = storage.balance.get(msg_sender().unwrap()).unwrap_or(0);
     storage.balance.insert(msg_sender().unwrap(), balance + 1);
 }
 </code></pre>

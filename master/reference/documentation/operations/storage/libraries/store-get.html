@@ -161,6 +161,7 @@ fn read(key: b256) {
     let value = get::&lt;u64&gt;(key);
 }
 </code></pre>
+<p>The function <code>get</code> returns an <code>Option</code>; if the storage slots requested have not been set before, <code>get</code> will return <code>Option::None</code>.</p>
 
                     </main>
 
