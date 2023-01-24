@@ -69,7 +69,7 @@ pub enum ConstantRegister {
     FuncArg5,
 }
 
-use crate::asm_generation::compiler_constants;
+use crate::asm_generation::fuel::compiler_constants;
 
 impl ConstantRegister {
     pub(crate) fn to_register_id(self) -> fuel_asm::RegisterId {

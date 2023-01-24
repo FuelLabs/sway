@@ -1,7 +1,9 @@
 use super::FinalProgram;
 
 use crate::{
-    asm_generation::{instruction_set::InstructionSet, DataSection, ProgramABI},
+    asm_generation::{
+        fuel::data_section::DataSection, instruction_set::InstructionSet, ProgramABI,
+    },
     FinalizedAsm, FinalizedEntry,
 };
 
