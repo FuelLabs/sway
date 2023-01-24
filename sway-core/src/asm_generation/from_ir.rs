@@ -81,7 +81,7 @@ fn compile_module_to_asm(
             reg_seqr,
             context,
         )),
-        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, reg_seqr, context)),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, context)),
     };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
