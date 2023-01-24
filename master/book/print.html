@@ -2281,7 +2281,7 @@ impl ContractB for Contract {
 </blockquote>
 <h2 id="advanced-calls"><a class="header" href="#advanced-calls">Advanced Calls</a></h2>
 <p>All calls forward a gas stipend, and may additionally forward one native asset with the call.</p>
-<p>Here is an example of how to specify the amount of gas (<code>gas</code>), the asset ID of the native asset (<code>asset_id</code>), and the amount of the native asset (<code>amount</code>) to forward:</p>
+<p>Here is an example of how to specify the amount of gas (<code>gas</code>), the asset ID of the native asset (<code>asset_id</code>), and the amount of the native asset (<code>coins</code>) to forward:</p>
 <pre><code class="language-sway">script;
 
 abi MyContract {
@@ -2292,7 +2292,7 @@ fn main() {
     let x = abi(MyContract, 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0);
     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     x.foo {
-        gas: 5000, asset_id: asset_id, amount: 5000
+        gas: 5000, asset_id: asset_id, coins: 5000
     }
     (true, 3);
 }
