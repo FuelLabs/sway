@@ -93,7 +93,7 @@ pub struct BuiltPackage {
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
-    pub pkg_entries: Vec<PkgEntry>,
+    pub entries: Vec<PkgEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
@@ -2511,7 +2511,7 @@ pub fn compile(
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
     let decl_engine = engines.de();
-    let pkg_entries = entries
+    let entries = entries
         .iter()
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
         .collect::<anyhow::Result<_>>()?;
@@ -2544,7 +2544,7 @@ pub fn compile(
                 storage_slots,
                 bytecode,
                 tree_type,
-                pkg_entries,
+                entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 manifest_file: manifest.clone(),
@@ -2556,19 +2556,9 @@ pub fn compile(
 }
 
 impl PkgEntry {
-    /// Tries to retrieve the `PkgEntry` as a `PkgTestEntry`, panics otherwise.
-    pub fn expect_test_entry(&self) -> Result<PkgTestEntry> {
-        match &self.kind {
-            PkgEntryKind::Main => bail!(
-                "expected pkg entry to be pointing to a test, it is pointing to the main function"
-            ),
-            PkgEntryKind::Test(test_entry) => Ok(test_entry.clone()),
-        }
-    }
-
     /// Returns whether this `PkgEntry` corresponds to a test.
     pub fn is_test(&self) -> bool {
-        matches!(self.kind, PkgEntryKind::Test(_))
+        self.kind.test().is_some()
     }
 
     fn from_finalized_entry(
@@ -2587,6 +2577,16 @@ impl PkgEntry {
             finalized: finalized_entry.clone(),
             kind: pkg_entry_kind,
         })
+    }
+}
+
+impl PkgEntryKind {
+    /// Returns `Some` if the `PkgEntryKind` is `Test`.
+    pub fn test(&self) -> Option<&PkgTestEntry> {
+        match self {
+            PkgEntryKind::Test(test) => Some(test),
+            _ => None,
+        }
     }
 }
 

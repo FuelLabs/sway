@@ -190,10 +190,10 @@ impl<'a> PackageTests {
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
-            .pkg_entries
+            .entries
             .iter()
-            .filter(|entry| entry.is_test())
-            .map(|entry| {
+            .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+            .map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
                 let name = entry.finalized.fn_name.clone();
@@ -210,9 +210,8 @@ impl<'a> PackageTests {
                     })
                     .collect();
 
-                let test_entry = entry.expect_test_entry()?;
-                let span = test_entry.span;
-                let condition = test_entry.pass_condition;
+                let span = test_entry.span.clone();
+                let condition = test_entry.pass_condition.clone();
                 Ok(TestResult {
                     name,
                     duration,
@@ -339,7 +338,7 @@ impl BuiltTests {
         pkgs.iter()
             .map(|pkg| {
                 pkg.built_pkg_with_tests()
-                    .pkg_entries
+                    .entries
                     .iter()
                     .filter(|e| e.is_test())
                     .count()
