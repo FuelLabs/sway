@@ -12,7 +12,7 @@ use sway_types::Spanned;
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     mut function_decl: ty::TyFunctionDeclaration,
-    call_path: CallPath,
+    call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -24,8 +24,8 @@ pub(crate) fn instantiate_function_application(
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
-            method_name: call_path.suffix.clone(),
-            span: call_path.span(),
+            method_name: call_path_binding.inner.suffix.clone(),
+            span: call_path_binding.inner.span(),
         });
         return err(warnings, errors);
     }
@@ -35,13 +35,18 @@ pub(crate) fn instantiate_function_application(
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path, false),
+        check_function_arguments_arity(
+            arguments.len(),
+            &function_decl,
+            &call_path_binding.inner,
+            false
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -73,7 +78,7 @@ pub(crate) fn instantiate_function_application(
         TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
-            &call_path.span()
+            &call_path_binding.span()
         ),
         return err(warnings, errors),
         warnings,
@@ -85,12 +90,13 @@ pub(crate) fn instantiate_function_application(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
+            call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
             function_decl_id: new_decl_id,
             self_state_idx: None,
             selector: None,
+            type_binding: Some(call_path_binding.strip_inner()),
         },
         return_type,
         span,
