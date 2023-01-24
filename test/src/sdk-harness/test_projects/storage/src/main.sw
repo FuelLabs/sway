@@ -1,12 +1,6 @@
 contract;
 
-use std::{registers::stack_ptr, storage::{get, store}};
-
-pub enum MediumEnum {
-    One: u64,
-    Two: bool,
-    Three: b256,
-}
+use std::{registers::stack_ptr, storage::{clear, get, store}};
 
 pub struct SmallStruct {
     x: u64,
@@ -53,6 +47,8 @@ const S_14: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 const S_15: b256 = 0x0000000000000000000000000000000000000000000000000000000000000015;
 
 abi StorageTest {
+    #[storage(write)]
+    fn clear_bool() -> bool;
     #[storage(write)]
     fn store_bool(value: bool);
     #[storage(read)]
@@ -120,6 +116,11 @@ abi StorageTest {
 }
 
 impl StorageTest for Contract {
+    #[storage(write)]
+    fn clear_bool() -> bool {
+        clear::<bool>(S_1)
+    }
+
     #[storage(write)]
     fn store_bool(value: bool) {
         store(S_1, value);

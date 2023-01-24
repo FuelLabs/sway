@@ -108,6 +108,32 @@ pub fn get<T>(key: b256) -> Option<T> {
     }
 }
 
+/// Clear a sequence of consecutive storage slots starting at a some key. Returns a Boolean 
+/// indicating whether all of the storage slots cleared were previously set.
+///
+/// ### Arguments
+///
+/// * `key` - The key of the first storage slot that will be cleared 
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{storage::{store, get}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let stored_five = get::<u64>(ZERO_B256);
+/// assert(five == stored_five);
+/// ```
+#[storage(write)]
+pub fn clear<T>(key: b256) -> bool {
+    // Get the number of storage slots needed based on the size of `T`
+    let number_of_slots = (__size_of::<T>() + 31) >> 5;
+
+    // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
+    __state_clear(key, number_of_slots)
+}
+
 /// A persistent key-value pair mapping struct
 pub struct StorageMap<K, V> {}
 
