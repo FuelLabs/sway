@@ -179,19 +179,10 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
 
-        let value1 = storage.map.get(addr1);
+        let value1 = storage.map.get(addr1).unwrap_or(0);
     }
 </code></pre>
-<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. You might expect <code>get</code> to return an <code>Option&lt;V&gt;</code> where the return value would be <code>None</code> if the value does not exist. However, that is not case for <code>StorageMap</code>. In fact, storage maps have no way of knowing whether <code>insert</code> has been called with a given key or not as it would be too expensive to keep track of that information. Instead, a default value whose byte-representation is all zeros is returned if <code>get</code> is called with a key that has no value in the map. Note that each type interprets that default value differently:</p>
-<ul>
-<li>The default value for a <code>bool</code> is <code>false</code>.</li>
-<li>The default value for a integers is <code>0</code>.</li>
-<li>The default value for a <code>b256</code> is <code>0x0000000000000000000000000000000000000000000000000000000000000000</code>.</li>
-<li>The default value for a <code>str[n]</code> is a string of <code>Null</code> characters.</li>
-<li>The default value for a tuple is a tuple of the default values of its components.</li>
-<li>The default value for a struct is a struct of the default values of its components.</li>
-<li>The default value for an enum is an instance of its first variant containing the default for its associated value.</li>
-</ul>
+<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. The <code>get</code> method returns an <code>Option&lt;V&gt;</code>; if there’s no value for that key in the storage map, <code>get</code> will return <code>Option::None</code>. This program handles the <code>Option</code> by calling <code>unwrap_or</code> to set <code>value1</code> to zero if <code>map</code> doesn't have an entry for the key.</p>
 <h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage maps with multiple keys</a></h2>
 <p>You might find yourself needing a <code>StorageMap&lt;K1, V1&gt;</code> where the type <code>V1</code> is itself another <code>StorageMap&lt;K2, V2&gt;</code>. This is not allowed in Sway. The right approach is to use a single <code>StorageMap&lt;K, V&gt;</code> where <code>K</code> is a tuple <code>(K1, K2)</code>. For example:</p>
 <pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},

@@ -588,7 +588,7 @@ impl Token for Contract {
         };
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
     }
 
     #[storage(read, write)]
@@ -602,12 +602,12 @@ impl Token for Contract {
         };
 
         // Reduce the balance of sender
-        let sender_amount = storage.balances.get(sender);
+        let sender_amount = storage.balances.get(sender).unwrap_or(0);
         assert(sender_amount &gt; amount);
         storage.balances.insert(sender, sender_amount - amount);
 
         // Increase the balance of receiver
-        storage.balances.insert(receiver, storage.balances.get(receiver) + amount);
+        storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
 
         log(Sent {
             from: sender,
@@ -2043,8 +2043,8 @@ impl StorageExample for Contract {
 
     #[storage(read)]
     fn get_something() -&gt; u64 {
-        let value = get::&lt;u64&gt;(STORAGE_KEY);
-        value
+        let value: Option&lt;u64&gt; = get::&lt;u64&gt;(STORAGE_KEY);
+        value.unwrap_or(0)
     }
 }
 </code></pre>
@@ -2351,7 +2351,7 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId) {
         let sender = msg_sender().unwrap();
-        let bal = storage.balances.get(sender);
+        let bal = storage.balances.get(sender).unwrap_or(0);
 
         assert(bal &gt; 0);
 
@@ -2847,19 +2847,10 @@ There is no need to add the <code>mut</code> keyword when declaring a <code>Stor
         storage.map.insert(addr1, 42);
         storage.map.insert(addr2, 77);
 
-        let value1 = storage.map.get(addr1);
+        let value1 = storage.map.get(addr1).unwrap_or(0);
     }
 </code></pre>
-<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. You might expect <code>get</code> to return an <code>Option&lt;V&gt;</code> where the return value would be <code>None</code> if the value does not exist. However, that is not case for <code>StorageMap</code>. In fact, storage maps have no way of knowing whether <code>insert</code> has been called with a given key or not as it would be too expensive to keep track of that information. Instead, a default value whose byte-representation is all zeros is returned if <code>get</code> is called with a key that has no value in the map. Note that each type interprets that default value differently:</p>
-<ul>
-<li>The default value for a <code>bool</code> is <code>false</code>.</li>
-<li>The default value for a integers is <code>0</code>.</li>
-<li>The default value for a <code>b256</code> is <code>0x0000000000000000000000000000000000000000000000000000000000000000</code>.</li>
-<li>The default value for a <code>str[n]</code> is a string of <code>Null</code> characters.</li>
-<li>The default value for a tuple is a tuple of the default values of its components.</li>
-<li>The default value for a struct is a struct of the default values of its components.</li>
-<li>The default value for an enum is an instance of its first variant containing the default for its associated value.</li>
-</ul>
+<p>Here, <code>value1</code> will have the value that's associated with the first address, and the result will be <code>42</code>. The <code>get</code> method returns an <code>Option&lt;V&gt;</code>; if there’s no value for that key in the storage map, <code>get</code> will return <code>Option::None</code>. This program handles the <code>Option</code> by calling <code>unwrap_or</code> to set <code>value1</code> to zero if <code>map</code> doesn't have an entry for the key.</p>
 <h2 id="storage-maps-with-multiple-keys"><a class="header" href="#storage-maps-with-multiple-keys">Storage maps with multiple keys</a></h2>
 <p>You might find yourself needing a <code>StorageMap&lt;K1, V1&gt;</code> where the type <code>V1</code> is itself another <code>StorageMap&lt;K2, V2&gt;</code>. This is not allowed in Sway. The right approach is to use a single <code>StorageMap&lt;K, V&gt;</code> where <code>K</code> is a tuple <code>(K1, K2)</code>. For example:</p>
 <pre><code class="language-sway">    map_two_keys: StorageMap&lt;(b256, bool), b256&gt; = StorageMap {},
@@ -3254,19 +3245,19 @@ ABI.</p>
 <p><strong>Description:</strong> Reads and returns a single word from storage at key <code>key</code>.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
-<pre><code class="language-sway">__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)
+<pre><code class="language-sway">__state_load_quad(key: b256, ptr: raw_ptr, slots: u64) -&gt; bool
 </code></pre>
-<p><strong>Description:</strong> Reads <code>slots</code> number of slots (<code>b256</code> each) from storage starting at key <code>key</code> and stores them in memory starting at address <code>ptr</code></p>
+<p><strong>Description:</strong> Reads <code>slots</code> number of slots (<code>b256</code> each) from storage starting at key <code>key</code> and stores them in memory starting at address <code>ptr</code>. Returns a Boolean describing whether all the storage slots were previously set.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
-<pre><code class="language-sway">__state_store_word(key: b256, val: u64)
+<pre><code class="language-sway">__state_store_word(key: b256, val: u64) -&gt; bool
 </code></pre>
-<p><strong>Description:</strong> Stores a single word <code>val</code> into storage at key <code>key</code>.</p>
+<p><strong>Description:</strong> Stores a single word <code>val</code> into storage at key <code>key</code>. Returns a Boolean describing whether the store slot was previously set.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
-<pre><code class="language-sway">__state_store_quad(key: b256, ptr: raw_ptr, slots: u64)
+<pre><code class="language-sway">__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -&gt; bool
 </code></pre>
-<p><strong>Description:</strong> Stores <code>slots</code> number of slots (<code>b256</code> each) starting at address <code>ptr</code> in memory into storage starting at key <code>key</code>.</p>
+<p><strong>Description:</strong> Stores <code>slots</code> number of slots (<code>b256</code> each) starting at address <code>ptr</code> in memory into storage starting at key <code>key</code>. Returns a Boolean describing whether the first storage slot was previously set.</p>
 <p><strong>Constraints:</strong> None.</p>
 <hr />
 <pre><code class="language-sway">__log&lt;T&gt;(val: T)
