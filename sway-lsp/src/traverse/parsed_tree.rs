@@ -542,15 +542,19 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
                 }
 
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Struct,
+                );
+
+                for type_arg in &method_name_binding.type_arguments {
+                    self.collect_type_arg(type_arg, &token);
+                }
+
                 // Don't collect applications of desugared operators due to mismatched ident lengths.
                 if !desugared_op(&prefixes) {
-                    self.tokens.insert(
-                        to_ident_key(&method_name_binding.inner.easy_name()),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Struct,
-                        ),
-                    );
+                    self.tokens
+                        .insert(to_ident_key(&method_name_binding.inner.easy_name()), token);
                 }
 
                 for exp in arguments {

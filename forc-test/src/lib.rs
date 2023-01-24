@@ -6,7 +6,6 @@ use std::{
 };
 
 use forc_pkg as pkg;
-use forc_util::format_log_receipts;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
@@ -56,6 +55,8 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: TestPassCondition,
+    /// Emitted `Recipt`s during the execution of the test.
+    pub logs: Vec<fuel_tx::Receipt>,
 }
 
 /// The possible conditions for a test result to be considered "passing".
@@ -202,10 +203,7 @@ impl<'a> PackageTests {
     }
 
     /// Run all tests for this package and collect their results.
-    pub(crate) fn run_tests(
-        &self,
-        test_print_opts: &TestPrintOpts,
-    ) -> anyhow::Result<TestedPackage> {
+    pub(crate) fn run_tests(&self) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
@@ -217,12 +215,18 @@ impl<'a> PackageTests {
                     u32::try_from(entry.imm).expect("test instruction offset out of range");
                 let name = entry.fn_name.clone();
                 let test_setup = self.setup()?;
-                let (state, duration) = exec_test(
-                    &pkg_with_tests.bytecode,
-                    offset,
-                    test_setup,
-                    test_print_opts,
-                );
+                let (state, duration, receipts) =
+                    exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+
+                // Only retain `Log` and `LogData` receipts.
+                let logs = receipts
+                    .into_iter()
+                    .filter(|receipt| {
+                        matches!(receipt, fuel_tx::Receipt::Log { .. })
+                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                    })
+                    .collect();
+
                 let test_decl_id = entry
                     .test_decl_id
                     .clone()
@@ -239,6 +243,7 @@ impl<'a> PackageTests {
                     span,
                     state,
                     condition,
+                    logs,
                 })
             })
             .collect::<anyhow::Result<_>>()?;
@@ -367,8 +372,8 @@ impl BuiltTests {
     }
 
     /// Run all built tests, return the result.
-    pub fn run(self, test_print_opts: &TestPrintOpts) -> anyhow::Result<Tested> {
-        run_tests(self, test_print_opts)
+    pub fn run(self) -> anyhow::Result<Tested> {
+        run_tests(self)
     }
 }
 
@@ -500,16 +505,16 @@ fn test_pass_condition(
 }
 
 /// Build the given package and run its tests, returning the results.
-fn run_tests(built: BuiltTests, test_print_opts: &TestPrintOpts) -> anyhow::Result<Tested> {
+fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests(test_print_opts)?;
+            let tested_pkg = pkg.run_tests()?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests(test_print_opts))
+                .map(|pkg| pkg.run_tests())
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }
@@ -558,8 +563,11 @@ fn exec_test(
     bytecode: &[u8],
     test_offset: u32,
     test_setup: TestSetup,
-    test_print_opts: &TestPrintOpts,
-) -> (vm::state::ProgramState, std::time::Duration) {
+) -> (
+    vm::state::ProgramState,
+    std::time::Duration,
+    Vec<fuel_tx::Receipt>,
+) {
     let storage = test_setup.storage;
     let contract_id = test_setup.contract_id;
 
@@ -606,20 +614,7 @@ fn exec_test(
     let transition = interpreter.transact(tx).unwrap();
     let duration = start.elapsed();
     let state = *transition.state();
+    let receipts = transition.receipts().to_vec();
 
-    if test_print_opts.print_logs {
-        let receipts: Vec<_> = transition
-            .receipts()
-            .iter()
-            .cloned()
-            .filter(|receipt| {
-                matches!(receipt, tx::Receipt::LogData { .. })
-                    || matches!(receipt, tx::Receipt::Log { .. })
-            })
-            .collect();
-        let formatted_receipts = format_log_receipts(&receipts, test_print_opts.pretty_print)
-            .expect("cannot format log receipts for the test");
-        println!("{}", formatted_receipts);
-    }
-    (state, duration)
+    (state, duration, receipts)
 }

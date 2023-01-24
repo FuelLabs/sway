@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()configurable {
+# nextln: $()Y: u64 = 42,
+# nextln: $()}
+# nextln: $()Multiple configurable blocks detected in this module

@@ -1589,6 +1589,7 @@ version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
+ "forc-pkg",
  "forc-tracing",
  "forc-util",
  "prettydiff 0.5.1",
@@ -1642,7 +1643,6 @@ version = "0.33.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
- "forc-util",
  "fuel-tx",
  "fuel-vm",
  "rand",

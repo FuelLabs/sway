@@ -30,7 +30,7 @@ impl fmt::Display for InterfaceName {
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariable { var_name: Ident },
+    UnknownVariable { var_name: Ident, span: Span },
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariablePath { var_name: Ident, span: Span },
     #[error("Function \"{name}\" does not exist in this scope.")]
@@ -39,6 +39,7 @@ pub enum CompileError {
     NotAVariable {
         name: Ident,
         what_it_is: &'static str,
+        span: Span,
     },
     #[error(
         "Identifier \"{name}\" was called as if it was a function, but it is actually a \
@@ -104,7 +105,7 @@ pub enum CompileError {
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
     #[error("Function \"{name}\" was already defined in scope.")]
-    MultipleDefinitionsOfFunction { name: Ident },
+    MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error(
         "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
          variable, it is a {kind}."
@@ -115,7 +116,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable { name: Ident },
+    AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -128,11 +129,11 @@ pub enum CompileError {
     #[error(
         "This parameter was declared as mutable, which is not supported yet, did you mean to use ref mut?"
     )]
-    MutableParameterNotSupported { param_name: Ident },
+    MutableParameterNotSupported { param_name: Ident, span: Span },
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
-    RefMutableNotAllowedInContractAbi { param_name: Ident },
+    RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -296,11 +297,12 @@ pub enum CompileError {
         field_name: Ident,
         available_fields: String,
         struct_name: Ident,
+        span: Span,
     },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { name: Ident },
+    SymbolNotFound { name: Ident, span: Span },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { name: Ident },
+    ImportPrivateSymbol { name: Ident, span: Span },
     #[error(
         "Because this if expression's value is used, an \"else\" branch is required and it must \
          return type \"{r#type}\""
@@ -621,7 +623,7 @@ pub enum CompileError {
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: Ident },
+    StorageFieldDoesNotExist { name: Ident, span: Span },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
@@ -629,7 +631,7 @@ pub enum CompileError {
     #[error("Type {ty} can only be declared directly as a storage field")]
     InvalidStorageOnlyTypeDecl { ty: String, span: Span },
     #[error("Expected identifier, found keyword \"{name}\" ")]
-    InvalidVariableName { name: Ident },
+    InvalidVariableName { name: Ident, span: Span },
     #[error(
         "Internal compiler error: Unexpected {decl_type} declaration found.\n\
         Please file an issue on the repository and include the code that triggered this error."
@@ -681,7 +683,7 @@ pub enum CompileError {
     #[error("The type \"{ty}\" is not allowed in storage.")]
     TypeNotAllowedInContractStorage { ty: String, span: Span },
     #[error("ref mut parameter not allowed for main()")]
-    RefMutableNotAllowedInMain { param_name: Ident },
+    RefMutableNotAllowedInMain { param_name: Ident, span: Span },
     #[error("Returning a `raw_ptr` from `main()` is not allowed.")]
     PointerReturnNotAllowedInMain { span: Span },
     #[error(
@@ -719,6 +721,8 @@ pub enum CompileError {
     },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
+    #[error("The name `{name}` is defined multiple times")]
+    NameDefinedMultipleTimes { name: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -731,10 +735,10 @@ impl Spanned for CompileError {
     fn span(&self) -> Span {
         use CompileError::*;
         match self {
-            UnknownVariable { var_name } => var_name.span(),
+            UnknownVariable { span, .. } => span.clone(),
             UnknownVariablePath { span, .. } => span.clone(),
             UnknownFunction { span, .. } => span.clone(),
-            NotAVariable { name, .. } => name.span(),
+            NotAVariable { span, .. } => span.clone(),
             NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
             UnimplementedWithHelp(_, _, span) => span.clone(),
@@ -751,12 +755,12 @@ impl Spanned for CompileError {
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
-            MultipleDefinitionsOfFunction { name } => name.span(),
+            MultipleDefinitionsOfFunction { span, .. } => span.clone(),
             ReassignmentToNonVariable { span, .. } => span.clone(),
-            AssignmentToNonMutable { name } => name.span(),
-            MutableParameterNotSupported { param_name } => param_name.span(),
+            AssignmentToNonMutable { span, .. } => span.clone(),
+            MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
-            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
+            RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -782,9 +786,9 @@ impl Spanned for CompileError {
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { field_name, .. } => field_name.span(),
-            SymbolNotFound { name, .. } => name.span(),
-            ImportPrivateSymbol { name } => name.span(),
+            FieldNotFound { span, .. } => span.clone(),
+            SymbolNotFound { span, .. } => span.clone(),
+            ImportPrivateSymbol { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             UnqualifiedSelfType { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -877,11 +881,11 @@ impl Spanned for CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { name } => name.span(),
+            StorageFieldDoesNotExist { span, .. } => span.clone(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
-            InvalidVariableName { name } => name.span(),
+            InvalidVariableName { span, .. } => span.clone(),
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),
@@ -900,7 +904,7 @@ impl Spanned for CompileError {
             ConfigTimeConstantNotAConstDecl { span } => span.clone(),
             ConfigTimeConstantNotALiteral { span } => span.clone(),
             TypeNotAllowedInContractStorage { span, .. } => span.clone(),
-            RefMutableNotAllowedInMain { param_name } => param_name.span(),
+            RefMutableNotAllowedInMain { span, .. } => span.clone(),
             PointerReturnNotAllowedInMain { span } => span.clone(),
             NestedSliceReturnNotAllowedInMain { span } => span.clone(),
             InitializedRegisterReassignment { span, .. } => span.clone(),
@@ -910,6 +914,7 @@ impl Spanned for CompileError {
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
+            NameDefinedMultipleTimes { span, .. } => span.clone(),
         }
     }
 }

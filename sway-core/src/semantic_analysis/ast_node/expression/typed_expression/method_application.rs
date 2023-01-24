@@ -10,12 +10,12 @@ use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
 use sway_types::{constants, integer_bits::IntegerBits};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
-use sway_types::{state::StateIndex, Span};
+use sway_types::{state::StateIndex, Ident, Span};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
     mut ctx: TypeCheckContext,
-    method_name_binding: TypeBinding<MethodName>,
+    mut method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
@@ -44,7 +44,7 @@ pub(crate) fn type_check_method_application(
 
     // resolve the method name to a typed function declaration and type_check
     let decl_id = check!(
-        resolve_method_name(ctx.by_ref(), &method_name_binding, args_buf.clone()),
+        resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
@@ -186,6 +186,7 @@ pub(crate) fn type_check_method_application(
                     None => {
                         errors.push(CompileError::StorageFieldDoesNotExist {
                             name: first_field.clone(),
+                            span: first_field.span(),
                         });
                         return err(warnings, errors);
                     }
@@ -260,7 +261,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // retrieve the function call path
-    let call_path = match method_name_binding.inner {
+    let call_path = match method_name_binding.inner.clone() {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -334,29 +335,27 @@ pub(crate) fn type_check_method_application(
     );
 
     // unify the types of the arguments with the types of the parameters from the function declaration
-    check!(
-        unify_arguments_and_parameters(ctx.by_ref(), &args_buf, &method.parameters),
+    let typed_arguments_with_names = check!(
+        unify_arguments_and_parameters(ctx.by_ref(), args_buf, &method.parameters),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // Map the names of the parameters to the typed arguments.
-    let args_and_names = method
-        .parameters
-        .iter()
-        .zip(args_buf.into_iter())
-        .map(|(param, arg)| (param.name.clone(), arg))
-        .collect::<Vec<(_, _)>>();
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, method.return_type);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
-            arguments: args_and_names,
+            arguments: typed_arguments_with_names,
             function_decl_id: decl_id,
             self_state_idx,
             selector,
+            type_binding: Some(method_name_binding.strip_inner()),
         },
         return_type: method.return_type,
         span,
@@ -365,21 +364,22 @@ pub(crate) fn type_check_method_application(
     ok(exp, warnings, errors)
 }
 
-/// Unifies the types of the arguments with the types of the parameters from the
-/// function declaration.
+/// Unifies the types of the arguments with the types of the parameters. Returns
+/// a list of the arguments with the names of the corresponding parameters.
 fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
-    arguments: &VecDeque<ty::TyExpression>,
+    arguments: VecDeque<ty::TyExpression>,
     parameters: &[ty::TyFunctionParameter],
-) -> CompileResult<()> {
+) -> CompileResult<Vec<(Ident, ty::TyExpression)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+    let mut typed_arguments_and_names = vec![];
 
-    for (arg, param) in arguments.iter().zip(parameters.iter()) {
+    for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify_with_self(
@@ -399,10 +399,12 @@ fn unify_arguments_and_parameters(
             warnings,
             errors
         );
+
+        typed_arguments_and_names.push((param.name.clone(), arg));
     }
 
     if errors.is_empty() {
-        ok((), warnings, errors)
+        ok(typed_arguments_and_names, warnings, errors)
     } else {
         err(warnings, errors)
     }
@@ -410,7 +412,7 @@ fn unify_arguments_and_parameters(
 
 pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
-    method_name: &TypeBinding<MethodName>,
+    method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
 ) -> CompileResult<DeclId> {
     let mut warnings = vec![];
@@ -520,12 +522,13 @@ pub(crate) fn resolve_method_name(
     );
 
     // monomorphize the function declaration
+    let method_name_span = method_name.span();
     check!(
         ctx.monomorphize(
             &mut func_decl,
-            &mut method_name.type_arguments.clone(),
+            &mut method_name.type_arguments,
             EnforceTypeArguments::No,
-            &method_name.span()
+            &method_name_span,
         ),
         return err(warnings, errors),
         warnings,

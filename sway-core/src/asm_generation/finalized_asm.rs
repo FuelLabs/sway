@@ -1,5 +1,8 @@
 use super::instruction_set::InstructionSet;
-use super::{DataSection, ProgramABI, ProgramKind};
+use super::{
+    fuel::{checks, data_section::DataSection},
+    ProgramABI, ProgramKind,
+};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclId;
 use crate::error::*;
@@ -177,4 +180,18 @@ fn to_bytecode_mut(
         vec![],
         errors,
     )
+}
+
+/// Checks for disallowed opcodes in non-contract code.
+/// i.e., if this is a script or predicate, we can't use certain contract opcodes.
+/// See https://github.com/FuelLabs/sway/issues/350 for details.
+pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
+    match &asm.program_section {
+        InstructionSet::Fuel { ops } => match asm.program_kind {
+            ProgramKind::Contract | ProgramKind::Library => ok((), vec![], vec![]),
+            ProgramKind::Script => checks::check_script_opcodes(&ops[..]),
+            ProgramKind::Predicate => checks::check_predicate_opcodes(&ops[..]),
+        },
+        InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
+    }
 }
