@@ -236,6 +236,7 @@ impl<'eng> FnCompiler<'eng> {
                 function_decl_id,
                 self_state_idx,
                 selector,
+                type_binding: _,
             } => {
                 if let Some(metadata) = selector {
                     self.compile_contract_call(

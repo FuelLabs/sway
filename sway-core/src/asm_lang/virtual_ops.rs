@@ -8,9 +8,9 @@ use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
     virtual_register::*,
-    DataId, Op,
+    Op,
 };
-use crate::asm_generation::RegisterPool;
+use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
 
 use std::collections::{BTreeSet, HashMap};
 

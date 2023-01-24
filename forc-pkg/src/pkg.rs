@@ -97,7 +97,17 @@ pub struct BuiltPackage {
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
+    pub built_pkg_descriptor: BuiltPackageDescriptor,
+}
+
+/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
+/// package can be retrieved later on.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageDescriptor {
+    /// The manifest file of the package.
     pub manifest_file: PackageManifestFile,
+    /// The pinned version of the package.
+    pub pinned: Pinned,
 }
 
 /// Represents a package entry point.
@@ -361,7 +371,25 @@ pub struct BuildOpts {
     /// Include all test functions within the build.
     pub tests: bool,
     /// List of constants to inject for each package.
-    pub inject_map: ConstInjectionMap,
+    pub const_inject_map: ConstInjectionMap,
+}
+
+impl BuildOpts {
+    /// Return a `BuildOpts` with modified `tests` field.
+    pub fn include_tests(self, include_tests: bool) -> Self {
+        Self {
+            tests: include_tests,
+            ..self
+        }
+    }
+
+    /// Return a `BuildOpts` with modified `injection_map` field.
+    pub fn const_injection_map(self, const_inject_map: ConstInjectionMap) -> Self {
+        Self {
+            const_inject_map,
+            ..self
+        }
+    }
 }
 
 impl GitSourceIndex {
@@ -2256,6 +2284,9 @@ pub fn sway_build_config(
     Ok(build_config)
 }
 
+/// The name of the constant holding the contract's id.
+pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
+
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
@@ -2301,14 +2332,13 @@ pub fn dependency_namespace(
                 };
 
                 // Construct namespace with contract id
-                let contract_dep_constant_name = "CONTRACT_ID";
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
                     public: true,
                 };
-                constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
+                constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
                 namespace::Module::default_with_constants(engines, constants)?
             }
         };
@@ -2537,6 +2567,10 @@ pub fn compile(
                 }
             }
 
+            let built_pkg_descriptor = BuiltPackageDescriptor {
+                manifest_file: manifest.clone(),
+                pinned: pkg.clone(),
+            };
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 build_target,
@@ -2547,7 +2581,7 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
-                manifest_file: manifest.clone(),
+                built_pkg_descriptor,
             };
             Ok((built_package, namespace))
         }
@@ -2693,7 +2727,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         binary_outfile,
         debug_outfile,
         pkg,
-        inject_map,
+        const_inject_map,
         build_target,
         ..
     } = &build_options;
@@ -2736,7 +2770,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         *build_target,
         &build_profile,
         &outputs,
-        inject_map,
+        const_inject_map,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
@@ -2770,7 +2804,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
+pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
     let mut storage_slots = built_package.storage_slots.clone();
@@ -2814,7 +2848,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
-    inject_map: &ConstInjectionMap,
+    const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2837,7 +2871,7 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = if let Some(injected_ctc) = inject_map.get(pkg) {
+        let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(
                 injected_ctc

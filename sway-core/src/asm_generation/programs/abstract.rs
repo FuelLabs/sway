@@ -1,9 +1,12 @@
 use super::{AbstractEntry, AbstractProgram, AllocatedProgram, ProgramKind};
 
 use crate::{
-    asm_generation::{
-        compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, DataSection,
-        Entry, RegisterSequencer,
+    asm_generation::fuel::{
+        abstract_instruction_set::AbstractInstructionSet,
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
+        compiler_constants,
+        data_section::{DataSection, Entry},
+        register_sequencer::RegisterSequencer,
     },
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
