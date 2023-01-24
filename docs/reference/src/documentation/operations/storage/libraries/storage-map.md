@@ -30,7 +30,6 @@ In this example we wrap the [`Identity`](../../namespace/identity.md) of the cal
 
 This contract method handles the returned `Option` by calling `unwrap_or` to set `user` to zero if the map `user` doesn't have an entry for the key.
 
-
 ## Writing to Storage
 
 Writing to storage is similar to [reading](#reading-from-storage). The difference is that we use a different method `.insert(key, value)`.
