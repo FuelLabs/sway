@@ -4,7 +4,7 @@ use crate::{
     asm_generation::{
         asm_builder::{AsmBuilder, AsmBuilderResult},
         from_ir::StateAccessType,
-        register_sequencer::RegisterSequencer,
+        fuel::register_sequencer::RegisterSequencer,
         ProgramKind,
     },
     asm_lang::Label,

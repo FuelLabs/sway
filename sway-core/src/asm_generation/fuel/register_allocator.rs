@@ -1,5 +1,5 @@
 use crate::{
-    asm_generation::{compiler_constants, register_sequencer::RegisterSequencer},
+    asm_generation::fuel::{compiler_constants, register_sequencer::RegisterSequencer},
     asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*, Op, VirtualOp},
 };
 
