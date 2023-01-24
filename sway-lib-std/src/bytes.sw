@@ -652,7 +652,7 @@ impl From<raw_slice> for Bytes {
     fn from(slice: raw_slice) -> Bytes {
         let buf = RawBytes {
             ptr: slice.ptr(),
-            cap: slice.raw_bytes_len(),
+            cap: slice.len_bytes(),
         };
         Self {
             buf,
@@ -1005,7 +1005,7 @@ fn test_keccak256() {
 #[test()]
 fn test_from_raw_slice() {
     let val: b256 = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = raw_slice::from_bytes_parts(__addr_of(val), 32);
+    let slice = raw_slice::from_parts_bytes(__addr_of(val), 32);
     let b = Bytes::from(slice);
     assert(b.len() == 32);
     assert(b.buf.ptr == __addr_of(val));
