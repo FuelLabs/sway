@@ -188,8 +188,7 @@ impl MyContract for Contract {
 <p>To test the <code>test_function()</code>, a unit test like the following can be written.</p>
 <pre><code class="language-sway">#[test]
 fn test_success() {
-    let contract_id = 0xa8f18533afc18453323bdf17c83750c556916ab183daacf46d7a8d3c633a40ee;
-    let caller = abi(MyContract, contract_id);
+    let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
     assert(result == true)
 }
@@ -197,14 +196,13 @@ fn test_success() {
 <p>It is also possible to test failure with contract calls as well.</p>
 <pre><code class="language-sway">#[test(should_revert)]
 fn test_fail() {
-    let contract_id = 0xa8f18533afc18453323bdf17c83750c556916ab183daacf46d7a8d3c633a40ee;
-    let caller = abi(MyContract, contract_id);
+    let caller = abi(MyContract, CONTRACT_ID);
     let result = caller.test_function {}();
     assert(result == false)
 }
 </code></pre>
 <blockquote>
-<p><strong>Note:</strong> <code>contract_id</code> is needed for the <code>abi</code> cast used in the test. Running <code>forc test</code> will output deployed contract's id and that can be used for the cast. This means, before writing the <code>test_success()</code> test, <code>forc test</code> needs to be executed to retrieve the <code>contract_id</code>. This will not be necessary in the future and you can track the progress at <a href="https://github.com/FuelLabs/sway/issues/3673">here</a>.</p>
+<p><strong>Note:</strong> When running <code>forc test</code>, your contract will be built twice: first <em>without</em> unit tests in order to determine the contract's ID, then a second time <em>with</em> unit tests with the <code>CONTRACT_ID</code> provided to their namespace. This <code>CONTRACT_ID</code> can be used with the <code>abi</code> cast to enable contract calls within unit tests.</p>
 </blockquote>
 
                     </main>
