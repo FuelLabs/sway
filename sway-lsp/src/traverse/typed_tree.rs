@@ -14,7 +14,7 @@ use sway_core::{
         TyCodeBlock, TyConstantDeclaration, TyDeclaration, TyEnumDeclaration, TyEnumVariant,
         TyExpression, TyExpressionVariant, TyFunctionDeclaration, TyFunctionParameter, TyImplTrait,
         TyStorageDeclaration, TyStructDeclaration, TyStructField, TyTraitDeclaration, TyTraitFn,
-        TyVariableDeclaration,TyStructExpressionField,
+        TyVariableDeclaration,TyStructExpressionField, TyIntrinsicFunctionKind, TyStorageAccess, TyStorageAccessDescriptor,
     }, Literal},
     AbiName, TraitConstraint, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
@@ -496,6 +496,32 @@ impl Parse for TyEnumVariant {
             token.type_def = Some(TypeDefinition::TypeId(self.type_id));
         }
         self.type_id.parse(ctx);
+    }
+}
+
+impl Parse for TyIntrinsicFunctionKind {
+    fn parse(&self, ctx: &ParseContext) {
+        self.arguments.iter().for_each(|arg| arg.parse(ctx));
+        self.type_arguments.iter().for_each(|arg| arg.parse(ctx));
+    }
+}
+
+impl Parse for TyStorageAccess {
+    fn parse(&self, ctx: &ParseContext) {
+        self.fields.iter().for_each(|field| field.parse(ctx));
+    }
+}
+
+impl Parse for TyStorageAccessDescriptor {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(mut token) = ctx
+            .tokens
+            .try_get_mut(&to_ident_key(&self.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(self.clone()));
+            token.type_def = Some(TypeDefinition::TypeId(self.type_id));
+        }
     }
 }
 

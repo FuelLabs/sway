@@ -76,6 +76,7 @@ pub enum TypedAstToken {
     TypedStorageDeclaration(ty::TyStorageDeclaration),
     GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope),
     TypedFunctionParameter(ty::TyFunctionParameter),
+    TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
 
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
