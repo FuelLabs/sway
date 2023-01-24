@@ -51,6 +51,7 @@ pub enum TyExpressionVariant {
         struct_name: Ident,
         fields: Vec<TyStructExpressionField>,
         span: Span,
+        type_binding: TypeBinding<()>,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -217,14 +218,19 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     struct_name: l_struct_name,
                     fields: l_fields,
                     span: l_span,
+                    type_binding: l_type_binding,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
                     span: r_span,
+                    type_binding: r_type_binding,
                 },
             ) => {
-                l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
+                l_struct_name == r_struct_name
+                    && l_fields.eq(r_fields, engines)
+                    && l_span == r_span
+                    && l_type_binding.eq(r_type_binding, engines)
             }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, engines),
             (
