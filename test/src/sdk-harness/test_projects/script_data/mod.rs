@@ -1,6 +1,6 @@
 use assert_matches::assert_matches;
 use fuels::{
-    contract::execution_script::ExecutableFuelCall,
+    programs::execution_script::ExecutableFuelCall,
     prelude::*,
     tx::{ConsensusParameters, Receipt, Transaction},
 };

@@ -1,9 +1,12 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::core::{Bits256, SizedAsciiString},
+};
 
-abigen!(
-    TestStorageContract,
-    "test_projects/storage/out/debug/storage-abi.json",
-);
+abigen!(Contract(
+    name = "TestStorageContract",
+    abi = "test_projects/storage/out/debug/storage-abi.json",
+));
 
 async fn get_test_storage_instance() -> TestStorageContract {
     let wallet = launch_provider_and_get_wallet().await;

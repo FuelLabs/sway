@@ -3,13 +3,14 @@ use fuels::{
     prelude::*,
     signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
     tx::Bytes32,
+    types::core::Bits256,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
-abigen!(
-    EcRecoverContract,
-    "test_projects/ec_recover/out/debug/ec_recover-abi.json"
-);
+abigen!(Contract(
+    name = "EcRecoverContract",
+    abi = "test_projects/ec_recover/out/debug/ec_recover-abi.json"
+));
 
 async fn setup_env() -> Result<
     (
