@@ -529,7 +529,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn len(self) -> u64 {
-        get::<u64>(__get_storage_key()).unwrap()
+        get::<u64>(__get_storage_key()).unwrap_or(0)
     }
 
     /// Checks whether the len is 0 or not
@@ -557,7 +557,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn is_empty(self) -> bool {
-        get::<u64>(__get_storage_key()).unwrap() == 0
+        get::<u64>(__get_storage_key()).unwrap_or(0) == 0
     }
 
     /// Sets the len to 0
