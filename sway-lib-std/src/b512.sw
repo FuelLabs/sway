@@ -28,7 +28,7 @@ impl From<(b256, b256)> for B512 {
     }
 }
 
-/// Methods on the `B512` type
+/// Methods on the `B512` type.
 impl B512 {
     /// Initializes a new, zeroed `B512`.
     pub fn new() -> B512 {

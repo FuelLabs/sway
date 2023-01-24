@@ -14,7 +14,7 @@ pub enum AuthError {
 
 /// Returns `true` if the caller is external (i.e. a script).
 /// Otherwise, returns `false`.
-/// ref: https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata
+/// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 pub fn caller_is_external() -> bool {
     asm(r1) {
         gm r1 i1;
@@ -62,7 +62,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             }
         }
 
-        // type == InputCoin or InputMessage
+        // type == InputCoin or InputMessage.
         let owner_of_input = input_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
@@ -72,7 +72,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_owner` must be `Option::Some`
+        // `candidate` and `input_owner` must be `Option::Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
