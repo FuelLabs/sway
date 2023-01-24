@@ -118,12 +118,13 @@ pub fn get<T>(key: b256) -> Option<T> {
 /// ### Examples
 ///
 /// ```sway
-/// use std::{storage::{store, get}, constants::ZERO_B256};
+/// use std::{storage::{clear, get, store}, constants::ZERO_B256};
 ///
 /// let five = 5_u64;
 /// store(ZERO_B256, five);
-/// let stored_five = get::<u64>(ZERO_B256);
-/// assert(five == stored_five);
+/// let cleared = clear::<u64>(ZERO_B256);
+/// assert(cleared);
+/// assert(get::<u64>(ZERO_B256).is_none());
 /// ```
 #[storage(write)]
 pub fn clear<T>(key: b256) -> bool {
@@ -194,6 +195,36 @@ impl<K, V> StorageMap<K, V> {
     pub fn get(self, key: K) -> Option<V> {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
+    }
+
+    /// clears a value previously stored using a key
+    ///
+    /// Return a Boolean indicating whether there was a value previously stored at `key`.
+    ///
+    /// ### Arguments
+    ///
+    /// * `key` - The key to which the value is paired
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let removed = storage.map.remove(key);
+    ///     assert(removed);
+    ///     assert(storage.map.get(key).is_none());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn remove(self, key: K) -> bool {
+        let key = sha256((key, __get_storage_key()));
+        clear::<V>(key)
     }
 }
 

@@ -32,7 +32,8 @@ async fn can_store_and_get_bool() {
     assert_eq!(result.value, Some(b));
 
     // Test clear
-    instance.methods().clear_bool().call().await.unwrap();
+    let result = instance.methods().clear_bool().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_bool().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -48,7 +49,8 @@ async fn can_store_and_get_u8() {
     assert_eq!(result.value, Some(n));
 
     // Test clear
-    instance.methods().clear_u8().call().await.unwrap();
+    let result = instance.methods().clear_u8().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_u8().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -64,7 +66,8 @@ async fn can_store_and_get_u16() {
     assert_eq!(result.value, Some(n));
 
     // Test clear
-    instance.methods().clear_u16().call().await.unwrap();
+    let result = instance.methods().clear_u16().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_u16().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -80,7 +83,8 @@ async fn can_store_and_get_u32() {
     assert_eq!(result.value, Some(n));
 
     // Test clear
-    instance.methods().clear_u32().call().await.unwrap();
+    let result = instance.methods().clear_u32().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_u32().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -96,7 +100,8 @@ async fn can_store_and_get_u64() {
     assert_eq!(result.value, Some(n));
 
     // Test clear
-    instance.methods().clear_u64().call().await.unwrap();
+    let result = instance.methods().clear_u64().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_u64().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -112,7 +117,8 @@ async fn can_store_b256() {
     assert_eq!(result.value, Some(n));
 
     // Test clear
-    instance.methods().clear_b256().call().await.unwrap();
+    let result = instance.methods().clear_b256().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_b256().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -133,12 +139,13 @@ async fn can_store_small_struct() {
     assert_eq!(result.value, Some(s));
 
     // Test clear
-    instance
+    let result = instance
         .methods()
         .clear_small_struct()
         .call()
         .await
         .unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_small_struct().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -159,12 +166,13 @@ async fn can_store_medium_struct() {
     assert_eq!(result.value, Some(s));
 
     // Test clear
-    instance
+    let result = instance
         .methods()
         .clear_medium_struct()
         .call()
         .await
         .unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_medium_struct().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -189,12 +197,13 @@ async fn can_store_large_struct() {
     assert_eq!(result.value, Some(s));
 
     // Test clear
-    instance
+    let result = instance
         .methods()
         .clear_large_struct()
         .call()
         .await
         .unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_large_struct().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -221,12 +230,13 @@ async fn can_store_very_large_struct() {
         .unwrap();
     assert_eq!(result.value, Some(s));
 
-    instance
+    let result = instance
         .methods()
         .clear_very_large_struct()
         .call()
         .await
         .unwrap();
+    assert_eq!(result.value, true);
     let result = instance
         .methods()
         .get_very_large_struct()
@@ -272,7 +282,8 @@ async fn can_store_enum() {
     assert_eq!(result.value, Some(e3));
 
     // Test clear
-    instance.methods().clear_enum().call().await.unwrap();
+    let result = instance.methods().clear_enum().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_enum().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -293,7 +304,8 @@ async fn can_store_tuple() {
     assert_eq!(result.value, Some(t));
 
     // Test clear
-    instance.methods().clear_tuple().call().await.unwrap();
+    let result = instance.methods().clear_tuple().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_tuple().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -314,7 +326,8 @@ async fn can_store_string() {
     assert_eq!(result.value, Some(SizedAsciiString::try_from(s).unwrap()));
 
     // Test clear
-    instance.methods().clear_string().call().await.unwrap();
+    let result = instance.methods().clear_string().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_string().call().await.unwrap();
     assert_eq!(result.value, None);
 }
@@ -330,7 +343,8 @@ async fn can_store_array() {
     assert_eq!(result.value, Some(a));
 
     // Test clear
-    instance.methods().clear_array().call().await.unwrap();
+    let result = instance.methods().clear_array().call().await.unwrap();
+    assert_eq!(result.value, true);
     let result = instance.methods().get_array().call().await.unwrap();
     assert_eq!(result.value, None);
 }

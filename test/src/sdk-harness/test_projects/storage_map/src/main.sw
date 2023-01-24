@@ -39,6 +39,8 @@ abi StorageMapTest {
     fn insert_into_u64_to_bool_map(key: u64, value: bool);
     #[storage(read)]
     fn get_from_u64_to_bool_map(key: u64) -> Option<bool>;
+    #[storage(read)]
+    fn remove_from_u64_to_bool_map(key: u64) -> bool;
 
     #[storage(write)]
     fn insert_into_u64_to_u8_map(key: u64, value: u8);
