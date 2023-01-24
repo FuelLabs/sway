@@ -29,3 +29,5 @@ In this example we retrieve some `u64` at the position of `key`.
 ```sway
 {{#include ../../../../code/operations/storage/store_get/src/main.sw:get}}
 ```
+
+The function `get` returns an `Option`; if the storage slots requested have not been set before, `get` will return `Option::None`.
