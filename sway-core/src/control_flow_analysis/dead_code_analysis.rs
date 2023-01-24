@@ -152,9 +152,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 &leaves,
                 exit_node,
                 tree_type,
-                NodeConnectionOptions {
-                    force_struct_fields_connection: false,
-                },
+                NodeConnectionOptions::default(),
             )?;
 
             leaves = l_leaves;
@@ -188,7 +186,7 @@ fn collect_entry_points(
 
 /// This struct is used to pass node connection further down the tree as
 /// we are processing AST nodes.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct NodeConnectionOptions {
     /// When this is enabled, connect struct fields to the struct itself,
     /// thus making all struct fields considered as being used in the graph.
@@ -689,9 +687,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         return_type: ty,
     };
 
-    graph
-        .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+    graph.namespace.insert_function(fn_decl, namespace_entry);
 
     connect_fn_params_struct_enums(engines, fn_decl, graph, entry_node)?;
     Ok(())
@@ -827,11 +823,45 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         } => {
             let fn_decl = decl_engine.get_function(function_decl_id.clone(), &expression_span)?;
             let mut is_external = false;
+
+            // in the case of monomorphized functions, first check if we already have a node for
+            // it in the namespace. if not then we need to check to see if the namespace contains
+            // the decl id parents (the original generic non monomorphized decl id).
+            let mut exists = false;
+            let parents = decl_engine.find_all_parents(engines, function_decl_id.clone());
+            for parent in parents {
+                if let Ok(parent) = decl_engine.get_function(parent.clone(), &expression_span) {
+                    exists |= graph.namespace.get_function(&parent).is_some();
+                }
+            }
+
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) = graph
-                .namespace
-                .get_function(&fn_decl.name)
-                .cloned()
+            let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
+
+            let mut leaves = leaves.to_vec();
+
+            // if the parent node exists in this module, then add the monomorphized version
+            // to the graph.
+            if fn_namespace_entry.is_none() && exists {
+                let (l_leaves, _new_exit_node) = connect_node(
+                    engines,
+                    &ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Declaration(
+                            ty::TyDeclaration::FunctionDeclaration(function_decl_id.clone()),
+                        ),
+                        span: expression_span.clone(),
+                    },
+                    graph,
+                    &leaves,
+                    exit_node,
+                    tree_type,
+                    NodeConnectionOptions::default(),
+                )?;
+
+                leaves = l_leaves;
+            }
+
+            let (fn_entrypoint, fn_exit_point) = fn_namespace_entry
                 .map(
                     |FunctionNamespaceEntry {
                          entry_point,
@@ -863,7 +893,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             for leaf in leaves {
-                graph.add_edge(*leaf, fn_entrypoint, label.into());
+                graph.add_edge(leaf, fn_entrypoint, label.into());
             }
 
             // save the existing options value to restore after handling the arguments
