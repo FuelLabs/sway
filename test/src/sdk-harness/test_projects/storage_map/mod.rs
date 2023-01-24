@@ -669,7 +669,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
+                .value
+                .unwrap(),
             val1
         );
         assert_eq!(
@@ -679,7 +680,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
+                .value
+                .unwrap(),
             val2
         );
         assert_eq!(
@@ -689,7 +691,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
+                .value
+                .unwrap(),
             val3
         );
     }

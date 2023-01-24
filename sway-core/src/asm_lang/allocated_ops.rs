@@ -558,7 +558,7 @@ impl AllocatedOp {
                 c.to_register_id(),
                 d.to_register_id(),
             ),
-            SCWQ(a, b, c) => VmOp::SRW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SCWQ(a, b, c) => VmOp::SCWQ(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             SRW(a, b, c) => VmOp::SRW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             SRWQ(a, b, c, d) => VmOp::SRWQ(
                 a.to_register_id(),
