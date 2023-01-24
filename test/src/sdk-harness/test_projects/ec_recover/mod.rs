@@ -1,4 +1,4 @@
-use fuel_types::Bytes64;
+use fuel_vm::fuel_types::Bytes64;
 use fuels::{
     prelude::*,
     signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
