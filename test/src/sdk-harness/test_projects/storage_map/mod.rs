@@ -663,8 +663,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val1
+                .value,
+            Some(SizedAsciiString::try_from(val1).unwrap())
         );
         assert_eq!(
             instance
@@ -673,8 +673,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val2
+                .value,
+            Some(SizedAsciiString::try_from(val2).unwrap())
         );
         assert_eq!(
             instance
@@ -683,8 +683,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val3
+                .value,
+            Some(SizedAsciiString::try_from(val3).unwrap())
         );
     }
 }

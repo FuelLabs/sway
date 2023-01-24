@@ -1,6 +1,6 @@
 use fuel_vm::{consts::*, prelude::Opcode};
 use fuels::{
-    contract::abi_encoder::ABIEncoder,
+    core::abi_encoder::ABIEncoder,
     prelude::*,
     programs::execution_script::ExecutableFuelCall,
     signers::wallet::Wallet,

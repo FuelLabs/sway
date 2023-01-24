@@ -96,7 +96,7 @@ async fn can_get_balance_of_contract() {
     let result = context_instance
         .methods()
         .get_balance_of_contract(caller_id.clone(), caller_id.clone())
-        .set_contracts(&[&context_instance])
+        .set_contracts(&[&caller_instance])
         .call()
         .await
         .unwrap();
