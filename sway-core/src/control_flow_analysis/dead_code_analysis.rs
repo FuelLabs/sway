@@ -150,100 +150,30 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
             leaves = l_leaves;
         }
-        graph.entry_points = entry_points(decl_engine, tree_type, &graph.graph)?;
+        graph.entry_points = collect_entry_points(decl_engine, tree_type, &graph.graph)?;
         Ok(())
     }
 }
 
 /// Collect all entry points into the graph based on the tree type.
-fn entry_points(
+fn collect_entry_points(
     decl_engine: &DeclEngine,
     tree_type: &TreeType,
     graph: &flow_graph::Graph,
 ) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
     let mut entry_points = vec![];
-    match tree_type {
-        TreeType::Predicate | TreeType::Script => {
-            // Predicates and scripts have main and test functions as entry points.
-            for i in graph.node_indices() {
-                match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        span,
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), span)?;
-                        if !decl.is_entry() {
-                            continue;
-                        }
-                    }
-                    _ => continue,
-                };
-                entry_points.push(i);
+    for i in graph.node_indices() {
+        let is_entry = match &graph[i] {
+            ControlFlowGraphNode::ProgramNode(node) => {
+                node.is_entry_point(decl_engine, tree_type)?
             }
-        }
-        TreeType::Contract | TreeType::Library { .. } => {
-            for i in graph.node_indices() {
-                let is_entry = match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility == Visibility::Public || decl.is_test()
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => decl_engine
-                        .get_trait(decl_id.clone(), &decl_id.span())?
-                        .visibility
-                        .is_public(),
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let struct_decl =
-                            decl_engine.get_struct(decl_id.clone(), &decl_id.span())?;
-                        struct_decl.visibility == Visibility::Public
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_constant(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility.is_public()
-                    }
-                    _ => continue,
-                };
-                if is_entry {
-                    entry_points.push(i);
-                }
-            }
+            _ => false,
+        };
+        if is_entry {
+            entry_points.push(i);
         }
     }
+
     Ok(entry_points)
 }
 

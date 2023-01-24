@@ -1,10 +1,16 @@
 use std::fmt::{self, Debug};
 
-use sway_types::{Ident, Span};
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::*, engine_threading::*, error::*, language::ty::*, transform::AttributeKind,
-    type_system::*, types::DeterministicallyAborts,
+    decl_engine::*,
+    engine_threading::*,
+    error::*,
+    language::{parsed::TreeType, ty::*, Visibility},
+    transform::AttributeKind,
+    type_system::*,
+    types::DeterministicallyAborts,
 };
 
 pub trait GetDeclIdent {
@@ -192,6 +198,68 @@ impl TyAstNode {
                 )
             }
             _ => ok(false, warnings, errors),
+        }
+    }
+
+    pub(crate) fn is_entry_point(
+        &self,
+        decl_engine: &DeclEngine,
+        tree_type: &TreeType,
+    ) -> Result<bool, CompileError> {
+        match tree_type {
+            TreeType::Predicate | TreeType::Script => {
+                // Predicates and scripts have main and test functions as entry points.
+                match self {
+                    TyAstNode {
+                        span,
+                        content:
+                            TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                        ..
+                    } => {
+                        let decl = decl_engine.get_function(decl_id.clone(), span)?;
+                        Ok(decl.is_entry())
+                    }
+                    _ => Ok(false),
+                }
+            }
+            TreeType::Contract | TreeType::Library { .. } => match self {
+                TyAstNode {
+                    content:
+                        TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                    ..
+                } => {
+                    let decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
+                    Ok(decl.visibility == Visibility::Public || decl.is_test())
+                }
+                TyAstNode {
+                    content: TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration(decl_id)),
+                    ..
+                } => Ok(decl_engine
+                    .get_trait(decl_id.clone(), &decl_id.span())?
+                    .visibility
+                    .is_public()),
+                TyAstNode {
+                    content:
+                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_id)),
+                    ..
+                } => {
+                    let struct_decl = decl_engine.get_struct(decl_id.clone(), &decl_id.span())?;
+                    Ok(struct_decl.visibility == Visibility::Public)
+                }
+                TyAstNode {
+                    content: TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { .. }),
+                    ..
+                } => Ok(true),
+                TyAstNode {
+                    content:
+                        TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)),
+                    ..
+                } => {
+                    let decl = decl_engine.get_constant(decl_id.clone(), &decl_id.span())?;
+                    Ok(decl.visibility.is_public())
+                }
+                _ => Ok(false),
+            },
         }
     }
 
