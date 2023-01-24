@@ -777,6 +777,7 @@ fn type_check_impl_method(
     if impld_method_ids.contains_key(&impl_method.name.clone()) {
         errors.push(CompileError::MultipleDefinitionsOfFunction {
             name: impl_method.name.clone(),
+            span: impl_method.name.span(),
         });
         return err(warnings, errors);
     }
@@ -827,6 +828,7 @@ fn type_check_impl_method(
         if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
             errors.push(CompileError::MutableParameterNotSupported {
                 param_name: impl_method_signature.name.clone(),
+                span: impl_method_signature.name.span(),
             });
         }
 
