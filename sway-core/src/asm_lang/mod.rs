@@ -14,7 +14,7 @@ pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
 
 use crate::{
-    asm_generation::{DataId, RegisterPool},
+    asm_generation::{register_allocator::RegisterPool, DataId},
     asm_lang::allocated_ops::{AllocatedOpcode, AllocatedRegister},
     error::*,
     language::AsmRegister,

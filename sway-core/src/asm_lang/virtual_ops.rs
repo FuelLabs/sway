@@ -10,7 +10,7 @@ use super::{
     virtual_register::*,
     DataId, Op,
 };
-use crate::asm_generation::RegisterPool;
+use crate::asm_generation::register_allocator::RegisterPool;
 
 use std::collections::{BTreeSet, HashMap};
 
