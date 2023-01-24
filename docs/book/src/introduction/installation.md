@@ -15,7 +15,7 @@ Installing via pre-compiled release binaries is the recommended way to get up an
    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
    ```
 
-   `fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
+    This downloads the `fuelup-init` script to a temp directory on your machine, which installs `fuelup`. `fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
 
    ```sh
    curl --proto '=https' --tlsv1.2 -sSf \
