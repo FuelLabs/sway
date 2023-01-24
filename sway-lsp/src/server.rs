@@ -792,42 +792,77 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(
+    fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": token_line,
+                "character": token_char,
+            }
+        });
+        build_request_with_id("textDocument/definition", params, id)
+    }
+
+    fn definition_response(
+        uri: &Url,
+        start_line: i32,
+        start_char: i32,
+        end_line: i32,
+        end_char: i32,
+        id: i64,
+    ) -> Response {
+        Response::from_ok(
+            id.into(),
+            json!({
+                "range": {
+                    "end": {
+                        "character": end_char,
+                        "line": end_line,
+                    },
+                    "start": {
+                        "character": start_char,
+                        "line": start_line,
+                    }
+                },
+                "uri": uri,
+            }),
+        )
+    }
+
+    async fn doc_comments_definition_check(
         service: &mut LspService<Backend>,
         uri: &Url,
         token_req_line: i32,
         token_def_line: i32,
         id: i64,
     ) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-            },
-            "position": {
-                "line": token_req_line,
-                "character": 24,
-            }
-        });
-        let definition = build_request_with_id("textDocument/definition", params, id);
+        let definition = definition_request(uri, token_req_line, 24, id);
         let response = call_request(service, definition.clone()).await;
-        let expected = Response::from_ok(
-            id.into(),
-            json!({
-                "range": {
-                    "end": {
-                        "character": 11,
-                        "line": token_def_line,
-                    },
-                    "start": {
-                        "character": 7,
-                        "line": token_def_line,
-                    }
-                },
-                "uri": uri,
-            }),
-        );
+        let expected = definition_response(uri, token_def_line, 7, token_def_line, 11, id);
         assert_json_eq!(expected, response.ok().unwrap());
         definition
+    }
+
+    async fn turbofish_definition_check(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/option.sw"));
     }
 
     async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
@@ -1082,9 +1117,9 @@ mod tests {
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1103,7 +1138,23 @@ mod tests {
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_inside_turbofish() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("turbofish"),
+        )
+        .await;
+
+        turbofish_definition_check(&mut service, &uri, 13, 13, 1).await;
+        turbofish_definition_check(&mut service, &uri, 14, 17, 2).await;
+        turbofish_definition_check(&mut service, &uri, 15, 29, 3).await;
+
         shutdown_and_exit(&mut service).await;
     }
 
