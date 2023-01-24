@@ -28,7 +28,7 @@ use std::{
 };
 use sway_core::{
     asm_generation::ProgramABI,
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -40,10 +40,11 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
+    transform::AttributeKind,
     BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
-use sway_types::Ident;
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -92,11 +93,10 @@ pub struct BuiltPackage {
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
-    pub entries: Vec<FinalizedEntry>,
+    pub entries: Vec<PkgEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
-    pub decl_engine: DeclEngine,
     pub built_pkg_descriptor: BuiltPackageDescriptor,
 }
 
@@ -108,6 +108,34 @@ pub struct BuiltPackageDescriptor {
     pub manifest_file: PackageManifestFile,
     /// The pinned version of the package.
     pub pinned: Pinned,
+}
+
+/// Represents a package entry point.
+#[derive(Debug, Clone)]
+pub struct PkgEntry {
+    pub finalized: FinalizedEntry,
+    pub kind: PkgEntryKind,
+}
+
+/// Data specific to each kind of package entry point.
+#[derive(Debug, Clone)]
+pub enum PkgEntryKind {
+    Main,
+    Test(PkgTestEntry),
+}
+
+/// The possible conditions for a test result to be considered "passing".
+#[derive(Debug, Clone)]
+pub enum TestPassCondition {
+    ShouldRevert,
+    ShouldNotRevert,
+}
+
+/// Data specific to the test entry point.
+#[derive(Debug, Clone)]
+pub struct PkgTestEntry {
+    pub pass_condition: TestPassCondition,
+    pub span: Span,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2512,6 +2540,11 @@ pub fn compile(
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
+    let decl_engine = engines.de();
+    let entries = entries
+        .iter()
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2548,12 +2581,75 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
-                decl_engine: engines.de().clone(),
                 built_pkg_descriptor,
             };
             Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
+    }
+}
+
+impl PkgEntry {
+    /// Returns whether this `PkgEntry` corresponds to a test.
+    pub fn is_test(&self) -> bool {
+        self.kind.test().is_some()
+    }
+
+    fn from_finalized_entry(
+        finalized_entry: &FinalizedEntry,
+        decl_engine: &DeclEngine,
+    ) -> Result<Self> {
+        let pkg_entry_kind = match &finalized_entry.test_decl_id {
+            Some(test_decl_id) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+                PkgEntryKind::Test(pkg_test_entry)
+            }
+            None => PkgEntryKind::Main,
+        };
+
+        Ok(Self {
+            finalized: finalized_entry.clone(),
+            kind: pkg_entry_kind,
+        })
+    }
+}
+
+impl PkgEntryKind {
+    /// Returns `Some` if the `PkgEntryKind` is `Test`.
+    pub fn test(&self) -> Option<&PkgTestEntry> {
+        match self {
+            PkgEntryKind::Test(test) => Some(test),
+            _ => None,
+        }
+    }
+}
+
+impl PkgTestEntry {
+    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_id.span();
+        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+
+        let test_args: HashSet<String> = test_function_decl
+            .attributes
+            .get(&AttributeKind::Test)
+            .expect("test declaration is missing test attribute")
+            .iter()
+            .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
+            .collect();
+
+        let pass_condition = if test_args.is_empty() {
+            anyhow::Ok(TestPassCondition::ShouldNotRevert)
+        } else if test_args.get("should_revert").is_some() {
+            anyhow::Ok(TestPassCondition::ShouldRevert)
+        } else {
+            let test_name = &test_function_decl.name;
+            bail!("Invalid test argument(s) for test: {test_name}.")
+        }?;
+
+        Ok(Self {
+            pass_condition,
+            span,
+        })
     }
 }
 
