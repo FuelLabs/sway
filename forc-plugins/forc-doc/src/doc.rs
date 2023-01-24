@@ -62,7 +62,7 @@ impl Document {
                         // We add 1 here to get the index of the char after the closing tag.
                         // This ensures we retain the closing tag and don't break the html.
                         let (preview, _) =
-                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.chars().count() + 1);
+                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.len() + 1);
                         if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
                             match preview.find('\n') {
                                 Some(index) => preview.split_at(index).0.to_string(),
