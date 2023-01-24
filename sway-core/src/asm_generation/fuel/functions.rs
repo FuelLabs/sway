@@ -1,5 +1,9 @@
 use crate::{
-    asm_generation::{compiler_constants, from_ir::*, Entry, ProgramKind},
+    asm_generation::{
+        from_ir::*,
+        fuel::{compiler_constants, data_section::Entry, fuel_asm_builder::FuelAsmBuilder},
+        ProgramKind,
+    },
     asm_lang::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
         VirtualImmediate24, VirtualOp,
@@ -13,8 +17,6 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
-
-use super::FuelAsmBuilder;
 
 /// A summary of the adopted calling convention:
 ///

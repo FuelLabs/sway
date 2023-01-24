@@ -1,3 +1,5 @@
+use crate::asm_generation::fuel::compiler_constants;
+
 use sway_error::error::CompileError;
 use sway_types::span::Span;
 
@@ -12,7 +14,7 @@ pub struct VirtualImmediate06 {
 
 impl VirtualImmediate06 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
-        if raw > crate::asm_generation::compiler_constants::SIX_BITS {
+        if raw > compiler_constants::SIX_BITS {
             Err(CompileError::Immediate06TooLarge {
                 val: raw,
                 span: err_msg_span,
@@ -38,7 +40,7 @@ pub struct VirtualImmediate12 {
 
 impl VirtualImmediate12 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
-        if raw > crate::asm_generation::compiler_constants::TWELVE_BITS {
+        if raw > compiler_constants::TWELVE_BITS {
             Err(CompileError::Immediate12TooLarge {
                 val: raw,
                 span: err_msg_span,
@@ -73,7 +75,7 @@ pub struct VirtualImmediate18 {
 }
 impl VirtualImmediate18 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
-        if raw > crate::asm_generation::compiler_constants::EIGHTEEN_BITS {
+        if raw > compiler_constants::EIGHTEEN_BITS {
             Err(CompileError::Immediate18TooLarge {
                 val: raw,
                 span: err_msg_span,
@@ -108,7 +110,7 @@ pub struct VirtualImmediate24 {
 }
 impl VirtualImmediate24 {
     pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
-        if raw > crate::asm_generation::compiler_constants::TWENTY_FOUR_BITS {
+        if raw > compiler_constants::TWENTY_FOUR_BITS {
             Err(CompileError::Immediate24TooLarge {
                 val: raw,
                 span: err_msg_span,
