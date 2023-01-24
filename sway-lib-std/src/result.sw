@@ -30,20 +30,20 @@
 //! }
 //! ```
 //! 
-//! # Method overview
+//! ### Method overview
 //! 
 //! In addition to working with pattern matching, `Result` provides a variety
 //! of methods.
 //! 
-//! ## Querying the variant
+//! ### Querying the variant
 //! 
 //! The `is_ok` and `is_err` methods return `true` if the `Result` is
 //! `Ok` or `Err`, respectively.
 //! 
-//! `is_ok` : `Result::is_ok()`.
-//! `is_err`: `Result::is_err()`.
+//! `is_ok` : `Result::is_ok`
+//! `is_err`: `Result::is_err`
 //! 
-//! ## Extracting the contained value
+//! ### Extracting the contained value
 //! 
 //! These methods exctract the contained value in a `Result<T,E>` when it is
 //! the `Ok` variant. If the `Result` is `Err`:
@@ -51,8 +51,8 @@
 //! * `unwrap` reverts.
 //! * `unwrap_or` returns the default provided value.
 //! 
-//! `unwrap`   : `Result::unwrap()`
-//! `unwrap_or`: `Result::unwrap_or()`
+//! `unwrap`   : `Result::unwrap`
+//! `unwrap_or`: `Result::unwrap_or`
 library result;
 
 use ::revert::revert;
@@ -72,7 +72,7 @@ impl<T, E> Result<T, E> {
     //
     /// Returns `true` if the result is `Ok`.
     /// 
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```
     /// enum Error {
@@ -93,9 +93,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns `true` if the result is [`Err`].
+    /// Returns `true` if the result is `Err`.
     /// 
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```
     /// enum Error {
@@ -116,17 +116,17 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    /// Returns the contained `Ok` value, consuming the `self` value.
     ///
     /// Because this function may revert, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// Instead, prefer to use pattern matching and handle the `Err`
     /// case explicitly.
     /// 
-    /// # Reverts
+    /// ### Reverts
     /// 
-    /// Reverts if the self value is [`Err`].
+    /// Reverts if the self value is `Err`.
     /// 
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```
     /// enum Error {
@@ -147,9 +147,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns the contained [`Ok`] value or a provided default.
+    /// Returns the contained `Ok` value or a provided default.
     /// 
-    /// # Examples
+    /// ### Examples
     /// 
     /// ```
     /// enum Error {

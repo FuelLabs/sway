@@ -42,7 +42,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     }
 }
 
-/// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
+/// Get the owner of the inputs (of type `Input::Coin` or `Input::Message`) to a
 /// `TransactionScript` if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();

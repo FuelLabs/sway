@@ -21,7 +21,7 @@ impl RawBytes {
     }
 
     /// Creates a `RawBytes` (on the heap) with exactly the capacity (in bytes) specified.
-    /// This is equivalent to calling `RawBytes::new()` when `capacity` is zero.
+    /// This is equivalent to calling `RawBytes::new` when `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc_bytes(capacity),
@@ -550,7 +550,7 @@ impl Bytes {
         vec
     }
 
-    /// Splits a `Bytes` at the given index, modifying the original and returning the second part.
+    /// Splits a `Bytes` at the given index, modifying the original and returning the right-hand side `Bytes`.
     ///
     /// ### Arguments
     ///
@@ -647,9 +647,8 @@ impl core::ops::Eq for Bytes {
     }
 }
 
-////////////////////////////////////////////////////////////////////
 // Tests
-////////////////////////////////////////////////////////////////////
+//
 fn setup() -> (Bytes, u8, u8, u8) {
     let mut bytes = Bytes::new();
     let a = 5u8;

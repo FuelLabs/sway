@@ -75,11 +75,11 @@ fn create_payload(
 }
 
 /// Call a target contract with a function selector and calldata, provided as `Bytes`.
-/// `target` : The contract ID of the contract to be called.
-/// `function_selector` : The function selector of the function to be called, i.e. the first 8 bytes of sha256("my_func(u64)").
-/// `calldata` : The encoded arguments with which to call the function.
-/// `single_value_type_arg` : Whether the function being called takes a single value-type argument.
-/// `call_params` : The amount and color of coins to forward, and the gas to forward.
+/// `target`               : The contract ID of the contract to be called.
+/// `function_selector`    : The function selector of the function to be called, i.e. the first 8 bytes of `sha256("my_func(u64)")`.
+/// `calldata`             : The encoded arguments with which to call the function.
+/// `single_value_type_arg`: Whether the function being called takes a single value-type argument.
+/// `call_params`          : The amount and color of coins to forward, and the gas to forward.
 pub fn call_with_function_selector(
     target: ContractId,
     function_selector: Bytes,

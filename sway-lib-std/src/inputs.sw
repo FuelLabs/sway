@@ -1,5 +1,5 @@
 //! Getters for fields on transaction inputs.
-//! This includes `InputCoins`, `InputMessages` and `InputContracts`.
+//! This includes `Input::Coins`, `Input::Messages` and `Input::Contracts`.
 library inputs;
 
 use ::address::Address;
@@ -105,7 +105,7 @@ pub fn input_pointer(index: u64) -> u64 {
 }
 
 /// Get amount field from input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the amount as an `Option::Some(u64)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_amount(index: u64) -> Option<u64> {
@@ -116,8 +116,8 @@ pub fn input_amount(index: u64) -> Option<u64> {
     }
 }
 
-/// If the input's type is `InputCoin` return the owner as an `Option::Some(owner)`.
-/// If the input's type is `InputMessage` return the owner as an `Option::Some(recipient)`.
+/// If the input's type is `Input::Coin` return the owner as an `Option::Some(owner)`.
+/// If the input's type is `Input::Message` return the owner as an `Option::Some(recipient)`.
 /// Otherwise, returns Option::None.
 pub fn input_owner(index: u64) -> Option<Address> {
     match input_type(index) {
@@ -127,7 +127,7 @@ pub fn input_owner(index: u64) -> Option<Address> {
 }
 
 /// Get the predicate data pointer from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the data as an `Option::Some(ptr)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
@@ -139,7 +139,7 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 }
 
 /// Get the predicate data from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the data, otherwise reverts.
 pub fn input_predicate_data<T>(index: u64) -> T {
     match input_predicate_data_pointer(index) {
@@ -148,8 +148,8 @@ pub fn input_predicate_data<T>(index: u64) -> T {
     }
 }
 
-/// If the input's type is `InputCoin` return the asset ID as an `Option::Some(id)`.
-/// If the input's type is `InputMessage` return the `BASE_ASSET_ID` as an `Option::Some(id)`.
+/// If the input's type is `Input::Coin` return the asset ID as an `Option::Some(id)`.
+/// If the input's type is `Input::Message` return the `BASE_ASSET_ID` as an `Option::Some(id)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_asset_id(index: u64) -> Option<ContractId> {
     match input_type(index) {
@@ -160,7 +160,7 @@ pub fn input_asset_id(index: u64) -> Option<ContractId> {
 }
 
 /// Get the witness index from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the index as an `Option::Some(u8)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_witness_index(index: u64) -> Option<u8> {
@@ -172,7 +172,7 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 }
 
 /// Get the predicate length from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the length as an `Option::Some(u16)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_predicate_length(index: u64) -> Option<u16> {
@@ -184,7 +184,7 @@ pub fn input_predicate_length(index: u64) -> Option<u16> {
 }
 
 /// Get the predicate pointer from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the pointer as an `Option::Some(ptr)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
@@ -196,7 +196,7 @@ pub fn input_predicate_pointer(index: u64) -> Option<raw_ptr> {
 }
 
 /// Get the predicate from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the data, otherwise reverts.
 pub fn input_predicate(index: u64) -> Bytes {
     let wrapped = input_predicate_length(index);
@@ -216,7 +216,7 @@ pub fn input_predicate(index: u64) -> Bytes {
 }
 
 /// Get the predicate data length from the input at `index`.
-/// If the input's type is `InputCoin` or `InputMessage`,
+/// If the input's type is `Input::Coin` or `Input::Message`,
 /// return the data length as an `Option::Some(u16)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_predicate_data_length(index: u64) -> Option<u16> {
@@ -230,7 +230,7 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 // Coin Inputs
 //
 /// Get the maturity from the input at `index`.
-/// If the input's type is `InputCoin`,
+/// If the input's type is `Input::Coin`,
 /// return the index as an `Option::Some(u32)`.
 /// Otherwise, returns `Option::None`.
 pub fn input_maturity(index: u64) -> Option<u32> {

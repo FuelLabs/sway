@@ -1,5 +1,5 @@
 //! Getters for fields on transaction outputs.
-//! This includes `OutputCoins`, `InputMessages` and `InputContracts`.
+//! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library outputs;
 
 use ::contract_id::ContractId;
@@ -69,8 +69,8 @@ pub fn output_count() -> u64 {
 }
 
 /// Get the amount of coins to send for the output at `index`.
-/// This method is only meaningful if the output type has the `amount` field.
-/// Specifically: `Output::Coin`, `Output::Message`, `Output::Change` & `Output::Variable`.
+/// This method is only meaningful if the `Output` type has the `amount` field,
+/// specifically: `Output::Coin`, `Output::Message`, `Output::Change` & `Output::Variable`.
 pub fn output_amount(index: u64) -> u64 {
     let type = output_type(index);
     match type {

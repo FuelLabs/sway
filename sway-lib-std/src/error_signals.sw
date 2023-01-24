@@ -1,4 +1,4 @@
-//! Values which signify special types of errors when passed to `revert()`.
+//! Values which signify special types of errors when passed to `std::revert::revert`.
 library error_signals;
 
 /// Revert with this value for a failing call to `std::revert::require`.

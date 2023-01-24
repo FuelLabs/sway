@@ -1,5 +1,6 @@
-library block;
 //! Functionality for accessing block-related data.
+library block;
+
 /// Get the current block height.
 pub fn height() -> u64 {
     asm(height) {

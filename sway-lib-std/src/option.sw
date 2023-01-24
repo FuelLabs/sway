@@ -37,20 +37,20 @@
 //! }
 //! ```
 //!
-//! # Method overview
+//! ### Method overview
 //!
 //! In addition to working with pattern matching, `Option` provides a wide
 //! variety of different methods.
 //!
-//! ## Querying the variant
+//! ### Querying the variant
 //!
 //! The `is_some` and `is_none` methods return `true` if the `Option`
 //! is `Some` or `None`, respectively.
 //!
-//! `is_none`: `Option::is_none()`.
-//! `is_some`: `Option::is_some()`.
+//! `is_none`: `Option::is_none`
+//! `is_some`: `Option::is_some`
 //!
-//! ## Extracting the contained value
+//! ### Extracting the contained value
 //!
 //! These methods extract the contained value in an `Option<T>` when it
 //! is the `Some` variant. If the `Option` is `None`:
@@ -58,20 +58,20 @@
 //! * `unwrap` reverts.
 //! * `unwrap_or` returns the provided default value.
 //!
-//! `unwrap`   : `Option::unwrap()`.
-//! `unwrap_or`: `Option::unwrap_or()`.
+//! `unwrap`   : `Option::unwrap`
+//! `unwrap_or`: `Option::unwrap_or`
 //!
-//! ## Transforming contained values
+//! ### Transforming contained values
 //!
 //! These methods transform `Option` to `Result`:
 //!
 //! * `ok_or` transforms `Some(v)` to `Ok(v)`, and `None` to
 //!   `Err(e)` using the provided default error value.
 //!
-//! `Err(e)` : `Result::Err()`.
-//! `Ok(v)`  : `Result::Ok()`.
-//! `Some(v)`: `Option::Some()`.
-//! `ok_or`  : `Option::ok_or()`.
+//! `Err(e)` : `Result::Err`
+//! `Ok(v)`  : `Result::Ok`
+//! `Some(v)`: `Option::Some`
+//! `ok_or`  : `Option::ok_or`
 library option;
 
 use ::convert::From;
@@ -93,7 +93,7 @@ impl<T> Option<T> {
     //
     /// Returns `true` if the option is a `Some` value.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x: Option<u32> = Option::Some(2);
@@ -111,7 +111,7 @@ impl<T> Option<T> {
 
     /// Returns `true` if the option is a `None` value.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x: Option<u32> = Option::Some(2);
@@ -135,13 +135,13 @@ impl<T> Option<T> {
     /// Instead, use pattern matching and handle the `None`
     /// case explicitly, or call `unwrap_or`.
     ///
-    /// `unwrap_or`: `Option::unwrap_or()`.
+    /// `unwrap_or`: `Option::unwrap_or`
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
     /// Reverts if the self value equals `None`.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x = Option::Some(42);
@@ -161,9 +161,9 @@ impl<T> Option<T> {
 
     /// Returns the contained `Some` value or a provided default.
     ///
-    /// `unwrap_or`: `Option::unwrap_or()`
+    /// `unwrap_or`: `Option::unwrap_or`
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// assert(Option::Some(42).unwrap_or(69) == 42);
@@ -181,12 +181,12 @@ impl<T> Option<T> {
     /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
     /// `Ok(v)` and `None` to `Err(e)`.
     ///
-    /// `Ok(v)`  : `Result::Ok()`.
-    /// `Err(e)` : `Result::Err()`.
-    /// `Some(v)`: `Option::Some()`.
-    /// `ok_or`  : `Option::ok_or()`.
+    /// `Ok(v)`  : `Result::Ok`
+    /// `Err(e)` : `Result::Err`
+    /// `Some(v)`: `Option::Some`
+    /// `ok_or`  : `Option::ok_or`
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x = Option::Some(42);

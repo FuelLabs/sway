@@ -9,7 +9,7 @@ use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
 /// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.
 ///
-/// Use `send_typed_message()` instead of `send_message()` if the message needs to be indexed.
+/// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
 /// ### Arguments
 ///
@@ -50,7 +50,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
 
 /// Sends a message `msg_data` of type `T` to `recipient` with a `coins` amount of the base asset.
 ///
-/// Use `send_typed_message()` instead of `send_message()` if the message needs to be indexed.
+/// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
 /// ### Arguments
 ///
