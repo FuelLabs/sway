@@ -49,13 +49,21 @@ impl Document {
         }
     }
     fn preview_opt(&self) -> Option<String> {
+        const MAX_PREVIEW_CHARS: usize = 100;
+        const CLOSING_PARAGRAPH_TAG: &str = "</p>";
+
         self.raw_attributes.as_ref().map(|description| {
             let preview = split_at_markdown_header(description);
-            if preview.len() > 100 && preview.contains("</p>") {
-                match preview.find("</p>") {
+            if preview.chars().count() > MAX_PREVIEW_CHARS
+                && preview.contains(CLOSING_PARAGRAPH_TAG)
+            {
+                match preview.find(CLOSING_PARAGRAPH_TAG) {
                     Some(index) => {
-                        let preview = preview.split_at(index + 5).0;
-                        if preview.len() > 100 && preview.contains('\n') {
+                        // We add 1 here to get the index of the char after the closing tag.
+                        // This ensures we retain the closing tag and don't break the html.
+                        let (preview, _) =
+                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.chars().count() + 1);
+                        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
                             match preview.find('\n') {
                                 Some(index) => preview.split_at(index).0.to_string(),
                                 None => unreachable!("Previous logic prevents this panic"),

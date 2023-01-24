@@ -1242,34 +1242,19 @@ pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
     const H5: &str = "<h5>";
     if raw_html.contains(H1) {
         let v: Vec<_> = raw_html.split(H1).collect();
-        match v.first() {
-            Some(s) => s,
-            None => panic!("expected some &str"),
-        }
+        v.first().expect("expected a non-empty str")
     } else if raw_html.contains(H2) {
         let v: Vec<_> = raw_html.split(H2).collect();
-        match v.first() {
-            Some(s) => s,
-            None => panic!("expected some &str"),
-        }
+        v.first().expect("expected a non-empty str")
     } else if raw_html.contains(H3) {
         let v: Vec<_> = raw_html.split(H3).collect();
-        match v.first() {
-            Some(s) => s,
-            None => panic!("expected some &str"),
-        }
+        v.first().expect("expected a non-empty str")
     } else if raw_html.contains(H4) {
         let v: Vec<_> = raw_html.split(H4).collect();
-        match v.first() {
-            Some(s) => s,
-            None => panic!("expected some &str"),
-        }
+        v.first().expect("expected a non-empty str")
     } else if raw_html.contains(H5) {
         let v: Vec<_> = raw_html.split(H5).collect();
-        match v.first() {
-            Some(s) => s,
-            None => panic!("expected some &str"),
-        }
+        v.first().expect("expected a non-empty str")
     } else {
         raw_html
     }
