@@ -20,7 +20,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 //  Accessing the current call frame
 //
 /// Get the current contract's id when called in an internal context.
-/// **Note !** If called in an external context, this will **not** return a contract ID.
+/// **_Note:_** If called in an external context, this will **not** return a contract ID.
 // @dev If called externally, will actually return a pointer to the transaction ID.
 pub fn contract_id() -> ContractId {
     ContractId::from(asm() { fp: b256 })

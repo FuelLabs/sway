@@ -1,6 +1,6 @@
 //! Error handling with the `Result` type.
 //!
-//! `Result<T, E>``Result` is the type used for returning and propagating
+//! `Result<T, E>` `Result` is the type used for returning and propagating
 //! errors. It is an enum with the variants, `Ok(T)`, representing
 //! success and containing a value, and `Err(E)`, representing error
 //! and containing an error value.

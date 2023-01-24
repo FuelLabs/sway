@@ -20,7 +20,7 @@ impl<T> RawVec<T> {
     }
 
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
-    /// `T; capacity`. This is equivalent to calling `RawVec::new` when
+    /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {

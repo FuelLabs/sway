@@ -9,10 +9,12 @@
 //! It is unfortunate that there are copies of our opcodes in multiple places, but this ensures the
 //! best type safety. It can be macro'd someday.
 
-use super::DataId;
 use super::*;
 use crate::{
-    asm_generation::{compiler_constants::DATA_SECTION_REGISTER, DataSection},
+    asm_generation::fuel::{
+        compiler_constants::DATA_SECTION_REGISTER,
+        data_section::{DataId, DataSection},
+    },
     fuel_prelude::fuel_asm::{self, Opcode as VmOp},
 };
 use either::Either;

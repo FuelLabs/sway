@@ -579,7 +579,7 @@ pub fn inline_function_calls(
         // For now, pending improvements to ASMgen for calls, we must inline any function which has
         // too many args.
         if func.args_iter(ctx).count() as u8
-            > crate::asm_generation::compiler_constants::NUM_ARG_REGISTERS
+            > crate::asm_generation::fuel::compiler_constants::NUM_ARG_REGISTERS
         {
             return true;
         }

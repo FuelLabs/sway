@@ -6,7 +6,7 @@ use ::constants::ZERO_B256;
 use ::convert::From;
 
 /// Stores two `b256`s in contiguous memory.
-/// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover()`.
+/// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
 pub struct B512 {
     bytes: [b256; 2],
 }

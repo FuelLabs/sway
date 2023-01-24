@@ -48,7 +48,7 @@ pub fn output_type(index: u64) -> Output {
     }
 }
 
-/// Get a pointer to the ouput at `index`
+/// Get a pointer to the output at `index`
 /// for either `tx_type` (transaction-script or transaction-create).
 pub fn output_pointer(index: u64) -> u64 {
     let type = tx_type();

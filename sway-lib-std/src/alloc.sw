@@ -7,6 +7,7 @@ library alloc;
 /// The heap pointer, `$hp`, will always point to unallocated space.
 ///
 /// Initially the heap will look like this:
+/// ```
 /// ... 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 ///                                               $hp^  ^VM_MAX_RAM
 ///
@@ -17,7 +18,7 @@ library alloc;
 /// After writing with `sw(ptr, u64::max())`:
 /// ... 00 00 00 00 00 00 00 00 FF FF FF FF FF FF FF FF |
 ///                       $hp^  ^ptr                    ^VM_MAX_RAM
-///
+/// ```
 /// For more information, see the Fuel Spec for [VM Initialization](https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization)
 /// and the VM Instruction Set for [Memory Allocation](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory).
 pub fn alloc<T>(count: u64) -> raw_ptr {

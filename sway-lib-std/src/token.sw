@@ -47,7 +47,7 @@ pub fn mint_to(amount: u64, to: Identity) {
 /// >
 /// > This will transfer coins to a contract even with no way to retrieve them
 /// > (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// > the PERMANENT LOSS OF COINS if not used with care.
+/// > the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
@@ -140,7 +140,7 @@ pub fn burn(amount: u64) {
 /// >
 /// > If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
 /// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// > to the PERMANENT LOSS OF COINS if not used with care.
+/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
@@ -179,7 +179,7 @@ pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) {
 /// >
 /// > This will transfer coins to a contract even with no way to retrieve them
 /// > (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// > to the PERMANENT LOSS OF COINS if not used with care.
+/// > to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// ### Arguments
 ///
