@@ -571,12 +571,12 @@ impl Bytes {
     ///
     /// let (mut bytes, a, b, c) = setup();
     /// assert(bytes.len() == 3);
-    /// let index = 1;
-    /// let (first, second) = bytes.split(index);
-    /// assert(first.capacity() == index);
-    /// assert(second.capacity() == bytes.len() - index);
-    /// assert(first.len() == 1);
-    /// assert(second.len() == 2);
+    /// let mid = 1;
+    /// let (left, right) = bytes.split_at(mid);
+    /// assert(left.capacity() == mid);
+    /// assert(right.capacity() == bytes.len() - mid);
+    /// assert(left.len() == 1);
+    /// assert(right.len() == 2);
     /// ```
     pub fn split_at(self, mid: u64) -> (Bytes, Bytes) {
         assert(self.len >= mid);
@@ -596,11 +596,11 @@ impl Bytes {
         (left_bytes, right_bytes)
     }
 
-    /// Joins two `Bytes` into a single larger `Bytes`.
+    /// Moves all elements of `other` into `self`, leaving `other` empty.
     ///
     /// ### Arguments
     ///
-    /// * other - The Bytes to join to self.
+    /// * other - The Bytes to append to self.
     ///
     /// ### Examples
     ///
@@ -621,26 +621,30 @@ impl Bytes {
     /// bytes2.push(9u8);
     /// assert(bytes2.len() == 3);
     ///
-    /// let mut joined = bytes.join(bytes2);
-    /// assert(joined.len() == bytes.len() + bytes2.len());
-    /// assert(joined.capacity() == bytes.len() + bytes2.len());
+    /// let mut new = bytes.append(bytes2);
+    /// assert(new.len() == bytes.len() + bytes2.len());
+    /// assert(new.capacity() == bytes.len() + bytes2.len());
     /// ```
-    pub fn join(ref mut self, other: self) -> Self {
-        let mut joined = Bytes::with_capacity(self.len + other.len);
+    pub fn append(ref mut self, ref other: self) {
+        let both_len = self.len + other.len;
+        let other_start = self.len;
+
+        // reallocate with combined capacity, write `other`, set buffer capacity
+        self.buf.ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len);
 
         let mut i = 0;
-        while i < self.len {
-            joined.push(self.get(i).unwrap());
-            i += 1;
-        };
-
-        i = 0;
         while i < other.len {
-            joined.push(other.get(i).unwrap());
+            let new_ptr = self.buf.ptr().add_uint_offset(other_start);
+            new_ptr.add_uint_offset(i).write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
             i += 1;
-        };
+        }
 
-        joined
+        // set capacity and length
+        self.buf.cap = both_len;
+        self.len = both_len;
+
+        // clear `other`
+        other.len = 0;
     }
 }
 
@@ -910,7 +914,7 @@ fn test_split_at() {
 }
 
 #[test()]
-fn test_join() {
+fn test_append() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
     assert(bytes.get(0).unwrap() == a);
@@ -929,13 +933,17 @@ fn test_join() {
     assert(bytes2.get(1).unwrap() == e);
     assert(bytes2.get(2).unwrap() == f);
 
-    let mut joined = bytes.join(bytes2);
-    assert(joined.len() == bytes.len() + bytes2.len());
-    assert(joined.capacity() == bytes.len() + bytes2.len());
+    let first_length = bytes.len();
+    let second_length = bytes2.len();
+    let first_cap = bytes.capacity();
+    let second_cap = bytes2.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == first_length + second_length);
+    assert(bytes.capacity() == first_length + first_length);
     let values = [a, b, c, d, e, f];
     let mut i = 0;
     while i < 6 {
-        assert(joined.get(i).unwrap() == values[i]);
+        assert(bytes.get(i).unwrap() == values[i]);
         i += 1;
     };
 }
