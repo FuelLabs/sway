@@ -790,50 +790,6 @@ impl TraitMap {
         } else {
             err(warnings, errors)
         }
-
-        // let required_traits: BTreeSet<Ident> = constraints
-        //     .iter()
-        //     .cloned()
-        //     .map(|constraint| constraint.trait_name.suffix)
-        //     .collect();
-        // let mut found_traits: BTreeSet<Ident> = BTreeSet::new();
-
-        // for constraint in constraints.iter() {
-        //     let TraitConstraint {
-        //         trait_name: constraint_trait_name,
-        //         type_arguments: constraint_type_arguments,
-        //     } = constraint;
-        //     let constraint_type_id = type_engine.insert(
-        //         decl_engine,
-        //         TypeInfo::Custom {
-        //             name: constraint_trait_name.suffix.clone(),
-        //             type_arguments: if constraint_type_arguments.is_empty() {
-        //                 None
-        //             } else {
-        //                 Some(constraint_type_arguments.clone())
-        //             },
-        //         },
-        //     );
-        //     for key in self.trait_impls.iter().map(|e| &e.key) {
-        //         let suffix = &key.name.suffix;
-        //         let map_trait_type_id = type_engine.insert(
-        //             decl_engine,
-        //             TypeInfo::Custom {
-        //                 name: suffix.name.clone(),
-        //                 type_arguments: if suffix.args.is_empty() {
-        //                     None
-        //                 } else {
-        //                     Some(suffix.args.to_vec())
-        //                 },
-        //             },
-        //         );
-        //         if are_equal_minus_dynamic_types(engines, type_id, key.type_id)
-        //             && are_equal_minus_dynamic_types(engines, constraint_type_id, map_trait_type_id)
-        //         {
-        //             found_traits.insert(constraint_trait_name.suffix.clone());
-        //         }
-        //     }
-        // }
     }
 }
 
