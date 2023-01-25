@@ -80,3 +80,5 @@
     - [forc explore](./forc/plugins/forc_explore.md)
     - [forc fmt](./forc/plugins/forc_fmt.md)
     - [forc lsp](./forc/plugins/forc_lsp.md)
+    - [forc submit](./forc/plugins/forc_submit.md)
+    - [forc tx](./forc/plugins/forc_tx.md)
