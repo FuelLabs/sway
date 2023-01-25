@@ -19,7 +19,7 @@ use ::option::Option;
 ///
 /// let five = 5_u64;
 /// store(ZERO_B256, five);
-/// let stored_five = get::<u64>(ZERO_B256);
+/// let stored_five = get::<u64>(ZERO_B256).unwrap();
 /// assert(five == stored_five);
 /// ```
 #[storage(write)]
@@ -27,11 +27,10 @@ pub fn store<T>(key: b256, value: T) {
     if !__is_reference_type::<T>() {
         // If `T` is a copy type, then `value` fits in a single word.
         let value = asm(v: value) { v: u64 };
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     } else {
         // If `T` is a reference type, then `value` can be larger than a word, so we need to use
         // `__state_store_quad`.
-
         // Get the number of storage slots needed based on the size of `T`
         let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
@@ -39,7 +38,7 @@ pub fn store<T>(key: b256, value: T) {
         let mut ptr_to_value = asm(ptr: value) { ptr: raw_ptr };
 
         // Store `number_of_slots * 32` bytes starting at storage slot `key`.
-        __state_store_quad(key, ptr_to_value, number_of_slots);
+        let _ = __state_store_quad(key, ptr_to_value, number_of_slots);
     };
 }
 
@@ -48,8 +47,8 @@ pub fn store<T>(key: b256, value: T) {
 /// If the value size is larger than 8 bytes it is read to a heap buffer which is leaked for the
 /// duration of the program.
 ///
-/// If no value was previously stored using the key, a byte representation of all zeroes is returned
-/// Read more [here](https://fuellabs.github.io/sway/master/common-collections/storage_map.html#accessing-values-in-a-storage-map)
+/// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
+/// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
 ///
 /// ### Arguments
 ///
@@ -66,12 +65,22 @@ pub fn store<T>(key: b256, value: T) {
 /// assert(five == stored_five);
 /// ```
 #[storage(read)]
-pub fn get<T>(key: b256) -> T {
-    if !__is_reference_type::<T>() {
-        // If `T` is a copy type, then we can use `__state_load_word` to read from storage. We can 
-        // then cast the result into `T`.
-        let loaded_word = __state_load_word(key);
-        asm(l: loaded_word) { l: T }
+pub fn get<T>(key: b256) -> Option<T> {
+    let (previously_set, value) = if !__is_reference_type::<T>() {
+        // If `T` is a copy type, then we can use `srw` to read from storage. `srw` writes two 
+        // registers: the loaded word as well as flag indicating whether the storage slot was 
+        // written before. We store the two registers on the heap and return the result as a tuple 
+        // `(bool, T)` which contains the two values we need.
+        // NOTE: we are leaking this allocation on the heap.
+        // NOTE: we should eventually be using `__state_load_word` here but we are currently unable 
+        // to make that intrinsic return two things due to some limitations in IR/codegen.
+        let result_ptr = alloc::<u64>(16); //  
+        asm(key: key, result_ptr: result_ptr, loaded_word, previously_set) {
+            srw  loaded_word previously_set key;
+            sw   result_ptr previously_set i0;
+            sw   result_ptr loaded_word i1;
+            result_ptr: (bool, T)
+        }
     } else {
         // If `T` is a reference type, then we need to use `__state_load_quad` because the result
         // might be larger than a word.
@@ -85,10 +94,17 @@ pub fn get<T>(key: b256) -> T {
         let result_ptr = alloc::<u64>(number_of_slots * 32);
 
         // Read `number_of_slots * 32` bytes starting at storage slot `key`.
-        __state_load_quad(key, result_ptr, number_of_slots);
+        // The return `bool` indicates if all the slots have been set before.
+        let previously_set = __state_load_quad(key, result_ptr, number_of_slots);
 
         // Cast the final result to `T` 
-        asm(res: result_ptr) { res: T }
+        (previously_set, asm(res: result_ptr) { res: T })
+    };
+
+    if previously_set {
+        Option::Some(value)
+    } else {
+        Option::None
     }
 }
 
@@ -126,8 +142,8 @@ impl<K, V> StorageMap<K, V> {
 
     /// Retrieves a value previously stored using a key
     ///
-    /// If no value was previously stored using the key, a byte representation of all zeroes is returned
-    /// Read more [here](https://fuellabs.github.io/sway/master/common-collections/storage_map.html#accessing-values-in-a-storage-map)
+    /// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
+    /// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
     ///
     /// ### Arguments
     ///
@@ -144,12 +160,12 @@ impl<K, V> StorageMap<K, V> {
     ///     let key = 5_u64;
     ///     let value = true;
     ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key);
+    ///     let retrieved_value = storage.map.get(key).unwrap();
     ///     assert(value == retrieved_value);
     /// }
     /// ```
     #[storage(read)]
-    pub fn get(self, key: K) -> V {
+    pub fn get(self, key: K) -> Option<V> {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
     }
@@ -184,7 +200,7 @@ impl<V> StorageVec<V> {
     #[storage(read, write)]
     pub fn push(self, value: V) {
         // The length of the vec is stored in the __get_storage_key() slot
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // Storing the value at the current length index (if this is the first item, starts off at 0)
         let key = sha256((len, __get_storage_key()));
@@ -216,7 +232,8 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn pop(self) -> Option<V> {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the length is 0, there is no item to pop from the vec
         if len == 0 {
             return Option::None;
@@ -226,7 +243,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         let key = sha256((len - 1, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key))
+        Option::Some::<V>(get::<V>(key).unwrap())
     }
 
     /// Gets the value in the given index, None if index is out of bounds
@@ -255,14 +272,15 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is larger or equal to len, there is no item to return
         if len <= index {
             return Option::None;
         }
 
         let key = sha256((index, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key))
+        Option::Some::<V>(get::<V>(key).unwrap())
     }
 
     /// Removes the element in the given index and moves all the element in the following indexes
@@ -300,12 +318,13 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn remove(self, index: u64) -> V {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
         // gets the element before removing it, so it can be returned
-        let removed_element = get::<V>(sha256((index, __get_storage_key())));
+        let removed_element = get::<V>(sha256((index, __get_storage_key()))).unwrap();
 
         // for every element in the vec with an index greater than the input index,
         // shifts the index for that element down one
@@ -314,7 +333,7 @@ impl<V> StorageVec<V> {
             // gets the storage location for the previous index
             let key = sha256((count - 1, __get_storage_key()));
             // moves the element of the current index into the previous index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))).unwrap());
 
             count += 1;
         }
@@ -357,15 +376,16 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn swap_remove(self, index: u64) -> V {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is larger or equal to len, there is no item to remove
         assert(index < len);
 
         let hash_of_to_be_removed = sha256((index, __get_storage_key()));
         // gets the element before removing it, so it can be returned
-        let element_to_be_removed = get::<V>(hash_of_to_be_removed);
+        let element_to_be_removed = get::<V>(hash_of_to_be_removed).unwrap();
 
-        let last_element = get::<V>(sha256((len - 1, __get_storage_key())));
+        let last_element = get::<V>(sha256((len - 1, __get_storage_key()))).unwrap();
         store::<V>(hash_of_to_be_removed, last_element);
 
         // decrements len by 1
@@ -405,7 +425,8 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
@@ -451,7 +472,8 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn insert(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key());
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is larger than len, there is no space to insert
         assert(index <= len);
 
@@ -473,7 +495,7 @@ impl<V> StorageVec<V> {
         while count >= index {
             let key = sha256((count + 1, __get_storage_key()));
             // shifts all the values up one index
-            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))));
+            store::<V>(key, get::<V>(sha256((count, __get_storage_key()))).unwrap());
 
             count -= 1
         }
@@ -507,7 +529,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn len(self) -> u64 {
-        get::<u64>(__get_storage_key())
+        get::<u64>(__get_storage_key()).unwrap_or(0)
     }
 
     /// Checks whether the len is 0 or not
@@ -535,8 +557,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn is_empty(self) -> bool {
-        let len = get::<u64>(__get_storage_key());
-        len == 0
+        get::<u64>(__get_storage_key()).unwrap_or(0) == 0
     }
 
     /// Sets the len to 0
