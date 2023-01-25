@@ -4,8 +4,7 @@ use sway_types::Spanned;
 
 use crate::{formatter::FormattedCode, Formatter, FormatterError};
 
-// Given a start, an end and a CommentMap, return references to all comments
-// contained within a given start and end of a span, in an exclusive range.
+/// Given a range, return an iterator to comments contained within the range.
 pub fn comments_between<'a>(
     range: &'a Range<usize>,
     formatter: &'a Formatter,
@@ -19,9 +18,13 @@ pub fn comments_between<'a>(
     })
 }
 
-// Writes comments between a given start and end and removes them from the formatter's CommentMap.
-// This returns Ok(true) on successful execution AND comments were written, but returns
-// Ok(false) on successful execution without any comments written. Returns Err on failure.
+/// Given a range, formats comments contained within the range. This function
+/// removes comments that are already formatted from the CommentMap for later use.
+///
+/// Returns:
+/// `Ok(true)` on successful execution with comments written,
+/// `Ok(false)` on successful execution and if there are no comments within the given range,
+/// `Err` if a FormatterError was encountered.
 pub fn maybe_write_comments_from_map(
     formatted_code: &mut FormattedCode,
     range: Range<usize>,
