@@ -12,9 +12,9 @@ pub enum AuthError {
     InputsNotAllOwnedBySameAddress: (),
 }
 
-/// Returns `true` if the caller is external (i.e. a script).
+/// Returns `true` if the caller is external (i.e. a `script`).
 /// Otherwise, returns `false`.
-/// ref: https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata
+/// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 pub fn caller_is_external() -> bool {
     asm(r1) {
         gm r1 i1;
@@ -22,7 +22,7 @@ pub fn caller_is_external() -> bool {
     }
 }
 
-/// If caller is internal, returns the contract ID of the caller.
+/// If the caller is internal, returns the contract ID of the caller.
 /// Otherwise, undefined behavior.
 pub fn caller_contract_id() -> ContractId {
     ContractId::from(asm(r1) {
@@ -42,8 +42,8 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
     }
 }
 
-/// Get the owner of the inputs (of type `InputCoin` or `InputMessage`) to a
-/// TransactionScript if they all share the same owner.
+/// Get the owner of the inputs (of type `Input::Coin` or `Input::Message`) to a
+/// `TransactionScript` if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
     let mut candidate = Option::None::<Address>;
@@ -62,7 +62,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
             }
         }
 
-        // type == InputCoin or InputMessage
+        // type == InputCoin or InputMessage.
         let owner_of_input = input_owner(i);
         if candidate.is_none() {
             // This is the first input seen of the correct type.
@@ -72,7 +72,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_owner` must be `Option::Some`
+        // `candidate` and `input_owner` must be `Option::Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
