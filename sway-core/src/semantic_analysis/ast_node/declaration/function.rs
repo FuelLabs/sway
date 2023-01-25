@@ -127,13 +127,6 @@ impl ty::TyFunctionDeclaration {
                 errors
             )
         };
-        if !errors.is_empty() {
-            println!(
-                "ctx.self_type(): {}, return_type: {}",
-                ctx.engines().help_out(type_engine.get(ctx.self_type())),
-                ctx.engines().help_out(type_engine.get(return_type))
-            );
-        }
 
         // gather the return statements
         let return_statements: Vec<&ty::TyExpression> = body
