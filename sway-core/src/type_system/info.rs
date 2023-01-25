@@ -5,7 +5,7 @@ use crate::{
     Ident,
 };
 use sway_error::error::CompileError;
-use sway_types::{integer_bits::IntegerBits, span::Span};
+use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
     collections::HashSet,
@@ -1594,6 +1594,7 @@ impl TypeInfo {
                             field_name: first.clone(),
                             struct_name: name.clone(),
                             available_fields: available_fields.join(", "),
+                            span: first.span(),
                         });
                         return err(warnings, errors);
                     }

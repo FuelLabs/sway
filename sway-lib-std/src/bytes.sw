@@ -1,4 +1,4 @@
-//! The bytes type is used when a colection of tightly-packed arbitrary bytes is needed.
+//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library bytes;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
@@ -21,7 +21,7 @@ impl RawBytes {
     }
 
     /// Creates a `RawBytes` (on the heap) with exactly the capacity (in bytes) specified.
-    /// This is equivalent to calling `RawBytes::new` when `capacity` is `0`.
+    /// This is equivalent to calling `RawBytes::new` when `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc_bytes(capacity),
@@ -39,7 +39,7 @@ impl RawBytes {
         self.cap
     }
 
-    /// Grow the capacity of the Bytes by doubling its current capacity. The
+    /// Grow the capacity of `Bytes` by doubling its current capacity. The
     /// `realloc_bytes` function allocates memory on the heap and copies
     /// the data from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
@@ -57,7 +57,7 @@ pub struct Bytes {
 impl Bytes {
     /// Constructs a new, empty `Bytes`.
     ///
-    /// The Bytes will not allocate until elements are pushed onto it.
+    /// The `Bytes` will not allocate until elements are pushed onto it.
     ///
     /// ### Examples
     ///
@@ -78,10 +78,10 @@ impl Bytes {
 
     /// Constructs a new, empty `Bytes` with the specified capacity.
     ///
-    /// The Bytes will be able to hold exactly `capacity` bytes without
-    /// reallocating. If `capacity` is 0, the Bytes will not allocate.
+    /// The `Bytes` will be able to hold exactly `capacity` bytes without
+    /// reallocating. If `capacity` is zero, the `Bytes` will not allocate.
     ///
-    /// It is important to note that although the returned Bytes has the
+    /// It is important to note that although the returned `Bytes` has the
     /// capacity specified, the vector will have a zero length.
     ///
     /// ### Examples
@@ -102,7 +102,7 @@ impl Bytes {
         }
     }
 
-    /// Appends an element to the back of a Bytes collection.
+    /// Appends an element to the back of a `Bytes` collection.
     ///
     /// ### Examples
     ///
@@ -133,7 +133,7 @@ impl Bytes {
         self.len += 1;
     }
 
-    /// Removes the last element from a Bytes and returns it, or [`None`] if it
+    /// Removes the last element from a `Bytes` and returns it, or `None` if it
     /// is empty.
     ///
     /// ### Examples
@@ -155,14 +155,14 @@ impl Bytes {
         if self.len == 0 {
             return Option::None;
         };
-        // decrement length.
+        // Decrement length.
         self.len -= 1;
         let target = self.buf.ptr().add_uint_offset(self.len);
 
         Option::Some(target.read_byte())
     }
 
-    /// Returns a byte at `index`, or None if `index` is out of
+    /// Returns `Some(byte)` at `index`, or `None` if `index` is out of
     /// bounds.
     ///
     /// ### Examples
@@ -190,7 +190,7 @@ impl Bytes {
         Option::Some(item_ptr.read_byte())
     }
 
-    /// Updates an element at position `index` with a new element `value`
+    /// Updates an element at position `index` with a new element `value`.
     ///
     /// ### Arguments
     ///
@@ -268,7 +268,7 @@ impl Bytes {
 
         let start = self.buf.ptr();
 
-        // The spot to put the new value
+        // The spot to put the new value.
         let index_ptr = start.add_uint_offset(index);
 
         // Shift everything over to make space.
@@ -280,7 +280,7 @@ impl Bytes {
             i -= 1;
         }
 
-        // Write `element` at pointer `index`
+        // Write `element` at pointer `index`.
         index_ptr.write_byte(element);
 
         // Increment length.
@@ -310,7 +310,7 @@ impl Bytes {
     /// assert(bytes.get(2).is_none());
     /// ```
     pub fn remove(ref mut self, index: u64) -> u8 {
-        // panic if index >= length
+        // Panic if index >= length.
         assert(index < self.len);
         let start = self.buf.ptr();
 
@@ -341,7 +341,7 @@ impl Bytes {
     ///
     /// ### Reverts
     ///
-    /// * If `element1_index` or `element2_index` is greater than or equal to the length of Bytes.
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
     ///
     /// ### Examples
     ///
@@ -399,7 +399,7 @@ impl Bytes {
         self.len
     }
 
-    /// Clears the Bytes, removing all values.
+    /// Clears the `Bytes`, removing all values.
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the Bytes.
@@ -435,11 +435,53 @@ impl Bytes {
     pub fn is_empty(self) -> bool {
         self.len == 0
     }
+
+    /// Returns the `SHA-2-256` hash of the elements.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(1);
+    /// bytes.push(2);
+    /// bytes.push(3);
+    /// let sha256_hash = bytes.sha256();
+    /// ```
+    pub fn sha256(self) -> b256 {
+        let mut result_buffer = b256::min();
+        asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
+            s256 hash ptr bytes;
+            hash: b256
+        }
+    }
+
+    /// Returns the `KECCAK-256` hash of the elements.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::Bytes;
+    ///
+    /// let bytes = Bytes::new();
+    /// bytes.push(1);
+    /// bytes.push(2);
+    /// bytes.push(3);
+    /// let keccak256_hash = bytes.keccak256();
+    /// ```
+    pub fn keccak256(self) -> b256 {
+        let mut result_buffer = b256::min();
+        asm(hash: result_buffer, ptr: self.buf.ptr, bytes: self.len) {
+            k256 hash ptr bytes;
+            hash: b256
+        }
+    }
 }
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
-    /// Creates a Bytes from a Vec<u8>.
+    /// Creates a `Bytes` from a `Vec<u8>`.
     ///
     /// ### Examples
     ///
@@ -473,7 +515,7 @@ impl Bytes {
         bytes
     }
 
-    /// Creates a Vec<u8> from a Bytes.
+    /// Creates a `Vec<u8>` from a `Bytes`.
     ///
     /// ### Examples
     ///
@@ -508,7 +550,7 @@ impl Bytes {
         vec
     }
 
-    /// Splits a Bytes at the given index, modifying the original and returning the second part.
+    /// Splits a `Bytes` at the given index, modifying the original and returning the right-hand side `Bytes`.
     ///
     /// ### Arguments
     ///
@@ -544,7 +586,7 @@ impl Bytes {
         second
     }
 
-    /// Joins two Bytes into a single larger Bytes.
+    /// Joins two `Bytes` into a single larger `Bytes`.
     ///
     /// ### Arguments
     ///
@@ -605,9 +647,8 @@ impl core::ops::Eq for Bytes {
     }
 }
 
-////////////////////////////////////////////////////////////////////
 // Tests
-////////////////////////////////////////////////////////////////////
+//
 fn setup() -> (Bytes, u8, u8, u8) {
     let mut bytes = Bytes::new();
     let a = 5u8;
@@ -912,4 +953,32 @@ fn test_eq() {
 
     other.swap(0, 1);
     assert(bytes != other);
+}
+
+#[test()]
+fn test_sha256() {
+    use ::hash::sha256;
+    let (mut bytes, a, b, c) = setup();
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+
+    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
+    assert(sha256(362268190631264256) == bytes.sha256());
+}
+
+#[test()]
+fn test_keccak256() {
+    use ::hash::keccak256;
+    let (mut bytes, a, b, c) = setup();
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+    bytes.push(0u8);
+
+    // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
+    assert(keccak256(362268190631264256) == bytes.keccak256());
 }

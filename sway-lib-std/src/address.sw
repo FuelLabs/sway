@@ -1,9 +1,9 @@
+//! A wrapper around the `b256` type to help enhance type-safety.
 library address;
 
 use ::convert::From;
 
-//! A wrapper around the b256 type to help enhance type-safety.
-/// The `Address` type, a struct wrappper around the inner `b256` value.
+/// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
     value: b256,
 }
