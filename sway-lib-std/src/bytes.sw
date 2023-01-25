@@ -605,6 +605,50 @@ impl core::ops::Eq for Bytes {
     }
 }
 
+/// functions for converting between the ContractId and Bytes types.
+impl From<Bytes> for ContractId {
+    fn from(bytes: Bytes) -> ContractId {
+        let mut new_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(new_id);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        ContractId::from(new_id)
+    }
+
+    fn into(self) -> Bytes {
+        // Artificially create bytes with capacity and len
+        let mut bytes = Bytes::with_capacity(32);
+        bytes.len = 32;
+
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(self).copy_bytes_to(bytes.buf.ptr, 32);
+
+        bytes
+    }
+}
+
+/// Methods for vonverting between the Bytes and the b256 types.
+impl From<b256> for Bytes {
+    fn from(b: b256) -> Bytes {
+        // Artificially create bytes with capacity and len
+        let mut bytes = Bytes::with_capacity(32);
+        bytes.len = 32;
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
+
+        bytes
+    }
+
+    // NOTE: this cas be lossy! Added here as the From trait currently requires it, but the conversion from Bytes -> b256 should be implemented as `impl TryFrom<Bytes> for b256` when the TryFrom trait lands: https://github.com/FuelLabs/sway/pull/3881
+    fn into(self) -> b256{
+        let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(value);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        value
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 // Tests
 ////////////////////////////////////////////////////////////////////
@@ -912,4 +956,89 @@ fn test_eq() {
 
     other.swap(0, 1);
     assert(bytes != other);
+}
+
+#[test]
+fn test_from_b256() {
+    let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
+    let b: Bytes = initial.into();
+    let mut control_bytes = Bytes::with_capacity(32);
+    // 0x33 is 51 in decimal
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+    control_bytes.push(51u8);
+
+    assert(b == control_bytes);
+}
+
+#[test]
+fn test_into_b256() {
+    let mut initial_bytes = Bytes::with_capacity(32);
+    // 0x33 is 51 in decimal
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+    initial_bytes.push(51u8);
+
+    let value: b256 = initial_bytes::into();
+    let expected: b256 =0x3333333333333333333333333333333333333333333333333333333333333333;
+
+    assert(value == expected);
 }
