@@ -1,29 +1,30 @@
 use fuels::{
     prelude::*,
-    tx::ContractId,
-    tx::{Bytes32, Input, Output, TxPointer, UtxoId},
+    tx::{Bytes32, ContractId, Input, Output, TxPointer, UtxoId},
+    types::core::{Bits256, SizedAsciiString},
 };
 
 macro_rules! fn_selector {
     ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
-         ::fuels::core::code_gen::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::Parameterize>::param_type() ),*]).to_vec()
+         ::fuels::core::code_gen::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::traits::Parameterize>::param_type() ),*]).to_vec()
     }
 }
 macro_rules! calldata {
     ( $($arg: expr),* ) => {
-        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::core::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
     }
 }
 
 // Load abi from json
 abigen!(
-    TestContract,
-    "test_artifacts/low_level_callee_contract/out/debug/test_contract-abi.json"
-);
-
-script_abigen!(
-    TestScript,
-    "test_projects/low_level_call/out/debug/test_script-abi.json"
+    Contract(
+        name = "TestContract",
+        abi = "test_artifacts/low_level_callee_contract/out/debug/test_contract-abi.json"
+    ),
+    Script(
+        name = "TestScript",
+        abi = "test_projects/low_level_call/out/debug/test_script-abi.json"
+    )
 );
 
 async fn low_level_call(

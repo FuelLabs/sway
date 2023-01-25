@@ -3,10 +3,10 @@ use fuels::{prelude::*, tx::ContractId};
 
 use sha2::{Digest, Sha256};
 
-abigen!(
-    CallFramesTestContract,
-    "test_projects/call_frames/out/debug/call_frames-abi.json"
-);
+abigen!(Contract(
+    name = "CallFramesTestContract",
+    abi = "test_projects/call_frames/out/debug/call_frames-abi.json"
+));
 
 async fn get_call_frames_instance() -> (CallFramesTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;

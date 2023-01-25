@@ -1,12 +1,12 @@
 use fuel_vm::{consts::*, prelude::Opcode};
 use fuels::{
-    contract::abi_encoder::ABIEncoder,
-    contract::execution_script::ExecutableFuelCall,
+    core::abi_encoder::ABIEncoder,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     signers::wallet::Wallet,
     test_helpers::Config,
     tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
-    types::resource::Resource,
+    types::{core::Token, resource::Resource},
 };
 use std::str::FromStr;
 use {
