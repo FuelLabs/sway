@@ -621,9 +621,13 @@ impl Bytes {
     /// bytes2.push(9u8);
     /// assert(bytes2.len() == 3);
     ///
-    /// let mut new = bytes.append(bytes2);
-    /// assert(new.len() == bytes.len() + bytes2.len());
-    /// assert(new.capacity() == bytes.len() + bytes2.len());
+    /// let first_length = bytes.len();
+    /// let second_length = bytes2.len();
+    /// let first_cap = bytes.capacity();
+    /// let second_cap = bytes2.capacity();
+    /// bytes.append(bytes2);
+    /// assert(bytes.len() == first_length + second_length);
+    /// assert(bytes.capacity() == first_length + first_length);
     /// ```
     pub fn append(ref mut self, ref other: self) {
         let both_len = self.len + other.len;
