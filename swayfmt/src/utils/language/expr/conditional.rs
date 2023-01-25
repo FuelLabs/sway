@@ -165,7 +165,7 @@ fn format_else_opt(
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
         let comments_written = maybe_write_comments_from_map(
             &mut else_if_str,
-            std::ops::Range {
+            Range {
                 start: if_expr.then_block.span().end(),
                 end: else_token.span().start(),
             },
