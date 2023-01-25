@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::Range};
 use sway_ast::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
@@ -38,6 +38,12 @@ impl From<Span> for ByteSpan {
 impl ByteSpan {
     pub fn len(&self) -> usize {
         self.end - self.start
+    }
+
+    /// Checks that the ByteSpan referenced by Self is encapsulated
+    /// by a given Range<usize>.
+    pub fn contained_within(&self, range: &Range<usize>) -> bool {
+        range.start < self.start && self.end < range.end
     }
 }
 
