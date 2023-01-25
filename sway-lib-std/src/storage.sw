@@ -86,8 +86,9 @@ pub fn get<T>(key: b256) -> Option<T> {
         // might be larger than a word.
         // NOTE: we are leaking this value on the heap.
         
-        // Get the number of storage slots needed based on the size of `T`
-        let number_of_slots = (__size_of::<T>() + 31) >> 5;
+        // Get the number of storage slots needed based on the size of `T` as the ceiling of 
+        // `__size_of::<T>() / 32`
+        let number_of_slots = (__size_of::<T>() + 31) >> 5; 
 
         // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
         // make the 'quad' storage instruction read without overflowing.
@@ -128,7 +129,8 @@ pub fn get<T>(key: b256) -> Option<T> {
 /// ```
 #[storage(write)]
 pub fn clear<T>(key: b256) -> bool {
-    // Get the number of storage slots needed based on the size of `T`
+    // Get the number of storage slots needed based on the size of `T` as the ceiling of 
+    // `__size_of::<T>() / 32`
     let number_of_slots = (__size_of::<T>() + 31) >> 5;
 
     // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
@@ -197,7 +199,7 @@ impl<K, V> StorageMap<K, V> {
         get::<V>(key)
     }
 
-    /// clears a value previously stored using a key
+    /// Clears a value previously stored using a key
     ///
     /// Return a Boolean indicating whether there was a value previously stored at `key`.
     ///
