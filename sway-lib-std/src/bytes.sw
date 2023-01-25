@@ -550,16 +550,23 @@ impl Bytes {
         vec
     }
 
-    /// Splits a `Bytes` at the given index, modifying the original and returning the right-hand side `Bytes`.
+    /// Divides one Bytes into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding the index
+    /// `mid` itself) and the second will contain all indices from `[mid, len)`
+    /// (excluding the index `len` itself).
     ///
     /// ### Arguments
     ///
-    /// * index - The index to split the original Bytes at
+    /// * mid - Index at which the Bytes is to be split
+    ///
+    /// ### Reverts
+    ///
+    /// * if `mid > self.len`
     ///
     /// ### Examples
     ///
     /// ```sway
-    ///
     /// use std:bytes::Bytes;
     ///
     /// let (mut bytes, a, b, c) = setup();
@@ -571,19 +578,22 @@ impl Bytes {
     /// assert(first.len() == 1);
     /// assert(second.len() == 2);
     /// ```
-    pub fn split(ref mut self, index: u64) -> Bytes {
-        assert(index != 0);
-        assert(index < self.len - 1);
-        let mut second = Bytes::with_capacity(self.len - index);
+    pub fn split_at(self, mid: u64) -> (Bytes, Bytes) {
+        assert(self.len >= mid);
 
-        let mut i = index;
-        while i < self.len {
-            second.push(self.get(i).unwrap());
-            i += 1;
-        };
+        let left_len = mid;
+        let right_len = self.len - mid;
 
-        self.len = index;
-        second
+        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
+        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
+
+        self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+        self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+
+        left_bytes.len = left_len;
+        right_bytes.len = right_len;
+
+        (left_bytes, right_bytes)
     }
 
     /// Joins two `Bytes` into a single larger `Bytes`.
@@ -888,15 +898,15 @@ fn test_bytes_limits() {
 }
 
 #[test()]
-fn test_split() {
+fn test_split_at() {
     let (mut original, a, b, c) = setup();
     assert(original.len() == 3);
     let index = 1;
-    let second = original.split(index);
+    let (left, right) = original.split_at(index);
     assert(original.capacity() == 4);
-    assert(second.capacity() == 2);
-    assert(original.len() == 1);
-    assert(second.len() == 2);
+    assert(right.capacity() == 2);
+    assert(left.len() == 1);
+    assert(right.len() == 2);
 }
 
 #[test()]
