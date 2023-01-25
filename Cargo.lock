@@ -1730,6 +1730,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-submit"
+version = "0.33.1"
+dependencies = [
+ "anyhow",
+ "clap 3.2.23",
+ "fuel-gql-client",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "forc-test"
 version = "0.35.0"
 dependencies = [
