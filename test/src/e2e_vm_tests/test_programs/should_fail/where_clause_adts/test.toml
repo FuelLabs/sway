@@ -9,5 +9,8 @@ category = "fail"
 # check: $()MyPoint {
 # nextln: $()Unknown type name "MyPoint".
 
+# check: $()let bar = MyPoint {
+# nextln: $()Could not find symbol "MyPoint" in this scope.
+
 # check: $()MyPoint {
 # nextln: $()Unknown type name "MyPoint".

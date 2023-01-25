@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-53DBC6786CED201E'
+
+[[package]]
+name = 'script_with_nested_libs'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-53DBC6786CED201E'
+dependencies = ['core']

@@ -21,7 +21,7 @@ impl<T> RawVec<T> {
 
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
-    /// `capacity` is `0`.
+    /// `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc::<T>(capacity),
@@ -40,8 +40,8 @@ impl<T> RawVec<T> {
     }
 
     /// Grow the capacity of the vector by doubling its current capacity. The
-    /// `realloc` function / allocates memory on the heap and copies the data
-    /// from the old allocation to the new allocation
+    /// `realloc` function allocates memory on the heap and copies the data
+    /// from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
 
@@ -80,7 +80,7 @@ impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
     ///
     /// The vector will be able to hold exactly `capacity` elements without
-    /// reallocating. If `capacity` is 0, the vector will not allocate.
+    /// reallocating. If `capacity` is zero, the vector will not allocate.
     ///
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
@@ -166,7 +166,7 @@ impl<T> Vec<T> {
         self.len = 0;
     }
 
-    /// Returns a vector element at `index`, or None if `index` is out of
+    /// Returns a vector element at `index`, or `None` if `index` is out of
     /// bounds.
     ///
     /// ### Examples
@@ -197,7 +197,7 @@ impl<T> Vec<T> {
     }
 
     /// Returns the number of elements in the vector, also referred to
-    /// as its 'length'.
+    /// as its `length`.
     ///
     /// ### Examples
     ///
@@ -323,7 +323,7 @@ impl<T> Vec<T> {
         self.len += 1;
     }
 
-    /// Removes the last element from a vector and returns it, or [`None`] if it
+    /// Removes the last element from a vector and returns it, or `None` if it
     /// is empty.
     ///
     /// ### Examples
@@ -353,8 +353,8 @@ impl<T> Vec<T> {
     ///
     /// ### Arguments
     ///
-    /// * element1_index - The index of the first element
-    /// * element2_index - The index of the second element
+    /// * element1_index - The index of the first element.
+    /// * element2_index - The index of the second element.
     ///
     /// ### Reverts
     ///
@@ -390,12 +390,12 @@ impl<T> Vec<T> {
         element2_ptr.write::<T>(element1_val);
     }
 
-    /// Updates an element at position `index` with a new element `value`
+    /// Updates an element at position `index` with a new element `value`.
     ///
     /// ### Arguments
     ///
-    /// * index - The index of the element to be set
-    /// * value - The value of the element to be set
+    /// * index - The index of the element to be set.
+    /// * value - The value of the element to be set.
     ///
     /// ### Reverts
     ///

@@ -2,14 +2,15 @@ script;
 use basic_storage_abi::{BasicStorage, Quad};
 
 fn main() -> u64 {
-    let addr = abi(BasicStorage, 0x5bbe601ecf0e2146ccbe458437af08261a58c9033b15cc9606a4e3835d28be9c);
+    let addr = abi(BasicStorage, 0x42e60587577c5b4c15e5c17889f77373622f38807d79a4ec07bda57c8354bc49);
     let key = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     let value = 4242;
 
     /* Simple test using `store` and `get` from `std::storage */
+    let res:Option<u64> = addr.get_u64(key);
+    assert(res.is_none()); // nothing to read just yet
     addr.store_u64(key, value);
-    let res = addr.get_u64(key);
-    assert(res == value);
+    assert(addr.get_u64(key).unwrap() == value);
 
     /* Test single word storage intrinsics */
     let key = 0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
