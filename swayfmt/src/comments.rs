@@ -18,8 +18,8 @@ pub fn comments_between<'a>(
     })
 }
 
-/// Given a range, formats comments contained within the range. This function
-/// removes comments that are already formatted from the CommentMap for later use.
+/// Given a range, writes comments contained within the range. This function
+/// removes comments that are written here from the CommentMap for later use.
 ///
 /// Returns:
 /// `Ok(true)` on successful execution with comments written,
