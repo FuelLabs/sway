@@ -18,6 +18,10 @@ pub fn comments_between<'a>(
     })
 }
 
+pub fn has_comments<I: Iterator>(comments: I) -> bool {
+    comments.peekable().peek().is_some()
+}
+
 /// Given a range, writes comments contained within the range. This function
 /// removes comments that are written here from the CommentMap for later use.
 ///
@@ -52,6 +56,9 @@ pub fn maybe_write_comments_from_map(
         }
     }
 
+    // Keep comments that are NOT within `range` within the CommentMap.
+    // This is destructive behavior for comments since if any steps above fail
+    // and comments were not written, `retains()` will still delete these comments.
     formatter
         .comment_map
         .retain(|bs, _| !bs.contained_within(&range));
