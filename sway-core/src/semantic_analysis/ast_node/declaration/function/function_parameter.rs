@@ -47,7 +47,10 @@ impl ty::TyFunctionParameter {
         if !is_from_method {
             let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
             if mutability == ty::VariableMutability::Mutable {
-                errors.push(CompileError::MutableParameterNotSupported { param_name: name });
+                errors.push(CompileError::MutableParameterNotSupported {
+                    param_name: name.clone(),
+                    span: name.span(),
+                });
                 return err(warnings, errors);
             }
         }

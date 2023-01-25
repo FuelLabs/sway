@@ -42,10 +42,15 @@ fn complex_vec_test() {
     assert(exp_vec_in_a_vec_in_a_struct_in_a_vec.get(0).unwrap().a.get(0).unwrap().get(2).unwrap() == 2);
 }
 
+fn simple_option_generics_test() {
+    assert(get_an_option::<u64>().is_none());
+}
+
 fn main() {
     sell_product();
     simple_vec_test();
     complex_vec_test();
+    simple_option_generics_test();
 }
 
 fn sell_product() -> MyResult<bool, CustomType> {

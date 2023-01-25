@@ -24,6 +24,8 @@ pub enum TyExpressionVariant {
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
         selector: Option<ContractCallParams>,
+        /// optional binding information for the LSP
+        type_binding: Option<TypeBinding<()>>,
     },
     LazyOperator {
         op: LazyOp,
@@ -90,6 +92,7 @@ pub enum TyExpressionVariant {
         /// They are also used in the language server.
         enum_instantiation_span: Span,
         variant_instantiation_span: Span,
+        type_binding: TypeBinding<()>,
     },
     AbiCast {
         abi_name: CallPath,

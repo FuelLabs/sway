@@ -619,19 +619,6 @@ impl TraitMap {
         trait_map
     }
 
-    /// Filters the contents of `self` to exclude elements that are superset
-    /// types of the given `type_id`. This function is used when handling trait
-    /// constraints and is coupled with `filter_by_type` and
-    /// `filter_by_type_item_import`.
-    pub(crate) fn filter_against_type(&mut self, engines: Engines<'_>, type_id: TypeId) {
-        let type_engine = engines.te();
-        self.trait_impls.retain(|e| {
-            !type_engine
-                .get(type_id)
-                .is_subset_of(&type_engine.get(e.key.type_id), engines)
-        });
-    }
-
     /// Find the entries in `self` that are equivalent to `type_id`.
     ///
     /// Notes:
@@ -656,7 +643,7 @@ impl TraitMap {
             return methods;
         }
         for entry in self.trait_impls.iter() {
-            if are_equal_minus_dynamic_types(type_engine, type_id, entry.key.type_id) {
+            if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
                 let mut trait_methods = entry
                     .value
                     .values()
@@ -701,7 +688,7 @@ impl TraitMap {
                 is_absolute: e.key.name.is_absolute,
             };
             if &map_trait_name == trait_name
-                && are_equal_minus_dynamic_types(type_engine, type_id, e.key.type_id)
+                && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
                 let mut trait_methods = e.value.values().cloned().into_iter().collect::<Vec<_>>();
                 methods.append(&mut trait_methods);
@@ -760,12 +747,8 @@ impl TraitMap {
                         },
                     },
                 );
-                if are_equal_minus_dynamic_types(type_engine, type_id, key.type_id)
-                    && are_equal_minus_dynamic_types(
-                        type_engine,
-                        constraint_type_id,
-                        map_trait_type_id,
-                    )
+                if are_equal_minus_dynamic_types(engines, type_id, key.type_id)
+                    && are_equal_minus_dynamic_types(engines, constraint_type_id, map_trait_type_id)
                 {
                     found_traits.insert(constraint_trait_name.suffix.clone());
                 }
@@ -789,10 +772,13 @@ impl TraitMap {
     }
 }
 
-fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: TypeId) -> bool {
+fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: TypeId) -> bool {
     if left.index() == right.index() {
         return true;
     }
+
+    let type_engine = engines.te();
+
     match (type_engine.get(left), type_engine.get(right)) {
         // these cases are false because, unless left and right have the same
         // TypeId, they may later resolve to be different types in the type
@@ -811,11 +797,16 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
         (TypeInfo::UnsignedInteger(l), TypeInfo::UnsignedInteger(r)) => l == r,
         (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
         (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
-        (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => {
-            // return true if left and right were unified previously
-            type_engine.get_unified_types(left).contains(&right)
-                || type_engine.get_unified_types(right).contains(&left)
-        }
+        (
+            TypeInfo::UnknownGeneric {
+                name: rn,
+                trait_constraints: rtc,
+            },
+            TypeInfo::UnknownGeneric {
+                name: en,
+                trait_constraints: etc,
+            },
+        ) => rn.as_str() == en.as_str() && rtc.eq(&etc, engines),
         (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
 
         // these cases may contain dynamic types
@@ -835,11 +826,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     .iter()
                     .zip(r_type_args.unwrap_or_default().iter())
                     .fold(true, |acc, (left, right)| {
-                        acc && are_equal_minus_dynamic_types(
-                            type_engine,
-                            left.type_id,
-                            right.type_id,
-                        )
+                        acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
         (
@@ -859,22 +846,14 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     true,
                     |acc, (left, right)| {
                         acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(
-                                type_engine,
-                                left.type_id,
-                                right.type_id,
-                            )
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     },
                 )
                 && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
                     true,
                     |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(
-                                type_engine,
-                                left.type_id,
-                                right.type_id,
-                            )
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     },
                 )
         }
@@ -896,21 +875,13 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     .zip(r_fields.iter())
                     .fold(true, |acc, (left, right)| {
                         acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(
-                                type_engine,
-                                left.type_id,
-                                right.type_id,
-                            )
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
                 && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
                     true,
                     |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(
-                                type_engine,
-                                left.type_id,
-                                right.type_id,
-                            )
+                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     },
                 )
         }
@@ -919,7 +890,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                 false
             } else {
                 l.iter().zip(r.iter()).fold(true, |acc, (left, right)| {
-                    acc && are_equal_minus_dynamic_types(type_engine, left.type_id, right.type_id)
+                    acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                 })
             }
         }
@@ -937,7 +908,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                 && Option::zip(l_address, r_address)
                     .map(|(l_address, r_address)| {
                         are_equal_minus_dynamic_types(
-                            type_engine,
+                            engines,
                             l_address.return_type,
                             r_address.return_type,
                         )
@@ -945,8 +916,7 @@ fn are_equal_minus_dynamic_types(type_engine: &TypeEngine, left: TypeId, right: 
                     .unwrap_or(true)
         }
         (TypeInfo::Array(l0, l1), TypeInfo::Array(r0, r1)) => {
-            l1.val() == r1.val()
-                && are_equal_minus_dynamic_types(type_engine, l0.type_id, r0.type_id)
+            l1.val() == r1.val() && are_equal_minus_dynamic_types(engines, l0.type_id, r0.type_id)
         }
         _ => false,
     }

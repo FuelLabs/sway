@@ -1,6 +1,6 @@
 use super::{AllocatedProgram, FinalProgram};
 
-use crate::asm_generation::AllocatedAbstractInstructionSet;
+use crate::asm_generation::fuel::allocated_abstract_instruction_set::AllocatedAbstractInstructionSet;
 
 impl AllocatedProgram {
     pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
