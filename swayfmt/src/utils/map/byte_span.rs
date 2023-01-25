@@ -222,7 +222,6 @@ impl LeafSpans for ForwardSlashToken {
 
 #[cfg(test)]
 mod tests {
-
     use super::ByteSpan;
     #[test]
     fn test_byte_span_ordering() {
