@@ -93,7 +93,7 @@ pub fn main() -> Result<()> {
     // write contents to outfile
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
-        for prefix in doc.module_info {
+        for prefix in doc.module_info.0 {
             if &prefix != project_name {
                 doc_path.push(prefix);
             }
