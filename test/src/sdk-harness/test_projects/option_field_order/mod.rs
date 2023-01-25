@@ -1,9 +1,9 @@
 use fuels::prelude::*;
 
-abigen!(
-    MyContract,
-    "test_projects/option_field_order/out/debug/option_field_order-abi.json"
-);
+abigen!(Contract(
+    name = "MyContract",
+    abi = "test_projects/option_field_order/out/debug/option_field_order-abi.json"
+));
 
 #[tokio::test]
 async fn default_is_none() {

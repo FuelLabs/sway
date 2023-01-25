@@ -1,12 +1,14 @@
 use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
-    AuthContract,
-    "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-abi.json"
-);
-abigen!(
-    AuthCallerContract,
-    "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
+    Contract(
+        name = "AuthContract",
+        abi = "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-abi.json"
+    ),
+    Contract(
+        name = "AuthCallerContract",
+        abi = "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
+    )
 );
 
 #[tokio::test]
@@ -37,12 +39,12 @@ async fn msg_sender_from_sdk() {
 
 #[tokio::test]
 async fn msg_sender_from_contract() {
-    let (_, auth_id, caller_instance, caller_id, _) = get_contracts().await;
+    let (auth_instance, auth_id, caller_instance, caller_id, _) = get_contracts().await;
 
     let result = caller_instance
         .methods()
         .call_auth_contract(auth_id, caller_id)
-        .set_contracts(&[auth_id.into()])
+        .set_contracts(&[&auth_instance])
         .call()
         .await
         .unwrap();
