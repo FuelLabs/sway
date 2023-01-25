@@ -661,7 +661,7 @@ impl From<b256> for Bytes {
     }
 
     // NOTE: this cas be lossy! Added here as the From trait currently requires it, but the conversion from Bytes -> b256 should be implemented as `impl TryFrom<Bytes> for b256` when the TryFrom trait lands: https://github.com/FuelLabs/sway/pull/3881
-    fn into(self) -> b256{
+    fn into(self) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
         self.buf.ptr().copy_to::<b256>(ptr, 1);
@@ -1086,7 +1086,7 @@ fn test_into_b256() {
     initial_bytes.push(51u8);
 
     let value: b256 = initial_bytes.into();
-    let expected: b256 =0x3333333333333333333333333333333333333333333333333333333333333333;
+    let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     assert(value == expected);
 }
