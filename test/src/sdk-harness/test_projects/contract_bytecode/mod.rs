@@ -1,10 +1,9 @@
-use fuels::prelude::*;
-use fuels::tx::Contract as FuelsTxContract;
+use fuels::{prelude::*, tx::Contract as FuelsTxContract, types::core::Bits256};
 
-abigen!(
-    ContractBytecodeTest,
-    "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
-);
+abigen!(Contract(
+    name = "ContractBytecodeTest",
+    abi = "test_projects/contract_bytecode/out/debug/contract_bytecode-abi.json"
+));
 
 #[tokio::test]
 async fn can_get_bytecode_root() {
@@ -15,7 +14,7 @@ async fn can_get_bytecode_root() {
     let bytecode_root = contract_instance
         .methods()
         .get_contract_bytecode_root(ContractId::from(id.clone()))
-        .set_contracts(&[id.clone()])
+        .set_contracts(&[&contract_instance])
         .call()
         .await
         .unwrap()

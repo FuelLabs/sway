@@ -1,16 +1,17 @@
-use fuel_types::Bytes64;
+use fuel_vm::fuel_types::Bytes64;
 use fuels::{
     prelude::*,
     signers::fuel_crypto::{Message, PublicKey, SecretKey, Signature},
     tx::Bytes32,
+    types::core::{Bits256, EvmAddress},
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use sha3::{Digest, Keccak256};
 
-abigen!(
-    EvmEcRecoverContract,
-    "test_projects/evm_ec_recover/out/debug/evm_ec_recover-abi.json"
-);
+abigen!(Contract(
+    name = "EvmEcRecoverContract",
+    abi = "test_projects/evm_ec_recover/out/debug/evm_ec_recover-abi.json"
+));
 
 fn keccak_hash<B>(data: B) -> Bytes32
 where
