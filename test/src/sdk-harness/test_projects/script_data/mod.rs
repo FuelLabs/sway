@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use fuels::{
-    contract::execution_script::ExecutableFuelCall,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     tx::{ConsensusParameters, Receipt, Transaction},
 };
 

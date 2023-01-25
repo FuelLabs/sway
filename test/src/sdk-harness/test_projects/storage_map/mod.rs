@@ -1,9 +1,12 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::core::{Bits256, SizedAsciiString},
+};
 
-abigen!(
-    TestStorageMapContract,
-    "test_projects/storage_map/out/debug/storage_map-abi.json",
-);
+abigen!(Contract(
+    name = "TestStorageMapContract",
+    abi = "test_projects/storage_map/out/debug/storage_map-abi.json",
+));
 
 async fn test_storage_map_instance() -> TestStorageMapContract {
     let wallet = launch_provider_and_get_wallet().await;
@@ -636,28 +639,19 @@ mod u64_to {
 
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key1,
-                fuels::prelude::SizedAsciiString::try_from(val1).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key1, SizedAsciiString::try_from(val1).unwrap())
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key2,
-                fuels::prelude::SizedAsciiString::try_from(val2).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key2, SizedAsciiString::try_from(val2).unwrap())
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_u64_to_str_map(
-                key3,
-                fuels::prelude::SizedAsciiString::try_from(val3).unwrap(),
-            )
+            .insert_into_u64_to_str_map(key3, SizedAsciiString::try_from(val3).unwrap())
             .call()
             .await
             .unwrap();
@@ -669,8 +663,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val1
+                .value,
+            Some(SizedAsciiString::try_from(val1).unwrap())
         );
         assert_eq!(
             instance
@@ -679,8 +673,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val2
+                .value,
+            Some(SizedAsciiString::try_from(val2).unwrap())
         );
         assert_eq!(
             instance
@@ -689,8 +683,8 @@ mod u64_to {
                 .call()
                 .await
                 .unwrap()
-                .value.unwrap(),
-            val3
+                .value,
+            Some(SizedAsciiString::try_from(val3).unwrap())
         );
     }
 }
