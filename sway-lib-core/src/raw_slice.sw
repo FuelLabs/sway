@@ -22,11 +22,6 @@ impl raw_slice {
         from_parts((ptr, __mul(count, __size_of::<T>())))
     }
 
-    /// Forms a slice from a pointer and a length.
-    pub fn from_parts_bytes(ptr: raw_ptr, count: u64) -> Self {
-        from_parts((ptr, count))
-    }
-
     /// Returns the pointer to the slice.
     pub fn ptr(self) -> raw_ptr {
         into_parts(self).0
@@ -37,6 +32,7 @@ impl raw_slice {
         __div(into_parts(self).1, __size_of::<T>())
     }
 
+    /// Returns the number of elements in the slice when the elements are bytes.
     pub fn len_bytes(self) -> u64 {
         into_parts(self).1
     }
