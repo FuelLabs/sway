@@ -1,6 +1,6 @@
 library hash;
 
-/// Returns the SHA-2-256 hash of `param`.
+/// Returns the `SHA-2-256` hash of `param`.
 pub fn sha256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = b256::min();
     if !__is_reference_type::<T>() {
@@ -21,7 +21,7 @@ pub fn sha256<T>(param: T) -> b256 {
     }
 }
 
-/// Returns the KECCAK-256 hash of `param`.
+/// Returns the `KECCAK-256` hash of `param`.
 pub fn keccak256<T>(param: T) -> b256 {
     let mut result_buffer: b256 = b256::min();
     if !__is_reference_type::<T>() {
