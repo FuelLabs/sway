@@ -53,7 +53,7 @@ fn run() -> Result<()> {
     if let Some(f) = app.file.as_ref() {
         let file_path = &PathBuf::from(f);
         if is_sway_file(file_path) {
-            format_single_file(&file_path)?;
+            format_single_file(file_path)?;
             return Ok(());
         }
 
@@ -80,10 +80,10 @@ fn run() -> Result<()> {
 
 fn format_single_file(path: &Path) -> Result<()> {
     let mut formatter = Formatter::default();
-    if let Ok(file_content) = fs::read_to_string(&path) {
+    if let Ok(file_content) = fs::read_to_string(path) {
         match Formatter::format(&mut formatter, file_content.into(), None) {
             Ok(formatted_content) => {
-                format_file(&path, &formatted_content)?;
+                format_file(path, &formatted_content)?;
             }
             Err(err) => {
                 error!("{}\n", err);
