@@ -5,7 +5,7 @@ use ::convert::From;
 use ::result::Result;
 use ::u128::U128;
 
-/// Left shift a u64 and preserve the overflow amount if any
+/// Left shift a `u64` and preserve the overflow amount if any.
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let right_shift_amount = 64 - shift_amount;
     let carry = word >> right_shift_amount;
@@ -13,7 +13,7 @@ fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, carry)
 }
 
-/// Right shift a u64 and preserve the overflow amount if any
+/// Right shift a `u64` and preserve the overflow amount if any.
 fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let left_shift_amount = 64 - shift_amount;
     let carry = word << left_shift_amount;
@@ -44,14 +44,14 @@ impl From<(u64, u64, u64, u64)> for U256 {
         }
     }
 
-    /// Function for extracting 4 u64s from a U256.
+    /// Function for extracting 4 `u64`s from a `U256`.
     fn into(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
 }
 
 impl core::ops::Eq for U256 {
-    /// Function for comparing 2 `U256`s for equality
+    /// Function for comparing 2 `U256`s for equality.
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
@@ -80,7 +80,7 @@ impl U256 {
     }
 
     /// Safely downcast to `u64` without loss of precision.
-    /// Returns Err if the number > u64::max()
+    /// Returns `Err` if the `number > u64::max()`.
     ///
     /// ### Examples
     ///
@@ -106,7 +106,7 @@ impl U256 {
     }
 
     /// Safely downcast to `u128` without loss of precision.
-    /// Returns an error if `self > U128::max()`.
+    /// Returns `Err` if `self > U128::max()`.
     ///
     /// ### Examples
     ///
@@ -153,7 +153,7 @@ impl U256 {
     }
 
     /// The largest value that can be represented by this type,
-    /// 2<sup>256</sup> - 1.
+    /// `2<sup>256</sup> - 1`.
     ///
     /// ### Examples
     ///
@@ -189,7 +189,7 @@ impl U256 {
         256
     }
 
-    /// Get 4 64 bit words from a single `U256` value.
+    /// Get four 64-bit words from a single `U256` value.
     ///
     /// ### Examples
     ///
