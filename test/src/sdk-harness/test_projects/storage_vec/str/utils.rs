@@ -1,9 +1,9 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{prelude::*, tx::ContractId, types::core::SizedAsciiString};
 // Load abi from json
-abigen!(
-    MyContract,
-    "test_artifacts/storage_vec/svec_str/out/debug/svec_str-abi.json"
-);
+abigen!(Contract(
+    name = "MyContract",
+    abi = "test_artifacts/storage_vec/svec_str/out/debug/svec_str-abi.json"
+));
 
 pub mod setup {
     use super::*;
