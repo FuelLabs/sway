@@ -50,13 +50,8 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = struct_decl.name;
-                    let (attrs_opt, raw_attributes) = match struct_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(struct_decl.attributes.to_html_string()),
-                            Some(struct_decl.attributes.to_raw_string()),
-                        ),
-                    };
+                    let attrs_opt = (!struct_decl.attributes.is_empty())
+                        .then(|| struct_decl.attributes.to_html_string());
                     let context = (!struct_decl.fields.is_empty())
                         .then_some(ContextType::StructFields(struct_decl.fields));
 
@@ -74,10 +69,10 @@ impl Descriptor {
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
                             ),
-                            attrs_opt,
+                            attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext { context },
                         },
-                        raw_attributes,
+                        raw_attributes: attrs_opt,
                     }))
                 }
             }
@@ -87,13 +82,8 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = enum_decl.name;
-                    let (attrs_opt, raw_attributes) = match enum_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(enum_decl.attributes.to_html_string()),
-                            Some(enum_decl.attributes.to_raw_string()),
-                        ),
-                    };
+                    let attrs_opt = (!enum_decl.attributes.is_empty())
+                        .then(|| enum_decl.attributes.to_html_string());
                     let context = (!enum_decl.variants.is_empty())
                         .then_some(ContextType::EnumVariants(enum_decl.variants));
 
@@ -111,10 +101,10 @@ impl Descriptor {
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
                             ),
-                            attrs_opt,
+                            attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext { context },
                         },
-                        raw_attributes,
+                        raw_attributes: attrs_opt,
                     }))
                 }
             }
@@ -124,13 +114,8 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = trait_decl.name;
-                    let (attrs_opt, raw_attributes) = match trait_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(trait_decl.attributes.to_html_string()),
-                            Some(trait_decl.attributes.to_raw_string()),
-                        ),
-                    };
+                    let attrs_opt = (!trait_decl.attributes.is_empty())
+                        .then(|| trait_decl.attributes.to_html_string());
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
                             trait_decl.interface_surface.to_methods(decl_engine),
@@ -151,23 +136,18 @@ impl Descriptor {
                             code_str: parse::parse_format::<sway_ast::ItemTrait>(
                                 trait_decl.span.as_str(),
                             ),
-                            attrs_opt,
+                            attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext { context },
                         },
-                        raw_attributes,
+                        raw_attributes: attrs_opt,
                     }))
                 }
             }
             AbiDeclaration(ref decl_id) => {
                 let abi_decl = decl_engine.get_abi(decl_id.clone(), &decl_id.span())?;
                 let item_name = abi_decl.name;
-                let (attrs_opt, raw_attributes) = match abi_decl.attributes.is_empty() {
-                    true => (None, None),
-                    false => (
-                        Some(abi_decl.attributes.to_html_string()),
-                        Some(abi_decl.attributes.to_raw_string()),
-                    ),
-                };
+                let attrs_opt =
+                    (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
                         abi_decl.interface_surface.to_methods(decl_engine),
@@ -186,10 +166,10 @@ impl Descriptor {
                         ty_decl: ty_decl.clone(),
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str()),
-                        attrs_opt,
+                        attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext { context },
                     },
-                    raw_attributes,
+                    raw_attributes: attrs_opt,
                 }))
             }
             StorageDeclaration(ref decl_id) => {
@@ -197,13 +177,8 @@ impl Descriptor {
                 let item_name = sway_types::BaseIdent::new_no_trim(
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
                 );
-                let (attrs_opt, raw_attributes) = match storage_decl.attributes.is_empty() {
-                    true => (None, None),
-                    false => (
-                        Some(storage_decl.attributes.to_html_string()),
-                        Some(storage_decl.attributes.to_raw_string()),
-                    ),
-                };
+                let attrs_opt = (!storage_decl.attributes.is_empty())
+                    .then(|| storage_decl.attributes.to_html_string());
                 let context = (!storage_decl.fields.is_empty())
                     .then_some(ContextType::StorageFields(storage_decl.fields));
 
@@ -221,10 +196,10 @@ impl Descriptor {
                         code_str: parse::parse_format::<sway_ast::ItemStorage>(
                             storage_decl.span.as_str(),
                         ),
-                        attrs_opt,
+                        attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext { context },
                     },
-                    raw_attributes,
+                    raw_attributes: attrs_opt,
                 }))
             }
             ImplTrait(ref decl_id) => {
@@ -260,13 +235,8 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = fn_decl.name;
-                    let (attrs_opt, raw_attributes) = match fn_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(fn_decl.attributes.to_html_string()),
-                            Some(fn_decl.attributes.to_raw_string()),
-                        ),
-                    };
+                    let attrs_opt = (!fn_decl.attributes.is_empty())
+                        .then(|| fn_decl.attributes.to_html_string());
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -282,10 +252,10 @@ impl Descriptor {
                             code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
                                 fn_decl.span.as_str(),
                             )),
-                            attrs_opt,
+                            attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext { context: None },
                         },
-                        raw_attributes,
+                        raw_attributes: attrs_opt,
                     }))
                 }
             }
@@ -295,13 +265,8 @@ impl Descriptor {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = const_decl.name;
-                    let (attrs_opt, raw_attributes) = match const_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(const_decl.attributes.to_html_string()),
-                            Some(const_decl.attributes.to_raw_string()),
-                        ),
-                    };
+                    let attrs_opt = (!const_decl.attributes.is_empty())
+                        .then(|| const_decl.attributes.to_html_string());
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -317,10 +282,10 @@ impl Descriptor {
                             code_str: parse::parse_format::<sway_ast::ItemConst>(
                                 const_decl.span.as_str(),
                             ),
-                            attrs_opt,
+                            attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext { context: None },
                         },
-                        raw_attributes,
+                        raw_attributes: attrs_opt,
                     }))
                 }
             }
