@@ -86,7 +86,7 @@ You're all set to start building!
 
 #### Need Help?
 
-Check out the tooling section in the [Fuel forum](https://forum.fuel.network/) if you're running into problems through the installation process. If you don't see your question, post the issue you're running into with as many details as possible and the team will get back to you asap!
+You may refer to [The Fuelup Book](https://fuellabs.github.io/fuelup/latest/) for an in-depth look into fuelup, or check out the tooling section in the [Fuel forum](https://forum.fuel.network/) if you're running into problems through the installation process. If you don't see your question, post the issue you're running into with as many details as possible and the team will get back to you asap!
 
 ### Installing from Cargo
 
