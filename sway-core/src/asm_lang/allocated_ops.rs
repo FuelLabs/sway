@@ -388,7 +388,7 @@ impl fmt::Display for AllocatedOpcode {
             RETD(a, b) => write!(fmtr, "retd  {} {}", a, b),
             RVRT(a) => write!(fmtr, "rvrt {}", a),
             SMO(a, b, c, d) => write!(fmtr, "smo  {} {} {} {}", a, b, c, d),
-            SCWQ(a, b, c) => write!(fmtr, "scwq  {} {} {}", a, b, c),
+            SCWQ(a, b, c) => write!(fmtr, "scwq {} {} {}", a, b, c),
             SRW(a, b, c) => write!(fmtr, "srw  {} {} {}", a, b, c),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {} {} {} {}", a, b, c, d),
             SWW(a, b, c) => write!(fmtr, "sww  {} {} {}", a, b, c),

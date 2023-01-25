@@ -1594,7 +1594,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // capture the status of whether the slot was set before calling this instruction
         let was_slot_set_reg = self.reg_seqr.next();
 
-        // Number of slots to be read or written
+        // Number of slots to be cleared
         let number_of_slots_reg = self.value_to_register(number_of_slots);
 
         self.cur_bytecode.push(Op {

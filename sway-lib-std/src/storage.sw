@@ -71,11 +71,11 @@ pub fn get<T>(key: b256) -> Option<T> {
         // registers: the loaded word as well as flag indicating whether the storage slot was 
         // written before. We store the two registers on the heap and return the result as a tuple 
         // `(bool, T)` which contains the two values we need.
-        // NOTE: we are leaking this allocation on the heap.
         // NOTE: we should eventually be using `__state_load_word` here but we are currently unable 
         // to make that intrinsic return two things due to some limitations in IR/codegen.
-        let result_ptr = alloc::<u64>(16); //  
-        asm(key: key, result_ptr: result_ptr, loaded_word, previously_set) {
+        asm(key: key, result_ptr, loaded_word, previously_set) {
+            move result_ptr sp; // Make `result_ptr` point to the current top of the stack
+            cfei i16; // Grow stack by 2 word
             srw  loaded_word previously_set key;
             sw   result_ptr previously_set i0;
             sw   result_ptr loaded_word i1;
