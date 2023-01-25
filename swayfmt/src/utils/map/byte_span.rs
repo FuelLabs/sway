@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::RangeBounds};
 use sway_ast::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
@@ -11,13 +11,15 @@ use sway_ast::{
 use sway_parse::Parse;
 use sway_types::{Ident, Span, Spanned};
 
+use super::comments::CommentMap;
+
 /// This represents the beginning of the file and if during searching we found STARTING_BYTE_SPAN, a custom logic is needed.
 /// Because if there are comments in between at the beginning before program kind, we will be searching between {start: 0, end:0} to {start:0, end:x}.
 /// Searching in that range would never return a comment since the way we order ByteSpans ensures that encapsulating spans are always coming later than the smaller ones.
 pub(crate) const STARTING_BYTE_SPAN: ByteSpan = ByteSpan { start: 0, end: 0 };
 
 /// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug, Clone, Default)]
+#[derive(Eq, PartialEq, Debug, Clone, Default)]
 pub struct ByteSpan {
     // The byte position in the string of the start of the span.
     pub start: usize,
@@ -55,6 +57,16 @@ impl Ord for ByteSpan {
 impl PartialOrd for ByteSpan {
     fn partial_cmp(&self, other: &ByteSpan) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl RangeBounds<ByteSpan> for ByteSpan {
+    fn start_bound(&self) -> std::ops::Bound<&ByteSpan> {
+        std::ops::Bound::Excluded(&self)
+    }
+
+    fn end_bound(&self) -> std::ops::Bound<&ByteSpan> {
+        std::ops::Bound::Excluded(&self)
     }
 }
 
@@ -216,6 +228,12 @@ impl LeafSpans for ForwardSlashToken {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Bound::Excluded;
+    use sway_ast::token::Comment;
+    use sway_types::Span;
+
+    use crate::utils::map::comments::CommentMap;
+
     use super::ByteSpan;
     #[test]
     fn test_byte_span_ordering() {
@@ -229,5 +247,39 @@ mod tests {
         assert_eq!(vec[0], first_span);
         assert_eq!(vec[1], second_span);
         assert_eq!(vec[2], third_span);
+    }
+
+    #[test]
+    fn test_byte_span_range() {
+        let first_span = ByteSpan { start: 2, end: 6 };
+        let second_span = ByteSpan { start: 4, end: 9 };
+        let third_span = ByteSpan { start: 8, end: 12 };
+
+        let mut comment_map = CommentMap::new();
+        comment_map.insert(
+            first_span.clone(),
+            Comment {
+                span: Span::dummy(),
+            },
+        );
+
+        comment_map.insert(
+            second_span,
+            Comment {
+                span: Span::dummy(),
+            },
+        );
+
+        comment_map.insert(
+            third_span.clone(),
+            Comment {
+                span: Span::dummy(),
+            },
+        );
+
+        println!(
+            "{:#?}",
+            comment_map.range((Excluded(first_span), Excluded(third_span)))
+        );
     }
 }
