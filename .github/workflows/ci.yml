@@ -30,7 +30,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Build sway-lib-core
         run: forc build --path sway-lib-core
 
