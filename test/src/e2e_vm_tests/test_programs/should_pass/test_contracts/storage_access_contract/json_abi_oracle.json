@@ -1,6 +1,16 @@
 {
+  "configurables": [],
   "functions": [
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",
@@ -16,6 +26,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",
@@ -31,6 +50,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_boolean",
       "output": {
@@ -40,6 +67,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_e",
       "output": {
@@ -49,6 +84,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_e2",
       "output": {
@@ -58,6 +101,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_int16",
       "output": {
@@ -67,6 +118,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_int32",
       "output": {
@@ -76,6 +135,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_int8",
       "output": {
@@ -85,6 +152,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s",
       "output": {
@@ -94,6 +169,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t",
       "output": {
@@ -103,6 +186,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_boolean",
       "output": {
@@ -112,6 +203,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_int16",
       "output": {
@@ -121,6 +220,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_int32",
       "output": {
@@ -130,6 +237,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_int8",
       "output": {
@@ -139,6 +254,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_x",
       "output": {
@@ -148,6 +271,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_y",
       "output": {
@@ -157,6 +288,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_t_dot_z",
       "output": {
@@ -166,6 +305,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_x",
       "output": {
@@ -175,6 +322,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_y",
       "output": {
@@ -184,6 +339,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_s_dot_z",
       "output": {
@@ -193,6 +356,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_string",
       "output": {
@@ -202,6 +373,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_x",
       "output": {
@@ -211,6 +390,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "get_y",
       "output": {
@@ -220,6 +407,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",
@@ -235,6 +431,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "boolean",
@@ -250,6 +454,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "e",
@@ -265,6 +477,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int16",
@@ -280,6 +500,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int32",
@@ -295,6 +523,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int8",
@@ -310,6 +546,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "s",
@@ -325,6 +569,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "t",
@@ -340,6 +592,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "boolean",
@@ -355,6 +615,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int16",
@@ -370,6 +638,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int32",
@@ -385,6 +661,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "int8",
@@ -400,6 +684,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "x",
@@ -415,6 +707,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "y",
@@ -430,6 +730,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "z",
@@ -445,6 +753,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "x",
@@ -460,6 +776,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "y",
@@ -475,6 +799,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "z",
@@ -490,6 +822,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "string",
@@ -505,6 +845,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "x",
@@ -520,6 +868,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "y",
@@ -535,6 +891,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",
@@ -550,6 +915,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",
@@ -565,6 +939,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "k",

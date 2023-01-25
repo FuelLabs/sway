@@ -8,9 +8,9 @@ use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
     virtual_register::*,
-    DataId, Op,
+    Op,
 };
-use crate::asm_generation::RegisterPool;
+use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -1311,7 +1311,7 @@ fn update_reg(
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 /// A label for a spot in the bytecode, to be later compiled to an offset.
-pub(crate) struct Label(pub(crate) usize);
+pub struct Label(pub(crate) usize);
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, ".{}", self.0)

@@ -1,9 +1,12 @@
 use super::{AbstractEntry, AbstractProgram, AllocatedProgram, ProgramKind};
 
 use crate::{
-    asm_generation::{
-        compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, DataSection,
-        Entry, RegisterSequencer,
+    asm_generation::fuel::{
+        abstract_instruction_set::AbstractInstructionSet,
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
+        compiler_constants,
+        data_section::{DataSection, Entry},
+        register_sequencer::RegisterSequencer,
     },
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
@@ -183,9 +186,11 @@ impl AbstractProgram {
             };
 
             // Put the selector in the data section.
-            let data_label = self
-                .data_section
-                .insert_data_value(Entry::new_word(u32::from_be_bytes(selector) as u64, None));
+            let data_label = self.data_section.insert_data_value(Entry::new_word(
+                u32::from_be_bytes(selector) as u64,
+                None,
+                None,
+            ));
 
             // Load the data into a register for comparison.
             asm_buf.ops.push(AllocatedAbstractOp {

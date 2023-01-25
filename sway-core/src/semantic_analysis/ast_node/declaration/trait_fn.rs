@@ -25,6 +25,8 @@ impl ty::TyTraitFn {
         } = trait_fn;
 
         let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
@@ -46,12 +48,12 @@ impl ty::TyTraitFn {
         // Type check the return type.
         let return_type = check!(
             fn_ctx.resolve_type_with_self(
-                type_engine.insert_type(return_type),
+                type_engine.insert(decl_engine, return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -67,13 +69,8 @@ impl ty::TyTraitFn {
 
         // Retrieve the implemented traits for the type of the return type and
         // insert them in the broader namespace.
-        let trait_map = fn_ctx
-            .namespace
-            .implemented_traits
-            .filter_by_type(trait_fn.return_type, type_engine);
         ctx.namespace
-            .implemented_traits
-            .extend(trait_map, type_engine);
+            .insert_trait_implementation_for_type(engines, trait_fn.return_type);
 
         ok(trait_fn, warnings, errors)
     }

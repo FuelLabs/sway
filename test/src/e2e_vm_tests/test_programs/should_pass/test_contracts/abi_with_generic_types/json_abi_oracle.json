@@ -1,6 +1,8 @@
 {
+  "configurables": [],
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "arg1",
@@ -42,6 +44,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "arg",
@@ -68,6 +71,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "arg",

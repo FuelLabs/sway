@@ -23,6 +23,8 @@ dep b512;
 dep address;
 dep identity;
 dep tx;
+dep vec;
+dep bytes;
 dep inputs;
 dep outputs;
 dep auth;
@@ -37,5 +39,6 @@ dep u128;
 dep u256;
 dep message;
 dep prelude;
+dep low_level_call;
 
 use core::*;

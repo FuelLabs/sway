@@ -7,29 +7,37 @@ use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
+pub struct Mem2RegPass;
+
+impl NamedPass for Mem2RegPass {
+    fn name() -> &'static str {
+        "mem2reg"
+    }
+
+    fn descr() -> &'static str {
+        "Promote local memory to SSA registers."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        Self::run_on_all_fns(ir, promote_to_registers)
+    }
+}
+
 use crate::{
     compute_dom_fronts, dominator::compute_dom_tree, Block, BranchToWithArgs, Context, DomTree,
-    Function, Instruction, IrError, Pointer, PostOrder, Type, Value, ValueDatum,
+    Function, Instruction, IrError, LocalVar, NamedPass, PostOrder, Type, Value, ValueDatum,
 };
 
 // Check if a value is a valid (for our optimization) local pointer
-fn get_validate_local_pointer(
+fn get_validate_local_var(
     context: &Context,
     function: &Function,
     val: &Value,
-) -> Option<(String, Pointer, bool)> {
+) -> Option<(String, LocalVar)> {
     match context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetPointer {
-            base_ptr,
-            ptr_ty,
-            offset,
-        }) => {
-            let is_valid = ptr_ty
-                .get_type(context)
-                .eq(context, base_ptr.get_type(context))
-                && offset == 0;
-            let name = function.lookup_local_name(context, &base_ptr);
-            name.map(|name| (name.clone(), base_ptr, is_valid))
+        ValueDatum::Instruction(Instruction::GetLocal(local_var)) => {
+            let name = function.lookup_local_name(context, &local_var);
+            name.map(|name| (name.clone(), local_var))
         }
         _ => None,
     }
@@ -37,18 +45,20 @@ fn get_validate_local_pointer(
 
 // Returns those locals that can be promoted to SSA registers.
 fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<String> {
+    // The size of an SSA register is target specific.  Here we're going to just stick with atomic
+    // types which can fit in 64-bits.
     let mut locals: HashSet<String> = function
         .locals_iter(context)
-        .filter(|(_, ptr)| (**ptr).get_type(context).is_copy_type())
+        .filter(|(_, var)| {
+            let ty = var.get_type(context);
+            ty.is_unit(context)
+                || ty.is_bool(context)
+                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
+        })
         .map(|(name, _)| name.clone())
         .collect();
 
     for (_, inst) in function.instruction_iter(context) {
-        if let Some((local, _, valid)) = get_validate_local_pointer(context, function, &inst) {
-            if !valid {
-                locals.remove(&local);
-            }
-        }
         match context.values[inst.0].value {
             ValueDatum::Instruction(Instruction::Load(_))
             | ValueDatum::Instruction(Instruction::Store { .. }) => {
@@ -58,7 +68,7 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
                 // Make sure that no local escapes into instructions we don't understand.
                 let operands = inst.get_instruction(context).unwrap().get_operands();
                 for opd in operands {
-                    if let Some((local, ..)) = get_validate_local_pointer(context, function, &opd) {
+                    if let Some((local, ..)) = get_validate_local_var(context, function, &opd) {
                         locals.remove(&local);
                     }
                 }
@@ -96,8 +106,8 @@ pub fn compute_livein(
             for inst in block.instruction_iter(context).rev() {
                 match context.values[inst.0].value {
                     ValueDatum::Instruction(Instruction::Load(ptr)) => {
-                        let local_ptr = get_validate_local_pointer(context, function, &ptr);
-                        match local_ptr {
+                        let local_var = get_validate_local_var(context, function, &ptr);
+                        match local_var {
                             Some((local, ..)) if locals.contains(&local) => {
                                 cur_live.insert(local);
                             }
@@ -105,9 +115,9 @@ pub fn compute_livein(
                         }
                     }
                     ValueDatum::Instruction(Instruction::Store { dst_val, .. }) => {
-                        let local_ptr = get_validate_local_pointer(context, function, &dst_val);
-                        match local_ptr {
-                            Some((local, _, _)) if locals.contains(&local) => {
+                        let local_var = get_validate_local_var(context, function, &dst_val);
+                        match local_var {
+                            Some((local, _)) if locals.contains(&local) => {
                                 cur_live.remove(&local);
                             }
                             _ => (),
@@ -127,8 +137,8 @@ pub fn compute_livein(
 }
 
 /// Promote local values that are accessed via load/store to SSA registers.
-/// We promote only locals of non-copy type, whose every use is in a `get_ptr`
-/// without offsets, and the result of such a `get_ptr` is used only in a load
+/// We promote only locals of non-copy type, whose every use is in a `get_local`
+/// without offsets, and the result of such a `get_local` is used only in a load
 /// or a store.
 pub fn promote_to_registers(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let safe_locals = filter_usable_locals(context, function);
@@ -158,9 +168,9 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         if let ValueDatum::Instruction(Instruction::Store { dst_val, .. }) =
             context.values[inst.0].value
         {
-            match get_validate_local_pointer(context, function, &dst_val) {
-                Some((local, ptr, ..)) if safe_locals.contains(&local) => {
-                    worklist.push((local, *ptr.get_type(context), block));
+            match get_validate_local_var(context, function, &dst_val) {
+                Some((local, var)) if safe_locals.contains(&local) => {
+                    worklist.push((local, var.get_type(context), block));
                 }
                 _ => (),
             }
@@ -172,7 +182,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         for df in dom_fronts[&known_def].iter() {
             if !new_phi_tracker.contains(&(local.clone(), *df)) && liveins[df].contains(&local) {
                 // Insert PHI for this local at block df.
-                let index = df.new_arg(context, ty);
+                let index = df.new_arg(context, ty, false);
                 phi_to_local.insert(df.get_arg(context, index).unwrap(), local.clone());
                 new_phi_tracker.insert((local.clone(), *df));
                 // Add df to the worklist.
@@ -214,9 +224,9 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
         for inst in node.instruction_iter(context) {
             match context.values[inst.0].value {
                 ValueDatum::Instruction(Instruction::Load(ptr)) => {
-                    let local_ptr = get_validate_local_pointer(context, function, &ptr);
-                    match local_ptr {
-                        Some((local, ptr, _)) if safe_locals.contains(&local) => {
+                    let local_var = get_validate_local_var(context, function, &ptr);
+                    match local_var {
+                        Some((local, var)) if safe_locals.contains(&local) => {
                             // We should replace all uses of inst with new_stack[local].
                             let new_val = match name_stack.get(&local) {
                                 Some(val) => *val,
@@ -224,7 +234,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
                                     // Nothing on the stack, let's attempt to get the initializer
                                     Value::new_constant(
                                         context,
-                                        ptr.get_initializer(context)
+                                        var.get_initializer(context)
                                             .expect("We're dealing with an uninitialized value")
                                             .clone(),
                                     )
@@ -240,9 +250,9 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
                     dst_val,
                     stored_val,
                 }) => {
-                    let local_ptr = get_validate_local_pointer(context, function, &dst_val);
-                    match local_ptr {
-                        Some((local, _, _)) if safe_locals.contains(&local) => {
+                    let local_var = get_validate_local_var(context, function, &dst_val);
+                    match local_var {
+                        Some((local, _)) if safe_locals.contains(&local) => {
                             // Henceforth, everything that's dominated by this inst must use stored_val
                             // instead of loading from dst_val.
                             name_stack.push(local.clone(), stored_val);
@@ -266,7 +276,7 @@ pub fn promote_to_registers(context: &mut Context, function: &Function) -> Resul
             // we pass, as arg, the top value of local
             for arg in args {
                 if let Some(local) = phi_to_local.get(&arg) {
-                    let ptr = function.get_local_ptr(context, local).unwrap();
+                    let ptr = function.get_local_var(context, local).unwrap();
                     let new_val = match name_stack.get(local) {
                         Some(val) => *val,
                         None => {

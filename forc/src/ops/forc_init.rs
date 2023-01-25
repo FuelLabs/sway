@@ -19,13 +19,13 @@ fn print_welcome_message() {
         "Read the Docs:\n- {}\n- {}\n- {}",
         "Sway Book: https://fuellabs.github.io/sway/latest",
         "Rust SDK Book: https://fuellabs.github.io/fuels-rs/latest",
-        "TypeScript SDK: https://github.com/FuelLabs/fuels-ts"
+        "TypeScript SDK: https://fuellabs.github.io/fuels-ts/"
     );
 
     let join_the_community = format!(
         "Join the Community:\n- Follow us {}
-- Ask questions in dev-chat on {}",
-        "@SwayLang: https://twitter.com/SwayLang", "Discord: https://discord.com/invite/xfpK4Pe"
+- Ask questions on {}",
+        "@SwayLang: https://twitter.com/SwayLang", "Discourse: https://forum.fuel.network/"
     );
 
     let report_bugs = format!(

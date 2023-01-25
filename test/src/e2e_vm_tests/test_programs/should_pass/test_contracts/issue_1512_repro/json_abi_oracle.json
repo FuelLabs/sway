@@ -1,6 +1,8 @@
 {
+  "configurables": [],
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "a",

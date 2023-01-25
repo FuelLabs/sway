@@ -8,7 +8,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{type_system::TypeId, CompileResult, TypeEngine};
+use crate::{decl_engine::DeclEngine, type_system::TypeId, CompileResult, Engines, TypeEngine};
 use sway_types::{Ident, Span};
 
 /// If any types contained by this node are unresolved or have yet to be inferred, throw an
@@ -47,6 +47,7 @@ impl MessageId {
 }
 
 #[allow(clippy::enum_variant_names)]
+#[derive(Debug, Clone)]
 pub enum TypeMetadata {
     // UnresolvedType receives the Ident of the type and a call site span.
     UnresolvedType(Ident, Option<Span>),
@@ -68,9 +69,10 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) type_engine: &'cx TypeEngine,
+    pub(crate) decl_engine: &'cx DeclEngine,
 }
 
-impl<'a> CollectTypesMetadataContext<'a> {
+impl<'cx> CollectTypesMetadataContext<'cx> {
     pub fn log_id_counter(&self) -> usize {
         self.log_id_counter
     }
@@ -115,9 +117,11 @@ impl<'a> CollectTypesMetadataContext<'a> {
         None
     }
 
-    pub fn new(type_engine: &'a TypeEngine) -> Self {
+    pub fn new(engines: Engines<'cx>) -> Self {
+        let (type_engine, decl_engine) = engines.unwrap();
         let mut ctx = Self {
             type_engine,
+            decl_engine,
             log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],

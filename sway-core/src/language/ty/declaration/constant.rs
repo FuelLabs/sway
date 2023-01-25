@@ -1,10 +1,10 @@
 use sway_types::{Ident, Span};
 
 use crate::{
+    engine_threading::*,
     language::{ty::*, Visibility},
     transform,
     type_system::*,
-    EqWithTypeEngine, PartialEqWithTypeEngine,
 };
 
 #[derive(Clone, Debug)]
@@ -13,20 +13,23 @@ pub struct TyConstantDeclaration {
     pub value: TyExpression,
     pub visibility: Visibility,
     pub return_type: TypeId,
+    pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
+    pub type_ascription_span: Option<Span>,
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyConstantDeclaration {}
-impl PartialEqWithTypeEngine for TyConstantDeclaration {
-    fn eq(&self, rhs: &Self, type_engine: &crate::TypeEngine) -> bool {
-        self.name == rhs.name
-            && self.value.eq(&rhs.value, type_engine)
-            && self.visibility == rhs.visibility
+impl EqWithEngines for TyConstantDeclaration {}
+impl PartialEqWithEngines for TyConstantDeclaration {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
+        self.name == other.name
+            && self.value.eq(&other.value, engines)
+            && self.visibility == other.visibility
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(rhs.return_type), type_engine)
-            && self.attributes == rhs.attributes
-            && self.span == rhs.span
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
+            && self.attributes == other.attributes
+            && self.span == other.span
     }
 }

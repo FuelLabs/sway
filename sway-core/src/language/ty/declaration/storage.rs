@@ -1,7 +1,7 @@
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{error::*, language::ty::*, transform, type_system::*};
+use crate::{engine_threading::*, error::*, language::ty::*, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStorageDeclaration {
@@ -10,10 +10,10 @@ pub struct TyStorageDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithTypeEngine for TyStorageDeclaration {}
-impl PartialEqWithTypeEngine for TyStorageDeclaration {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.fields.eq(&rhs.fields, type_engine) && self.attributes == rhs.attributes
+impl EqWithEngines for TyStorageDeclaration {}
+impl PartialEqWithEngines for TyStorageDeclaration {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
     }
 }
 
@@ -65,6 +65,7 @@ impl TyStorageDeclaration {
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: first_field.clone(),
+                    span: first_field.span(),
                 });
                 return err(warnings, errors);
             }
@@ -76,7 +77,7 @@ impl TyStorageDeclaration {
             span: first_field.span(),
         });
 
-        let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+        let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
             TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],
         };
@@ -109,6 +110,7 @@ impl TyStorageDeclaration {
                         field_name: field.clone(),
                         available_fields: available_fields.join(", "),
                         struct_name: type_checked_buf.last().unwrap().name.clone(),
+                        span: field.span(),
                     });
                     return err(warnings, errors);
                 }
@@ -167,13 +169,14 @@ pub struct TyStorageField {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithTypeEngine for TyStorageField {}
-impl PartialEqWithTypeEngine for TyStorageField {
-    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+impl EqWithEngines for TyStorageField {}
+impl PartialEqWithEngines for TyStorageField {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), type_engine)
-            && self.initializer.eq(&other.initializer, type_engine)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
+            && self.initializer.eq(&other.initializer, engines)
     }
 }

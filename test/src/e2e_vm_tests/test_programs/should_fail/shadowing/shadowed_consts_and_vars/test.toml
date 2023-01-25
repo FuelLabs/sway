@@ -1,0 +1,21 @@
+category = "fail"
+
+#check: $()error
+
+#check: $()const X = 6;
+#nextln: $()The name `X` is defined multiple times
+
+#check: $()const Y = 7;
+#nextln: $()const Y = 8;
+#nextln: $()The name `Y` is defined multiple times
+
+#check: $()let X = 9;
+#nextln: $()The name `X` is defined multiple times
+
+#check: $()const Z = 3;
+#nextln: $()let Z = 4;
+#nextln: $()The name `Z` is defined multiple times
+
+#check: $()let W = 2;
+#check: $()const W = 1;
+#check: $()The name `W` is defined multiple times

@@ -1,20 +1,24 @@
-use sway_error::error::CompileError;
-use sway_types::*;
-
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     error::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity},
     semantic_analysis::storage_only_types,
     type_system::*,
+    Engines,
 };
+
+use sway_error::error::CompileError;
+use sway_types::*;
+
+use fuel_abi_types::program_abi;
 
 #[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
     pub declarations: Vec<TyDeclaration>,
+    pub configurables: Vec<TyConstantDeclaration>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
@@ -23,20 +27,28 @@ pub struct TyProgram {
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
-        ty_engine: &TypeEngine,
+        engines: Engines<'_>,
         root: &TyModule,
         kind: parsed::TreeType,
         module_span: Span,
-    ) -> CompileResult<(TyProgramKind, Vec<TyDeclaration>)> {
+    ) -> CompileResult<(
+        TyProgramKind,
+        Vec<TyDeclaration>,
+        Vec<TyConstantDeclaration>,
+    )> {
         // Extract program-kind-specific properties from the root nodes.
         let mut errors = vec![];
         let mut warnings = vec![];
 
+        let ty_engine = engines.te();
+        let decl_engine = engines.de();
+
         // Validate all submodules
+        let mut configurables = Vec::<TyConstantDeclaration>::new();
         for (_, submodule) in &root.submodules {
             check!(
                 Self::validate_root(
-                    ty_engine,
+                    engines,
                     &submodule.module,
                     parsed::TreeType::Library {
                         name: submodule.library_name.clone(),
@@ -57,7 +69,7 @@ impl TyProgram {
             match &node.content {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
                     let func = check!(
-                        CompileResult::from(de_get_function(decl_id.clone(), &node.span)),
+                        CompileResult::from(decl_engine.get_function(decl_id.clone(), &node.span)),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -68,11 +80,21 @@ impl TyProgram {
                     }
 
                     if !fn_declarations.insert(func.name.clone()) {
-                        errors
-                            .push(CompileError::MultipleDefinitionsOfFunction { name: func.name });
+                        errors.push(CompileError::MultipleDefinitionsOfFunction {
+                            name: func.name.clone(),
+                            span: func.name.span(),
+                        });
                     }
 
                     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                }
+                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
+                    match decl_engine.get_constant(decl_id.clone(), &node.span) {
+                        Ok(config_decl) if config_decl.is_configurable => {
+                            configurables.push(config_decl)
+                        }
+                        _ => {}
+                    }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
@@ -83,17 +105,16 @@ impl TyProgram {
                         span,
                         ..
                     } = check!(
-                        CompileResult::from(de_get_impl_trait(decl_id.clone(), &node.span)),
+                        CompileResult::from(
+                            decl_engine.get_impl_trait(decl_id.clone(), &node.span)
+                        ),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
-                    if matches!(
-                        ty_engine.look_up_type_id(implementing_for_type_id),
-                        TypeInfo::Contract
-                    ) {
+                    if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
                         for method_id in methods {
-                            match de_get_function(method_id, &span) {
+                            match decl_engine.get_function(method_id, &span) {
                                 Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }
@@ -111,7 +132,7 @@ impl TyProgram {
         for ast_n in &root.all_nodes {
             check!(
                 storage_only_types::validate_decls_for_storage_only_types_in_ast(
-                    ty_engine,
+                    engines,
                     &ast_n.content
                 ),
                 continue,
@@ -124,7 +145,11 @@ impl TyProgram {
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
             if !matches!(kind, parsed::TreeType::Library { .. }) {
-                errors.extend(disallow_impure_functions(&declarations, &mains));
+                errors.extend(disallow_impure_functions(
+                    decl_engine,
+                    &declarations,
+                    &mains,
+                ));
             }
 
             // `storage` declarations are not allowed in non-contracts
@@ -134,7 +159,7 @@ impl TyProgram {
 
             if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
                 let TyStorageDeclaration { span, .. } = check!(
-                    CompileResult::from(de_get_storage(decl_id.clone(), &decl_id.span())),
+                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -148,8 +173,45 @@ impl TyProgram {
 
         // Perform other validation based on the tree type.
         let typed_program_kind = match kind {
-            parsed::TreeType::Contract => TyProgramKind::Contract { abi_entries },
-            parsed::TreeType::Library { name } => TyProgramKind::Library { name },
+            parsed::TreeType::Contract => {
+                // Types containing raw_ptr are not allowed in storage (e.g Vec)
+                for decl in declarations.iter() {
+                    if let TyDeclaration::StorageDeclaration(decl_id) = decl {
+                        if let Ok(storage_decl) =
+                            decl_engine.get_storage(decl_id.clone(), &decl_id.span())
+                        {
+                            for field in storage_decl.fields.iter() {
+                                let type_info = ty_engine.get(field.type_id);
+                                let type_info_str = engines.help_out(&type_info).to_string();
+                                let raw_ptr_type = type_info
+                                    .extract_nested_types(ty_engine, &field.span)
+                                    .value
+                                    .and_then(|value| {
+                                        value
+                                            .into_iter()
+                                            .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                                    });
+                                if raw_ptr_type.is_some() {
+                                    errors.push(CompileError::TypeNotAllowedInContractStorage {
+                                        ty: type_info_str,
+                                        span: field.span.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TyProgramKind::Contract { abi_entries }
+            }
+            parsed::TreeType::Library { name } => {
+                if !configurables.is_empty() {
+                    errors.push(CompileError::ConfigurableInLibrary {
+                        span: configurables[0].name.span(),
+                    });
+                }
+                TyProgramKind::Library { name }
+            }
             parsed::TreeType::Predicate => {
                 // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
@@ -159,10 +221,11 @@ impl TyProgram {
                 if mains.len() > 1 {
                     errors.push(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
+                        span: mains.last().unwrap().name.span(),
                     });
                 }
                 let main_func = mains.remove(0);
-                match ty_engine.look_up_type_id(main_func.return_type) {
+                match ty_engine.get(main_func.return_type) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
@@ -181,13 +244,14 @@ impl TyProgram {
                 if mains.len() > 1 {
                     errors.push(CompileError::MultipleDefinitionsOfFunction {
                         name: mains.last().unwrap().name.clone(),
+                        span: mains.last().unwrap().name.span(),
                     });
                 }
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.look_up_type_id(main_func.return_type);
+                let main_return_type_info = ty_engine.get(main_func.return_type);
                 let nested_types = check!(
                     main_return_type_info
                         .clone()
@@ -226,132 +290,129 @@ impl TyProgram {
                     if param.is_reference && param.is_mutable {
                         errors.push(CompileError::RefMutableNotAllowedInMain {
                             param_name: param.name.clone(),
+                            span: param.name.span(),
                         })
                     }
                 }
             }
             _ => (),
         }
-        ok((typed_program_kind, declarations), warnings, errors)
+        ok(
+            (typed_program_kind, declarations, configurables),
+            warnings,
+            errors,
+        )
     }
 
-    /// Ensures there are no unresolved types or types awaiting resolution in the AST.
+    /// Collect various type information such as unresolved types and types of logged data
     pub(crate) fn collect_types_metadata(
         &mut self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        // Get all of the entry points for this tree type. For libraries, that's everything
-        // public. For contracts, ABI entries. For scripts and predicates, any function named `main`.
-        let metadata = match &self.kind {
-            TyProgramKind::Library { .. } => {
-                let mut ret = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let public = check!(
-                        node.is_public(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if public || is_test {
-                        ret.append(&mut check!(
-                            node.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                }
-                ret
+        let decl_engine = ctx.decl_engine;
+        let mut metadata = vec![];
+
+        // First, look into all entry points that are not unit tests.
+        match &self.kind {
+            // For scripts and predicates, collect metadata for all the types starting with
+            // `main()` as the only entry point
+            TyProgramKind::Script { main_function, .. }
+            | TyProgramKind::Predicate { main_function, .. } => {
+                metadata.append(&mut check!(
+                    main_function.collect_types_metadata(ctx),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                ));
             }
-            TyProgramKind::Script { .. } => {
-                let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Script),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_main || is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                }
-                data
-            }
-            TyProgramKind::Predicate { .. } => {
-                let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_main = check!(
-                        node.is_main_function(parsed::TreeType::Predicate),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    let is_test = check!(
-                        node.is_test_function(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_main || is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                }
-                data
-            }
+            // For contracts, collect metadata for all the types starting with each ABI method as
+            // an entry point.
             TyProgramKind::Contract { abi_entries, .. } => {
-                let mut data = vec![];
-                for node in self.root.all_nodes.iter() {
-                    let is_test = check!(
-                        node.is_test_function(),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                    if is_test {
-                        data.append(&mut check!(
-                            node.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        ));
-                    }
-                }
                 for entry in abi_entries.iter() {
-                    data.append(&mut check!(
-                        TyAstNode::from(entry).collect_types_metadata(ctx),
+                    metadata.append(&mut check!(
+                        entry.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
                     ));
                 }
-                data
             }
-        };
+            // For libraries, collect metadata for all the types starting with each `pub` node as
+            // an entry point. Also dig into all the submodules of a library because nodes in those
+            // submodules can also be entry points.
+            TyProgramKind::Library { .. } => {
+                for module in std::iter::once(&self.root).chain(
+                    self.root
+                        .submodules_recursive()
+                        .into_iter()
+                        .map(|(_, submod)| &submod.module),
+                ) {
+                    for node in module.all_nodes.iter() {
+                        let is_public = check!(
+                            node.is_public(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        let is_generic_function = check!(
+                            node.is_generic_function(decl_engine),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
+                        if is_public {
+                            let node_metadata = check!(
+                                node.collect_types_metadata(ctx),
+                                return err(warnings, errors),
+                                warnings,
+                                errors
+                            );
+                            metadata.append(
+                                &mut node_metadata
+                                    .iter()
+                                    .filter(|m| {
+                                        // Generic functions are allowed to have unresolved types
+                                        // so filter those
+                                        !(is_generic_function
+                                            && matches!(m, TypeMetadata::UnresolvedType(..)))
+                                    })
+                                    .cloned()
+                                    .collect::<Vec<TypeMetadata>>(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Now consider unit tests: all unit test are considered entry points regardless of the
+        // program type
+        for module in std::iter::once(&self.root).chain(
+            self.root
+                .submodules_recursive()
+                .into_iter()
+                .map(|(_, submod)| &submod.module),
+        ) {
+            for node in module.all_nodes.iter() {
+                let is_test_function = check!(
+                    node.is_test_function(decl_engine),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                if is_test_function {
+                    metadata.append(&mut check!(
+                        node.collect_types_metadata(ctx),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ));
+                }
+            }
+        }
+
         if errors.is_empty() {
             ok(metadata, warnings, errors)
         } else {
@@ -362,8 +423,8 @@ impl TyProgram {
     pub fn generate_json_abi_program(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> fuels_types::ProgramABI {
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> program_abi::ProgramABI {
         match &self.kind {
             TyProgramKind::Contract { abi_entries, .. } => {
                 let functions = abi_entries
@@ -372,11 +433,13 @@ impl TyProgram {
                     .collect();
                 let logged_types = self.generate_json_logged_types(type_engine, types);
                 let messages_types = self.generate_json_messages_types(type_engine, types);
-                fuels_types::ProgramABI {
+                let configurables = self.generate_json_configurables(type_engine, types);
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
             TyProgramKind::Script { main_function, .. }
@@ -384,18 +447,21 @@ impl TyProgram {
                 let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
                 let logged_types = self.generate_json_logged_types(type_engine, types);
                 let messages_types = self.generate_json_messages_types(type_engine, types);
-                fuels_types::ProgramABI {
+                let configurables = self.generate_json_configurables(type_engine, types);
+                program_abi::ProgramABI {
                     types: types.to_vec(),
                     functions,
                     logged_types: Some(logged_types),
                     messages_types: Some(messages_types),
+                    configurables: Some(configurables),
                 }
             }
-            _ => fuels_types::ProgramABI {
+            _ => program_abi::ProgramABI {
                 types: vec![],
                 functions: vec![],
                 logged_types: None,
                 messages_types: None,
+                configurables: None,
             },
         }
     }
@@ -403,13 +469,13 @@ impl TyProgram {
     fn generate_json_logged_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::LoggedType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the logged types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::LoggedType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the logged types
         let logged_types = self
             .logged_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -423,9 +489,9 @@ impl TyProgram {
         // Generate the JSON data for the logged types
         self.logged_types
             .iter()
-            .map(|(log_id, type_id)| fuels_types::LoggedType {
+            .map(|(log_id, type_id)| program_abi::LoggedType {
                 log_id: **log_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
@@ -437,13 +503,13 @@ impl TyProgram {
     fn generate_json_messages_types(
         &self,
         type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> Vec<fuels_types::MessageType> {
-        // A list of all `fuels_types::TypeDeclaration`s needed for the messages types
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::MessageType> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the messages types
         let messages_types = self
             .messages_types
             .iter()
-            .map(|(_, type_id)| fuels_types::TypeDeclaration {
+            .map(|(_, type_id)| program_abi::TypeDeclaration {
                 type_id: type_id.index(),
                 type_field: type_id.get_json_type_str(type_engine, *type_id),
                 components: type_id.get_json_type_components(type_engine, types, *type_id),
@@ -457,9 +523,9 @@ impl TyProgram {
         // Generate the JSON data for the messages types
         self.messages_types
             .iter()
-            .map(|(message_id, type_id)| fuels_types::MessageType {
+            .map(|(message_id, type_id)| program_abi::MessageType {
                 message_id: **message_id as u64,
-                application: fuels_types::TypeApplication {
+                application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_id.index(),
                     type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
@@ -468,12 +534,68 @@ impl TyProgram {
             .collect()
     }
 
+    fn generate_json_configurables(
+        &self,
+        type_engine: &TypeEngine,
+        types: &mut Vec<program_abi::TypeDeclaration>,
+    ) -> Vec<program_abi::Configurable> {
+        // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
+        let configurables_types = self
+            .configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration { return_type, .. }| program_abi::TypeDeclaration {
+                    type_id: return_type.index(),
+                    type_field: return_type.get_json_type_str(type_engine, *return_type),
+                    components: return_type.get_json_type_components(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                    type_parameters: return_type.get_json_type_parameters(
+                        type_engine,
+                        types,
+                        *return_type,
+                    ),
+                },
+            )
+            .collect::<Vec<_>>();
+
+        // Add the new types to `types`
+        types.extend(configurables_types);
+
+        // Generate the JSON data for the configurables types
+        self.configurables
+            .iter()
+            .map(
+                |TyConstantDeclaration {
+                     name, return_type, ..
+                 }| program_abi::Configurable {
+                    name: name.to_string(),
+                    application: program_abi::TypeApplication {
+                        name: "".to_string(),
+                        type_id: return_type.index(),
+                        type_arguments: return_type.get_json_type_arguments(
+                            type_engine,
+                            types,
+                            *return_type,
+                        ),
+                    },
+                    offset: 0,
+                },
+            )
+            .collect()
+    }
+
     /// All test function declarations within the program.
-    pub fn test_fns(&self) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
+    pub fn test_fns<'a: 'b, 'b>(
+        &'b self,
+        decl_engine: &'a DeclEngine,
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
         self.root
             .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns())
-            .chain(self.root.test_fns())
+            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
+            .chain(self.root.test_fns(decl_engine))
     }
 }
 
@@ -506,6 +628,7 @@ impl TyProgramKind {
 }
 
 fn disallow_impure_functions(
+    decl_engine: &DeclEngine,
     declarations: &[TyDeclaration],
     mains: &[TyFunctionDeclaration],
 ) -> Vec<CompileError> {
@@ -514,7 +637,7 @@ fn disallow_impure_functions(
         .iter()
         .filter_map(|decl| match decl {
             TyDeclaration::FunctionDeclaration(decl_id) => {
-                match de_get_function(decl_id.clone(), &decl.span()) {
+                match decl_engine.get_function(decl_id.clone(), &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {
                         errs.push(err);

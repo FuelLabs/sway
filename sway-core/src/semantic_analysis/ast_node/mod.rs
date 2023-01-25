@@ -7,7 +7,6 @@ pub(crate) use expression::*;
 pub(crate) use mode::*;
 
 use crate::{
-    declaration_engine::declaration_engine::*,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
@@ -25,6 +24,9 @@ impl ty::TyAstNode {
         let mut errors = Vec::new();
 
         let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
+
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
@@ -34,12 +36,12 @@ impl ty::TyAstNode {
                         ctx.namespace.find_module_path(&a.call_path)
                     };
                     let mut res = match a.import_type {
-                        ImportType::Star => ctx.namespace.star_import(&path, type_engine),
+                        ImportType::Star => ctx.namespace.star_import(&path, engines),
                         ImportType::SelfImport => {
-                            ctx.namespace.self_import(ctx.type_engine, &path, a.alias)
+                            ctx.namespace.self_import(engines, &path, a.alias)
                         }
                         ImportType::Item(s) => {
-                            ctx.namespace.item_import(type_engine, &path, &s, a.alias)
+                            ctx.namespace.item_import(engines, &path, &s, a.alias)
                         }
                     };
                     warnings.append(&mut res.warnings);
@@ -55,11 +57,11 @@ impl ty::TyAstNode {
                 )),
                 AstNodeContent::Expression(expr) => {
                     let ctx = ctx
-                        .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown))
+                        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown))
                         .with_help_text("");
                     let inner = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span(), type_engine),
+                        ty::TyExpression::error(expr.span(), engines),
                         warnings,
                         errors
                     );
@@ -70,7 +72,7 @@ impl ty::TyAstNode {
                         ctx.with_help_text("Implicit return must match up with block's type.");
                     let typed_expr = check!(
                         ty::TyExpression::type_check(ctx, expr.clone()),
-                        ty::TyExpression::error(expr.span(), type_engine),
+                        ty::TyExpression::error(expr.span(), engines),
                         warnings,
                         errors
                     );
@@ -86,9 +88,7 @@ impl ty::TyAstNode {
         } = node
         {
             let warning = Warning::UnusedReturnValue {
-                r#type: type_engine
-                    .help_out(node.type_info(type_engine))
-                    .to_string(),
+                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
                 node.type_info(type_engine).can_safely_ignore(type_engine),
@@ -112,6 +112,9 @@ pub(crate) fn reassign_storage_subfield(
     let mut warnings = vec![];
 
     let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
+
     if !ctx.namespace.has_storage_declared() {
         errors.push(CompileError::NoDeclaredStorage { span });
 
@@ -119,7 +122,8 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace.get_storage_field_descriptors(&span),
+        ctx.namespace
+            .get_storage_field_descriptors(decl_engine, &span),
         return err(warnings, errors),
         warnings,
         errors
@@ -142,6 +146,7 @@ pub(crate) fn reassign_storage_subfield(
         None => {
             errors.push(CompileError::StorageFieldDoesNotExist {
                 name: first_field.clone(),
+                span: first_field.span(),
             });
             return err(warnings, errors);
         }
@@ -153,7 +158,7 @@ pub(crate) fn reassign_storage_subfield(
         span: first_field.span(),
     });
 
-    let update_available_struct_fields = |id: TypeId| match type_engine.look_up_type_id(id) {
+    let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
         TypeInfo::Struct { fields, .. } => fields,
         _ => vec![],
     };
@@ -188,6 +193,7 @@ pub(crate) fn reassign_storage_subfield(
                     field_name: field.clone(),
                     available_fields: available_fields.join(", "),
                     struct_name: type_checked_buf.last().unwrap().name.clone(),
+                    span: field.span(),
                 });
                 return err(warnings, errors);
             }
@@ -196,7 +202,7 @@ pub(crate) fn reassign_storage_subfield(
     let ctx = ctx.with_type_annotation(curr_type).with_help_text("");
     let rhs = check!(
         ty::TyExpression::type_check(ctx, rhs),
-        ty::TyExpression::error(span, type_engine),
+        ty::TyExpression::error(span, engines),
         warnings,
         errors
     );

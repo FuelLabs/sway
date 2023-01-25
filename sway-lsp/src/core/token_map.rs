@@ -1,6 +1,6 @@
 use crate::core::token::{self, Token, TypedAstToken};
 use dashmap::DashMap;
-use sway_core::{declaration_engine, language::ty, type_system::TypeId, TypeEngine};
+use sway_core::{language::ty, type_system::TypeId, Engines, TypeEngine};
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Url};
 
@@ -22,18 +22,16 @@ impl TokenMap {
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter()
-            .filter(|item| {
-                let (_, span) = item.key();
-                match span.path() {
-                    Some(path) => path.to_str() == Some(uri.path()),
-                    None => false,
+        self.iter().flat_map(|item| {
+            let ((ident, span), token) = item.pair();
+            span.path().and_then(|path| {
+                if path.to_str() == Some(uri.path()) {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
                 }
             })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
+        })
     }
 
     /// Find all references in the TokenMap for a given token.
@@ -108,14 +106,16 @@ impl TokenMap {
     /// exists within the TokenMap.
     pub fn struct_declaration_of_type_id(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         type_id: &TypeId,
     ) -> Option<ty::TyStructDeclaration> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         self.declaration_of_type_id(type_engine, type_id)
             .and_then(|decl| match decl {
-                ty::TyDeclaration::StructDeclaration(ref decl_id) => {
-                    declaration_engine::de_get_struct(decl_id.clone(), &decl_id.span()).ok()
-                }
+                ty::TyDeclaration::StructDeclaration(ref decl_id) => decl_engine
+                    .get_struct(decl_id.clone(), &decl_id.span())
+                    .ok(),
                 _ => None,
             })
     }

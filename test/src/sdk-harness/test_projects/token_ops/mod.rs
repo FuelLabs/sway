@@ -1,10 +1,14 @@
-use fuels::{prelude::*, tx::AssetId};
+use fuels::{
+    prelude::*,
+    tx::AssetId,
+    types::core::{Bits256, Identity},
+};
 use std::str::FromStr;
 
-abigen!(
-    TestFuelCoinContract,
-    "test_projects/token_ops/out/debug/token_ops-abi.json"
-);
+abigen!(Contract(
+    name = "TestFuelCoinContract",
+    abi = "test_projects/token_ops/out/debug/token_ops-abi.json"
+));
 
 #[tokio::test]
 async fn can_mint() {
@@ -113,7 +117,7 @@ async fn can_force_transfer() {
     balance_result = fuelcoin_instance
         .methods()
         .get_balance(asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -124,7 +128,7 @@ async fn can_force_transfer() {
     fuelcoin_instance
         .methods()
         .force_transfer_coins(coins, asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -142,7 +146,7 @@ async fn can_force_transfer() {
     balance_result = fuelcoin_instance
         .methods()
         .get_balance(asset_id.clone(), target.clone())
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -163,7 +167,7 @@ async fn can_mint_and_send_to_contract() {
     fuelcoin_instance
         .methods()
         .mint_and_send_to_contract(amount, target.clone())
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -171,7 +175,7 @@ async fn can_mint_and_send_to_contract() {
     let result = fuelcoin_instance
         .methods()
         .get_balance(asset_id, target)
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -257,7 +261,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     fuelcoin_instance
         .methods()
         .generic_mint_to(amount, Identity::ContractId(target))
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -265,7 +269,7 @@ async fn can_perform_generic_mint_to_with_contract_id() {
     let result = fuelcoin_instance
         .methods()
         .get_balance(fuelcoin_id, target)
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -336,7 +340,7 @@ async fn can_perform_generic_transfer_to_contract() {
     fuelcoin_instance
         .methods()
         .generic_transfer(amount, fuelcoin_id, Identity::ContractId(to))
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -344,7 +348,7 @@ async fn can_perform_generic_transfer_to_contract() {
     let result = fuelcoin_instance
         .methods()
         .get_balance(fuelcoin_id, to)
-        .set_contracts(&[balance_id.into()])
+        .set_contract_ids(&[balance_id.into()])
         .call()
         .await
         .unwrap();
@@ -387,11 +391,8 @@ async fn can_send_message_output_with_data() {
     assert_eq!(*fuelcoin_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(24, message_receipt.len().unwrap());
-    assert_eq!(
-        vec![0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 50],
-        message_receipt.data().unwrap()
-    );
+    assert_eq!(8, message_receipt.len().unwrap());
+    assert_eq!(vec![100, 75, 50], message_receipt.data().unwrap());
 }
 
 #[tokio::test]

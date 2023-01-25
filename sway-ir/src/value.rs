@@ -11,10 +11,9 @@ use rustc_hash::FxHashMap;
 use crate::{
     constant::Constant,
     context::Context,
-    instruction::Instruction,
+    instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
-    pointer::Pointer,
     pretty::DebugWithContext,
     BlockArgument,
 };
@@ -35,6 +34,7 @@ pub struct ValueContent {
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
     Argument(BlockArgument),
+    Configurable(Constant),
     Constant(Constant),
     Instruction(Instruction),
 }
@@ -44,6 +44,15 @@ impl Value {
     pub fn new_argument(context: &mut Context, arg: BlockArgument) -> Value {
         let content = ValueContent {
             value: ValueDatum::Argument(arg),
+            metadata: None,
+        };
+        Value(context.values.insert(content))
+    }
+
+    /// Return a new constant [`Value`].
+    pub fn new_configurable(context: &mut Context, constant: Constant) -> Value {
+        let content = ValueContent {
+            value: ValueDatum::Configurable(constant),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -89,6 +98,11 @@ impl Value {
     }
 
     /// Return whether this is a constant value.
+    pub fn is_configurable(&self, context: &Context) -> bool {
+        matches!(context.values[self.0].value, ValueDatum::Configurable(_))
+    }
+
+    /// Return whether this is a constant value.
     pub fn is_constant(&self, context: &Context) -> bool {
         matches!(context.values[self.0].value, ValueDatum::Constant(_))
     }
@@ -104,7 +118,7 @@ impl Value {
                 Instruction::Branch(_)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(_, _)
-                    | Instruction::Revert(_)
+                    | Instruction::FuelVm(FuelVmInstruction::Revert(_))
             ),
             _ => false,
         }
@@ -117,9 +131,11 @@ impl Value {
                 Instruction::Branch(..)
                     | Instruction::ConditionalBranch { .. }
                     | Instruction::Ret(..)
-                    | Instruction::Revert(..)
+                    | Instruction::FuelVm(FuelVmInstruction::Revert(..))
             ),
-            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
+            ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
+                false
+            }
         }
     }
 
@@ -163,6 +179,15 @@ impl Value {
     }
 
     /// Get a reference to this value as a constant, iff it is one.
+    pub fn get_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
+        if let ValueDatum::Configurable(cn) = &context.values.get(self.0).unwrap().value {
+            Some(cn)
+        } else {
+            None
+        }
+    }
+
+    /// Get a reference to this value as a constant, iff it is one.
     pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
         if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
             Some(cn)
@@ -172,11 +197,11 @@ impl Value {
     }
 
     /// Iff this value is an argument, return its type.
-    pub fn get_argument_type(&self, context: &Context) -> Option<Type> {
-        if let ValueDatum::Argument(BlockArgument { ty, .. }) =
+    pub fn get_argument_type_and_byref(&self, context: &Context) -> Option<(Type, bool)> {
+        if let ValueDatum::Argument(BlockArgument { ty, by_ref, .. }) =
             &context.values.get(self.0).unwrap().value
         {
-            Some(*ty)
+            Some((*ty, *by_ref))
         } else {
             None
         }
@@ -188,33 +213,9 @@ impl Value {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match &context.values[self.0].value {
             ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
+            ValueDatum::Configurable(c) => Some(c.ty),
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
-    }
-
-    /// Get the pointer argument for this value if there is one.  I.e., where get_ptr is
-    /// essentially a Value wrapper around a Pointer, this function unwrap it.
-    pub fn get_pointer(&self, context: &Context) -> Option<Pointer> {
-        match &context.values[self.0].value {
-            ValueDatum::Instruction(Instruction::GetPointer { base_ptr, .. }) => Some(*base_ptr),
-
-            ValueDatum::Argument(BlockArgument {
-                ty: Type::Pointer(ptr),
-                ..
-            }) => Some(*ptr),
-
-            ValueDatum::Instruction(Instruction::InsertValue { aggregate, .. })
-            | ValueDatum::Instruction(Instruction::ExtractValue { aggregate, .. }) => {
-                aggregate.get_pointer(context)
-            }
-
-            _otherwise => None,
-        }
-    }
-
-    /// Get the type for this value with any pointer stripped, if found.
-    pub fn get_stripped_ptr_type(&self, context: &Context) -> Option<Type> {
-        self.get_type(context).map(|f| f.strip_ptr_type(context))
     }
 }

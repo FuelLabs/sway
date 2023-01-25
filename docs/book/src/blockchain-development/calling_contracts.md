@@ -55,7 +55,7 @@ impl ContractB for Contract {
 
 All calls forward a gas stipend, and may additionally forward one native asset with the call.
 
-Here is an example of how to specify the amount of gas (`gas`), the asset ID of the native asset (`asset_id`), and the amount of the native asset (`amount`) to forward:
+Here is an example of how to specify the amount of gas (`gas`), the asset ID of the native asset (`asset_id`), and the amount of the native asset (`coins`) to forward:
 
 ```sway
 script;
@@ -68,7 +68,7 @@ fn main() {
     let x = abi(MyContract, 0x79fa8779bed2f36c3581d01c79df8da45eee09fac1fd76a5a656e16326317ef0);
     let asset_id = 0x7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777_7777;
     x.foo {
-        gas: 5000, asset_id: asset_id, amount: 5000
+        gas: 5000, asset_id: asset_id, coins: 5000
     }
     (true, 3);
 }
@@ -141,7 +141,7 @@ warning
 29 | |
 30 | |         // Storage update _after_ external call
 31 | |         storage.balances.insert(sender, 0);
-   | |__________________________________________- Storage modification after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
+   | |__________________________________________- Storage write after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
 32 |       }
 33 |   }
    |
@@ -149,6 +149,12 @@ ____
 ```
 
 In case there is a storage read after an interaction, the CEI analyzer will issue a similar warning.
+
+In addition to storage reads and writes after an interaction, the CEI analyzer reports analogous warnings about:
+
+- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `tro` asm instructions or library functions using them under the hood;
+- balance trees reads with `bal` instruction;
+- changes to the output messages that can be produced by the `__smo` intrinsic function or the `smo` asm instruction.
 
 ## Differences from the EVM
 

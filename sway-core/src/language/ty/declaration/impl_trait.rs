@@ -1,56 +1,55 @@
 use sway_types::Span;
 
-use crate::{declaration_engine::DeclarationId, language::CallPath, type_system::*};
+use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub methods: Vec<DeclarationId>,
+    pub methods: Vec<DeclId>,
     pub implementing_for_type_id: TypeId,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyImplTrait {}
-impl PartialEqWithTypeEngine for TyImplTrait {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
+impl EqWithEngines for TyImplTrait {}
+impl PartialEqWithEngines for TyImplTrait {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.impl_type_parameters
-            .eq(&rhs.impl_type_parameters, type_engine)
-            && self.trait_name == rhs.trait_name
+            .eq(&other.impl_type_parameters, engines)
+            && self.trait_name == other.trait_name
             && self
                 .trait_type_arguments
-                .eq(&rhs.trait_type_arguments, type_engine)
-            && self.methods.eq(&rhs.methods, type_engine)
-            && self.implementing_for_type_id == rhs.implementing_for_type_id
-            && self.type_implementing_for_span == rhs.type_implementing_for_span
-            && self.span == rhs.span
+                .eq(&other.trait_type_arguments, engines)
+            && self.methods.eq(&other.methods, engines)
+            && self.implementing_for_type_id == other.implementing_for_type_id
+            && self.type_implementing_for_span == other.type_implementing_for_span
+            && self.span == other.span
     }
 }
 
-impl CopyTypes for TyImplTrait {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+impl SubstTypes for TyImplTrait {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
-        self.implementing_for_type_id
-            .copy_types(type_mapping, type_engine);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.implementing_for_type_id.subst(type_mapping, engines);
         self.methods
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
 impl ReplaceSelfType for TyImplTrait {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
         self.implementing_for_type_id
-            .replace_self_type(type_engine, self_type);
+            .replace_self_type(engines, self_type);
         self.methods
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
+            .for_each(|x| x.replace_self_type(engines, self_type));
     }
 }

@@ -7,14 +7,17 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, inline_function_calls, ir_generation::compile_program,
-    namespace, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, inline_function_calls,
+    ir_generation::compile_program, namespace, BuildTarget, Engines, TypeEngine,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
-    let core_lib = compile_core(&type_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
+    let build_target = BuildTarget::default();
+    let core_lib = compile_core(build_target, engines);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -109,14 +112,18 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
-                // no span metdata.
+                // no span metadata.
                 let bld_cfg = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
                     path.clone(),
                     PathBuf::from("/"),
+                    build_target,
                 );
+                // Include unit tests in the build.
+                let bld_cfg = bld_cfg.include_tests(true);
+
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let typed_res = compile_to_ast(
-                    &type_engine,
+                    engines,
                     Arc::from(sway_str),
                     core_lib.clone(),
                     Some(&bld_cfg),
@@ -142,7 +149,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 // Compile to IR.
                 let include_tests = true;
-                let mut ir = compile_program(&typed_program, include_tests, &type_engine)
+                let mut ir = compile_program(&typed_program, include_tests, engines)
                     .unwrap_or_else(|e| {
                         panic!("Failed to compile test {}:\n{e}", path.display());
                     })
@@ -289,18 +296,20 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(type_engine: &TypeEngine) -> namespace::Module {
+fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
     let check_cmd = forc::cli::CheckCommand {
+        build_target,
         path: Some(libcore_root_dir),
         offline_mode: true,
         terse_mode: true,
+        disable_tests: false,
         locked: false,
     };
 
-    let res = forc::test::forc_check::check(check_cmd, type_engine)
+    let res = forc::test::forc_check::check(check_cmd, engines)
         .expect("Failed to compile sway-lib-core for IR tests.");
 
     match res.value {

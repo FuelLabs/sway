@@ -1,6 +1,9 @@
 use std::fmt;
 
-use crate::{error::*, language::ty::*, type_system::*, types::DeterministicallyAborts};
+use crate::{
+    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
+    types::DeterministicallyAborts,
+};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_types::Span;
@@ -13,48 +16,48 @@ pub struct TyIntrinsicFunctionKind {
     pub span: Span,
 }
 
-impl EqWithTypeEngine for TyIntrinsicFunctionKind {}
-impl PartialEqWithTypeEngine for TyIntrinsicFunctionKind {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.kind == rhs.kind
-            && self.arguments.eq(&rhs.arguments, type_engine)
-            && self.type_arguments.eq(&rhs.type_arguments, type_engine)
+impl EqWithEngines for TyIntrinsicFunctionKind {}
+impl PartialEqWithEngines for TyIntrinsicFunctionKind {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.kind == other.kind
+            && self.arguments.eq(&other.arguments, engines)
+            && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
 
-impl CopyTypes for TyIntrinsicFunctionKind {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+impl SubstTypes for TyIntrinsicFunctionKind {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         for arg in &mut self.arguments {
-            arg.copy_types(type_mapping, type_engine);
+            arg.subst(type_mapping, engines);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.copy_types(type_mapping, type_engine);
+            targ.type_id.subst(type_mapping, engines);
         }
     }
 }
 
 impl ReplaceSelfType for TyIntrinsicFunctionKind {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         for arg in &mut self.arguments {
-            arg.replace_self_type(type_engine, self_type);
+            arg.replace_self_type(engines, self_type);
         }
         for targ in &mut self.type_arguments {
-            targ.type_id.replace_self_type(type_engine, self_type);
+            targ.type_id.replace_self_type(engines, self_type);
         }
     }
 }
 
-impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>, type_engine: &TypeEngine) -> fmt::Result {
+impl DisplayWithEngines for TyIntrinsicFunctionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let targs = self
             .type_arguments
             .iter()
-            .map(|targ| type_engine.help_out(targ.type_id))
+            .map(|targ| engines.help_out(targ.type_id))
             .join(", ");
         let args = self
             .arguments
             .iter()
-            .map(|e| format!("{}", type_engine.help_out(e)))
+            .map(|e| format!("{}", engines.help_out(e)))
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)
@@ -62,12 +65,12 @@ impl DisplayWithTypeEngine for TyIntrinsicFunctionKind {
 }
 
 impl DeterministicallyAborts for TyIntrinsicFunctionKind {
-    fn deterministically_aborts(&self, check_call_body: bool) -> bool {
+    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         matches!(self.kind, Intrinsic::Revert)
             || self
                 .arguments
                 .iter()
-                .any(|x| x.deterministically_aborts(check_call_body))
+                .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }
 

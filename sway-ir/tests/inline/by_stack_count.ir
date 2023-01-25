@@ -2,7 +2,7 @@
 
 script {
     fn one_local() -> u64 {
-        local ptr u64 num
+        local u64 num
 
         entry():
         v0 = const u64 11
@@ -10,8 +10,8 @@ script {
     }
 
     fn two_locals() -> u64 {
-        local ptr u64 num
-        local ptr bool flag
+        local u64 num
+        local bool flag
 
         entry():
         v0 = const u64 22
@@ -19,9 +19,9 @@ script {
     }
 
     fn three_locals() -> u64 {
-        local ptr u64 num
-        local ptr bool flag
-        local ptr string<10> name
+        local u64 num
+        local bool flag
+        local string<10> name
 
         entry():
         v0 = const u64 33
@@ -29,7 +29,7 @@ script {
     }
 
     fn two_struct_locals() -> u64 {
-        local ptr { u64, u64 } pair
+        local { u64, u64 } pair
 
         entry():
         v0 = const u64 44
@@ -37,7 +37,7 @@ script {
     }
 
     fn three_struct_locals() -> u64 {
-        local ptr { u64, u64, bool } triple
+        local { u64, u64, bool } triple
 
         entry():
         v0 = const u64 55
@@ -45,8 +45,8 @@ script {
     }
 
     fn two_mixed_locals() -> u64 {
-        local ptr { u64 } single
-        local ptr bool flag
+        local { u64 } single
+        local bool flag
 
         entry():
         v0 = const u64 66
@@ -54,8 +54,8 @@ script {
     }
 
     fn three_mixed_locals() -> u64 {
-        local ptr { u64, string<10> } pair
-        local ptr bool flag
+        local { u64, string<10> } pair
+        local bool flag
 
         entry():
         v0 = const u64 77

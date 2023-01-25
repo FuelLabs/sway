@@ -7,29 +7,49 @@
 //! It is passed around as a mutable reference to many of the Sway-IR APIs.
 
 use generational_arena::Arena;
+use rustc_hash::FxHashMap;
 
 use crate::{
-    asm::AsmBlockContent, block::BlockContent, function::FunctionContent, irtype::AggregateContent,
-    metadata::Metadatum, module::ModuleContent, module::ModuleIterator, pointer::PointerContent,
-    value::ValueContent,
+    asm::AsmBlockContent, block::BlockContent, function::FunctionContent,
+    local_var::LocalVarContent, metadata::Metadatum, module::ModuleContent, module::ModuleIterator,
+    value::ValueContent, Type, TypeContent,
 };
 
 /// The main IR context handle.
 ///
 /// Every module, function, block and value is stored here.  Some aggregate metadata is also
 /// managed by the context.
-#[derive(Default)]
 pub struct Context {
     pub(crate) modules: Arena<ModuleContent>,
     pub(crate) functions: Arena<FunctionContent>,
     pub(crate) blocks: Arena<BlockContent>,
     pub(crate) values: Arena<ValueContent>,
-    pub(crate) pointers: Arena<PointerContent>,
-    pub(crate) aggregates: Arena<AggregateContent>,
+    pub(crate) local_vars: Arena<LocalVarContent>,
+    pub(crate) types: Arena<TypeContent>,
+    pub(crate) type_map: FxHashMap<TypeContent, Type>,
     pub(crate) asm_blocks: Arena<AsmBlockContent>,
     pub(crate) metadata: Arena<Metadatum>,
 
     next_unique_sym_tag: u64,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        let mut def = Self {
+            modules: Default::default(),
+            functions: Default::default(),
+            blocks: Default::default(),
+            values: Default::default(),
+            local_vars: Default::default(),
+            types: Default::default(),
+            type_map: Default::default(),
+            asm_blocks: Default::default(),
+            metadata: Default::default(),
+            next_unique_sym_tag: Default::default(),
+        };
+        Type::create_basic_types(&mut def);
+        def
+    }
 }
 
 impl Context {

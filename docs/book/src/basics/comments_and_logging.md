@@ -37,6 +37,17 @@ fn main() {
 
 The `logging` library provides a generic `log` function that can be imported using `use std::logging::log` and used to log variables of any type. Each call to `log` appends a `receipt` to the list of receipts. There are two types of receipts that a `log` can generate: `Log` and `LogData`.
 
+```sway
+fn log_values(){
+  // Generates a Log receipt
+  log(42);
+
+  // Generates a LogData receipt
+  let string = "sway";
+  log(string);
+}
+```
+
 ### `Log` Receipt
 
 The `Log` receipt is generated for _non-reference_ types, namely `bool`, `u8`, `u16`, `u32`, and `u64`. For example, logging an integer variable `x` that holds the value `42` using `log(x)` may generate the following receipt:

@@ -71,6 +71,7 @@ pub enum Warning {
     },
     OverridingTraitImplementation,
     DeadDeclaration,
+    DeadEnumDeclaration,
     DeadFunctionDeclaration,
     DeadStructDeclaration,
     DeadTrait,
@@ -91,10 +92,9 @@ pub enum Warning {
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
-    StorageWriteAfterInteraction {
-        block_name: Ident,
-    },
-    StorageReadAfterInteraction {
+    EffectAfterInteraction {
+        effect: String,
+        effect_in_suggestion: String,
         block_name: Ident,
     },
 }
@@ -197,6 +197,7 @@ impl fmt::Display for Warning {
                 "This trait implementation overrides another one that was previously defined."
             ),
             DeadDeclaration => write!(f, "This declaration is never used."),
+            DeadEnumDeclaration => write!(f, "This enum is never used."),
             DeadStructDeclaration => write!(f, "This struct is never used."),
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
@@ -222,10 +223,9 @@ impl fmt::Display for Warning {
             ),
             MatchExpressionUnreachableArm => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
-            StorageWriteAfterInteraction {block_name} => write!(f, "Storage modification after external contract interaction in function or method \"{block_name}\". \
-            Consider making all storage writes before calling another contract"),
-            StorageReadAfterInteraction {block_name} => write!(f, "Storage read after external contract interaction in function or method \"{block_name}\". \
-            Consider making all storage reads before calling another contract"),
+            EffectAfterInteraction {effect, effect_in_suggestion, block_name} =>
+                write!(f, "{effect} after external contract interaction in function or method \"{block_name}\". \
+                          Consider {effect_in_suggestion} before calling another contract"),
         }
     }
 }

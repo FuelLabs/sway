@@ -126,7 +126,9 @@ pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
     SemanticTokenType::PARAMETER,
     SemanticTokenType::new("generic"),
     SemanticTokenType::new("boolean"),
+    SemanticTokenType::new("keyword"),
     SemanticTokenType::new("builtinType"),
+    SemanticTokenType::new("deriveHelper"),
 ];
 
 pub(crate) const SUPPORTED_MODIFIERS: &[SemanticTokenModifier] = &[
@@ -156,12 +158,14 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
         SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
         SymbolKind::Trait => SemanticTokenType::INTERFACE,
         SymbolKind::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
-        SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
-        SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
-        SymbolKind::StringLiteral => SemanticTokenType::STRING,
-        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
         SymbolKind::Module => SemanticTokenType::NAMESPACE,
+        SymbolKind::StringLiteral => SemanticTokenType::STRING,
+        SymbolKind::ByteLiteral | SymbolKind::NumericLiteral => SemanticTokenType::NUMBER,
+        SymbolKind::BoolLiteral => SemanticTokenType::new("boolean"),
+        SymbolKind::Keyword => SemanticTokenType::new("keyword"),
         SymbolKind::Unknown => SemanticTokenType::new("generic"),
+        SymbolKind::BuiltinType => SemanticTokenType::new("builtinType"),
+        SymbolKind::DeriveHelper => SemanticTokenType::new("deriveHelper"),
     }
 }
 

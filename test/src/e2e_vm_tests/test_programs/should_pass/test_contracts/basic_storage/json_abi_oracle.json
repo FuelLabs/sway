@@ -1,6 +1,15 @@
 {
+  "configurables": [],
   "functions": [
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "storage_key",
@@ -11,26 +20,59 @@
       "name": "get_u64",
       "output": {
         "name": "",
-        "type": 3,
-        "typeArguments": null
+        "type": 2,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 8,
+            "typeArguments": null
+          }
+        ]
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
           "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "slots",
+          "type": 8,
           "typeArguments": null
         }
       ],
       "name": "intrinsic_load_quad",
       "output": {
         "name": "",
-        "type": 2,
-        "typeArguments": null
+        "type": 7,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 5,
+            "typeArguments": null
+          }
+        ]
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -41,11 +83,19 @@
       "name": "intrinsic_load_word",
       "output": {
         "name": "",
-        "type": 3,
+        "type": 8,
         "typeArguments": null
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -53,9 +103,15 @@
           "typeArguments": null
         },
         {
-          "name": "value",
-          "type": 2,
-          "typeArguments": null
+          "name": "values",
+          "type": 7,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 5,
+              "typeArguments": null
+            }
+          ]
         }
       ],
       "name": "intrinsic_store_quad",
@@ -66,6 +122,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -74,7 +138,7 @@
         },
         {
           "name": "value",
-          "type": 3,
+          "type": 8,
           "typeArguments": null
         }
       ],
@@ -86,6 +150,14 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [
         {
           "name": "key",
@@ -94,7 +166,7 @@
         },
         {
           "name": "value",
-          "type": 3,
+          "type": 8,
           "typeArguments": null
         }
       ],
@@ -106,6 +178,15 @@
       }
     },
     {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
       "inputs": [],
       "name": "test_storage_exhaustive",
       "output": {
@@ -133,34 +214,109 @@
     {
       "components": [
         {
-          "name": "v1",
-          "type": 3,
+          "name": "None",
+          "type": 0,
           "typeArguments": null
         },
         {
-          "name": "v2",
-          "type": 3,
-          "typeArguments": null
-        },
-        {
-          "name": "v3",
-          "type": 3,
-          "typeArguments": null
-        },
-        {
-          "name": "v4",
+          "name": "Some",
           "type": 3,
           "typeArguments": null
         }
       ],
-      "type": "struct Quad",
+      "type": "enum Option",
       "typeId": 2,
+      "typeParameters": [
+        3
+      ]
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 3,
       "typeParameters": null
     },
     {
       "components": null,
+      "type": "raw untyped ptr",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "v1",
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "v2",
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "v3",
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "v4",
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Quad",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "ptr",
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "cap",
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct RawVec",
+      "typeId": 6,
+      "typeParameters": [
+        3
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "buf",
+          "type": 6,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 3,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "len",
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Vec",
+      "typeId": 7,
+      "typeParameters": [
+        3
+      ]
+    },
+    {
+      "components": null,
       "type": "u64",
-      "typeId": 3,
+      "typeId": 8,
       "typeParameters": null
     }
   ]

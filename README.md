@@ -11,6 +11,8 @@ Sway is a language developed for the Fuel blockchain. It is heavily inspired by 
 
 For user documentation, including installing release builds, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
 
+Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>
+
 ## Building from Source
 
 This section is for developing the Sway compiler and toolchain. For developing contracts and using Sway, see the above documentation section.
@@ -49,4 +51,4 @@ cargo run --bin forc -- --help
 
 We welcome contributions to Sway!
 
-Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
+Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.

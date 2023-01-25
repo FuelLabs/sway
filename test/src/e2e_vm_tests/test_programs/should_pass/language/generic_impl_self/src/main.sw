@@ -1,5 +1,7 @@
 script;
 
+use std::{result::*, revert::*, u128::*, assert::assert};
+
 struct Data<T> {
   value: T
 }
@@ -75,42 +77,54 @@ fn crazy<T, F>(x: T, y: F) -> F {
   foo.get_second()
 }
 
-enum Result<T> {
+enum MyResult<T> {
   Ok: T,
   Err: u8 // err code
 }
 
-impl<T> Result<T> {
+impl<T> MyResult<T> {
   fn ok(value: T) -> Self {
-    Result::Ok::<T>(value)
+    MyResult::Ok::<T>(value)
   }
 
   fn err(code: u8) -> Self {
-    Result::Err::<T>(code)
+    MyResult::Err::<T>(code)
   }
 }
 
-enum Option<T> {
+enum MyOption<T> {
   Some: T,
   None: ()
 }
 
-impl<T> Option<T> {
+impl<T> MyOption<T> {
   fn some(value: T) -> Self {
-    Option::Some::<T>(value)
+    MyOption::Some::<T>(value)
   }
 
   fn none() -> Self {
-    Option::None::<T>(())
+    MyOption::None::<T>
   }
 
-  fn to_result(self) -> Result<T> {
-    if let Option::Some(value) = self {
-      Result::<T>::ok(value)
+  fn to_result(self) -> MyResult<T> {
+    if let MyOption::Some(value) = self {
+      MyResult::<T>::ok(value)
     } else {
-      Result::<T>::err(99u8)
+      MyResult::<T>::err(99u8)
     }
   }
+}
+
+impl<T, E> Result<T, E>{
+    fn dummy(t: T) -> Result<T, bool> {
+        Result::Ok(t)
+    }
+}
+
+fn result_impl_test() {
+    let res = U128::from((0, 13)).as_u64();
+    assert(!Result::dummy(false).unwrap());
+    assert(res.unwrap_or(5) == 13);
 }
 
 fn main() -> u32 {
@@ -141,12 +155,14 @@ fn main() -> u32 {
   };
   let n = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
   let o: DoubleIdentity<bool, bool> = double_identity(true, true);
-  let p = Option::Some::<bool>(false);
-  let q = Option::Some::<()>(());
-  let r = Option::<u32>::some(5u32);
-  let s = Option::Some(0u8);
-  let t = Option::<u64>::none();
+  let p = MyOption::Some::<bool>(false);
+  let q = MyOption::Some::<()>(());
+  let r = MyOption::<u32>::some(5u32);
+  let s = MyOption::Some(0u8);
+  let t = MyOption::<u64>::none();
   let u = DoubleIdentity::<Data<u8>, Data<u8>>::new(Data::<u8>::new(3u8), Data::<u8>::new(4u8));
+
+    result_impl_test();
 
   b.get_first()
 }

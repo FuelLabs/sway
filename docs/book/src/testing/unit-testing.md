@@ -53,7 +53,42 @@ Tests with `#[test(should_revert)]` considered to be passing if they are reverti
 
 ## Calling Contracts
 
-***Coming Soon***
+Unit tests can call contract functions an example for such calls can be seen below.
 
-*Track progress on constract calls in tests
-[here](https://github.com/FuelLabs/sway/issues/3262)*
+```sway
+contract;
+
+abi MyContract {
+    fn test_function() -> bool;
+}
+
+impl MyContract for Contract {
+    fn test_function() -> bool {
+        true
+    }
+}
+```
+
+To test the `test_function()`, a unit test like the following can be written.
+
+```sway
+#[test]
+fn test_success() {
+    let caller = abi(MyContract, CONTRACT_ID);
+    let result = caller.test_function {}();
+    assert(result == true)
+}
+```
+
+It is also possible to test failure with contract calls as well.
+
+```sway
+#[test(should_revert)]
+fn test_fail() {
+    let caller = abi(MyContract, CONTRACT_ID);
+    let result = caller.test_function {}();
+    assert(result == false)
+}
+```
+
+> **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.

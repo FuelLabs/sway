@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::{de_get_function, de_insert_function, DeclarationId},
+    decl_engine::DeclId,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -8,14 +8,14 @@ use crate::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use std::collections::{HashMap, VecDeque};
 use sway_error::error::CompileError;
-use sway_types::Spanned;
 use sway_types::{constants, integer_bits::IntegerBits};
-use sway_types::{state::StateIndex, Span};
+use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
+use sway_types::{state::StateIndex, Ident, Span};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn type_check_method_application(
     mut ctx: TypeCheckContext,
-    method_name_binding: TypeBinding<MethodName>,
+    mut method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
     arguments: Vec<Expression>,
     span: Span,
@@ -24,6 +24,8 @@ pub(crate) fn type_check_method_application(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     // type check the function arguments
     let mut args_buf = VecDeque::new();
@@ -31,10 +33,10 @@ pub(crate) fn type_check_method_application(
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
         args_buf.push_back(check!(
             ty::TyExpression::type_check(ctx, arg.clone()),
-            ty::TyExpression::error(span.clone(), type_engine),
+            ty::TyExpression::error(span.clone(), engines),
             warnings,
             errors
         ));
@@ -42,16 +44,13 @@ pub(crate) fn type_check_method_application(
 
     // resolve the method name to a typed function declaration and type_check
     let decl_id = check!(
-        resolve_method_name(ctx.by_ref(), &method_name_binding, args_buf.clone()),
+        resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
     let method = check!(
-        CompileResult::from(de_get_function(
-            decl_id.clone(),
-            &method_name_binding.span()
-        )),
+        CompileResult::from(decl_engine.get_function(decl_id.clone(), &method_name_binding.span())),
         return err(warnings, errors),
         warnings,
         errors
@@ -108,7 +107,8 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
-                    let type_annotation = ctx.type_engine.insert_type(
+                    let type_annotation = type_engine.insert(
+                        decl_engine,
                         if param.name.span().as_str()
                             != constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME
                         {
@@ -125,7 +125,7 @@ pub(crate) fn type_check_method_application(
                         param.name.to_string(),
                         check!(
                             ty::TyExpression::type_check(ctx, param.value),
-                            ty::TyExpression::error(span.clone(), type_engine),
+                            ty::TyExpression::error(span.clone(), engines),
                             warnings,
                             errors
                         ),
@@ -139,6 +139,27 @@ pub(crate) fn type_check_method_application(
                 }
             };
         }
+
+        // check if method is non-payable but we do not know _statically_
+        // the amount of coins sent in the contract call is zero
+        // if the coins contract call parameter is not specified
+        // it's considered to be zero and hence no error needs to be reported
+        if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
+            if coins_analysis::possibly_nonzero_u64_expression(
+                ctx.namespace,
+                decl_engine,
+                coins_expr,
+            ) && !method
+                .attributes
+                .contains_key(&crate::transform::AttributeKind::Payable)
+            {
+                errors.push(CompileError::CoinsPassedToNonPayableMethod {
+                    fn_name: method.name,
+                    span,
+                });
+                return err(warnings, errors);
+            }
+        }
     }
 
     // If this method was called with self being a `StorageAccess` (e.g. storage.map.insert(..)),
@@ -146,7 +167,8 @@ pub(crate) fn type_check_method_application(
     let mut self_state_idx = None;
     if ctx.namespace.has_storage_declared() {
         let storage_fields = check!(
-            ctx.namespace.get_storage_field_descriptors(&span),
+            ctx.namespace
+                .get_storage_field_descriptors(decl_engine, &span),
             return err(warnings, errors),
             warnings,
             errors
@@ -164,6 +186,7 @@ pub(crate) fn type_check_method_application(
                     None => {
                         errors.push(CompileError::StorageFieldDoesNotExist {
                             name: first_field.clone(),
+                            span: first_field.span(),
                         });
                         return err(warnings, errors);
                     }
@@ -238,7 +261,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // retrieve the function call path
-    let call_path = match method_name_binding.inner {
+    let call_path = match method_name_binding.inner.clone() {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -266,17 +289,16 @@ pub(crate) fn type_check_method_application(
     // build the function selector
     let selector = if method.is_contract_call {
         let contract_caller = args_buf.pop_front();
-        let contract_address =
-            match contract_caller.map(|x| type_engine.look_up_type_id(x.return_type)) {
-                Some(TypeInfo::ContractCaller { address, .. }) => address,
-                _ => {
-                    errors.push(CompileError::Internal(
-                        "Attempted to find contract address of non-contract-call.",
-                        span.clone(),
-                    ));
-                    None
-                }
-            };
+        let contract_address = match contract_caller.map(|x| type_engine.get(x.return_type)) {
+            Some(TypeInfo::ContractCaller { address, .. }) => address,
+            _ => {
+                errors.push(CompileError::Internal(
+                    "Attempted to find contract address of non-contract-call.",
+                    span.clone(),
+                ));
+                None
+            }
+        };
         let contract_address = if let Some(addr) = contract_address {
             addr
         } else {
@@ -313,40 +335,27 @@ pub(crate) fn type_check_method_application(
     );
 
     // unify the types of the arguments with the types of the parameters from the function declaration
-    for (arg, param) in args_buf.iter().zip(method.parameters.iter()) {
-        let (mut new_warnings, new_errors) = type_engine.unify_right_with_self(
-            arg.return_type,
-            param.type_id,
-            ctx.self_type(),
-            &arg.span,
-            "This argument's type is not castable to the declared parameter type.",
-        );
-        warnings.append(&mut new_warnings);
-        if !new_errors.is_empty() {
-            errors.push(CompileError::ArgumentParameterTypeMismatch {
-                span: arg.span.clone(),
-                provided: type_engine.help_out(arg.return_type).to_string(),
-                should_be: type_engine.help_out(param.type_id).to_string(),
-            });
-        }
-    }
+    let typed_arguments_with_names = check!(
+        unify_arguments_and_parameters(ctx.by_ref(), args_buf, &method.parameters),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
-    // Map the names of the parameters to the typed arguments.
-    let args_and_names = method
-        .parameters
-        .iter()
-        .zip(args_buf.into_iter())
-        .map(|(param, arg)| (param.name.clone(), arg))
-        .collect::<Vec<(_, _)>>();
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, method.return_type);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
-            arguments: args_and_names,
+            arguments: typed_arguments_with_names,
             function_decl_id: decl_id,
             self_state_idx,
             selector,
+            type_binding: Some(method_name_binding.strip_inner()),
         },
         return_type: method.return_type,
         span,
@@ -355,13 +364,63 @@ pub(crate) fn type_check_method_application(
     ok(exp, warnings, errors)
 }
 
-pub(crate) fn resolve_method_name(
-    mut ctx: TypeCheckContext,
-    method_name: &TypeBinding<MethodName>,
+/// Unifies the types of the arguments with the types of the parameters. Returns
+/// a list of the arguments with the names of the corresponding parameters.
+fn unify_arguments_and_parameters(
+    ctx: TypeCheckContext,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclarationId> {
+    parameters: &[ty::TyFunctionParameter],
+) -> CompileResult<Vec<(Ident, ty::TyExpression)>> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
+    let mut typed_arguments_and_names = vec![];
+
+    for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
+        // unify the type of the argument with the type of the param
+        check!(
+            CompileResult::from(type_engine.unify_with_self(
+                decl_engine,
+                arg.return_type,
+                param.type_id,
+                ctx.self_type(),
+                &arg.span,
+                "This argument's type is not castable to the declared parameter type.",
+                Some(CompileError::ArgumentParameterTypeMismatch {
+                    span: arg.span.clone(),
+                    provided: engines.help_out(arg.return_type).to_string(),
+                    should_be: engines.help_out(param.type_id).to_string(),
+                })
+            )),
+            continue,
+            warnings,
+            errors
+        );
+
+        typed_arguments_and_names.push((param.name.clone(), arg));
+    }
+
+    if errors.is_empty() {
+        ok(typed_arguments_and_names, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
+pub(crate) fn resolve_method_name(
+    mut ctx: TypeCheckContext,
+    method_name: &mut TypeBinding<MethodName>,
+    arguments: VecDeque<ty::TyExpression>,
+) -> CompileResult<DeclId> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
     let decl_id = match &method_name.inner {
@@ -372,7 +431,7 @@ pub(crate) fn resolve_method_name(
             // type check the call path
             let type_id = check!(
                 call_path_binding.type_check_with_type_info(&mut ctx),
-                ctx.type_engine.insert_type(TypeInfo::ErrorRecovery),
+                type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
                 warnings,
                 errors
             );
@@ -396,7 +455,7 @@ pub(crate) fn resolve_method_name(
                     method_name,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -411,7 +470,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -421,7 +480,7 @@ pub(crate) fn resolve_method_name(
                     &call_path.suffix,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -436,7 +495,7 @@ pub(crate) fn resolve_method_name(
             let type_id = arguments
                 .get(0)
                 .map(|x| x.return_type)
-                .unwrap_or_else(|| ctx.type_engine.insert_type(TypeInfo::Unknown));
+                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -446,7 +505,7 @@ pub(crate) fn resolve_method_name(
                     method_name,
                     ctx.self_type(),
                     &arguments,
-                    ctx.type_engine,
+                    engines,
                 ),
                 return err(warnings, errors),
                 warnings,
@@ -456,26 +515,30 @@ pub(crate) fn resolve_method_name(
     };
 
     let mut func_decl = check!(
-        CompileResult::from(de_get_function(decl_id.clone(), &decl_id.span())),
+        CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
         return err(warnings, errors),
         warnings,
         errors
     );
 
     // monomorphize the function declaration
+    let method_name_span = method_name.span();
     check!(
         ctx.monomorphize(
             &mut func_decl,
-            &mut method_name.type_arguments.clone(),
+            &mut method_name.type_arguments,
             EnforceTypeArguments::No,
-            &method_name.span()
+            &method_name_span,
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let decl_id = de_insert_function(func_decl).with_parent(decl_id);
+    let decl_id = ctx
+        .decl_engine
+        .insert(func_decl)
+        .with_parent(ctx.decl_engine, decl_id);
 
     ok(decl_id, warnings, errors)
 }

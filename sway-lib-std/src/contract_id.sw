@@ -1,11 +1,10 @@
-library contract_id;
 //! A wrapper around the `b256` type to help enhance type-safety.
-use ::assert::assert;
-use ::bytes::Bytes;
-use ::convert::From;
-use ::option::Option;
+library contract_id;
 
-/// The `ContractId` type, a struct wrappper around the inner `b256` value.
+use ::intrinsics::size_of_val;
+use ::convert::From;
+
+/// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     value: b256,
 }

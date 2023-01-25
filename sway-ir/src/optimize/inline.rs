@@ -12,13 +12,35 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::Instruction,
+    instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
+    local_var::LocalVar,
     metadata::{combine, MetadataIndex},
-    pointer::Pointer,
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument,
+    BlockArgument, NamedPass,
 };
+
+pub struct InlinePass;
+
+impl NamedPass for InlinePass {
+    fn name() -> &'static str {
+        "inline"
+    }
+
+    fn descr() -> &'static str {
+        "inline function calls."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        // For now we inline everything into `main()`.  Eventually we can be more selective.
+        let main_fn = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .find(|f| f.get_name(ir) == "main")
+            .unwrap();
+        inline_all_function_calls(ir, &main_fn)
+    }
+}
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
 ///
@@ -89,29 +111,22 @@ pub fn is_small_fn(
 ) -> impl Fn(&Context, &Function, &Value) -> bool {
     fn count_type_elements(context: &Context, ty: &Type) -> usize {
         // This is meant to just be a heuristic rather than be super accurate.
-        match ty {
-            Type::Unit
-            | Type::Bool
-            | Type::Uint(_)
-            | Type::B256
-            | Type::String(_)
-            | Type::Pointer(_)
-            | Type::Slice => 1,
-            Type::Array(aggregate) => {
-                let (ty, sz) = context.aggregates[aggregate.0].array_type();
-                count_type_elements(context, ty) * *sz as usize
-            }
-            Type::Union(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+        if ty.is_array(context) {
+            count_type_elements(context, &ty.get_array_elem_type(context).unwrap())
+                * ty.get_array_len(context).unwrap() as usize
+        } else if ty.is_union(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
                 .max()
-                .unwrap_or(1),
-            Type::Struct(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+                .unwrap_or(1)
+        } else if ty.is_struct(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
-                .sum(),
+                .sum()
+        } else {
+            1
         }
     }
 
@@ -126,7 +141,7 @@ pub fn is_small_fn(
                 .map(|max_stack_size_count| {
                     function
                         .locals_iter(context)
-                        .map(|(_name, ptr)| count_type_elements(context, ptr.get_type(context)))
+                        .map(|(_name, ptr)| count_type_elements(context, &ptr.get_type(context)))
                         .sum::<usize>()
                         <= max_stack_size_count
                 })
@@ -173,7 +188,7 @@ pub fn inline_function_call(
 
     // Returned values, if any, go to `post_block`, so a block arg there.
     // We don't expect `post_block` to already have any block args.
-    if post_block.new_arg(context, call_site.get_type(context).unwrap()) != 0 {
+    if post_block.new_arg(context, call_site.get_type(context).unwrap(), false) != 0 {
         panic!("Expected newly created post_block to not have block args")
     }
     function.replace_value(
@@ -185,7 +200,7 @@ pub fn inline_function_call(
 
     // Take the locals from the inlined function and add them to this function.  `value_map` is a
     // map from the original local ptrs to the new ptrs.
-    let ptr_map = function.merge_locals_from(context, inlined_function)?;
+    let ptr_map = function.merge_locals_from(context, inlined_function);
     let mut value_map = HashMap::new();
 
     // Add the mapping from argument values in the inlined function to the args passed to the call.
@@ -239,9 +254,10 @@ pub fn inline_function_call(
                 block: _,
                 idx: _,
                 ty,
+                by_ref,
             }) = &context.values[inlined_arg.0].value
             {
-                let index = new_block.new_arg(context, *ty);
+                let index = new_block.new_arg(context, *ty, *by_ref);
                 value_map.insert(inlined_arg, new_block.get_arg(context, index).unwrap());
             } else {
                 unreachable!("Expected a block argument")
@@ -281,7 +297,7 @@ fn inline_instruction(
     instruction: &Value,
     block_map: &HashMap<Block, Block>,
     value_map: &mut HashMap<Value, Value>,
-    ptr_map: &HashMap<Pointer, Pointer>,
+    local_map: &HashMap<LocalVar, LocalVar>,
     fn_metadata: Option<MetadataIndex>,
 ) {
     // Util to translate old blocks to new.  If an old block isn't in the map then we panic, since
@@ -291,7 +307,7 @@ fn inline_instruction(
     // Util to translate old values to new.  If an old value isn't in the map then it (should be)
     // a const, which we can just keep using.
     let map_value = |old_val: Value| value_map.get(&old_val).copied().unwrap_or(old_val);
-    let map_ptr = |old_ptr| ptr_map.get(&old_ptr).copied().unwrap();
+    let map_local = |old_local| local_map.get(&old_local).copied().unwrap();
 
     // The instruction needs to be cloned into the new block, with each value and/or block
     // translated using the above maps.  Most of these are relatively cheap as Instructions
@@ -342,6 +358,9 @@ fn inline_instruction(
                     .collect::<Vec<Value>>()
                     .as_slice(),
             ),
+            Instruction::CastPtr(val, ty, offs) => {
+                new_block.ins(context).cast_ptr(map_value(val), ty, offs)
+            }
             Instruction::Cmp(pred, lhs_value, rhs_value) => {
                 new_block
                     .ins(context)
@@ -387,19 +406,58 @@ fn inline_instruction(
             } => new_block
                 .ins(context)
                 .extract_value(map_value(aggregate), ty, indices),
-            Instruction::GetStorageKey => new_block.ins(context).get_storage_key(),
-            Instruction::GetPointer {
-                base_ptr,
-                ptr_ty,
-                offset,
-            } => {
-                let ty = *ptr_ty.get_type(context);
-                new_block
+            Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                FuelVmInstruction::GetStorageKey => new_block.ins(context).get_storage_key(),
+                FuelVmInstruction::Gtf { index, tx_field_id } => {
+                    new_block.ins(context).gtf(map_value(index), tx_field_id)
+                }
+                FuelVmInstruction::Log {
+                    log_val,
+                    log_ty,
+                    log_id,
+                } => new_block
                     .ins(context)
-                    .get_ptr(map_ptr(base_ptr), ty, offset)
-            }
-            Instruction::Gtf { index, tx_field_id } => {
-                new_block.ins(context).gtf(map_value(index), tx_field_id)
+                    .log(map_value(log_val), log_ty, map_value(log_id)),
+                FuelVmInstruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
+                FuelVmInstruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
+                FuelVmInstruction::Smo {
+                    recipient_and_message,
+                    message_size,
+                    output_index,
+                    coins,
+                } => new_block.ins(context).smo(
+                    map_value(recipient_and_message),
+                    map_value(message_size),
+                    map_value(output_index),
+                    map_value(coins),
+                ),
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_load_quad_word(
+                    map_value(load_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
+                FuelVmInstruction::StateLoadWord(key) => {
+                    new_block.ins(context).state_load_word(map_value(key))
+                }
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => new_block.ins(context).state_store_quad_word(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(number_of_slots),
+                ),
+                FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
+                    .ins(context)
+                    .state_store_word(map_value(stored_val), map_value(key)),
+            },
+            Instruction::GetLocal(local_var) => {
+                new_block.ins(context).get_local(map_local(local_var))
             }
             Instruction::InsertElement {
                 array,
@@ -427,13 +485,6 @@ fn inline_instruction(
                 new_block.ins(context).int_to_ptr(map_value(value), ty)
             }
             Instruction::Load(src_val) => new_block.ins(context).load(map_value(src_val)),
-            Instruction::Log {
-                log_val,
-                log_ty,
-                log_id,
-            } => new_block
-                .ins(context)
-                .log(map_value(log_val), log_ty, map_value(log_id)),
             Instruction::MemCopy {
                 dst_val,
                 src_val,
@@ -442,35 +493,10 @@ fn inline_instruction(
                 .ins(context)
                 .mem_copy(map_value(dst_val), map_value(src_val), byte_len),
             Instruction::Nop => new_block.ins(context).nop(),
-            Instruction::ReadRegister(reg) => new_block.ins(context).read_register(reg),
             // We convert `ret` to `br post_block` and add the returned value as a phi value.
             Instruction::Ret(val, _) => new_block
                 .ins(context)
                 .branch(*post_block, vec![map_value(val)]),
-            Instruction::Revert(val) => new_block.ins(context).revert(map_value(val)),
-            Instruction::Smo {
-                recipient_and_message,
-                message_size,
-                output_index,
-                coins,
-            } => new_block.ins(context).smo(
-                map_value(recipient_and_message),
-                map_value(message_size),
-                map_value(output_index),
-                map_value(coins),
-            ),
-            Instruction::StateLoadQuadWord { load_val, key } => new_block
-                .ins(context)
-                .state_load_quad_word(map_value(load_val), map_value(key)),
-            Instruction::StateLoadWord(key) => {
-                new_block.ins(context).state_load_word(map_value(key))
-            }
-            Instruction::StateStoreQuadWord { stored_val, key } => new_block
-                .ins(context)
-                .state_store_quad_word(map_value(stored_val), map_value(key)),
-            Instruction::StateStoreWord { stored_val, key } => new_block
-                .ins(context)
-                .state_store_word(map_value(stored_val), map_value(key)),
             Instruction::Store {
                 dst_val,
                 stored_val,

@@ -1,6 +1,7 @@
 use crate::{
+    engine_threading::*,
     language::{parsed::*, *},
-    transform,
+    transform::{self, AttributeKind},
     type_system::*,
 };
 use sway_types::{ident::Ident, span::Span};
@@ -29,14 +30,23 @@ pub struct FunctionParameter {
     pub type_span: Span,
 }
 
-impl EqWithTypeEngine for FunctionParameter {}
-impl PartialEqWithTypeEngine for FunctionParameter {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name
-            && self.is_reference == rhs.is_reference
-            && self.is_mutable == rhs.is_mutable
-            && self.mutability_span == rhs.mutability_span
-            && self.type_info.eq(&rhs.type_info, type_engine)
-            && self.type_span == rhs.type_span
+impl EqWithEngines for FunctionParameter {}
+impl PartialEqWithEngines for FunctionParameter {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name
+            && self.is_reference == other.is_reference
+            && self.is_mutable == other.is_mutable
+            && self.mutability_span == other.mutability_span
+            && self.type_info.eq(&other.type_info, engines)
+            && self.type_span == other.type_span
+    }
+}
+
+impl FunctionDeclaration {
+    /// Checks if this `FunctionDeclaration` is a test.
+    pub(crate) fn is_test(&self) -> bool {
+        self.attributes
+            .keys()
+            .any(|k| matches!(k, AttributeKind::Test))
     }
 }

@@ -21,7 +21,7 @@ impl<T> RawVec<T> {
 
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
-    /// `capacity` is `0`.
+    /// `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc::<T>(capacity),
@@ -40,8 +40,8 @@ impl<T> RawVec<T> {
     }
 
     /// Grow the capacity of the vector by doubling its current capacity. The
-    /// `realloc` function / allocates memory on the heap and copies the data
-    /// from the old allocation to the new allocation
+    /// `realloc` function allocates memory on the heap and copies the data
+    /// from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
 
@@ -80,7 +80,7 @@ impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
     ///
     /// The vector will be able to hold exactly `capacity` elements without
-    /// reallocating. If `capacity` is 0, the vector will not allocate.
+    /// reallocating. If `capacity` is zero, the vector will not allocate.
     ///
     /// It is important to note that although the returned vector has the
     /// *capacity* specified, the vector will have a zero *length*.
@@ -126,7 +126,7 @@ impl<T> Vec<T> {
         let end = self.buf.ptr().add::<T>(self.len);
 
         // Write `value` at pointer `end`
-        end.write(value);
+        end.write::<T>(value);
 
         // Increment length.
         self.len += 1;
@@ -166,7 +166,7 @@ impl<T> Vec<T> {
         self.len = 0;
     }
 
-    /// Returns a vector element at `index`, or None if `index` is out of
+    /// Returns a vector element at `index`, or `None` if `index` is out of
     /// bounds.
     ///
     /// ### Examples
@@ -186,18 +186,18 @@ impl<T> Vec<T> {
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if self.len <= index {
-            return Option::None::<T>();
+            return Option::None::<T>;
         };
 
         // Get a pointer to the desired element using `index`
         let ptr = self.buf.ptr().add::<T>(index);
 
         // Read from `ptr`
-        Option::Some(ptr.read())
+        Option::Some(ptr.read::<T>())
     }
 
     /// Returns the number of elements in the vector, also referred to
-    /// as its 'length'.
+    /// as its `length`.
     ///
     /// ### Examples
     ///
@@ -261,7 +261,7 @@ impl<T> Vec<T> {
 
         // Read the value at `index`
         let ptr = buf_start.add::<T>(index);
-        let ret = ptr.read();
+        let ret = ptr.read::<T>();
 
         // Shift everything down to fill in that spot.
         let mut i = index;
@@ -317,13 +317,13 @@ impl<T> Vec<T> {
         }
 
         // Write `element` at pointer `index`
-        index_ptr.write(element);
+        index_ptr.write::<T>(element);
 
         // Increment length.
         self.len += 1;
     }
 
-    /// Removes the last element from a vector and returns it, or [`None`] if it
+    /// Removes the last element from a vector and returns it, or `None` if it
     /// is empty.
     ///
     /// ### Examples
@@ -346,15 +346,15 @@ impl<T> Vec<T> {
             return Option::None;
         }
         self.len -= 1;
-        Option::Some(self.buf.ptr().add::<T>(self.len).read())
+        Option::Some(self.buf.ptr().add::<T>(self.len).read::<T>())
     }
 
     /// Swaps two elements.
     ///
     /// ### Arguments
     ///
-    /// * element1_index - The index of the first element
-    /// * element2_index - The index of the second element
+    /// * element1_index - The index of the first element.
+    /// * element2_index - The index of the second element.
     ///
     /// ### Reverts
     ///
@@ -385,17 +385,17 @@ impl<T> Vec<T> {
         let element1_ptr = self.buf.ptr().add::<T>(element1_index);
         let element2_ptr = self.buf.ptr().add::<T>(element2_index);
 
-        let element1_val = element1_ptr.read();
+        let element1_val: T = element1_ptr.read::<T>();
         element2_ptr.copy_to::<T>(element1_ptr, 1);
-        element2_ptr.write(element1_val);
+        element2_ptr.write::<T>(element1_val);
     }
 
-    /// Updates an element at position `index` with a new element `value`
+    /// Updates an element at position `index` with a new element `value`.
     ///
     /// ### Arguments
     ///
-    /// * index - The index of the element to be set
-    /// * value - The value of the element to be set
+    /// * index - The index of the element to be set.
+    /// * value - The value of the element to be set.
     ///
     /// ### Reverts
     ///
@@ -420,7 +420,7 @@ impl<T> Vec<T> {
 
         let index_ptr = self.buf.ptr().add::<T>(index);
 
-        index_ptr.write(value);
+        index_ptr.write::<T>(value);
     }
 }
 

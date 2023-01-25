@@ -32,6 +32,39 @@ to install the latest Fuel toolchain.
 
 You can run the same command at a later time to update the toolchain.
 
+### Installing from Cargo
+
+The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:
+
+```sh
+cargo install forc fuel-core
+```
+
+#### Updating `forc` from Cargo
+
+You can update the toolchain from source with Cargo with:
+
+```sh
+cargo update forc fuel-core
+```
+
+#### Installing `forc` Plugins from Cargo
+
+The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
+
+> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
+
+```sh
+# Sway Formatter
+cargo install forc-fmt
+
+# Block Explorer
+cargo install forc-explore
+
+# Sway Language Server
+cargo install forc-lsp
+```
+
 ## Installing from Source
 
 ### Dependencies
@@ -52,39 +85,6 @@ The Sway toolchain is built and tested against the `stable` Rust toolchain versi
 rustup update
 # Set the stable Rust toolchain as default; can be used independently.
 rustup default stable
-```
-
-### Installing from Cargo
-
-The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:
-
-```sh
-cargo install forc fuel-core
-```
-
-#### Updating `forc` from Cargo
-
-You can update the toolchain from source with Cargo with:
-
-```sh
-cargo install forc fuel-core
-```
-
-#### Installing `forc` Plugins from Cargo
-
-The Fuel ecosystem has a few plugins which can be easily installed via Cargo.
-
-> **Note**: `forc` detects anything in your `$PATH` prefixed with `forc-` as a plugin. Use `forc plugins` to see what you currently have installed.
-
-```sh
-# Sway Formatter
-cargo install forc-fmt
-
-# Block Explorer
-cargo install forc-explore
-
-# Sway Language Server
-cargo install forc-lsp
 ```
 
 ### Building from Source

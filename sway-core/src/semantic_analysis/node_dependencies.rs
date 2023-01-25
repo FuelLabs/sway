@@ -445,8 +445,8 @@ impl Dependencies {
                     deps.gather_from_match_branch(type_engine, branch)
                 }),
             ExpressionKind::CodeBlock(contents) => self.gather_from_block(type_engine, contents),
-            ExpressionKind::Array(contents) => self
-                .gather_from_iter(contents.iter(), |deps, expr| {
+            ExpressionKind::Array(array_expression) => self
+                .gather_from_iter(array_expression.contents.iter(), |deps, expr| {
                     deps.gather_from_expr(type_engine, expr)
                 }),
             ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index, .. }) => self
@@ -493,9 +493,10 @@ impl Dependencies {
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
+                let args_vec = args.clone().unwrap_or_default();
                 self.gather_from_call_path(&call_path_binding.inner, true, false)
                     .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
-                    .gather_from_iter(args.iter(), |deps, arg| {
+                    .gather_from_iter(args_vec.iter(), |deps, arg| {
                         deps.gather_from_expr(type_engine, arg)
                     })
             }
@@ -620,10 +621,7 @@ impl Dependencies {
         type_arguments: &[TypeArgument],
     ) -> Self {
         self.gather_from_iter(type_arguments.iter(), |deps, type_argument| {
-            deps.gather_from_typeinfo(
-                type_engine,
-                &type_engine.look_up_type_id(type_argument.type_id),
-            )
+            deps.gather_from_typeinfo(type_engine, &type_engine.get(type_argument.type_id))
         })
     }
 
@@ -646,24 +644,19 @@ impl Dependencies {
                 }
             }
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
-                deps.gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(elem.type_id))
+                deps.gather_from_typeinfo(type_engine, &type_engine.get(elem.type_id))
             }),
-            TypeInfo::Array(elem_type, _) => self
-                .gather_from_typeinfo(type_engine, &type_engine.look_up_type_id(elem_type.type_id)),
+            TypeInfo::Array(elem_type, _) => {
+                self.gather_from_typeinfo(type_engine, &type_engine.get(elem_type.type_id))
+            }
             TypeInfo::Struct { fields, .. } => {
                 self.gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(
-                        type_engine,
-                        &type_engine.look_up_type_id(field.type_id),
-                    )
+                    deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
                 })
             }
             TypeInfo::Enum { variant_types, .. } => {
                 self.gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(
-                        type_engine,
-                        &type_engine.look_up_type_id(variant.type_id),
-                    )
+                    deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
                 })
             }
             _ => self,
@@ -806,6 +799,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
+        TypeInfo::Placeholder(_) => "_",
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {}", abi_name);
         }

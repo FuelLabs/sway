@@ -1,7 +1,7 @@
 use sway_error::error::CompileError;
+use sway_types::Spanned;
 
 use crate::{
-    declaration_engine::{de_insert_function, de_insert_trait_fn},
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
@@ -46,10 +46,11 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }
-            new_interface_surface.push(de_insert_trait_fn(method));
+            new_interface_surface.push(ctx.decl_engine.insert(method));
         }
 
         // Type check the methods.
@@ -57,7 +58,7 @@ impl ty::TyAbiDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone(), ctx.type_engine),
+                ty::TyFunctionDeclaration::error(method.clone(), ctx.engines()),
                 warnings,
                 errors
             );
@@ -65,10 +66,11 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }
-            new_methods.push(de_insert_function(method));
+            new_methods.push(ctx.decl_engine.insert(method));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

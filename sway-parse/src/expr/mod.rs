@@ -4,10 +4,10 @@ use core::ops::ControlFlow;
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, CommaToken, ConstToken, DivEqToken, DoubleColonToken,
-    EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken, OpenAngleBracketToken,
-    PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken, StorageToken, StructToken,
-    SubEqToken, Token, TraitToken, TrueToken, UseToken,
+    AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
+    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
+    OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
+    StorageToken, StructToken, SubEqToken, Token, TraitToken, TrueToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -15,7 +15,7 @@ use sway_ast::token::Delimiter;
 use sway_ast::{
     AbiCastArgs, CodeBlockContents, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, GenericArgs, IfCondition, IfExpr, LitInt, Literal, MatchBranch,
-    MatchBranchKind, PathExprSegment, Statement, StatementLet,
+    MatchBranchKind, PathExpr, PathExprSegment, Statement, StatementLet,
 };
 use sway_error::parser_error::ParseErrorKind;
 use sway_types::{Ident, Span, Spanned};
@@ -171,6 +171,10 @@ fn parse_stmt<'a>(parser: &mut Parser<'a, '_>) -> ParseResult<StmtOrTail<'a>> {
         || parser.peek::<ConstToken>().is_some()
         || matches!(
             parser.peek::<(StorageToken, Delimiter)>(),
+            Some((_, Delimiter::Brace))
+        )
+        || matches!(
+            parser.peek::<(ConfigurableToken, Delimiter)>(),
             Some((_, Delimiter::Brace))
         )
     {
@@ -703,7 +707,13 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         || parser.peek::<DoubleColonToken>().is_some()
         || parser.peek::<Ident>().is_some()
     {
-        let path = parser.parse()?;
+        let path: PathExpr = parser.parse()?;
+        if path.incomplete_suffix {
+            // We tried parsing it as a path but we didn't succeed so we try to recover this
+            // as an unknown sort of expression. This happens, for instance, when the user
+            // types `foo::`
+            return Ok(Expr::Error([path.span()].into()));
+        }
         if !ctx.parsing_conditional {
             if let Some(fields) = Braces::try_parse(parser)? {
                 return Ok(Expr::Struct { path, fields });

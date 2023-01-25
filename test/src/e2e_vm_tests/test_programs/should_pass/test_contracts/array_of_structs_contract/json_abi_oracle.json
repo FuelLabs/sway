@@ -1,6 +1,8 @@
 {
+  "configurables": [],
   "functions": [
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "param",
@@ -16,6 +18,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "param",
@@ -31,6 +34,7 @@
       }
     },
     {
+      "attributes": null,
       "inputs": [
         {
           "name": "param",

@@ -43,6 +43,7 @@ impl ty::TyMatchExpression {
         }
 
         let typed_exp = ty::TyMatchExpression {
+            value_type_id: typed_value.return_type,
             branches: typed_branches,
             return_type_id: ctx.type_annotation(),
             span,
@@ -58,8 +59,7 @@ impl ty::TyMatchExpression {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-
-        let ty::TyMatchExpression { branches, .. } = self;
+        let decl_engine = ctx.decl_engine;
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;
@@ -67,7 +67,7 @@ impl ty::TyMatchExpression {
         // for every branch of the match expression, in reverse
         for ty::TyMatchBranch {
             conditions, result, ..
-        } in branches.into_iter().rev()
+        } in self.branches.into_iter().rev()
         {
             // create the conditional that will act as the conditional for the if statement, in reverse
             let mut conditional: Option<ty::TyExpression> = None;
@@ -88,7 +88,7 @@ impl ty::TyMatchExpression {
                             LazyOp::And,
                             new_condition,
                             inner_condition,
-                            type_engine.insert_type(TypeInfo::Boolean),
+                            type_engine.insert(decl_engine, TypeInfo::Boolean),
                             joined_span,
                         )
                     }
@@ -102,15 +102,15 @@ impl ty::TyMatchExpression {
             typed_if_exp = Some(match (typed_if_exp.clone(), conditional) {
                 (None, None) => result,
                 (None, Some(conditional)) => {
+                    // TODO: figure out if this argument matters or not
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result.clone(),
                             Some(result), // TODO: this is a really bad hack and we should not do this
                             result_span,
-                            self.return_type_id, // TODO: figure out if this argument matters or not
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -118,20 +118,19 @@ impl ty::TyMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), None) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     let conditional = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
-                        return_type: type_engine.insert_type(TypeInfo::Boolean),
+                        return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),
                         span: result_span.clone(),
                     };
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -139,15 +138,14 @@ impl ty::TyMatchExpression {
                     )
                 }
                 (Some(prev_if_exp), Some(conditional)) => {
+                    let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
                     check!(
                         instantiate_if_expression(
-                            ctx.type_engine,
+                            ctx,
                             conditional,
                             result,
                             Some(prev_if_exp),
                             result_span,
-                            self.return_type_id,
-                            ctx.self_type()
                         ),
                         continue,
                         warnings,
@@ -160,6 +158,42 @@ impl ty::TyMatchExpression {
         // return!
         match typed_if_exp {
             None => {
+                // If the type that we are matching on does not have a valid
+                // constructor, then it is expected that this algorithm finds a
+                // "None". This is because the user has not provided any
+                // branches in the match expression because the type cannot be
+                // constructed or matched upon. In this case, we manually create
+                // a typed expression that is equivalent to
+                // "if true { implicit_return }" where the implicit_return type is manually set
+                // to be the return type of this typed match expression object.
+                //
+                // NOTE: This manual construction of the expression can (and
+                // most likely will) lead to an otherwise improperly typed
+                // expression, in most cases.
+                if !type_engine.get(self.value_type_id).has_valid_constructor() {
+                    let condition = ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
+                        return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),
+                        span: self.span.clone(),
+                    };
+                    let then_exp = ty::TyExpression {
+                        expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
+                        return_type: self.return_type_id,
+                        span: self.span.clone(),
+                    };
+                    let inner_exp = ty::TyExpressionVariant::IfExp {
+                        condition: Box::new(condition),
+                        then: Box::new(then_exp.clone()),
+                        r#else: Option::Some(Box::new(then_exp)),
+                    };
+                    let typed_if_exp = ty::TyExpression {
+                        expression: inner_exp,
+                        return_type: self.return_type_id,
+                        span: self.span,
+                    };
+                    return ok(typed_if_exp, warnings, errors);
+                }
+
                 errors.push(CompileError::Internal(
                     "unable to convert match exp to if exp",
                     self.span,

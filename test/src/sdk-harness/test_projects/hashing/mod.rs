@@ -1,11 +1,15 @@
-use fuels::{prelude::*, tx::ContractId};
+use fuels::{
+    prelude::*,
+    tx::ContractId,
+    types::core::{Bits256, SizedAsciiString},
+};
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;
 
-abigen!(
-    HashingTestContract,
-    "test_projects/hashing/out/debug/hashing-abi.json"
-);
+abigen!(Contract(
+    name = "HashingTestContract",
+    abi = "test_projects/hashing/out/debug/hashing-abi.json"
+));
 
 enum Hash {
     Sha256,

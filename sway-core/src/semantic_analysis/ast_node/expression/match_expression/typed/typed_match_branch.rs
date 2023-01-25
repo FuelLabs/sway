@@ -26,6 +26,7 @@ impl ty::TyMatchBranch {
         } = branch;
 
         let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
 
         // type check the scrutinee
         let typed_scrutinee = check!(
@@ -37,12 +38,7 @@ impl ty::TyMatchBranch {
 
         // calculate the requirements map and the declarations map
         let (match_req_map, match_decl_map) = check!(
-            matcher(
-                type_engine,
-                typed_value,
-                typed_scrutinee.clone(),
-                ctx.namespace
-            ),
+            matcher(ctx.by_ref(), typed_value, typed_scrutinee.clone(),),
             return err(warnings, errors),
             warnings,
             errors
@@ -79,7 +75,7 @@ impl ty::TyMatchBranch {
         let typed_result = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert_type(TypeInfo::Unknown));
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
@@ -89,7 +85,7 @@ impl ty::TyMatchBranch {
         };
 
         // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts(true) {
+        if !typed_result.deterministically_aborts(decl_engine, true) {
             append!(
                 ctx.unify_with_self(typed_result.return_type, &typed_result.span),
                 warnings,

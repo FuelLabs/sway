@@ -1,6 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
+    engine_threading::*,
     language::{ty::*, Purity},
     transform,
     type_system::*,
@@ -16,32 +17,32 @@ pub struct TyTraitFn {
     pub attributes: transform::AttributesMap,
 }
 
-impl EqWithTypeEngine for TyTraitFn {}
-impl PartialEqWithTypeEngine for TyTraitFn {
-    fn eq(&self, rhs: &Self, type_engine: &TypeEngine) -> bool {
-        self.name == rhs.name
-            && self.purity == rhs.purity
-            && self.parameters.eq(&rhs.parameters, type_engine)
-            && self.return_type == rhs.return_type
-            && self.attributes == rhs.attributes
+impl EqWithEngines for TyTraitFn {}
+impl PartialEqWithEngines for TyTraitFn {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.name == other.name
+            && self.purity == other.purity
+            && self.parameters.eq(&other.parameters, engines)
+            && self.return_type == other.return_type
+            && self.attributes == other.attributes
     }
 }
 
-impl CopyTypes for TyTraitFn {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, type_engine: &TypeEngine) {
+impl SubstTypes for TyTraitFn {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, type_engine));
-        self.return_type.copy_types(type_mapping, type_engine);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.return_type.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyTraitFn {
-    fn replace_self_type(&mut self, type_engine: &TypeEngine, self_type: TypeId) {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.parameters
             .iter_mut()
-            .for_each(|x| x.replace_self_type(type_engine, self_type));
-        self.return_type.replace_self_type(type_engine, self_type);
+            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.return_type.replace_self_type(engines, self_type);
     }
 }
 

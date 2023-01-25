@@ -11,6 +11,7 @@ use forc_util::{
     default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
     print_on_failure, print_on_success, user_forc_directory,
 };
+use fuel_abi_types::program_abi;
 use petgraph::{
     self,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -26,23 +27,24 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    asm_generation::ProgramABI,
+    decl_engine::{DeclEngine, DeclId},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    TypeEngine,
-};
-use sway_core::{
     language::{
+        lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
         ty,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
-    CompileResult, CompiledBytecode, FinalizedEntry,
+    transform::AttributeKind,
+    BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
-use sway_types::Ident;
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -87,13 +89,53 @@ pub struct PinnedId(u64);
 /// The result of successfully compiling a package.
 #[derive(Debug, Clone)]
 pub struct BuiltPackage {
-    pub json_abi_program: fuels_types::ProgramABI,
+    pub build_target: BuildTarget,
+    pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
-    pub entries: Vec<FinalizedEntry>,
+    pub entries: Vec<PkgEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
+    pub built_pkg_descriptor: BuiltPackageDescriptor,
+}
+
+/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
+/// package can be retrieved later on.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageDescriptor {
+    /// The manifest file of the package.
+    pub manifest_file: PackageManifestFile,
+    /// The pinned version of the package.
+    pub pinned: Pinned,
+}
+
+/// Represents a package entry point.
+#[derive(Debug, Clone)]
+pub struct PkgEntry {
+    pub finalized: FinalizedEntry,
+    pub kind: PkgEntryKind,
+}
+
+/// Data specific to each kind of package entry point.
+#[derive(Debug, Clone)]
+pub enum PkgEntryKind {
+    Main,
+    Test(PkgTestEntry),
+}
+
+/// The possible conditions for a test result to be considered "passing".
+#[derive(Debug, Clone)]
+pub enum TestPassCondition {
+    ShouldRevert,
+    ShouldNotRevert,
+}
+
+/// Data specific to the test entry point.
+#[derive(Debug, Clone)]
+pub struct PkgTestEntry {
+    pub pass_condition: TestPassCondition,
+    pub span: Span,
 }
 
 /// The result of successfully compiling a workspace.
@@ -255,7 +297,7 @@ pub struct GitSourceIndex {
     pub head_with_time: HeadWithTime,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PkgOpts {
     /// Path to the project, if not specified, current working directory will be used.
     pub path: Option<String>,
@@ -273,7 +315,7 @@ pub struct PkgOpts {
     pub output_directory: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PrintOpts {
     /// Print the generated Sway AST (Abstract Syntax Tree).
     pub ast: bool,
@@ -302,6 +344,9 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
+type ConstName = String;
+type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
 pub struct BuildOpts {
@@ -312,6 +357,8 @@ pub struct BuildOpts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -323,6 +370,26 @@ pub struct BuildOpts {
     pub time_phases: bool,
     /// Include all test functions within the build.
     pub tests: bool,
+    /// List of constants to inject for each package.
+    pub const_inject_map: ConstInjectionMap,
+}
+
+impl BuildOpts {
+    /// Return a `BuildOpts` with modified `tests` field.
+    pub fn include_tests(self, include_tests: bool) -> Self {
+        Self {
+            tests: include_tests,
+            ..self
+        }
+    }
+
+    /// Return a `BuildOpts` with modified `injection_map` field.
+    pub fn const_injection_map(self, const_inject_map: ConstInjectionMap) -> Self {
+        Self {
+            const_inject_map,
+            ..self
+        }
+    }
 }
 
 impl GitSourceIndex {
@@ -370,19 +437,35 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        if !self.json_abi_program.functions.is_empty() {
-            let json_abi_program_stem = format!("{}-abi", pkg_name);
-            let json_abi_program_path = output_dir
-                .join(json_abi_program_stem)
-                .with_extension("json");
-            let file = File::create(json_abi_program_path)?;
-            let res = if minify.json_abi {
-                serde_json::to_writer(&file, &self.json_abi_program)
-            } else {
-                serde_json::to_writer_pretty(&file, &self.json_abi_program)
-            };
-            res?
+        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_path = output_dir
+            .join(json_abi_program_stem)
+            .with_extension("json");
+        match &self.json_abi_program {
+            ProgramABI::Fuel(json_abi_program) => {
+                if !json_abi_program.functions.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
+            ProgramABI::Evm(json_abi_program) => {
+                if !json_abi_program.is_empty() {
+                    let file = File::create(json_abi_program_path)?;
+                    let res = if minify.json_abi {
+                        serde_json::to_writer(&file, &json_abi_program)
+                    } else {
+                        serde_json::to_writer_pretty(&file, &json_abi_program)
+                    };
+                    res?
+                }
+            }
         }
+
         info!("  Bytecode size is {} bytes.", self.bytecode.len());
         // Additional ops required depending on the program type
         match self.tree_type {
@@ -434,6 +517,14 @@ impl Built {
             Built::Workspace(built_workspace) => Ok(built_workspace),
         }
     }
+
+    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+        match self {
+            Built::Package(built_pkg) => Ok(*built_pkg),
+            Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
+        }
+    }
 }
 const DEFAULT_REMOTE_NAME: &str = "origin";
 
@@ -462,6 +553,34 @@ pub struct SourcePinnedParseError;
 pub type DependencyName = String;
 
 impl BuildPlan {
+    /// Create a new build plan for the project from the build options provided.
+    ///
+    /// To do so, it tries to read the manifet file at the target path and creates the plan with
+    /// `BuildPlan::from_lock_and_manifest`.
+    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
+        let path = &build_options.pkg.path;
+
+        let manifest_dir = if let Some(ref path) = path {
+            PathBuf::from(path)
+        } else {
+            std::env::current_dir()?
+        };
+
+        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let member_manifests = manifest_file.member_manifests()?;
+        // Check if we have members to build so that we are not trying to build an empty workspace.
+        if member_manifests.is_empty() {
+            bail!("No member found to build")
+        }
+        let lock_path = manifest_file.lock_path()?;
+        Self::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            build_options.pkg.locked,
+            build_options.pkg.offline,
+        )
+    }
+
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
@@ -595,6 +714,15 @@ impl BuildPlan {
             .iter()
             .cloned()
             .filter(|&n| self.graph[n].source == SourcePinned::Member)
+    }
+
+    /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
+    ///
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's pinned pkg will be yielded.
+    pub fn member_pinned_pkgs(&self) -> impl Iterator<Item = Pinned> + '_ {
+        let graph = self.graph();
+        self.member_nodes().map(|node| &graph[node]).cloned()
     }
 
     /// View the build plan's compilation graph.
@@ -2138,6 +2266,7 @@ fn dep_to_source_patched(
 pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
 ) -> Result<sway_core::BuildConfig> {
     // Prepare the build config to pass through to the compiler.
@@ -2145,6 +2274,7 @@ pub fn sway_build_config(
     let build_config = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
         file_name.to_path_buf(),
         manifest_dir.to_path_buf(),
+        build_target,
     )
     .print_dca_graph(build_profile.print_dca_graph)
     .print_finalized_asm(build_profile.print_finalized_asm)
@@ -2153,6 +2283,9 @@ pub fn sway_build_config(
     .include_tests(build_profile.include_tests);
     Ok(build_config)
 }
+
+/// The name of the constant holding the contract's id.
+pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
@@ -2169,9 +2302,14 @@ pub fn dependency_namespace(
     graph: &Graph,
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(type_engine, constants)?;
+    let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
+
+    let node_idx = &graph[node];
+    namespace.name = Some(Ident::new_no_span(Box::leak(
+        node_idx.name.clone().into_boxed_str(),
+    )));
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2194,15 +2332,14 @@ pub fn dependency_namespace(
                 };
 
                 // Construct namespace with contract id
-                let contract_dep_constant_name = "CONTRACT_ID";
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
                     public: true,
                 };
-                constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(type_engine, constants)?
+                constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
+                namespace::Module::default_with_constants(engines, constants)?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2220,18 +2357,10 @@ pub fn dependency_namespace(
         }
     }
 
-    namespace.star_import_with_reexports(
-        &[CORE, PRELUDE].map(Ident::new_no_span),
-        &[],
-        type_engine,
-    );
+    namespace.star_import_with_reexports(&[CORE, PRELUDE].map(Ident::new_no_span), &[], engines);
 
     if has_std_dep(graph, node) {
-        namespace.star_import_with_reexports(
-            &[STD, PRELUDE].map(Ident::new_no_span),
-            &[],
-            type_engine,
-        );
+        namespace.star_import_with_reexports(&[STD, PRELUDE].map(Ident::new_no_span), &[], engines);
     }
 
     Ok(namespace)
@@ -2291,16 +2420,20 @@ fn find_core_dep(graph: &Graph, node: NodeIx) -> Option<NodeIx> {
 
 /// Compiles the package to an AST.
 pub fn compile_ast(
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
 ) -> Result<CompileResult<ty::TyProgram>> {
     let source = manifest.entry_string()?;
-    let sway_build_config =
-        sway_build_config(manifest.dir(), &manifest.entry_path(), build_profile)?;
-    let ast_res =
-        sway_core::compile_to_ast(type_engine, source, namespace, Some(&sway_build_config));
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        build_profile,
+    )?;
+    let ast_res = sway_core::compile_to_ast(engines, source, namespace, Some(&sway_build_config));
     Ok(ast_res)
 }
 
@@ -2325,9 +2458,10 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     build_profile: &BuildProfile,
     namespace: namespace::Module,
-    type_engine: &TypeEngine,
+    engines: Engines<'_>,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
     // Time the given expression and print the result if `build_config.time_phases` is true.
@@ -2351,7 +2485,7 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_profile,)?
+        sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
     );
     let terse_mode = build_profile.terse;
     let fail = |warnings, errors| {
@@ -2362,7 +2496,7 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(type_engine, manifest, build_profile, namespace)?
+        compile_ast(engines, manifest, build_target, build_profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
@@ -2372,12 +2506,6 @@ pub fn compile(
     if build_profile.print_ast {
         tracing::info!("{:#?}", typed_program);
     }
-
-    let mut types = vec![];
-    let json_abi_program = time_expr!(
-        "generate JSON ABI program",
-        typed_program.generate_json_abi_program(type_engine, &mut types)
-    );
 
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
@@ -2390,23 +2518,62 @@ pub fn compile(
 
     let asm_res = time_expr!(
         "compile ast to asm",
-        sway_core::ast_to_asm(type_engine, &ast_res, &sway_build_config)
+        sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
+
+    let mut json_abi_program = match build_target {
+        BuildTarget::Fuel => {
+            let mut types = vec![];
+            ProgramABI::Fuel(time_expr!(
+                "generate JSON ABI program",
+                typed_program.generate_json_abi_program(engines.te(), &mut types)
+            ))
+        }
+        BuildTarget::EVM => match &asm_res.value {
+            Some(ref v) => v.0.abi.as_ref().unwrap().clone(),
+            None => todo!(),
+        },
+    };
+
     let entries = asm_res
         .value
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
+    let decl_engine = engines.de();
+    let entries = entries
+        .iter()
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
     );
 
     match bc_res.value {
-        Some(CompiledBytecode(bytes)) if bc_res.errors.is_empty() => {
+        Some(CompiledBytecode {
+            bytecode: bytes,
+            config_const_offsets: config_offsets,
+        }) if bc_res.errors.is_empty() => {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+
+            if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
+                for (config, offset) in config_offsets {
+                    if let Some(ref mut configurables) = json_abi_program.configurables {
+                        if let Some(idx) = configurables.iter().position(|c| c.name == config) {
+                            configurables[idx].offset = offset
+                        }
+                    }
+                }
+            }
+
+            let built_pkg_descriptor = BuiltPackageDescriptor {
+                manifest_file: manifest.clone(),
+                pinned: pkg.clone(),
+            };
             let bytecode = bytes;
             let built_package = BuiltPackage {
+                build_target,
                 json_abi_program,
                 storage_slots,
                 bytecode,
@@ -2414,10 +2581,75 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
+                built_pkg_descriptor,
             };
             Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
+    }
+}
+
+impl PkgEntry {
+    /// Returns whether this `PkgEntry` corresponds to a test.
+    pub fn is_test(&self) -> bool {
+        self.kind.test().is_some()
+    }
+
+    fn from_finalized_entry(
+        finalized_entry: &FinalizedEntry,
+        decl_engine: &DeclEngine,
+    ) -> Result<Self> {
+        let pkg_entry_kind = match &finalized_entry.test_decl_id {
+            Some(test_decl_id) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+                PkgEntryKind::Test(pkg_test_entry)
+            }
+            None => PkgEntryKind::Main,
+        };
+
+        Ok(Self {
+            finalized: finalized_entry.clone(),
+            kind: pkg_entry_kind,
+        })
+    }
+}
+
+impl PkgEntryKind {
+    /// Returns `Some` if the `PkgEntryKind` is `Test`.
+    pub fn test(&self) -> Option<&PkgTestEntry> {
+        match self {
+            PkgEntryKind::Test(test) => Some(test),
+            _ => None,
+        }
+    }
+}
+
+impl PkgTestEntry {
+    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_id.span();
+        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+
+        let test_args: HashSet<String> = test_function_decl
+            .attributes
+            .get(&AttributeKind::Test)
+            .expect("test declaration is missing test attribute")
+            .iter()
+            .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
+            .collect();
+
+        let pass_condition = if test_args.is_empty() {
+            anyhow::Ok(TestPassCondition::ShouldNotRevert)
+        } else if test_args.get("should_revert").is_some() {
+            anyhow::Ok(TestPassCondition::ShouldRevert)
+        } else {
+            let test_name = &test_function_decl.name;
+            bail!("Invalid test argument(s) for test: {test_name}.")
+        }?;
+
+        Ok(Self {
+            pass_condition,
+            span,
+        })
     }
 }
 
@@ -2488,56 +2720,58 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
-/// Builds a project with given BuildOptions
+/// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
-    let path = &build_options.pkg.path;
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
     let BuildOpts {
         minify,
         binary_outfile,
         debug_outfile,
         pkg,
+        const_inject_map,
+        build_target,
         ..
     } = &build_options;
 
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    let member_manifests = manifest_file.member_manifests()?;
-    // Check if we have members to build so that we are not trying to build an empty workspace.
-    if member_manifests.is_empty() {
-        bail!("No member found to build")
-    }
-    let lock_path = manifest_file.lock_path()?;
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        build_options.pkg.locked,
-        build_options.pkg.offline,
-    )?;
+    let current_dir = std::env::current_dir()?;
+    let path = &build_options
+        .pkg
+        .path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| current_dir);
+
+    let build_plan = BuildPlan::from_build_opts(&build_options)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
+
+    // Check if manifest used to create the build plan is one of the member manifests or a
+    // workspace manifest.
+    let curr_manifest = manifest_map
+        .values()
+        .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
     let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
-
     // If this is a workspace we want to have all members in the output.
-    let outputs = match &manifest_file {
-        ManifestFile::Package(pkg_manifest) => std::iter::once(
+    let outputs = match curr_manifest {
+        Some(pkg_manifest) => std::iter::once(
             build_plan
                 .find_member_index(&pkg_manifest.project.name)
                 .ok_or_else(|| anyhow!("Cannot found project node in the graph"))?,
         )
         .collect(),
-        ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
+        None => build_plan.member_nodes().collect(),
     };
+
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        const_inject_map,
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2558,19 +2792,19 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         built_workspace.insert(pinned.name.clone(), built_package);
     }
 
-    match manifest_file {
-        ManifestFile::Package(pkg_manifest) => {
+    match curr_manifest {
+        Some(pkg_manifest) => {
             let built_pkg = built_workspace
                 .remove(&pkg_manifest.project.name)
                 .expect("package didn't exist in workspace");
             Ok(Built::Package(Box::new(built_pkg)))
         }
-        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspace)),
+        None => Ok(Built::Workspace(built_workspace)),
     }
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
+pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
     let mut storage_slots = built_package.storage_slots.clone();
@@ -2611,11 +2845,11 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
 pub fn build(
     plan: &BuildPlan,
+    target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2624,6 +2858,9 @@ pub fn build(
         .collect();
 
     let type_engine = TypeEngine::default();
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
+
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
     for &node in plan
@@ -2634,14 +2871,24 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
+        let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
+            let mut constants = manifest.config_time_constants();
+            constants.extend(
+                injected_ctc
+                    .iter()
+                    .map(|(name, ctc)| (name.clone(), ctc.clone())),
+            );
+            constants
+        } else {
+            manifest.config_time_constants()
+        };
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
             node,
             constants,
-            &type_engine,
+            engines,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2652,9 +2899,10 @@ pub fn build(
         let res = compile(
             pkg,
             manifest,
+            target,
             profile,
             dep_namespace,
-            &type_engine,
+            engines,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
@@ -2670,7 +2918,9 @@ pub fn build(
             lib_namespace_map.insert(node, namespace.into());
         }
         source_map.insert_dependency(manifest.dir());
-        standardize_json_abi_types(&mut built_package.json_abi_program);
+        if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
+            standardize_json_abi_types(json_abi_program);
+        }
         if outputs.contains(&node) {
             built_packages.push((node, built_package));
         }
@@ -2681,18 +2931,18 @@ pub fn build(
 
 /// Standardize the JSON ABI data structure by eliminating duplicate types. This is an iterative
 /// process because every time two types are merged, new opportunities for more merging arise.
-fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
+fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
     loop {
         // If type with id_1 is a duplicate of type with id_2, then keep track of the mapping
         // between id_1 and id_2 in the HashMap below.
         let mut old_to_new_id: HashMap<usize, usize> = HashMap::new();
 
-        // A vector containing unique `fuels_types::TypeDeclaration`s.
+        // A vector containing unique `program_abi::TypeDeclaration`s.
         //
-        // Two `fuels_types::TypeDeclaration` are deemed the same if the have the same
+        // Two `program_abi::TypeDeclaration` are deemed the same if the have the same
         // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
         // different).
-        let mut deduped_types: Vec<fuels_types::TypeDeclaration> = Vec::new();
+        let mut deduped_types: Vec<program_abi::TypeDeclaration> = Vec::new();
 
         // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
         // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
@@ -2716,11 +2966,11 @@ fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
 
         json_abi_program.types = deduped_types;
 
-        // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
+        // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
         update_all_types(json_abi_program, &old_to_new_id);
     }
 
-    // Sort the `fuels_types::TypeDeclaration`s
+    // Sort the `program_abi::TypeDeclaration`s
     json_abi_program
         .types
         .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
@@ -2732,16 +2982,16 @@ fn standardize_json_abi_types(json_abi_program: &mut fuels_types::ProgramABI) {
         decl.type_id = ix;
     }
 
-    // Update all `fuels_types::TypeApplication`s and all `fuels_types::TypeDeclaration`s
+    // Update all `program_abi::TypeApplication`s and all `program_abi::TypeDeclaration`s
     update_all_types(json_abi_program, &old_to_new_id);
 }
 
-/// Recursively updates the type IDs used in a fuels_types::ProgramABI
+/// Recursively updates the type IDs used in a program_abi::ProgramABI
 fn update_all_types(
-    json_abi_program: &mut fuels_types::ProgramABI,
+    json_abi_program: &mut program_abi::ProgramABI,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
-    // Update all `fuels_types::TypeApplication`s in every function
+    // Update all `program_abi::TypeApplication`s in every function
     for func in json_abi_program.functions.iter_mut() {
         for input in func.inputs.iter_mut() {
             update_json_type_application(input, old_to_new_id);
@@ -2750,7 +3000,7 @@ fn update_all_types(
         update_json_type_application(&mut func.output, old_to_new_id);
     }
 
-    // Update all `fuels_types::TypeDeclaration`
+    // Update all `program_abi::TypeDeclaration`
     for decl in json_abi_program.types.iter_mut() {
         update_json_type_declaration(decl, old_to_new_id);
     }
@@ -2764,12 +3014,17 @@ fn update_all_types(
             update_json_type_application(&mut logged_type.application, old_to_new_id);
         }
     }
+    if let Some(configurables) = &mut json_abi_program.configurables {
+        for logged_type in configurables.iter_mut() {
+            update_json_type_application(&mut logged_type.application, old_to_new_id);
+        }
+    }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeApplication` given a HashMap from
+/// Recursively updates the type IDs used in a `program_abi::TypeApplication` given a HashMap from
 /// old to new IDs
 fn update_json_type_application(
-    type_application: &mut fuels_types::TypeApplication,
+    type_application: &mut program_abi::TypeApplication,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(new_id) = old_to_new_id.get(&type_application.type_id) {
@@ -2783,10 +3038,10 @@ fn update_json_type_application(
     }
 }
 
-/// Recursively updates the type IDs used in a `fuels_types::TypeDeclaration` given a HashMap from
+/// Recursively updates the type IDs used in a `program_abi::TypeDeclaration` given a HashMap from
 /// old to new IDs
 fn update_json_type_declaration(
-    type_declaration: &mut fuels_types::TypeDeclaration,
+    type_declaration: &mut program_abi::TypeDeclaration,
     old_to_new_id: &HashMap<usize, usize>,
 ) {
     if let Some(params) = &mut type_declaration.type_parameters {
@@ -2804,19 +3059,37 @@ fn update_json_type_declaration(
     }
 }
 
-/// A `CompileResult` thats type is a tuple containing a `ParseProgram` and `Option<ty::TyProgram>`
-type ParseAndTypedPrograms = CompileResult<(ParseProgram, Option<ty::TyProgram>)>;
+/// Contains the lexed, parsed, and typed compilation stages of a program.
+pub struct Programs {
+    pub lexed: LexedProgram,
+    pub parsed: ParseProgram,
+    pub typed: Option<ty::TyProgram>,
+}
 
-/// Compile the entire forc package and return the parse and typed programs
+impl Programs {
+    pub fn new(
+        lexed: LexedProgram,
+        parsed: ParseProgram,
+        typed: Option<ty::TyProgram>,
+    ) -> Programs {
+        Programs {
+            lexed,
+            parsed,
+            typed,
+        }
+    }
+}
+
+/// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
 pub fn check(
     plan: &BuildPlan,
+    build_target: BuildTarget,
     terse_mode: bool,
-    type_engine: &TypeEngine,
-) -> anyhow::Result<Vec<ParseAndTypedPrograms>> {
-    //TODO remove once type engine isn't global anymore.
-    sway_core::clear_lazy_statics();
+    include_tests: bool,
+    engines: Engines<'_>,
+) -> anyhow::Result<Vec<CompileResult<Programs>>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
     // During `check`, we don't compile so this stays empty.
@@ -2833,30 +3106,31 @@ pub fn check(
             &plan.graph,
             node,
             constants,
-            type_engine,
+            engines,
         )
         .expect("failed to create dependency namespace");
+
         let CompileResult {
             value,
             mut warnings,
             mut errors,
-        } = parse(manifest, terse_mode, type_engine)?;
+        } = parse(manifest, build_target, terse_mode, include_tests, engines)?;
 
-        let parse_program = match value {
+        let (lexed, parsed) = match value {
             None => {
                 results.push(CompileResult::new(None, warnings, errors));
                 return Ok(results);
             }
-            Some(program) => program,
+            Some(modules) => modules,
         };
 
-        let ast_result = sway_core::parsed_to_ast(type_engine, &parse_program, dep_namespace, None);
+        let ast_result = sway_core::parsed_to_ast(engines, &parsed, dep_namespace, None);
         warnings.extend(ast_result.warnings);
         errors.extend(ast_result.errors);
 
         let typed_program = match ast_result.value {
             None => {
-                let value = Some((parse_program, None));
+                let value = Some(Programs::new(lexed, parsed, None));
                 results.push(CompileResult::new(value, warnings, errors));
                 return Ok(results);
             }
@@ -2869,7 +3143,7 @@ pub fn check(
 
         source_map.insert_dependency(manifest.dir());
 
-        let value = Some((parse_program, Some(typed_program)));
+        let value = Some(Programs::new(lexed, parsed, Some(typed_program)));
         results.push(CompileResult::new(value, warnings, errors));
     }
 
@@ -2883,20 +3157,24 @@ pub fn check(
 /// Returns a parsed AST from the supplied [PackageManifestFile]
 pub fn parse(
     manifest: &PackageManifestFile,
+    build_target: BuildTarget,
     terse_mode: bool,
-    type_engine: &TypeEngine,
-) -> anyhow::Result<CompileResult<ParseProgram>> {
+    include_tests: bool,
+    engines: Engines<'_>,
+) -> anyhow::Result<CompileResult<(LexedProgram, ParseProgram)>> {
     let profile = BuildProfile {
         terse: terse_mode,
         ..BuildProfile::debug()
     };
     let source = manifest.entry_string()?;
-    let sway_build_config = sway_build_config(manifest.dir(), &manifest.entry_path(), &profile)?;
-    Ok(sway_core::parse(
-        source,
-        type_engine,
-        Some(&sway_build_config),
-    ))
+    let sway_build_config = sway_build_config(
+        manifest.dir(),
+        &manifest.entry_path(),
+        build_target,
+        &profile,
+    )?
+    .include_tests(include_tests);
+    Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
 /// Attempt to find a `Forc.toml` with the given project name within the given directory.
