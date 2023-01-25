@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::{fmt::Write, ops::Range};
 use sway_ast::token::Comment;
 use sway_types::Spanned;
 
@@ -6,35 +6,17 @@ use crate::{formatter::FormattedCode, Formatter, FormatterError};
 
 // Given a start, an end and a CommentMap, return references to all comments
 // contained within a given start and end of a span, in an exclusive range.
-pub fn get_comments_between(start: usize, end: usize, formatter: &Formatter) -> Vec<&Comment> {
-    let mut comments = vec![];
-    let iter = formatter.comment_map.clone().into_keys();
-
-    for bs in iter {
-        if bs.start > start && bs.end < end {
-            if let Some(comment) = formatter.comment_map.get(&bs) {
-                comments.push(comment)
-            }
+pub fn comments_between<'a>(
+    range: &'a Range<usize>,
+    formatter: &'a Formatter,
+) -> impl Iterator<Item = &'a Comment> {
+    formatter.comment_map.iter().filter_map(|(bs, c)| {
+        if bs.start > range.start && bs.end < range.end {
+            Some(c)
+        } else {
+            None
         }
-    }
-
-    comments
-}
-
-// Given a start, an end and a CommentMap, removes and returns all comments in a
-// CommentMap contained within a given start and end of a span, in an exclusive range.
-pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter) -> Vec<Comment> {
-    let mut comments = vec![];
-    let iter = formatter.comment_map.clone().into_keys();
-    for bs in iter {
-        if bs.start > start && bs.end < end {
-            if let Some(comment) = formatter.comment_map.remove(&bs) {
-                comments.push(comment)
-            }
-        }
-    }
-
-    comments
+    })
 }
 
 // Writes comments between a given start and end and removes them from the formatter's CommentMap.
@@ -42,14 +24,22 @@ pub fn take_comments_between(start: usize, end: usize, formatter: &mut Formatter
 // Ok(false) on successful execution without any comments written. Returns Err on failure.
 pub fn maybe_write_comments_from_map(
     formatted_code: &mut FormattedCode,
-    start: usize,
-    end: usize,
+    range: Range<usize>,
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
-    let comments = take_comments_between(start, end, formatter);
-    if !comments.is_empty() {
-        writeln!(formatted_code)?;
-        for comment in comments {
+    {
+        let mut comments_iter = comments_between(&range, formatter).enumerate().peekable();
+
+        if comments_iter.peek().is_none() {
+            return Ok(false);
+        };
+
+        for (i, comment) in comments_iter {
+            // Write comments on a newline (for now). New behavior might be required
+            // to support trailing comments.
+            if i == 0 {
+                writeln!(formatted_code)?;
+            }
             writeln!(
                 formatted_code,
                 "{}{}",
@@ -57,9 +47,11 @@ pub fn maybe_write_comments_from_map(
                 comment.span().as_str(),
             )?;
         }
-    } else {
-        return Ok(false);
     }
+
+    formatter
+        .comment_map
+        .retain(|bs, _| !(bs.start > range.start && bs.end < range.end));
 
     Ok(true)
 }
