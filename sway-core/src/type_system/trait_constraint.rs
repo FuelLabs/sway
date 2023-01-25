@@ -31,27 +31,6 @@ impl PartialEqWithEngines for TraitConstraint {
             && self.type_arguments.eq(&other.type_arguments, engines)
     }
 }
-impl DisplayWithEngines for TraitConstraint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}{}",
-            self.trait_name,
-            if self.type_arguments.is_empty() {
-                String::new()
-            } else {
-                format!(
-                    "<{}>",
-                    self.type_arguments
-                        .iter()
-                        .map(|type_arg| engines.help_out(type_arg).to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-            }
-        )
-    }
-}
 
 impl Spanned for TraitConstraint {
     fn span(&self) -> sway_types::Span {
