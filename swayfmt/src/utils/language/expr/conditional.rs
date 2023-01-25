@@ -1,5 +1,5 @@
 use crate::{
-    comments::{get_comments_between, maybe_write_comments_from_map},
+    comments::{comments_between, maybe_write_comments_from_map},
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -9,7 +9,10 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{fmt::Write, ops::ControlFlow};
+use std::{
+    fmt::Write,
+    ops::{ControlFlow, Range},
+};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
@@ -24,11 +27,10 @@ impl Format for IfExpr {
                 .shape
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
-                let comments =
-                    get_comments_between(self.span().start(), self.span().end(), &formatter);
-
+                let range: Range<usize> = self.span().into();
+                let comments = comments_between(&range, formatter);
                 // check if the entire expression could fit into a single line
-                let full_width_line_style = if !comments.is_empty() {
+                let full_width_line_style = if comments.peekable().peek().is_some() {
                     LineStyle::Multiline
                 } else {
                     get_full_width_line_style(self, formatter)?
@@ -163,8 +165,10 @@ fn format_else_opt(
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
         let comments_written = maybe_write_comments_from_map(
             &mut else_if_str,
-            if_expr.then_block.span().end(),
-            else_token.span().start(),
+            std::ops::Range {
+                start: if_expr.then_block.span().end(),
+                end: else_token.span().start(),
+            },
             formatter,
         )?;
 

@@ -11,7 +11,7 @@ pub fn comments_between<'a>(
     formatter: &'a Formatter,
 ) -> impl Iterator<Item = &'a Comment> {
     formatter.comment_map.iter().filter_map(|(bs, c)| {
-        if bs.start > range.start && bs.end < range.end {
+        if bs.contained_within(range) {
             Some(c)
         } else {
             None
@@ -51,7 +51,7 @@ pub fn maybe_write_comments_from_map(
 
     formatter
         .comment_map
-        .retain(|bs, _| !(bs.start > range.start && bs.end < range.end));
+        .retain(|bs, _| !bs.contained_within(&range));
 
     Ok(true)
 }
