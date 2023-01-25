@@ -614,7 +614,8 @@ impl Backend {
 mod tests {
     use super::*;
     use crate::utils::test::{
-        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, runnables_test_dir,
+        test_fixtures_dir,
     };
     use assert_json_diff::assert_json_eq;
     use serde_json::json;
@@ -990,20 +991,62 @@ mod tests {
         let expected = Response::from_ok(
             1.into(),
             json!([{
-                "command": {
-                    "command": "sway.runScript",
-                    "title":"▶︎ Run"
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_bar"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 13
                 },
-                "range": {
-                    "end": {
-                        "character": 7,
-                        "line": 4
-                    },
-                    "start": {
-                        "character": 3,
-                        "line":4
-                    }
+                "start": {
+                  "character": 0,
+                  "line": 13
                 }
+              }
+            },
+            {
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_foo"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 8
+                },
+                "start": {
+                  "character": 0,
+                  "line": 8
+                }
+              }
+            },
+            {
+              "command": {
+                "command": "sway.runScript",
+                "title": "▶︎ Run"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 3,
+                  "line": 4
+                }
+              }
             }]),
         );
         assert_json_eq!(expected, response.ok().unwrap());
@@ -1183,5 +1226,5 @@ mod tests {
     lsp_capability_test!(hover, hover_request, doc_comments_dir);
     lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
     lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
-    lsp_capability_test!(code_lens, code_lens_request, e2e_test_dir);
+    lsp_capability_test!(code_lens, code_lens_request, runnables_test_dir);
 }

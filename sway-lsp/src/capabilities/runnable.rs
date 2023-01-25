@@ -20,9 +20,7 @@ pub struct RunnableTestFn {
     /// The program kind of the current file.
     pub tree_type: TreeType,
     /// Additional arguments to use with the runnable command.
-    pub arguments: Option<Vec<Value>>,
-    /// The index of the test to run
-    pub test_index: u8, // TODO: use name instead with path
+    pub test_name: Option<String>,
 }
 
 /// A runnable is a sway function that can be executed in the editor.
@@ -72,7 +70,10 @@ impl Runnable for RunnableTestFn {
         "▶\u{fe0e} Run Test".to_string()
     }
     fn arguments(&self) -> Option<Vec<Value>> {
-        self.arguments.clone()
+        match self.test_name {
+            Some(ref test_name) => Some(vec![json!({ "name": test_name })]),
+            None => None,
+        }
     }
     fn span(&self) -> &Span {
         &self.span
