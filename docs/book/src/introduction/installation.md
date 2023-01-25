@@ -24,7 +24,7 @@ Installing via pre-compiled release binaries is the recommended way to get up an
 
 2. Once fuelup is installed, fuelup-init automatically runs `fuelup toolchain install latest` to install the latest toolchain
 
-   You can run `fuelup toolchain install latest` at anytime to get the most up-to-date toolchain.
+   You can run `fuelup update` at anytime to get the most up-to-date toolchain.
 
 3. (Optional) You can optionally install distributed toolchains optimized for different networks.
 
