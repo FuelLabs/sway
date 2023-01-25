@@ -664,7 +664,7 @@ impl From<b256> for Bytes {
     fn into(self) -> b256{
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
+        self.buf.ptr().copy_to::<b256>(ptr, 1);
 
         value
     }
@@ -982,7 +982,7 @@ fn test_eq() {
 #[test]
 fn test_from_b256() {
     let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
-    let b: Bytes = initial.into();
+    let b: Bytes = Bytes::from(initial);
     let mut control_bytes = Bytes::with_capacity(32);
     // 0x33 is 51 in decimal
     control_bytes.push(51u8);
@@ -1058,10 +1058,12 @@ fn test_into_b256() {
     initial_bytes.push(51u8);
     initial_bytes.push(51u8);
 
-    let value: b256 = initial_bytes::into();
+    let value: b256 = initial_bytes.into();
     let expected: b256 =0x3333333333333333333333333333333333333333333333333333333333333333;
 
     assert(value == expected);
+}
+
 #[test()]
 fn test_sha256() {
     use ::hash::sha256;
