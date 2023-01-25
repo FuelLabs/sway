@@ -648,7 +648,7 @@ impl core::ops::Eq for Bytes {
     }
 }
 
-/// Methods for vonverting between the Bytes and the b256 types.
+/// Methods for converting between the `Bytes` and the `b256` types.
 impl From<b256> for Bytes {
     fn from(b: b256) -> Bytes {
         // Artificially create bytes with capacity and len
@@ -661,8 +661,8 @@ impl From<b256> for Bytes {
     }
 
     // NOTE: this cas be lossy! Added here as the From trait currently requires it,
-    // but the conversion from Bytes -> b256 should be implemented as
-    // `impl TryFrom<Bytes> for b256` when the TryFrom trait lands:
+    // but the conversion from `Bytes` ->`b256` should be implemented as
+    // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
     // https://github.com/FuelLabs/sway/pull/3881
     fn into(self) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
