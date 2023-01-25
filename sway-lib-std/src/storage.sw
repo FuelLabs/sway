@@ -9,8 +9,8 @@ use ::option::Option;
 ///
 /// ### Arguments
 ///
-/// * `key` - The storage slot at which the variable will be stored
-/// * `value` - The value to be stored
+/// * `key` - The storage slot at which the variable will be stored.
+/// * `value` - The value to be stored.
 ///
 /// ### Examples
 ///
@@ -52,7 +52,7 @@ pub fn store<T>(key: b256, value: T) {
 ///
 /// ### Arguments
 ///
-/// * `key` - The storage slot to load the value from
+/// * `key` - The storage slot to load the value from.
 ///
 /// ### Examples
 ///
@@ -108,7 +108,7 @@ pub fn get<T>(key: b256) -> Option<T> {
     }
 }
 
-/// A persistent key-value pair mapping struct
+/// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageMap<K, V> {
@@ -116,8 +116,8 @@ impl<K, V> StorageMap<K, V> {
     ///
     /// ### Arguments
     ///
-    /// * `key` - The key to which the value is paired
-    /// * `value` - The value to be stored
+    /// * `key` - The key to which the value is paired.
+    /// * `value` - The value to be stored.
     ///
     /// ### Examples
     ///
@@ -140,14 +140,14 @@ impl<K, V> StorageMap<K, V> {
         store::<V>(key, value);
     }
 
-    /// Retrieves a value previously stored using a key
+    /// Retrieves a value previously stored using a key.
     ///
     /// If no value was previously stored at `key`, `Option::None` is returned. Otherwise,
     /// `Option::Some(value)` is returned, where `value` is the value stored at `key`.
     ///
     /// ### Arguments
     ///
-    /// * `key` - The key to which the value is paired
+    /// * `key` - The key to which the value is paired.
     ///
     /// ### Examples
     ///
@@ -171,15 +171,15 @@ impl<K, V> StorageMap<K, V> {
     }
 }
 
-/// A persistant vector struct
+/// A persistant vector struct.
 pub struct StorageVec<V> {}
 
 impl<V> StorageVec<V> {
-    /// Appends the value to the end of the vector
+    /// Appends the value to the end of the vector.
     ///
     /// ### Arguments
     ///
-    /// * `value` - The item being added to the end of the vector
+    /// * `value` - The item being added to the end of the vector.
     ///
     /// ### Examples
     ///
@@ -210,7 +210,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
     }
 
-    /// Removes the last element of the vector and returns it, None if empty
+    /// Removes the last element of the vector and returns it, `None` if empty.
     ///
     /// ### Examples
     ///
@@ -246,11 +246,11 @@ impl<V> StorageVec<V> {
         Option::Some::<V>(get::<V>(key).unwrap())
     }
 
-    /// Gets the value in the given index, None if index is out of bounds
+    /// Gets the value in the given index, `None` if index is out of bounds.
     ///
     /// ### Arguments
     ///
-    /// * `index` - The index of the vec to retrieve the item from
+    /// * `index` - The index of the vec to retrieve the item from.
     ///
     /// ### Examples
     ///
@@ -283,20 +283,18 @@ impl<V> StorageVec<V> {
         Option::Some::<V>(get::<V>(key).unwrap())
     }
 
-    /// Removes the element in the given index and moves all the element in the following indexes
-    /// Down one index. Also returns the element
+    /// Removes the element in the given index and moves all the elements in the following indexes
+    /// down one index. Also returns the element.
     ///
-    /// # WARNING
-    ///
-    /// Expensive for larger vecs
+    /// > **_WARNING:_** Expensive for larger vecs.
     ///
     /// ### Arguments
     ///
-    /// * `index` - The index of the vec to remove the item from
+    /// * `index` - The index of the vec to remove the item from.
     ///
     /// ### Reverts
     ///
-    /// Reverts if index is larger or equal to length of the vec
+    /// Reverts if index is larger or equal to length of the vec.
     ///
     /// ### Examples
     ///
@@ -344,16 +342,16 @@ impl<V> StorageVec<V> {
         removed_element
     }
 
-    /// Removes the element at the specified index and fills it with the last element
-    /// Does not preserve ordering. Also returns the element
+    /// Removes the element at the specified index and fills it with the last element.
+    /// This does not preserve ordering and returns the element.
     ///
     /// ### Arguments
     ///
-    /// * `index` - The index of the vec to remove the item from
+    /// * `index` - The index of the vec to remove the item from.
     ///
     /// ### Reverts
     ///
-    /// Reverts if index is larger or equal to length of the vec
+    /// Reverts if index is larger or equal to length of the vec.
     ///
     /// ### Examples
     ///
@@ -393,7 +391,7 @@ impl<V> StorageVec<V> {
 
         element_to_be_removed
     }
-    /// Sets/mutates the value at the given index
+    /// Sets or mutates the value at the given index.
     ///
     /// ### Arguments
     ///
@@ -402,7 +400,7 @@ impl<V> StorageVec<V> {
     ///
     /// ### Reverts
     ///
-    /// Reverts if index is larger than or equal to the length of the vec
+    /// Reverts if index is larger than or equal to the length of the vec.
     ///
     /// ### Examples
     ///
@@ -434,21 +432,19 @@ impl<V> StorageVec<V> {
         store::<V>(key, value);
     }
 
-    /// Inserts the value at the given index, moving the current index's value aswell as the following's
-    /// Up one index
+    /// Inserts the value at the given index, moving the current index's value
+    /// as well as the following index's value up by one index.
     ///
-    /// # WARNING
-    ///
-    /// Expensive for larger vecs
+    /// > **_WARNING:_** Expensive for larger vecs.
     ///
     /// ### Arguments
     ///
-    /// * `index` - The index of the vec to insert the item into
-    /// * `value` - The value to insert into the vec
+    /// * `index` - The index of the vec to insert the item into.
+    /// * `value` - The value to insert into the vec.
     ///
     /// ### Reverts
     ///
-    /// Reverts if index is larger than length of the vec
+    /// Reverts if index is larger than the length of the vec.
     ///
     /// ### Examples
     ///
@@ -508,7 +504,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
     }
 
-    /// Returns the length of the vector
+    /// Returns the length of the vector.
     ///
     /// ### Examples
     ///
@@ -532,7 +528,7 @@ impl<V> StorageVec<V> {
         get::<u64>(__get_storage_key()).unwrap_or(0)
     }
 
-    /// Checks whether the len is 0 or not
+    /// Checks whether the len is zero or not.
     ///
     /// ### Examples
     ///
@@ -560,7 +556,7 @@ impl<V> StorageVec<V> {
         get::<u64>(__get_storage_key()).unwrap_or(0) == 0
     }
 
-    /// Sets the len to 0
+    /// Sets the len to zero.
     ///
     /// ### Examples
     ///
