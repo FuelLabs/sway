@@ -1,0 +1,25 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-AF74006D06EAC899'
+
+[[package]]
+name = 'lib_vec_test'
+source = 'path+from-root-AF74006D06EAC899'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-AF74006D06EAC899'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_struct'
+source = 'member'
+dependencies = [
+    'core',
+    'lib_vec_test',
+    'std',
+]

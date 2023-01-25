@@ -1,0 +1,25 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-3012FAFB26B38C98'
+
+[[package]]
+name = 'lib_vec_test'
+source = 'path+from-root-3012FAFB26B38C98'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-3012FAFB26B38C98'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_tuple'
+source = 'member'
+dependencies = [
+    'core',
+    'lib_vec_test',
+    'std',
+]

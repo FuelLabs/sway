@@ -1,0 +1,25 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-4988FC345C7217B7'
+
+[[package]]
+name = 'lib_vec_test'
+source = 'path+from-root-4988FC345C7217B7'
+dependencies = [
+    'core',
+    'std',
+]
+
+[[package]]
+name = 'std'
+source = 'path+from-root-4988FC345C7217B7'
+dependencies = ['core']
+
+[[package]]
+name = 'vec_enum'
+source = 'member'
+dependencies = [
+    'core',
+    'lib_vec_test',
+    'std',
+]

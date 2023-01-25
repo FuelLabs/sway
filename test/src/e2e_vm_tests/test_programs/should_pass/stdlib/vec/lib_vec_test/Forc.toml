@@ -1,0 +1,9 @@
+[project]
+authors = ["Joshua Trujillo"]
+entry = "lib.sw"
+license = "Apache-2.0"
+name = "lib_vec_test"
+
+[dependencies]
+core = { path = "../../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../../sway-lib-std" }
