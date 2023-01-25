@@ -337,7 +337,7 @@ impl LanguageServer for Backend {
                 session.runnables.iter().for_each(|item| {
                     let runnable = item.value();
                     result.push(CodeLens {
-                        range: runnable.range,
+                        range: runnable.range(),
                         command: Some(runnable.command()),
                         data: None,
                     });
@@ -479,12 +479,6 @@ impl LanguageServer for Backend {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnableParams {
-    pub text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
@@ -511,14 +505,6 @@ impl Backend {
                 Ok(None)
             }
         }
-    }
-
-    // TODO: Delete this method once the client code calling it has been removed.
-    pub async fn runnables(
-        &self,
-        _params: RunnableParams,
-    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        Ok(None)
     }
 
     /// This method is triggered by a command palette request in VScode

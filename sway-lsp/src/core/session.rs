@@ -3,7 +3,7 @@ use crate::{
         self,
         diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
-        runnable::{Runnable, RunnableKind},
+        runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
         document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
@@ -30,7 +30,7 @@ use sway_core::{
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
@@ -55,7 +55,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<RunnableKind, Runnable>,
+    pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
@@ -381,14 +381,14 @@ impl Session {
                 .attributes
                 .first()
                 .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
-            let arguments = vec![json!({ "name": decl.name.to_string() })];
-            let runnable = Runnable::new(
-                RunnableKind::TestFn(i),
-                get_range_from_span(&span),
-                typed_program.kind.tree_type(),
-                Some(arguments),
-            );
-            self.runnables.insert(runnable.kind, runnable);
+            let arguments = Some(vec![json!({ "name": decl.name.to_string() })]);
+            let runnable = Box::new(RunnableTestFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+                arguments,
+                test_index: i,
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
         }
 
         // Insert runnable main function if the program is a script.
@@ -396,14 +396,12 @@ impl Session {
             ref main_function, ..
         } = typed_program.kind
         {
-            let main_fn_location = get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(
-                RunnableKind::MainFn,
-                main_fn_location,
-                typed_program.kind.tree_type(),
-                None,
-            );
-            self.runnables.insert(runnable.kind, runnable);
+            let span = main_function.name.span();
+            let runnable = Box::new(RunnableMainFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
         }
     }
 
