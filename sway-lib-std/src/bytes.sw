@@ -660,7 +660,10 @@ impl From<b256> for Bytes {
         bytes
     }
 
-    // NOTE: this cas be lossy! Added here as the From trait currently requires it, but the conversion from Bytes -> b256 should be implemented as `impl TryFrom<Bytes> for b256` when the TryFrom trait lands: https://github.com/FuelLabs/sway/pull/3881
+    // NOTE: this cas be lossy! Added here as the From trait currently requires it,
+    // but the conversion from Bytes -> b256 should be implemented as
+    // `impl TryFrom<Bytes> for b256` when the TryFrom trait lands:
+    // https://github.com/FuelLabs/sway/pull/3881
     fn into(self) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
@@ -1011,39 +1014,13 @@ fn test_from_b256() {
     let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
     let b: Bytes = Bytes::from(initial);
     let mut control_bytes = Bytes::with_capacity(32);
-    // 0x33 is 51 in decimal
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
-    control_bytes.push(51u8);
+
+    let mut i = 0;
+    while i < 32 {
+        // 0x33 is 51 in decimal
+        control_bytes.push(51u8);
+        i += 1;
+    }
 
     assert(b == control_bytes);
 }
@@ -1051,39 +1028,13 @@ fn test_from_b256() {
 #[test]
 fn test_into_b256() {
     let mut initial_bytes = Bytes::with_capacity(32);
-    // 0x33 is 51 in decimal
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
+
+    let mut i = 0;
+    while i < 32 {
+        // 0x33 is 51 in decimal
+        initial_bytes.push(51u8);
+        i += 1;
+    }
 
     let value: b256 = initial_bytes.into();
     let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
