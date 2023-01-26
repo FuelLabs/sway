@@ -699,7 +699,6 @@ impl From<b256> for Bytes {
 }
 
 // Tests
-//
 fn setup() -> (Bytes, u8, u8, u8) {
     let mut bytes = Bytes::new();
     let a = 5u8;
@@ -1062,6 +1061,8 @@ fn test_as_raw_slice() {
     let slice_2: raw_slice = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
     assert(slice_1.len_bytes() == slice_2.len_bytes());
+}
+
 #[test]
 fn test_from_b256() {
     let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
