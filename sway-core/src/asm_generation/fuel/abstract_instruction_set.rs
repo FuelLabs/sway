@@ -12,10 +12,7 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use std::{
-    collections::{BTreeSet, HashSet},
-    fmt,
-};
+use std::{collections::HashSet, fmt};
 
 use either::Either;
 
@@ -134,12 +131,12 @@ impl AbstractInstructionSet {
             ($regs: expr, $set: expr) => {
                 let mut regs = $regs;
                 regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
-                $set.append(&mut regs);
+                $set.extend(regs.into_iter());
             };
         }
 
-        let mut use_regs = BTreeSet::new();
-        let mut def_regs = BTreeSet::new();
+        let mut use_regs = HashSet::new();
+        let mut def_regs = HashSet::new();
         for op in &self.ops {
             add_virt_regs!(op.use_registers(), use_regs);
             add_virt_regs!(op.def_registers(), def_regs);
@@ -215,7 +212,7 @@ impl fmt::Display for AbstractInstructionSet {
             ".program:\n{}",
             self.ops
                 .iter()
-                .map(|x| format!("{}", x))
+                .map(|x| format!("{x}"))
                 .collect::<Vec<_>>()
                 .join("\n")
         )

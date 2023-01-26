@@ -34,7 +34,7 @@ impl fmt::Debug for DeclMapping {
             "DeclMapping {{ {} }}",
             self.mapping
                 .iter()
-                .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
+                .map(|(source_type, dest_type)| { format!("{source_type:?} -> {dest_type:?}") })
                 .collect::<Vec<_>>()
                 .join(", ")
         )

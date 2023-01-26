@@ -103,7 +103,7 @@ impl Format for UseTree {
                         if import_str.ends_with(PunctKind::Comma.as_char()) {
                             import_str.pop();
                         }
-                        write!(formatted_code, "{}", import_str)?;
+                        write!(formatted_code, "{import_str}")?;
                     }
                 }
                 Self::close_curly_brace(formatted_code, formatter)?;

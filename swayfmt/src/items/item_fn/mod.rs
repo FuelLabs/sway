@@ -59,23 +59,23 @@ impl CurlyBrace for ItemFn {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
+                writeln!(line, "\n{open_brace}")?;
                 formatter.shape.block_indent(&formatter.config);
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
-                    write!(line, "{}", open_brace)?;
+                    write!(line, "{open_brace}")?;
                     formatter.shape.code_line.update_where_clause(false);
                     formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
-                    write!(line, " {}", open_brace)?;
+                    write!(line, " {open_brace}")?;
                     formatter.shape.block_indent(&formatter.config);
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
-                writeln!(line, " {}", open_brace)?;
+                writeln!(line, " {open_brace}")?;
                 formatter.shape.block_indent(&formatter.config);
             }
         }

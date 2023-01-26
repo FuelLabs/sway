@@ -532,7 +532,7 @@ impl Backend {
                 let write_ast_to_file =
                     |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
                         if let Ok(mut file) = File::create(path) {
-                            let _ = writeln!(&mut file, "{}", ast_string);
+                            let _ = writeln!(&mut file, "{ast_string}");
                             if let Ok(uri) = Url::from_file_path(path) {
                                 // Return the tmp file path where the AST has been written to.
                                 return Some(TextDocumentIdentifier::new(uri));
@@ -1210,7 +1210,7 @@ mod tests {
         .await;
         socket_handle
             .await
-            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
         shutdown_and_exit(&mut service).await;
     }
 
