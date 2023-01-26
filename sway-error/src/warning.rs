@@ -171,26 +171,21 @@ impl fmt::Display for Warning {
                 initial_type,
                 cast_to,
             } => write!(f,
-                "This cast, from integer type of width {} to integer type of width {}, will lose precision.",
-                initial_type,
-                cast_to
+                "This cast, from integer type of width {initial_type} to integer type of width {cast_to}, will lose precision."
             ),
             UnusedReturnValue { r#type } => write!(
                 f,
-                "This returns a value of type {}, which is not assigned to anything and is \
-                 ignored.",
-                r#type
+                "This returns a value of type {type}, which is not assigned to anything and is \
+                 ignored."
             ),
             SimilarMethodFound { lib, module, name } => write!(
                 f,
-                "A method with the same name was found for type {} in dependency \"{}::{}\". \
-                 Traits must be in scope in order to access their methods. ",
-                name, lib, module
+                "A method with the same name was found for type {name} in dependency \"{lib}::{module}\". \
+                 Traits must be in scope in order to access their methods. "
             ),
             ShadowsOtherSymbol { name } => write!(
                 f,
-                "This shadows another symbol in this scope with the same name \"{}\".",
-                name
+                "This shadows another symbol in this scope with the same name \"{name}\"."
             ),
             OverridingTraitImplementation => write!(
                 f,
@@ -202,15 +197,14 @@ impl fmt::Display for Warning {
             DeadFunctionDeclaration => write!(f, "This function is never called."),
             UnreachableCode => write!(f, "This code is unreachable."),
             DeadEnumVariant { variant_name } => {
-                write!(f, "Enum variant {} is never constructed.", variant_name)
+                write!(f, "Enum variant {variant_name} is never constructed.")
             }
             DeadTrait => write!(f, "This trait is never implemented."),
             DeadMethod => write!(f, "This method is never called."),
             StructFieldNeverRead => write!(f, "This struct field is never accessed."),
             ShadowingReservedRegister { reg_name } => write!(
                 f,
-                "This register declaration shadows the reserved register, \"{}\".",
-                reg_name
+                "This register declaration shadows the reserved register, \"{reg_name}\"."
             ),
             DeadStorageDeclaration => write!(
                 f,

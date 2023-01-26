@@ -48,8 +48,8 @@ impl std::fmt::Display for FinalProgram {
         match self {
             FinalProgram::Fuel {
                 data_section, ops, ..
-            } => write!(f, "{:?}\n{}", ops, data_section),
-            FinalProgram::Evm { ops, .. } => write!(f, "{:?}", ops),
+            } => write!(f, "{ops:?}\n{data_section}"),
+            FinalProgram::Evm { ops, .. } => write!(f, "{ops:?}"),
         }
     }
 }
