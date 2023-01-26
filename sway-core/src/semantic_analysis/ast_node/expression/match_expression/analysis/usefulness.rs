@@ -208,6 +208,8 @@ pub(crate) fn check_match_expression_usefulness(
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
 
+    println!("check_match_expression_usefulness");
+
     // If the provided type does has no valid constructor and there are no
     // branches in the match expression (i.e. no scrutinees to check), then
     // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
@@ -278,7 +280,9 @@ fn is_useful(
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
     let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
+    println!("  ->({}, {})", m, n);
     match (m, n) {
         (0, 0) => ok(
             WitnessReport::Witnesses(PatStack::fill_wildcards(q.len())),
@@ -364,6 +368,8 @@ fn is_useful_wildcard(
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    println!("is_useful_wildcard");
 
     // 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
     //    as root constructors of the patterns of *P*'s first column.
@@ -555,6 +561,8 @@ fn is_useful_constructed(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    println!("is_useful_constructed");
+
     // 1. Extract the specialized `Matrix` *S(c, P)*
     let s_c_p = check!(
         compute_specialized_matrix(&c, p, span),
@@ -615,6 +623,9 @@ fn is_useful_or(
 ) -> CompileResult<WitnessReport> {
     let mut warnings = vec![];
     let mut errors = vec![];
+
+    println!("is_useful_or");
+
     let (_, q_rest) = check!(
         q.split_first(span),
         return err(warnings, errors),

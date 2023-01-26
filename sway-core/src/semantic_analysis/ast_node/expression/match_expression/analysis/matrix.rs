@@ -119,6 +119,6 @@ impl Matrix {
             );
             pat_stack.push(first)
         }
-        ok(pat_stack.flatten().filter_out_wildcards(), warnings, errors)
+        ok(pat_stack.flatten(), warnings, errors)
     }
 }
