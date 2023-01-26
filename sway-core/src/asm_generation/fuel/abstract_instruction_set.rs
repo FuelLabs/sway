@@ -1,7 +1,6 @@
 use crate::{
     asm_generation::fuel::{
         allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
-        register_sequencer::RegisterSequencer,
     },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
@@ -21,19 +20,6 @@ use either::Either;
 #[derive(Clone)]
 pub struct AbstractInstructionSet {
     pub(crate) ops: Vec<Op>,
-}
-
-macro_rules! time_expr {
-    ($description:expr, $expression:expr) => {{
-        let expr_start = std::time::Instant::now();
-        let output = { $expression };
-        println!(
-            "  Time elapsed to {}: {:?}",
-            $description,
-            expr_start.elapsed()
-        );
-        output
-    }};
 }
 
 impl AbstractInstructionSet {
@@ -178,58 +164,37 @@ impl AbstractInstructionSet {
     /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
     /// the algorithm are thoroughly explained in register_allocator.rs.
     ///
-    pub(crate) fn allocate_registers(
-        self,
-        register_sequencer: &mut RegisterSequencer,
-    ) -> AllocatedAbstractInstructionSet {
+    pub(crate) fn allocate_registers(self) -> AllocatedAbstractInstructionSet {
         // Step 1: Liveness Analysis.
-        let live_out = time_expr!(
-            "compute live_out",
-            register_allocator::liveness_analysis(&self.ops)
-        );
+        let live_out = register_allocator::liveness_analysis(&self.ops);
 
         // Step 2: Construct the interference graph.
-        let (mut interference_graph, mut reg_to_node_ix) = time_expr!(
-            "compute interference_graph",
-            register_allocator::create_interference_graph(&self.ops, &live_out)
-        );
+        let (mut interference_graph, mut reg_to_node_ix) =
+            register_allocator::create_interference_graph(&self.ops, &live_out);
 
         // Step 3: Remove redundant MOVE instructions using the interference graph.
-        let reduced_ops = time_expr!(
-            "coalesce_registers",
-            register_allocator::coalesce_registers(
-                &self.ops,
-                &mut interference_graph,
-                &mut reg_to_node_ix,
-                register_sequencer,
-            )
+        let reduced_ops = register_allocator::coalesce_registers(
+            &self.ops,
+            &mut interference_graph,
+            &mut reg_to_node_ix,
         );
 
         // Step 4: Simplify - i.e. color the interference graph and return a stack that contains
         // each colorable node and its neighbors.
-        let mut stack = time_expr!(
-            "color_interference_graph",
-            register_allocator::color_interference_graph(&mut interference_graph)
-        );
+        let mut stack = register_allocator::color_interference_graph(&mut interference_graph);
 
         // Step 5: Use the stack to assign a register for each virtual register.
-        let pool = time_expr!(
-            "assign_registers",
-            register_allocator::assign_registers(&mut stack)
-        );
+        let pool = register_allocator::assign_registers(&mut stack);
 
         // Step 6: Update all instructions to use the resulting register pool.
         let mut buf = vec![];
-        time_expr!(
-            "update instructions to use resulting reg pool",
-            for op in &reduced_ops {
-                buf.push(AllocatedAbstractOp {
-                    opcode: op.allocate_registers(&pool),
-                    comment: op.comment.clone(),
-                    owning_span: op.owning_span.clone(),
-                })
-            }
-        );
+        for op in &reduced_ops {
+            buf.push(AllocatedAbstractOp {
+                opcode: op.allocate_registers(&pool),
+                comment: op.comment.clone(),
+                owning_span: op.owning_span.clone(),
+            })
+        }
 
         AllocatedAbstractInstructionSet { ops: buf }
     }
