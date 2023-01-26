@@ -944,6 +944,38 @@ fn test_split_at() {
 }
 
 #[test()]
+fn test_split_at_0() {
+    let (mut original, a, b, c) = setup();
+    assert(original.len() == 3);
+    let index = 0;
+    let (left, right) = original.split_at(index);
+    assert(original.capacity() == 4);
+    // assert(right.capacity() == 2);
+    // assert(left.len() == 1);
+    // assert(right.len() == 2);
+}
+
+#[test()]
+fn test_split_at_len() {
+    let (mut original, a, b, c) = setup();
+    assert(original.len() == 3);
+    let index = 3;
+    let (left, right) = original.split_at(index);
+    assert(original.capacity() == 4);
+    assert(right.capacity() == 2);
+    assert(left.len() == 1);
+    assert(right.len() == 2);
+}
+
+#[test()]
+fn test_split_at_too_big() {
+    let (mut original, a, b, c) = setup();
+    assert(original.len() == 3);
+    let index = original.len() + 1;
+    let (left, right) = original.split_at(index);
+}
+
+#[test()]
 fn test_append() {
     let (mut bytes, a, b, c) = setup();
     assert(bytes.len() == 3);
