@@ -19,7 +19,7 @@ pub(crate) trait Renderable {
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_info: Vec<ModulePrefix>,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
             BTreeMap::new();
         for doc in raw {
             rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.0.clone(), // fix this
+                module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
@@ -210,7 +210,7 @@ impl RenderedDocumentation {
         // ProjectIndex
         match module_map.get(root_module.location()) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
-                module_info: vec![],
+                module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
                     ModuleIndex {
@@ -239,7 +239,7 @@ impl RenderedDocumentation {
                     None => panic!("document is empty"),
                 };
                 rendered_docs.0.push(RenderedDocument {
-                    module_info: module_info.0.clone(),
+                    module_info: module_info.clone(),
                     html_filename: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
@@ -258,7 +258,7 @@ impl RenderedDocumentation {
 
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
-            module_info: vec![],
+            module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
@@ -750,7 +750,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -782,7 +782,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -810,7 +810,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -1229,5 +1229,33 @@ pub(crate) fn trim_fn_body(f: String) -> String {
     match f.find('{') {
         Some(index) => f.split_at(index).0.to_string(),
         None => f,
+    }
+}
+
+/// Checks if some raw html (rendered from markdown) contains a header.
+/// If it does, it splits at the header and returns the slice that preceeded it.
+pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
+    const H1: &str = "<h1>";
+    const H2: &str = "<h2>";
+    const H3: &str = "<h3>";
+    const H4: &str = "<h4>";
+    const H5: &str = "<h5>";
+    if raw_html.contains(H1) {
+        let v: Vec<_> = raw_html.split(H1).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H2) {
+        let v: Vec<_> = raw_html.split(H2).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H3) {
+        let v: Vec<_> = raw_html.split(H3).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H4) {
+        let v: Vec<_> = raw_html.split(H4).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H5) {
+        let v: Vec<_> = raw_html.split(H5).collect();
+        v.first().expect("expected a non-empty str")
+    } else {
+        raw_html
     }
 }
