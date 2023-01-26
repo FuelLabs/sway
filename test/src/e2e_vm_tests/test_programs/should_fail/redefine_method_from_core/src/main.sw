@@ -1,12 +1,6 @@
 script;
 
-<<<<<<< HEAD:test/src/e2e_vm_tests/test_programs/should_pass/language/trait_override_bug/src/main.sw
-// This bug was found by Nebula in discord. Adding this trait was causing other implementations on u64s to be overridden.
-
 pub trait Shift {
-=======
-pub trait Shiftable {
->>>>>>> master:test/src/e2e_vm_tests/test_programs/should_fail/redefine_method_from_core/src/main.sw
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;
 
