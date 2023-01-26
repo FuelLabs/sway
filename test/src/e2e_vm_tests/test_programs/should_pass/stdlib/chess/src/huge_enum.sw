@@ -281,7 +281,7 @@ impl core::ops::Eq for Huge {
             (Huge::h5, Huge::h5) => true,
             (Huge::h6, Huge::h6) => true,
             (Huge::h7, Huge::h7) => true,
-            //(Huge::h8, Huge::h8) => true,
+            (Huge::h8, Huge::h8) => true,
             _ => false,
         }
     }

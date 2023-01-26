@@ -2,6 +2,9 @@ script;
 
 dep huge_enum;
 
-fn main() {
-    
+use huge_enum::*;
+
+fn main() -> u64 {
+    let huge = Huge::b3;
+    huge.to_u64()
 }
