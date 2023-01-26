@@ -1063,9 +1063,7 @@ mod tests {
         for expected in expected_results.iter() {
             assert!(
                 actual_results.contains(expected),
-                "Expected {:?} to contain {:?}",
-                actual_results,
-                expected
+                "Expected {actual_results:?} to contain {expected:?}"
             );
         }
         code_lens
