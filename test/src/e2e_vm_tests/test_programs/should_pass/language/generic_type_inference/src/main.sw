@@ -46,6 +46,11 @@ fn simple_option_generics_test() {
     assert(get_an_option::<u64>().is_none());
 }
 
+fn test_try_from() {
+    let x = u64::try_from(7);
+    assert(x.unwrap() == 42);
+}
+
 fn main() {
     sell_product();
     simple_vec_test();
