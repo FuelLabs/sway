@@ -208,8 +208,6 @@ pub(crate) fn check_match_expression_usefulness(
     let mut matrix = Matrix::empty();
     let mut arms_reachability = vec![];
 
-    println!("check_match_expression_usefulness");
-
     // If the provided type does has no valid constructor and there are no
     // branches in the match expression (i.e. no scrutinees to check), then
     // every scrutinee (i.e. 0 scrutinees) are useful! We return early in this
@@ -282,7 +280,6 @@ fn is_useful(
     let mut errors = vec![];
 
     let (m, n) = check!(p.m_n(span), return err(warnings, errors), warnings, errors);
-    println!("  ->({}, {})", m, n);
     match (m, n) {
         (0, 0) => ok(
             WitnessReport::Witnesses(PatStack::fill_wildcards(q.len())),
@@ -369,8 +366,6 @@ fn is_useful_wildcard(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    println!("is_useful_wildcard");
-
     // 1. Compute Σ = {c₁, ... , cₙ}, which is the set of constructors that appear
     //    as root constructors of the patterns of *P*'s first column.
     let sigma = check!(
@@ -397,7 +392,7 @@ fn is_useful_wildcard(
             //     3.1. For every every *k* 0..*n*, compute the specialized `Matrix`
             //        *S(cₖ, P)*
             let s_c_k_p = check!(
-                compute_specialized_matrix(c_k, p, span),
+                compute_specialized_matrix(c_k, p, q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -405,7 +400,7 @@ fn is_useful_wildcard(
 
             //     3.2. Compute the specialized `Matrix` *S(cₖ, q)*
             let s_c_k_q = check!(
-                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q.clone()), span),
+                compute_specialized_matrix(c_k, &Matrix::from_pat_stack(q.clone()), q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -488,7 +483,7 @@ fn is_useful_wildcard(
 
         //     4.1. Compute the default `Matrix` *D(P)*
         let d_p = check!(
-            compute_default_matrix(p, span),
+            compute_default_matrix(p, q, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -561,32 +556,17 @@ fn is_useful_constructed(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    println!("is_useful_constructed");
-
     // 1. Extract the specialized `Matrix` *S(c, P)*
     let s_c_p = check!(
-        compute_specialized_matrix(&c, p, span),
+        compute_specialized_matrix(&c, p, q, span),
         return err(warnings, errors),
         warnings,
         errors
     );
-    let (s_c_p_m, s_c_p_n) = check!(
-        s_c_p.m_n(span),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    if s_c_p_m > 0 && s_c_p_n != (c.a() + q.len() - 1) {
-        errors.push(CompileError::Internal(
-            "S(c,P) matrix is misshapen",
-            span.clone(),
-        ));
-        return err(warnings, errors);
-    }
 
     // 2. Extract the specialized `Matrix` *S(c, q)*
     let s_c_q = check!(
-        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q.clone()), span),
+        compute_specialized_matrix(&c, &Matrix::from_pat_stack(q.clone()), q, span),
         return err(warnings, errors),
         warnings,
         errors
@@ -624,8 +604,6 @@ fn is_useful_or(
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    println!("is_useful_or");
-
     let (_, q_rest) = check!(
         q.split_first(span),
         return err(warnings, errors),
@@ -660,17 +638,30 @@ fn is_useful_or(
 /// Intuition: A default `Matrix` is a transformation upon *P* that "shrinks"
 /// the rows of *P* depending on if the row is able to generally match all
 /// patterns in a default case.
-fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
+fn compute_default_matrix(p: &Matrix, q: &PatStack, span: &Span) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut d_p = Matrix::empty();
     for p_i in p.rows().iter() {
         d_p.append(&mut check!(
-            compute_default_matrix_row(p_i, span),
+            compute_default_matrix_row(p_i, q, span),
             return err(warnings, errors),
             warnings,
             errors
         ));
+    }
+    let (m, n) = check!(
+        d_p.m_n(span),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    if m > 0 && n != (q.len() - 1) {
+        errors.push(CompileError::Internal(
+            "D(P) matrix is misshapen",
+            span.clone(),
+        ));
+        return err(warnings, errors);
     }
     ok(d_p, warnings, errors)
 }
@@ -700,7 +691,11 @@ fn compute_default_matrix(p: &Matrix, span: &Span) -> CompileResult<Matrix> {
 ///        *P'* are defined as \[*rₖ pⁱ₂ ... pⁱₙ*\] for every *k*.
 ///     2. The resulting rows are the rows obtained from calling the recursive
 ///        *D(P')*
-fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<PatStack>> {
+fn compute_default_matrix_row(
+    p_i: &PatStack,
+    q: &PatStack,
+    span: &Span,
+) -> CompileResult<Vec<PatStack>> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut rows: Vec<PatStack> = vec![];
@@ -731,7 +726,7 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
             //     2. The resulting rows are the rows obtained from calling the recursive
             //        *D(P')*
             let d_p = check!(
-                compute_default_matrix(&m, span),
+                compute_default_matrix(&m, q, span),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -751,24 +746,36 @@ fn compute_default_matrix_row(p_i: &PatStack, span: &Span) -> CompileResult<Vec<
 ///
 /// Intuition: A specialized `Matrix` is a transformation upon *P* that
 /// "unwraps" the rows of *P* depending on if they are congruent with *c*.
-fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileResult<Matrix> {
+fn compute_specialized_matrix(
+    c: &Pattern,
+    p: &Matrix,
+    q: &PatStack,
+    span: &Span,
+) -> CompileResult<Matrix> {
     let mut warnings = vec![];
     let mut errors = vec![];
     let mut s_c_p = Matrix::empty();
     for p_i in p.rows().iter() {
         s_c_p.append(&mut check!(
-            compute_specialized_matrix_row(c, p_i, span),
+            compute_specialized_matrix_row(c, p_i, q, span),
             return err(warnings, errors),
             warnings,
             errors
         ));
     }
-    let (m, _) = check!(
+    let (m, n) = check!(
         s_c_p.m_n(span),
         return err(warnings, errors),
         warnings,
         errors
     );
+    if m > 0 && n != (c.a() + q.len() - 1) {
+        errors.push(CompileError::Internal(
+            "S(c,P) matrix is misshapen",
+            span.clone(),
+        ));
+        return err(warnings, errors);
+    }
     if p.is_a_vector() && m > 1 {
         errors.push(CompileError::Internal(
             "S(c,p) must be a vector",
@@ -812,6 +819,7 @@ fn compute_specialized_matrix(c: &Pattern, p: &Matrix, span: &Span) -> CompileRe
 fn compute_specialized_matrix_row(
     c: &Pattern,
     p_i: &PatStack,
+    q: &PatStack,
     span: &Span,
 ) -> CompileResult<Vec<PatStack>> {
     let mut warnings = vec![];
@@ -845,7 +853,7 @@ fn compute_specialized_matrix_row(
             //     4.2. The resulting rows are the rows obtained from calling the recursive
             //        *S(c, P')*
             let s_c_p = check!(
-                compute_specialized_matrix(c, &m, span),
+                compute_specialized_matrix(c, &m, q, span),
                 return err(warnings, errors),
                 warnings,
                 errors

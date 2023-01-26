@@ -405,7 +405,9 @@ impl ConstructorFactory {
         if pat_stack.is_empty() {
             return ok(false, warnings, errors);
         }
-        // if contains wildcard, return true
+        if pat_stack.contains(&Pattern::Wildcard) {
+            return ok(true, warnings, errors);
+        }
         let (first, rest) = check!(
             pat_stack.split_first(span),
             return err(warnings, errors),
