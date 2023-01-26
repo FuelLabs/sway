@@ -588,8 +588,12 @@ impl Bytes {
         let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
         let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
 
-        self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
-        self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+        if mid > 0 {
+            self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+        };
+        if mid != self.len {
+            self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+        };
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
@@ -631,6 +635,15 @@ impl Bytes {
     /// assert(bytes.capacity() == first_length + first_length);
     /// ```
     pub fn append(ref mut self, ref other: self) {
+        if other.len == 0 {
+            return
+        };
+
+        // optimization for when starting with empty bytes and appending to it
+        if self.len == 0 {
+            self.buf.ptr = other.buf.ptr;
+        };
+
         let both_len = self.len + other.len;
         let other_start = self.len;
 
@@ -950,9 +963,9 @@ fn test_split_at_0() {
     let index = 0;
     let (left, right) = original.split_at(index);
     assert(original.capacity() == 4);
-    // assert(right.capacity() == 2);
-    // assert(left.len() == 1);
-    // assert(right.len() == 2);
+    assert(right.capacity() == 3);
+    assert(left.len() == 0);
+    assert(right.len() == 3);
 }
 
 #[test()]
@@ -962,17 +975,9 @@ fn test_split_at_len() {
     let index = 3;
     let (left, right) = original.split_at(index);
     assert(original.capacity() == 4);
-    assert(right.capacity() == 2);
-    assert(left.len() == 1);
-    assert(right.len() == 2);
-}
-
-#[test()]
-fn test_split_at_too_big() {
-    let (mut original, a, b, c) = setup();
-    assert(original.len() == 3);
-    let index = original.len() + 1;
-    let (left, right) = original.split_at(index);
+    assert(right.capacity() == 0);
+    assert(left.len() == 3);
+    assert(right.len() == 0);
 }
 
 #[test()]
@@ -1008,6 +1013,47 @@ fn test_append() {
         assert(bytes.get(i).unwrap() == values[i]);
         i += 1;
     };
+}
+
+#[test()]
+fn test_append_empty_bytes() {
+    // nothing is appended or modified when appending an empty bytes.
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+
+    let mut bytes2 = Bytes::new();
+    assert(bytes2.len() == 0);
+    let first_length = bytes.len();
+    let first_cap = bytes.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == first_length);
+    assert(bytes.capacity() == first_cap);
+}
+
+#[test()]
+fn test_append_to_empty_bytes() {
+    let mut bytes = Bytes::new();
+    assert(bytes.len() == 0);
+    let (mut bytes2, a, b, c) = setup();
+    assert(bytes2.len() == 3);
+
+    let first_length = bytes.len();
+    let first_cap = bytes.capacity();
+    let second_length = bytes2.len();
+    let second_cap = bytes2.capacity();
+    bytes.append(bytes2);
+    assert(bytes.len() == second_length);
+    // assert(bytes.capacity() == second_cap);
+    // let values = [a, b, c];
+    // let mut i = 0;
+    // while i < 3 {
+    //     assert(bytes.get(i).unwrap() == values[i]);
+    //     i += 1;
+    // };
+
 }
 
 #[test()]
