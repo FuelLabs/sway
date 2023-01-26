@@ -25,7 +25,7 @@ fn prompt_address() -> Result<Bech32Address> {
 }
 
 fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
-    println!("Transaction id to sign: {}", tx_id);
+    println!("Transaction id to sign: {tx_id}");
     print!("Please provide the signature:");
     std::io::stdout().flush()?;
     let mut buf = String::new();

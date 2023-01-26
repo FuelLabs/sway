@@ -1174,8 +1174,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             let this_ix = graph.add_node(
                 engines,
                 format!(
-                    "Struct field access: {}.{}",
-                    resolved_type_of_parent, field_name
+                    "Struct field access: {resolved_type_of_parent}.{field_name}"
                 )
                 .into(),
             );
@@ -1495,7 +1494,7 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(engines, format!("Intrinsic {}", kind).into());
+    let node = graph.add_node(engines, format!("Intrinsic {kind}").into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }

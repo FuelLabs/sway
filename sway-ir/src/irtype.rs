@@ -138,9 +138,9 @@ impl Type {
         match self.get_content(context) {
             TypeContent::Unit => "()".into(),
             TypeContent::Bool => "bool".into(),
-            TypeContent::Uint(nbits) => format!("u{}", nbits),
+            TypeContent::Uint(nbits) => format!("u{nbits}"),
             TypeContent::B256 => "b256".into(),
-            TypeContent::String(n) => format!("string<{}>", n),
+            TypeContent::String(n) => format!("string<{n}>"),
             TypeContent::Array(ty, cnt) => {
                 format!("[{}; {}]", ty.as_string(context), cnt)
             }
