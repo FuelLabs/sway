@@ -15,7 +15,7 @@ use ::option::Option;
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() > 32 {
-            Option::None::<Self>
+            Option::None
         } else {
             let mut val: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
             let ptr = __addr_of(val);
@@ -28,42 +28,23 @@ impl TryFrom<Bytes> for b256 {
 #[test]
 fn test_b256_try_from() {
     let mut initial_bytes = Bytes::with_capacity(32);
-    // 0x33 is 51 in decimal
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-    initial_bytes.push(51u8);
-
+    let mut i = 0;
+    while i < 32 {
+        // 0x33 is 51 in decimal
+        initial_bytes.push(51u8);
+        i += 1;
+    }
     let res = b256::try_from(initial_bytes);
     let expected = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
-    assert(res== expected);
+    assert(res.unwrap() == expected);
+
+    i = 0;
+    while i < 40 {
+        // 0x33 is 51 in decimal
+        initial_bytes.push(51u8);
+        i += 1;
+    }
+    let res = b256::try_from(initial_bytes);
+    assert(res.is_none());
 }
