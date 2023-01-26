@@ -988,9 +988,18 @@ mod tests {
         });
         let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
         let response = call_request(service, code_lens.clone()).await;
-        let expected = Response::from_ok(
-            1.into(),
-            json!([{
+        let actual_results = response
+            .unwrap()
+            .unwrap()
+            .into_parts()
+            .1
+            .ok()
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
+        let expected_results = vec![
+            json!({
               "command": {
                 "arguments": [
                   {
@@ -1010,8 +1019,8 @@ mod tests {
                   "line": 13
                 }
               }
-            },
-            {
+            }),
+            json!({
               "command": {
                 "arguments": [
                   {
@@ -1031,8 +1040,8 @@ mod tests {
                   "line": 8
                 }
               }
-            },
-            {
+            }),
+            json!({
               "command": {
                 "command": "sway.runScript",
                 "title": "▶︎ Run"
@@ -1047,9 +1056,18 @@ mod tests {
                   "line": 4
                 }
               }
-            }]),
-        );
-        assert_json_eq!(expected, response.ok().unwrap());
+            }),
+        ];
+
+        assert_eq!(actual_results.len(), expected_results.len());
+        for expected in expected_results.iter() {
+            assert!(
+                actual_results.contains(expected),
+                "Expected {:?} to contain {:?}",
+                actual_results,
+                expected
+            );
+        }
         code_lens
     }
 

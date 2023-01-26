@@ -70,10 +70,9 @@ impl Runnable for RunnableTestFn {
         "▶\u{fe0e} Run Test".to_string()
     }
     fn arguments(&self) -> Option<Vec<Value>> {
-        match self.test_name {
-            Some(ref test_name) => Some(vec![json!({ "name": test_name })]),
-            None => None,
-        }
+        self.test_name
+            .as_ref()
+            .map(|test_name| vec![json!({ "name": test_name })])
     }
     fn span(&self) -> &Span {
         &self.span
