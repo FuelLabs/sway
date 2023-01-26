@@ -614,7 +614,8 @@ fn type_check_state_load_word(
 }
 
 /// Signature: `__state_store_word(key: b256, val: u64) -> bool`
-/// Description: Stores a single word `val` into storage at key `key`.
+/// Description: Stores a single word `val` into storage at key `key`. Returns a Boolean describing
+///              whether the store slot was previously set.
 /// Constraints: None.
 fn type_check_state_store_word(
     ctx: TypeCheckContext,
@@ -718,18 +719,20 @@ fn type_check_state_store_word(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(decl_engine, TypeInfo::Tuple(vec![]));
+    let return_type = type_engine.insert(decl_engine, TypeInfo::Boolean);
     ok((intrinsic_function, return_type), warnings, errors)
 }
 
 /// Signature: `__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)`
 /// Description: Reads `slots` number of slots (`b256` each) from storage starting at key `key` and
-///              stores them in memory starting at address `ptr`
+///              stores them in memory starting at address `ptr`. Returns a Boolean describing
+///              whether all the storage slots were previously set.
 /// Constraints: None.
 ///
 /// Signature: `__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool`
 /// Description: Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory
-///              into storage starting at key `key`.
+///              into storage starting at key `key`. Returns a Boolean describing
+///              whether the first storage slot was previously set.
 /// Constraints: None.
 fn type_check_state_quad(
     ctx: TypeCheckContext,
@@ -840,7 +843,7 @@ fn type_check_state_quad(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(decl_engine, TypeInfo::Tuple(vec![]));
+    let return_type = type_engine.insert(decl_engine, TypeInfo::Boolean);
     ok((intrinsic_function, return_type), warnings, errors)
 }
 

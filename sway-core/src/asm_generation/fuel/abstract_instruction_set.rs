@@ -1,5 +1,8 @@
 use crate::{
-    asm_generation::{register_allocator, AllocatedAbstractInstructionSet, RegisterSequencer},
+    asm_generation::fuel::{
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
+        register_sequencer::RegisterSequencer,
+    },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
         AllocatedAbstractOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
@@ -9,10 +12,7 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use std::{
-    collections::{BTreeSet, HashSet},
-    fmt,
-};
+use std::{collections::HashSet, fmt};
 
 use either::Either;
 
@@ -131,12 +131,12 @@ impl AbstractInstructionSet {
             ($regs: expr, $set: expr) => {
                 let mut regs = $regs;
                 regs.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
-                $set.append(&mut regs);
+                $set.extend(regs.into_iter());
             };
         }
 
-        let mut use_regs = BTreeSet::new();
-        let mut def_regs = BTreeSet::new();
+        let mut use_regs = HashSet::new();
+        let mut def_regs = HashSet::new();
         for op in &self.ops {
             add_virt_regs!(op.use_registers(), use_regs);
             add_virt_regs!(op.def_registers(), def_regs);

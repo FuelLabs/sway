@@ -1,10 +1,10 @@
-use fuels::prelude::*;
+use fuels::{prelude::*, types::core::Bits256};
 use std::str::FromStr;
 
-abigen!(
-    VecInAbiTestContract,
-    "test_projects/vec_in_abi/out/debug/vec_in_abi-abi.json"
-);
+abigen!(Contract(
+    name = "VecInAbiTestContract",
+    abi = "test_projects/vec_in_abi/out/debug/vec_in_abi-abi.json"
+));
 
 async fn get_vec_in_abi_instance() -> (VecInAbiTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;

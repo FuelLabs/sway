@@ -1,19 +1,26 @@
 use fuel_vm::fuel_crypto::Hasher;
 use fuels::{
-    contract::execution_script::ExecutableFuelCall,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     tx::{
         field::Script as ScriptField, field::Witnesses, field::*, Bytes32, ConsensusParameters,
         ContractId, Input as TxInput, TxPointer, UniqueIdentifier, UtxoId,
     },
 };
+// use fuels_types::core::contract::execution_script::ExecutableFuelCall;
 use std::str::FromStr;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 
 abigen!(
-    TxContractTest,
-    "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+    Contract(
+        name = "TxContractTest",
+        abi = "test_artifacts/tx_contract/out/debug/tx_contract-abi.json",
+    ),
+    Predicate(
+        name = "TestPredicate",
+        abi = "test_projects/tx_fields/out/debug/tx_predicate-abi.json"
+    )
 );
 
 async fn get_contracts() -> (TxContractTest, ContractId, WalletUnlocked, WalletUnlocked) {
@@ -68,7 +75,7 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, TxInput, TxInput) {
     let predicate =
-        Predicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
+        TestPredicate::load_from("test_projects/tx_fields/out/debug/tx_predicate.bin").unwrap();
 
     let predicate_root = predicate.address();
 

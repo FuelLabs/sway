@@ -1,10 +1,11 @@
-//! The bytes type is used when a colection of tightly-packed arbitrary bytes is needed.
+//! The `Bytes` type is used when a collection of tightly-packed arbitrary bytes is needed.
 library bytes;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
 use ::option::Option;
+use ::convert::From;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -21,7 +22,7 @@ impl RawBytes {
     }
 
     /// Creates a `RawBytes` (on the heap) with exactly the capacity (in bytes) specified.
-    /// This is equivalent to calling `RawBytes::new` when `capacity` is `0`.
+    /// This is equivalent to calling `RawBytes::new` when `capacity` is zero.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             ptr: alloc_bytes(capacity),
@@ -39,7 +40,7 @@ impl RawBytes {
         self.cap
     }
 
-    /// Grow the capacity of the Bytes by doubling its current capacity. The
+    /// Grow the capacity of `Bytes` by doubling its current capacity. The
     /// `realloc_bytes` function allocates memory on the heap and copies
     /// the data from the old allocation to the new allocation.
     pub fn grow(ref mut self) {
@@ -57,7 +58,7 @@ pub struct Bytes {
 impl Bytes {
     /// Constructs a new, empty `Bytes`.
     ///
-    /// The Bytes will not allocate until elements are pushed onto it.
+    /// The `Bytes` will not allocate until elements are pushed onto it.
     ///
     /// ### Examples
     ///
@@ -78,10 +79,10 @@ impl Bytes {
 
     /// Constructs a new, empty `Bytes` with the specified capacity.
     ///
-    /// The Bytes will be able to hold exactly `capacity` bytes without
-    /// reallocating. If `capacity` is 0, the Bytes will not allocate.
+    /// The `Bytes` will be able to hold exactly `capacity` bytes without
+    /// reallocating. If `capacity` is zero, the `Bytes` will not allocate.
     ///
-    /// It is important to note that although the returned Bytes has the
+    /// It is important to note that although the returned `Bytes` has the
     /// capacity specified, the vector will have a zero length.
     ///
     /// ### Examples
@@ -102,7 +103,7 @@ impl Bytes {
         }
     }
 
-    /// Appends an element to the back of a Bytes collection.
+    /// Appends an element to the back of a `Bytes` collection.
     ///
     /// ### Examples
     ///
@@ -133,7 +134,7 @@ impl Bytes {
         self.len += 1;
     }
 
-    /// Removes the last element from a Bytes and returns it, or [`None`] if it
+    /// Removes the last element from a `Bytes` and returns it, or `None` if it
     /// is empty.
     ///
     /// ### Examples
@@ -155,14 +156,14 @@ impl Bytes {
         if self.len == 0 {
             return Option::None;
         };
-        // decrement length.
+        // Decrement length.
         self.len -= 1;
         let target = self.buf.ptr().add_uint_offset(self.len);
 
         Option::Some(target.read_byte())
     }
 
-    /// Returns a byte at `index`, or None if `index` is out of
+    /// Returns `Some(byte)` at `index`, or `None` if `index` is out of
     /// bounds.
     ///
     /// ### Examples
@@ -190,7 +191,7 @@ impl Bytes {
         Option::Some(item_ptr.read_byte())
     }
 
-    /// Updates an element at position `index` with a new element `value`
+    /// Updates an element at position `index` with a new element `value`.
     ///
     /// ### Arguments
     ///
@@ -268,7 +269,7 @@ impl Bytes {
 
         let start = self.buf.ptr();
 
-        // The spot to put the new value
+        // The spot to put the new value.
         let index_ptr = start.add_uint_offset(index);
 
         // Shift everything over to make space.
@@ -280,7 +281,7 @@ impl Bytes {
             i -= 1;
         }
 
-        // Write `element` at pointer `index`
+        // Write `element` at pointer `index`.
         index_ptr.write_byte(element);
 
         // Increment length.
@@ -310,7 +311,7 @@ impl Bytes {
     /// assert(bytes.get(2).is_none());
     /// ```
     pub fn remove(ref mut self, index: u64) -> u8 {
-        // panic if index >= length
+        // Panic if index >= length.
         assert(index < self.len);
         let start = self.buf.ptr();
 
@@ -341,7 +342,7 @@ impl Bytes {
     ///
     /// ### Reverts
     ///
-    /// * If `element1_index` or `element2_index` is greater than or equal to the length of Bytes.
+    /// * If `element1_index` or `element2_index` is greater than or equal to the length of `Bytes`.
     ///
     /// ### Examples
     ///
@@ -399,7 +400,7 @@ impl Bytes {
         self.len
     }
 
-    /// Clears the Bytes, removing all values.
+    /// Clears the `Bytes`, removing all values.
     ///
     /// Note that this method has no effect on the allocated capacity
     /// of the Bytes.
@@ -436,7 +437,7 @@ impl Bytes {
         self.len == 0
     }
 
-    /// Returns the SHA-2-256 hash of the elements.
+    /// Returns the `SHA-2-256` hash of the elements.
     ///
     /// ### Examples
     ///
@@ -457,7 +458,7 @@ impl Bytes {
         }
     }
 
-    /// Returns the KECCAK-256 hash of the elements.
+    /// Returns the `KECCAK-256` hash of the elements.
     ///
     /// ### Examples
     ///
@@ -481,7 +482,7 @@ impl Bytes {
 
 // Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
-    /// Creates a Bytes from a Vec<u8>.
+    /// Creates a `Bytes` from a `Vec<u8>`.
     ///
     /// ### Examples
     ///
@@ -515,7 +516,7 @@ impl Bytes {
         bytes
     }
 
-    /// Creates a Vec<u8> from a Bytes.
+    /// Creates a `Vec<u8>` from a `Bytes`.
     ///
     /// ### Examples
     ///
@@ -550,7 +551,7 @@ impl Bytes {
         vec
     }
 
-    /// Splits a Bytes at the given index, modifying the original and returning the second part.
+    /// Splits a `Bytes` at the given index, modifying the original and returning the right-hand side `Bytes`.
     ///
     /// ### Arguments
     ///
@@ -586,7 +587,7 @@ impl Bytes {
         second
     }
 
-    /// Joins two Bytes into a single larger Bytes.
+    /// Joins two `Bytes` into a single larger `Bytes`.
     ///
     /// ### Arguments
     ///
@@ -647,9 +648,33 @@ impl core::ops::Eq for Bytes {
     }
 }
 
-////////////////////////////////////////////////////////////////////
+/// Methods for converting between the `Bytes` and the `b256` types.
+impl From<b256> for Bytes {
+    fn from(b: b256) -> Bytes {
+        // Artificially create bytes with capacity and len
+        let mut bytes = Bytes::with_capacity(32);
+        bytes.len = 32;
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
+
+        bytes
+    }
+
+    // NOTE: this cas be lossy! Added here as the From trait currently requires it,
+    // but the conversion from `Bytes` ->`b256` should be implemented as
+    // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
+    // https://github.com/FuelLabs/sway/pull/3881
+    fn into(self) -> b256 {
+        let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let ptr = __addr_of(value);
+        self.buf.ptr().copy_to::<b256>(ptr, 1);
+
+        value
+    }
+}
+
 // Tests
-////////////////////////////////////////////////////////////////////
+//
 fn setup() -> (Bytes, u8, u8, u8) {
     let mut bytes = Bytes::new();
     let a = 5u8;
@@ -982,4 +1007,37 @@ fn test_keccak256() {
 
     // The u8 bytes [5, 7, 9, 0, 0, 0, 0, 0] are equivalent to the u64 integer "362268190631264256"
     assert(keccak256(362268190631264256) == bytes.keccak256());
+}
+
+#[test]
+fn test_from_b256() {
+    let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
+    let b: Bytes = Bytes::from(initial);
+    let mut control_bytes = Bytes::with_capacity(32);
+
+    let mut i = 0;
+    while i < 32 {
+        // 0x33 is 51 in decimal
+        control_bytes.push(51u8);
+        i += 1;
+    }
+
+    assert(b == control_bytes);
+}
+
+#[test]
+fn test_into_b256() {
+    let mut initial_bytes = Bytes::with_capacity(32);
+
+    let mut i = 0;
+    while i < 32 {
+        // 0x33 is 51 in decimal
+        initial_bytes.push(51u8);
+        i += 1;
+    }
+
+    let value: b256 = initial_bytes.into();
+    let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
+
+    assert(value == expected);
 }
