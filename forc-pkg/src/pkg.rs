@@ -3303,9 +3303,7 @@ pub fn wrong_program_type(
     expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
-    let message = format!(
-        "{project_name} is not a '{expected_types:?}' it is a '{parse_type:?}'"
-    );
+    let message = format!("{project_name} is not a '{expected_types:?}' it is a '{parse_type:?}'");
     Error::msg(message)
 }
 

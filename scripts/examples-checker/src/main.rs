@@ -115,9 +115,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
         "successes"
     };
     let failures_str = if failures == 1 { "failure" } else { "failures" };
-    println!(
-        "{successes} {successes_str}, {failures} {failures_str}"
-    );
+    println!("{successes} {successes_str}, {failures} {failures_str}");
 
     if failures > 0 {
         return Err(anyhow!("{} failed to run for some examples", command_kind));

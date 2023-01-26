@@ -1173,10 +1173,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let this_ix = graph.add_node(
                 engines,
-                format!(
-                    "Struct field access: {resolved_type_of_parent}.{field_name}"
-                )
-                .into(),
+                format!("Struct field access: {resolved_type_of_parent}.{field_name}").into(),
             );
             for leaf in leaves {
                 graph.add_edge(*leaf, this_ix, "".into());
