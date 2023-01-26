@@ -19,3 +19,13 @@ pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
         revert(0xffff_ffff_ffff_0004);
     }
 }
+
+pub trait TryFrom<T> {
+    fn try_from(b: T) -> Option<Self>;
+}
+
+impl TryFrom<u64> for u64 {
+    fn try_from(b: u64) -> Option<Self> {
+        Option::Some(42)
+    }
+}
