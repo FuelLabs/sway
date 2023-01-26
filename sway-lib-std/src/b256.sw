@@ -7,6 +7,7 @@ use ::option::Option;
 use ::logging::log;
 
 /**
+
  TODO: switch to match when we can do:
  match b {
     (b.len() > 32) => Option::None,
