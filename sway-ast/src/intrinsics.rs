@@ -48,7 +48,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::PtrSub => "ptr_sub",
             Intrinsic::Smo => "smo",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

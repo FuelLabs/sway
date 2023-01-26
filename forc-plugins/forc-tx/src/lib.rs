@@ -643,9 +643,8 @@ fn test_parse_mint_coin() {
     let asset_id = fuel_tx::AssetId::default();
     let cmd = format!(
         r#"
-        forc-tx mint --tx-ptr {:X} output coin --to {address} --amount 100 --asset-id {asset_id}
-    "#,
-        tx_ptr
+        forc-tx mint --tx-ptr {tx_ptr:X} output coin --to {address} --amount 100 --asset-id {asset_id}
+    "#
     );
     dbg!(Command::try_parse_from_args(cmd.split_whitespace().map(|s| s.to_string())).unwrap());
 }
@@ -677,7 +676,7 @@ fn test_parse_create_inputs_outputs() {
                 --owner {address}
                 --amount 100
                 --asset-id {asset_id}
-                --tx-ptr {:X}
+                --tx-ptr {tx_ptr:X}
                 --witness-ix 0
                 --maturity 0
                 --predicate ./my-predicate/out/debug/my-predicate.bin
@@ -687,7 +686,7 @@ fn test_parse_create_inputs_outputs() {
                 --output-ix 1
                 --balance-root {balance_root}
                 --state-root {state_root}
-                --tx-ptr {:X}
+                --tx-ptr {tx_ptr:X}
                 --contract-id {contract_id}
             input message
                 --msg-id {msg_id}
@@ -721,8 +720,7 @@ fn test_parse_create_inputs_outputs() {
             output contract-created
                 --contract-id {contract_id}
                 --state-root {state_root}
-    "#,
-        tx_ptr, tx_ptr
+    "#
     );
     dbg!(Command::try_parse_from_args(args.split_whitespace().map(|s| s.to_string())).unwrap());
 }
