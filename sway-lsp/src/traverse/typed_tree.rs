@@ -120,11 +120,11 @@ impl<'a> TypedTree<'a> {
                 {
                     if let Some(mut token) = self
                         .tokens
-                        .try_get_mut(&to_ident_key(&struct_decl.name))
+                        .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(struct_decl.name));
+                        token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix));
                     }
 
                     for field in &struct_decl.fields {
@@ -148,11 +148,12 @@ impl<'a> TypedTree<'a> {
                 if let Ok(enum_decl) = decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
                     if let Some(mut token) = self
                         .tokens
-                        .try_get_mut(&to_ident_key(&enum_decl.name))
+                        .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+                        token.type_def =
+                            Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
                     }
 
                     for type_param in &enum_decl.type_parameters {
@@ -504,7 +505,8 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+                    token.type_def =
+                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
                 }
 
                 for type_arg in &type_binding.type_arguments {

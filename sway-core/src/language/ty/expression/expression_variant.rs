@@ -774,7 +774,7 @@ impl DisplayWithEngines for TyExpressionVariant {
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
+                    enum_decl.call_path.suffix.as_str(),
                     variant_name.as_str(),
                     tag
                 )

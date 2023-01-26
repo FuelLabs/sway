@@ -852,17 +852,17 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
         }
         (
             TypeInfo::Enum {
-                name: l_name,
+                call_path: l_name,
                 variant_types: l_variant_types,
                 type_parameters: l_type_parameters,
             },
             TypeInfo::Enum {
-                name: r_name,
+                call_path: r_name,
                 variant_types: r_variant_types,
                 type_parameters: r_type_parameters,
             },
         ) => {
-            l_name == r_name
+            l_name.suffix == r_name.suffix
                 && l_variant_types.iter().zip(r_variant_types.iter()).fold(
                     true,
                     |acc, (left, right)| {
@@ -880,17 +880,17 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
         }
         (
             TypeInfo::Struct {
-                name: l_name,
+                call_path: l_name,
                 fields: l_fields,
                 type_parameters: l_type_parameters,
             },
             TypeInfo::Struct {
-                name: r_name,
+                call_path: r_name,
                 fields: r_fields,
                 type_parameters: r_type_parameters,
             },
         ) => {
-            l_name == r_name
+            l_name.suffix == r_name.suffix
                 && l_fields
                     .iter()
                     .zip(r_fields.iter())
