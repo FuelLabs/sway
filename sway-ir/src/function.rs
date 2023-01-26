@@ -210,14 +210,14 @@ impl Function {
                     .any(|block| context.blocks[block.0].label == hint)
                 {
                     let idx = self.get_next_label_idx(context);
-                    self.get_unique_label(context, Some(format!("{}{}", hint, idx)))
+                    self.get_unique_label(context, Some(format!("{hint}{idx}")))
                 } else {
                     hint
                 }
             }
             None => {
                 let idx = self.get_next_label_idx(context);
-                self.get_unique_label(context, Some(format!("block{}", idx)))
+                self.get_unique_label(context, Some(format!("block{idx}")))
             }
         }
     }
@@ -355,7 +355,7 @@ impl Function {
             // one...
             (0..)
                 .find_map(|n| {
-                    let candidate = format!("{}{}", name, n);
+                    let candidate = format!("{name}{n}");
                     if func.local_storage.contains_key(&candidate) {
                         None
                     } else {

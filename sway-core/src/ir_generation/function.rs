@@ -1624,7 +1624,7 @@ impl<'eng> FnCompiler<'eng> {
                 .type_engine
                 .to_typeinfo(body.return_type, &body.span)
                 .map_err(|ty_err| {
-                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                    CompileError::InternalOwned(format!("{ty_err:?}"), body.span.clone())
                 })?,
             TypeInfo::ContractCaller { .. }
         ) {
@@ -2414,7 +2414,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2523,7 +2523,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2646,7 +2646,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 
@@ -2684,7 +2684,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 

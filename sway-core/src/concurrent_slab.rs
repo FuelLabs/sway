@@ -50,7 +50,7 @@ where
             .clone()
             .into_iter()
             .enumerate()
-            .map(|(i, value)| format!("{:<10}\t->\t{}", i, value))
+            .map(|(i, value)| format!("{i:<10}\t->\t{value}"))
             .collect::<Vec<_>>();
         write!(f, "{}", fmt_elems.join("\n"))
     }
