@@ -328,9 +328,9 @@ impl fmt::Display for PatStack {
             .sort()
             .remove_duplicates()
             .into_iter()
-            .map(|x| format!("{}", x))
+            .map(|x| format!("{x}"))
             .join(", ");
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

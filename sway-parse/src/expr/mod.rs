@@ -25,7 +25,7 @@ pub mod op_code;
 
 impl ParseToEnd for AbiCastArgs {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(AbiCastArgs, ParserConsumed<'a>)> {
         let name = parser.parse()?;
         let comma_token = parser.parse()?;
@@ -126,7 +126,7 @@ impl Parse for StatementLet {
 
 impl ParseToEnd for CodeBlockContents {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(CodeBlockContents, ParserConsumed<'a>)> {
         let mut statements = Vec::new();
         let (final_expr_opt, consumed) = loop {
@@ -746,7 +746,7 @@ impl Parse for ExprStructField {
 
 impl ParseToEnd for ExprArrayDescriptor {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(ExprArrayDescriptor, ParserConsumed<'a>)> {
         if let Some(consumed) = parser.check_empty() {
             let punctuated = Punctuated::empty();
