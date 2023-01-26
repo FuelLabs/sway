@@ -1,4 +1,4 @@
-use serde_json::Value;
+use serde_json::{json, Value};
 use sway_core::language::parsed::TreeType;
 use sway_types::Span;
 use tower_lsp::lsp_types::{Command, Range};

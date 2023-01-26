@@ -19,7 +19,6 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use serde_json::json;
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -375,7 +374,7 @@ impl Session {
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
         // Insert runnable test functions.
         let decl_engine = &*self.decl_engine.read();
-        for decl in typed_program.test_fns(decl_engine) {
+        for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl
                 .attributes
