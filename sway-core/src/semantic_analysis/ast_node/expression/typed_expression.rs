@@ -692,7 +692,7 @@ impl ty::TyExpression {
         }
         if witness_report.has_witnesses() {
             errors.push(CompileError::MatchExpressionNonExhaustive {
-                missing_patterns: format!("{}", witness_report),
+                missing_patterns: format!("{witness_report}"),
                 span,
             });
             return err(warnings, errors);
