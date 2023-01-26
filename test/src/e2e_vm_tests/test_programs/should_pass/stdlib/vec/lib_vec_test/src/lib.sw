@@ -196,7 +196,122 @@ pub fn without_capacity<T>(
     assert(vector.get(1).unwrap() == value4);
     assert(vector.get(2).unwrap() == value5);
 
-    // 
+    // create other vector
+    let mut other_vector = Vec::new;
+    other_vector.push(value0);
+    other_vector.push(value1);
+    other_vector.push(value2);
+
+    assert_bounds(other_vector, 3, 4);
+    assert(other_vector.get(0).unrwap() == value0);
+    assert(other_vector.get(1).unrwap() == value1);
+    assert(other_vector.get(2).unrwap() == value2);
+
+    // append other vector to vector
+    vector.append(other_vector);
+
+    assert_bounds(vector, 6, 6);
+    assert_bounds(other_vector, 0, 4);
+    assert(vector.get(0).unwrap() == value3);
+    assert(vector.get(1).unwrap() == value4);
+    assert(vector.get(2).unwrap() == value5);
+    assert(vector.get(3).unwrap() == value0);
+    assert(vector.get(4).unwrap() == value1);
+    assert(vector.get(5).unwrap() == value2);
+    assert(other_vector.get(0).is_none());
+
+    // split off vector
+    let mut other_vector = vector.split_off(3);
+
+    assert_bounds(vector, 3, 6);
+    assert_bounds(other_vector, 3, 3);
+    assert(vector.get(0).unwrap() == value3);
+    assert(vector.get(1).unwrap() == value4);
+    assert(vector.get(2).unwrap() == value5);
+    assert(other_vector.get(3).unwrap() == value0);
+    assert(other_vector.get(4).unwrap() == value1);
+    assert(other_vector.get(5).unwrap() == value2);
+
+    // append other vector to vector
+    vector.append(other_vector);
+
+    assert_bounds(vector, 6, 6);
+    assert_bounds(other_vector, 0, 3);
+    assert(vector.get(0).unwrap() == value3);
+    assert(vector.get(1).unwrap() == value4);
+    assert(vector.get(2).unwrap() == value5);
+    assert(vector.get(3).unwrap() == value0);
+    assert(vector.get(4).unwrap() == value1);
+    assert(vector.get(5).unwrap() == value2);
+    assert(other_vector.get(0).is_none());
+
+    // split at index
+    let (vector, other_vector) = vector.split_at(3);
+
+    assert_bounds(vector, 3, 3);
+    assert_bounds(other_vector, 3, 3);
+    assert(vector.get(0).unwrap() == value3);
+    assert(vector.get(1).unwrap() == value4);
+    assert(vector.get(2).unwrap() == value5);
+    assert(other_vector.get(3).unwrap() == value0);
+    assert(other_vector.get(4).unwrap() == value1);
+    assert(other_vector.get(5).unwrap() == value2);
+
+    // append other vector to vector
+    vector.append(other_vector);
+
+    assert_bounds(vector, 6, 6);
+    assert_bounds(other_vector, 0, 3);
+    assert(vector.get(0).unwrap() == value3);
+    assert(vector.get(1).unwrap() == value4);
+    assert(vector.get(2).unwrap() == value5);
+    assert(vector.get(3).unwrap() == value0);
+    assert(vector.get(4).unwrap() == value1);
+    assert(vector.get(5).unwrap() == value2);
+    assert(other_vector.get(0).is_none());
+
+    // check first and last
+    assert(vector.first().unwrap() == value3);
+    assert(vector.last().unwrap() == value2);
+    assert(other_vector.first().is_none());
+    assert(other_vector.last().is_none());
+
+    // reverse vector
+    vector.reverse();
+
+    assert_bounds(vector, 6, 6);
+    assert(vector.get(0).unwrap() == value2);
+    assert(vector.get(1).unwrap() == value1);
+    assert(vector.get(2).unwrap() == value0);
+    assert(vector.get(3).unwrap() == value5);
+    assert(vector.get(4).unwrap() == value4);
+    assert(vector.get(5).unwrap() == value3);
+
+    // fill vector with first value
+    vector.fill(value0);
+
+    assert_bounds(vector, 6, 6);
+    assert(vector.get(0).unwrap() == value0);
+    assert(vector.get(1).unwrap() == value0);
+    assert(vector.get(2).unwrap() == value0);
+    assert(vector.get(3).unwrap() == value0);
+    assert(vector.get(4).unwrap() == value0);
+    assert(vector.get(5).unwrap() == value0);
+
+    // resize vector
+    vector.resize(8, value1);
+
+    assert_bounds(vector, 8, 8);
+    assert(vector.get(0).unwrap() == value0);
+    assert(vector.get(1).unwrap() == value0);
+    assert(vector.get(2).unwrap() == value0);
+    assert(vector.get(3).unwrap() == value0);
+    assert(vector.get(4).unwrap() == value0);
+    assert(vector.get(5).unwrap() == value0);
+    assert(vector.get(6).unwrap() == value1);
+    assert(vector.get(7).unwrap() == value1);
+
+    // TODO: contains, quick sort, merge sort
 }
 
 pub fn with_capacity<T>(

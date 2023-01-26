@@ -1,5 +1,6 @@
 library vec;
 
+use core::ops::{Eq, Ord};
 use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option;
@@ -451,18 +452,19 @@ impl<T> Vec<T> {
     /// assert(vec.get(3).unwrap() == 4);
     /// ```
     pub fn append(ref mut self, ref other: Vec<T>) {
-        let both_len = self.len + other.len;
-        let other_start = self.len;
+        let combined_len = self.len + other.len;
 
-        // reallocate with combined capacity, write `other`, set buffer capacity
-        self.buf.ptr = realloc::<T>(self.buf.ptr(), self.buf.capacity(), both_len);
-        self.buf.ptr().add::<T>(other_start).write::<Vec<T>>(other);
+        // if combined length exceeds capacity, reallocate with capacity of combined length
+        if self.buf.cap < combined_len {
+            self.buf.ptr = realloc::<T>(self.buf.ptr, self.buf.cap, combined_len);
+        }
 
-        // set capacity and length
-        self.buf.cap = both_len;
-        self.len = both_len;
+        // write to buffer
+        self.buf.ptr.add::<T>(self.len).write::<Vec<T>>(other);
 
-        // clear `other`
+        // set lengths and capacity
+        self.len = combined_len;
+        self.buf.cap = combined_len;
         other.len = 0;
     }
 
@@ -491,7 +493,7 @@ impl<T> Vec<T> {
     ///
     /// assert(vec.get(0).unwrap() == 1);
     /// assert(vec2.get(0).unwrap() == 2);
-    /// assert(vec2.get(0).unwrap() == 3);
+    /// assert(vec2.get(1).unwrap() == 3);
     /// ```
     pub fn split_off(ref mut self, at: u64) -> Vec<T> {
         assert(self.len >= at);
@@ -501,12 +503,12 @@ impl<T> Vec<T> {
 
         self.buf.ptr().add::<T>(at).copy_to::<T>(split_vec.buf.ptr(), split_len);
 
-        self.len = at - 1;
+        self.len = at;
 
         split_vec
     }
 
-    /// Divides one slice into two at an index.
+    /// Divides one vector into two at an index.
     ///
     /// The first will contain all indices from `[0, mid)` (excluding the index
     /// `mid` itself) and the second will contain all indices from `[mid, len)`
@@ -546,8 +548,8 @@ impl<T> Vec<T> {
         let mut left_vec = Self { buf: RawVec::with_capacity(left_len), len: left_len };
         let mut right_vec = Self { buf: RawVec::with_capacity(right_len), len: right_len };
 
-        self.buf.ptr().copy_to::<T>(left_vec.buf.ptr(), left_len);
-        self.buf.ptr().add::<T>(mid).copy_to::<T>(right_vec.buf.ptr(), right_len);
+        self.buf.ptr.copy_to::<T>(left_vec.buf.ptr, left_len);
+        self.buf.ptr.add::<T>(mid).copy_to::<T>(right_vec.buf.ptr, right_len);
 
         left_vec.len = left_len;
         right_vec.len = right_len;
@@ -571,8 +573,8 @@ impl<T> Vec<T> {
     /// ```
     pub fn first(self) -> Option<T> {
         match self.len {
-            0 => Option::None::<T>(),
-            _ => Option::Some(self.buf.ptr().read::<T>()),
+            0 => Option::None,
+            _ => Option::Some(self.buf.ptr.read::<T>()),
         }
     }
 
@@ -618,8 +620,8 @@ impl<T> Vec<T> {
         if len >= 2 {
             let mut i = 0;
             while i < len {
-                let element1_ptr = self.buf.ptr().add::<T>(i);
-                let element2_ptr = self.buf.ptr().add::<T>(len - i - 1);
+                let element1_ptr = self.buf.ptr.add::<T>(i);
+                let element2_ptr = self.buf.ptr.add::<T>(len - i - 1);
 
                 let element1_value: T = element1_ptr.read::<T>();
                 element2_ptr.copy_to::<T>(element1_ptr, 1);
@@ -653,7 +655,7 @@ impl<T> Vec<T> {
     pub fn fill(ref mut self, value: T) {
         let mut i = 0;
         while i < self.len {
-            self.buf.ptr().add::<T>(i).write::<T>(value);
+            self.buf.ptr.add::<T>(i).write::<T>(value);
             i += 1;
         }
     }
@@ -679,14 +681,14 @@ impl<T> Vec<T> {
     /// assert(!vec.contains(3));
     /// ```
     // TODO: replace `v` with `self` when trait constraints are merged
-    pub fn contains<E>(ref mut v: Vec<E>, value: E) -> bool
+    pub fn contains(ref mut self, value: T) -> bool
     where
-        E: Eq
+        T: Eq
     {
         let mut i = 0;
         while i < v.len {
-            let index_ptr = v.buf.ptr().add::<E>(i);
-            if value == index_ptr.read::<E>() {
+            let index_ptr = v.buf.ptr.add::<T>(i);
+            if value == index_ptr.read::<T>() {
                 return true;
             }
             i += 1;
@@ -741,7 +743,7 @@ impl<T> Vec<T> {
 
         let mut i = len;
         while i < new_len {
-            self.buf.ptr().add::<T>(i).write::<T>(value);
+            self.buf.ptr.add::<T>(i).write::<T>(value);
             i += 1;
         }
 
