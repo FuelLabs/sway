@@ -403,8 +403,52 @@ pub fn swap<T>(
     assert(vector.get(2).unwrap() == value0);
 }
 
+pub fn sort<T>(
+    value0: T,
+    value1: T,
+) where T: Ord + Eq {
+    let mut vector = Vec::with_capacity(2);
+    vector.push(value0);
+    vector.push(value1);
+
+    if is_sorted(vector) {
+        vector.reverse();
+    }
+
+    vector.sort()
+
+}
+
 fn assert_bounds<T>(ref mut vector: Vec<T>, expected_len: u64, expected_cap: u64) {
     assert(vector.len() == expected_len);
     assert(vector.capacity() == expected_cap);
     assert(!vector.is_empty() || expected_len == 0);
+}
+
+// TODO: implement this as `Vec::is_sorted`.
+fn is_sorted<T>(ref mut vector: Vec<T>) -> bool where T: Ord {
+    let len_sub_one = vector.len() - 1;
+    let mut i = 0;
+    while i < len_sub_one {
+        if vector.get(i).unwrap() > vector.get(i + 1).unwrap() {
+            return false;
+        }
+        i += 2;
+    }
+    true
+}
+
+fn shuffle(ref mut vector: Vec<T>, seed: Option<u64>) -> Vec<T> {
+    let hash = std::hash::sha256(seed.unwrap_or(1));
+    let len = vector.len();
+    let mut i = 0;
+    while i < 31 {
+        let src_index = __addr_of(hash).add::<b256>(i).read_byte() % len;
+        let mut dest_index = _addr_of(hash).add::<b256>(i + 1).read_byte() % len;
+        if src_index == dest_index {
+            dest_index = (dest_index + 1) % len;
+        }
+        vector.swap(src_index, dest_index);
+        i += 2;
+    }
 }

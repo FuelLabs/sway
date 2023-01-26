@@ -749,6 +749,63 @@ impl<T> Vec<T> {
 
         self.len = new_len;
     }
+
+    /// Sorts the Vector.
+    ///
+    /// This sort is stable (i.e. does not reorder equal elements).
+    ///
+    /// The current algorithm conditionally sorts via insertion sort if the length is 20 or less,
+    /// otherwise it uses bottom-up merge sort. Insertion sort has an average time complexity of
+    /// O(n^2) with no auxillary memory and merge sort has an average time complexity of
+    /// O(n log n) with O(2n) memory.
+    ///
+    /// > Notice: This implementation may change in the future.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// let vec = Vec::new();
+    /// vec.push(3);
+    /// vec.push(2);
+    /// vec.push(4);
+    ///
+    /// vec.sort();
+    ///
+    /// assert(vec.get(0).unwrap() == 2);
+    /// assert(vec.get(1).unwrap() == 3);
+    /// assert(vec.get(2).unwrap() == 4);
+    /// ```
+    pub fn sort<O>(ref mut v: Vec<O>) where O: Ord + Eq {
+        merge_sort(v);
+    }
+
+    /// Sorts the vector, but might not preserve the order of equal elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements).
+    ///
+    /// The current algorithm is an iterative quicksort with an average time complexity of
+    /// O(n log n). Note that, since the sorting implementation is iterative, it requires O(n)
+    /// auxillary memory for the stack.
+    ///
+    /// > Notice: This implementation may change in the future.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// let vec = Vec::new();
+    /// vec.push(3);
+    /// vec.push(2);
+    /// vec.push(4);
+    ///
+    /// vec.sort_unstable();
+    ///
+    /// assert(vec.get(0).unwrap() == 2);
+    /// assert(vec.get(1).unwrap() == 3);
+    /// assert(vec.get(2).unwrap() == 4);
+    /// ```
+    pub fn sort_unstable<O>(ref mut v: Vec<O>) where O: Ord + Eq {
+        quick_sort(v);
+    }
 }
 
 impl<T> Vec<T> {
@@ -776,7 +833,7 @@ impl<T> Vec<T> {
     /// Iterative Quick Sort
     ///
     /// Average case time complexity TODO
-    /// Space complexity TODO
+    /// Space complexity O(n) auxillary
     // TODO: replace `v` with `self` when trait constraints are merged
     fn quick_sort<O>(ref mut v: Vec<O>) where O: Ord + Eq {
         if 2 > v.len {
