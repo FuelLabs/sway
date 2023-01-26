@@ -815,11 +815,11 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
     Ok((leaves, exit_node))
 }
 
-fn get_trait_fn_node_index<'a, 'cfg>(
+fn get_trait_fn_node_index<'a>(
     engines: Engines<'_>,
     function_decl_id: DeclId,
     expression_span: Span,
-    graph: &'a ControlFlowGraph<'cfg>,
+    graph: &'a ControlFlowGraph,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {
     let decl_engine = engines.de();
     let fn_decl = decl_engine.get_function(function_decl_id, &expression_span)?;
