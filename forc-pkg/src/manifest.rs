@@ -414,7 +414,7 @@ impl PackageManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -810,7 +810,7 @@ impl WorkspaceManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -850,7 +850,7 @@ impl WorkspaceManifest {
                 let duplicate_paths = pkg_name_to_paths
                     .get(pkg_name)
                     .expect("missing duplicate paths");
-                format!("{}: {:#?}", pkg_name, duplicate_paths)
+                format!("{pkg_name}: {duplicate_paths:#?}")
             })
             .collect::<Vec<_>>();
 

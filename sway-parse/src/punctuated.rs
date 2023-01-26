@@ -8,7 +8,7 @@ where
     P: Parse,
 {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(Punctuated<T, P>, ParserConsumed<'a>)> {
         let mut value_separator_pairs = Vec::new();
         loop {

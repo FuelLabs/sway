@@ -429,14 +429,14 @@ impl<'a> std::ops::Index<&'a Path> for Module {
     type Output = Module;
     fn index(&self, path: &'a Path) -> &Self::Output {
         self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
 impl<'a> std::ops::IndexMut<&'a Path> for Module {
     fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
         self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
