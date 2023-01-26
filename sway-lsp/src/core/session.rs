@@ -289,7 +289,7 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+        writeln!(&mut file, "{src}").map_err(|err| DocumentError::UnableToWriteFile {
             path: uri.path().to_string(),
             err: err.to_string(),
         })?;

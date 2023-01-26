@@ -62,7 +62,7 @@ fn format_doc_attributes(token: &Token) -> String {
             .iter()
             .map(|attribute| {
                 let comment = attribute.args.first().unwrap().as_str();
-                format!("{}\n", comment)
+                format!("{comment}\n")
             })
             .collect()
     }
@@ -83,7 +83,7 @@ fn format_variable_hover(is_mutable: bool, type_name: &str, token_name: &str) ->
         false => "",
         true => " mut",
     };
-    format!("let{} {}: {}", mutability, token_name, type_name)
+    format!("let{mutability} {token_name}: {type_name}")
 }
 
 fn markup_content(markup: Markup) -> lsp_types::MarkupContent {
@@ -100,7 +100,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
 
     let format_name_with_type = |name: &str, type_id: &TypeId| -> String {
         let type_name = format!("{}", engines.help_out(type_id));
-        format!("{}: {}", name, type_name)
+        format!("{name}: {type_name}")
     };
 
     let value = token

@@ -408,7 +408,7 @@ impl Renderable for ItemBody {
                                     span(class="in-band") {
                                         // TODO: pass the decl ty info or match
                                         // for uppercase naming like: "Enum"
-                                        : format!("{} ", friendly_name);
+                                        : format!("{friendly_name} ");
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
@@ -555,7 +555,7 @@ fn context_section<'title, S: Renderable + 'static>(
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title.as_str();
-            a(class="anchor", href=format!("{}{}", IDENTITY, lct));
+            a(class="anchor", href=format!("{IDENTITY}{lct}"));
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
@@ -568,7 +568,7 @@ impl Renderable for TyStructField {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, struct_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -588,7 +588,7 @@ impl Renderable for TyStorageField {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, storage_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -608,7 +608,7 @@ impl Renderable for TyEnumVariant {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, enum_variant_id));
+                a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     : self.type_span.as_str();
@@ -660,7 +660,7 @@ impl Renderable for TyTraitFn {
                 div(id=&method_id, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{}{}", IDENTITY, method_id)) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -1111,7 +1111,7 @@ impl Renderable for Sidebar {
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
             DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
             DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (format!("../{}", INDEX_FILENAME), IDENTITY.to_owned()),
+            DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1128,7 +1128,7 @@ impl Renderable for Sidebar {
                         div(class="block") {
                             ul {
                                 li(class="version") {
-                                    : format!("Version {}", version);
+                                    : format!("Version {version}");
                                 }
                                 li {
                                     a(id="all-types", href=ALL_DOC_FILENAME) {

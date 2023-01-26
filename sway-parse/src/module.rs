@@ -24,7 +24,7 @@ impl Parse for ModuleKind {
 }
 
 impl ParseToEnd for Module {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Self, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, '_>) -> ParseResult<(Self, ParserConsumed<'a>)> {
         let (kind, semicolon_token) = parser.parse()?;
 
         let (items, consumed) = parser.parse_to_end()?;

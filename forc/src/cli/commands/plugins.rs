@@ -81,7 +81,7 @@ fn format_print_description(
     let description = parse_description_for_plugin(&path);
 
     if describe {
-        Ok(format!("  {} \t\t{}", display, description))
+        Ok(format!("  {display} \t\t{description}"))
     } else {
         Ok(display)
     }

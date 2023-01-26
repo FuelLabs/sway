@@ -129,11 +129,11 @@ impl CurlyBrace for ItemStorage {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
-                write!(line, "\n{}", open_brace)?;
+                write!(line, "\n{open_brace}")?;
             }
             _ => {
                 // Add opening brace to the same line
-                write!(line, " {}", open_brace)?;
+                write!(line, " {open_brace}")?;
             }
         }
 
