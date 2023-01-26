@@ -73,9 +73,8 @@ pub fn get<T>(key: b256) -> Option<T> {
         // `(bool, T)` which contains the two values we need.
         // NOTE: we should eventually be using `__state_load_word` here but we are currently unable 
         // to make that intrinsic return two things due to some limitations in IR/codegen.
-        asm(key: key, result_ptr, loaded_word, previously_set) {
-            move result_ptr sp; // Make `result_ptr` point to the current top of the stack
-            cfei i16; // Grow stack by 2 word
+        let temp_pair = (false, 0_u64);    // Using a `u64` as a placeholder for copy-type `T` value.
+        asm(key: key, result_ptr: temp_pair, loaded_word, previously_set) {
             srw  loaded_word previously_set key;
             sw   result_ptr previously_set i0;
             sw   result_ptr loaded_word i1;
