@@ -77,67 +77,178 @@ impl CollectTypesMetadata for TypeId {
 
 impl ReplaceSelfType for TypeId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match engines.te().get(*self) {
-            TypeInfo::SelfType => {
-                *self = self_type;
-            }
-            TypeInfo::Enum {
-                mut type_parameters,
-                mut variant_types,
-                ..
-            } => {
-                for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(engines, self_type);
-                }
-                for variant_type in variant_types.iter_mut() {
-                    variant_type.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Struct {
-                mut type_parameters,
-                mut fields,
-                ..
-            } => {
-                for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(engines, self_type);
-                }
-                for field in fields.iter_mut() {
-                    field.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Tuple(mut type_arguments) => {
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.replace_self_type(engines, self_type);
-                }
-            }
-            TypeInfo::Custom { type_arguments, .. } => {
-                if let Some(mut type_arguments) = type_arguments {
-                    for type_argument in type_arguments.iter_mut() {
-                        type_argument.replace_self_type(engines, self_type);
+        fn helper(type_id: TypeId, engines: Engines<'_>, self_type: TypeId) -> Option<TypeId> {
+            let type_engine = engines.te();
+            let decl_engine = engines.de();
+            match type_engine.get(type_id) {
+                TypeInfo::SelfType => Some(self_type),
+                TypeInfo::Enum {
+                    type_parameters,
+                    variant_types,
+                    name,
+                } => {
+                    let mut need_to_create_new = false;
+                    let variant_types = variant_types
+                        .into_iter()
+                        .map(|mut variant| {
+                            if let Some(type_id) = helper(variant.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                variant.type_id = type_id;
+                            }
+                            variant
+                        })
+                        .collect::<Vec<_>>();
+                    let type_parameters = type_parameters
+                        .into_iter()
+                        .map(|mut type_param| {
+                            if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                type_param.type_id = type_id;
+                            }
+                            type_param
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(
+                            decl_engine,
+                            TypeInfo::Enum {
+                                variant_types,
+                                type_parameters,
+                                name,
+                            },
+                        ))
+                    } else {
+                        None
                     }
                 }
-            }
-            TypeInfo::Array(mut type_id, _) => {
-                type_id.replace_self_type(engines, self_type);
-            }
-            TypeInfo::Storage { mut fields } => {
-                for field in fields.iter_mut() {
-                    field.replace_self_type(engines, self_type);
+                TypeInfo::Struct {
+                    type_parameters,
+                    fields,
+                    name,
+                } => {
+                    let mut need_to_create_new = false;
+                    let fields = fields
+                        .into_iter()
+                        .map(|mut field| {
+                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                field.type_id = type_id;
+                            }
+                            field
+                        })
+                        .collect::<Vec<_>>();
+                    let type_parameters = type_parameters
+                        .into_iter()
+                        .map(|mut type_param| {
+                            if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                type_param.type_id = type_id;
+                            }
+                            type_param
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(
+                            decl_engine,
+                            TypeInfo::Struct {
+                                fields,
+                                name,
+                                type_parameters,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
                 }
+                TypeInfo::Tuple(fields) => {
+                    let mut need_to_create_new = false;
+                    let fields = fields
+                        .into_iter()
+                        .map(|mut field| {
+                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                field.type_id = type_id;
+                            }
+                            field
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(decl_engine, TypeInfo::Tuple(fields)))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Custom {
+                    name,
+                    type_arguments,
+                } => {
+                    let mut need_to_create_new = false;
+                    let type_arguments = type_arguments.map(|type_arguments| {
+                        type_arguments
+                            .into_iter()
+                            .map(|mut type_arg| {
+                                if let Some(type_id) = helper(type_arg.type_id, engines, self_type)
+                                {
+                                    need_to_create_new = true;
+                                    type_arg.type_id = type_id;
+                                }
+                                type_arg
+                            })
+                            .collect::<Vec<_>>()
+                    });
+                    if need_to_create_new {
+                        Some(type_engine.insert(
+                            decl_engine,
+                            TypeInfo::Custom {
+                                name,
+                                type_arguments,
+                            },
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Array(mut elem_ty, count) => helper(elem_ty.type_id, engines, self_type)
+                    .map(|type_id| {
+                        elem_ty.type_id = type_id;
+                        type_engine.insert(decl_engine, TypeInfo::Array(elem_ty, count))
+                    }),
+                TypeInfo::Storage { fields } => {
+                    let mut need_to_create_new = false;
+                    let fields = fields
+                        .into_iter()
+                        .map(|mut field| {
+                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                                need_to_create_new = true;
+                                field.type_id = type_id;
+                            }
+                            field
+                        })
+                        .collect::<Vec<_>>();
+                    if need_to_create_new {
+                        Some(type_engine.insert(decl_engine, TypeInfo::Storage { fields }))
+                    } else {
+                        None
+                    }
+                }
+                TypeInfo::Unknown
+                | TypeInfo::UnknownGeneric { .. }
+                | TypeInfo::Str(_)
+                | TypeInfo::UnsignedInteger(_)
+                | TypeInfo::Boolean
+                | TypeInfo::ContractCaller { .. }
+                | TypeInfo::B256
+                | TypeInfo::Numeric
+                | TypeInfo::RawUntypedPtr
+                | TypeInfo::RawUntypedSlice
+                | TypeInfo::Contract
+                | TypeInfo::ErrorRecovery
+                | TypeInfo::Placeholder(_) => None,
             }
-            TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Str(_)
-            | TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Boolean
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::B256
-            | TypeInfo::Numeric
-            | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice
-            | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery
-            | TypeInfo::Placeholder(_) => {}
+        }
+
+        if let Some(type_id) = helper(*self, engines, self_type) {
+            *self = type_id;
         }
     }
 }
