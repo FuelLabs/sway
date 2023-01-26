@@ -1,0 +1,6 @@
+category = "fail"
+
+# check: $()error
+# nextln: main.sw:9:1
+# check: $()impl Shiftable for u64 {
+# check: $()Conflicting implementations of trait "Shiftable" for type "u64".
