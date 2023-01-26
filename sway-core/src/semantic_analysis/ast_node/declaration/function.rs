@@ -112,13 +112,13 @@ impl ty::TyFunctionDeclaration {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let fn_ctx = ctx
+            let ctx = ctx
                 .by_ref()
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                ty::TyCodeBlock::type_check(fn_ctx, body),
+                ty::TyCodeBlock::type_check(ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
                     type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
