@@ -66,11 +66,11 @@ impl CurlyBrace for ItemAbi {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                write!(line, "\n{}\n", open_brace)?;
+                write!(line, "\n{open_brace}\n")?;
             }
             _ => {
                 // Add opening brace to the same line
-                writeln!(line, " {}", open_brace)?;
+                writeln!(line, " {open_brace}")?;
             }
         }
 

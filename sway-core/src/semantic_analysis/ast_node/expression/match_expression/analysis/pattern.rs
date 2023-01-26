@@ -685,20 +685,20 @@ impl fmt::Display for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Pattern::Wildcard => "_".to_string(),
-            Pattern::U8(range) => format!("{}", range),
-            Pattern::U16(range) => format!("{}", range),
-            Pattern::U32(range) => format!("{}", range),
-            Pattern::U64(range) => format!("{}", range),
-            Pattern::Numeric(range) => format!("{}", range),
-            Pattern::B256(n) => format!("{:#?}", n),
-            Pattern::Boolean(b) => format!("{}", b),
+            Pattern::U8(range) => format!("{range}"),
+            Pattern::U16(range) => format!("{range}"),
+            Pattern::U32(range) => format!("{range}"),
+            Pattern::U64(range) => format!("{range}"),
+            Pattern::Numeric(range) => format!("{range}"),
+            Pattern::B256(n) => format!("{n:#?}"),
+            Pattern::Boolean(b) => format!("{b}"),
             Pattern::String(s) => s.clone(),
-            Pattern::Struct(struct_pattern) => format!("{}", struct_pattern),
-            Pattern::Enum(enum_pattern) => format!("{}", enum_pattern),
+            Pattern::Struct(struct_pattern) => format!("{struct_pattern}"),
+            Pattern::Enum(enum_pattern) => format!("{enum_pattern}"),
             Pattern::Tuple(elems) => {
                 let mut builder = String::new();
                 builder.push('(');
-                write!(builder, "{}", elems)?;
+                write!(builder, "{elems}")?;
                 builder.push(')');
                 builder
             }
@@ -708,7 +708,7 @@ impl fmt::Display for Pattern {
                 .collect::<Vec<_>>()
                 .join(" | "),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -786,7 +786,7 @@ impl fmt::Display for StructPattern {
                         let mut inner_builder = String::new();
                         inner_builder.push_str(name);
                         inner_builder.push_str(": ");
-                        write!(inner_builder, "{}", field)?;
+                        write!(inner_builder, "{field}")?;
                         Ok(inner_builder)
                     })
                     .collect::<Result<Vec<_>, _>>()?
@@ -803,7 +803,7 @@ impl fmt::Display for StructPattern {
                     let mut inner_builder = String::new();
                     inner_builder.push_str(name);
                     inner_builder.push_str(": ");
-                    write!(inner_builder, "{}", field)?;
+                    write!(inner_builder, "{field}")?;
                     Ok(inner_builder)
                 })
                 .collect::<Result<Vec<_>, _>>()?
@@ -811,7 +811,7 @@ impl fmt::Display for StructPattern {
         };
         builder.push_str(&s);
         builder.push_str(" }");
-        write!(f, "{}", builder)
+        write!(f, "{builder}")
     }
 }
 
@@ -879,6 +879,6 @@ impl fmt::Display for EnumPattern {
         builder.push('(');
         builder.push_str(&self.value.to_string());
         builder.push(')');
-        write!(f, "{}", builder)
+        write!(f, "{builder}")
     }
 }

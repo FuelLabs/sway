@@ -99,10 +99,10 @@ impl CurlyBrace for ItemTrait {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
+                writeln!(line, "\n{open_brace}")?;
             }
             _ => {
-                writeln!(line, "{}", open_brace)?;
+                writeln!(line, "{open_brace}")?;
             }
         }
 

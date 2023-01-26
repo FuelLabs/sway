@@ -19,8 +19,8 @@ pub enum InterfaceName {
 impl fmt::Display for InterfaceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InterfaceName::Abi(name) => write!(f, "ABI \"{}\"", name),
-            InterfaceName::Trait(name) => write!(f, "trait \"{}\"", name),
+            InterfaceName::Abi(name) => write!(f, "ABI \"{name}\""),
+            InterfaceName::Trait(name) => write!(f, "trait \"{name}\""),
         }
     }
 }
