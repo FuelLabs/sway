@@ -539,12 +539,12 @@ impl OrdEq for u8 {
 impl OrdEq for b256 {
 }
 
-pub trait Shiftable {
+pub trait Shift {
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;
 }
 
-impl Shiftable for u64 {
+impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -559,7 +559,7 @@ impl Shiftable for u64 {
     }
 }
 
-impl Shiftable for u32 {
+impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -574,7 +574,7 @@ impl Shiftable for u32 {
     }
 }
 
-impl Shiftable for u16 {
+impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -589,7 +589,7 @@ impl Shiftable for u16 {
     }
 }
 
-impl Shiftable for u8 {
+impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -604,7 +604,7 @@ impl Shiftable for u8 {
     }
 }
 
-impl Shiftable for b256 {
+impl Shift for b256 {
     fn lsh(self, shift_amount: u64) -> Self {
         let(word_1, word_2, word_3, word_4) = decompose(self);
         let mut w1 = 0;
