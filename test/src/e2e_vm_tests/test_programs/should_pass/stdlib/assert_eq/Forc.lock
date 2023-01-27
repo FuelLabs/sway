@@ -1,0 +1,13 @@
+[[package]]
+name = 'assert_eq'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-DFF03713D0FC77C9'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-DFF03713D0FC77C9'
+dependencies = ['core']
