@@ -1305,7 +1305,7 @@ fn update_reg(
     if let Some(r) = reg_to_reg_map.get(reg) {
         (*r).into()
     } else {
-        reg.clone().clone()
+        reg.clone()
     }
 }
 

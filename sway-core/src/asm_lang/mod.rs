@@ -1648,13 +1648,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
     }
 
     pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
-        let update_reg = |reg: &Reg| -> Reg {
-            reg_to_reg_map
-                .get(reg)
-                .unwrap_or_else(|| &reg)
-                .clone()
-                .clone()
-        };
+        let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;
         match self {
