@@ -7,7 +7,7 @@ use sway_ir::{optimize as opt, Context};
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let dir: PathBuf = format!("{}/tests/{}", manifest_dir, sub_dir).into();
+    let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
 

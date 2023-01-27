@@ -1,7 +1,5 @@
 script;
 
-// This bug was found by Nebula in discord. Adding this trait was causing other implementations on u64s to be overridden.
-
 pub trait Shiftable {
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;

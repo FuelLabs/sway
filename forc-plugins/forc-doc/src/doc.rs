@@ -208,7 +208,7 @@ impl ModuleInfo {
         let prefix = self.to_path_literal_prefix(location);
         match prefix.is_empty() {
             true => item_name.to_owned(),
-            false => format!("{}::{}", prefix, item_name),
+            false => format!("{prefix}::{item_name}"),
         }
     }
     /// Create a path literal prefix from the module prefixes.

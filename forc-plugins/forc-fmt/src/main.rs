@@ -182,22 +182,22 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
             DiffOp::Insert(new) => {
                 count_of_updates += 1;
                 for n in new {
-                    println_green(&format!("+{}", n));
+                    println_green(&format!("+{n}"));
                 }
             }
             DiffOp::Remove(old) => {
                 count_of_updates += 1;
                 for o in old {
-                    println_red(&format!("-{}", o));
+                    println_red(&format!("-{o}"));
                 }
             }
             DiffOp::Replace(old, new) => {
                 count_of_updates += 1;
                 for o in old {
-                    println_red(&format!("-{}", o));
+                    println_red(&format!("-{o}"));
                 }
                 for n in new {
-                    println_green(&format!("+{}", n));
+                    println_green(&format!("+{n}"));
                 }
             }
         }

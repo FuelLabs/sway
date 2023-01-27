@@ -91,7 +91,7 @@ impl Parse for Attribute {
 }
 
 impl ParseToEnd for Attribute {
-    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, 'e>) -> ParseResult<(Self, ParserConsumed<'a>)> {
+    fn parse_to_end<'a, 'e>(mut parser: Parser<'a, '_>) -> ParseResult<(Self, ParserConsumed<'a>)> {
         let attrib = parser.parse()?;
         match parser.check_empty() {
             Some(consumed) => Ok((attrib, consumed)),
