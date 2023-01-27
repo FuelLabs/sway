@@ -9,7 +9,7 @@ use either::Either;
 use petgraph::graph::{node_index, NodeIndex};
 
 pub type InterferenceGraph =
-    petgraph::stable_graph::StableGraph<VirtualRegister, (), petgraph::Undirected>;
+    petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
@@ -222,7 +222,7 @@ pub(crate) fn create_interference_graph(
         })
         .iter()
         .for_each(|&reg| {
-            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(reg.clone()));
+            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(Some(reg.clone())));
         });
 
     for (ix, regs) in live_out {
@@ -333,7 +333,7 @@ pub(crate) fn coalesce_registers(
                         // Add all of ix2(r2)'s edges to `ix1(r1)`
                         for neighbor in interference_graph.neighbors(*ix2).collect::<Vec<_>>() {
                             interference_graph.add_edge(neighbor, *ix1, ());
-                            interference_graph[*ix2] = VirtualRegister::Virtual("00".into());
+                            interference_graph[*ix2] = None; // VirtualRegister::Virtual("00".into());
                         }
 
                         // Update the register maps
@@ -402,22 +402,23 @@ pub(crate) fn color_interference_graph(
 
     for index in 0..interference_graph.node_count() {
         let node = node_index(index);
-        if let VirtualRegister::Virtual(s) = &interference_graph[node] {
-            if s == "00" {
-                continue;
-            }
+        if interference_graph[node].is_none() {
+            continue;
         }
         let neighbors: BTreeSet<VirtualRegister> = interference_graph
             .neighbors(node)
             .filter_map(|n| match &interference_graph[n] {
-                VirtualRegister::Virtual(s) if s == "00" => None,
-                _ => Some(interference_graph[n].clone()),
+                None => None,
+                _ => interference_graph[n].clone(),
             })
             .collect();
 
-        stack.push((interference_graph[node].clone(), neighbors.clone()));
+        stack.push((
+            interference_graph[node].as_ref().unwrap().clone(),
+            neighbors.clone(),
+        ));
 
-        interference_graph[node] = VirtualRegister::Virtual("00".into());
+        interference_graph[node] = None; //VirtualRegister::Virtual("00".into());
     }
 
     stack
