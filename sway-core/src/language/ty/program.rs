@@ -314,9 +314,10 @@ impl TyProgram {
     }
 }
 
+impl CollectTypesMetadata for TyProgram {
     /// Collect various type information such as unresolved types and types of logged data
-    pub(crate) fn collect_types_metadata(
-        &mut self,
+    fn collect_types_metadata(
+        &self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
