@@ -7,29 +7,28 @@ use std::bytes::Bytes;
 use std::vec::Vec;
 use std::identity::Identity;
 use std::b512::B512;
-use std::logging::log;
 
 fn main() -> bool {
 
 // test_assert_eq_u64
     let a = 42;
     let b = 40 + 2;
-    log(assert_eq::<u64>(a, b));
+    assert_eq(a, b);
 
 // // test_assert_eq_u32
-//     let c = 42u32;
-//     let d = 40u32 + 2u32;
-//     assert_eq(c, d);
+    // let c = 42u32;
+    // let d = 40u32 + 2u32;
+    // assert_eq(c, d);
 
 // // test_assert_eq_u16
-//     let e = 42u16;
-//     let f = 40u16 + 2u16;
-//     assert_eq(e, f);
+    // let e = 42u16;
+    // let f = 40u16 + 2u16;
+    // assert_eq(e, f);
 
 // // test_assert_eq_u8
-//     let g = 42u8;
-//     let h = 40u8 + 2u8;
-//     assert_eq(g, h);
+    // let g = 42u8;
+    // let h = 40u8 + 2u8;
+    // assert_eq(g, h);
 
 // // test_assert_eq_b256
 //     let i: b256 = 0b0000000000000000000000000000000000000000000000000000000000000001_0000000000000000000000000000000000000000000000000000000000000001_0000000000000000000000000000000000000000000000000000000000000001_0000000000000000000000000000000000000000000000000000000000000010;
