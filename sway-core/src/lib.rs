@@ -1,6 +1,7 @@
 #[macro_use]
 pub mod error;
 
+pub mod abi_generation;
 pub mod asm_generation;
 mod asm_lang;
 mod build_config;

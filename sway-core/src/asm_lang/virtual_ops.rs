@@ -520,7 +520,7 @@ impl VirtualOp {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
         match self {
@@ -1299,11 +1299,11 @@ fn map_reg(
 }
 
 fn update_reg(
-    reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+    reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {
-        r.clone()
+        (*r).into()
     } else {
         reg.clone()
     }
