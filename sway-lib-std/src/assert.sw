@@ -48,7 +48,7 @@ pub fn assert(condition: bool) {
 /// ```sway
 /// fn foo(a: u64, b: u64) {
 ///     assert_eq(a, b);
-///     // if code execution continues, that means a was equal to b
+///     // if code execution continues, that means `a` is equal to `b`
 ///     log("a is equal to b");
 /// }
 /// ```
