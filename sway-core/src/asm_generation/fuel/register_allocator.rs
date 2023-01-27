@@ -333,8 +333,10 @@ pub(crate) fn coalesce_registers(
                         // Add all of ix2(r2)'s edges to `ix1(r1)`
                         for neighbor in interference_graph.neighbors(*ix2).collect::<Vec<_>>() {
                             interference_graph.add_edge(neighbor, *ix1, ());
-                            interference_graph[*ix2] = None; // VirtualRegister::Virtual("00".into());
                         }
+
+                        // Remove ix2 by setting its weight to `None`.
+                        interference_graph[*ix2] = None;
 
                         // Update the register maps
                         reg_to_node_map.insert(r2.clone(), *ix1);
@@ -397,28 +399,31 @@ pub(crate) fn coalesce_registers(
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
 ) -> Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> {
-    let mut stack: Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> =
-        Vec::with_capacity(interference_graph.node_count());
+    let mut stack = Vec::with_capacity(interference_graph.node_count());
 
+    // Raw for loop here is safe because we are not actually removing any nodes from the graph at
+    // any point (i.e. we're never calling `remove_node()`). This means that each `index` below
+    // correspond to a valid `NodeIndex` in the graph.
     for index in 0..interference_graph.node_count() {
+        // Convert to a `NodeIndex`
         let node = node_index(index);
+
+        // Nodes with weight `None` are dead
         if interference_graph[node].is_none() {
             continue;
         }
-        let neighbors: BTreeSet<VirtualRegister> = interference_graph
+
+        // Grab all neighbors with node weight not equal to `None`
+        let neighbors = interference_graph
             .neighbors(node)
-            .filter_map(|n| match &interference_graph[n] {
-                None => None,
-                _ => interference_graph[n].clone(),
-            })
+            .filter_map(|n| interference_graph[n].clone())
             .collect();
 
-        stack.push((
-            interference_graph[node].as_ref().unwrap().clone(),
-            neighbors.clone(),
-        ));
+        // Build the stack
+        stack.push((interference_graph[node].clone().unwrap(), neighbors));
 
-        interference_graph[node] = None; //VirtualRegister::Virtual("00".into());
+        // Remove `node` by setting its weight to `None`.
+        interference_graph[node] = None;
     }
 
     stack
