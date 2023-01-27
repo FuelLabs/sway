@@ -74,7 +74,6 @@
 //! `ok_or`  : `Option::ok_or`
 library option;
 
-use ::convert::From;
 use ::result::Result;
 use ::revert::revert;
 
