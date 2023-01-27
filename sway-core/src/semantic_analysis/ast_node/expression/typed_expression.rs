@@ -847,6 +847,7 @@ impl ty::TyExpression {
                         type_id: initial_type_id,
                         initial_type_id,
                         span: Span::dummy(),
+                        name_spans: None,
                     }
                 });
             let field_span = field.span();
@@ -864,6 +865,7 @@ impl ty::TyExpression {
                 type_id: typed_field.return_type,
                 initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
+                name_spans: None,
             });
             typed_fields.push(typed_field);
         }
@@ -1071,7 +1073,7 @@ impl ty::TyExpression {
 
     fn type_check_delineated_path(
         mut ctx: TypeCheckContext,
-        call_path_binding: TypeBinding<CallPath>,
+        unknown_call_path_binding: TypeBinding<CallPath>,
         span: Span,
         args: Option<Vec<Expression>>,
     ) -> CompileResult<ty::TyExpression> {
@@ -1088,7 +1090,7 @@ impl ty::TyExpression {
         let mut module_probe_warnings = Vec::new();
         let mut module_probe_errors = Vec::new();
         let is_module = {
-            let call_path_binding = call_path_binding.clone();
+            let call_path_binding = unknown_call_path_binding.clone();
             ctx.namespace
                 .check_submodule(
                     &[
@@ -1105,17 +1107,18 @@ impl ty::TyExpression {
         let mut function_probe_warnings = Vec::new();
         let mut function_probe_errors = Vec::new();
         let maybe_function = {
-            let mut call_path_binding = call_path_binding.clone();
+            let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_function(decl_engine, &span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                .map(|func_decl| (func_decl, call_path_binding))
         };
 
         // Check if this could be an enum
         let mut enum_probe_warnings = vec![];
         let mut enum_probe_errors = vec![];
         let maybe_enum = {
-            let call_path_binding = call_path_binding.clone();
+            let call_path_binding = unknown_call_path_binding.clone();
             let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
@@ -1129,14 +1132,14 @@ impl ty::TyExpression {
                     unknown_decl.expect_enum(decl_engine, &call_path_binding.span())
                 })
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, enum_name, variant_name))
+                .map(|enum_decl| (enum_decl, enum_name, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
         let mut const_probe_warnings = vec![];
         let mut const_probe_errors = vec![];
         let maybe_const = {
-            let mut call_path_binding = call_path_binding.clone();
+            let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| {
                     unknown_decl.expect_const(decl_engine, &call_path_binding.span())
@@ -1147,7 +1150,7 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, enum_name, variant_name)), None) => {
+            (false, None, Some((enum_decl, enum_name, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
@@ -1165,7 +1168,7 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some(func_decl), None, None) => {
+            (false, Some((func_decl, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
@@ -1194,8 +1197,8 @@ impl ty::TyExpression {
             }
             (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: call_path_binding.inner.suffix.clone(),
-                    span: call_path_binding.inner.suffix.span(),
+                    name: unknown_call_path_binding.inner.suffix.clone(),
+                    span: unknown_call_path_binding.inner.suffix.span(),
                 });
                 return err(warnings, errors);
             }
@@ -1394,6 +1397,7 @@ impl ty::TyExpression {
                             TypeArgument {
                                 type_id: unknown_type,
                                 span: Span::dummy(),
+                                name_spans: None,
                                 initial_type_id: unknown_type,
                             },
                             Length::new(0, Span::dummy()),
@@ -1454,6 +1458,7 @@ impl ty::TyExpression {
                         TypeArgument {
                             type_id: elem_type,
                             span: Span::dummy(),
+                            name_spans: None,
                             initial_type_id: elem_type,
                         },
                         Length::new(array_count, Span::dummy()),
@@ -1879,6 +1884,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
+                        name_spans: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(2, Span::dummy()),
@@ -2012,6 +2018,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
+                        name_spans: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(0, Span::dummy()),
