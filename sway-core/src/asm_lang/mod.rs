@@ -1051,7 +1051,7 @@ impl Op {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         Op {
             opcode: match &self.opcode {
@@ -1647,13 +1647,8 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         .collect()
     }
 
-    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<Reg, Reg>) -> Self {
-        let update_reg = |reg: &Reg| -> Reg {
-            reg_to_reg_map
-                .get(reg)
-                .cloned()
-                .unwrap_or_else(|| reg.clone())
-        };
+    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
+        let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;
         match self {
