@@ -256,7 +256,7 @@ impl core::ops::BitwiseXor for U256 {
     }
 }
 
-impl core::ops::Shiftable for U256 {
+impl core::ops::Shift for U256 {
     fn lsh(self, shift_amount: u64) -> Self {
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let mut w1 = 0;
@@ -370,7 +370,7 @@ impl core::ops::Subtract for U256 {
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
-            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
             // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
@@ -382,7 +382,7 @@ impl core::ops::Subtract for U256 {
             if result_b > 0 {
                 result_b -= 1;
             } else {
-                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
                 // which we ruled out at the beginning of the function.
                 result_a -= 1;
                 result_b = u64::max();
@@ -400,7 +400,7 @@ impl core::ops::Subtract for U256 {
                 if result_b > 0 {
                     result_b -= 1;
                 } else {
-                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
                     // which we ruled out at the beginning of the function.
                     result_a -= 1;
                     result_b = u64::max();
@@ -422,7 +422,7 @@ impl core::ops::Multiply for U256 {
         assert(self.a == 0 || other.a == 0);
 
         if self.a != 0 {
-            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero. 
+            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero.
             // Otherwise, overflow is guaranteed.
             assert(other.b == 0 && other.c == 0);
             U256::from((self.a * other.d, 0, 0, 0))
@@ -433,7 +433,7 @@ impl core::ops::Multiply for U256 {
             U256::from((other.a * self.d, 0, 0, 0))
         } else {
             if self.b != 0 {
-                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is 
+                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is
                 // guaranteed because:
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
@@ -450,8 +450,8 @@ impl core::ops::Multiply for U256 {
                     result_d_d.lower,
                 ))
             } else if other.b != 0 {
-                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is 
-                // guaranteed because: 
+                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is
+                // guaranteed because:
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
