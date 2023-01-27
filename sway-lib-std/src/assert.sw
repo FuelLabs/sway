@@ -41,7 +41,7 @@ pub fn assert(condition: bool) {
 ///
 /// ### Reverts
 ///
-/// Reverts when `v1` != `v1`.
+/// Reverts when `v1` != `v2`.
 ///
 /// ### Examples
 ///
