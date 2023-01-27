@@ -117,7 +117,7 @@ impl Preprocessor for ForcDocumenter {
         } else {
             if !error_message.is_empty() {
                 eprintln!("Warning:");
-                eprintln!("{}", error_message);
+                eprintln!("{error_message}");
                 eprintln!("The book built successfully - if the changes above were intended or if you are editing pages unrelated to Forc, you may ignore this message.");
             }
             Ok(book)
@@ -144,8 +144,7 @@ fn missing_entries_msg(missing: &[String]) -> String {
         .collect::<String>();
     let missing_entries: String = missing.iter().map(|c| format_index_entry(c)).collect();
 
-    format!("\nSome entries were missing from SUMMARY.md:\n\n{}\n\nTo fix this, add the above entries under the Commands or Plugins chapter in SUMMARY.md, like so:\n\n{}\n",
-                missing_commands, missing_entries)
+    format!("\nSome entries were missing from SUMMARY.md:\n\n{missing_commands}\n\nTo fix this, add the above entries under the Commands or Plugins chapter in SUMMARY.md, like so:\n\n{missing_entries}\n")
 }
 
 fn dangling_chapters_msg(commands: &[String]) -> String {

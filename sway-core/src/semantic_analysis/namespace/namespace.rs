@@ -225,10 +225,6 @@ impl Namespace {
                 errors
             );
             if &method.name == method_name {
-                // if we find the method that we are looking for, we also need
-                // to retrieve the impl definitions for the return type so that
-                // the user can string together method calls
-                self.insert_trait_implementation_for_type(engines, method.return_type);
                 return ok(decl_id, warnings, errors);
             }
         }
@@ -294,6 +290,46 @@ impl Namespace {
             namespace: self,
             parent_mod_path,
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_trait_implementation(
+        &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: &[DeclId],
+        impl_span: &Span,
+        is_impl_self: bool,
+        engines: Engines<'_>,
+    ) -> CompileResult<()> {
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        let full_trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits.insert(
+            full_trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+            engines,
+        )
+    }
+
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &mut self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclId> {
+        // Use trait name with full path, improves consistency between
+        // this get and inserting in `insert_trait_implementation`.
+        let trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

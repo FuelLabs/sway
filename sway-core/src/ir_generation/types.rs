@@ -140,7 +140,7 @@ pub(super) fn get_indices_for_struct_access(
                     Ok(ty_info) => ty_info,
                     Err(error) => {
                         return Err(CompileError::InternalOwned(
-                            format!("type error resolving type for reassignment: {}", error),
+                            format!("type error resolving type for reassignment: {error}"),
                             field_kind.span(),
                         ));
                     }

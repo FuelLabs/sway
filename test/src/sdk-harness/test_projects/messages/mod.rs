@@ -1,9 +1,9 @@
-use fuels::prelude::*;
+use fuels::{prelude::*, types::core::Bits256};
 
-abigen!(
-    TestMessagesContract,
-    "test_projects/messages/out/debug/messages-abi.json"
-);
+abigen!(Contract(
+    name = "TestMessagesContract",
+    abi = "test_projects/messages/out/debug/messages-abi.json"
+));
 
 async fn get_messages_contract_instance() -> (TestMessagesContract, ContractId, WalletUnlocked) {
     let num_wallets = 1;

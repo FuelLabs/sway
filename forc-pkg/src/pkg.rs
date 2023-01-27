@@ -28,7 +28,7 @@ use std::{
 };
 use sway_core::{
     asm_generation::ProgramABI,
-    decl_engine::DeclEngine,
+    decl_engine::{DeclEngine, DeclId},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -40,10 +40,11 @@ use sway_core::{
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
+    transform::AttributeKind,
     BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
 use sway_error::error::CompileError;
-use sway_types::Ident;
+use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
 use url::Url;
@@ -92,12 +93,49 @@ pub struct BuiltPackage {
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: Vec<u8>,
-    pub entries: Vec<FinalizedEntry>,
+    pub entries: Vec<PkgEntry>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
-    pub decl_engine: DeclEngine,
+    pub built_pkg_descriptor: BuiltPackageDescriptor,
+}
+
+/// The package descriptors that a `BuiltPackage` holds so that the source used for building the
+/// package can be retrieved later on.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageDescriptor {
+    /// The manifest file of the package.
     pub manifest_file: PackageManifestFile,
+    /// The pinned version of the package.
+    pub pinned: Pinned,
+}
+
+/// Represents a package entry point.
+#[derive(Debug, Clone)]
+pub struct PkgEntry {
+    pub finalized: FinalizedEntry,
+    pub kind: PkgEntryKind,
+}
+
+/// Data specific to each kind of package entry point.
+#[derive(Debug, Clone)]
+pub enum PkgEntryKind {
+    Main,
+    Test(PkgTestEntry),
+}
+
+/// The possible conditions for a test result to be considered "passing".
+#[derive(Debug, Clone)]
+pub enum TestPassCondition {
+    ShouldRevert,
+    ShouldNotRevert,
+}
+
+/// Data specific to the test entry point.
+#[derive(Debug, Clone)]
+pub struct PkgTestEntry {
+    pub pass_condition: TestPassCondition,
+    pub span: Span,
 }
 
 /// The result of successfully compiling a workspace.
@@ -306,6 +344,9 @@ pub struct MinifyOpts {
     pub json_storage_slots: bool,
 }
 
+type ConstName = String;
+type ConstInjectionMap = HashMap<Pinned, Vec<(ConstName, ConfigTimeConstant)>>;
+
 /// The set of options provided to the `build` functions.
 #[derive(Default)]
 pub struct BuildOpts {
@@ -329,6 +370,26 @@ pub struct BuildOpts {
     pub time_phases: bool,
     /// Include all test functions within the build.
     pub tests: bool,
+    /// List of constants to inject for each package.
+    pub const_inject_map: ConstInjectionMap,
+}
+
+impl BuildOpts {
+    /// Return a `BuildOpts` with modified `tests` field.
+    pub fn include_tests(self, include_tests: bool) -> Self {
+        Self {
+            tests: include_tests,
+            ..self
+        }
+    }
+
+    /// Return a `BuildOpts` with modified `injection_map` field.
+    pub fn const_injection_map(self, const_inject_map: ConstInjectionMap) -> Self {
+        Self {
+            const_inject_map,
+            ..self
+        }
+    }
 }
 
 impl GitSourceIndex {
@@ -376,7 +437,7 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_stem = format!("{pkg_name}-abi");
         let json_abi_program_path = output_dir
             .join(json_abi_program_stem)
             .with_extension("json");
@@ -410,7 +471,7 @@ impl BuiltPackage {
         match self.tree_type {
             TreeType::Contract => {
                 // For contracts, emit a JSON file with all the initialized storage slots.
-                let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
+                let json_storage_slots_stem = format!("{pkg_name}-storage_slots");
                 let json_storage_slots_path = output_dir
                     .join(json_storage_slots_stem)
                     .with_extension("json");
@@ -492,6 +553,34 @@ pub struct SourcePinnedParseError;
 pub type DependencyName = String;
 
 impl BuildPlan {
+    /// Create a new build plan for the project from the build options provided.
+    ///
+    /// To do so, it tries to read the manifet file at the target path and creates the plan with
+    /// `BuildPlan::from_lock_and_manifest`.
+    pub fn from_build_opts(build_options: &BuildOpts) -> Result<Self> {
+        let path = &build_options.pkg.path;
+
+        let manifest_dir = if let Some(ref path) = path {
+            PathBuf::from(path)
+        } else {
+            std::env::current_dir()?
+        };
+
+        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let member_manifests = manifest_file.member_manifests()?;
+        // Check if we have members to build so that we are not trying to build an empty workspace.
+        if member_manifests.is_empty() {
+            bail!("No member found to build")
+        }
+        let lock_path = manifest_file.lock_path()?;
+        Self::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            build_options.pkg.locked,
+            build_options.pkg.offline,
+        )
+    }
+
     /// Create a new build plan for the project by fetching and pinning all dependenies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
@@ -625,6 +714,15 @@ impl BuildPlan {
             .iter()
             .cloned()
             .filter(|&n| self.graph[n].source == SourcePinned::Member)
+    }
+
+    /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
+    ///
+    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// only that package's pinned pkg will be yielded.
+    pub fn member_pinned_pkgs(&self) -> impl Iterator<Item = Pinned> + '_ {
+        let graph = self.graph();
+        self.member_nodes().map(|node| &graph[node]).cloned()
     }
 
     /// View the build plan's compilation graph.
@@ -970,7 +1068,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
+            let refname = format!("refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{tag}");
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -979,10 +1077,10 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
+            let name = format!("{DEFAULT_REMOTE_NAME}/{branch}");
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
-                .with_context(|| format!("failed to find branch `{}`", branch))?;
+                .with_context(|| format!("failed to find branch `{branch}`"))?;
             b.get()
                 .target()
                 .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
@@ -991,7 +1089,7 @@ impl GitReference {
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
             let head_id =
-                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
+                repo.refname_to_id(&format!("refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1007,7 +1105,7 @@ impl GitReference {
 
         match self {
             GitReference::Tag(s) => {
-                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{}`", s))
+                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{s}`"))
             }
             GitReference::Branch(s) => resolve_branch(repo, s),
             GitReference::DefaultBranch => resolve_default_branch(repo),
@@ -1086,8 +1184,8 @@ impl fmt::Display for SourceGitPinned {
 impl fmt::Display for GitReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GitReference::Branch(ref s) => write!(f, "branch={}", s),
-            GitReference::Tag(ref s) => write!(f, "tag={}", s),
+            GitReference::Branch(ref s) => write!(f, "branch={s}"),
+            GitReference::Tag(ref s) => write!(f, "tag={s}"),
             GitReference::Rev(ref _s) => write!(f, "rev"),
             GitReference::DefaultBranch => write!(f, "default-branch"),
         }
@@ -1569,7 +1667,7 @@ fn fetch_deps(
 /// The name to use for a package's git repository under the user's forc directory.
 fn git_repo_dir_name(name: &str, repo: &Url) -> String {
     let repo_url_hash = hash_url(repo);
-    format!("{}-{:x}", name, repo_url_hash)
+    format!("{name}-{repo_url_hash:x}")
 }
 
 fn hash_url(url: &Url) -> u64 {
@@ -1604,32 +1702,29 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     match reference {
         GitReference::Branch(s) => {
             refspecs.push(format!(
-                "+refs/heads/{1}:refs/remotes/{0}/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/heads/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/{s}"
             ));
         }
         GitReference::Tag(s) => {
             refspecs.push(format!(
-                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/tags/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{s}"
             ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
-                refspecs.push(format!("+{0}:{0}", s));
+                refspecs.push(format!("+{s}:{s}"));
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
                 refspecs.push(format!(
-                    "+refs/heads/*:refs/remotes/{}/*",
-                    DEFAULT_REMOTE_NAME
+                    "+refs/heads/*:refs/remotes/{DEFAULT_REMOTE_NAME}/*"
                 ));
-                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+                refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+            refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
         }
     }
     (refspecs, tags)
@@ -1687,7 +1782,7 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
             .reference
             .resolve(&repo)
             .with_context(|| "failed to resolve reference".to_string())?;
-        Ok(format!("{}", commit_id))
+        Ok(format!("{commit_id}"))
     })?;
     Ok(SourceGitPinned {
         source,
@@ -1845,8 +1940,8 @@ fn fd_lock_path(path: &Path) -> PathBuf {
     path.hash(&mut hasher);
     let hash = hasher.finish();
     let file_name = match path.file_stem().and_then(|s| s.to_str()) {
-        None => format!("{:X}", hash),
-        Some(stem) => format!("{:X}-{}", hash, stem),
+        None => format!("{hash:X}"),
+        Some(stem) => format!("{hash:X}-{stem}"),
     };
 
     user_forc_directory()
@@ -2186,6 +2281,9 @@ pub fn sway_build_config(
     Ok(build_config)
 }
 
+/// The name of the constant holding the contract's id.
+pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
+
 /// Builds the dependency namespace for the package at the given node index within the graph.
 ///
 /// This function is designed to be called for each node in order of compilation.
@@ -2204,6 +2302,11 @@ pub fn dependency_namespace(
     engines: Engines<'_>,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
+
+    let node_idx = &graph[node];
+    namespace.name = Some(Ident::new_no_span(Box::leak(
+        node_idx.name.clone().into_boxed_str(),
+    )));
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2226,14 +2329,13 @@ pub fn dependency_namespace(
                 };
 
                 // Construct namespace with contract id
-                let contract_dep_constant_name = "CONTRACT_ID";
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
                     r#type: "b256".to_string(),
                     value: contract_id_value,
                     public: true,
                 };
-                constants.insert(contract_dep_constant_name.to_string(), contract_id_constant);
+                constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
                 namespace::Module::default_with_constants(engines, constants)?
             }
         };
@@ -2435,6 +2537,11 @@ pub fn compile(
         .as_ref()
         .map(|asm| asm.0.entries.clone())
         .unwrap_or_default();
+    let decl_engine = engines.de();
+    let entries = entries
+        .iter()
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, decl_engine))
+        .collect::<anyhow::Result<_>>()?;
     let bc_res = time_expr!(
         "compile asm to bytecode",
         sway_core::asm_to_bytecode(asm_res, source_map)
@@ -2457,6 +2564,10 @@ pub fn compile(
                 }
             }
 
+            let built_pkg_descriptor = BuiltPackageDescriptor {
+                manifest_file: manifest.clone(),
+                pinned: pkg.clone(),
+            };
             let bytecode = bytes;
             let built_package = BuiltPackage {
                 build_target,
@@ -2467,12 +2578,75 @@ pub fn compile(
                 entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
-                decl_engine: engines.de().clone(),
-                manifest_file: manifest.clone(),
+                built_pkg_descriptor,
             };
             Ok((built_package, namespace))
         }
         _ => fail(&bc_res.warnings, &bc_res.errors),
+    }
+}
+
+impl PkgEntry {
+    /// Returns whether this `PkgEntry` corresponds to a test.
+    pub fn is_test(&self) -> bool {
+        self.kind.test().is_some()
+    }
+
+    fn from_finalized_entry(
+        finalized_entry: &FinalizedEntry,
+        decl_engine: &DeclEngine,
+    ) -> Result<Self> {
+        let pkg_entry_kind = match &finalized_entry.test_decl_id {
+            Some(test_decl_id) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+                PkgEntryKind::Test(pkg_test_entry)
+            }
+            None => PkgEntryKind::Main,
+        };
+
+        Ok(Self {
+            finalized: finalized_entry.clone(),
+            kind: pkg_entry_kind,
+        })
+    }
+}
+
+impl PkgEntryKind {
+    /// Returns `Some` if the `PkgEntryKind` is `Test`.
+    pub fn test(&self) -> Option<&PkgTestEntry> {
+        match self {
+            PkgEntryKind::Test(test) => Some(test),
+            _ => None,
+        }
+    }
+}
+
+impl PkgTestEntry {
+    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_id.span();
+        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+
+        let test_args: HashSet<String> = test_function_decl
+            .attributes
+            .get(&AttributeKind::Test)
+            .expect("test declaration is missing test attribute")
+            .iter()
+            .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
+            .collect();
+
+        let pass_condition = if test_args.is_empty() {
+            anyhow::Ok(TestPassCondition::ShouldNotRevert)
+        } else if test_args.get("should_revert").is_some() {
+            anyhow::Ok(TestPassCondition::ShouldRevert)
+        } else {
+            let test_name = &test_function_decl.name;
+            bail!("Invalid test argument(s) for test: {test_name}.")
+        }?;
+
+        Ok(Self {
+            pass_condition,
+            span,
+        })
     }
 }
 
@@ -2543,57 +2717,58 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
-/// Builds a project with given BuildOptions
+/// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
-    let path = &build_options.pkg.path;
-
-    let this_dir = if let Some(ref path) = path {
-        PathBuf::from(path)
-    } else {
-        std::env::current_dir()?
-    };
-
     let BuildOpts {
         minify,
         binary_outfile,
         debug_outfile,
         pkg,
+        const_inject_map,
         build_target,
         ..
     } = &build_options;
 
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
-    let member_manifests = manifest_file.member_manifests()?;
-    // Check if we have members to build so that we are not trying to build an empty workspace.
-    if member_manifests.is_empty() {
-        bail!("No member found to build")
-    }
-    let lock_path = manifest_file.lock_path()?;
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        build_options.pkg.locked,
-        build_options.pkg.offline,
-    )?;
+    let current_dir = std::env::current_dir()?;
+    let path = &build_options
+        .pkg
+        .path
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| current_dir);
+
+    let build_plan = BuildPlan::from_build_opts(&build_options)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
+
+    // Check if manifest used to create the build plan is one of the member manifests or a
+    // workspace manifest.
+    let curr_manifest = manifest_map
+        .values()
+        .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
     let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
-
     // If this is a workspace we want to have all members in the output.
-    let outputs = match &manifest_file {
-        ManifestFile::Package(pkg_manifest) => std::iter::once(
+    let outputs = match curr_manifest {
+        Some(pkg_manifest) => std::iter::once(
             build_plan
                 .find_member_index(&pkg_manifest.project.name)
                 .ok_or_else(|| anyhow!("Cannot found project node in the graph"))?,
         )
         .collect(),
-        ManifestFile::Workspace(_) => build_plan.member_nodes().collect(),
+        None => build_plan.member_nodes().collect(),
     };
+
     // Build it!
     let mut built_workspace = HashMap::new();
-    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        const_inject_map,
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
     for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
@@ -2614,19 +2789,19 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         built_workspace.insert(pinned.name.clone(), built_package);
     }
 
-    match manifest_file {
-        ManifestFile::Package(pkg_manifest) => {
+    match curr_manifest {
+        Some(pkg_manifest) => {
             let built_pkg = built_workspace
                 .remove(&pkg_manifest.project.name)
                 .expect("package didn't exist in workspace");
             Ok(Built::Package(Box::new(built_pkg)))
         }
-        ManifestFile::Workspace(_) => Ok(Built::Workspace(built_workspace)),
+        None => Ok(Built::Workspace(built_workspace)),
     }
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
-fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
+pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
     let contract = Contract::from(built_package.bytecode.clone());
     let mut storage_slots = built_package.storage_slots.clone();
@@ -2670,6 +2845,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2692,7 +2868,17 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let constants = manifest.config_time_constants();
+        let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
+            let mut constants = manifest.config_time_constants();
+            constants.extend(
+                injected_ctc
+                    .iter()
+                    .map(|(name, ctc)| (name.clone(), ctc.clone())),
+            );
+            constants
+        } else {
+            manifest.config_time_constants()
+        };
         let dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -3104,10 +3290,10 @@ pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
 pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
-        .map(|e| format!("{}", e))
+        .map(|e| format!("{e}"))
         .collect::<Vec<String>>()
         .join("\n");
-    let message = format!("Parsing {} failed: \n{}", project_name, error);
+    let message = format!("Parsing {project_name} failed: \n{error}");
     Error::msg(message)
 }
 
@@ -3117,15 +3303,12 @@ pub fn wrong_program_type(
     expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
-    let message = format!(
-        "{} is not a '{:?}' it is a '{:?}'",
-        project_name, expected_types, parse_type
-    );
+    let message = format!("{project_name} is not a '{expected_types:?}' it is a '{parse_type:?}'");
     Error::msg(message)
 }
 
 /// Format an error message if a given URL fails to produce a working node.
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
-    let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
+    let message = format!("could not get a response from node at the URL {node_url}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information");
     Error::msg(message)
 }

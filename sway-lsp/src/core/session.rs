@@ -19,7 +19,7 @@ use dashmap::DashMap;
 use forc_pkg::{self as pkg};
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{
@@ -289,7 +289,7 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+        writeln!(&mut file, "{src}").map_err(|err| DocumentError::UnableToWriteFile {
             path: uri.path().to_string(),
             err: err.to_string(),
         })?;

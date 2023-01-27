@@ -4,7 +4,6 @@ use crate::{
     asm_generation::{
         asm_builder::{AsmBuilder, AsmBuilderResult},
         from_ir::StateAccessType,
-        register_sequencer::RegisterSequencer,
         ProgramKind,
     },
     asm_lang::Label,
@@ -17,6 +16,10 @@ use sway_ir::{Context, *};
 use sway_types::Span;
 
 use etk_asm::{asm::Assembler, ops::*};
+
+mod ethabi {
+    pub use fuel_ethabi::*;
+}
 
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
@@ -47,9 +50,6 @@ pub struct EvmAsmBuilder<'ir> {
 
     sections: Vec<EvmAsmSection>,
 
-    // Register sequencer dishes out new registers and labels.
-    pub(super) reg_seqr: RegisterSequencer,
-
     // Label maps are from IR functions or blocks to label name.  Functions have a start and end
     // label.
     pub(super) func_label_map: HashMap<Function, (Label, Label)>,
@@ -61,6 +61,9 @@ pub struct EvmAsmBuilder<'ir> {
 
     // Metadata manager for converting metadata to Spans, etc.
     md_mgr: MetadataManager,
+
+    // Monotonically increasing unique identifier for label generation.
+    label_idx: usize,
 }
 
 #[derive(Default, Debug)]
@@ -108,19 +111,15 @@ impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
 #[allow(unused_variables)]
 #[allow(dead_code)]
 impl<'ir> EvmAsmBuilder<'ir> {
-    pub fn new(
-        program_kind: ProgramKind,
-        reg_seqr: RegisterSequencer,
-        context: &'ir Context,
-    ) -> Self {
+    pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
         let mut b = EvmAsmBuilder {
             program_kind,
             sections: Vec::new(),
-            reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
             context,
             md_mgr: MetadataManager::default(),
+            label_idx: 0,
         };
         let s = b.generate_function();
         b.sections.push(s);
@@ -289,6 +288,12 @@ impl<'ir> EvmAsmBuilder<'ir> {
         Span::new(Arc::from(msg), 0, msg.len(), None).unwrap()
     }
 
+    fn get_label(&mut self) -> Label {
+        let next_val = self.label_idx;
+        self.label_idx += 1;
+        Label(self.label_idx)
+    }
+
     pub(super) fn compile_instruction(
         &mut self,
         instr_val: &Value,
@@ -346,7 +351,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
                 } => self.compile_extract_value(instr_val, aggregate, indices),
                 Instruction::FuelVm(fuel_vm_instr) => {
                     errors.push(CompileError::Internal(
-                        "Value not an instruction.",
+                        "Invalid FuelVM IR instruction provided to the EVM code gen.",
                         self.md_mgr
                             .val_to_span(self.context, *instr_val)
                             .unwrap_or_else(Self::empty_span),
@@ -603,7 +608,7 @@ impl<'ir> EvmAsmBuilder<'ir> {
 
     pub(super) fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_label_map.get(func).cloned().unwrap_or_else(|| {
-            let labels = (self.reg_seqr.get_label(), self.reg_seqr.get_label());
+            let labels = (self.get_label(), self.get_label());
             self.func_label_map.insert(*func, labels);
             labels
         })

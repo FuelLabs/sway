@@ -101,6 +101,7 @@ impl TyStructDeclaration {
                         .join("\n"),
                     field_name: field_to_access.clone(),
                     struct_name: self.name.clone(),
+                    span: field_to_access.span(),
                 });
                 err(warnings, errors)
             }

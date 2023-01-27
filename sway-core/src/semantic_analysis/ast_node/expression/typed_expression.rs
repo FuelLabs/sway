@@ -62,7 +62,7 @@ impl ty::TyExpression {
             .to_var_name(),
             is_absolute: true,
         };
-        let method_name_binding = TypeBinding {
+        let mut method_name_binding = TypeBinding {
             inner: MethodName::FromTrait {
                 call_path: call_path.clone(),
             },
@@ -71,7 +71,7 @@ impl ty::TyExpression {
         };
         let arguments = VecDeque::from(arguments);
         let decl_id = check!(
-            resolve_method_name(ctx, &method_name_binding, arguments.clone()),
+            resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
@@ -106,6 +106,7 @@ impl ty::TyExpression {
                 function_decl_id: decl_id,
                 self_state_idx: None,
                 selector: None,
+                type_binding: None,
             },
             return_type,
             span,
@@ -446,12 +447,14 @@ impl ty::TyExpression {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
                     what_it_is: a.friendly_name(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
             None => {
                 errors.push(CompileError::UnknownVariable {
                     var_name: name.clone(),
+                    span,
                 });
                 ty::TyExpression::error(name.span(), engines)
             }
@@ -489,8 +492,8 @@ impl ty::TyExpression {
         instantiate_function_application(
             ctx,
             function_decl,
-            call_path_binding.inner,
-            arguments,
+            call_path_binding,
+            Some(arguments),
             span,
         )
     }
@@ -689,7 +692,7 @@ impl ty::TyExpression {
         }
         if witness_report.has_witnesses() {
             errors.push(CompileError::MatchExpressionNonExhaustive {
-                missing_patterns: format!("{}", witness_report),
+                missing_patterns: format!("{witness_report}"),
                 span,
             });
             return err(warnings, errors);
@@ -1033,7 +1036,8 @@ impl ty::TyExpression {
                 type_arguments,
                 span: path_span,
             };
-            let mut res = Self::type_check_delineated_path(ctx, call_path_binding, span, args);
+            let mut res =
+                Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
 
             // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
             // So, we would need, but don't have, parametric modules to apply arguments to.
@@ -1069,7 +1073,7 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         call_path_binding: TypeBinding<CallPath>,
         span: Span,
-        args: Vec<Expression>,
+        args: Option<Vec<Expression>>,
     ) -> CompileResult<ty::TyExpression> {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -1147,7 +1151,15 @@ impl ty::TyExpression {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(ctx, enum_decl, enum_name, variant_name, args, &span),
+                    instantiate_enum(
+                        ctx,
+                        enum_decl,
+                        enum_name,
+                        variant_name,
+                        args,
+                        call_path_binding.strip_inner(),
+                        &span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1157,13 +1169,7 @@ impl ty::TyExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(
-                        ctx,
-                        func_decl,
-                        call_path_binding.inner,
-                        args,
-                        span
-                    ),
+                    instantiate_function_application(ctx, func_decl, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1188,7 +1194,8 @@ impl ty::TyExpression {
             }
             (false, None, None, None) => {
                 errors.push(CompileError::SymbolNotFound {
-                    name: call_path_binding.inner.suffix,
+                    name: call_path_binding.inner.suffix.clone(),
+                    span: call_path_binding.inner.suffix.span(),
                 });
                 return err(warnings, errors);
             }
@@ -1641,7 +1648,7 @@ impl ty::TyExpression {
                                 errors
                             );
                             if !variable_decl.mutability.is_mutable() {
-                                errors.push(CompileError::AssignmentToNonMutable { name });
+                                errors.push(CompileError::AssignmentToNonMutable { name, span });
                                 return err(warnings, errors);
                             }
                             break (name, variable_decl.body.return_type);

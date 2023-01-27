@@ -12,8 +12,8 @@ use sway_types::Spanned;
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     mut function_decl: ty::TyFunctionDeclaration,
-    call_path: CallPath,
-    arguments: Vec<Expression>,
+    call_path_binding: TypeBinding<CallPath>,
+    arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -22,17 +22,31 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
+    if arguments.is_none() {
+        errors.push(CompileError::MissingParenthesesForFunction {
+            method_name: call_path_binding.inner.suffix.clone(),
+            span: call_path_binding.inner.span(),
+        });
+        return err(warnings, errors);
+    }
+    let arguments = arguments.unwrap_or_default();
+
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path, false),
+        check_function_arguments_arity(
+            arguments.len(),
+            &function_decl,
+            &call_path_binding.inner,
+            false
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -52,6 +66,11 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, function_decl.return_type);
+
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
@@ -59,7 +78,7 @@ pub(crate) fn instantiate_function_application(
         TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
-            &call_path.span()
+            &call_path_binding.span()
         ),
         return err(warnings, errors),
         warnings,
@@ -71,12 +90,13 @@ pub(crate) fn instantiate_function_application(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
+            call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
             function_decl_id: new_decl_id,
             self_state_idx: None,
             selector: None,
+            type_binding: Some(call_path_binding.strip_inner()),
         },
         return_type,
         span,

@@ -297,6 +297,7 @@ impl<'a> TypedTree<'a> {
                 contract_call_params,
                 arguments,
                 function_decl_id,
+                type_binding,
                 ..
             } => {
                 for ident in &call_path.prefixes {
@@ -305,6 +306,16 @@ impl<'a> TypedTree<'a> {
                     {
                         token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                         token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
+                    }
+                }
+
+                if let Some(type_binding) = type_binding {
+                    for type_arg in &type_binding.type_arguments {
+                        self.collect_type_id(
+                            type_arg.type_id,
+                            &TypedAstToken::TypedArgument(type_arg.clone()),
+                            type_arg.span(),
+                        );
                     }
                 }
 
@@ -461,6 +472,7 @@ impl<'a> TypedTree<'a> {
                 enum_decl,
                 enum_instantiation_span,
                 contents,
+                type_binding,
                 ..
             } => {
                 if let Some(mut token) = self
@@ -470,6 +482,14 @@ impl<'a> TypedTree<'a> {
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                     token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+                }
+
+                for type_arg in &type_binding.type_arguments {
+                    self.collect_type_id(
+                        type_arg.type_id,
+                        &TypedAstToken::TypedArgument(type_arg.clone()),
+                        type_arg.span(),
+                    );
                 }
 
                 if let Some(mut token) = self

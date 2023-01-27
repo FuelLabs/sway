@@ -13,13 +13,13 @@ storage {
 // ANCHOR: reading_from_storage
 #[storage(read)]
 fn reading_from_storage(id: u64) {
-    let user = storage.user.get((msg_sender().unwrap(), id));
+    let user = storage.user.get((msg_sender().unwrap(), id)).unwrap_or(0);
 }
 // ANCHOR_END: reading_from_storage
 // ANCHOR: writing_to_storage
 #[storage(read, write)]
 fn writing_to_storage() {
-    let balance = storage.balance.get(msg_sender().unwrap());
+    let balance = storage.balance.get(msg_sender().unwrap()).unwrap_or(0);
     storage.balance.insert(msg_sender().unwrap(), balance + 1);
 }
 // ANCHOR_END: writing_to_storage

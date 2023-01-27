@@ -30,6 +30,21 @@ impl<'cfg> ControlFlowGraph<'cfg> {
             .filter(|n| !connected.contains(n))
             .collect();
 
+        let dead_function_contains_span = |span: &Span| -> bool {
+            dead_nodes.iter().any(|x| {
+                if let ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
+                    span: function_span,
+                    content:
+                        ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
+                }) = &self.graph[*x]
+                {
+                    function_span.end() >= span.end() && function_span.start() <= span.start()
+                } else {
+                    false
+                }
+            })
+        };
+
         let priv_enum_var_warn = |name: &Ident| CompileWarning {
             span: name.span(),
             warning_content: Warning::DeadEnumVariant {
@@ -48,8 +63,8 @@ impl<'cfg> ControlFlowGraph<'cfg> {
             .collect::<Vec<_>>();
 
         let dead_ast_node_warnings = dead_nodes
-            .into_iter()
-            .filter_map(|x| match &self.graph[x] {
+            .iter()
+            .filter_map(|x| match &self.graph[*x] {
                 ControlFlowGraphNode::ProgramNode(node) => {
                     construct_dead_code_warning_from_node(decl_engine, node)
                 }
@@ -62,8 +77,10 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                     span: span.clone(),
                     warning_content: Warning::DeadMethod,
                 }),
-                ControlFlowGraphNode::StructField { span, .. } => Some(CompileWarning {
-                    span: span.clone(),
+                ControlFlowGraphNode::StructField {
+                    struct_field_name, ..
+                } => Some(CompileWarning {
+                    span: struct_field_name.span(),
                     warning_content: Warning::StructFieldNeverRead,
                 }),
                 ControlFlowGraphNode::StorageField { field_name, .. } => Some(CompileWarning {
@@ -80,17 +97,30 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         all_warnings
             .clone()
             .into_iter()
-            .filter(|CompileWarning { span, .. }| {
-                // if any other warnings contain a span which completely covers this one, filter
-                // out this one.
-                !all_warnings.iter().any(
-                    |CompileWarning {
-                         span: other_span, ..
-                     }| {
-                        other_span.end() > span.end() && other_span.start() < span.start()
-                    },
-                )
-            })
+            .filter(
+                |CompileWarning {
+                     span,
+                     warning_content,
+                 }| {
+                    if let Warning::UnreachableCode = warning_content {
+                        // If the unreachable code is within an unused function, filter it out
+                        // since the dead function name is the only warning we want to show.
+                        if dead_function_contains_span(span) {
+                            return false;
+                        }
+                    }
+
+                    // if any other warnings contain a span which completely covers this one, filter
+                    // out this one.
+                    !all_warnings.iter().any(
+                        |CompileWarning {
+                             span: other_span, ..
+                         }| {
+                            other_span.end() > span.end() && other_span.start() < span.start()
+                        },
+                    )
+                },
+            )
             .collect()
     }
 
@@ -785,11 +815,11 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
     Ok((leaves, exit_node))
 }
 
-fn get_trait_fn_node_index<'a, 'cfg>(
+fn get_trait_fn_node_index<'a>(
     engines: Engines<'_>,
     function_decl_id: DeclId,
     expression_span: Span,
-    graph: &'a ControlFlowGraph<'cfg>,
+    graph: &'a ControlFlowGraph,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {
     let decl_engine = engines.de();
     let fn_decl = decl_engine.get_function(function_decl_id, &expression_span)?;
@@ -1143,11 +1173,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let this_ix = graph.add_node(
                 engines,
-                format!(
-                    "Struct field access: {}.{}",
-                    resolved_type_of_parent, field_name
-                )
-                .into(),
+                format!("Struct field access: {resolved_type_of_parent}.{field_name}").into(),
             );
             for leaf in leaves {
                 graph.add_edge(*leaf, this_ix, "".into());
@@ -1465,7 +1491,7 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(engines, format!("Intrinsic {}", kind).into());
+    let node = graph.add_node(engines, format!("Intrinsic {kind}").into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }
@@ -1600,31 +1626,90 @@ fn construct_dead_code_warning_from_node(
         // if this is a function, struct, or trait declaration that is never called, then it is dead
         // code.
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
             span,
-            ..
-        } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadFunctionDeclaration,
-        },
-        ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration { .. }),
-            span,
-        } => CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadStructDeclaration,
-        },
-        ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
-            ..
         } => {
-            let span = match decl_engine.get_trait(decl_id.clone(), &decl_id.span()) {
-                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
-                Err(_) => node.span.clone(),
+            let warning_span = match decl_engine.get_function(decl_id.clone(), span) {
+                Ok(ty::TyFunctionDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
             };
             CompileWarning {
-                span,
+                span: warning_span,
+                warning_content: Warning::DeadFunctionDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_struct(decl_id.clone(), span) {
+                Ok(ty::TyStructDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadStructDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
+                Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadEnumDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_trait(decl_id.clone(), span) {
+                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
                 warning_content: Warning::DeadTrait,
+            }
+        }
+        ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_constant(decl_id.clone(), span) {
+                Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
+            span,
+        } => {
+            // In rare cases, variable declaration spans don't have a path, so we need to check for that
+            if decl.name.span().path().is_some() {
+                CompileWarning {
+                    span: decl.name.span(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else if span.path().is_some() {
+                CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else {
+                return None;
             }
         }
         ty::TyAstNode {

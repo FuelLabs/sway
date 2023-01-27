@@ -22,18 +22,18 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --debug --path ./forc-plugins/forc-fmt 
-          cargo install --debug --path ./forc-plugins/forc-lsp 
-          cargo install --debug --path ./forc-plugins/forc-client
-          cargo install --debug forc-explore
+          cargo install --locked --debug --path ./forc-plugins/forc-fmt
+          cargo install --locked --debug --path ./forc-plugins/forc-lsp
+          cargo install --locked --debug --path ./forc-plugins/forc-client
+          cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./scripts/mdbook-forc-documenter
+          args: --locked --debug --path ./scripts/mdbook-forc-documenter
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1

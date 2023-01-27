@@ -266,7 +266,7 @@ fn pkg_name_disambiguated<'a>(name: &'a str, source: &'a str, disambiguate: bool
 }
 
 fn pkg_unique_string(name: &str, source: &str) -> String {
-    format!("{} {}", name, source)
+    format!("{name} {source}")
 }
 
 fn pkg_dep_line(
@@ -282,7 +282,7 @@ fn pkg_dep_line(
     // Prefix the dependency name if it differs from the package name.
     let pkg_string = match dep_name {
         None => pkg_string.into_owned(),
-        Some(dep_name) => format!("({}) {}", dep_name, pkg_string),
+        Some(dep_name) => format!("({dep_name}) {pkg_string}"),
     };
     // Append the salt if dep_kind is DepKind::Contract.
     match dep_kind {
@@ -291,7 +291,7 @@ fn pkg_dep_line(
             if *salt == fuel_tx::Salt::zeroed() {
                 pkg_string
             } else {
-                format!("{} ({})", pkg_string, salt)
+                format!("{pkg_string} ({salt})")
             }
         }
     }
@@ -350,7 +350,7 @@ where
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
-            println_red(&format!("  Removing {}", name));
+            println_red(&format!("  Removing {name}"));
         }
     }
 }
@@ -362,7 +362,7 @@ where
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
             let name = name_or_git_unique_string(pkg);
-            println_green(&format!("    Adding {}", name));
+            println_green(&format!("    Adding {name}"));
         }
     }
 }
