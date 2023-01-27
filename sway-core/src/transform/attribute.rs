@@ -22,8 +22,6 @@
 
 use sway_types::{Ident, Span};
 
-use fuel_abi_types::program_abi;
-
 use std::{collections::HashMap, sync::Arc};
 
 /// An attribute has a name (i.e "doc", "storage"),
@@ -79,25 +77,5 @@ impl std::ops::Deref for AttributesMap {
     type Target = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-pub(crate) fn generate_json_abi_attributes_map(
-    attr_map: &AttributesMap,
-) -> Option<Vec<program_abi::Attribute>> {
-    if attr_map.is_empty() {
-        None
-    } else {
-        Some(
-            attr_map
-                .iter()
-                .flat_map(|(_attr_kind, attrs)| {
-                    attrs.iter().map(|attr| program_abi::Attribute {
-                        name: attr.name.to_string(),
-                        arguments: attr.args.iter().map(|arg| arg.to_string()).collect(),
-                    })
-                })
-                .collect(),
-        )
     }
 }
