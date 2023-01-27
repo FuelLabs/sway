@@ -117,7 +117,7 @@ mod tests {
     fn build_from_path_returns_text_document() {
         let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
         let result = TextDocument::build_from_path(&path);
-        assert!(result.is_ok(), "result = {:?}", result);
+        assert!(result.is_ok(), "result = {result:?}");
     }
 
     #[test]

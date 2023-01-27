@@ -4,7 +4,7 @@ fn main() {
     match cmd.output_path {
         None => {
             let string = serde_json::to_string_pretty(&tx).unwrap();
-            println!("{}", string);
+            println!("{string}");
         }
         Some(path) => {
             let file = std::fs::File::create(path).unwrap();

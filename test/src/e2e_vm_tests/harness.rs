@@ -63,8 +63,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
 
     deploy(DeployCommand {
         path: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}",
-            manifest_dir, file_name
+            "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
         )),
         terse_mode: !run_config.verbose,
         locked: run_config.locked,
@@ -92,14 +91,13 @@ pub(crate) async fn runs_on_node(
 
         let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
         for contract_id in contract_ids {
-            let contract = format!("0x{:x}", contract_id);
+            let contract = format!("0x{contract_id:x}");
             contracts.push(contract);
         }
 
         let command = RunCommand {
             path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
             )),
             node_url: Some(NODE_URL.into()),
             terse_mode: !run_config.verbose,
@@ -179,8 +177,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
             )),
             locked: run_config.locked,
             terse: false,
@@ -192,7 +189,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
 
     // Print the result of the compilation (i.e., any errors Forc produces).
     if let Err(ref e) = result {
-        println!("\n{}", e);
+        println!("\n{e}");
     }
 
     result

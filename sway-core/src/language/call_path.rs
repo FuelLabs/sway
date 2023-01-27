@@ -36,7 +36,7 @@ where
             buf.push_str("::");
         }
         buf.push_str(&self.suffix.to_string());
-        write!(f, "{}", buf)
+        write!(f, "{buf}")
     }
 }
 

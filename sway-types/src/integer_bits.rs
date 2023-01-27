@@ -17,6 +17,6 @@ impl fmt::Display for IntegerBits {
             ThirtyTwo => "thirty two",
             SixtyFour => "sixty four",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }

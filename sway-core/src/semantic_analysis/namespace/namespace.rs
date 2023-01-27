@@ -293,7 +293,7 @@ impl Namespace {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn insert_trait_implementation<'a>(
+    pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
@@ -301,7 +301,7 @@ impl Namespace {
         methods: &[DeclId],
         impl_span: &Span,
         is_impl_self: bool,
-        engines: Engines<'a>,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.

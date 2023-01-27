@@ -192,7 +192,7 @@ pub fn print_on_success(
     }
 
     if warnings.is_empty() {
-        println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
+        println_green_err(&format!("  Compiled {type_str} {proj_name:?}."));
     } else {
         println_yellow_err(&format!(
             "  Compiled {} {:?} with {} {}.",
@@ -214,7 +214,7 @@ pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[C
     }
 
     if warnings.is_empty() {
-        println_green_err(&format!("  Compiled library {:?}.", proj_name));
+        println_green_err(&format!("  Compiled library {proj_name:?}."));
     } else {
         println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",
@@ -252,7 +252,7 @@ fn format_err(err: &CompileError) {
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
-    let friendly_str = maybe_uwuify(&format!("{}", err));
+    let friendly_str = maybe_uwuify(&format!("{err}"));
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
             label: None,
