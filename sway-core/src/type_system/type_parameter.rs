@@ -2,13 +2,16 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     error::*,
-    language::{ty, CallPath},
+    language::{
+        ty::{self, TyFunctionSig},
+        CallPath,
+    },
     semantic_analysis::*,
     type_system::*,
 };
 
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use fuel_abi_types::program_abi;
 
@@ -191,7 +194,7 @@ impl TypeParameter {
         let mut errors = vec![];
 
         let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<IdentUnique, DeclId> = BTreeMap::new();
+        let mut impld_method_ids: BTreeMap<(Ident, TyFunctionSig), DeclId> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -229,13 +232,16 @@ impl TypeParameter {
                 );
                 original_method_ids.extend(trait_original_method_ids);
                 for (key, value) in trait_impld_method_ids {
-                    impld_method_ids.insert(key.into(), value);
+                    if let Ok(fn_decl) = ctx.decl_engine.get_function(value.clone(), access_span) {
+                        impld_method_ids
+                            .insert((key, TyFunctionSig::from_fn_decl(&fn_decl)), value);
+                    }
                 }
             }
         }
 
         if errors.is_empty() {
-            let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids_unique(
+            let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids_with_function_sig(
                 original_method_ids,
                 impld_method_ids,
             );

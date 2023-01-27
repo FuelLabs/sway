@@ -1,6 +1,8 @@
 use std::{collections::BTreeMap, fmt};
 
-use sway_types::{Ident, IdentUnique};
+use sway_types::Ident;
+
+use crate::language::ty::TyFunctionSig;
 
 use super::DeclId;
 
@@ -10,7 +12,7 @@ type DestinationDecl = DeclId;
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
 pub(crate) struct DeclMapping {
-    pub(crate) mapping: Vec<(SourceDecl, DestinationDecl)>,
+    mapping: Vec<(SourceDecl, DestinationDecl)>,
 }
 
 impl fmt::Display for DeclMapping {
@@ -46,6 +48,14 @@ impl DeclMapping {
         self.mapping.is_empty()
     }
 
+    pub(crate) fn mapping(&self) -> Vec<(SourceDecl, DestinationDecl)> {
+        self.mapping.clone()
+    }
+
+    pub(crate) fn from_mapping(mapping: Vec<(SourceDecl, DestinationDecl)>) -> DeclMapping {
+        DeclMapping { mapping }
+    }
+
     pub(crate) fn from_stub_and_impld_decl_ids(
         stub_decl_ids: BTreeMap<Ident, DeclId>,
         impld_decl_ids: BTreeMap<Ident, DeclId>,
@@ -59,13 +69,13 @@ impl DeclMapping {
         DeclMapping { mapping }
     }
 
-    pub(crate) fn from_stub_and_impld_decl_ids_unique(
+    pub(crate) fn from_stub_and_impld_decl_ids_with_function_sig(
         stub_decl_ids: BTreeMap<Ident, DeclId>,
-        new_decl_ids: BTreeMap<IdentUnique, DeclId>,
+        new_decl_ids: BTreeMap<(Ident, TyFunctionSig), DeclId>,
     ) -> DeclMapping {
         let mut mapping = vec![];
         for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {
-            for (new_decl_name, new_decl_id) in new_decl_ids.iter() {
+            for ((new_decl_name, _), new_decl_id) in new_decl_ids.iter() {
                 if new_decl_name.as_str() != stub_decl_name.as_str() {
                     continue;
                 }

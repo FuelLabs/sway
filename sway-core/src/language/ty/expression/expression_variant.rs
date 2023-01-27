@@ -635,7 +635,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 // declaration to be replaced by two different implemented function
                 // declaration. The code below filters the correct implementation to use.
                 let mut decl_mapping_filtered = vec![];
-                'decls: for (orig_decl_id, dest_decl_id) in decl_mapping.mapping.clone() {
+                'decls: for (orig_decl_id, dest_decl_id) in decl_mapping.mapping() {
                     let all_parents = engines
                         .de()
                         .find_all_parents(engines, function_decl_id.clone());
@@ -663,17 +663,13 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
                 }
 
-                // No function with same arguemnt type were found so we try to replace decls as usual
+                // No function with same argument type were found so we try to replace decls as usual
                 if decl_mapping_filtered.is_empty() {
-                    decl_mapping_filtered = decl_mapping.mapping.clone();
+                    decl_mapping_filtered = decl_mapping.mapping();
                 }
 
-                function_decl_id.replace_decls(
-                    &DeclMapping {
-                        mapping: decl_mapping_filtered,
-                    },
-                    engines,
-                );
+                function_decl_id
+                    .replace_decls(&DeclMapping::from_mapping(decl_mapping_filtered), engines);
                 let new_decl_id = function_decl_id
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);
