@@ -13,7 +13,7 @@ use taplo::formatter as taplo_fmt;
 use tracing::{error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_green, println_red};
-use forc_util::find_manifest_dir;
+use forc_util::{find_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
 use sway_utils::{constants, get_sway_files};
 use swayfmt::Formatter;
@@ -34,6 +34,9 @@ pub struct App {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    /// Formats a single .sw file with the default settings.
+    /// If not specified, current working directory will be formatted using a Forc.toml configuration.
+    pub file: Option<String>,
 }
 
 fn main() {
@@ -46,16 +49,48 @@ fn main() {
 
 fn run() -> Result<()> {
     let app = App::parse();
-    let dir = match app.path.clone() {
+
+    if let Some(f) = app.file.as_ref() {
+        let file_path = &PathBuf::from(f);
+        if is_sway_file(file_path) {
+            format_single_file(file_path)?;
+            return Ok(());
+        }
+
+        bail!(
+            "Provided file '{}' is not a valid Sway file",
+            file_path.display()
+        );
+    };
+
+    let dir = match app.path.as_ref() {
         Some(path) => PathBuf::from(path),
         None => std::env::current_dir()?,
     };
+
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
     for (_, member_path) in manifest_file.member_manifests()? {
         let member_dir = member_path.dir();
         let mut formatter = Formatter::from_dir(member_dir)?;
         format_pkg_at_dir(&app, &dir, &mut formatter)?;
     }
+
+    Ok(())
+}
+
+fn format_single_file(path: &Path) -> Result<()> {
+    let mut formatter = Formatter::default();
+    if let Ok(file_content) = fs::read_to_string(path) {
+        match Formatter::format(&mut formatter, file_content.into(), None) {
+            Ok(formatted_content) => {
+                format_file(path, &formatted_content)?;
+            }
+            Err(err) => {
+                error!("{}\n", err);
+            }
+        }
+    }
+
     Ok(())
 }
 

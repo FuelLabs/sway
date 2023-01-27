@@ -3613,7 +3613,7 @@ fn item_attrs_to_map(
             }
         }
     }
-    Ok(Arc::new(attrs_map))
+    Ok(AttributesMap::new(Arc::new(attrs_map)))
 }
 
 fn error_if_self_param_is_not_allowed(
