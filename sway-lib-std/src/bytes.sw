@@ -416,7 +416,9 @@ impl Bytes {
     /// assert(bytes.is_empty());
     /// ```
     pub fn clear(ref mut self) {
+        self.buf.ptr = alloc_bytes(0);
         self.len = 0;
+        self.buf.cap = 0;
     }
 
     /// Returns `true` if the vector contains no elements.
@@ -641,12 +643,8 @@ impl Bytes {
 
         // optimization for when starting with empty bytes and appending to it
         if self.len == 0 {
-            self.buf.ptr = other.buf.ptr;
-            self.buf.cap = other.buf.cap;
-            self.len = other.len;
-            other.buf.ptr = alloc_bytes(0);
-            other.buf.cap = 0;
-            other.len = 0;
+            self = other;
+            other.clear();
             return;
         };
 
@@ -668,7 +666,7 @@ impl Bytes {
         self.len = both_len;
 
         // clear `other`
-        other.len = 0;
+        other.clear();
     }
 }
 
@@ -1052,13 +1050,16 @@ fn test_append_to_empty_bytes() {
     let second_cap = bytes2.capacity();
     bytes.append(bytes2);
     assert(bytes.len() == second_length);
-    // assert(bytes.capacity() == second_cap);
-    // let values = [a, b, c];
-    // let mut i = 0;
-    // while i < 3 {
-    //     assert(bytes.get(i).unwrap() == values[i]);
-    //     i += 1;
-    // };
+    assert(bytes.capacity() == second_cap);
+    let values = [a, b, c];
+    let mut i = 0;
+    while i < 3 {
+        assert(bytes.get(i).unwrap() == values[i]);
+        i += 1;
+    };
+
+    assert(bytes2.len() == 0);
+    assert(bytes2.capacity() == 0);
 
 }
 
