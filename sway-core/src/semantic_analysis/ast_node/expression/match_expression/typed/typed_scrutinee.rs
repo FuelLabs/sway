@@ -318,6 +318,7 @@ fn type_check_tuple(
                     type_id: x.type_id,
                     initial_type_id: x.type_id,
                     span: span.clone(),
+                    name_spans: None,
                 })
                 .collect(),
         ),

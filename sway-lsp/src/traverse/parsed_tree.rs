@@ -755,6 +755,22 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
             }
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                if let Some(type_args) = type_arguments {
+                    for type_arg in type_args {
+                        self.collect_type_arg(type_arg, &token);
+                    }
+                }
+
+                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
+                token.kind = symbol_kind;
+                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
+                self.tokens
+                    .insert(to_ident_key(&Ident::new(name.span())), token);
+            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;

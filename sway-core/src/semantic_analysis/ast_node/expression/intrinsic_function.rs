@@ -163,6 +163,7 @@ fn type_check_size_of_type(
             type_id,
             initial_type_id,
             span: targ.span,
+            name_spans: targ.name_spans,
         }],
         span,
     };
@@ -222,6 +223,7 @@ fn type_check_is_reference_type(
             type_id,
             initial_type_id,
             span: targ.span,
+            name_spans: targ.name_spans,
         }],
         span,
     };
@@ -479,6 +481,7 @@ fn type_check_gtf(
                     type_id,
                     initial_type_id,
                     span: targ.span,
+                    name_spans: targ.name_spans,
                 }],
                 span,
             },
@@ -711,6 +714,7 @@ fn type_check_state_store_word(
             type_id,
             initial_type_id,
             span: span.clone(),
+            name_spans: targ.name_spans.clone(),
         }
     });
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
@@ -835,6 +839,7 @@ fn type_check_state_quad(
             type_id,
             initial_type_id,
             span: span.clone(),
+            name_spans: targ.name_spans.clone(),
         }
     });
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
@@ -1180,6 +1185,7 @@ fn type_check_ptr_ops(
                     type_id,
                     initial_type_id,
                     span: targ.span,
+                    name_spans: targ.name_spans,
                 }],
                 span,
             },
@@ -1258,6 +1264,7 @@ fn type_check_smo(
             type_id,
             initial_type_id,
             span: span.clone(),
+            name_spans: targ.name_spans.clone(),
         }
     });
 
