@@ -1,15 +1,15 @@
 use crate::{
-    asm_generation::fuel::{compiler_constants, register_sequencer::RegisterSequencer},
+    asm_generation::fuel::compiler_constants,
     asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*, Op, VirtualOp},
 };
 
 use std::collections::{BTreeSet, HashMap};
 
 use either::Either;
-use petgraph::graph::NodeIndex;
+use petgraph::graph::{node_index, NodeIndex};
 
 pub type InterferenceGraph =
-    petgraph::stable_graph::StableGraph<VirtualRegister, (), petgraph::Undirected>;
+    petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
 
 // Initially, the bytecode will have a lot of individual registers being used. Each register will
 // have a new unique identifier. For example, two separate invocations of `+` will result in 4
@@ -222,7 +222,7 @@ pub(crate) fn create_interference_graph(
         })
         .iter()
         .for_each(|&reg| {
-            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(reg.clone()));
+            reg_to_node_map.insert(reg.clone(), interference_graph.add_node(Some(reg.clone())));
         });
 
     for (ix, regs) in live_out {
@@ -278,14 +278,13 @@ pub(crate) fn coalesce_registers(
     ops: &[Op],
     interference_graph: &mut InterferenceGraph,
     reg_to_node_map: &mut HashMap<VirtualRegister, NodeIndex>,
-    register_sequencer: &mut RegisterSequencer,
 ) -> Vec<Op> {
     // A map from the virtual registers that are removed to the virtual registers that they are
     // replaced with during the coalescing process.
-    let mut reg_to_reg_map: HashMap<VirtualRegister, VirtualRegister> = HashMap::new();
+    let mut reg_to_reg_map: HashMap<&VirtualRegister, &VirtualRegister> = HashMap::new();
 
     // To hold the final *reduced* list of ops
-    let mut reduced_ops: Vec<Op> = vec![];
+    let mut reduced_ops: Vec<Op> = Vec::with_capacity(ops.len());
 
     for op in ops {
         match &op.opcode {
@@ -295,17 +294,14 @@ pub(crate) fn coalesce_registers(
                         // Use reg_to_reg_map to figure out what x and y have been replaced
                         // with. We keep looking for mappings within reg_to_reg_map until we find a
                         // register that doesn't map to any other.
-                        let regs = vec![x.clone(), y.clone()]
-                            .iter()
-                            .map(|reg| {
-                                let mut temp = reg.clone();
-                                while let Some(t) = reg_to_reg_map.get(&temp) {
-                                    temp = t.clone();
-                                }
-                                temp
-                            })
-                            .collect::<Vec<_>>();
-                        let (r1, r2) = (&regs[0], &regs[1]);
+                        let mut r1 = x;
+                        while let Some(t) = reg_to_reg_map.get(r1) {
+                            r1 = t;
+                        }
+                        let mut r2 = y;
+                        while let Some(t) = reg_to_reg_map.get(r2) {
+                            r2 = t;
+                        }
 
                         // Find the interference graph nodes that corresponding to r1 and r2
                         let ix1 = reg_to_node_map.get(r1).unwrap();
@@ -327,41 +323,24 @@ pub(crate) fn coalesce_registers(
 
                         // The MOVE instruction can now be safely removed. That is, we simply don't
                         // add it to the reduced_ops vector. Also, we combine the two nodes ix1 and
-                        // ix2 in the graph by creating a new node that inherits the edges of both
-                        // ix1 and ix2, and then we remove ix1 and ix2 from the graph. We also have
+                        // ix2 into ix1 and then we remove ix2 from the graph. We also have
                         // to do some bookkeeping.
                         //
                         // Note that because the interference graph is of type StableGraph, the
                         // node index corresponding to each virtual register does not change when
                         // some graph nodes are added or removed.
 
-                        // Create a new virtual register to represent the result of coalescing of
-                        // r1 and r2. Then create a node for it in the graph
-                        let new_reg = register_sequencer.next();
-                        let new_ix = interference_graph.add_node(new_reg.clone());
-
-                        // Add all of ix1(r1)'s edges
-                        for neighbor in interference_graph.neighbors(*ix1).collect::<Vec<_>>() {
-                            interference_graph.add_edge(neighbor, new_ix, ());
-                        }
-
-                        // Add all of ix2(r2)'s edges
+                        // Add all of ix2(r2)'s edges to `ix1(r1)`
                         for neighbor in interference_graph.neighbors(*ix2).collect::<Vec<_>>() {
-                            if !interference_graph.contains_edge(neighbor, new_ix) {
-                                interference_graph.add_edge(neighbor, new_ix, ());
-                            }
+                            interference_graph.add_edge(neighbor, *ix1, ());
                         }
 
-                        // Now remove ix1(r1) and ix2(r2)
-                        interference_graph.remove_node(*ix1);
-                        interference_graph.remove_node(*ix2);
+                        // Remove ix2 by setting its weight to `None`.
+                        interference_graph[*ix2] = None;
 
                         // Update the register maps
-                        reg_to_node_map.insert(new_reg.clone(), new_ix);
-                        reg_to_node_map.insert(r1.clone(), new_ix);
-                        reg_to_node_map.insert(r2.clone(), new_ix);
-                        reg_to_reg_map.insert(r1.clone(), new_reg.clone());
-                        reg_to_reg_map.insert(r2.clone(), new_reg.clone());
+                        reg_to_node_map.insert(r2.clone(), *ix1);
+                        reg_to_reg_map.insert(r2, r1);
                     }
                     _ => {
                         // Preserve the MOVE instruction if either registers used in the MOVE is
@@ -379,13 +358,13 @@ pub(crate) fn coalesce_registers(
 
     // Create a *final* reg-to-reg map that We keep looking for mappings within reg_to_reg_map
     // until we find a register that doesn't map to any other.
-    let mut final_reg_to_reg_map: HashMap<VirtualRegister, VirtualRegister> = HashMap::new();
+    let mut final_reg_to_reg_map: HashMap<&VirtualRegister, &VirtualRegister> = HashMap::new();
     for reg in reg_to_reg_map.keys() {
         let mut temp = reg;
         while let Some(t) = reg_to_reg_map.get(temp) {
             temp = t;
         }
-        final_reg_to_reg_map.insert(reg.clone(), temp.clone());
+        final_reg_to_reg_map.insert(reg, temp);
     }
 
     // Update the registers for all instructions using final_reg_to_reg_map
@@ -420,19 +399,31 @@ pub(crate) fn coalesce_registers(
 pub(crate) fn color_interference_graph(
     interference_graph: &mut InterferenceGraph,
 ) -> Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> {
-    let mut stack: Vec<(VirtualRegister, BTreeSet<VirtualRegister>)> = vec![];
+    let mut stack = Vec::with_capacity(interference_graph.node_count());
 
-    while let Some(node) = interference_graph.node_indices().next() {
+    // Raw for loop here is safe because we are not actually removing any nodes from the graph at
+    // any point (i.e. we're never calling `remove_node()`). This means that each `index` below
+    // correspond to a valid `NodeIndex` in the graph.
+    for index in 0..interference_graph.node_count() {
+        // Convert to a `NodeIndex`
+        let node = node_index(index);
+
+        // Nodes with weight `None` are dead
+        if interference_graph[node].is_none() {
+            continue;
+        }
+
+        // Grab all neighbors with node weight not equal to `None`
         let neighbors = interference_graph
             .neighbors(node)
-            .map(|n| interference_graph[n].clone())
+            .filter_map(|n| interference_graph[n].clone())
             .collect();
-        stack.push((
-            interference_graph
-                .remove_node(node)
-                .expect("Node must exist"),
-            neighbors,
-        ));
+
+        // Build the stack
+        stack.push((interference_graph[node].clone().unwrap(), neighbors));
+
+        // Remove `node` by setting its weight to `None`.
+        interference_graph[node] = None;
     }
 
     stack
