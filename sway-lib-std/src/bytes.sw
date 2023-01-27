@@ -642,6 +642,12 @@ impl Bytes {
         // optimization for when starting with empty bytes and appending to it
         if self.len == 0 {
             self.buf.ptr = other.buf.ptr;
+            self.buf.cap = other.buf.cap;
+            self.len = other.len;
+            other.buf.ptr = alloc_bytes(0);
+            other.buf.cap = 0;
+            other.len = 0;
+            return;
         };
 
         let both_len = self.len + other.len;
