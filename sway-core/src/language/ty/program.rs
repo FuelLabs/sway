@@ -11,8 +11,6 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::*;
 
-use fuel_abi_types::program_abi;
-
 #[derive(Debug, Clone)]
 pub struct TyProgram {
     pub kind: TyProgramKind,
@@ -304,9 +302,22 @@ impl TyProgram {
         )
     }
 
+    /// All test function declarations within the program.
+    pub fn test_fns<'a: 'b, 'b>(
+        &'b self,
+        decl_engine: &'a DeclEngine,
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
+        self.root
+            .submodules_recursive()
+            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
+            .chain(self.root.test_fns(decl_engine))
+    }
+}
+
+impl CollectTypesMetadata for TyProgram {
     /// Collect various type information such as unresolved types and types of logged data
-    pub(crate) fn collect_types_metadata(
-        &mut self,
+    fn collect_types_metadata(
+        &self,
         ctx: &mut CollectTypesMetadataContext,
     ) -> CompileResult<Vec<TypeMetadata>> {
         let mut warnings = vec![];
@@ -418,184 +429,6 @@ impl TyProgram {
         } else {
             err(warnings, errors)
         }
-    }
-
-    pub fn generate_json_abi_program(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> program_abi::ProgramABI {
-        match &self.kind {
-            TyProgramKind::Contract { abi_entries, .. } => {
-                let functions = abi_entries
-                    .iter()
-                    .map(|x| x.generate_json_abi_function(type_engine, types))
-                    .collect();
-                let logged_types = self.generate_json_logged_types(type_engine, types);
-                let messages_types = self.generate_json_messages_types(type_engine, types);
-                let configurables = self.generate_json_configurables(type_engine, types);
-                program_abi::ProgramABI {
-                    types: types.to_vec(),
-                    functions,
-                    logged_types: Some(logged_types),
-                    messages_types: Some(messages_types),
-                    configurables: Some(configurables),
-                }
-            }
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
-                let functions = vec![main_function.generate_json_abi_function(type_engine, types)];
-                let logged_types = self.generate_json_logged_types(type_engine, types);
-                let messages_types = self.generate_json_messages_types(type_engine, types);
-                let configurables = self.generate_json_configurables(type_engine, types);
-                program_abi::ProgramABI {
-                    types: types.to_vec(),
-                    functions,
-                    logged_types: Some(logged_types),
-                    messages_types: Some(messages_types),
-                    configurables: Some(configurables),
-                }
-            }
-            _ => program_abi::ProgramABI {
-                types: vec![],
-                functions: vec![],
-                logged_types: None,
-                messages_types: None,
-                configurables: None,
-            },
-        }
-    }
-
-    fn generate_json_logged_types(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> Vec<program_abi::LoggedType> {
-        // A list of all `program_abi::TypeDeclaration`s needed for the logged types
-        let logged_types = self
-            .logged_types
-            .iter()
-            .map(|(_, type_id)| program_abi::TypeDeclaration {
-                type_id: type_id.index(),
-                type_field: type_id.get_json_type_str(type_engine, *type_id),
-                components: type_id.get_json_type_components(type_engine, types, *type_id),
-                type_parameters: type_id.get_json_type_parameters(type_engine, types, *type_id),
-            })
-            .collect::<Vec<_>>();
-
-        // Add the new types to `types`
-        types.extend(logged_types);
-
-        // Generate the JSON data for the logged types
-        self.logged_types
-            .iter()
-            .map(|(log_id, type_id)| program_abi::LoggedType {
-                log_id: **log_id as u64,
-                application: program_abi::TypeApplication {
-                    name: "".to_string(),
-                    type_id: type_id.index(),
-                    type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
-                },
-            })
-            .collect()
-    }
-
-    fn generate_json_messages_types(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> Vec<program_abi::MessageType> {
-        // A list of all `program_abi::TypeDeclaration`s needed for the messages types
-        let messages_types = self
-            .messages_types
-            .iter()
-            .map(|(_, type_id)| program_abi::TypeDeclaration {
-                type_id: type_id.index(),
-                type_field: type_id.get_json_type_str(type_engine, *type_id),
-                components: type_id.get_json_type_components(type_engine, types, *type_id),
-                type_parameters: type_id.get_json_type_parameters(type_engine, types, *type_id),
-            })
-            .collect::<Vec<_>>();
-
-        // Add the new types to `types`
-        types.extend(messages_types);
-
-        // Generate the JSON data for the messages types
-        self.messages_types
-            .iter()
-            .map(|(message_id, type_id)| program_abi::MessageType {
-                message_id: **message_id as u64,
-                application: program_abi::TypeApplication {
-                    name: "".to_string(),
-                    type_id: type_id.index(),
-                    type_arguments: type_id.get_json_type_arguments(type_engine, types, *type_id),
-                },
-            })
-            .collect()
-    }
-
-    fn generate_json_configurables(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> Vec<program_abi::Configurable> {
-        // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
-        let configurables_types = self
-            .configurables
-            .iter()
-            .map(
-                |TyConstantDeclaration { return_type, .. }| program_abi::TypeDeclaration {
-                    type_id: return_type.index(),
-                    type_field: return_type.get_json_type_str(type_engine, *return_type),
-                    components: return_type.get_json_type_components(
-                        type_engine,
-                        types,
-                        *return_type,
-                    ),
-                    type_parameters: return_type.get_json_type_parameters(
-                        type_engine,
-                        types,
-                        *return_type,
-                    ),
-                },
-            )
-            .collect::<Vec<_>>();
-
-        // Add the new types to `types`
-        types.extend(configurables_types);
-
-        // Generate the JSON data for the configurables types
-        self.configurables
-            .iter()
-            .map(
-                |TyConstantDeclaration {
-                     name, return_type, ..
-                 }| program_abi::Configurable {
-                    name: name.to_string(),
-                    application: program_abi::TypeApplication {
-                        name: "".to_string(),
-                        type_id: return_type.index(),
-                        type_arguments: return_type.get_json_type_arguments(
-                            type_engine,
-                            types,
-                            *return_type,
-                        ),
-                    },
-                    offset: 0,
-                },
-            )
-            .collect()
-    }
-
-    /// All test function declarations within the program.
-    pub fn test_fns<'a: 'b, 'b>(
-        &'b self,
-        decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
-        self.root
-            .submodules_recursive()
-            .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
-            .chain(self.root.test_fns(decl_engine))
     }
 }
 

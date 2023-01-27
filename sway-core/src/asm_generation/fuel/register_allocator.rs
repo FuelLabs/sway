@@ -130,13 +130,13 @@ impl RegisterPool {
 /// `live_in` is computed because it is needed to compute `live_out` iteratively.
 ///
 pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
-    // Hash maps that will reprsent the live_in and live_out tables. The key of each hash map is
-    // simply the index of each instruction in the `ops` vector.
+    // Vectors representing maps that will reprsent the live_in and live_out tables. Each entry
+    // corresponds to an instruction in `ops`.
     let mut live_in: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
     let mut live_out: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
-
     let mut label_to_index: HashMap<Label, usize> = HashMap::new();
 
+    // Keep track of an map between jump labels and op indices. Useful to compute op successors.
     for (idx, op) in ops.iter().enumerate() {
         if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
             label_to_index.insert(op_label, idx);
@@ -171,8 +171,7 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
             for u in op_use {
                 local_modified |= live_in[rev_ix].insert(u.clone());
             }
-
-            //live_out_op_minus_defs {
+            // Add live_out(op) - def(op)
             for l in live_out[rev_ix].iter() {
                 if !op_def.contains(&l) {
                     local_modified |= live_in[rev_ix].insert(l.clone());
