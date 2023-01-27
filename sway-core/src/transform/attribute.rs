@@ -48,7 +48,39 @@ pub enum AttributeKind {
 }
 
 /// Stores the attributes associated with the type.
-pub type AttributesMap = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
+#[derive(Default, Clone, Debug, Eq, PartialEq)]
+pub struct AttributesMap(Arc<HashMap<AttributeKind, Vec<Attribute>>>);
+
+impl AttributesMap {
+    /// Create a new attributes map.
+    pub fn new(attrs_map: Arc<HashMap<AttributeKind, Vec<Attribute>>>) -> AttributesMap {
+        AttributesMap(attrs_map)
+    }
+
+    /// Returns the first attribute by span, or None if there are no attributes.
+    pub fn first(&self) -> Option<(&AttributeKind, &Attribute)> {
+        let mut first: Option<(&AttributeKind, &Attribute)> = None;
+        for (kind, attrs) in self.iter() {
+            for attr in attrs {
+                if let Some((_, first_attr)) = first {
+                    if attr.span.start() < first_attr.span.start() {
+                        first = Some((kind, attr));
+                    }
+                } else {
+                    first = Some((kind, attr));
+                }
+            }
+        }
+        first
+    }
+}
+
+impl std::ops::Deref for AttributesMap {
+    type Target = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub(crate) fn generate_json_abi_attributes_map(
     attr_map: &AttributesMap,
