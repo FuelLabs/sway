@@ -71,12 +71,12 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             program_state,
         } => {
             writeln!(s, "Transaction Succeeded")?;
-            writeln!(s, "  Block ID:      {}", block_id)?;
-            writeln!(s, "  Time:          {:?}", time)?;
-            writeln!(s, "  Program State: {:?}", program_state)?;
+            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Time:          {time:?}")?;
+            writeln!(s, "  Program State: {program_state:?}")?;
         }
         TransactionStatus::SqueezedOut { reason } => {
-            writeln!(s, "Transaction Squeezed Out: {}", reason)?;
+            writeln!(s, "Transaction Squeezed Out: {reason}")?;
         }
         TransactionStatus::Failure {
             block_id,
@@ -85,10 +85,10 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             program_state,
         } => {
             writeln!(s, "Transaction Failed")?;
-            writeln!(s, "  Reason: {}", reason)?;
-            writeln!(s, "  Block ID:      {}", block_id)?;
-            writeln!(s, "  Time:          {:?}", time)?;
-            writeln!(s, "  Program State: {:?}", program_state)?;
+            writeln!(s, "  Reason: {reason}")?;
+            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Time:          {time:?}")?;
+            writeln!(s, "  Program State: {program_state:?}")?;
         }
     }
     Ok(())
@@ -98,12 +98,12 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
 pub fn print_status(status: &TransactionStatus) {
     let mut string = String::new();
     fmt_status(status, &mut string).expect("formatting to `String` is infallible");
-    println!("{}", string);
+    println!("{string}");
 }
 
 /// Print the status to stdout in its JSON representation.
 pub fn print_status_json(status: &TransactionStatus) -> anyhow::Result<()> {
     let json = serde_json::to_string_pretty(status)?;
-    println!("{}", json);
+    println!("{json}");
     Ok(())
 }

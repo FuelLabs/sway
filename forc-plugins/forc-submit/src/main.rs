@@ -21,7 +21,7 @@ pub async fn main() -> anyhow::Result<()> {
         }
     } else {
         let id = client.submit(&tx).await.context("Failed to submit tx")?;
-        println!("{}", id);
+        println!("{id}");
     }
     Ok(())
 }
