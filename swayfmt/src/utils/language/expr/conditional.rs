@@ -135,10 +135,16 @@ fn format_then_block(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    IfExpr::open_curly_brace(formatted_code, formatter)?;
-    if_expr.then_block.get().format(formatted_code, formatter)?;
-    if if_expr.else_opt.is_none() {
-        IfExpr::close_curly_brace(formatted_code, formatter)?;
+    if !if_expr.then_block.get().statements.is_empty()
+        || if_expr.then_block.get().final_expr_opt.is_some()
+    {
+        IfExpr::open_curly_brace(formatted_code, formatter)?;
+        if_expr.then_block.get().format(formatted_code, formatter)?;
+        if if_expr.else_opt.is_none() {
+            IfExpr::close_curly_brace(formatted_code, formatter)?;
+        }
+    } else {
+        write!(formatted_code, " {{}}")?;
     }
 
     Ok(())
