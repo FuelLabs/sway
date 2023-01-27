@@ -6,14 +6,6 @@ use ::convert::TryFrom;
 use ::option::Option;
 use ::logging::log;
 
-/**
-
- TODO: switch to match when we can do:
- match b {
-    (b.len() > 32) => Option::None,
-    _ => Option::Some(...)
-}
-*/
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() > 32 {
