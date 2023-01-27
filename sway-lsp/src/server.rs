@@ -334,22 +334,14 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((_, session)) => {
                 // Construct code lenses for runnable functions
-                let _ = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        result.push(CodeLens {
-                            range: runnable.range,
-                            command: Some(Command {
-                                command: "sway.runScript".to_string(),
-                                arguments: None,
-                                title: "▶\u{fe0e} Run".to_string(),
-                            }),
-                            data: None,
-                        });
+                session.runnables.iter().for_each(|item| {
+                    let runnable = item.value();
+                    result.push(CodeLens {
+                        range: runnable.range(),
+                        command: Some(runnable.command()),
+                        data: None,
                     });
+                });
                 Ok(Some(result))
             }
             Err(err) => {
@@ -487,12 +479,6 @@ impl LanguageServer for Backend {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnableParams {
-    pub text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
@@ -521,14 +507,6 @@ impl Backend {
         }
     }
 
-    // TODO: Delete this method once the client code calling it has been removed.
-    pub async fn runnables(
-        &self,
-        _params: RunnableParams,
-    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        Ok(None)
-    }
-
     /// This method is triggered by a command palette request in VScode
     /// The 3 commands are: "show lexed ast", "show parsed ast" or "show typed ast"
     ///
@@ -554,7 +532,7 @@ impl Backend {
                 let write_ast_to_file =
                     |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
                         if let Ok(mut file) = File::create(path) {
-                            let _ = writeln!(&mut file, "{}", ast_string);
+                            let _ = writeln!(&mut file, "{ast_string}");
                             if let Ok(uri) = Url::from_file_path(path) {
                                 // Return the tmp file path where the AST has been written to.
                                 return Some(TextDocumentIdentifier::new(uri));
@@ -636,7 +614,8 @@ impl Backend {
 mod tests {
     use super::*;
     use crate::utils::test::{
-        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, runnables_test_dir,
+        test_fixtures_dir,
     };
     use assert_json_diff::assert_json_eq;
     use serde_json::json;
@@ -1009,26 +988,84 @@ mod tests {
         });
         let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
         let response = call_request(service, code_lens.clone()).await;
-        let expected = Response::from_ok(
-            1.into(),
-            json!([{
-                "command": {
-                    "command": "sway.runScript",
-                    "title":"▶︎ Run"
+        let actual_results = response
+            .unwrap()
+            .unwrap()
+            .into_parts()
+            .1
+            .ok()
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
+        let expected_results = vec![
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_bar"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 13
                 },
-                "range": {
-                    "end": {
-                        "character": 7,
-                        "line": 4
-                    },
-                    "start": {
-                        "character": 3,
-                        "line":4
-                    }
+                "start": {
+                  "character": 0,
+                  "line": 13
                 }
-            }]),
-        );
-        assert_json_eq!(expected, response.ok().unwrap());
+              }
+            }),
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_foo"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 8
+                },
+                "start": {
+                  "character": 0,
+                  "line": 8
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "command": "sway.runScript",
+                "title": "▶︎ Run"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 3,
+                  "line": 4
+                }
+              }
+            }),
+        ];
+
+        assert_eq!(actual_results.len(), expected_results.len());
+        for expected in expected_results.iter() {
+            assert!(
+                actual_results.contains(expected),
+                "Expected {actual_results:?} to contain {expected:?}"
+            );
+        }
         code_lens
     }
 
@@ -1171,7 +1208,7 @@ mod tests {
         .await;
         socket_handle
             .await
-            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1205,5 +1242,5 @@ mod tests {
     lsp_capability_test!(hover, hover_request, doc_comments_dir);
     lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
     lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
-    lsp_capability_test!(code_lens, code_lens_request, e2e_test_dir);
+    lsp_capability_test!(code_lens, code_lens_request, runnables_test_dir);
 }

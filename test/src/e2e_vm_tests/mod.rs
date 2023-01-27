@@ -46,10 +46,10 @@ enum TestResult {
 impl fmt::Debug for TestResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TestResult::Result(result) => write!(f, "Result({})", result),
-            TestResult::Return(code) => write!(f, "Return({})", code),
+            TestResult::Result(result) => write!(f, "Result({result})"),
+            TestResult::Return(code) => write!(f, "Return({code})"),
             TestResult::ReturnData(data) => write!(f, "ReturnData(0x{})", hex::encode(data)),
-            TestResult::Revert(code) => write!(f, "Revert({})", code),
+            TestResult::Revert(code) => write!(f, "Revert({code})"),
         }
     }
 }
@@ -158,8 +158,7 @@ impl TestContext {
 
                 if result != res {
                     Err(anyhow::Error::msg(format!(
-                        "expected: {:?}\nactual: {:?}",
-                        res, result
+                        "expected: {res:?}\nactual: {result:?}"
                     )))
                 } else {
                     if validate_abi {
@@ -317,8 +316,7 @@ impl TestContext {
             }
 
             category => Err(anyhow::Error::msg(format!(
-                "Unexpected test category: {:?}",
-                category,
+                "Unexpected test category: {category:?}",
             ))),
         }
     }

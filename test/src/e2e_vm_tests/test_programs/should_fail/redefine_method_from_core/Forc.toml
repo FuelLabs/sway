@@ -1,8 +1,8 @@
 [project]
-name = "trait_override_bug"
+name = "redefine_method_from_core"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+core = { path = "../../../../../../sway-lib-core" }
