@@ -47,7 +47,7 @@ impl Markup {
 
     /// Contents will be formatted with sway syntax highlighting.
     pub fn fenced_sway_block(mut self, contents: &impl fmt::Display) -> Self {
-        let code_block = format!("```sway\n{}\n```", contents);
+        let code_block = format!("```sway\n{contents}\n```");
         self.text.push_str(&code_block);
         self
     }

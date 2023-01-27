@@ -560,7 +560,7 @@ where
         // we bypass this problem when displaying [Range]s.
         if self.first == self.last {
             write!(builder, "{}", self.first)?;
-            return write!(f, "{}", builder);
+            return write!(f, "{builder}");
         }
 
         builder.push('[');
@@ -576,7 +576,7 @@ where
             write!(builder, "{}", self.last)?;
         }
         builder.push(']');
-        write!(f, "{}", builder)
+        write!(f, "{builder}")
     }
 }
 

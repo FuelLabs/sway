@@ -107,7 +107,7 @@ impl ProjectionKind {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
-            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{:#?}", index)),
+            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }
     }
 }

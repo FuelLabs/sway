@@ -15,6 +15,6 @@ impl std::fmt::Display for ProgramType {
             Predicate => "predicate",
             Library => "library",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }

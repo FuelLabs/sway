@@ -564,7 +564,7 @@ impl TypeEngine {
         self.slab.with_slice(|elems| {
             let list = elems.iter().map(|type_info| engines.help_out(type_info));
             let list = ListDisplay { list };
-            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+            write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
     }

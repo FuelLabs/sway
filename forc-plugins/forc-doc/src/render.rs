@@ -19,7 +19,7 @@ pub(crate) trait Renderable {
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_info: Vec<ModulePrefix>,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
             BTreeMap::new();
         for doc in raw {
             rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.0.clone(), // fix this
+                module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
@@ -210,7 +210,7 @@ impl RenderedDocumentation {
         // ProjectIndex
         match module_map.get(root_module.location()) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
-                module_info: vec![],
+                module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
                     ModuleIndex {
@@ -239,7 +239,7 @@ impl RenderedDocumentation {
                     None => panic!("document is empty"),
                 };
                 rendered_docs.0.push(RenderedDocument {
-                    module_info: module_info.0.clone(),
+                    module_info: module_info.clone(),
                     html_filename: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
@@ -258,7 +258,7 @@ impl RenderedDocumentation {
 
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
-            module_info: vec![],
+            module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
@@ -408,7 +408,7 @@ impl Renderable for ItemBody {
                                     span(class="in-band") {
                                         // TODO: pass the decl ty info or match
                                         // for uppercase naming like: "Enum"
-                                        : format!("{} ", friendly_name);
+                                        : format!("{friendly_name} ");
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
@@ -555,7 +555,7 @@ fn context_section<'title, S: Renderable + 'static>(
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title.as_str();
-            a(class="anchor", href=format!("{}{}", IDENTITY, lct));
+            a(class="anchor", href=format!("{IDENTITY}{lct}"));
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
@@ -568,7 +568,7 @@ impl Renderable for TyStructField {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, struct_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -588,7 +588,7 @@ impl Renderable for TyStorageField {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, storage_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -608,7 +608,7 @@ impl Renderable for TyEnumVariant {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, enum_variant_id));
+                a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     : self.type_span.as_str();
@@ -660,7 +660,7 @@ impl Renderable for TyTraitFn {
                 div(id=&method_id, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{}{}", IDENTITY, method_id)) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -750,7 +750,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -782,7 +782,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -810,7 +810,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : item.preview_opt.unwrap();
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -1111,7 +1111,7 @@ impl Renderable for Sidebar {
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
             DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
             DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (format!("../{}", INDEX_FILENAME), IDENTITY.to_owned()),
+            DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1128,7 +1128,7 @@ impl Renderable for Sidebar {
                         div(class="block") {
                             ul {
                                 li(class="version") {
-                                    : format!("Version {}", version);
+                                    : format!("Version {version}");
                                 }
                                 li {
                                     a(id="all-types", href=ALL_DOC_FILENAME) {
@@ -1229,5 +1229,33 @@ pub(crate) fn trim_fn_body(f: String) -> String {
     match f.find('{') {
         Some(index) => f.split_at(index).0.to_string(),
         None => f,
+    }
+}
+
+/// Checks if some raw html (rendered from markdown) contains a header.
+/// If it does, it splits at the header and returns the slice that preceeded it.
+pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
+    const H1: &str = "<h1>";
+    const H2: &str = "<h2>";
+    const H3: &str = "<h3>";
+    const H4: &str = "<h4>";
+    const H5: &str = "<h5>";
+    if raw_html.contains(H1) {
+        let v: Vec<_> = raw_html.split(H1).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H2) {
+        let v: Vec<_> = raw_html.split(H2).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H3) {
+        let v: Vec<_> = raw_html.split(H3).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H4) {
+        let v: Vec<_> = raw_html.split(H4).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H5) {
+        let v: Vec<_> = raw_html.split(H5).collect();
+        v.first().expect("expected a non-empty str")
+    } else {
+        raw_html
     }
 }

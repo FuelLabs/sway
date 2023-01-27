@@ -1,9 +1,9 @@
 use fuels::prelude::*;
 
-abigen!(
-    MethodsContract,
-    "test_artifacts/methods_contract/out/debug/methods_contract-abi.json",
-);
+abigen!(Contract(
+    name = "MethodsContract",
+    abi = "test_artifacts/methods_contract/out/debug/methods_contract-abi.json",
+));
 
 #[tokio::test]
 async fn run_methods_test() {
