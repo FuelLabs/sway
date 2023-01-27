@@ -206,7 +206,7 @@ impl core::ops::BitwiseOr for U128 {
     }
 }
 
-impl core::ops::Shiftable for U128 {
+impl core::ops::Shift for U128 {
     fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
