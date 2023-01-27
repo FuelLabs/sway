@@ -27,6 +27,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    abi_generation::generate_json_abi_program,
     asm_generation::ProgramABI,
     decl_engine::{DeclEngine, DeclId},
     fuel_prelude::{
@@ -36,7 +37,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
-        ty,
+        ty::{self},
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
@@ -2523,7 +2524,7 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                typed_program.generate_json_abi_program(engines.te(), &mut types)
+                generate_json_abi_program(typed_program, engines.te(), &mut types)
             ))
         }
         BuildTarget::EVM => match &asm_res.value {

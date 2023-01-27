@@ -14,10 +14,20 @@ pub(crate) fn e2e_language_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
 }
 
+pub(crate) fn e2e_unit_dir() -> PathBuf {
+    PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/unit_tests")
+}
+
 pub(crate) fn e2e_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
         .join("struct_field_access")
+}
+
+pub(crate) fn runnables_test_dir() -> PathBuf {
+    sway_workspace_dir()
+        .join(e2e_unit_dir())
+        .join("script_multi_test")
 }
 
 pub(crate) fn test_fixtures_dir() -> PathBuf {

@@ -62,12 +62,6 @@ impl From<&TypeParameter> for TypeArgument {
     }
 }
 
-impl TypeArgument {
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine.get(self.type_id).json_abi_str(type_engine)
-    }
-}
-
 impl ReplaceSelfType for TypeArgument {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);

@@ -1,7 +1,6 @@
 use crate::{
     asm_generation::fuel::{
         allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
-        register_sequencer::RegisterSequencer,
     },
     asm_lang::{
         allocated_ops::{AllocatedOp, AllocatedOpcode},
@@ -165,10 +164,7 @@ impl AbstractInstructionSet {
     /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
     /// the algorithm are thoroughly explained in register_allocator.rs.
     ///
-    pub(crate) fn allocate_registers(
-        self,
-        register_sequencer: &mut RegisterSequencer,
-    ) -> AllocatedAbstractInstructionSet {
+    pub(crate) fn allocate_registers(self) -> AllocatedAbstractInstructionSet {
         // Step 1: Liveness Analysis.
         let live_out = register_allocator::liveness_analysis(&self.ops);
 
@@ -181,7 +177,6 @@ impl AbstractInstructionSet {
             &self.ops,
             &mut interference_graph,
             &mut reg_to_node_ix,
-            register_sequencer,
         );
 
         // Step 4: Simplify - i.e. color the interference graph and return a stack that contains

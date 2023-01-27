@@ -10,8 +10,6 @@ use crate::{
 use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
-use fuel_abi_types::program_abi;
-
 use std::{
     collections::BTreeMap,
     fmt,
@@ -156,29 +154,6 @@ impl TypeParameter {
             trait_constraints_span,
         };
         ok(type_parameter, warnings, errors)
-    }
-
-    /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
-    pub(crate) fn get_json_type_parameter(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> usize {
-        let type_parameter = program_abi::TypeDeclaration {
-            type_id: self.initial_type_id.index(),
-            type_field: self
-                .initial_type_id
-                .get_json_type_str(type_engine, self.type_id),
-            components: self.initial_type_id.get_json_type_components(
-                type_engine,
-                types,
-                self.type_id,
-            ),
-            type_parameters: None,
-        };
-        types.push(type_parameter);
-        self.initial_type_id.index()
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
