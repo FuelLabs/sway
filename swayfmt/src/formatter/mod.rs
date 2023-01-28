@@ -47,7 +47,9 @@ impl Formatter {
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         // apply the width heuristics settings from the `Config`
-        self.shape.apply_width_heuristics(
+        self
+        .shape
+        .apply_width_heuristics(
             self.config
                 .heuristics
                 .heuristics_pref
@@ -1167,17 +1169,23 @@ fn func_with_multiline_collections() {
 fn main() {
     if pledge_history_index != 0 {
         // This is a comment
-        storage.pledge_history.insert((user, pledge_history_index), pledge);
+        storage
+        .pledge_history
+        .insert((user, pledge_history_index), pledge);
     }
     // This is also a comment,
     // but multiline
     else if true {
         // This is yet another comment
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+        .pledge_count
+        .insert(user, pledge_count + 1);
     }
     // This is the last comment
     else {
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+        .pledge_count
+        .insert(user, pledge_count + 1);
     }
 }
 "#;
@@ -1187,17 +1195,23 @@ fn main() {
 fn main() {
     if pledge_history_index != 0 {
         // This is a comment
-        storage.pledge_history.insert((user, pledge_history_index), pledge);
+        storage
+        .pledge_history
+        .insert((user, pledge_history_index), pledge);
     }
     // This is also a comment,
     // but multiline
     else if true {
         // This is yet another comment
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+        .pledge_count
+        .insert(user, pledge_count + 1);
     }
     // This is the last comment
     else {
-        storage.pledge_count.insert(user, pledge_count + 1);
+        storage
+        .pledge_count
+        .insert(user, pledge_count + 1);
     }
 }
 "#;
