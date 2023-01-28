@@ -27,6 +27,7 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    abi_generation::generate_json_abi_program,
     asm_generation::ProgramABI,
     decl_engine::{DeclEngine, DeclId},
     fuel_prelude::{
@@ -36,7 +37,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
-        ty,
+        ty::{self},
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
@@ -437,7 +438,7 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_stem = format!("{pkg_name}-abi");
         let json_abi_program_path = output_dir
             .join(json_abi_program_stem)
             .with_extension("json");
@@ -471,7 +472,7 @@ impl BuiltPackage {
         match self.tree_type {
             TreeType::Contract => {
                 // For contracts, emit a JSON file with all the initialized storage slots.
-                let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
+                let json_storage_slots_stem = format!("{pkg_name}-storage_slots");
                 let json_storage_slots_path = output_dir
                     .join(json_storage_slots_stem)
                     .with_extension("json");
@@ -1068,7 +1069,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
+            let refname = format!("refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{tag}");
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -1077,10 +1078,10 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
+            let name = format!("{DEFAULT_REMOTE_NAME}/{branch}");
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
-                .with_context(|| format!("failed to find branch `{}`", branch))?;
+                .with_context(|| format!("failed to find branch `{branch}`"))?;
             b.get()
                 .target()
                 .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
@@ -1089,7 +1090,7 @@ impl GitReference {
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
             let head_id =
-                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
+                repo.refname_to_id(&format!("refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1105,7 +1106,7 @@ impl GitReference {
 
         match self {
             GitReference::Tag(s) => {
-                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{}`", s))
+                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{s}`"))
             }
             GitReference::Branch(s) => resolve_branch(repo, s),
             GitReference::DefaultBranch => resolve_default_branch(repo),
@@ -1184,8 +1185,8 @@ impl fmt::Display for SourceGitPinned {
 impl fmt::Display for GitReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GitReference::Branch(ref s) => write!(f, "branch={}", s),
-            GitReference::Tag(ref s) => write!(f, "tag={}", s),
+            GitReference::Branch(ref s) => write!(f, "branch={s}"),
+            GitReference::Tag(ref s) => write!(f, "tag={s}"),
             GitReference::Rev(ref _s) => write!(f, "rev"),
             GitReference::DefaultBranch => write!(f, "default-branch"),
         }
@@ -1667,7 +1668,7 @@ fn fetch_deps(
 /// The name to use for a package's git repository under the user's forc directory.
 fn git_repo_dir_name(name: &str, repo: &Url) -> String {
     let repo_url_hash = hash_url(repo);
-    format!("{}-{:x}", name, repo_url_hash)
+    format!("{name}-{repo_url_hash:x}")
 }
 
 fn hash_url(url: &Url) -> u64 {
@@ -1702,32 +1703,29 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     match reference {
         GitReference::Branch(s) => {
             refspecs.push(format!(
-                "+refs/heads/{1}:refs/remotes/{0}/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/heads/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/{s}"
             ));
         }
         GitReference::Tag(s) => {
             refspecs.push(format!(
-                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/tags/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{s}"
             ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
-                refspecs.push(format!("+{0}:{0}", s));
+                refspecs.push(format!("+{s}:{s}"));
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
                 refspecs.push(format!(
-                    "+refs/heads/*:refs/remotes/{}/*",
-                    DEFAULT_REMOTE_NAME
+                    "+refs/heads/*:refs/remotes/{DEFAULT_REMOTE_NAME}/*"
                 ));
-                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+                refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+            refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
         }
     }
     (refspecs, tags)
@@ -1785,7 +1783,7 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
             .reference
             .resolve(&repo)
             .with_context(|| "failed to resolve reference".to_string())?;
-        Ok(format!("{}", commit_id))
+        Ok(format!("{commit_id}"))
     })?;
     Ok(SourceGitPinned {
         source,
@@ -1943,8 +1941,8 @@ fn fd_lock_path(path: &Path) -> PathBuf {
     path.hash(&mut hasher);
     let hash = hasher.finish();
     let file_name = match path.file_stem().and_then(|s| s.to_str()) {
-        None => format!("{:X}", hash),
-        Some(stem) => format!("{:X}-{}", hash, stem),
+        None => format!("{hash:X}"),
+        Some(stem) => format!("{hash:X}-{stem}"),
     };
 
     user_forc_directory()
@@ -2526,7 +2524,7 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                typed_program.generate_json_abi_program(engines.te(), &mut types)
+                generate_json_abi_program(typed_program, engines.te(), &mut types)
             ))
         }
         BuildTarget::EVM => match &asm_res.value {
@@ -3293,10 +3291,10 @@ pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
 pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
-        .map(|e| format!("{}", e))
+        .map(|e| format!("{e}"))
         .collect::<Vec<String>>()
         .join("\n");
-    let message = format!("Parsing {} failed: \n{}", project_name, error);
+    let message = format!("Parsing {project_name} failed: \n{error}");
     Error::msg(message)
 }
 
@@ -3306,15 +3304,12 @@ pub fn wrong_program_type(
     expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
-    let message = format!(
-        "{} is not a '{:?}' it is a '{:?}'",
-        project_name, expected_types, parse_type
-    );
+    let message = format!("{project_name} is not a '{expected_types:?}' it is a '{parse_type:?}'");
     Error::msg(message)
 }
 
 /// Format an error message if a given URL fails to produce a working node.
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
-    let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
+    let message = format!("could not get a response from node at the URL {node_url}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information");
     Error::msg(message)
 }

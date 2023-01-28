@@ -428,7 +428,7 @@ impl DisplayWithEngines for TypeInfo {
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -541,52 +541,6 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        use TypeInfo::*;
-        match self {
-            Unknown => "unknown".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(_) => "_".to_string(),
-            Str(x) => format!("str[{}]", x.val()),
-            UnsignedInteger(x) => match x {
-                IntegerBits::Eight => "u8",
-                IntegerBits::Sixteen => "u16",
-                IntegerBits::ThirtyTwo => "u32",
-                IntegerBits::SixtyFour => "u64",
-            }
-            .into(),
-            Boolean => "bool".into(),
-            Custom { name, .. } => name.to_string(),
-            Tuple(fields) => {
-                let field_strs = fields
-                    .iter()
-                    .map(|field| field.json_abi_str(type_engine))
-                    .collect::<Vec<String>>();
-                format!("({})", field_strs.join(", "))
-            }
-            SelfType => "Self".into(),
-            B256 => "b256".into(),
-            Numeric => "u64".into(), // u64 is the default
-            Contract => "contract".into(),
-            ErrorRecovery => "unknown due to error".into(),
-            Enum { name, .. } => {
-                format!("enum {}", name)
-            }
-            Struct { name, .. } => {
-                format!("struct {}", name)
-            }
-            ContractCaller { abi_name, .. } => {
-                format!("contract caller {}", abi_name)
-            }
-            Array(elem_ty, length) => {
-                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), length.val())
-            }
-            Storage { .. } => "contract storage".into(),
-            RawUntypedPtr => "raw untyped ptr".into(),
-            RawUntypedSlice => "raw untyped slice".into(),
-        }
-    }
-
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,

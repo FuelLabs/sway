@@ -246,8 +246,8 @@ fn function_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
-fn block_to_doc<'a>(
-    context: &'a Context,
+fn block_to_doc(
+    context: &Context,
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,

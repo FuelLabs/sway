@@ -17,7 +17,7 @@ pub(crate) fn instantiate_enum(
     enum_name: Ident,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
-    mut type_binding: TypeBinding<()>,
+    type_binding: TypeBinding<()>,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -46,17 +46,6 @@ pub(crate) fn instantiate_enum(
         return err(warnings, errors);
     }
     let args = args_opt.unwrap_or_default();
-
-    // Update type binding with the correct type information from the enum decl
-    for (type_arg, type_param) in type_binding
-        .type_arguments
-        .iter_mut()
-        .zip(enum_decl.type_parameters.iter())
-    {
-        type_arg.type_id = type_param.type_id;
-        type_arg.initial_type_id = type_param.initial_type_id;
-        // keep the type_arg span so the LSP knows where we are
-    }
 
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.

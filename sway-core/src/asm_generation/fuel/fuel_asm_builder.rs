@@ -840,7 +840,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -859,7 +859,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -1127,7 +1127,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let indices_str = indices
             .iter()
-            .map(|idx| format!("{}", idx))
+            .map(|idx| format!("{idx}"))
             .collect::<Vec<String>>()
             .join(",");
 
@@ -1152,7 +1152,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         insert_reg,
                         VirtualImmediate12 { value: 0 },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             } else {
@@ -1164,7 +1164,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: insert_offs as u16,
                         },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             }
@@ -1181,7 +1181,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: (insert_offs * 8) as u16,
                         },
                     )),
-                    comment: format!("get struct field(s) {} offset", indices_str),
+                    comment: format!("get struct field(s) {indices_str} offset"),
                     owning_span: owning_span.clone(),
                 });
             }

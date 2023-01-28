@@ -27,6 +27,16 @@ impl Spanned for Ty {
     }
 }
 
+impl Ty {
+    pub fn name_span(&self) -> Option<Span> {
+        if let Ty::Path(path_type) = self {
+            Some(path_type.last_segment().name.span())
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum TyTupleDescriptor {
     Nil,

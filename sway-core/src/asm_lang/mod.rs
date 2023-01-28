@@ -1051,7 +1051,7 @@ impl Op {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         Op {
             opcode: match &self.opcode {
@@ -1408,7 +1408,7 @@ impl fmt::Display for Op {
             write!(op_and_comment, "; {}", self.comment)?;
         }
 
-        write!(fmtr, "{}", op_and_comment)
+        write!(fmtr, "{op_and_comment}")
     }
 }
 
@@ -1417,95 +1417,95 @@ impl fmt::Display for VirtualOp {
         use VirtualOp::*;
         match self {
             /* Arithmetic/Logic (ALU) Instructions */
-            ADD(a, b, c) => write!(fmtr, "add {} {} {}", a, b, c),
-            ADDI(a, b, c) => write!(fmtr, "addi {} {} {}", a, b, c),
-            AND(a, b, c) => write!(fmtr, "and {} {} {}", a, b, c),
-            ANDI(a, b, c) => write!(fmtr, "andi {} {} {}", a, b, c),
-            DIV(a, b, c) => write!(fmtr, "div {} {} {}", a, b, c),
-            DIVI(a, b, c) => write!(fmtr, "divi {} {} {}", a, b, c),
-            EQ(a, b, c) => write!(fmtr, "eq {} {} {}", a, b, c),
-            EXP(a, b, c) => write!(fmtr, "exp {} {} {}", a, b, c),
-            EXPI(a, b, c) => write!(fmtr, "expi {} {} {}", a, b, c),
-            GT(a, b, c) => write!(fmtr, "gt {} {} {}", a, b, c),
-            LT(a, b, c) => write!(fmtr, "lt {} {} {}", a, b, c),
-            MLOG(a, b, c) => write!(fmtr, "mlog {} {} {}", a, b, c),
-            MOD(a, b, c) => write!(fmtr, "mod {} {} {}", a, b, c),
-            MODI(a, b, c) => write!(fmtr, "modi {} {} {}", a, b, c),
-            MOVE(a, b) => write!(fmtr, "move {} {}", a, b),
-            MOVI(a, b) => write!(fmtr, "movi {} {}", a, b),
-            MROO(a, b, c) => write!(fmtr, "mroo {} {} {}", a, b, c),
-            MUL(a, b, c) => write!(fmtr, "mul {} {} {}", a, b, c),
-            MULI(a, b, c) => write!(fmtr, "muli {} {} {}", a, b, c),
+            ADD(a, b, c) => write!(fmtr, "add {a} {b} {c}"),
+            ADDI(a, b, c) => write!(fmtr, "addi {a} {b} {c}"),
+            AND(a, b, c) => write!(fmtr, "and {a} {b} {c}"),
+            ANDI(a, b, c) => write!(fmtr, "andi {a} {b} {c}"),
+            DIV(a, b, c) => write!(fmtr, "div {a} {b} {c}"),
+            DIVI(a, b, c) => write!(fmtr, "divi {a} {b} {c}"),
+            EQ(a, b, c) => write!(fmtr, "eq {a} {b} {c}"),
+            EXP(a, b, c) => write!(fmtr, "exp {a} {b} {c}"),
+            EXPI(a, b, c) => write!(fmtr, "expi {a} {b} {c}"),
+            GT(a, b, c) => write!(fmtr, "gt {a} {b} {c}"),
+            LT(a, b, c) => write!(fmtr, "lt {a} {b} {c}"),
+            MLOG(a, b, c) => write!(fmtr, "mlog {a} {b} {c}"),
+            MOD(a, b, c) => write!(fmtr, "mod {a} {b} {c}"),
+            MODI(a, b, c) => write!(fmtr, "modi {a} {b} {c}"),
+            MOVE(a, b) => write!(fmtr, "move {a} {b}"),
+            MOVI(a, b) => write!(fmtr, "movi {a} {b}"),
+            MROO(a, b, c) => write!(fmtr, "mroo {a} {b} {c}"),
+            MUL(a, b, c) => write!(fmtr, "mul {a} {b} {c}"),
+            MULI(a, b, c) => write!(fmtr, "muli {a} {b} {c}"),
             NOOP => Ok(()),
-            NOT(a, b) => write!(fmtr, "not {} {}", a, b),
-            OR(a, b, c) => write!(fmtr, "or {} {} {}", a, b, c),
-            ORI(a, b, c) => write!(fmtr, "ori {} {} {}", a, b, c),
-            SLL(a, b, c) => write!(fmtr, "sll {} {} {}", a, b, c),
-            SLLI(a, b, c) => write!(fmtr, "slli {} {} {}", a, b, c),
-            SRL(a, b, c) => write!(fmtr, "srl {} {} {}", a, b, c),
-            SRLI(a, b, c) => write!(fmtr, "srli {} {} {}", a, b, c),
-            SUB(a, b, c) => write!(fmtr, "sub {} {} {}", a, b, c),
-            SUBI(a, b, c) => write!(fmtr, "subi {} {} {}", a, b, c),
-            XOR(a, b, c) => write!(fmtr, "xor {} {} {}", a, b, c),
-            XORI(a, b, c) => write!(fmtr, "xori {} {} {}", a, b, c),
+            NOT(a, b) => write!(fmtr, "not {a} {b}"),
+            OR(a, b, c) => write!(fmtr, "or {a} {b} {c}"),
+            ORI(a, b, c) => write!(fmtr, "ori {a} {b} {c}"),
+            SLL(a, b, c) => write!(fmtr, "sll {a} {b} {c}"),
+            SLLI(a, b, c) => write!(fmtr, "slli {a} {b} {c}"),
+            SRL(a, b, c) => write!(fmtr, "srl {a} {b} {c}"),
+            SRLI(a, b, c) => write!(fmtr, "srli {a} {b} {c}"),
+            SUB(a, b, c) => write!(fmtr, "sub {a} {b} {c}"),
+            SUBI(a, b, c) => write!(fmtr, "subi {a} {b} {c}"),
+            XOR(a, b, c) => write!(fmtr, "xor {a} {b} {c}"),
+            XORI(a, b, c) => write!(fmtr, "xori {a} {b} {c}"),
 
             /* Control Flow Instructions */
-            JMP(a) => write!(fmtr, "jmp {}", a),
-            JI(a) => write!(fmtr, "ji {}", a),
-            JNE(a, b, c) => write!(fmtr, "jne {} {} {}", a, b, c),
-            JNEI(a, b, c) => write!(fmtr, "jnei {} {} {}", a, b, c),
-            JNZI(a, b) => write!(fmtr, "jnzi {} {}", a, b),
-            RET(a) => write!(fmtr, "ret {}", a),
+            JMP(a) => write!(fmtr, "jmp {a}"),
+            JI(a) => write!(fmtr, "ji {a}"),
+            JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
+            JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
+            JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            RET(a) => write!(fmtr, "ret {a}"),
 
             /* Memory Instructions */
-            ALOC(a) => write!(fmtr, "aloc {}", a),
-            CFEI(a) => write!(fmtr, "cfei {}", a),
-            CFSI(a) => write!(fmtr, "cfsi {}", a),
-            LB(a, b, c) => write!(fmtr, "lb {} {} {}", a, b, c),
-            LW(a, b, c) => write!(fmtr, "lw {} {} {}", a, b, c),
-            MCL(a, b) => write!(fmtr, "mcl {} {}", a, b),
-            MCLI(a, b) => write!(fmtr, "mcli {} {}", a, b),
-            MCP(a, b, c) => write!(fmtr, "mcp {} {} {}", a, b, c),
-            MCPI(a, b, c) => write!(fmtr, "mcpi {} {} {}", a, b, c),
-            MEQ(a, b, c, d) => write!(fmtr, "meq {} {} {} {}", a, b, c, d),
-            SB(a, b, c) => write!(fmtr, "sb {} {} {}", a, b, c),
-            SW(a, b, c) => write!(fmtr, "sw {} {} {}", a, b, c),
+            ALOC(a) => write!(fmtr, "aloc {a}"),
+            CFEI(a) => write!(fmtr, "cfei {a}"),
+            CFSI(a) => write!(fmtr, "cfsi {a}"),
+            LB(a, b, c) => write!(fmtr, "lb {a} {b} {c}"),
+            LW(a, b, c) => write!(fmtr, "lw {a} {b} {c}"),
+            MCL(a, b) => write!(fmtr, "mcl {a} {b}"),
+            MCLI(a, b) => write!(fmtr, "mcli {a} {b}"),
+            MCP(a, b, c) => write!(fmtr, "mcp {a} {b} {c}"),
+            MCPI(a, b, c) => write!(fmtr, "mcpi {a} {b} {c}"),
+            MEQ(a, b, c, d) => write!(fmtr, "meq {a} {b} {c} {d}"),
+            SB(a, b, c) => write!(fmtr, "sb {a} {b} {c}"),
+            SW(a, b, c) => write!(fmtr, "sw {a} {b} {c}"),
 
             /* Contract Instructions */
-            BAL(a, b, c) => write!(fmtr, "bal {} {} {}", a, b, c),
-            BHEI(a) => write!(fmtr, "bhei {}", a),
-            BHSH(a, b) => write!(fmtr, "bhsh {} {}", a, b),
-            BURN(a) => write!(fmtr, "burn {}", a),
-            CALL(a, b, c, d) => write!(fmtr, "call {} {} {} {}", a, b, c, d),
-            CB(a) => write!(fmtr, "cb {}", a),
-            CCP(a, b, c, d) => write!(fmtr, "ccp {} {} {} {}", a, b, c, d),
-            CROO(a, b) => write!(fmtr, "croo {} {}", a, b),
-            CSIZ(a, b) => write!(fmtr, "csiz {} {}", a, b),
-            LDC(a, b, c) => write!(fmtr, "ldc {} {} {}", a, b, c),
-            LOG(a, b, c, d) => write!(fmtr, "log {} {} {} {}", a, b, c, d),
-            LOGD(a, b, c, d) => write!(fmtr, "logd {} {} {} {}", a, b, c, d),
-            MINT(a) => write!(fmtr, "mint {}", a),
-            RETD(a, b) => write!(fmtr, "retd {} {}", a, b),
-            RVRT(a) => write!(fmtr, "rvrt {}", a),
-            SMO(a, b, c, d) => write!(fmtr, "smo {} {} {} {}", a, b, c, d),
-            SCWQ(a, b, c) => write!(fmtr, "scwq {} {} {}", a, b, c),
-            SRW(a, b, c) => write!(fmtr, "srw {} {} {}", a, b, c),
-            SRWQ(a, b, c, d) => write!(fmtr, "srwq {} {} {} {}", a, b, c, d),
-            SWW(a, b, c) => write!(fmtr, "sww {} {} {}", a, b, c),
-            SWWQ(a, b, c, d) => write!(fmtr, "swwq {} {} {} {}", a, b, c, d),
-            TIME(a, b) => write!(fmtr, "time {} {}", a, b),
-            TR(a, b, c) => write!(fmtr, "tr {} {} {}", a, b, c),
-            TRO(a, b, c, d) => write!(fmtr, "tro {} {} {} {}", a, b, c, d),
+            BAL(a, b, c) => write!(fmtr, "bal {a} {b} {c}"),
+            BHEI(a) => write!(fmtr, "bhei {a}"),
+            BHSH(a, b) => write!(fmtr, "bhsh {a} {b}"),
+            BURN(a) => write!(fmtr, "burn {a}"),
+            CALL(a, b, c, d) => write!(fmtr, "call {a} {b} {c} {d}"),
+            CB(a) => write!(fmtr, "cb {a}"),
+            CCP(a, b, c, d) => write!(fmtr, "ccp {a} {b} {c} {d}"),
+            CROO(a, b) => write!(fmtr, "croo {a} {b}"),
+            CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
+            LDC(a, b, c) => write!(fmtr, "ldc {a} {b} {c}"),
+            LOG(a, b, c, d) => write!(fmtr, "log {a} {b} {c} {d}"),
+            LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
+            MINT(a) => write!(fmtr, "mint {a}"),
+            RETD(a, b) => write!(fmtr, "retd {a} {b}"),
+            RVRT(a) => write!(fmtr, "rvrt {a}"),
+            SMO(a, b, c, d) => write!(fmtr, "smo {a} {b} {c} {d}"),
+            SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
+            SRW(a, b, c) => write!(fmtr, "srw {a} {b} {c}"),
+            SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
+            SWW(a, b, c) => write!(fmtr, "sww {a} {b} {c}"),
+            SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
+            TIME(a, b) => write!(fmtr, "time {a} {b}"),
+            TR(a, b, c) => write!(fmtr, "tr {a} {b} {c}"),
+            TRO(a, b, c, d) => write!(fmtr, "tro {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => write!(fmtr, "ecr {} {} {}", a, b, c),
-            K256(a, b, c) => write!(fmtr, "k256 {} {} {}", a, b, c),
-            S256(a, b, c) => write!(fmtr, "s256 {} {} {}", a, b, c),
+            ECR(a, b, c) => write!(fmtr, "ecr {a} {b} {c}"),
+            K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
+            S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
             /* Other Instructions */
-            FLAG(a) => write!(fmtr, "flag {}", a),
-            GM(a, b) => write!(fmtr, "gm {} {}", a, b),
-            GTF(a, b, c) => write!(fmtr, "gtf {} {} {}", a, b, c),
+            FLAG(a) => write!(fmtr, "flag {a}"),
+            GM(a, b) => write!(fmtr, "gm {a} {b}"),
+            GTF(a, b, c) => write!(fmtr, "gtf {a} {b} {c}"),
 
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
@@ -1513,7 +1513,7 @@ impl fmt::Display for VirtualOp {
             DataSectionRegisterLoadPlaceholder => {
                 write!(fmtr, "data section register load placeholder")
             }
-            LWDataId(a, b) => write!(fmtr, "lw {} {}", a, b),
+            LWDataId(a, b) => write!(fmtr, "lw {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }
@@ -1531,7 +1531,7 @@ impl fmt::Display for AllocatedAbstractOp {
             write!(op_and_comment, "; {}", self.comment)?;
         }
 
-        write!(fmtr, "{}", op_and_comment)
+        write!(fmtr, "{op_and_comment}")
     }
 }
 
@@ -1572,13 +1572,13 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
             fmtr,
             "{}",
             match self {
-                Label(lab) => format!("{}", lab),
-                Jump(lab) => format!("ji  {}", lab),
+                Label(lab) => format!("{lab}"),
+                Jump(lab) => format!("ji  {lab}"),
                 Comment => "".into(),
-                JumpIfNotEq(r1, r2, lab) => format!("jnei {} {} {}", r1, r2, lab),
-                JumpIfNotZero(r1, lab) => format!("jnzi {} {}", r1, lab),
+                JumpIfNotEq(r1, r2, lab) => format!("jnei {r1} {r2} {lab}"),
+                JumpIfNotZero(r1, lab) => format!("jnzi {r1} {lab}"),
                 Call(lab) => format!("fncall {lab}"),
-                MoveAddress(r1, lab) => format!("mova {} {}", r1, lab),
+                MoveAddress(r1, lab) => format!("mova {r1} {lab}"),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
                 LoadLabel(r1, lab) => format!("lwlab {r1} {lab}"),
@@ -1647,13 +1647,8 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         .collect()
     }
 
-    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<Reg, Reg>) -> Self {
-        let update_reg = |reg: &Reg| -> Reg {
-            reg_to_reg_map
-                .get(reg)
-                .cloned()
-                .unwrap_or_else(|| reg.clone())
-        };
+    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
+        let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;
         match self {

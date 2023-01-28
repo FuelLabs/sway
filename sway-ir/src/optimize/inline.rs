@@ -243,7 +243,7 @@ pub fn inline_function_call(
             .create_block_before(
                 context,
                 &post_block,
-                Some(format!("{}_{}", inlined_fn_name, inlined_block_label)),
+                Some(format!("{inlined_fn_name}_{inlined_block_label}")),
             )
             .unwrap();
         block_map.insert(inlined_block, new_block);
