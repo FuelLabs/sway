@@ -40,8 +40,13 @@ impl Format for Expr {
             Self::Path(path) => path.format(formatted_code, formatter)?,
             Self::Literal(lit) => lit.format(formatted_code, formatter)?,
             Self::AbiCast { abi_token, args } => {
-                write!(formatted_code, "{}", abi_token.span().as_str())?;
-                args.get().format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", 
+                    abi_token
+                    .span()
+                    .as_str())?;
+                args
+               .get()
+               .format(formatted_code, formatter)?;
             }
             Self::Struct { path, fields } => {
                 formatter.with_shape(
@@ -65,8 +70,13 @@ impl Format for Expr {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
-                        formatter.shape.code_line.update_width(expr_width);
-                        formatter.shape.get_line_style(
+                        formatter
+                        .shape
+                        .code_line
+                        .update_width(expr_width);
+                        formatter
+                        .shape
+                        .get_line_style(
                             Some(field_width),
                             Some(body_width),
                             &formatter.config,
@@ -91,7 +101,10 @@ impl Format for Expr {
                         tuple_descriptor.format(&mut buf, &mut temp_formatter)?;
                         let body_width = buf.chars().count();
 
-                        formatter.shape.code_line.update_width(body_width);
+                        formatter
+                        .shape
+                        .code_line
+                        .update_width(body_width);
                         formatter
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
@@ -104,7 +117,9 @@ impl Format for Expr {
             }
             Self::Parens(expr) => {
                 Self::open_parenthesis(formatted_code, formatter)?;
-                expr.get().format(formatted_code, formatter)?;
+                expr
+                .get()
+                .format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Block(code_block) => {
@@ -131,7 +146,10 @@ impl Format for Expr {
                         array_descriptor.format(&mut buf, &mut temp_formatter)?;
                         let body_width = buf.chars().count();
 
-                        formatter.shape.code_line.add_width(body_width);
+                        formatter
+                        .shape
+                        .code_line
+                        .add_width(body_width);
                         formatter
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
@@ -187,7 +205,9 @@ impl Format for Expr {
                 write!(formatted_code, "{} ", while_token.span().as_str())?;
                 condition.format(formatted_code, formatter)?;
                 CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
-                block.get().format(formatted_code, formatter)?;
+                block
+                .get()
+                .format(formatted_code, formatter)?;
                 CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
             }
             Self::FuncApp { func, args } => {
@@ -214,7 +234,9 @@ impl Format for Expr {
             Self::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
                 Self::open_square_bracket(formatted_code, formatter)?;
-                arg.get().format(formatted_code, formatter)?;
+                arg
+                .get()
+                .format(formatted_code, formatter)?;
                 Self::close_square_bracket(formatted_code, formatter)?;
             }
             Self::MethodCall {
@@ -253,9 +275,17 @@ impl Format for Expr {
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
-                        formatter.shape.code_line.add_width(expr_width);
-                        formatter.shape.code_line.update_expr_kind(ExprKind::Struct);
-                        formatter.shape.get_line_style(
+                        formatter
+                        .shape
+                        .code_line
+                        .add_width(expr_width);
+                        formatter
+                        .shape
+                        .code_line
+                        .update_expr_kind(ExprKind::Struct);
+                        formatter
+                        .shape
+                        .get_line_style(
                             Some(field_width),
                             Some(body_width),
                             &formatter.config,
@@ -409,7 +439,10 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
+                match formatter
+                .shape
+                .code_line
+                .line_style {
                     LineStyle::Multiline => {
                         write!(
                             formatted_code,
@@ -509,7 +542,10 @@ impl Format for Expr {
                 rhs,
             } => {
                 lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
+                match formatter
+                .shape
+                .code_line
+                .line_style {
                     LineStyle::Multiline => {
                         write!(
                             formatted_code,
@@ -661,7 +697,10 @@ fn format_method_call(
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
         let contract_args = &contract_args.get();
-        match formatter.shape.code_line.line_style {
+        match formatter
+        .shape
+        .code_line
+        .line_style {
             LineStyle::Inline => {
                 contract_args.format(formatted_code, formatter)?;
             }
