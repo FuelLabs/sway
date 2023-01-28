@@ -139,22 +139,82 @@
                     <main>
                         <h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
 <p>The <em>Sway toolchain</em> is sufficient to compile Sway smart contracts. Otherwise, note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required, which is packaged together with the <em>Sway toolchain</em> together as the <em>Fuel toolchain</em>.</p>
-<h2 id="installing-from-pre-compiled-binaries"><a class="header" href="#installing-from-pre-compiled-binaries">Installing from Pre-compiled Binaries</a></h2>
-<p>Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported (<a href="https://github.com/FuelLabs/sway/issues/1526">tracking issue for Windows support</a>). Windows Subsystem for Linux should work but is not officially supported.</p>
+<h2 id="install-via-pre-compiled-binaries-recommended"><a class="header" href="#install-via-pre-compiled-binaries-recommended">Install via Pre-compiled Binaries (Recommended)</a></h2>
+<p>Installing via pre-compiled release binaries is the recommended way to get up and running with the Sway toolchain. Pre-compiled binaries for Linux and macOS are available. Native Windows is currently unsupported (<a href="https://github.com/FuelLabs/sway/issues/1526">tracking issue for Windows support</a>). Windows Subsystem for Linux should work but is not officially supported.</p>
 <p><a href="https://github.com/FuelLabs/fuelup"><code>fuelup</code></a> is the equivalent of Rust's <code>rustup</code> for the Fuel toolchain. It enables easily downloading binary releases of the Fuel toolchain.</p>
-<p>Start by installing <code>fuelup</code> with:</p>
+<ol>
+<li>
+<p>Start by installing <code>fuelup</code> with the following command:</p>
 <pre><code class="language-sh">curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
+https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
 </code></pre>
-<p><code>fuelup-init</code> will ask for permission to add <code>~/.fuelup/bin</code> to your PATH. Otherwise, you can also pass <code>--no-modify-path</code> so that <code>fuelup-init</code> does not modify your PATH:</p>
+<p>This downloads the <code>fuelup-init</code> script to a temp directory on your machine, which installs <code>fuelup</code>. <code>fuelup-init</code> will ask for permission to add <code>~/.fuelup/bin</code> to your PATH. Otherwise, you can also pass <code>--no-modify-path</code> so that <code>fuelup-init</code> does not modify your PATH:</p>
 <pre><code class="language-sh">curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
+https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
 </code></pre>
-<p>Once <code>fuelup</code> is installed, <code>fuelup-init</code> automatically runs the command below</p>
-<pre><code class="language-sh">fuelup toolchain install latest
+</li>
+<li>
+<p>Once fuelup is installed, fuelup-init automatically runs <code>fuelup toolchain install latest</code> to install the latest toolchain</p>
+<p>You can run <code>fuelup update</code> at anytime to get the most up-to-date toolchain.</p>
+</li>
+<li>
+<p>(Optional) You can optionally install distributed toolchains optimized for different networks.</p>
+<p>To configure the optimal toolchain for beta-2, run the following commands:</p>
+<pre><code class="language-sh">$ fuelup self update
+Fetching binary from https://github.com/FuelLabs/fuelup/releases/download/v0.16.1/fuelup-0.16.1-aarch64-apple-darwin.tar.gz
+ Downloading component fuelup without verifying checksum
+ Unpacking and moving fuelup to /var/folders/tp/0l8zdx9j4s9_n609ykwxl0qw0000gn/T/.tmpP3HfvR
+ Moving /var/folders/tp/0l8zdx9j4s9_n609ykwxl0qw0000gn/T/.tmpP3HfvR/fuelup to /Users/user/.fuelup/bin/fuelup
+
+
+$ fuelup toolchain install beta-2
+Downloading: forc forc-explore forc-wallet fuel-core fuel-indexer
+
+Adding component forc v0.31.1 to 'beta-2-aarch64-apple-darwin'
+Fetching binary from https://github.com/FuelLabs/sway/releases/download/v0.31.1/forc-binaries-darwin_arm64.tar.gz
+npacking and moving forc-doc to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Unpacking and moving forc to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Unpacking and moving forc-deploy to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Unpacking and moving forc-run to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Unpacking and moving forc-lsp to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Unpacking and moving forc-fmt to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Fetching core forc dependencies
+Installed forc v0.31.1 for toolchain 'beta-2-aarch64-apple-darwin'
+
+Adding component forc-explore v0.28.1 to 'beta-2-aarch64-apple-darwin'
+Fetching binary from https://github.com/FuelLabs/forc-explorer/releases/download/v0.28.1/forc-explore-0.28.1-aarch64-apple-darwin.tar.gz
+Unpacking and moving forc-explore to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Installed forc-explore v0.28.1 for toolchain 'beta-2-aarch64-apple-darwin'
+
+Adding component forc-wallet v0.1.2 to 'beta-2-aarch64-apple-darwin'
+Fetching binary from https://github.com/FuelLabs/forc-wallet/releases/download/v0.1.2/forc-wallet-0.1.2-aarch64-apple-darwin.tar.gz
+Unpacking and moving forc-wallet to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Installed forc-wallet v0.1.2 for toolchain 'beta-2-aarch64-apple-darwin'
+
+Adding component fuel-core v0.15.3 to 'beta-2-aarch64-apple-darwin'
+Fetching binary from https://github.com/FuelLabs/fuel-core/releases/download/v0.15.3/fuel-core-0.15.3-aarch64-apple-darwin.tar.gz
+Unpacking and moving fuel-core to /Users/user/.fuelup/toolchains/    beta-2-aarch64-apple-darwin/bin
+Installed fuel-core v0.15.3 for toolchain 'beta-2-aarch64-apple-darwin'
+
+Adding component fuel-indexer v0.1.13 to 'beta-2-aarch64-apple-darwin'
+Fetching binary from https://github.com/FuelLabs/fuel-indexer/releases/download/v0.1.13/fuel-indexer-0.1.13-aarch64-apple-darwin.tar.gz
+Unpacking and moving fuel-indexer to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+Installed fuel-indexer v0.1.13 for toolchain 'beta-2-aarch64-apple-darwin'
+
+Installed:
+- forc 0.31.1
+- forc-explore 0.28.1
+- forc-wallet 0.1.2
+- fuel-core 0.15.3
+- fuel-indexer 0.1.13
+
+The Fuel toolchain is installed and up to date
 </code></pre>
-<p>to install the latest Fuel toolchain.</p>
-<p>You can run the same command at a later time to update the toolchain.</p>
+</li>
+</ol>
+<p>You're all set to start building!</p>
+<h3 id="need-help"><a class="header" href="#need-help">Need Help?</a></h3>
+<p>You may refer to <a href="https://fuellabs.github.io/fuelup/latest/">The Fuelup Book</a> for an in-depth look into fuelup, or check out the tooling section in the <a href="https://forum.fuel.network/">Fuel forum</a> if you're running into problems through the installation process. If you don't see your question, post the issue you're running into with as many details as possible and the team will get back to you asap!</p>
 <h3 id="installing-from-cargo"><a class="header" href="#installing-from-cargo">Installing from Cargo</a></h3>
 <p>The Sway toolchain and Fuel Core full node can be installed from source with Cargo with:</p>
 <pre><code class="language-sh">cargo install forc fuel-core
