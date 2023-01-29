@@ -534,8 +534,10 @@ data_0 .word 559005003
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw"><code>std::option::Option</code></a>, an enum which expresses the presence or absence of a value.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/result.sw"><code>std::result::Result</code></a>, an enum for functions that may succeed or fail.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert</code></a>, a function that reverts the VM if the condition provided to it is <code>false</code>.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/assert.sw"><code>std::assert::assert_eq</code></a>, a function that reverts the VM and logs its two inputs <code>v1</code> and <code>v2</code> if the condition <code>v1</code> == <code>v2</code> is <code>false</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::require</code></a>, a function that reverts the VM and logs a given value if the condition provided to it is <code>false</code>.</li>
 <li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/revert.sw"><code>std::revert::revert</code></a>, a function that reverts the VM.</li>
+<li><a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/logging.sw"><code>std::logging::log</code></a>, a function that logs arbitrary stack types.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Some basic example contracts to see how Sway and Forc work.</p>
@@ -583,7 +585,7 @@ impl TestContract for Contract {
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{auth::{AuthError, msg_sender}, hash::sha256, logging::log};
+use std::{auth::{AuthError, msg_sender}, hash::sha256};
 
 ////////////////////////////////////////
 // Event declarations
@@ -1875,7 +1877,7 @@ fn main() -&gt; u64 {
 <h2 id="hashing"><a class="header" href="#hashing">Hashing</a></h2>
 <pre><code class="language-sway">script;
 
-use std::{hash::{keccak256, sha256}, logging::log};
+use std::hash::{keccak256, sha256};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
@@ -2008,7 +2010,7 @@ fn main() {
 <h2 id="signature-recovery"><a class="header" href="#signature-recovery">Signature Recovery</a></h2>
 <pre><code class="language-sway">script;
 
-use std::{b512::B512, ecr::{ec_recover, ec_recover_address, EcRecoverError}, logging::log};
+use std::{b512::B512, ecr::{ec_recover, ec_recover_address, EcRecoverError}};
 
 const MSG_HASH = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
 
