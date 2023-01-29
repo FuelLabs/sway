@@ -11,32 +11,36 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
-    BranchToWithArgs, Pass, Predicate, TransformPass,
+    AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
 };
 
 pub fn create_const_combine_pass() -> Pass {
-    Pass::TransformPass(TransformPass {
+    Pass {
         name: "constcombine",
         descr: "constant folding.",
-        run: combine_constants,
-    })
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(combine_constants)),
+    }
 }
 
 /// Find constant expressions which can be reduced to fewer opterations.
-pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn combine_constants(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
-        if combine_const_insert_values(context, function) {
+        if combine_const_insert_values(context, &function) {
             modified = true;
             continue;
         }
 
-        if combine_cmp(context, function) {
+        if combine_cmp(context, &function) {
             modified = true;
             continue;
         }
 
-        if combine_cbr(context, function)? {
+        if combine_cbr(context, &function)? {
             modified = true;
             continue;
         }

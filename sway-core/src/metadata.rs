@@ -14,7 +14,7 @@ use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
 ///! indices repeatedly.
 
 #[derive(Default)]
-pub(crate) struct MetadataManager {
+pub struct MetadataManager {
     md_span_cache: HashMap<MetadataIndex, Span>,
     md_file_loc_cache: HashMap<MetadataIndex, (Arc<PathBuf>, Arc<str>)>,
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
@@ -140,7 +140,7 @@ impl MetadataManager {
     }
 
     /// Gets Inline information from metadata index.
-    pub(crate) fn md_to_inline(
+    pub fn md_to_inline(
         &mut self,
         context: &Context,
         md_idx: Option<MetadataIndex>,

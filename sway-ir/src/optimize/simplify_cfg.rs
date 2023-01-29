@@ -10,30 +10,34 @@
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, BranchToWithArgs, Pass, TransformPass,
+    value::ValueDatum, AnalysisResults, BranchToWithArgs, Pass, PassMutability, ScopedPass,
 };
 
 pub fn create_simplify_cfg_pass() -> Pass {
-    Pass::TransformPass(TransformPass {
+    Pass {
         name: "simplifycfg",
         descr: "merge or remove redundant blocks.",
-        run: simplify_cfg,
-    })
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(simplify_cfg)),
+    }
 }
 
-pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn simplify_cfg(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let mut modified = false;
-    modified |= remove_dead_blocks(context, function)?;
+    modified |= remove_dead_blocks(context, &function)?;
 
     loop {
-        if merge_blocks(context, function)? {
+        if merge_blocks(context, &function)? {
             modified = true;
             continue;
         }
         break;
     }
 
-    modified |= unlink_empty_blocks(context, function)?;
+    modified |= unlink_empty_blocks(context, &function)?;
 
     Ok(modified)
 }

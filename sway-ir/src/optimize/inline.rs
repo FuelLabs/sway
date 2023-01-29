@@ -9,6 +9,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     asm::AsmArg,
     block::Block,
+    call_graph,
     context::Context,
     error::IrError,
     function::Function,
@@ -17,24 +18,167 @@ use crate::{
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument, Pass, TransformPass,
+    AnalysisResults, BlockArgument, Module, Pass, PassMutability, ScopedPass,
 };
 
 pub fn create_inline_pass() -> Pass {
-    Pass::TransformPass(TransformPass {
+    Pass {
         name: "inline",
         descr: "inline function calls.",
-        run: inline_calls,
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_calls)),
+    }
+}
+
+pub fn create_inline_in_predicate_pass() -> Pass {
+    Pass {
+        name: "inline",
+        descr: "inline function calls.",
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_predicate_module)),
+    }
+}
+
+pub fn create_inline_in_non_predicate_pass() -> Pass {
+    Pass {
+        name: "inline",
+        descr: "inline function calls.",
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_non_predicate_module)),
+    }
+}
+
+/// This is a copy of sway_core::inline::Inline.
+/// TODO: Reuse: Depend on sway_core? Move it to sway_types?
+enum Inline {
+    Always,
+    Never,
+}
+/// This is a copy of sway_core::asm_generation::compiler_constants.
+/// TODO: How to reuse?
+const NUM_ARG_REGISTERS: u8 = 6;
+
+fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
+    md_idx.and_then(|md_idx| {
+        md_idx
+            .get_content(context)
+            .unwrap_struct("inline", 1)
+            .and_then(|fields| fields[0].unwrap_string())
+            .and_then(|inline_str| match inline_str {
+                "always" => Some(Inline::Always),
+                "never" => Some(Inline::Never),
+                _otherwise => None,
+            })
     })
 }
 
-pub fn inline_calls(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    // For now we inline everything into `main()`.  Eventually we can be more selective.
-    if function.get_name(context) == "main" {
-        inline_all_function_calls(context, function)
-    } else {
-        Ok(false)
+pub fn inline_in_predicate_module(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    let cg =
+        call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
+
+    let functions = call_graph::callee_first_order(&cg);
+
+    let mut modified = false;
+
+    for function in functions {
+        modified |= inline_all_function_calls(context, &function)?;
     }
+    Ok(modified)
+}
+
+pub fn inline_in_non_predicate_module(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    // Inspect ALL calls and count how often each function is called.
+    let call_counts: HashMap<Function, u64> =
+        module
+            .function_iter(context)
+            .fold(HashMap::new(), |mut counts, func| {
+                for (_block, ins) in func.instruction_iter(context) {
+                    if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(&context) {
+                        counts
+                            .entry(*callee)
+                            .and_modify(|count| *count += 1)
+                            .or_insert(1);
+                    }
+                }
+                counts
+            });
+
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
+
+        match attributed_inline {
+            Some(Inline::Always) => {
+                // TODO: check if inlining of function is possible
+                // return true;
+            }
+            Some(Inline::Never) => {
+                return false;
+            }
+            None => {}
+        }
+
+        // For now, pending improvements to ASMgen for calls, we must inline any function which has
+        // too many args.
+        if func.args_iter(ctx).count() as u8 > NUM_ARG_REGISTERS {
+            return true;
+        }
+
+        // If the function is called only once then definitely inline it.
+        if call_counts.get(func).copied().unwrap_or(0) == 1 {
+            return true;
+        }
+
+        // If the function is (still) small then also inline it.
+        const MAX_INLINE_INSTRS_COUNT: usize = 4;
+        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+            return true;
+        }
+
+        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
+        // argument is used as a pointer (probably because it has a ref type) although it actually
+        // isn't one.  Ref type args which aren't pointers need to be inlined.
+        if func.args_iter(ctx).any(|(_name, arg_val)| {
+            arg_val
+                .get_argument_type_and_byref(ctx)
+                .map(|(ty, by_ref)| {
+                    by_ref || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
+                })
+                .unwrap_or(false)
+        }) {
+            return true;
+        }
+
+        false
+    };
+
+    let cg =
+        call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
+    let functions = call_graph::callee_first_order(&cg);
+    let mut modified = false;
+
+    for function in functions {
+        modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
+    }
+    Ok(modified)
+}
+
+pub fn inline_calls(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    // For now we inline everything into `main()`.  Eventually we can be more selective.
+    for function in module.function_iter(context) {
+        if function.get_name(context) == "main" {
+            return inline_all_function_calls(context, &function);
+        }
+    }
+    Ok(false)
 }
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
