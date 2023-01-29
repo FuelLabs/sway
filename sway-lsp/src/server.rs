@@ -482,7 +482,7 @@ impl LanguageServer for Backend {
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
-    pub save_path: WorkspaceFolder,
+    pub save_path: Url,
 }
 
 // Custom LSP-Server Methods
@@ -547,7 +547,7 @@ impl Backend {
                     ident.span().path().map(|a| a.deref()) == path.as_ref()
                 };
 
-                let ast_path = PathBuf::from(params.save_path.uri.path());
+                let ast_path = PathBuf::from(params.save_path.path());
                 {
                     let program = session.compiled_program.read();
                     match params.ast_kind.as_str() {
@@ -560,7 +560,10 @@ impl Backend {
                                         formatted_ast = format!("{:#?}", submodule.module.tree);
                                     }
                                 }
-                                write_ast_to_file(ast_path.join("lexed.rs").as_path(), &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("lexed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         "parsed" => {
@@ -575,7 +578,10 @@ impl Backend {
                                             format!("{:#?}", submodule.module.tree.root_nodes);
                                     }
                                 }
-                                write_ast_to_file(ast_path.join("parsed.rs").as_path(), &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("parsed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         "typed" => {
@@ -594,7 +600,10 @@ impl Backend {
                                         );
                                     }
                                 }
-                                write_ast_to_file(ast_path.join("typed.rs").as_path(), &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("typed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         _ => Ok(None),
@@ -734,7 +743,12 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url, ast_kind: &str, save_path: Option<Url>) -> Request {
+    async fn show_ast_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        ast_kind: &str,
+        save_path: Option<Url>,
+    ) -> Request {
         // The path where the AST will be written to.
         // If no path is provided, the default path is "/tmp"
         let save_path = match save_path {
@@ -746,15 +760,15 @@ mod tests {
                 "uri": uri
             },
             "astKind": ast_kind,
-            "savePath": {
-                "uri": save_path,
-                "name": save_path.as_str(),
-            },
+            "savePath": save_path,
         });
         eprintln!("params: {:#?}", params);
         let show_ast = build_request_with_id("sway/show_ast", params, 1);
         let response = call_request(service, show_ast.clone()).await;
-        let expected = Response::from_ok(1.into(), json!({"uri": format!("file:///tmp/{}.rs", ast_kind)}));
+        let expected = Response::from_ok(
+            1.into(),
+            json!({ "uri": format!("{}/{}.rs", save_path, ast_kind) }),
+        );
         eprintln!("response: {:#?}", response);
         eprintln!("expected: {:#?}", expected);
         assert_json_eq!(expected, response.ok().unwrap());
@@ -1203,10 +1217,27 @@ mod tests {
         shutdown_and_exit(&mut service).await;
     }
 
+    // Check if the given directory contains `Forc.toml` at its root.
+    fn dir_contains_forc_manifest(path: &Path) -> bool {
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     #[tokio::test]
     async fn write_all_example_asts() {
-        let (mut service, _) = LspService::new(Backend::new);
-        let ast_folder = Path::new("/Users/joshuabatty/Desktop/sway_asts");
+        let (mut service, _) = LspService::build(Backend::new)
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
+        let _ = initialize_request(&mut service).await;
+        initialized_notification(&mut service).await;
+
+        let ast_folder = Path::new("/home/josh/Desktop/asts");
         let _ = fs::create_dir(ast_folder);
         let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
         let mut entries = fs::read_dir(&e2e_dir)
@@ -1224,17 +1255,23 @@ mod tests {
             let example_name = manifest_dir.file_name().unwrap();
             if manifest_dir.is_dir() {
                 let example_dir = ast_folder.join(example_name);
+                if !dir_contains_forc_manifest(manifest_dir.as_path()) {
+                    continue;
+                }
                 match fs::create_dir(&example_dir) {
                     Ok(_) => (),
                     Err(_) => continue,
                 }
+
                 let example_dir = Some(Url::from_file_path(example_dir).unwrap());
+
                 eprintln!("manifest_dir: {:?}", manifest_dir);
+
                 let (uri, sway_program) = load_sway_example(manifest_dir);
-                let did_open = did_open_notification(&mut service, &uri, &sway_program).await;
-                let print_lexed_ast = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
-                let print_parsed_ast = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
-                let print_typed_ast = show_ast_request(&mut service, &uri, "typed", example_dir).await;
+                let _ = did_open_notification(&mut service, &uri, &sway_program).await;
+                let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
             }
         }
         shutdown_and_exit(&mut service).await;
