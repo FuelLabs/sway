@@ -1,6 +1,6 @@
 script;
 
-use std::{result::*, revert::*, u128::*, assert::assert};
+use std::u128::*;
 
 struct Data<T> {
   value: T

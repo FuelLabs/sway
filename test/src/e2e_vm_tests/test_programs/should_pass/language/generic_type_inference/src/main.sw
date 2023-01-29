@@ -2,8 +2,6 @@ script;
 
 dep utils;
 
-use std::assert::assert;
-
 use utils::*;
 
 struct CustomType {

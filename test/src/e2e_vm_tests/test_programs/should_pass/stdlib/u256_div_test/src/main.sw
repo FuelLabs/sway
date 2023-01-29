@@ -1,6 +1,5 @@
 script;
 
-use std::assert::assert;
 use std::u256::U256;
 
 fn main() -> bool {

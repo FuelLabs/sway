@@ -1,6 +1,6 @@
 script;
+
 use get_storage_key_abi::TestContract;
-use std::assert::assert;
 
 fn main() -> u64 {
     let caller = abi(TestContract, 0x32009a35e8505f89980e60c8b928629ab6db59c85b6d1d67d03861ed0f32adae);
