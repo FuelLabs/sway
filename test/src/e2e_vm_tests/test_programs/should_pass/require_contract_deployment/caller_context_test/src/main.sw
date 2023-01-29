@@ -1,5 +1,6 @@
 script;
-use std::{assert::assert, constants::BASE_ASSET_ID, contract_id::ContractId};
+
+use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 
 fn main() -> bool {

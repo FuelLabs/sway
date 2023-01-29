@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn main() -> u64 {
 
   let a: u8 = 2;
