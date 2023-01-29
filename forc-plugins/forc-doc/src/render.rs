@@ -540,13 +540,15 @@ impl ItemContext {
     }
 }
 impl Renderable for ItemContext {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => context_section(fields, BlockTitle::Fields),
-            ContextType::StorageFields(fields) => context_section(fields, BlockTitle::Fields),
-            ContextType::EnumVariants(variants) => context_section(variants, BlockTitle::Variants),
+            ContextType::StructFields(fields) => Ok(context_section(fields, BlockTitle::Fields)),
+            ContextType::StorageFields(fields) => Ok(context_section(fields, BlockTitle::Fields)),
+            ContextType::EnumVariants(variants) => {
+                Ok(context_section(variants, BlockTitle::Variants))
+            }
             ContextType::RequiredMethods(methods) => {
-                context_section(methods, BlockTitle::RequiredMethods)
+                Ok(context_section(methods, BlockTitle::RequiredMethods))
             }
         }
     }
@@ -732,7 +734,7 @@ struct DocLinks {
     links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
             DocStyle::AllDoc => box_html! {
                 @ for (title, list_items) in self.links {
@@ -823,9 +825,9 @@ impl Renderable for DocLinks {
             .into_string()
             .unwrap(),
         };
-        box_html! {
+        Ok(box_html! {
             : Raw(doc_links);
-        }
+        })
     }
 }
 /// Represents all of the possible titles
@@ -907,10 +909,10 @@ impl SidebarNav for AllDocIndex {
     }
 }
 impl Renderable for AllDocIndex {
-    fn render(self) -> Box<dyn RenderBox> {
-        let doc_links = self.all_docs.clone().render();
+    fn render(self) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.all_docs.clone().render()?;
         let sidebar = self.sidebar();
-        box_html! {
+        Ok(box_html! {
             head {
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1.0");
@@ -960,7 +962,7 @@ impl Renderable for AllDocIndex {
                     }
                 }
             }
-        }
+        })
     }
 }
 
@@ -987,8 +989,8 @@ impl SidebarNav for ModuleIndex {
     }
 }
 impl Renderable for ModuleIndex {
-    fn render(self) -> Box<dyn RenderBox> {
-        let doc_links = self.module_docs.clone().render();
+    fn render(self) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.module_docs.clone().render()?;
         let sidebar = self.sidebar();
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex => "Project ",
@@ -1009,7 +1011,7 @@ impl Renderable for ModuleIndex {
             .module_info
             .to_html_shorthand_path_string("assets/ayu.css");
 
-        box_html! {
+        Ok(box_html! {
             head {
                 meta(charset="utf-8");
                 meta(name="viewport", content="width=device-width, initial-scale=1.0");
@@ -1029,7 +1031,7 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=ayu);
             }
             body(class="swaydoc mod") {
-                : sidebar.render();
+                : sidebar.render()?;
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -1069,7 +1071,7 @@ impl Renderable for ModuleIndex {
                     }
                 }
             }
-        }
+        })
     }
 }
 
@@ -1095,18 +1097,18 @@ struct Sidebar {
     nav: DocLinks,
 }
 impl Renderable for Sidebar {
-    fn render(self) -> Box<dyn RenderBox> {
+    fn render(self) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
         let location_with_prefix = match &self.style {
             DocStyle::AllDoc | DocStyle::ProjectIndex => {
-                format!("Project {}", self.module_info.location())
+                format!("Project {}", self.module_info.location()?)
             }
             DocStyle::ModuleIndex | DocStyle::Item => format!(
                 "{} {}",
                 BlockTitle::Modules.item_title_str(),
-                self.module_info.location()
+                self.module_info.location()?
             ),
         };
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
@@ -1176,7 +1178,7 @@ impl Renderable for Sidebar {
             .into_string()
             .unwrap(),
         };
-        box_html! {
+        Ok(box_html! {
             nav(class="sidebar") {
                 a(class="sidebar-logo", href=&logo_path_to_parent) {
                     div(class="logo-container") {
@@ -1188,7 +1190,7 @@ impl Renderable for Sidebar {
                 }
                 : Raw(styled_content);
             }
-        }
+        })
     }
 }
 pub(crate) trait DocStrings {
