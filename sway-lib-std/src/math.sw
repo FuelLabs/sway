@@ -44,11 +44,11 @@ impl Root for u8 {
     }
 }
 
-pub trait Exponentiate {
+pub trait Power {
     fn pow(self, exponent: Self) -> Self;
 }
 
-impl Exponentiate for u64 {
+impl Power for u64 {
     fn pow(self, exponent: Self) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
@@ -57,7 +57,7 @@ impl Exponentiate for u64 {
     }
 }
 
-impl Exponentiate for u32 {
+impl Power for u32 {
     fn pow(self, exponent: Self) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
@@ -66,7 +66,7 @@ impl Exponentiate for u32 {
     }
 }
 
-impl Exponentiate for u16 {
+impl Power for u16 {
     fn pow(self, exponent: Self) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
@@ -75,7 +75,7 @@ impl Exponentiate for u16 {
     }
 }
 
-impl Exponentiate for u8 {
+impl Power for u8 {
     fn pow(self, exponent: Self) -> Self {
         asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
