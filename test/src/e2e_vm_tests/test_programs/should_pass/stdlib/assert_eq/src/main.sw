@@ -1,6 +1,5 @@
 script;
 
-use std::assert::assert_eq;
 use std::bytes::Bytes;
 use std::b512::B512;
 

@@ -1,6 +1,7 @@
 script;
+
 use storage_access_abi::*;
-use std::{assert::assert, hash::sha256, revert::revert};
+use std::hash::sha256;
 
 fn main() -> bool {
     let contract_id = 0x09839a6f4dece7244b80515e7418b09dcd1a2781a87841833ee41265161ee17f;
