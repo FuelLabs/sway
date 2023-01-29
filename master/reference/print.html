@@ -1739,9 +1739,7 @@ fn update() {
 <p>The <a href="https://fuellabs.github.io/fuels-rs/latest/">Rust</a> &amp; <a href="https://fuellabs.github.io/fuels-ts/">Typescript</a> SDKs may be used to decode the data.</p>
 <h2 id="example-10"><a class="header" href="#example-10">Example</a></h2>
 <p>To use the <code>log</code> function we must import it from the standard library and pass in any <a href="documentation/operations/../language/generics/index.html">generic</a> type <code>T</code> that we want to log.</p>
-<pre><code class="language-sway">use std::logging::log;
-
-fn log_data(number: u64) {
+<pre><code class="language-sway">fn log_data(number: u64) {
     // generic T = `number` of type `u64`
     log(number);
 }
