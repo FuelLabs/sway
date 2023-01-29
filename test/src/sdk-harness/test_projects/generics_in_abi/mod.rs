@@ -1,9 +1,9 @@
-use fuels::prelude::*;
+use fuels::{prelude::*, types::core::Bits256};
 
-abigen!(
-    GenericsInAbiTestContract,
-    "test_projects/generics_in_abi/out/debug/generics_in_abi-abi.json"
-);
+abigen!(Contract(
+    name = "GenericsInAbiTestContract",
+    abi = "test_projects/generics_in_abi/out/debug/generics_in_abi-abi.json"
+));
 
 async fn get_generics_in_abi_instance() -> (GenericsInAbiTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;

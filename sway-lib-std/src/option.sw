@@ -1,18 +1,18 @@
 //! Optional values.
 //!
-//! Type [`Option`] represents an optional value: every [`Option`]
-//! is either [`Some`] and contains a value, or [`None`], and
-//! does not. [`Option`] types are very common in Sway code, as
+//! Type `Option` represents an optional value: every `Option`
+//! is either `Some` and contains a value, or `None`, and
+//! does not. `Option` types are very common in Sway code, as
 //! they have a number of uses:
 //!
-//! * Initial values where [`None`] can be used as an initizlier
-//! * Return value for otherwise reporting simple errors, where [`None`] is
-//!   returned on error
-//! * Optional struct fields
-//! * Optional function arguments
+//! * Initial values where `None` can be used as an initializer.
+//! * Return value for otherwise reporting simple errors, where `None` is
+//!   returned on error.
+//! * Optional struct fields.
+//! * Optional function arguments.
 //!
-//! [`Option`]s are commonly paired with pattern matching to query the presence
-//! of a value and take action, always accounting for the [`None`] case.
+//! `Option`s are commonly paired with pattern matching to query the presence
+//! of a value and take action, always accounting for the `None` case.
 //!
 //! ```
 //! fn divide(numerator: u64, denominator: u64) -> Option<u64> {
@@ -37,48 +37,47 @@
 //! }
 //! ```
 //!
-//! # Method overview
+//! ### Method overview
 //!
-//! In addition to working with pattern matching, [`Option`] provides a wide
+//! In addition to working with pattern matching, `Option` provides a wide
 //! variety of different methods.
 //!
-//! ## Querying the variant
+//! ### Querying the variant
 //!
-//! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
-//! is [`Some`] or [`None`], respectively.
+//! The `is_some` and `is_none` methods return `true` if the `Option`
+//! is `Some` or `None`, respectively.
 //!
-//! [`is_none`]: Option::is_none
-//! [`is_some`]: Option::is_some
+//! `is_none`: `Option::is_none`
+//! `is_some`: `Option::is_some`
 //!
-//! ## Extracting the contained value
+//! ### Extracting the contained value
 //!
-//! These methods extract the contained value in an [`Option<T>`] when it
-//! is the [`Some`] variant. If the [`Option`] is [`None`]:
+//! These methods extract the contained value in an `Option<T>` when it
+//! is the `Some` variant. If the `Option` is `None`:
 //!
-//! * [`unwrap`] reverts
-//! * [`unwrap_or`] returns the provided default value
+//! * `unwrap` reverts.
+//! * `unwrap_or` returns the provided default value.
 //!
-//! [`unwrap`]: Option::unwrap
-//! [`unwrap_or`]: Option::unwrap_or
+//! `unwrap`   : `Option::unwrap`
+//! `unwrap_or`: `Option::unwrap_or`
 //!
-//! ## Transforming contained values
+//! ### Transforming contained values
 //!
-//! These methods transform [`Option`] to [`Result`]:
+//! These methods transform `Option` to `Result`:
 //!
-//! * [`ok_or`] transforms [`Some(v)`] to [`Ok(v)`], and [`None`] to
-//!   [`Err(err)`] using the provided default `err` value
+//! * `ok_or` transforms `Some(v)` to `Ok(v)`, and `None` to
+//!   `Err(e)` using the provided default error value.
 //!
-//! [`Err(err)`]: Err
-//! [`Ok(v)`]: Ok
-//! [`Some(v)`]: Some
-//! [`ok_or`]: Option::ok_or
+//! `Err(e)` : `Result::Err`
+//! `Ok(v)`  : `Result::Ok`
+//! `Some(v)`: `Option::Some`
+//! `ok_or`  : `Option::ok_or`
 library option;
 
-use ::convert::From;
 use ::result::Result;
 use ::revert::revert;
 
-/// The `Option` type. See [the module level documentation](self) for more.
+/// The `Option` type. See the module level documentation for more.
 pub enum Option<T> {
     /// No value.
     None: (),
@@ -86,16 +85,14 @@ pub enum Option<T> {
     Some: T,
 }
 
-/////////////////////////////////////////////////////////////////////////////
 // Type implementation
-/////////////////////////////////////////////////////////////////////////////
+//
 impl<T> Option<T> {
-    /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
-    /////////////////////////////////////////////////////////////////////////
-    /// Returns `true` if the option is a [`Some`] value.
+    //
+    /// Returns `true` if the option is a `Some` value.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x: Option<u32> = Option::Some(2);
@@ -111,9 +108,9 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `true` if the option is a [`None`] value.
+    /// Returns `true` if the option is a `None` value.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x: Option<u32> = Option::Some(2);
@@ -129,22 +126,21 @@ impl<T> Option<T> {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////
     // Getting to contained values
-    /////////////////////////////////////////////////////////////////////////
-    /// Returns the contained [`Some`] value, consuming the `self` value.
+    //
+    /// Returns the contained `Some` value, consuming the `self` value.
     ///
     /// Because this function may revert, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`None`]
-    /// case explicitly, or call [`unwrap_or`].
+    /// Instead, use pattern matching and handle the `None`
+    /// case explicitly, or call `unwrap_or`.
     ///
-    /// [`unwrap_or`]: Option::unwrap_or
+    /// `unwrap_or`: `Option::unwrap_or`
     ///
-    /// # Reverts
+    /// ### Reverts
     ///
-    /// Reverts if the self value equals [`None`].
+    /// Reverts if the self value equals `None`.
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x = Option::Some(42);
@@ -162,11 +158,11 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained [`Some`] value or a provided default.
+    /// Returns the contained `Some` value or a provided default.
     ///
-    /// [`unwrap_or`]: Option::unwrap_or
+    /// `unwrap_or`: `Option::unwrap_or`
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// assert(Option::Some(42).unwrap_or(69) == 42);
@@ -179,18 +175,17 @@ impl<T> Option<T> {
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////
     // Transforming contained values
-    /////////////////////////////////////////////////////////////////////////
-    /// Transforms the `Option<T>` into a [`Result<T, E>`], mapping [`Some(v)`] to
-    /// [`Ok(v)`] and [`None`] to [`Err(err)`].
+    //
+    /// Transforms the `Option<T>` into a `Result<T, E>`, mapping `Some(v)` to
+    /// `Ok(v)` and `None` to `Err(e)`.
     ///
-    /// [`Ok(v)`]: Ok
-    /// [`Err(err)`]: Err
-    /// [`Some(v)`]: Some
-    /// [`ok_or`]: Option::ok_or
+    /// `Ok(v)`  : `Result::Ok`
+    /// `Err(e)` : `Result::Err`
+    /// `Some(v)`: `Option::Some`
+    /// `ok_or`  : `Option::ok_or`
     ///
-    /// # Examples
+    /// ### Examples
     ///
     /// ```
     /// let x = Option::Some(42);

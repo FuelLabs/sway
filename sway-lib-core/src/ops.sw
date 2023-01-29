@@ -286,8 +286,8 @@ impl Ord for u8 {
 
 impl Ord for b256 {
     fn gt(self, other: Self) -> bool {
-        let(self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
 
         if self.eq(other) {
             false
@@ -303,8 +303,8 @@ impl Ord for b256 {
     }
 
     fn lt(self, other: Self) -> bool {
-        let(self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let (self_word_1, self_word_2, self_word_3, self_word_4) = decompose(self);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
 
         if self.eq(other) {
             false
@@ -481,8 +481,8 @@ impl Not for u8 {
 
 impl BitwiseAnd for b256 {
     fn binary_and(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_and(other_word_1);
         let word_2 = value_word_2.binary_and(other_word_2);
         let word_3 = value_word_3.binary_and(other_word_3);
@@ -494,8 +494,8 @@ impl BitwiseAnd for b256 {
 
 impl BitwiseOr for b256 {
     fn binary_or(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_or(other_word_1);
         let word_2 = value_word_2.binary_or(other_word_2);
         let word_3 = value_word_3.binary_or(other_word_3);
@@ -507,8 +507,8 @@ impl BitwiseOr for b256 {
 
 impl BitwiseXor for b256 {
     fn binary_xor(val: self, other: Self) -> Self {
-        let(value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
-        let(other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
+        let (value_word_1, value_word_2, value_word_3, value_word_4) = decompose(val);
+        let (other_word_1, other_word_2, other_word_3, other_word_4) = decompose(other);
         let word_1 = value_word_1.binary_xor(other_word_1);
         let word_2 = value_word_2.binary_xor(other_word_2);
         let word_3 = value_word_3.binary_xor(other_word_3);
@@ -522,8 +522,7 @@ trait OrdEq: Ord + Eq {
 } {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)
-    }
-    fn le(self, other: Self) -> bool {
+    }    fn le(self, other: Self) -> bool {
         self.lt(other) || self.eq(other)
     }
 }
@@ -539,12 +538,12 @@ impl OrdEq for u8 {
 impl OrdEq for b256 {
 }
 
-pub trait Shiftable {
+pub trait Shift {
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;
 }
 
-impl Shiftable for u64 {
+impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -559,7 +558,7 @@ impl Shiftable for u64 {
     }
 }
 
-impl Shiftable for u32 {
+impl Shift for u32 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -574,7 +573,7 @@ impl Shiftable for u32 {
     }
 }
 
-impl Shiftable for u16 {
+impl Shift for u16 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -589,7 +588,7 @@ impl Shiftable for u16 {
     }
 }
 
-impl Shiftable for u8 {
+impl Shift for u8 {
     fn lsh(self, other: u64) -> Self {
         asm(r1: self, r2: other, r3) {
             sll r3 r1 r2;
@@ -604,9 +603,9 @@ impl Shiftable for u8 {
     }
 }
 
-impl Shiftable for b256 {
+impl Shift for b256 {
     fn lsh(self, shift_amount: u64) -> Self {
-        let(word_1, word_2, word_3, word_4) = decompose(self);
+        let (word_1, word_2, word_3, word_4) = decompose(self);
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -614,37 +613,32 @@ impl Shiftable for b256 {
 
         let w = shift_amount.divide(64); // num of whole words to shift in addition to b
         let b = shift_amount.modulo(64); // num of bits to shift within each word
-
         // TODO: Use generalized looping version when vec lands !
         if w.eq(0) {
-            let(shifted_2, carry_2) = lsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = lsh_with_carry(word_2, b);
             w1 = word_1.lsh(b).add(carry_2);
-            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w2 = shifted_2.add(carry_3);
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w3 = shifted_3.add(carry_4);
             w4 = shifted_4;
         } else if w.eq(1) {
-            let(shifted_3, carry_3) = lsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = lsh_with_carry(word_3, b);
             w1 = word_2.lsh(b).add(carry_3);
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w2 = shifted_3.add(carry_4);
             w3 = shifted_4;
         } else if w.eq(2) {
-            let(shifted_4, carry_4) = lsh_with_carry(word_4, b);
+            let (shifted_4, carry_4) = lsh_with_carry(word_4, b);
             w1 = word_3.lsh(b).add(carry_4);
             w2 = shifted_4;
-        } else if w.eq(3) {
-            w1 = word_4.lsh(b);
-        } else {
-            ();
-        };
+        } else if w.eq(3) { w1 = word_4.lsh(b); } else { (); };
 
         compose((w1, w2, w3, w4))
     }
 
     fn rsh(self, shift_amount: u64) -> Self {
-        let(word_1, word_2, word_3, word_4) = decompose(self);
+        let (word_1, word_2, word_3, word_4) = decompose(self);
         let mut w1 = 0;
         let mut w2 = 0;
         let mut w3 = 0;
@@ -652,31 +646,26 @@ impl Shiftable for b256 {
 
         let w = shift_amount.divide(64); // num of whole words to shift in addition to b
         let b = shift_amount.modulo(64); // num of bits to shift within each word
-
         // TODO: Use generalized looping version when vec lands !
         if w.eq(0) {
-            let(shifted_3, carry_3) = rsh_with_carry(word_3, b);
+            let (shifted_3, carry_3) = rsh_with_carry(word_3, b);
             w4 = word_4.rsh(b).add(carry_3);
-            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w3 = shifted_3.add(carry_2);
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w2 = shifted_2.add(carry_1);
             w1 = shifted_1;
         } else if w.eq(1) {
-            let(shifted_2, carry_2) = rsh_with_carry(word_2, b);
+            let (shifted_2, carry_2) = rsh_with_carry(word_2, b);
             w4 = word_3.rsh(b).add(carry_2);
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w3 = shifted_2.add(carry_1);
             w2 = shifted_1;
         } else if w.eq(2) {
-            let(shifted_1, carry_1) = rsh_with_carry(word_1, b);
+            let (shifted_1, carry_1) = rsh_with_carry(word_1, b);
             w4 = word_2.rsh(b).add(carry_1);
             w3 = shifted_1;
-        } else if w.eq(3) {
-            w4 = word_1.rsh(b);
-        } else {
-            ();
-        };
+        } else if w.eq(3) { w4 = word_1.rsh(b); } else { (); };
 
         compose((w1, w2, w3, w4))
     }
@@ -685,7 +674,6 @@ impl Shiftable for b256 {
 /////////////////////////////////////////////////
 // Internal Helpers
 /////////////////////////////////////////////////
-
 /// Left shift a u64 and preserve the overflow amount if any
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let right_shift_amount = 64.subtract(shift_amount);
@@ -713,7 +701,7 @@ fn decompose(val: b256) -> (u64, u64, u64, u64) {
 }
 
 #[test]
-fn test_compose()  {
+fn test_compose() {
     let expected: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
     let composed = compose((1, 2, 3, 4));
     if composed.neq(expected) {
@@ -722,11 +710,15 @@ fn test_compose()  {
 }
 
 #[test]
-fn test_decompose()  {
+fn test_decompose() {
     let initial: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
     let expected = (1, 2, 3, 4);
     let decomposed = decompose(initial);
-    if decomposed.0.neq(expected.0) && decomposed.1.neq(expected.1) && decomposed.2.neq(expected.2) && decomposed.3.neq(expected.3) {
+    if decomposed.0.neq(expected.0)
+        && decomposed.1.neq(expected.1)
+        && decomposed.2.neq(expected.2)
+        && decomposed.3.neq(expected.3)
+    {
         __revert(0)
     }
 }

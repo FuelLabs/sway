@@ -1280,7 +1280,7 @@ fn main() {
         let mut formatter = Formatter::default();
         let formatted_sway_code =
             Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        println!("formatted: {}", formatted_sway_code);
+        println!("formatted: {formatted_sway_code}");
         assert_eq!(correct_sway_code, formatted_sway_code);
         assert!(test_stability(formatted_sway_code, formatter));
     }
@@ -1513,6 +1513,33 @@ fn foo() {
         r4: bool
     }
 }
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+    #[test]
+    fn test_empty_blocks() {
+        let sway_code_to_format = r#"contract;
+        
+fn contents() {
+    let i = {    };
+    match i {
+    }
+    if true {    }
+}
+fn empty() {}
+"#;
+        let correct_sway_code = r#"contract;
+
+fn contents() {
+    let i = {};
+    match i {}
+    if true {}
+}
+fn empty() {}
 "#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =

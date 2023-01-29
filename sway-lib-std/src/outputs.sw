@@ -1,5 +1,5 @@
 //! Getters for fields on transaction outputs.
-//! This includes OutputCoins, InputMessages and InputContracts.
+//! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library outputs;
 
 use ::contract_id::ContractId;
@@ -13,9 +13,8 @@ use ::tx::{
     tx_type,
 };
 
-////////////////////////////////////////
 // GTF Opcode const selectors
-////////////////////////////////////////
+//
 pub const GTF_OUTPUT_TYPE = 0x201;
 // pub const GTF_OUTPUT_COIN_TO = 0x202;
 pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
@@ -49,8 +48,8 @@ pub fn output_type(index: u64) -> Output {
     }
 }
 
-/// Get a pointer to the Ouput at `index`
-/// for either tx type (transaction-script or transaction-create).
+/// Get a pointer to the output at `index`
+/// for either `tx_type` (transaction-script or transaction-create).
 pub fn output_pointer(index: u64) -> u64 {
     let type = tx_type();
     match type {
@@ -59,7 +58,7 @@ pub fn output_pointer(index: u64) -> u64 {
     }
 }
 
-/// Get the transaction outputs count for either tx type
+/// Get the transaction outputs count for either `tx_type`
 /// (transaction-script or transaction-create).
 pub fn output_count() -> u64 {
     let type = tx_type();
@@ -70,8 +69,8 @@ pub fn output_count() -> u64 {
 }
 
 /// Get the amount of coins to send for the output at `index`.
-/// This method is only meaningful if the output type has the `amount` field.
-/// Specifically: OutputCoin, OutputMessage, OutputChange, OutputVariable.
+/// This method is only meaningful if the `Output` type has the `amount` field,
+/// specifically: `Output::Coin`, `Output::Message`, `Output::Change` & `Output::Variable`.
 pub fn output_amount(index: u64) -> u64 {
     let type = output_type(index);
     match type {

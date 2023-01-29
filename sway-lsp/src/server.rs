@@ -334,22 +334,14 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((_, session)) => {
                 // Construct code lenses for runnable functions
-                let _ = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        result.push(CodeLens {
-                            range: runnable.range,
-                            command: Some(Command {
-                                command: "sway.runScript".to_string(),
-                                arguments: None,
-                                title: "▶\u{fe0e} Run".to_string(),
-                            }),
-                            data: None,
-                        });
+                session.runnables.iter().for_each(|item| {
+                    let runnable = item.value();
+                    result.push(CodeLens {
+                        range: runnable.range(),
+                        command: Some(runnable.command()),
+                        data: None,
                     });
+                });
                 Ok(Some(result))
             }
             Err(err) => {
@@ -487,12 +479,6 @@ impl LanguageServer for Backend {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnableParams {
-    pub text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
@@ -521,14 +507,6 @@ impl Backend {
         }
     }
 
-    // TODO: Delete this method once the client code calling it has been removed.
-    pub async fn runnables(
-        &self,
-        _params: RunnableParams,
-    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        Ok(None)
-    }
-
     /// This method is triggered by a command palette request in VScode
     /// The 3 commands are: "show lexed ast", "show parsed ast" or "show typed ast"
     ///
@@ -554,7 +532,7 @@ impl Backend {
                 let write_ast_to_file =
                     |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
                         if let Ok(mut file) = File::create(path) {
-                            let _ = writeln!(&mut file, "{}", ast_string);
+                            let _ = writeln!(&mut file, "{ast_string}");
                             if let Ok(uri) = Url::from_file_path(path) {
                                 // Return the tmp file path where the AST has been written to.
                                 return Some(TextDocumentIdentifier::new(uri));
@@ -636,7 +614,8 @@ impl Backend {
 mod tests {
     use super::*;
     use crate::utils::test::{
-        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, runnables_test_dir,
+        test_fixtures_dir,
     };
     use assert_json_diff::assert_json_eq;
     use serde_json::json;
@@ -792,42 +771,97 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(
+    fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": token_line,
+                "character": token_char,
+            }
+        });
+        build_request_with_id("textDocument/definition", params, id)
+    }
+
+    fn definition_response(
+        uri: &Url,
+        start_line: i32,
+        start_char: i32,
+        end_line: i32,
+        end_char: i32,
+        id: i64,
+    ) -> Response {
+        Response::from_ok(
+            id.into(),
+            json!({
+                "range": {
+                    "end": {
+                        "character": end_char,
+                        "line": end_line,
+                    },
+                    "start": {
+                        "character": start_char,
+                        "line": start_line,
+                    }
+                },
+                "uri": uri,
+            }),
+        )
+    }
+
+    async fn doc_comments_definition_check(
         service: &mut LspService<Backend>,
         uri: &Url,
         token_req_line: i32,
         token_def_line: i32,
         id: i64,
     ) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-            },
-            "position": {
-                "line": token_req_line,
-                "character": 24,
-            }
-        });
-        let definition = build_request_with_id("textDocument/definition", params, id);
+        let definition = definition_request(uri, token_req_line, 24, id);
         let response = call_request(service, definition.clone()).await;
-        let expected = Response::from_ok(
-            id.into(),
-            json!({
-                "range": {
-                    "end": {
-                        "character": 11,
-                        "line": token_def_line,
-                    },
-                    "start": {
-                        "character": 7,
-                        "line": token_def_line,
-                    }
-                },
-                "uri": uri,
-            }),
-        );
+        let expected = definition_response(uri, token_def_line, 7, token_def_line, 11, id);
         assert_json_eq!(expected, response.ok().unwrap());
         definition
+    }
+
+    async fn turbofish_definition_check_option(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/option.sw"));
+    }
+
+    async fn turbofish_definition_check_result(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/result.sw"));
     }
 
     async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
@@ -974,26 +1008,84 @@ mod tests {
         });
         let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
         let response = call_request(service, code_lens.clone()).await;
-        let expected = Response::from_ok(
-            1.into(),
-            json!([{
-                "command": {
-                    "command": "sway.runScript",
-                    "title":"▶︎ Run"
+        let actual_results = response
+            .unwrap()
+            .unwrap()
+            .into_parts()
+            .1
+            .ok()
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
+        let expected_results = vec![
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_bar"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 13
                 },
-                "range": {
-                    "end": {
-                        "character": 7,
-                        "line": 4
-                    },
-                    "start": {
-                        "character": 3,
-                        "line":4
-                    }
+                "start": {
+                  "character": 0,
+                  "line": 13
                 }
-            }]),
-        );
-        assert_json_eq!(expected, response.ok().unwrap());
+              }
+            }),
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_foo"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 8
+                },
+                "start": {
+                  "character": 0,
+                  "line": 8
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "command": "sway.runScript",
+                "title": "▶︎ Run"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 4
+                },
+                "start": {
+                  "character": 3,
+                  "line": 4
+                }
+              }
+            }),
+        ];
+
+        assert_eq!(actual_results.len(), expected_results.len());
+        for expected in expected_results.iter() {
+            assert!(
+                actual_results.contains(expected),
+                "Expected {actual_results:?} to contain {expected:?}"
+            );
+        }
         code_lens
     }
 
@@ -1082,9 +1174,9 @@ mod tests {
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1103,7 +1195,33 @@ mod tests {
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_inside_turbofish() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("turbofish"),
+        )
+        .await;
+
+        turbofish_definition_check_option(&mut service, &uri, 15, 12, 1).await;
+        turbofish_definition_check_option(&mut service, &uri, 16, 17, 2).await;
+        turbofish_definition_check_option(&mut service, &uri, 17, 29, 3).await;
+        turbofish_definition_check_option(&mut service, &uri, 18, 19, 4).await;
+
+        turbofish_definition_check_option(&mut service, &uri, 20, 13, 5).await;
+        turbofish_definition_check_result(&mut service, &uri, 20, 19, 6).await;
+        turbofish_definition_check_option(&mut service, &uri, 21, 19, 7).await;
+        turbofish_definition_check_result(&mut service, &uri, 21, 25, 8).await;
+        turbofish_definition_check_option(&mut service, &uri, 22, 29, 9).await;
+        turbofish_definition_check_result(&mut service, &uri, 22, 36, 10).await;
+        turbofish_definition_check_option(&mut service, &uri, 23, 18, 11).await;
+        turbofish_definition_check_result(&mut service, &uri, 23, 27, 12).await;
+
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1120,7 +1238,7 @@ mod tests {
         .await;
         socket_handle
             .await
-            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1154,5 +1272,5 @@ mod tests {
     lsp_capability_test!(hover, hover_request, doc_comments_dir);
     lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
     lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
-    lsp_capability_test!(code_lens, code_lens_request, e2e_test_dir);
+    lsp_capability_test!(code_lens, code_lens_request, runnables_test_dir);
 }

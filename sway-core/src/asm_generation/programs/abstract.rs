@@ -1,9 +1,12 @@
 use super::{AbstractEntry, AbstractProgram, AllocatedProgram, ProgramKind};
 
 use crate::{
-    asm_generation::{
-        compiler_constants, AbstractInstructionSet, AllocatedAbstractInstructionSet, DataSection,
-        Entry, RegisterSequencer,
+    asm_generation::fuel::{
+        abstract_instruction_set::AbstractInstructionSet,
+        allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
+        compiler_constants,
+        data_section::{DataSection, Entry},
+        register_sequencer::RegisterSequencer,
     },
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
@@ -69,7 +72,7 @@ impl AbstractProgram {
         // Allocate the registers for each function.
         let functions = abstract_functions
             .into_iter()
-            .map(|fn_ops| fn_ops.allocate_registers(&mut self.reg_seqr))
+            .map(|fn_ops| fn_ops.allocate_registers())
             .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
             .collect::<Vec<_>>();
 

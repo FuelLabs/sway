@@ -2,7 +2,7 @@ use sway_ir::Function;
 
 use crate::{asm_lang::Label, CompileResult};
 
-use super::{evm::EvmAsmBuilderResult, fuel::FuelAsmBuilderResult};
+use super::{evm::EvmAsmBuilderResult, fuel::fuel_asm_builder::FuelAsmBuilderResult};
 
 pub enum AsmBuilderResult {
     Fuel(FuelAsmBuilderResult),

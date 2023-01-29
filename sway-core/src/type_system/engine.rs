@@ -22,7 +22,6 @@ pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-    unify_map: RwLock<HashMap<TypeId, Vec<TypeId>>>,
 }
 
 fn make_hasher<'a: 'b, 'b, K>(
@@ -58,40 +57,6 @@ impl TypeEngine {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
                 v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
                 type_id
-            }
-        }
-    }
-
-    pub(crate) fn insert_unified_type(&self, received: TypeId, expected: TypeId) {
-        let mut unify_map = self.unify_map.write().unwrap();
-        if let Some(type_ids) = unify_map.get(&received) {
-            if type_ids.contains(&expected) {
-                return;
-            }
-            let mut type_ids = type_ids.clone();
-            type_ids.push(expected);
-            unify_map.insert(received, type_ids);
-            return;
-        }
-
-        unify_map.insert(received, vec![expected]);
-    }
-
-    pub(crate) fn get_unified_types(&self, type_id: TypeId) -> Vec<TypeId> {
-        let mut final_unify_ids: Vec<TypeId> = vec![];
-        self.get_unified_types_rec(type_id, &mut final_unify_ids);
-        final_unify_ids
-    }
-
-    fn get_unified_types_rec(&self, type_id: TypeId, final_unify_ids: &mut Vec<TypeId>) {
-        let unify_map = self.unify_map.read().unwrap();
-        if let Some(unify_ids) = unify_map.get(&type_id) {
-            for unify_id in unify_ids {
-                if final_unify_ids.contains(unify_id) {
-                    continue;
-                }
-                final_unify_ids.push(*unify_id);
-                self.get_unified_types_rec(*unify_id, final_unify_ids);
             }
         }
     }
@@ -599,7 +564,7 @@ impl TypeEngine {
         self.slab.with_slice(|elems| {
             let list = elems.iter().map(|type_info| engines.help_out(type_info));
             let list = ListDisplay { list };
-            write!(builder, "TypeEngine {{\n{}\n}}", list).unwrap();
+            write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         });
         builder
     }

@@ -62,20 +62,20 @@ impl CurlyBrace for ItemImpl {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add opening brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
+                writeln!(line, "\n{open_brace}")?;
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
-                    writeln!(line, "{}", open_brace)?;
+                    writeln!(line, "{open_brace}")?;
                     formatter.shape.code_line.update_where_clause(false);
                 }
                 false => {
-                    writeln!(line, " {}", open_brace)?;
+                    writeln!(line, " {open_brace}")?;
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
-                writeln!(line, " {}", open_brace)?;
+                writeln!(line, " {open_brace}")?;
             }
         }
 

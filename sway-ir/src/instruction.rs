@@ -268,13 +268,13 @@ impl Instruction {
 
             Instruction::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
             Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. }) => {
-                Some(Type::get_unit(context))
+                Some(Type::get_bool(context))
             }
             Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. }) => {
-                Some(Type::get_unit(context))
+                Some(Type::get_bool(context))
             }
             Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
-                Some(Type::get_unit(context))
+                Some(Type::get_bool(context))
             }
             Instruction::MemCopy { .. } => Some(Type::get_unit(context)),
             Instruction::Store { .. } => Some(Type::get_unit(context)),

@@ -3,7 +3,7 @@ use crate::{
         self,
         diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
-        runnable::{Runnable, RunnableType},
+        runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
         document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
@@ -29,7 +29,7 @@ use sway_core::{
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
@@ -54,7 +54,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<RunnableType, Runnable>,
+    pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
     pub decl_engine: RwLock<DeclEngine>,
@@ -289,7 +289,7 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+        writeln!(&mut file, "{src}").map_err(|err| DocumentError::UnableToWriteFile {
             path: uri.path().to_string(),
             err: err.to_string(),
         })?;
@@ -372,13 +372,33 @@ impl Session {
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
+        // Insert runnable test functions.
+        let decl_engine = &*self.decl_engine.read();
+        for (decl, _) in typed_program.test_fns(decl_engine) {
+            // Get the span of the first attribute if it exists, otherwise use the span of the function name.
+            let span = decl
+                .attributes
+                .first()
+                .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            let runnable = Box::new(RunnableTestFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+                test_name: Some(decl.name.to_string()),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
+        }
+
+        // Insert runnable main function if the program is a script.
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
         {
-            let main_fn_location = get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-            self.runnables.insert(RunnableType::MainFn, runnable);
+            let span = main_function.name.span();
+            let runnable = Box::new(RunnableMainFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
         }
     }
 

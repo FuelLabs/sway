@@ -69,11 +69,8 @@ impl ty::TyTraitFn {
 
         // Retrieve the implemented traits for the type of the return type and
         // insert them in the broader namespace.
-        let trait_map = fn_ctx
-            .namespace
-            .implemented_traits
-            .filter_by_type(trait_fn.return_type, engines);
-        ctx.namespace.implemented_traits.extend(trait_map, engines);
+        ctx.namespace
+            .insert_trait_implementation_for_type(engines, trait_fn.return_type);
 
         ok(trait_fn, warnings, errors)
     }

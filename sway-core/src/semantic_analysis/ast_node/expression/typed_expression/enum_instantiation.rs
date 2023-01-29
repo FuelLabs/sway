@@ -17,6 +17,7 @@ pub(crate) fn instantiate_enum(
     enum_name: Ident,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
+    type_binding: TypeBinding<()>,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -60,6 +61,7 @@ pub(crate) fn instantiate_enum(
                     variant_name: enum_variant.name,
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
+                    type_binding,
                 },
                 span: enum_variant_name.span(),
             },
@@ -105,6 +107,7 @@ pub(crate) fn instantiate_enum(
                         variant_name: enum_variant.name,
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
+                        type_binding,
                     },
                     span: enum_variant_name.span(),
                 },

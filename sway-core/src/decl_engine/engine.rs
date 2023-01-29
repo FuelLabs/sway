@@ -21,21 +21,11 @@ pub struct DeclEngine {
     parents: RwLock<HashMap<usize, Vec<DeclId>>>,
 }
 
-impl Clone for DeclEngine {
-    fn clone(&self) -> Self {
-        let parents = self.parents.read().unwrap();
-        DeclEngine {
-            slab: self.slab.clone(),
-            parents: RwLock::new(parents.clone()),
-        }
-    }
-}
-
 impl fmt::Display for DeclEngine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.slab.with_slice(|elems| {
             let list = ListDisplay { list: elems.iter() };
-            write!(f, "DeclarationEngine {{\n{}\n}}", list)
+            write!(f, "DeclarationEngine {{\n{list}\n}}")
         })
     }
 }

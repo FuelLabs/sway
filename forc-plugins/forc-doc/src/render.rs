@@ -19,7 +19,7 @@ pub(crate) trait Renderable {
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
-    pub(crate) module_info: Vec<ModulePrefix>,
+    pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
     pub(crate) file_contents: HTMLString,
 }
@@ -42,7 +42,7 @@ impl RenderedDocumentation {
             BTreeMap::new();
         for doc in raw {
             rendered_docs.0.push(RenderedDocument {
-                module_info: doc.module_info.0.clone(), // fix this
+                module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
                 file_contents: HTMLString::from(doc.clone().render()),
             });
@@ -133,6 +133,7 @@ impl RenderedDocumentation {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
                     html_filename: INDEX_FILENAME.to_owned(),
+                    preview_opt: None,
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
@@ -209,7 +210,7 @@ impl RenderedDocumentation {
         // ProjectIndex
         match module_map.get(root_module.location()) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
-                module_info: vec![],
+                module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
                 file_contents: HTMLString::from(
                     ModuleIndex {
@@ -238,7 +239,7 @@ impl RenderedDocumentation {
                     None => panic!("document is empty"),
                 };
                 rendered_docs.0.push(RenderedDocument {
-                    module_info: module_info.0.clone(),
+                    module_info: module_info.clone(),
                     html_filename: INDEX_FILENAME.to_string(),
                     file_contents: HTMLString::from(
                         ModuleIndex {
@@ -257,7 +258,7 @@ impl RenderedDocumentation {
 
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
-            module_info: vec![],
+            module_info: root_module.clone(),
             html_filename: ALL_DOC_FILENAME.to_string(),
             file_contents: HTMLString::from(
                 AllDocIndex {
@@ -407,7 +408,7 @@ impl Renderable for ItemBody {
                                     span(class="in-band") {
                                         // TODO: pass the decl ty info or match
                                         // for uppercase naming like: "Enum"
-                                        : format!("{} ", friendly_name);
+                                        : format!("{friendly_name} ");
                                         // TODO: add qualified path anchors
                                         a(class=&decl_ty, href=IDENTITY) {
                                             : item_name.as_str();
@@ -476,6 +477,7 @@ impl ItemContext {
                                 IDENTITY,
                                 field.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Fields, doc_links);
@@ -491,6 +493,7 @@ impl ItemContext {
                                 IDENTITY,
                                 field.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Fields, doc_links);
@@ -502,6 +505,7 @@ impl ItemContext {
                             name: variant.name.as_str().to_string(),
                             module_info: ModuleInfo::from_vec(vec![]),
                             html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::Variants, doc_links);
@@ -517,6 +521,7 @@ impl ItemContext {
                                 IDENTITY,
                                 method.name.as_str()
                             ),
+                            preview_opt: None,
                         })
                         .collect();
                     links.insert(BlockTitle::RequiredMethods, doc_links);
@@ -550,7 +555,7 @@ fn context_section<'title, S: Renderable + 'static>(
     box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title.as_str();
-            a(class="anchor", href=format!("{}{}", IDENTITY, lct));
+            a(class="anchor", href=format!("{IDENTITY}{lct}"));
         }
         @ for item in list {
             // TODO: Check for visibility of the field itself
@@ -563,7 +568,7 @@ impl Renderable for TyStructField {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, struct_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -572,7 +577,7 @@ impl Renderable for TyStructField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -583,7 +588,7 @@ impl Renderable for TyStorageField {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, storage_field_id));
+                a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
@@ -592,7 +597,7 @@ impl Renderable for TyStorageField {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -603,7 +608,7 @@ impl Renderable for TyEnumVariant {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("{}{}", IDENTITY, enum_variant_id));
+                a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
                     : self.type_span.as_str();
@@ -611,7 +616,7 @@ impl Renderable for TyEnumVariant {
             }
             @ if !self.attributes.is_empty() {
                 div(class="docblock") {
-                    : Raw(attrsmap_to_html_str(self.attributes));
+                    : Raw(self.attributes.to_html_string());
                 }
             }
         }
@@ -655,7 +660,7 @@ impl Renderable for TyTraitFn {
                 div(id=&method_id, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{}{}", IDENTITY, method_id)) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -717,6 +722,7 @@ pub(crate) struct DocLink {
     pub(crate) name: String,
     pub(crate) module_info: ModuleInfo,
     pub(crate) html_filename: String,
+    pub(crate) preview_opt: Option<String>,
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 struct DocLinks {
@@ -731,14 +737,21 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
-                                        : item.module_info.to_path_literal_string(
-                                            &item.name,
-                                            item.module_info.project_name()
-                                        );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                            : item.module_info.to_path_literal_string(
+                                                &item.name,
+                                                item.module_info.project_name()
+                                            );
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : Raw(item.preview_opt.unwrap());
+                                        }
                                     }
                                 }
                             }
@@ -752,17 +765,24 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
-                                        @ if title == BlockTitle::Modules {
-                                            : item.name;
-                                        } else {
-                                            : item.module_info.to_path_literal_string(
-                                                &item.name,
-                                                item.module_info.project_name()
-                                            );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                            @ if title == BlockTitle::Modules {
+                                                : item.name;
+                                            } else {
+                                                : item.module_info.to_path_literal_string(
+                                                    &item.name,
+                                                    item.module_info.project_name()
+                                                );
+                                            }
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -777,14 +797,21 @@ impl Renderable for DocLinks {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
-                        ul(class=format!("{} docblock", title.html_title_string())) {
+                        div(class="item-table") {
                             @ for item in list_items {
-                                li {
-                                    a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
-                                        : item.module_info.to_path_literal_string(
-                                            &item.name,
-                                            item.module_info.location()
-                                        );
+                                div(class="item-row") {
+                                    div(class=format!("item-left {}-item", title.item_title_str())) {
+                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
+                                            : item.module_info.to_path_literal_string(
+                                                &item.name,
+                                                item.module_info.location()
+                                            );
+                                        }
+                                    }
+                                    @ if item.preview_opt.is_some() {
+                                        div(class="item-right docblock-short") {
+                                            : Raw(item.preview_opt.unwrap());
+                                        }
                                     }
                                 }
                             }
@@ -1084,7 +1111,7 @@ impl Renderable for Sidebar {
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
             DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
             DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (format!("../{}", INDEX_FILENAME), IDENTITY.to_owned()),
+            DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1101,7 +1128,7 @@ impl Renderable for Sidebar {
                         div(class="block") {
                             ul {
                                 li(class="version") {
-                                    : format!("Version {}", version);
+                                    : format!("Version {version}");
                                 }
                                 li {
                                     a(id="all-types", href=ALL_DOC_FILENAME) {
@@ -1163,34 +1190,72 @@ impl Renderable for Sidebar {
         }
     }
 }
+pub(crate) trait DocStrings {
+    fn to_html_string(&self) -> String;
+    fn to_raw_string(&self) -> String;
+}
 /// Creates an HTML String from an [AttributesMap]
-pub(crate) fn attrsmap_to_html_str(attributes: AttributesMap) -> String {
-    let attributes = attributes.get(&AttributeKind::DocComment);
-    let mut docs = String::new();
+impl DocStrings for AttributesMap {
+    fn to_html_string(&self) -> String {
+        let docs = self.to_raw_string();
 
-    if let Some(vec_attrs) = attributes {
-        for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
-            writeln!(docs, "{}", ident.as_str())
-                .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
-        }
+        let mut options = ComrakOptions::default();
+        options.render.hardbreaks = true;
+        options.render.github_pre_lang = true;
+        options.extension.strikethrough = true;
+        options.extension.table = true;
+        options.extension.autolink = true;
+        options.extension.superscript = true;
+        options.extension.footnotes = true;
+        options.parse.smart = true;
+        options.parse.default_info_string = Some("sway".into());
+        markdown_to_html(&format_docs(&docs), &options)
     }
+    fn to_raw_string(&self) -> String {
+        let attributes = self.get(&AttributeKind::DocComment);
+        let mut docs = String::new();
 
-    let mut options = ComrakOptions::default();
-    options.render.hardbreaks = true;
-    options.render.github_pre_lang = true;
-    options.extension.strikethrough = true;
-    options.extension.table = true;
-    options.extension.autolink = true;
-    options.extension.superscript = true;
-    options.extension.footnotes = true;
-    options.parse.smart = true;
-    options.parse.default_info_string = Some("sway".into());
-    markdown_to_html(&format_docs(&docs), &options)
+        if let Some(vec_attrs) = attributes {
+            for ident in vec_attrs.iter().flat_map(|attribute| &attribute.args) {
+                writeln!(docs, "{}", ident.as_str())
+                    .expect("problem appending `ident.as_str()` to `docs` with `writeln` macro.");
+            }
+        }
+        docs
+    }
 }
 /// Takes a formatted String fn and returns only the function signature.
 pub(crate) fn trim_fn_body(f: String) -> String {
     match f.find('{') {
         Some(index) => f.split_at(index).0.to_string(),
         None => f,
+    }
+}
+
+/// Checks if some raw html (rendered from markdown) contains a header.
+/// If it does, it splits at the header and returns the slice that preceeded it.
+pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
+    const H1: &str = "<h1>";
+    const H2: &str = "<h2>";
+    const H3: &str = "<h3>";
+    const H4: &str = "<h4>";
+    const H5: &str = "<h5>";
+    if raw_html.contains(H1) {
+        let v: Vec<_> = raw_html.split(H1).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H2) {
+        let v: Vec<_> = raw_html.split(H2).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H3) {
+        let v: Vec<_> = raw_html.split(H3).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H4) {
+        let v: Vec<_> = raw_html.split(H4).collect();
+        v.first().expect("expected a non-empty str")
+    } else if raw_html.contains(H5) {
+        let v: Vec<_> = raw_html.split(H5).collect();
+        v.first().expect("expected a non-empty str")
+    } else {
+        raw_html
     }
 }

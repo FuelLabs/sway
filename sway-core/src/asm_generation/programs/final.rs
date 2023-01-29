@@ -1,7 +1,9 @@
 use super::FinalProgram;
 
 use crate::{
-    asm_generation::{instruction_set::InstructionSet, DataSection, ProgramABI},
+    asm_generation::{
+        fuel::data_section::DataSection, instruction_set::InstructionSet, ProgramABI,
+    },
     FinalizedAsm, FinalizedEntry,
 };
 
@@ -46,8 +48,8 @@ impl std::fmt::Display for FinalProgram {
         match self {
             FinalProgram::Fuel {
                 data_section, ops, ..
-            } => write!(f, "{:?}\n{}", ops, data_section),
-            FinalProgram::Evm { ops, .. } => write!(f, "{:?}", ops),
+            } => write!(f, "{ops:?}\n{data_section}"),
+            FinalProgram::Evm { ops, .. } => write!(f, "{ops:?}"),
         }
     }
 }

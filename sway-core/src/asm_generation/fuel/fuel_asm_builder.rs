@@ -1,13 +1,16 @@
 use crate::{
     asm_generation::{
-        abstract_instruction_set::AbstractInstructionSet,
         asm_builder::{AsmBuilder, AsmBuilderResult},
-        compiler_constants,
         from_ir::{
             aggregate_idcs_to_field_layout, ir_type_size_in_bytes, StateAccessType, Storage,
         },
-        register_sequencer::RegisterSequencer,
-        DataId, DataSection, Entry, ProgramKind,
+        fuel::{
+            abstract_instruction_set::AbstractInstructionSet,
+            compiler_constants,
+            data_section::{DataId, DataSection, Entry},
+            register_sequencer::RegisterSequencer,
+        },
+        ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
     decl_engine::DeclId,
@@ -828,7 +831,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -847,7 +850,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         "extract_value @ {}",
                         indices
                             .iter()
-                            .map(|idx| format!("{}", idx))
+                            .map(|idx| format!("{idx}"))
                             .collect::<Vec<String>>()
                             .join(",")
                     ),
@@ -1115,7 +1118,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         let indices_str = indices
             .iter()
-            .map(|idx| format!("{}", idx))
+            .map(|idx| format!("{idx}"))
             .collect::<Vec<String>>()
             .join(",");
 
@@ -1140,7 +1143,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         insert_reg,
                         VirtualImmediate12 { value: 0 },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             } else {
@@ -1152,7 +1155,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: insert_offs as u16,
                         },
                     )),
-                    comment: format!("insert_value @ {}", indices_str),
+                    comment: format!("insert_value @ {indices_str}"),
                     owning_span,
                 });
             }
@@ -1169,7 +1172,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                             value: (insert_offs * 8) as u16,
                         },
                     )),
-                    comment: format!("get struct field(s) {} offset", indices_str),
+                    comment: format!("get struct field(s) {indices_str} offset"),
                     owning_span: owning_span.clone(),
                 });
             }
@@ -1617,16 +1620,24 @@ impl<'ir> FuelAsmBuilder<'ir> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(match access_type {
-                StateAccessType::Read => {
-                    VirtualOp::SRWQ(val_reg, was_slot_set_reg, key_reg, number_of_slots_reg)
-                }
-                StateAccessType::Write => {
-                    VirtualOp::SWWQ(key_reg, was_slot_set_reg, val_reg, number_of_slots_reg)
-                }
+                StateAccessType::Read => VirtualOp::SRWQ(
+                    val_reg,
+                    was_slot_set_reg.clone(),
+                    key_reg,
+                    number_of_slots_reg,
+                ),
+                StateAccessType::Write => VirtualOp::SWWQ(
+                    key_reg,
+                    was_slot_set_reg.clone(),
+                    val_reg,
+                    number_of_slots_reg,
+                ),
             }),
             comment: "quad word state access".into(),
             owning_span,
         });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }
@@ -1713,13 +1724,19 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 let key_reg = self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone());
 
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SWW(key_reg, was_slot_set_reg, store_reg)),
+                    opcode: Either::Left(VirtualOp::SWW(
+                        key_reg,
+                        was_slot_set_reg.clone(),
+                        store_reg,
+                    )),
                     comment: "single word state access".into(),
                     owning_span,
                 });
             }
             _ => unreachable!("Unexpected storage locations for key and store_val"),
         }
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
 
         ok((), Vec::new(), Vec::new())
     }

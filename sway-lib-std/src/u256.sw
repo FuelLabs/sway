@@ -5,7 +5,7 @@ use ::convert::From;
 use ::result::Result;
 use ::u128::U128;
 
-/// Left shift a u64 and preserve the overflow amount if any
+/// Left shift a `u64` and preserve the overflow amount if any.
 fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let right_shift_amount = 64 - shift_amount;
     let carry = word >> right_shift_amount;
@@ -13,7 +13,7 @@ fn lsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     (shifted, carry)
 }
 
-/// Right shift a u64 and preserve the overflow amount if any
+/// Right shift a `u64` and preserve the overflow amount if any.
 fn rsh_with_carry(word: u64, shift_amount: u64) -> (u64, u64) {
     let left_shift_amount = 64 - shift_amount;
     let carry = word << left_shift_amount;
@@ -44,14 +44,14 @@ impl From<(u64, u64, u64, u64)> for U256 {
         }
     }
 
-    /// Function for extracting 4 u64s from a U256.
+    /// Function for extracting 4 `u64`s from a `U256`.
     fn into(self) -> (u64, u64, u64, u64) {
         (self.a, self.b, self.c, self.d)
     }
 }
 
 impl core::ops::Eq for U256 {
-    /// Function for comparing 2 `U256`s for equality
+    /// Function for comparing 2 `U256`s for equality.
     fn eq(self, other: Self) -> bool {
         self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d
     }
@@ -80,7 +80,7 @@ impl U256 {
     }
 
     /// Safely downcast to `u64` without loss of precision.
-    /// Returns Err if the number > u64::max()
+    /// Returns `Err` if the `number > u64::max()`.
     ///
     /// ### Examples
     ///
@@ -106,7 +106,7 @@ impl U256 {
     }
 
     /// Safely downcast to `u128` without loss of precision.
-    /// Returns an error if `self > U128::max()`.
+    /// Returns `Err` if `self > U128::max()`.
     ///
     /// ### Examples
     ///
@@ -153,7 +153,7 @@ impl U256 {
     }
 
     /// The largest value that can be represented by this type,
-    /// 2<sup>256</sup> - 1.
+    /// `2<sup>256</sup> - 1`.
     ///
     /// ### Examples
     ///
@@ -189,7 +189,7 @@ impl U256 {
         256
     }
 
-    /// Get 4 64 bit words from a single `U256` value.
+    /// Get four 64-bit words from a single `U256` value.
     ///
     /// ### Examples
     ///
@@ -256,7 +256,7 @@ impl core::ops::BitwiseXor for U256 {
     }
 }
 
-impl core::ops::Shiftable for U256 {
+impl core::ops::Shift for U256 {
     fn lsh(self, shift_amount: u64) -> Self {
         let (word_1, word_2, word_3, word_4) = self.decompose();
         let mut w1 = 0;
@@ -370,7 +370,7 @@ impl core::ops::Subtract for U256 {
         let mut result_b = 0;
         if word_2 < other_word_2 {
             result_b = u64::max() - (other_word_2 - word_2 - 1);
-            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+            // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
             // which we ruled out at the beginning of the function.
             result_a -= 1;
         } else {
@@ -382,7 +382,7 @@ impl core::ops::Subtract for U256 {
             if result_b > 0 {
                 result_b -= 1;
             } else {
-                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
                 // which we ruled out at the beginning of the function.
                 result_a -= 1;
                 result_b = u64::max();
@@ -400,7 +400,7 @@ impl core::ops::Subtract for U256 {
                 if result_b > 0 {
                     result_b -= 1;
                 } else {
-                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs, 
+                    // we assume that result_a > 0, as in case result_a <= 0 means that lhs of the operation is smaller than rhs,
                     // which we ruled out at the beginning of the function.
                     result_a -= 1;
                     result_b = u64::max();
@@ -422,7 +422,7 @@ impl core::ops::Multiply for U256 {
         assert(self.a == 0 || other.a == 0);
 
         if self.a != 0 {
-            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero. 
+            // If `self.a` is non-zero, all words of `other`, except for `d`, should be zero.
             // Otherwise, overflow is guaranteed.
             assert(other.b == 0 && other.c == 0);
             U256::from((self.a * other.d, 0, 0, 0))
@@ -433,7 +433,7 @@ impl core::ops::Multiply for U256 {
             U256::from((other.a * self.d, 0, 0, 0))
         } else {
             if self.b != 0 {
-                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is 
+                // If `self.b` is non-zero, `other.b` has  to be zero. Otherwise, overflow is
                 // guaranteed because:
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`
                 assert(other.b == 0);
@@ -450,8 +450,8 @@ impl core::ops::Multiply for U256 {
                     result_d_d.lower,
                 ))
             } else if other.b != 0 {
-                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is 
-                // guaranteed because: 
+                // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is
+                // guaranteed because:
                 // `other.b * 2 ^ (64 * 2) * self.b * 2 ^ (62 ^ 2) > 2 ^ (64 * 4)`.
                 assert(self.b == 0);
                 let result_b_d = other.b.overflowing_mul(self.d);
