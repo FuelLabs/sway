@@ -1,7 +1,5 @@
 script;
 
-use std::{address::Address, identity::Identity, assert::assert, revert::revert};
-
 const B1 = Address {
     value: 0x0100000000000000000000000000000000000000000000000000000000000010
 };

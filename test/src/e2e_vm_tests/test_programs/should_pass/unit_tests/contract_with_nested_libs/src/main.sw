@@ -19,5 +19,5 @@ fn test_meaning_of_life() {
 
 #[test]
 fn log_test() {
-    std::logging::log(1u32);
+    log(1u32);
 }

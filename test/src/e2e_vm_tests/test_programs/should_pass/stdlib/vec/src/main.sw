@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, hash::sha256, option::Option, revert::revert, vec::Vec};
+use std::hash::sha256;
 
 struct SimpleStruct {
     x: u32,

@@ -1,7 +1,5 @@
 script;
 
-use std::logging::log;
-
 fn main() {
     // ANCHOR: vec_new
     let v: Vec<u64> = Vec::new();

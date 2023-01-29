@@ -1,7 +1,5 @@
 script;
 
-use std::revert::revert;
-
 enum Result<T, E> {
     Ok: T,
     Err: E,
