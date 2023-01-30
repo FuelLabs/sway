@@ -27,7 +27,7 @@ impl PartialEqWithEngines for TyTraitDeclaration {
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.interface_surface.eq(&other.interface_surface, engines)
             && self.methods.eq(&other.methods, engines)
-            && self.supertraits == other.supertraits
+            && self.supertraits.eq(&other.supertraits, engines)
             && self.visibility == other.visibility
             && self.attributes == other.attributes
             && self.span == other.span
