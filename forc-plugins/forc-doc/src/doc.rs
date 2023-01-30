@@ -168,7 +168,7 @@ impl Renderable for Document {
     }
 }
 pub(crate) type ModulePrefix = String;
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
