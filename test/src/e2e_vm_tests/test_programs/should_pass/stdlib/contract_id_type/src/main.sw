@@ -1,7 +1,6 @@
 script;
 
 use std::constants::{BASE_ASSET_ID, ZERO_B256};
-use std::assert::assert;
 use std::contract_id::*;
 
 fn main() -> bool {

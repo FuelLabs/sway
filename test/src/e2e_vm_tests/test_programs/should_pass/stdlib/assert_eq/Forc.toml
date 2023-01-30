@@ -1,8 +1,8 @@
 [project]
-name = "trait_override_bug"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
+name = "assert_eq"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
+std = { path = "../../../../../../../sway-lib-std" }

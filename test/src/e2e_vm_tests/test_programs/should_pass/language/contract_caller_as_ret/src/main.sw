@@ -1,5 +1,4 @@
 contract;
-use std::contract_id::ContractId;
 
 abi MyContract {
     fn test_function() -> bool;
@@ -12,5 +11,5 @@ impl MyContract for Contract {
 }
 
 fn caller(address: ContractId) -> ContractCaller<_> {
-  abi(MyContract, address.value)
+    abi(MyContract, address.value)
 }

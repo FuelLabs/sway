@@ -1,9 +1,10 @@
 script;
+
 use storage_access_abi::*;
-use std::{assert::assert, hash::sha256, revert::revert};
+use std::hash::sha256;
 
 fn main() -> bool {
-    let contract_id = 0xb30cc5cc705b15a337cc8694c1b1ecdefe02153a0511b2a80d2afb2af14f5614;
+    let contract_id = 0x09839a6f4dece7244b80515e7418b09dcd1a2781a87841833ee41265161ee17f;
     let caller = abi(StorageAccess, contract_id);
 
     // Test initializers

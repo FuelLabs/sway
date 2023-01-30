@@ -1,7 +1,5 @@
 script;
 
-use std::revert::revert;
-
 fn main() {
     let x = if true {
         42u64

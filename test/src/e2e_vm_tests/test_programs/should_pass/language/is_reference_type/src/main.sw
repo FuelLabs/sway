@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 struct S {
     a: u64,
 }

@@ -99,7 +99,7 @@ impl fmt::Display for Literal {
                 .collect::<Vec<_>>()
                 .join(", "),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

@@ -587,6 +587,20 @@ impl<'eng> FnCompiler<'eng> {
                     .addr_of(value)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::StateClear => {
+                let key_exp = arguments[0].clone();
+                let number_of_slots_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_clear(key_var, number_of_slots_value)
+                    .add_metadatum(context, span_md_idx))
+            }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
                 let value = self.compile_expression(context, md_mgr, exp)?;
@@ -1624,7 +1638,7 @@ impl<'eng> FnCompiler<'eng> {
                 .type_engine
                 .to_typeinfo(body.return_type, &body.span)
                 .map_err(|ty_err| {
-                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                    CompileError::InternalOwned(format!("{ty_err:?}"), body.span.clone())
                 })?,
             TypeInfo::ContractCaller { .. }
         ) {
@@ -2414,7 +2428,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2523,7 +2537,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2646,7 +2660,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 
@@ -2684,7 +2698,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 

@@ -1,5 +1,4 @@
 script;
-use std::assert::assert;
 
 struct I {
     zero: u64,

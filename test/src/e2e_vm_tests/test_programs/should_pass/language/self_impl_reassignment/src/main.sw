@@ -1,7 +1,5 @@
 script;
 
-use std::{assert::assert, revert::revert};
-
 struct A {
     a: u64,
     b: u64,

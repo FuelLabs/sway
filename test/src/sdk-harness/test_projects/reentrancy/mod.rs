@@ -1,25 +1,26 @@
 use fuels::{prelude::*, tx::ContractId};
 
 abigen!(
-    AttackerContract,
-    "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-abi.json",
-);
-
-abigen!(
-    TargetContract,
-    "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-abi.json",
+    Contract(
+    name = "AttackerContract",
+    abi = "test_artifacts/reentrancy_attacker_contract/out/debug/reentrancy_attacker_contract-abi.json",
+    ),
+    Contract(
+        name = "TargetContract",
+        abi = "test_artifacts/reentrancy_target_contract/out/debug/reentrancy_target_contract-abi.json"
+    ),
 );
 
 #[tokio::test]
 async fn can_detect_reentrancy() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
-    let (_, target_id) = get_target_instance(wallet).await;
+    let (instance, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
         .methods()
         .launch_attack(target_id)
-        .set_contracts(&[target_id.into()])
+        .set_contracts(&[&instance])
         .call()
         .await
         .unwrap();
@@ -32,12 +33,12 @@ async fn can_detect_reentrancy() {
 async fn can_block_reentrancy() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
-    let (_, target_id) = get_target_instance(wallet).await;
+    let (instance, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
         .methods()
         .launch_thwarted_attack_1(target_id)
-        .set_contracts(&[target_id.into()])
+        .set_contracts(&[&instance])
         .call()
         .await
         .unwrap();
@@ -48,12 +49,12 @@ async fn can_block_reentrancy() {
 async fn can_block_cross_function_reentrancy() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
-    let (_, target_id) = get_target_instance(wallet).await;
+    let (instance, target_id) = get_target_instance(wallet).await;
 
     attacker_instance
         .methods()
         .launch_thwarted_attack_2(target_id)
-        .set_contracts(&[target_id.into()])
+        .set_contracts(&[&instance])
         .call()
         .await
         .unwrap();
@@ -63,12 +64,12 @@ async fn can_block_cross_function_reentrancy() {
 async fn can_call_guarded_function() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
-    let (_, target_id) = get_target_instance(wallet).await;
+    let (instance, target_id) = get_target_instance(wallet).await;
 
     let result = attacker_instance
         .methods()
         .innocent_call(target_id)
-        .set_contracts(&[target_id.into()])
+        .set_contracts(&[&instance])
         .call()
         .await
         .unwrap();

@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, constants::BASE_ASSET_ID, contract_id::ContractId};
+use std::constants::BASE_ASSET_ID;
 use balance_test_abi::BalanceTest;
 
 fn main() -> bool {

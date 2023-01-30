@@ -1,9 +1,6 @@
 script;
 
-use std::assert::assert;
-use std::address::Address;
 use std::context::balance_of;
-use std::contract_id::ContractId;
 use std::token::*;
 use test_fuel_coin_abi::*;
 

@@ -1,6 +1,6 @@
 use crate::{
     descriptor::Descriptor,
-    render::{DocLink, ItemBody, ItemHeader, Renderable},
+    render::{split_at_markdown_header, DocLink, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
@@ -49,17 +49,35 @@ impl Document {
         }
     }
     fn preview_opt(&self) -> Option<String> {
-        match &self.raw_attributes {
-            Some(description) => {
-                if description.len() > 200 {
-                    let (first, _) = description.split_at(75);
-                    Some(format!("{}...", first.trim_end()))
-                } else {
-                    Some(description.to_string())
+        const MAX_PREVIEW_CHARS: usize = 100;
+        const CLOSING_PARAGRAPH_TAG: &str = "</p>";
+
+        self.raw_attributes.as_ref().map(|description| {
+            let preview = split_at_markdown_header(description);
+            if preview.chars().count() > MAX_PREVIEW_CHARS
+                && preview.contains(CLOSING_PARAGRAPH_TAG)
+            {
+                match preview.find(CLOSING_PARAGRAPH_TAG) {
+                    Some(index) => {
+                        // We add 1 here to get the index of the char after the closing tag.
+                        // This ensures we retain the closing tag and don't break the html.
+                        let (preview, _) =
+                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.len() + 1);
+                        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
+                            match preview.find('\n') {
+                                Some(index) => preview.split_at(index).0.to_string(),
+                                None => unreachable!("Previous logic prevents this panic"),
+                            }
+                        } else {
+                            preview.to_string()
+                        }
+                    }
+                    None => unreachable!("Previous logic prevents this panic"),
                 }
+            } else {
+                preview.to_string()
             }
-            None => None,
-        }
+        })
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
@@ -190,7 +208,7 @@ impl ModuleInfo {
         let prefix = self.to_path_literal_prefix(location);
         match prefix.is_empty() {
             true => item_name.to_owned(),
-            false => format!("{}::{}", prefix, item_name),
+            false => format!("{prefix}::{item_name}"),
         }
     }
     /// Create a path literal prefix from the module prefixes.
