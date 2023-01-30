@@ -190,9 +190,9 @@ impl TraitMap {
                     type_implementing_for: engines.help_out(type_id).to_string(),
                     second_impl_span: impl_span.clone(),
                 });
-            } else if types_are_subset {
+            } else if types_are_subset && (traits_are_subset || is_impl_self) {
                 for (name, decl_id) in trait_methods.iter() {
-                    if let Some(map_trait_method_decl_id) = map_trait_methods.get(name) {
+                    if map_trait_methods.get(name).is_some() {
                         let method = check!(
                             CompileResult::from(
                                 decl_engine.get_function(decl_id.clone(), impl_span)
@@ -201,30 +201,6 @@ impl TraitMap {
                             warnings,
                             errors
                         );
-                        let map_trait_method = check!(
-                            CompileResult::from(
-                                decl_engine
-                                    .get_function(map_trait_method_decl_id.clone(), impl_span)
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                        if !traits_are_subset
-                            && !is_impl_self
-                            && (method.parameters.len() != map_trait_method.parameters.len()
-                                || method
-                                    .parameters
-                                    .iter()
-                                    .zip(map_trait_method.parameters.iter())
-                                    .any(|(p1, p2)| {
-                                        !are_equal_minus_dynamic_types(
-                                            engines, p1.type_id, p2.type_id,
-                                        )
-                                    }))
-                        {
-                            continue;
-                        }
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
                             func_name: method.name.to_string(),
                             type_implementing_for: engines.help_out(type_id).to_string(),
