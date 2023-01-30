@@ -1,12 +1,6 @@
 contract;
 
-use std::{registers::stack_ptr, storage::{get, store}};
-
-pub enum MediumEnum {
-    One: u64,
-    Two: bool,
-    Three: b256,
-}
+use std::{registers::stack_ptr, storage::{clear, get, store}};
 
 pub struct SmallStruct {
     x: u64,
@@ -54,62 +48,90 @@ const S_15: b256 = 0x00000000000000000000000000000000000000000000000000000000000
 
 abi StorageTest {
     #[storage(write)]
+    fn clear_bool() -> bool;
+    #[storage(write)]
     fn store_bool(value: bool);
     #[storage(read)]
     fn get_bool() -> Option<bool>;
+    #[storage(write)]
+    fn clear_u8() -> bool;
     #[storage(write)]
     fn store_u8(value: u8);
     #[storage(read)]
     fn get_u8() -> Option<u8>;
     #[storage(write)]
+    fn clear_u16() -> bool;
+    #[storage(write)]
     fn store_u16(value: u16);
     #[storage(read)]
     fn get_u16() -> Option<u16>;
+    #[storage(write)]
+    fn clear_u32() -> bool;
     #[storage(write)]
     fn store_u32(value: u32);
     #[storage(read)]
     fn get_u32() -> Option<u32>;
     #[storage(write)]
+    fn clear_u64() -> bool;
+    #[storage(write)]
     fn store_u64(value: u64);
     #[storage(read)]
     fn get_u64() -> Option<u64>;
     #[storage(write)]
+    fn clear_b256() -> bool;
+    #[storage(write)]
     fn store_b256(value: b256);
     #[storage(read)]
     fn get_b256() -> Option<b256>;
-
+    
+    #[storage(write)]
+    fn clear_small_struct() -> bool;
     #[storage(write)]
     fn store_small_struct(value: SmallStruct);
     #[storage(read)]
     fn get_small_struct() -> Option<SmallStruct>;
     #[storage(write)]
+    fn clear_medium_struct() -> bool;
+    #[storage(write)]
     fn store_medium_struct(value: MediumStruct);
     #[storage(read)]
     fn get_medium_struct() -> Option<MediumStruct>;
     #[storage(write)]
+    fn clear_large_struct() -> bool;
+    #[storage(write)]
     fn store_large_struct(value: LargeStruct);
     #[storage(read)]
     fn get_large_struct() -> Option<LargeStruct>;
+    #[storage(write)]
+    fn clear_very_large_struct() -> bool;
     #[storage(write)]
     fn store_very_large_struct(value: VeryLargeStruct);
     #[storage(read)]
     fn get_very_large_struct() -> Option<VeryLargeStruct>;
 
     #[storage(write)]
+    fn clear_enum() -> bool;
+    #[storage(write)]
     fn store_enum(value: StorageEnum);
     #[storage(read)]
     fn get_enum() -> Option<StorageEnum>;
 
+    #[storage(write)]
+    fn clear_tuple() -> bool;
     #[storage(write)]
     fn store_tuple(value: (b256, u8, b256));
     #[storage(read)]
     fn get_tuple() -> Option<(b256, u8, b256)>;
 
     #[storage(write)]
+    fn clear_string() -> bool;
+    #[storage(write)]
     fn store_string(value: str[31]);
     #[storage(read)]
     fn get_string() -> Option<str[31]>;
 
+    #[storage(write)]
+    fn clear_array() -> bool;
     #[storage(write)]
     fn store_array();
     #[storage(read)]
@@ -121,6 +143,11 @@ abi StorageTest {
 
 impl StorageTest for Contract {
     #[storage(write)]
+    fn clear_bool() -> bool {
+        clear::<bool>(S_1)
+    }
+
+    #[storage(write)]
     fn store_bool(value: bool) {
         store(S_1, value);
     }
@@ -128,6 +155,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_bool() -> Option<bool> {
         get::<bool>(S_1)
+    }
+
+    #[storage(write)]
+    fn clear_u8() -> bool {
+        clear::<u8>(S_2)
     }
 
     #[storage(write)]
@@ -141,6 +173,11 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_u16() -> bool {
+        clear::<u16>(S_3)
+    }
+
+    #[storage(write)]
     fn store_u16(value: u16) {
         store(S_3, value);
     }
@@ -148,6 +185,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_u16() -> Option<u16> {
         get::<u16>(S_3)
+    }
+
+    #[storage(write)]
+    fn clear_u32() -> bool {
+        clear::<u32>(S_4)
     }
 
     #[storage(write)]
@@ -161,6 +203,12 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_u64() -> bool {
+        clear::<u64>(S_5)
+    }
+
+
+    #[storage(write)]
     fn store_u64(value: u64) {
         store(S_5, value);
     }
@@ -168,6 +216,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_u64() -> Option<u64> {
         get::<u64>(S_5)
+    }
+
+    #[storage(write)]
+    fn clear_b256() -> bool {
+        clear::<b256>(S_6)
     }
 
     #[storage(write)]
@@ -181,6 +234,11 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_small_struct() -> bool {
+        clear::<SmallStruct>(S_8)
+    }
+
+    #[storage(write)]
     fn store_small_struct(value: SmallStruct) {
         store(S_8, value);
     }
@@ -188,6 +246,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_small_struct() -> Option<SmallStruct> {
         get::<SmallStruct>(S_8)
+    }
+
+    #[storage(write)]
+    fn clear_medium_struct() -> bool {
+        clear::<MediumStruct>(S_9)
     }
 
     #[storage(write)]
@@ -201,6 +264,11 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_large_struct() -> bool {
+        clear::<LargeStruct>(S_9)
+    }
+
+    #[storage(write)]
     fn store_large_struct(value: LargeStruct) {
         store(S_9, value);
     }
@@ -208,6 +276,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_large_struct() -> Option<LargeStruct> {
         get::<LargeStruct>(S_9)
+    }
+
+    #[storage(write)]
+    fn clear_very_large_struct() -> bool {
+        clear::<VeryLargeStruct>(S_10)
     }
 
     #[storage(write)]
@@ -221,6 +294,11 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_enum() -> bool {
+        clear::<StorageEnum>(S_11)
+    }
+
+    #[storage(write)]
     fn store_enum(value: StorageEnum) {
         store(S_11, value);
     }
@@ -228,6 +306,11 @@ impl StorageTest for Contract {
     #[storage(read)]
     fn get_enum() -> Option<StorageEnum> {
         get::<StorageEnum>(S_11)
+    }
+
+    #[storage(write)]
+    fn clear_tuple() -> bool {
+        clear::<(b256, u8, b256)>(S_12)
     }
 
     #[storage(write)]
@@ -241,6 +324,11 @@ impl StorageTest for Contract {
     }
 
     #[storage(write)]
+    fn clear_string() -> bool {
+        clear::<str[31]>(S_13)
+    }
+
+    #[storage(write)]
     fn store_string(value: str[31]) {
         store(S_13, value);
     }
@@ -250,7 +338,11 @@ impl StorageTest for Contract {
         get::<str[31]>(S_13)
     }
 
-    // Passing arrays into contract methods is not working at the moment
+    #[storage(write)]
+    fn clear_array() -> bool {
+        clear::<[b256; 3]>(S_14)
+    }
+
     #[storage(write)]
     fn store_array() {
         let a = [

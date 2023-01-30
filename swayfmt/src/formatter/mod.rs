@@ -1,5 +1,6 @@
 use self::shape::Shape;
 use crate::parse::parse_file;
+use crate::utils::map::comments::{comment_map_from_src, CommentMap};
 use crate::utils::map::{
     comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
 };
@@ -16,6 +17,7 @@ pub(crate) mod shape;
 pub struct Formatter {
     pub shape: Shape,
     pub config: Config,
+    pub comment_map: CommentMap,
 }
 
 pub type FormattedCode = String;
@@ -62,6 +64,9 @@ impl Formatter {
         // which will reduce the number of reallocations
         let mut raw_formatted_code = String::with_capacity(src.len());
 
+        // Collect Span -> Comment mapping from unformatted input.
+        self.comment_map = comment_map_from_src(Arc::from(src))?;
+
         let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
 
@@ -74,6 +79,7 @@ impl Formatter {
             Arc::from(formatted_code.clone()),
             path.clone(),
             &mut formatted_code,
+            &mut self.comment_map,
         )?;
         // Add newline sequences
         handle_newlines(
@@ -1384,7 +1390,7 @@ fn foo() {}
     }
 
     #[test]
-    fn test_comment_between_if_else_overindented() {
+    fn test_comment_between_closing_brace_and_else() {
         let sway_code_to_format = r#"contract;
 
 impl MyContract for Contract {
@@ -1392,7 +1398,12 @@ impl MyContract for Contract {
         if self == PrimaryColor::Blue {
             true
         }
-        // TODO remove this else when exhaustive ifs are checked for
+            // Overindented comment, underindented else
+    else if self == PrimaryColor::Red {
+            true
+        } // Trailing multiline comment should be newlined
+    // Underindented comment
+            // Overindented else
                 else {
             false
         }
@@ -1406,46 +1417,13 @@ impl MyContract for Contract {
         if self == PrimaryColor::Blue {
             true
         }
-        // TODO remove this else when exhaustive ifs are checked for
-        else {
-            false
-        }
-    }
-}
-"#;
-        let mut formatter = Formatter::default();
-        let formatted_sway_code =
-            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-        assert_eq!(correct_sway_code, formatted_sway_code);
-        assert!(test_stability(formatted_sway_code, formatter));
-    }
-
-    #[test]
-    fn test_multiline_comment_between_if_else_underindented() {
-        let sway_code_to_format = r#"contract;
-
-impl MyContract for Contract {
-    fn is_blue() -> bool {
-        if self == PrimaryColor::Blue {
+        // Overindented comment, underindented else
+        else if self == PrimaryColor::Red {
             true
         }
-        // TODO
-        // remove this else when exhaustive ifs are checked for
-    else {
-            false
-        }
-    }
-}"#;
-
-        let correct_sway_code = r#"contract;
-
-impl MyContract for Contract {
-    fn is_blue() -> bool {
-        if self == PrimaryColor::Blue {
-            true
-        }
-        // TODO
-        // remove this else when exhaustive ifs are checked for
+        // Trailing multiline comment should be newlined
+        // Underindented comment
+        // Overindented else
         else {
             false
         }
@@ -1513,6 +1491,33 @@ fn foo() {
         r4: bool
     }
 }
+"#;
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+    #[test]
+    fn test_empty_blocks() {
+        let sway_code_to_format = r#"contract;
+        
+fn contents() {
+    let i = {    };
+    match i {
+    }
+    if true {    }
+}
+fn empty() {}
+"#;
+        let correct_sway_code = r#"contract;
+
+fn contents() {
+    let i = {};
+    match i {}
+    if true {}
+}
+fn empty() {}
 "#;
         let mut formatter = Formatter::default();
         let formatted_sway_code =

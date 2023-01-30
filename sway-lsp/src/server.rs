@@ -1051,11 +1051,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 13
+                  "line": 11
                 },
                 "start": {
                   "character": 0,
-                  "line": 13
+                  "line": 11
                 }
               }
             }),
@@ -1072,11 +1072,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 8
+                  "line": 6
                 },
                 "start": {
                   "character": 0,
-                  "line": 8
+                  "line": 6
                 }
               }
             }),
@@ -1088,11 +1088,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 4
+                  "line": 2
                 },
                 "start": {
                   "character": 3,
-                  "line": 4
+                  "line": 2
                 }
               }
             }),

@@ -88,10 +88,8 @@ pub fn handle_comments(
     formatted_input: Arc<str>,
     path: Option<Arc<PathBuf>>,
     formatted_code: &mut FormattedCode,
+    comment_map: &mut CommentMap,
 ) -> Result<(), FormatterError> {
-    // Collect Span -> Comment mapping from unformatted input.
-    let comment_map = comment_map_from_src(unformatted_input.clone())?;
-
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
     let formatted_module = parse_file(formatted_input, path)?;
 
@@ -115,7 +113,7 @@ pub fn handle_comments(
 /// traversal. When `add_comments` is called we have already parsed the unformatted_code so there is no need
 /// to parse it again.
 fn add_comments(
-    comment_map: CommentMap,
+    comment_map: &mut CommentMap,
     unformatted_module: &Module,
     formatted_module: &Module,
     formatted_code: &mut FormattedCode,
@@ -153,7 +151,7 @@ fn add_comments(
         let comments_found = get_comments_between_spans(
             previous_unformatted_comment_span,
             unformatted_comment_span,
-            &comment_map,
+            comment_map,
             &unformatted_code,
         );
         if !comments_found.is_empty() {

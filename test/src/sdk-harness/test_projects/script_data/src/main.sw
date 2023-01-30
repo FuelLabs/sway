@@ -1,6 +1,5 @@
 script;
 
-use std::logging::log;
 use std::tx::tx_script_data;
 
 fn main() {

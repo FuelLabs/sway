@@ -1,7 +1,5 @@
 script;
 
-use std::logging::log;
-
 struct Foo {
     value: u64
 }

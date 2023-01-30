@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::Range};
 use sway_ast::{
     attribute::Annotated,
     brackets::{Parens, SquareBrackets},
@@ -17,7 +17,7 @@ use sway_types::{Ident, Span, Spanned};
 pub(crate) const STARTING_BYTE_SPAN: ByteSpan = ByteSpan { start: 0, end: 0 };
 
 /// A stripped down version of sway-types::src::Span
-#[derive(PartialEq, Eq, Debug, Clone, Default)]
+#[derive(Eq, PartialEq, Debug, Clone, Default)]
 pub struct ByteSpan {
     // The byte position in the string of the start of the span.
     pub start: usize,
@@ -38,6 +38,12 @@ impl From<Span> for ByteSpan {
 impl ByteSpan {
     pub fn len(&self) -> usize {
         self.end - self.start
+    }
+
+    /// Checks that the ByteSpan referenced by Self is encapsulated
+    /// by a given Range<usize>.
+    pub fn contained_within(&self, range: &Range<usize>) -> bool {
+        range.start < self.start && self.end < range.end
     }
 }
 
