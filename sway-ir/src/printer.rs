@@ -650,6 +650,19 @@ fn instruction_to_doc<'a>(
                         ))
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "state_clear key {}, {}",
+                            namer.name(context, key),
+                            namer.name(context, number_of_slots),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ),
+                ),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
