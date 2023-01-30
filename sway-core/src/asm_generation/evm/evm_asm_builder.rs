@@ -17,10 +17,6 @@ use sway_types::Span;
 
 use etk_asm::{asm::Assembler, ops::*};
 
-mod ethabi {
-    pub use fuel_ethabi::*;
-}
-
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
 /// set in the init byte array which is a field that can contain EVM bytecode

@@ -4551,6 +4551,8 @@ dependencies = [
  "im",
  "itertools",
  "lazy_static",
+ "pest",
+ "pest_derive",
  "petgraph",
  "rustc-hash",
  "serde",
