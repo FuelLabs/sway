@@ -8,13 +8,13 @@ use crate::{
     context::Context,
     error::IrError,
     function::{Function, FunctionContent},
-    instruction::{FuelVmInstruction, Instruction, Predicate},
+    instruction::{Instruction, Predicate},
     irtype::Type,
     local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     value::{Value, ValueDatum},
-    BinaryOpKind, BlockArgument, BranchToWithArgs, TypeOption,
+    BinaryOpKind, BlockArgument, BranchToWithArgs, FuelVmInstruction, TypeOption,
 };
 
 impl Context {
@@ -159,6 +159,7 @@ impl<'a> InstructionVerifier<'a> {
                         gas,
                         ..
                     } => self.verify_contract_call(params, coins, asset_id, gas)?,
+                    Instruction::EVM(_evm_instr) => todo!(),
                     Instruction::ExtractElement {
                         array,
                         ty,

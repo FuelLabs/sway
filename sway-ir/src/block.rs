@@ -15,8 +15,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     context::Context,
     error::IrError,
+    fuel_vm_instructions::FuelVmInstruction,
     function::Function,
-    instruction::{FuelVmInstruction, Instruction, InstructionInserter, InstructionIterator},
+    instruction::{Instruction, InstructionInserter, InstructionIterator},
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
     BranchToWithArgs, Type,

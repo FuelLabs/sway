@@ -10,16 +10,12 @@ use crate::{
     error::*,
     metadata::MetadataManager,
 };
-
+use etk_ops::london::*;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::Span;
 
 use etk_asm::{asm::Assembler, ops::*};
-
-mod ethabi {
-    pub use fuel_ethabi::*;
-}
 
 /// A smart contract is created by sending a transaction with an empty "to" field.
 /// When this is done, the Ethereum virtual machine (EVM) runs the bytecode which is
@@ -64,6 +60,9 @@ pub struct EvmAsmBuilder<'ir> {
 
     // Monotonically increasing unique identifier for label generation.
     label_idx: usize,
+
+    // In progress EVM asm section.
+    pub(super) cur_section: Option<EvmAsmSection>,
 }
 
 #[derive(Default, Debug)]
@@ -77,12 +76,12 @@ impl EvmAsmSection {
         Self::default()
     }
 
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> usize {
         let mut asm = Assembler::new();
         if asm.push_all(self.ops.clone()).is_err() {
             panic!("Could not size EVM assembly section");
         }
-        asm.take().len() as u32
+        asm.take().len()
     }
 }
 
@@ -112,7 +111,7 @@ impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
 #[allow(dead_code)]
 impl<'ir> EvmAsmBuilder<'ir> {
     pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
-        let mut b = EvmAsmBuilder {
+        Self {
             program_kind,
             sections: Vec::new(),
             func_label_map: HashMap::new(),
@@ -120,10 +119,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
             context,
             md_mgr: MetadataManager::default(),
             label_idx: 0,
-        };
-        let s = b.generate_function();
-        b.sections.push(s);
-        b
+            cur_section: None,
+        }
     }
 
     pub fn finalize(&self) -> AsmBuilderResult {
@@ -138,8 +135,10 @@ impl<'ir> EvmAsmBuilder<'ir> {
             global_abi.append(&mut section.abi.clone());
 
             if it.peek().is_some() {
-                size += AbstractOp::Op(Op::Invalid).size().unwrap();
-                global_ops.push(AbstractOp::Op(Op::Invalid));
+                size += AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid))
+                    .size()
+                    .unwrap();
+                global_ops.push(AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid)));
             }
         }
 
@@ -161,8 +160,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn generate_constructor(
         &self,
         is_payable: bool,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) -> EvmAsmSection {
         // For more details and explanations see:
         // https://medium.com/@hayeah/diving-into-the-ethereum-vm-part-5-the-smart-contract-creation-process-cb7b6133b855.
@@ -186,24 +185,31 @@ impl<'ir> EvmAsmBuilder<'ir> {
             //   jumpdest
             //   pop
 
-            s.ops.push(AbstractOp::new(Op::CallValue).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::IsZero).unwrap());
+            s.ops.push(AbstractOp::new(Op::CallValue(CallValue)));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::IsZero(IsZero)));
             let tag_label = "tag_1";
+            s.ops.push(AbstractOp::new(Op::Push1(Push1(Imm::with_label(
+                tag_label,
+            )))));
+            s.ops.push(AbstractOp::new(Op::JumpI(JumpI)));
             s.ops
-                .push(AbstractOp::Op(Op::with_label(Op::Push1(()), tag_label)));
-            s.ops.push(AbstractOp::new(Op::JumpI).unwrap());
-            s.ops
-                .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+                .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                    Expression::Terminal(0x00.into()),
+                )))));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::Revert(Revert)));
 
             s.ops.push(AbstractOp::Label("tag_1".into()));
-            s.ops.push(AbstractOp::new(Op::JumpDest).unwrap());
-            s.ops.push(AbstractOp::Op(Op::Pop));
+            s.ops.push(AbstractOp::new(Op::JumpDest(JumpDest)));
+            s.ops.push(AbstractOp::Op(Op::Pop(Pop)));
         }
 
         self.copy_contract_code_to_memory(&mut s, data_size, data_offset);
+
+        s.abi.push(ethabi::operation::Operation::Constructor(
+            ethabi::Constructor { inputs: vec![] },
+        ));
 
         s
     }
@@ -211,8 +217,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn copy_contract_code_to_memory(
         &self,
         s: &mut EvmAsmSection,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) {
         // Copy contract code into memory, and return.
         //   push1 dataSize
@@ -225,42 +231,21 @@ impl<'ir> EvmAsmBuilder<'ir> {
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_size.into(),
         ))));
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+        s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_offset.into(),
         ))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::CodeCopy));
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::Return));
-    }
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::CodeCopy(CodeCopy)));
 
-    fn generate_function(&mut self) -> EvmAsmSection {
-        let mut s = EvmAsmSection::new();
-
-        // push1 0x80 # selector("conduct_auto(uint256,uint256,uint256)")
-        // push1 0x40
-        // mstore
-        // push1 0x00
-        // dup1
-        // revert
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-        s.ops.push(AbstractOp::new(Op::Revert).unwrap());
-
-        s.abi.push(ethabi::operation::Operation::Constructor(
-            ethabi::Constructor { inputs: vec![] },
-        ));
-
-        s
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::Return(Return)));
     }
 
     fn setup_free_memory_pointer(&self, s: &mut EvmAsmSection) {
@@ -276,11 +261,16 @@ impl<'ir> EvmAsmBuilder<'ir> {
         //   push1 0x80
         //   push1 0x40
         //   mstore
+
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        s.ops.push(AbstractOp::new(Op::MStore(MStore)));
     }
 
     fn empty_span() -> Span {
@@ -341,6 +331,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
                     gas,
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
+                Instruction::EVM(evm_instr) => self.compile_evm_instruction(evm_instr),
+
                 Instruction::ExtractElement {
                     array,
                     ty,
@@ -555,7 +547,18 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
-        todo!();
+        if ret_type.is_unit(self.context) {
+            // Unit returns should always be zero, although because they can be omitted from
+            // functions, the register is sometimes uninitialized. Manually return zero in this
+            // case.
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Op(Op::Return(Return)));
+        } else {
+            todo!();
+        }
     }
 
     fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {
@@ -615,6 +618,87 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+        self.cur_section = Some(EvmAsmSection::new());
+
+        // push1 0x80
+        // push1 0x40
+        // mstore
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::MStore(MStore)));
+
+        //self.init_locals(function);
+        let func_is_entry = function.is_entry(self.context);
+
+        // Compile instructions.
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        for block in function.block_iter(self.context) {
+            self.insert_block_label(block);
+            for instr_val in block.instruction_iter(self.context) {
+                check!(
+                    self.compile_instruction(&instr_val, func_is_entry),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+        }
+
+        // push1 0x00
+        // dup1
+        // revert
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Dup1(Dup1)));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Revert(Revert)));
+
+        // Generate the ABI.
+        #[allow(deprecated)]
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .abi
+            .push(ethabi::operation::Operation::Function(ethabi::Function {
+                name: function.get_name(self.context).to_string(),
+                inputs: vec![],
+                outputs: vec![],
+                constant: None,
+                state_mutability: ethabi::StateMutability::NonPayable,
+            }));
+
+        self.sections.push(self.cur_section.take().unwrap());
+        self.cur_section = None;
+
         ok((), vec![], vec![])
     }
 
@@ -624,5 +708,1071 @@ impl<'ir> EvmAsmBuilder<'ir> {
 
     pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
         todo!();
+    }
+
+    fn compile_evm_instruction(&mut self, evm_instr: &EVMInstruction) {
+        match evm_instr {
+            EVMInstruction::Stop => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Stop(Stop)));
+            }
+            EVMInstruction::Add => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Add(Add)));
+            }
+            EVMInstruction::Mul => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Mul(Mul)));
+            }
+            EVMInstruction::Sub => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Sub(Sub)));
+            }
+            EVMInstruction::Div => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Div(Div)));
+            }
+            EVMInstruction::SDiv => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SDiv(SDiv)));
+            }
+            EVMInstruction::Mod => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Mod(Mod)));
+            }
+            EVMInstruction::SMod => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SMod(SMod)));
+            }
+            EVMInstruction::AddMod => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::AddMod(AddMod)));
+            }
+            EVMInstruction::MulMod => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::MulMod(MulMod)));
+            }
+            EVMInstruction::Exp => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Exp(Exp)));
+            }
+            EVMInstruction::SignExtend => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SignExtend(SignExtend)));
+            }
+            EVMInstruction::Lt => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Lt(Lt)));
+            }
+            EVMInstruction::Gt => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Gt(Gt)));
+            }
+            EVMInstruction::SLt => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SLt(SLt)));
+            }
+            EVMInstruction::SGt => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SGt(SGt)));
+            }
+            EVMInstruction::Eq => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Eq(Eq)));
+            }
+            EVMInstruction::IsZero => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::IsZero(IsZero)));
+            }
+            EVMInstruction::And => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::And(And)));
+            }
+            EVMInstruction::Or => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Or(Or)));
+            }
+            EVMInstruction::Xor => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Xor(Xor)));
+            }
+            EVMInstruction::Not => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Not(Not)));
+            }
+            EVMInstruction::Byte => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Byte(Byte)));
+            }
+            EVMInstruction::Shl => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Shl(Shl)));
+            }
+            EVMInstruction::Shr => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Shr(Shr)));
+            }
+            EVMInstruction::Sar => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Sar(Sar)));
+            }
+            EVMInstruction::SHA3 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Keccak256(Keccak256)));
+            }
+            EVMInstruction::Address => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Address(Address)));
+            }
+            EVMInstruction::Balance => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Balance(Balance)));
+            }
+            EVMInstruction::Origin => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Origin(Origin)));
+            }
+            EVMInstruction::Caller => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Caller(Caller)));
+            }
+            EVMInstruction::CallValue => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CallValue(CallValue)));
+            }
+            EVMInstruction::CallDataLoad => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CallDataLoad(CallDataLoad)));
+            }
+            EVMInstruction::CallDataSize => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CallDataSize(CallDataSize)));
+            }
+            EVMInstruction::CallDataCopy => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CallDataCopy(CallDataCopy)));
+            }
+            EVMInstruction::CodeSize => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CodeSize(CodeSize)));
+            }
+            EVMInstruction::CodeCopy => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CodeCopy(CodeCopy)));
+            }
+            EVMInstruction::GasPrice => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::GasPrice(GasPrice)));
+            }
+            EVMInstruction::ExtCodeSize => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ExtCodeSize(ExtCodeSize)));
+            }
+            EVMInstruction::ExtCodeCopy => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ExtCodeCopy(ExtCodeCopy)));
+            }
+            EVMInstruction::ReturnDataSize => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ReturnDataSize(ReturnDataSize)));
+            }
+            EVMInstruction::ReturnDataCopy => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ReturnDataCopy(ReturnDataCopy)));
+            }
+            EVMInstruction::ExtCodeHash => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ExtCodeHash(ExtCodeHash)));
+            }
+            EVMInstruction::BlockHash => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::BlockHash(BlockHash)));
+            }
+            EVMInstruction::Coinbase => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Coinbase(Coinbase)));
+            }
+            EVMInstruction::Timestamp => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Timestamp(Timestamp)));
+            }
+            EVMInstruction::Number => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Number(Number)));
+            }
+            EVMInstruction::PrevRANDAO => {
+                todo!("not yet available in ETK")
+            }
+            EVMInstruction::GasLimit => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::GasLimit(GasLimit)));
+            }
+            EVMInstruction::ChainId => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::ChainId(ChainId)));
+            }
+            EVMInstruction::SelfBalance => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SelfBalance(SelfBalance)));
+            }
+            EVMInstruction::BaseFee => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::BaseFee(BaseFee)));
+            }
+            EVMInstruction::Pop => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Pop(Pop)));
+            }
+            EVMInstruction::MLoad => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::MLoad(MLoad)));
+            }
+            EVMInstruction::MStore => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::MStore(MStore)));
+            }
+            EVMInstruction::MStore8 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::MStore8(MStore8)));
+            }
+            EVMInstruction::SLoad => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SLoad(SLoad)));
+            }
+            EVMInstruction::SStore => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SStore(SStore)));
+            }
+            EVMInstruction::Jump => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Jump(Jump)));
+            }
+            EVMInstruction::JumpI => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::JumpI(JumpI)));
+            }
+            EVMInstruction::PC => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::GetPc(GetPc)));
+            }
+            EVMInstruction::MSize => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::MSize(MSize)));
+            }
+            EVMInstruction::Gas => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Gas(Gas)));
+            }
+            EVMInstruction::JumpDest => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::JumpDest(JumpDest)));
+            }
+            EVMInstruction::Push1(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push1(Push1(imm))));
+            }
+            EVMInstruction::Push2(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push2(Push2(imm))));
+            }
+            EVMInstruction::Push3(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push3(Push3(imm))));
+            }
+            EVMInstruction::Push4(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push4(Push4(imm))));
+            }
+            EVMInstruction::Push5(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push5(Push5(imm))));
+            }
+            EVMInstruction::Push6(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push6(Push6(imm))));
+            }
+            EVMInstruction::Push7(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push7(Push7(imm))));
+            }
+            EVMInstruction::Push8(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push8(Push8(imm))));
+            }
+            EVMInstruction::Push9(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push9(Push9(imm))));
+            }
+            EVMInstruction::Push10(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push10(Push10(imm))));
+            }
+            EVMInstruction::Push11(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push11(Push11(imm))));
+            }
+            EVMInstruction::Push12(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push12(Push12(imm))));
+            }
+            EVMInstruction::Push13(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push13(Push13(imm))));
+            }
+            EVMInstruction::Push14(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push14(Push14(imm))));
+            }
+            EVMInstruction::Push15(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push15(Push15(imm))));
+            }
+            EVMInstruction::Push16(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push16(Push16(imm))));
+            }
+            EVMInstruction::Push17(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push17(Push17(imm))));
+            }
+            EVMInstruction::Push18(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push18(Push18(imm))));
+            }
+            EVMInstruction::Push19(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push19(Push19(imm))));
+            }
+            EVMInstruction::Push20(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push20(Push20(imm))));
+            }
+            EVMInstruction::Push21(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push21(Push21(imm))));
+            }
+            EVMInstruction::Push22(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push22(Push22(imm))));
+            }
+            EVMInstruction::Push23(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push23(Push23(imm))));
+            }
+            EVMInstruction::Push24(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push24(Push24(imm))));
+            }
+            EVMInstruction::Push25(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push25(Push25(imm))));
+            }
+            EVMInstruction::Push26(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push26(Push26(imm))));
+            }
+            EVMInstruction::Push27(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push27(Push27(imm))));
+            }
+            EVMInstruction::Push28(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push28(Push28(imm))));
+            }
+            EVMInstruction::Push29(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push29(Push29(imm))));
+            }
+            EVMInstruction::Push30(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push30(Push30(imm))));
+            }
+            EVMInstruction::Push31(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push31(Push31(imm))));
+            }
+            EVMInstruction::Push32(value) => {
+                let imm = self.ir_value_to_immediate(value);
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Push32(Push32(imm))));
+            }
+            EVMInstruction::Dup1 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup1(Dup1)));
+            }
+            EVMInstruction::Dup2 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup2(Dup2)));
+            }
+            EVMInstruction::Dup3 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup3(Dup3)));
+            }
+            EVMInstruction::Dup4 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup4(Dup4)));
+            }
+            EVMInstruction::Dup5 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup5(Dup5)));
+            }
+            EVMInstruction::Dup6 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup6(Dup6)));
+            }
+            EVMInstruction::Dup7 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup7(Dup7)));
+            }
+            EVMInstruction::Dup8 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup8(Dup8)));
+            }
+            EVMInstruction::Dup9 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup9(Dup9)));
+            }
+            EVMInstruction::Dup10 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup10(Dup10)));
+            }
+            EVMInstruction::Dup11 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup11(Dup11)));
+            }
+            EVMInstruction::Dup12 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup12(Dup12)));
+            }
+            EVMInstruction::Dup13 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup13(Dup13)));
+            }
+            EVMInstruction::Dup14 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup14(Dup14)));
+            }
+            EVMInstruction::Dup15 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup15(Dup15)));
+            }
+            EVMInstruction::Dup16 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Dup16(Dup16)));
+            }
+            EVMInstruction::Swap1 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap1(Swap1)));
+            }
+            EVMInstruction::Swap2 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap2(Swap2)));
+            }
+            EVMInstruction::Swap3 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap3(Swap3)));
+            }
+            EVMInstruction::Swap4 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap4(Swap4)));
+            }
+            EVMInstruction::Swap5 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap5(Swap5)));
+            }
+            EVMInstruction::Swap6 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap6(Swap6)));
+            }
+            EVMInstruction::Swap7 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap7(Swap7)));
+            }
+            EVMInstruction::Swap8 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap8(Swap8)));
+            }
+            EVMInstruction::Swap9 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap9(Swap9)));
+            }
+            EVMInstruction::Swap10 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap10(Swap10)));
+            }
+            EVMInstruction::Swap11 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap11(Swap11)));
+            }
+            EVMInstruction::Swap12 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap12(Swap12)));
+            }
+            EVMInstruction::Swap13 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap13(Swap13)));
+            }
+            EVMInstruction::Swap14 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap14(Swap14)));
+            }
+            EVMInstruction::Swap15 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap15(Swap15)));
+            }
+            EVMInstruction::Swap16 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Swap16(Swap16)));
+            }
+            EVMInstruction::Log0 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Log0(Log0)));
+            }
+            EVMInstruction::Log1 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Log1(Log1)));
+            }
+            EVMInstruction::Log2 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Log2(Log2)));
+            }
+            EVMInstruction::Log3 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Log3(Log3)));
+            }
+            EVMInstruction::Log4 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Log4(Log4)));
+            }
+            EVMInstruction::Create => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Create(Create)));
+            }
+            EVMInstruction::Call => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Call(Call)));
+            }
+            EVMInstruction::CallCode => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::CallCode(CallCode)));
+            }
+            EVMInstruction::Return => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Return(Return)));
+            }
+            EVMInstruction::DelegateCall => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::DelegateCall(DelegateCall)));
+            }
+            EVMInstruction::Create2 => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Create2(Create2)));
+            }
+            EVMInstruction::StaticCall => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::StaticCall(StaticCall)));
+            }
+            EVMInstruction::Revert => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Revert(Revert)));
+            }
+            EVMInstruction::Invalid => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::Invalid(Invalid)));
+            }
+            EVMInstruction::SelfDestruct => {
+                self.cur_section
+                    .as_mut()
+                    .unwrap()
+                    .ops
+                    .push(AbstractOp::new(Op::SelfDestruct(SelfDestruct)));
+            }
+        }
+    }
+
+    pub(super) fn insert_block_label(&mut self, block: Block) {
+        if &block.get_label(self.context) != "entry" {
+            let label = self.block_to_label(&block);
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Label(label.to_string()));
+        }
+    }
+
+    fn block_to_label(&mut self, block: &Block) -> Label {
+        self.block_label_map.get(block).cloned().unwrap_or_else(|| {
+            let label = self.get_label();
+            self.block_label_map.insert(*block, label);
+            label
+        })
+    }
+
+    fn ir_value_to_immediate(&self, value: &Value) -> Imm {
+        match value.get_constant(self.context) {
+            Some(constant) => Imm::with_expression(Expression::Terminal(Terminal::Number(
+                match constant.value {
+                    ConstantValue::Uint(value) => value,
+                    _ => panic!("cannot convert non Uint IR value to EVM immediate value"),
+                }
+                .into(),
+            ))),
+            None => panic!("cannot convert non-constant IR value to EVM immediate value"),
+        }
     }
 }

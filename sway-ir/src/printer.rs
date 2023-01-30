@@ -12,11 +12,11 @@ use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
     function::{Function, FunctionContent},
-    instruction::{FuelVmInstruction, Instruction, Predicate, Register},
+    instruction::{Instruction, Predicate, Register},
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    BinaryOpKind, BlockArgument,
+    BinaryOpKind, BlockArgument, FuelVmInstruction,
 };
 
 #[derive(Debug)]
@@ -525,6 +525,7 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            Instruction::EVM(_evm_instr) => todo!(),
             Instruction::ExtractElement {
                 array,
                 ty,

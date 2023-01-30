@@ -199,6 +199,14 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     gas,
                     ..
                 } => self.compile_contract_call(instr_val, params, coins, asset_id, gas),
+                Instruction::EVM(_evm_instr) => {
+                    errors.push(CompileError::Internal(
+                        "Invalid EVM IR instruction provided to the Fuel VM code gen.",
+                        self.md_mgr
+                            .val_to_span(self.context, *instr_val)
+                            .unwrap_or_else(Self::empty_span),
+                    ));
+                }
                 Instruction::ExtractElement {
                     array,
                     ty,

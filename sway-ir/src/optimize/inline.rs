@@ -12,12 +12,12 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::{FuelVmInstruction, Instruction},
+    instruction::Instruction,
     irtype::Type,
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument, NamedPass,
+    BlockArgument, FuelVmInstruction, NamedPass,
 };
 
 pub struct InlinePass;
@@ -392,6 +392,7 @@ fn inline_instruction(
                 map_value(asset_id),
                 map_value(gas),
             ),
+            Instruction::EVM(_evm_instr) => todo!(),
             Instruction::ExtractElement {
                 array,
                 ty,

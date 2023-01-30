@@ -11,11 +11,11 @@ use rustc_hash::FxHashMap;
 use crate::{
     constant::Constant,
     context::Context,
-    instruction::{FuelVmInstruction, Instruction},
+    instruction::Instruction,
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
-    BlockArgument,
+    BlockArgument, FuelVmInstruction,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
