@@ -4,9 +4,13 @@ use sway_error::{
     type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Span, Spanned};
 
-use crate::{engine_threading::*, language::ty, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::{ty, CallPath},
+    type_system::*,
+};
 
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
@@ -116,13 +120,7 @@ impl<'a> Unifier<'a> {
                     type_parameters: etps,
                     fields: efs,
                 },
-            ) => self.unify_structs(
-                received,
-                expected,
-                span,
-                (rn.suffix, rpts, rfs),
-                (en.suffix, etps, efs),
-            ),
+            ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
             // Let empty enums to coerce to any other type. This is useful for Never enum.
             (
                 Enum {
@@ -141,13 +139,7 @@ impl<'a> Unifier<'a> {
                     type_parameters: etps,
                     variant_types: evs,
                 },
-            ) => self.unify_enums(
-                received,
-                expected,
-                span,
-                (rn.suffix, rtps, rvs),
-                (en.suffix, etps, evs),
-            ),
+            ) => self.unify_enums(received, expected, span, (rn, rtps, rvs), (en, etps, evs)),
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
@@ -347,8 +339,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -396,8 +388,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];
