@@ -32,7 +32,7 @@ cargo build --path ~/sway/forc-plugins/forc-fmt/Cargo.toml && mv ~/sway/target/d
 
 You should test your changes both using the test suite as well as manually.
 
-Before you make changes, lets ensure that the test suite runs fine:
+Before you make changes, let's ensure that the test suite runs fine:
 
 ```sh
 # from the root
@@ -44,7 +44,7 @@ to ensure that there isn't regression introduced along with new changes. If your
 a new feature, please also include new tests accompanying your PR where possible. You may look at [formatter/mod.rs](https://github.com/FuelLabs/sway/blob/master/swayfmt/src/formatter/mod.rs)
 for examples on how you may test your changes.
 
-To manually test the formatter, Be sure to have `forc` installed then move into a Sway project directory and execute the binary:
+To manually test the formatter, be sure to have `forc` installed then move into a Sway project directory and execute the binary:
 
 ```sh
 forc fmt
