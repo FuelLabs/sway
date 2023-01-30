@@ -198,7 +198,7 @@ impl KeywordDocs {
             ///
             /// Instantiating enum variants involves explicitly using the enum's name as its namespace,
             /// followed by one of its variants. `SimpleEnum::SecondVariant` would be an example from above.
-            /// When data follows along with a variant, such as with rust's built-in [`Option`] type, the data
+            /// When data follows along with a variant, such as with sway's built-in [`Option`] type, the data
             /// is added as the type describes, for example `Option::Some(123)`. The same follows with
             /// struct-like variants, with things looking like `ComplexEnum::LotsOfThings { usual_struct_stuff:
             /// true, blah: 245, }`. Empty Enums are similar to [`!`] in that they cannot be
@@ -232,8 +232,8 @@ impl KeywordDocs {
             /// type most of the time. With the exception of this particularity, `self` is
             /// used much like any other parameter:
             ///
-            /// ```
-            /// struct Foo(i32);
+            /// ```sway
+            /// struct Foo(u32);
             ///
             /// impl Foo {
             ///     // No `self`.
@@ -242,7 +242,7 @@ impl KeywordDocs {
             ///     }
             ///
             ///     // Borrowing `self`.
-            ///     fn value(&self) -> i32 {
+            ///     fn value(&self) -> u32 {
             ///         self.0
             ///     }
             ///
@@ -275,7 +275,7 @@ impl KeywordDocs {
             /// }
             ///
             /// struct Thing {
-            ///     foo: i32,
+            ///     foo: u32,
             /// }
             ///
             /// impl Thing {
@@ -328,159 +328,22 @@ impl KeywordDocs {
             /// using [`impl`] `Trait` [`for`] `Type`:
             ///
             /// ```sway
-            /// trait Zero {
-            ///     const ZERO: Self;
-            ///     fn is_zero(&self) -> bool;
+            /// trait Setter<T> {
+            ///     fn set(self, new_value: T) -> Self;
             /// }
             ///
-            /// impl Zero for i32 {
-            ///     const ZERO: Self = 0;
+            /// struct FooBarData<T> {
+            ///     value: T
+            /// }
             ///
-            ///     fn is_zero(&self) -> bool {
-            ///         *self == Self::ZERO
+            /// impl<T> Setter<T> for FooBarData<T> {
+            ///     fn set(self, new_value: T) -> Self {
+            ///         FooBarData {
+            ///             value: new_value,
+            ///         }
             ///     }
             /// }
-            ///
-            /// assert_eq!(i32::ZERO, 0);
-            /// assert!(i32::ZERO.is_zero());
-            /// assert!(!4.is_zero());
             /// ```
-            ///
-            /// With an associated type:
-            ///
-            /// ```rust
-            /// trait Builder {
-            ///     type Built;
-            ///
-            ///     fn build(&self) -> Self::Built;
-            /// }
-            /// ```
-            ///
-            /// Traits can be generic, with constraints or without:
-            ///
-            /// ```rust
-            /// trait MaybeFrom<T> {
-            ///     fn maybe_from(value: T) -> Option<Self>
-            ///     where
-            ///         Self: Sized;
-            /// }
-            /// ```
-            ///
-            /// Traits can build upon the requirements of other traits. In the example
-            /// below `Iterator` is a **supertrait** and `ThreeIterator` is a **subtrait**:
-            ///
-            /// ```rust
-            /// trait ThreeIterator: std::iter::Iterator {
-            ///     fn next_three(&mut self) -> Option<[Self::Item; 3]>;
-            /// }
-            /// ```
-            ///
-            /// Traits can be used in functions, as parameters:
-            ///
-            /// ```rust
-            /// # #![allow(dead_code)]
-            /// fn debug_iter<I: Iterator>(it: I) where I::Item: std::fmt::Debug {
-            ///     for elem in it {
-            ///         println!("{elem:#?}");
-            ///     }
-            /// }
-            ///
-            /// // u8_len_1, u8_len_2 and u8_len_3 are equivalent
-            ///
-            /// fn u8_len_1(val: impl Into<Vec<u8>>) -> usize {
-            ///     val.into().len()
-            /// }
-            ///
-            /// fn u8_len_2<T: Into<Vec<u8>>>(val: T) -> usize {
-            ///     val.into().len()
-            /// }
-            ///
-            /// fn u8_len_3<T>(val: T) -> usize
-            /// where
-            ///     T: Into<Vec<u8>>,
-            /// {
-            ///     val.into().len()
-            /// }
-            /// ```
-            ///
-            /// Or as return types:
-            ///
-            /// ```rust
-            /// # #![allow(dead_code)]
-            /// fn from_zero_to(v: u8) -> impl Iterator<Item = u8> {
-            ///     (0..v).into_iter()
-            /// }
-            /// ```
-            ///
-            /// The use of the [`impl`] keyword in this position allows the function writer
-            /// to hide the concrete type as an implementation detail which can change
-            /// without breaking user's code.
-            ///
-            /// # Trait objects
-            ///
-            /// A *trait object* is an opaque value of another type that implements a set of
-            /// traits. A trait object implements all specified traits as well as their
-            /// supertraits (if any).
-            ///
-            /// The syntax is the following: `dyn BaseTrait + AutoTrait1 + ... AutoTraitN`.
-            /// Only one `BaseTrait` can be used so this will not compile:
-            ///
-            /// ```rust,compile_fail,E0225
-            /// trait A {}
-            /// trait B {}
-            ///
-            /// let _: Box<dyn A + B>;
-            /// ```
-            ///
-            /// Neither will this, which is a syntax error:
-            ///
-            /// ```rust,compile_fail
-            /// trait A {}
-            /// trait B {}
-            ///
-            /// let _: Box<dyn A + dyn B>;
-            /// ```
-            ///
-            /// On the other hand, this is correct:
-            ///
-            /// ```rust
-            /// trait A {}
-            ///
-            /// let _: Box<dyn A + Send + Sync>;
-            /// ```
-            ///
-            /// The [Reference][Ref-Trait-Objects] has more information about trait objects,
-            /// their limitations and the differences between editions.
-            ///
-            /// # Unsafe traits
-            ///
-            /// Some traits may be unsafe to implement. Using the [`unsafe`] keyword in
-            /// front of the trait's declaration is used to mark this:
-            ///
-            /// ```rust
-            /// unsafe trait UnsafeTrait {}
-            ///
-            /// unsafe impl UnsafeTrait for i32 {}
-            /// ```
-            ///
-            /// # Differences between the 2015 and 2018 editions
-            ///
-            /// In the 2015 edition the parameters pattern was not needed for traits:
-            ///
-            /// ```rust,edition2015
-            /// # #![allow(anonymous_parameters)]
-            /// trait Tr {
-            ///     fn f(i32);
-            /// }
-            /// ```
-            ///
-            /// This behavior is no longer valid in edition 2018.
-            ///
-            /// [`for`]: keyword.for.html
-            /// [`impl`]: keyword.impl.html
-            /// [`unsafe`]: keyword.unsafe.html
-            /// [Ref-Traits]: ../reference/items/traits.html
-            /// [Ref-Trait-Objects]: ../reference/types/trait-object.html
             mod trait_keyword {}
         };
 
@@ -493,209 +356,45 @@ impl KeywordDocs {
             ///
             /// Functions and consts can both be defined in an implementation. A function defined in an
             /// `impl` block can be standalone, meaning it would be called like `Foo::bar()`. If the function
-            /// takes `self`, `&self`, or `&mut self` as its first argument, it can also be called using
+            /// takes `self`, or `ref mut self` as its first argument, it can also be called using
             /// method-call syntax, a familiar feature to any object oriented programmer, like `foo.bar()`.
             ///
-            /// ```rust
+            /// ```sway
             /// struct Example {
-            ///     number: i32,
+            ///     number: u32,
             /// }
             ///
             /// impl Example {
-            ///     fn boo() {
-            ///         println!("boo! Example::boo() was called!");
-            ///     }
-            ///
-            ///     fn answer(&mut self) {
+            ///     fn answer(ref mut self) {
             ///         self.number += 42;
             ///     }
             ///
-            ///     fn get_number(&self) -> i32 {
+            ///     fn get_number(self) -> u32 {
             ///         self.number
             ///     }
             /// }
-            ///
-            /// trait Thingy {
-            ///     fn do_thingy(&self);
-            /// }
-            ///
-            /// impl Thingy for Example {
-            ///     fn do_thingy(&self) {
-            ///         println!("doing a thing! also, number is {}!", self.number);
-            ///     }
-            /// }
             /// ```
-            ///
-            /// For more information on implementations, see the [Rust book][book1] or the [Reference].
-            ///
-            /// The other use of the `impl` keyword is in `impl Trait` syntax, which can be seen as a shorthand
-            /// for "a concrete type that implements this trait". Its primary use is working with closures,
-            /// which have type definitions generated at compile time that can't be simply typed out.
-            ///
-            /// ```rust
-            /// fn thing_returning_closure() -> impl Fn(i32) -> bool {
-            ///     println!("here's a closure for you!");
-            ///     |x: i32| x % 3 == 0
-            /// }
-            /// ```
-            ///
-            /// For more information on `impl Trait` syntax, see the [Rust book][book2].
-            ///
-            /// [book1]: ../book/ch05-03-method-syntax.html
-            /// [Reference]: ../reference/items/implementations.html
-            /// [book2]: ../book/ch10-02-traits.html#returning-types-that-implement-traits
             mod impl_keyword {}
         };
 
-        let for_keyword: ItemMod = parse_quote! {
-            /// Iteration with [`in`], trait implementation with [`impl`], or [higher-ranked trait bounds]
-            /// (`for<'a>`).
-            ///
-            /// The `for` keyword is used in many syntactic locations:
-            ///
-            /// * `for` is used in for-in-loops (see below).
-            /// * `for` is used when implementing traits as in `impl Trait for Type` (see [`impl`] for more info
-            ///   on that).
-            /// * `for` is also used for [higher-ranked trait bounds] as in `for<'a> &'a T: PartialEq<i32>`.
-            ///
-            /// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
-            /// practice within Rust, which is to loop over anything that implements [`IntoIterator`] until the
-            /// iterator returned by `.into_iter()` returns `None` (or the loop body uses `break`).
-            ///
-            /// ```rust
-            /// for i in 0..5 {
-            ///     println!("{}", i * 2);
-            /// }
-            ///
-            /// for i in std::iter::repeat(5) {
-            ///     println!("turns out {i} never stops being 5");
-            ///     break; // would loop forever otherwise
-            /// }
-            ///
-            /// 'outer: for x in 5..50 {
-            ///     for y in 0..10 {
-            ///         if x == y {
-            ///             break 'outer;
-            ///         }
-            ///     }
-            /// }
-            /// ```
-            ///
-            /// As shown in the example above, `for` loops (along with all other loops) can be tagged, using
-            /// similar syntax to lifetimes (only visually similar, entirely distinct in practice). Giving the
-            /// same tag to `break` breaks the tagged loop, which is useful for inner loops. It is definitely
-            /// not a goto.
-            ///
-            /// A `for` loop expands as shown:
-            ///
-            /// ```rust
-            /// # fn code() { }
-            /// # let iterator = 0..2;
-            /// for loop_variable in iterator {
-            ///     code()
-            /// }
-            /// ```
-            ///
-            /// ```rust
-            /// # fn code() { }
-            /// # let iterator = 0..2;
-            /// {
-            ///     let result = match IntoIterator::into_iter(iterator) {
-            ///         mut iter => loop {
-            ///             match iter.next() {
-            ///                 None => break,
-            ///                 Some(loop_variable) => { code(); },
-            ///             };
-            ///         },
-            ///     };
-            ///     result
-            /// }
-            /// ```
-            ///
-            /// More details on the functionality shown can be seen at the [`IntoIterator`] docs.
-            ///
-            /// For more information on for-loops, see the [Rust book] or the [Reference].
-            ///
-            /// See also, [`loop`], [`while`].
-            ///
-            /// [`in`]: keyword.in.html
-            /// [`impl`]: keyword.impl.html
-            /// [`loop`]: keyword.loop.html
-            /// [`while`]: keyword.while.html
-            /// [higher-ranked trait bounds]: ../reference/trait-bounds.html#higher-ranked-trait-bounds
-            /// [Rust book]:
-            /// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
-            /// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
-            mod for_keyword {}
-        };
-
         let const_keyword: ItemMod = parse_quote! {
-            /// Compile-time constants, compile-time evaluable functions, and raw pointers.
-            ///
-            /// ## Compile-time constants
+            /// ## Compile-time constants.
             ///
             /// Sometimes a certain value is used many times throughout a program, and it can become
             /// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
             /// make it a variable that gets carried around to each function that needs it. In these cases, the
             /// `const` keyword provides a convenient alternative to code duplication:
             ///
-            /// ```rust
-            /// const THING: u32 = 0xABAD1DEA;
+            /// ```sway
+            /// const NUMBER_1: u64 = 7;
             ///
-            /// let foo = 123 + THING;
+            /// let foo = 123 + NUMBER_1;
             /// ```
             ///
             /// Constants must be explicitly typed; unlike with `let`, you can't ignore their type and let the
-            /// compiler figure it out. Any constant value can be defined in a `const`, which in practice happens
-            /// to be most things that would be reasonable to have in a constant (barring `const fn`s). For
-            /// example, you can't have a [`File`] as a `const`.
+            /// compiler figure it out.
             ///
-            /// [`File`]: crate::fs::File
-            ///
-            /// The only lifetime allowed in a constant is `'static`, which is the lifetime that encompasses
-            /// all others in a Rust program. For example, if you wanted to define a constant string, it would
-            /// look like this:
-            ///
-            /// ```rust
-            /// const WORDS: &'static str = "hello rust!";
-            /// ```
-            ///
-            /// Thanks to static lifetime elision, you usually don't have to explicitly use `'static`:
-            ///
-            /// ```rust
-            /// const WORDS: &str = "hello convenience!";
-            /// ```
-            ///
-            /// `const` items looks remarkably similar to `static` items, which introduces some confusion as
-            /// to which one should be used at which times. To put it simply, constants are inlined wherever
-            /// they're used, making using them identical to simply replacing the name of the `const` with its
-            /// value. Static variables, on the other hand, point to a single location in memory, which all
-            /// accesses share. This means that, unlike with constants, they can't have destructors, and act as
-            /// a single value across the entire codebase.
-            ///
-            /// Constants, like statics, should always be in `SCREAMING_SNAKE_CASE`.
-            ///
-            /// For more detail on `const`, see the [Rust Book] or the [Reference].
-            ///
-            /// ## Compile-time evaluable functions
-            ///
-            /// The other main use of the `const` keyword is in `const fn`. This marks a function as being
-            /// callable in the body of a `const` or `static` item and in array initializers (commonly called
-            /// "const contexts"). `const fn` are restricted in the set of operations they can perform, to
-            /// ensure that they can be evaluated at compile-time. See the [Reference][const-eval] for more
-            /// detail.
-            ///
-            /// Turning a `fn` into a `const fn` has no effect on run-time uses of that function.
-            ///
-            /// ## Other uses of `const`
-            ///
-            /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
-            /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
-            ///
-            /// [pointer primitive]: pointer
-            /// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
-            /// [Reference]: ../reference/items/constant-items.html
-            /// [const-eval]: ../reference/const_eval.html
+            /// Constants should always be in `SCREAMING_SNAKE_CASE`.
             mod const_keyword {}
         };
 
@@ -704,51 +403,33 @@ impl KeywordDocs {
             ///
             /// A `return` marks the end of an execution path in a function:
             ///
-            /// ```
-            /// fn foo() -> i32 {
+            /// ```sway
+            /// fn foo() -> u32 {
             ///     return 3;
             /// }
-            /// assert_eq!(foo(), 3);
+            /// assert(foo(), 3);
             /// ```
             ///
             /// `return` is not needed when the returned value is the last expression in the
             /// function. In this case the `;` is omitted:
             ///
-            /// ```
-            /// fn foo() -> i32 {
+            /// ```sway
+            /// fn foo() -> u32 {
             ///     3
             /// }
-            /// assert_eq!(foo(), 3);
+            /// assert(foo(), 3);
             /// ```
             ///
             /// `return` returns from the function immediately (an "early return"):
             ///
-            /// ```no_run
-            /// use std::fs::File;
-            /// use std::io::{Error, ErrorKind, Read, Result};
-            ///
-            /// fn main() -> Result<()> {
-            ///     let mut file = match File::open("foo.txt") {
-            ///         Ok(f) => f,
-            ///         Err(e) => return Err(e),
+            /// ```sway
+            /// fn main() -> u64 {
+            ///     let x = if true {
+            ///         Result::Err::<u64, u32>(12)
+            ///     } else {
+            ///         return 10;
             ///     };
-            ///
-            ///     let mut contents = String::new();
-            ///     let size = match file.read_to_string(&mut contents) {
-            ///         Ok(s) => s,
-            ///         Err(e) => return Err(e),
-            ///     };
-            ///
-            ///     if contents.contains("impossible!") {
-            ///         return Err(Error::new(ErrorKind::Other, "oh no!"));
-            ///     }
-            ///
-            ///     if size > 9000 {
-            ///         return Err(Error::new(ErrorKind::Other, "over 9000!"));
-            ///     }
-            ///
-            ///     assert_eq!(contents, "Hello, world!");
-            ///     Ok(())
+            ///     44
             /// }
             /// ```
             mod return_keyword {}
@@ -760,22 +441,25 @@ impl KeywordDocs {
             /// `if` is a familiar construct to most programmers, and is the main way you'll often do logic in
             /// your code. However, unlike in most languages, `if` blocks can also act as expressions.
             ///
-            /// ```rust
-            /// # let rude = true;
+            /// ```sway
             /// if 1 == 2 {
-            ///     println!("whoops, mathematics broke");
+            ///     // whoops, mathematics broke
+            ///     revert(0);
             /// } else {
-            ///     println!("everything's fine!");
+            ///     // everything's fine!
             /// }
             ///
-            /// let greeting = if rude {
-            ///     "sup nerd."
+            /// let x = 5;
+            /// let y = if x == 5 {
+            ///     10
             /// } else {
-            ///     "hello, friend!"
+            ///     15
             /// };
+            /// assert(y == 10);
             ///
-            /// if let Ok(x) = "123".parse::<i32>() {
-            ///     println!("{} double that and you get {}!", greeting, x * 2);
+            /// let opt = Some(5);
+            /// if let Some(x) = opt {
+            ///    // x is 5
             /// }
             /// ```
             ///
@@ -783,48 +467,7 @@ impl KeywordDocs {
             /// thing you'd see in many languages, with an optional `else` block. Second uses `if` as an
             /// expression, which is only possible if all branches return the same type. An `if` expression can
             /// be used everywhere you'd expect. The third kind of `if` block is an `if let` block, which
-            /// behaves similarly to using a `match` expression:
-            ///
-            /// ```rust
-            /// if let Some(x) = Some(123) {
-            ///     // code
-            ///     # let _ = x;
-            /// } else {
-            ///     // something else
-            /// }
-            ///
-            /// match Some(123) {
-            ///     Some(x) => {
-            ///         // code
-            ///         # let _ = x;
-            ///     },
-            ///     _ => {
-            ///         // something else
-            ///     },
-            /// }
-            /// ```
-            ///
-            /// Each kind of `if` expression can be mixed and matched as needed.
-            ///
-            /// ```rust
-            /// if true == false {
-            ///     println!("oh no");
-            /// } else if "something" == "other thing" {
-            ///     println!("oh dear");
-            /// } else if let Some(200) = "blarg".parse::<i32>().ok() {
-            ///     println!("uh oh");
-            /// } else {
-            ///     println!("phew, nothing's broken");
-            /// }
-            /// ```
-            ///
-            /// The `if` keyword is used in one other place in Rust, namely as a part of pattern matching
-            /// itself, allowing patterns such as `Some(x) if x > 200` to be used.
-            ///
-            /// For more information on `if` expressions, see the [Rust book] or the [Reference].
-            ///
-            /// [Rust book]: ../book/ch03-05-control-flow.html#if-expressions
-            /// [Reference]: ../reference/expressions/if-expr.html
+            /// behaves similarly to using a `match` expression.
             mod if_keyword {}
         };
 
@@ -840,44 +483,18 @@ impl KeywordDocs {
             /// As can be seen below, `else` must be followed by either: `if`, `if let`, or a block `{}` and it
             /// will return the value of that expression.
             ///
-            /// ```rust
-            /// let result = if true == false {
-            ///     "oh no"
-            /// } else if "something" == "other thing" {
-            ///     "oh dear"
-            /// } else if let Some(200) = "blarg".parse::<i32>().ok() {
-            ///     "uh oh"
+            /// ```sway
+            /// let condition = false;
+            /// let result = if condition == true {
+            ///     101
             /// } else {
-            ///     println!("Sneaky side effect.");
-            ///     "phew, nothing's broken"
+            ///     102
             /// };
+            /// assert(result == 102);
             /// ```
-            ///
-            /// Here's another example but here we do not try and return an expression:
-            ///
-            /// ```rust
-            /// if true == false {
-            ///     println!("oh no");
-            /// } else if "something" == "other thing" {
-            ///     println!("oh dear");
-            /// } else if let Some(200) = "blarg".parse::<i32>().ok() {
-            ///     println!("uh oh");
-            /// } else {
-            ///     println!("phew, nothing's broken");
-            /// }
-            /// ```
-            ///
-            /// The above is _still_ an expression but it will always evaluate to `()`.
             ///
             /// There is possibly no limit to the number of `else` blocks that could follow an `if` expression
             /// however if you have several then a [`match`] expression might be preferable.
-            ///
-            /// Read more about control flow in the [Rust Book].
-            ///
-            /// [Rust Book]: ../book/ch03-05-control-flow.html#handling-multiple-conditions-with-else-if
-            /// [`match`]: keyword.match.html
-            /// [`false`]: keyword.false.html
-            /// [`if`]: keyword.if.html
             mod else_keyword {}
         };
 
@@ -889,45 +506,14 @@ impl KeywordDocs {
             /// `_` in the `match`. Since `match` is an expression, values can also be
             /// returned.
             ///
-            /// ```rust
-            /// let opt = Option::None::<usize>;
+            /// ```sway
+            /// let opt = Option::None::<u32>;
             /// let x = match opt {
             ///     Some(int) => int,
             ///     None => 10,
             /// };
-            /// assert_eq!(x, 10);
-            ///
-            /// let a_number = Option::Some(10);
-            /// match a_number {
-            ///     Some(x) if x <= 5 => println!("0 to 5 num = {x}"),
-            ///     Some(x @ 6..=10) => println!("6 to 10 num = {x}"),
-            ///     None => panic!(),
-            ///     // all other numbers
-            ///     _ => panic!(),
-            /// }
+            /// assert(x, 10);
             /// ```
-            ///
-            /// `match` can be used to gain access to the inner members of an enum
-            /// and use them directly.
-            ///
-            /// ```rust
-            /// enum Outer {
-            ///     Double(Option<u8>, Option<String>),
-            ///     Single(Option<u8>),
-            ///     Empty
-            /// }
-            ///
-            /// let get_inner = Outer::Double(None, Some(String::new()));
-            /// match get_inner {
-            ///     Outer::Double(None, Some(st)) => println!("{st}"),
-            ///     Outer::Single(opt) => println!("{opt:?}"),
-            ///     _ => panic!(),
-            /// }
-            /// ```
-            ///
-            /// For more information on `match` and matching in general, see the [Reference].
-            ///
-            /// [Reference]: ../reference/expressions/match-expr.html
             mod match_keyword {}
         };
 
@@ -938,54 +524,22 @@ impl KeywordDocs {
             /// which can be used anywhere you can bind a value to a variable name. Some
             /// examples:
             ///
-            /// ```rust
-            /// // A mutable variable in the parameter list of a function.
-            /// fn foo(mut x: u8, y: u8) -> u8 {
-            ///     x += y;
-            ///     x
-            /// }
-            ///
-            /// // Modifying a mutable variable.
-            /// # #[allow(unused_assignments)]
+            /// ```sway
             /// let mut a = 5;
             /// a = 6;
-            ///
-            /// assert_eq!(foo(3, 4), 7);
-            /// assert_eq!(a, 6);
+            /// assert(a, 6);
             /// ```
             ///
             /// The second is mutable references. They can be created from `mut` variables
             /// and must be unique: no other variables can have a mutable reference, nor a
             /// shared reference.
             ///
-            /// ```rust
+            /// ```sway
             /// // Taking a mutable reference.
-            /// fn push_two(v: &mut Vec<u8>) {
-            ///     v.push(2);
+            /// fn takes_ref_mut_array(ref mut arr: [u64; 1]) {
+            ///     arr[0] = 10;
             /// }
-            ///
-            /// // A mutable reference cannot be taken to a non-mutable variable.
-            /// let mut v = vec![0, 1];
-            /// // Passing a mutable reference.
-            /// push_two(&mut v);
-            ///
-            /// assert_eq!(v, vec![0, 1, 2]);
             /// ```
-            ///
-            /// ```rust,compile_fail,E0502
-            /// let mut v = vec![0, 1];
-            /// let mut_ref_v = &mut v;
-            /// ##[allow(unused)]
-            /// let ref_v = &v;
-            /// mut_ref_v.push(2);
-            /// ```
-            ///
-            /// Mutable raw pointers work much like mutable references, with the added
-            /// possibility of not pointing to a valid object. The syntax is `*mut Type`.
-            ///
-            /// More information on mutable references and pointers can be found in the [Reference].
-            ///
-            /// [Reference]: ../reference/types/pointer.html#mutable-references-mut
             mod mut_keyword {}
         };
 
@@ -996,7 +550,7 @@ impl KeywordDocs {
             /// set of variables into the current scope, as given by a pattern.
             ///
             /// ```sway
-            /// let thing1: i32 = 100;
+            /// let thing1: u32 = 100;
             /// let thing2 = 200 + thing1;
             ///
             /// let mut changing_thing = true;
@@ -1013,41 +567,30 @@ impl KeywordDocs {
             ///     a: true,
             ///     b: 10004,
             /// };
-            /// asset(a == true);
+            /// assert(a == true);
             /// ```
             ///
             /// The pattern is most commonly a single variable, which means no pattern matching is done and
             /// the expression given is bound to the variable. Apart from that, patterns used in `let` bindings
-            /// can be as complicated as needed, given that the pattern is exhaustive. See the [Rust
-            /// book][book1] for more information on pattern matching. The type of the pattern is optionally
-            /// given afterwards, but if left blank is automatically inferred by the compiler if possible.
+            /// can be as complicated as needed, given that the pattern is exhaustive. The type of the pattern
+            /// is optionally given afterwards, but if left blank is automatically inferred by the compiler if possible.
             ///
-            /// Variables in Rust are immutable by default, and require the `mut` keyword to be made mutable.
+            /// Variables in Sway are immutable by default, and require the `mut` keyword to be made mutable.
             ///
             /// Multiple variables can be defined with the same name, known as shadowing. This doesn't affect
             /// the original variable in any way beyond being unable to directly access it beyond the point of
             /// shadowing. It continues to remain in scope, getting dropped only when it falls out of scope.
             /// Shadowed variables don't need to have the same type as the variables shadowing them.
             ///
-            /// ```rust
+            /// ```sway
             /// let shadowing_example = true;
-            /// let shadowing_example = 123.4;
-            /// let shadowing_example = shadowing_example as u32;
-            /// let mut shadowing_example = format!("cool! {shadowing_example}");
-            /// shadowing_example += " something else!"; // not shadowing
+            /// let shadowing_example: u32 = 123;
+            /// let shadowing_example = shadowing_example as u8;
             /// ```
             ///
             /// Other places the `let` keyword is used include along with [`if`], in the form of `if let`
             /// expressions. They're useful if the pattern being matched isn't exhaustive, such as with
-            /// enumerations. `while let` also exists, which runs a loop with a pattern matched value until
-            /// that pattern can't be matched.
-            ///
-            /// For more information on the `let` keyword, see the [Rust book][book2] or the [Reference]
-            ///
-            /// [book1]: ../book/ch06-02-match.html
-            /// [`if`]: keyword.if.html
-            /// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
-            /// [Reference]: ../reference/statements.html#let-statements
+            /// enumerations.
             mod let_keyword {}
         };
 
@@ -1058,19 +601,18 @@ impl KeywordDocs {
             /// expression before running the loop body, then runs the loop body if the conditional
             /// expression evaluates to `true`, or exits the loop otherwise.
             ///
-            /// ```rust
+            /// ```sway
             /// let mut counter = 0;
             ///
             /// while counter < 10 {
-            ///     println!("{counter}");
+            ///     log(counter);
             ///     counter += 1;
             /// }
             /// ```
             ///
-            /// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
-            /// cannot break with a value and always evaluates to `()` unlike [`loop`].
+            /// A `while` expression cannot break with a value and always evaluates to `()`.
             ///
-            /// ```rust
+            /// ```sway
             /// let mut i = 1;
             ///
             /// while i < 100 {
@@ -1080,183 +622,7 @@ impl KeywordDocs {
             ///     }
             /// }
             /// ```
-            ///
-            /// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
-            /// expressions with `while let`. The `while let` expression matches the pattern against the
-            /// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
-            /// We can use `break` and `continue` in `while let` expressions just like in `while`.
-            ///
-            /// ```rust
-            /// let mut counter = Some(0);
-            ///
-            /// while let Some(i) = counter {
-            ///     if i == 10 {
-            ///         counter = None;
-            ///     } else {
-            ///         println!("{i}");
-            ///         counter = Some (i + 1);
-            ///     }
-            /// }
-            /// ```
-            ///
-            /// For more information on `while` and loops in general, see the [reference].
-            ///
-            /// See also, [`for`], [`loop`].
-            ///
-            /// [`for`]: keyword.for.html
-            /// [`loop`]: keyword.loop.html
-            /// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
             mod while_keyword {}
-        };
-
-        let where_keyword: ItemMod = parse_quote! {
-            /// Add constraints that must be upheld to use an item.
-            ///
-            /// `where` allows specifying constraints on lifetime and generic parameters.
-            /// The [RFC] introducing `where` contains detailed information about the
-            /// keyword.
-            ///
-            /// # Examples
-            ///
-            /// `where` can be used for constraints with traits:
-            ///
-            /// ```rust
-            /// fn new<T: Default>() -> T {
-            ///     T::default()
-            /// }
-            ///
-            /// fn new_where<T>() -> T
-            /// where
-            ///     T: Default,
-            /// {
-            ///     T::default()
-            /// }
-            ///
-            /// assert_eq!(0.0, new());
-            /// assert_eq!(0.0, new_where());
-            ///
-            /// assert_eq!(0, new());
-            /// assert_eq!(0, new_where());
-            /// ```
-            ///
-            /// `where` can also be used for lifetimes.
-            ///
-            /// This compiles because `longer` outlives `shorter`, thus the constraint is
-            /// respected:
-            ///
-            /// ```rust
-            /// fn select<'short, 'long>(s1: &'short str, s2: &'long str, second: bool) -> &'short str
-            /// where
-            ///     'long: 'short,
-            /// {
-            ///     if second { s2 } else { s1 }
-            /// }
-            ///
-            /// let outer = String::from("Long living ref");
-            /// let longer = &outer;
-            /// {
-            ///     let inner = String::from("Short living ref");
-            ///     let shorter = &inner;
-            ///
-            ///     assert_eq!(select(shorter, longer, false), shorter);
-            ///     assert_eq!(select(shorter, longer, true), longer);
-            /// }
-            /// ```
-            ///
-            /// On the other hand, this will not compile because the `where 'b: 'a` clause
-            /// is missing: the `'b` lifetime is not known to live at least as long as `'a`
-            /// which means this function cannot ensure it always returns a valid reference:
-            ///
-            /// ```rust,compile_fail
-            /// fn select<'a, 'b>(s1: &'a str, s2: &'b str, second: bool) -> &'a str
-            /// {
-            ///     if second { s2 } else { s1 }
-            /// }
-            /// ```
-            ///
-            /// `where` can also be used to express more complicated constraints that cannot
-            /// be written with the `<T: Trait>` syntax:
-            ///
-            /// ```rust
-            /// fn first_or_default<I>(mut i: I) -> I::Item
-            /// where
-            ///     I: Iterator,
-            ///     I::Item: Default,
-            /// {
-            ///     i.next().unwrap_or_else(I::Item::default)
-            /// }
-            ///
-            /// assert_eq!(first_or_default([1, 2, 3].into_iter()), 1);
-            /// assert_eq!(first_or_default(Vec::<i32>::new().into_iter()), 0);
-            /// ```
-            ///
-            /// `where` is available anywhere generic and lifetime parameters are available,
-            /// as can be seen with the [`Cow`](crate::borrow::Cow) type from the standard
-            /// library:
-            ///
-            /// ```rust
-            /// # #![allow(dead_code)]
-            /// pub enum Cow<'a, B>
-            /// where
-            ///     B: 'a + ToOwned + ?Sized,
-            /// {
-            ///     Borrowed(&'a B),
-            ///     Owned(<B as ToOwned>::Owned),
-            /// }
-            /// ```
-            ///
-            /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
-            mod where_keyword {}
-        };
-
-        let ref_keyword: ItemMod = parse_quote! {
-            /// Bind by reference during pattern matching.
-            ///
-            /// `ref` annotates pattern bindings to make them borrow rather than move.
-            /// It is **not** a part of the pattern as far as matching is concerned: it does
-            /// not affect *whether* a value is matched, only *how* it is matched.
-            ///
-            /// By default, [`match`] statements consume all they can, which can sometimes
-            /// be a problem, when you don't really need the value to be moved and owned:
-            ///
-            /// ```compile_fail,E0382
-            /// let maybe_name = Some(String::from("Alice"));
-            /// // The variable 'maybe_name' is consumed here ...
-            /// match maybe_name {
-            ///     Some(n) => println!("Hello, {n}"),
-            ///     _ => println!("Hello, world"),
-            /// }
-            /// // ... and is now unavailable.
-            /// println!("Hello again, {}", maybe_name.unwrap_or("world".into()));
-            /// ```
-            ///
-            /// Using the `ref` keyword, the value is only borrowed, not moved, making it
-            /// available for use after the [`match`] statement:
-            ///
-            /// ```
-            /// let maybe_name = Some(String::from("Alice"));
-            /// // Using `ref`, the value is borrowed, not moved ...
-            /// match maybe_name {
-            ///     Some(ref n) => println!("Hello, {n}"),
-            ///     _ => println!("Hello, world"),
-            /// }
-            /// // ... so it's available here!
-            /// println!("Hello again, {}", maybe_name.unwrap_or("world".into()));
-            /// ```
-            ///
-            /// # `&` vs `ref`
-            ///
-            /// - `&` denotes that your pattern expects a reference to an object. Hence `&`
-            /// is a part of said pattern: `&Foo` matches different objects than `Foo` does.
-            ///
-            /// - `ref` indicates that you want a reference to an unpacked value. It is not
-            /// matched against: `Foo(ref foo)` matches the same objects as `Foo(foo)`.
-            ///
-            /// See also the [Reference] for more information.
-            ///
-            /// [`match`]: keyword.match.html
-            /// [Reference]: ../reference/patterns.html#identifier-patterns
-            mod ref_keyword {}
         };
 
         let true_keyword: ItemMod = parse_quote! {
@@ -1308,33 +674,6 @@ impl KeywordDocs {
             ///
             /// assert(x == 12);
             /// ```
-            ///
-            /// When associated with `loop`, a break expression may be used to return a value from that loop.
-            /// This is only valid with `loop` and not with any other type of loop.
-            /// If no value is specified, `break;` returns `()`.
-            /// Every `break` within a loop must return the same type.
-            ///
-            /// ```rust
-            /// let (mut a, mut b) = (1, 1);
-            /// let result = loop {
-            ///     if b > 10 {
-            ///         break b;
-            ///     }
-            ///     let c = a + b;
-            ///     a = b;
-            ///     b = c;
-            /// };
-            /// // first number in Fibonacci sequence over 10:
-            /// assert_eq!(result, 13);
-            /// println!("{result}");
-            /// ```
-            ///
-            /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
-            /// loop values"].
-            ///
-            /// [Reference on "break expression"]: ../reference/expressions/loop-expr.html#break-expressions
-            /// [Reference on "break and loop values"]:
-            /// ../reference/expressions/loop-expr.html#break-and-loop-values
             mod break_keyword {}
         };
 
@@ -1353,66 +692,71 @@ impl KeywordDocs {
             ///     log(number);
             /// }
             /// ```
-            ///
-            /// Like `break`, `continue` is normally associated with the innermost enclosing loop, but labels
-            /// may be used to specify the affected loop.
-            ///
-            /// ```sway
-            /// // Print Odd numbers under 30 with unit <= 5
-            /// 'tens: for ten in 0..3 {
-            ///     '_units: for unit in 0..=9 {
-            ///         if unit % 2 == 0 {
-            ///             continue;
-            ///         }
-            ///         if unit > 5 {
-            ///             continue 'tens;
-            ///         }
-            ///         println!("{}", ten * 10 + unit);
-            ///     }
-            /// }
-            /// ```
             mod continue_keyword {}
         };
 
-        // SWAY SPECIFIC
+        // TODO
+        let for_keyword: ItemMod = parse_quote! {
+            mod for_keyword {}
+        };
+
+        // TODO
+        let where_keyword: ItemMod = parse_quote! {
+            mod where_keyword {}
+        };
+
+        // TODO
+        let ref_keyword: ItemMod = parse_quote! {
+            mod ref_keyword {}
+        };
+
+        // TODO
         let script_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod script_keyword {}
         };
+
+        // TODO
         let contract_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod contract_keyword {}
         };
+
+        // TODO
         let predicate_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod predicate_keyword {}
         };
+
+        // TODO
         let library_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod library_keyword {}
         };
+
+        // TODO
         let dep_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod dep_keyword {}
         };
+
+        // TODO
         let abi_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod abi_keyword {}
         };
+
+        // TODO
         let storage_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod storage_keyword {}
         };
+
+        // TODO
         let asm_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod asm_keyword {}
         };
+
+        // TODO
         let deref_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod deref_keyword {}
         };
+
+        // TODO
         let configurable_keyword: ItemMod = parse_quote! {
-            /// TODO
             mod configurable_keyword {}
         };
 
