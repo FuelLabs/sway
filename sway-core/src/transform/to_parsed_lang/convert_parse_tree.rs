@@ -802,8 +802,6 @@ fn item_configurable_to_constant_declarations(
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
 
-    dbg!(context.module_has_configurable_block());
-
     if context.module_has_configurable_block() {
         errors.push(ConvertParseTreeError::MultipleConfigurableBlocksInModule {
             span: item_configurable.span(),
