@@ -39,7 +39,7 @@ Before you make changes, let's ensure that the test suite runs fine:
 cd swayfmt && cargo test
 ```
 
-`swayfmt` has an extensive test suite that should pass both locally and within the CI to ensure reliability. This is used 
+`swayfmt` has an extensive test suite that should pass both locally and within the CI to ensure reliability. This is used
 to ensure that there isn't regression introduced along with new changes. If your changes include fixing bugs or adding
 a new feature, please also include new tests accompanying your PR where possible. You may look at [formatter/mod.rs](https://github.com/FuelLabs/sway/blob/master/swayfmt/src/formatter/mod.rs)
 for examples on how you may test your changes.
