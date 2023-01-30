@@ -47,6 +47,7 @@ pub fn create_inline_in_non_predicate_pass() -> Pass {
 
 /// This is a copy of sway_core::inline::Inline.
 /// TODO: Reuse: Depend on sway_core? Move it to sway_types?
+#[derive(Debug)]
 enum Inline {
     Always,
     Never,
@@ -56,19 +57,43 @@ enum Inline {
 const NUM_ARG_REGISTERS: u8 = 6;
 
 fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
-    md_idx.and_then(|md_idx| {
+    fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
+        context: &Context,
+        md_idx: Option<MetadataIndex>,
+        mut f: F,
+    ) -> Option<T> {
+        // If md_idx is not None and is a list then try them all.
+        md_idx.and_then(|md_idx| {
+            if let Some(md_idcs) = md_idx.get_content(context).unwrap_list() {
+                md_idcs.iter().find_map(|md_idx| f(*md_idx))
+            } else {
+                f(md_idx)
+            }
+        })
+    }
+    for_each_md_idx(context, md_idx, |md_idx| {
+        // Create a new inline and save it in the cache.
         md_idx
             .get_content(context)
             .unwrap_struct("inline", 1)
             .and_then(|fields| fields[0].unwrap_string())
-            .and_then(|inline_str| match inline_str {
-                "always" => Some(Inline::Always),
-                "never" => Some(Inline::Never),
-                _otherwise => None,
+            .and_then(|inline_str| {
+                let inline = match inline_str {
+                    "always" => Some(Inline::Always),
+                    "never" => Some(Inline::Never),
+                    _otherwise => None,
+                }?;
+                Some(inline)
             })
     })
 }
 
+/// Inline function calls based on two conditions:
+/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
+///    that supporting function calls (i.e. without inlining) is not possible. This is a protocol
+///    restriction and not a heuristic.
+/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
+///    in the `inline_heuristc` closure in `inline_in_non_predicate_module`.
 pub fn inline_in_predicate_module(
     context: &mut Context,
     _: &AnalysisResults,
@@ -110,7 +135,6 @@ pub fn inline_in_non_predicate_module(
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
-
         match attributed_inline {
             Some(Inline::Always) => {
                 // TODO: check if inlining of function is possible
