@@ -1,9 +1,11 @@
 use std::path::PathBuf;
 
 use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass,
-    create_mem2reg_pass, create_postorder_pass, create_simplify_cfg_pass, optimize as opt, Context,
-    PassGroup, PassManager,
+    create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
+    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_mem2reg_pass,
+    create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, Context, PassGroup,
+    PassManager,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -169,6 +171,76 @@ fn mem2reg() {
         pass_mgr.register(create_dominators_pass());
         pass_mgr.register(create_dom_fronts_pass());
         let pass = pass_mgr.register(create_mem2reg_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_arg() {
+    run_tests("demote_arg", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_arg_demotion_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_const() {
+    run_tests("demote_const", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_const_demotion_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_ret() {
+    run_tests("demote_ret", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_ret_demotion_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_misc() {
+    run_tests("demote_misc", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_misc_demotion_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn memcpyopt() {
+    run_tests("memcpyopt", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_memcpyopt_pass());
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
     })

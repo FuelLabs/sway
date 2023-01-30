@@ -18,13 +18,14 @@ pub struct Type(pub generational_arena::Index);
 pub enum TypeContent {
     Unit,
     Bool,
-    Uint(u8),
+    Uint(u8), // XXX u256 is not unreasonable and can't fit in a `u8`.
     B256,
     String(u64),
     Array(Type, u64),
     Union(Vec<Type>),
     Struct(Vec<Type>),
     Slice,
+    Pointer(Type),
 }
 
 impl Type {
@@ -120,7 +121,12 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Struct(fields))
     }
 
-    /// Get pointer type
+    /// New pointer type
+    pub fn new_ptr(context: &mut Context, to_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::Pointer(to_ty))
+    }
+
+    /// Get slice type
     pub fn get_slice(context: &mut Context) -> Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
@@ -151,6 +157,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
+            TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
         }
     }
 
@@ -174,8 +181,9 @@ impl Type {
             // Unions are special.  We say unions are equivalent to any of their variant types.
             (_, TypeContent::Union(_)) => other.eq(context, self),
             (TypeContent::Union(l), _) => l.iter().any(|field_ty| other.eq(context, field_ty)),
-
             (TypeContent::Slice, TypeContent::Slice) => true,
+            (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
+
             _ => false,
         }
     }
@@ -240,9 +248,28 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Struct(_))
     }
 
+    /// Is aggregate type: struct, union or array.
+    pub fn is_aggregate(&self, context: &Context) -> bool {
+        self.is_struct(context) || self.is_union(context) || self.is_array(context)
+    }
+
     /// Returns true if this is a slice type.
     pub fn is_slice(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Slice)
+    }
+
+    /// Returns true if this is a pointer type.
+    pub fn is_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Pointer(_))
+    }
+
+    /// Get pointed to type iff self is a Pointer.
+    pub fn get_inner_type(&self, context: &Context) -> Option<Type> {
+        if let TypeContent::Pointer(to_ty) = self.get_content(context) {
+            Some(*to_ty)
+        } else {
+            None
+        }
     }
 
     /// Get width of an integer type.
@@ -269,8 +296,9 @@ impl Type {
     }
 
     pub fn get_field_type(&self, context: &Context, idx: u64) -> Option<Type> {
-        if let TypeContent::Struct(agg) | TypeContent::Union(agg) = self.get_content(context) {
-            agg.get(idx as usize).cloned()
+        if let TypeContent::Struct(fields) | TypeContent::Union(fields) = self.get_content(context)
+        {
+            fields.get(idx as usize).cloned()
         } else {
             // Trying to index a non-aggregate.
             None

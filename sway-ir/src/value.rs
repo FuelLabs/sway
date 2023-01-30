@@ -9,13 +9,13 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
+    block::BlockArgument,
     constant::Constant,
     context::Context,
     instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
-    BlockArgument,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -141,6 +141,10 @@ impl Value {
 
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
+    pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
+        self.replace_instruction_values(context, &FxHashMap::from_iter([(old_val, new_val)]))
+    }
+
     pub fn replace_instruction_values(
         &self,
         context: &mut Context,
@@ -160,7 +164,7 @@ impl Value {
 
     /// Get a reference to this value as an instruction, iff it is one.
     pub fn get_instruction<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
-        if let ValueDatum::Instruction(instruction) = &context.values.get(self.0).unwrap().value {
+        if let ValueDatum::Instruction(instruction) = &context.values[self.0].value {
             Some(instruction)
         } else {
             None
@@ -180,7 +184,7 @@ impl Value {
 
     /// Get a reference to this value as a constant, iff it is one.
     pub fn get_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
-        if let ValueDatum::Configurable(cn) = &context.values.get(self.0).unwrap().value {
+        if let ValueDatum::Configurable(cn) = &context.values[self.0].value {
             Some(cn)
         } else {
             None
@@ -189,19 +193,17 @@ impl Value {
 
     /// Get a reference to this value as a constant, iff it is one.
     pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
-        if let ValueDatum::Constant(cn) = &context.values.get(self.0).unwrap().value {
+        if let ValueDatum::Constant(cn) = &context.values[self.0].value {
             Some(cn)
         } else {
             None
         }
     }
 
-    /// Iff this value is an argument, return its type.
-    pub fn get_argument_type_and_byref(&self, context: &Context) -> Option<(Type, bool)> {
-        if let ValueDatum::Argument(BlockArgument { ty, by_ref, .. }) =
-            &context.values.get(self.0).unwrap().value
-        {
-            Some((*ty, *by_ref))
+    /// Get a reference to this value as an argument, iff it is one.
+    pub fn get_argument<'a>(&self, context: &'a Context) -> Option<&'a BlockArgument> {
+        if let ValueDatum::Argument(arg) = &context.values[self.0].value {
+            Some(arg)
         } else {
             None
         }
@@ -217,5 +219,11 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the pointer inner type for this value, iff it is a pointer.
+    pub fn match_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context)
+            .and_then(|ty| ty.get_inner_type(context))
     }
 }

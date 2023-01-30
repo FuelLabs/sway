@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 enum A {
@@ -26,8 +28,8 @@ fn main() -> D {
 
 // ::check-ir::
 
-// check: fn main() -> { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
-// check: ret { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
+// check: fn main($ID: ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }) -> ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
+// check: ret ptr { u64, ( { b256, b256 } | { u64, { u64, ( b256 | u64 ) } } ) }
 
 // ::check-asm::
 
@@ -35,11 +37,14 @@ fn main() -> D {
 // regex: ID=[_[:alpha:]][_0-9[:alpha:]]*
 
 // B is 48 bytes.
-// check: mcpi $REG $REG i48
+// check: movi $(len_reg=$REG) i48
+// check: mcp  $REG $REG $len_reg
 
 // D is 72 bytes.
+// check: movi $(len_reg=$REG) i72
+// check: mcp  $(ptr_reg=$REG) $REG $len_reg
 // check: lw   $(len_reg=$REG) $(len_data=$ID)
-// check: retd  $REG $len_reg
+// check: retd  $ptr_reg $len_reg
 
 // check: .data:
 // check: $len_data .word 72

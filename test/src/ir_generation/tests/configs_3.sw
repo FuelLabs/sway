@@ -1,3 +1,5 @@
+// target-fuelvm
+
 script;
 
 configurable {
@@ -17,9 +19,16 @@ fn main() -> (u64, u64) {
 // check: $(c0=$CONFIG) = config u64 42, $(config0_mds=$MD)
 // check: $(c1=$CONFIG) = config u64 42, $(config1_mds=$MD)
 
-// unordered: $(v1=$VAL) = insert_value $VAL, { u64, u64 }, $c0, 0
-// unordered: $(v2=$VAL) = insert_value $v1, { u64, u64 }, $c1, 1
-// check: ret { u64, u64 } $v2
+// check: $(temp_ptr=$VAL) = get_local ptr { u64, u64 }, $ID
+
+// check: $(idx_val=$VAL) = const u64 0
+// check: $(field_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_val
+// check: store c0 to $field_ptr
+
+// check: $(idx_val=$VAL) = const u64 1
+// check: $(field_ptr=$VAL) = get_elem_ptr $temp_ptr, ptr u64, $idx_val
+// check: store c1 to $field_ptr
+
 
 // unordered: $(config_name_X=$MD) = config_name "X"
 // unordered: $config0_mds = ($MD $config_name_X)

@@ -53,7 +53,10 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
             ..
         })
         | ty::TyExpressionVariant::Tuple { fields: exprvec }
-        | ty::TyExpressionVariant::Array { contents: exprvec } => {
+        | ty::TyExpressionVariant::Array {
+            elem_type: _,
+            contents: exprvec,
+        } => {
             for f in exprvec {
                 check!(expr_validate(engines, f), continue, warnings, errors)
             }

@@ -15,22 +15,13 @@ pub enum IrError {
     RemoveMissingBlock(String),
     ValueNotFound(String),
 
-    VerifyAccessElementInconsistentTypes,
-    VerifyAccessElementOnNonArray,
-    VerifyAccessElementNonIntIndex,
-    VerifyAccessValueInconsistentTypes,
-    VerifyAccessValueInvalidIndices,
-    VerifyAccessValueOnNonStruct,
     VerifyArgumentValueIsNotArgument(String),
-    VerifyAddrOfUnknownSourceType,
-    VerifyAddrOfCopyType,
-    VerifyBitcastUnknownSourceType,
-    VerifyBitcastFromNonCopyType(String),
-    VerifyBitcastToNonCopyType(String),
-    VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBinaryOpIncorrectArgType,
-    VerifyBranchToMissingBlock(String),
+    VerifyBitcastBetweenInvalidTypes(String, String),
+    VerifyBitcastUnknownSourceType,
+    VerifyBlockArgMalformed,
     VerifyBranchParamsMismatch,
+    VerifyBranchToMissingBlock(String),
     VerifyCallArgTypeMismatch(String),
     VerifyCallToMissingFunction(String),
     VerifyCmpBadTypes(String, String),
@@ -38,35 +29,41 @@ pub enum IrError {
     VerifyCmpUnknownTypes,
     VerifyConditionExprNotABool,
     VerifyContractCallBadTypes(String),
+    VerifyGepElementTypeNonPointer,
+    VerifyGepFromNonPointer(String),
+    VerifyGepInconsistentTypes,
+    VerifyGepOnNonAggregate,
     VerifyGetNonExistentPointer,
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
     VerifyIntToPtrFromNonIntegerType(String),
-    VerifyIntToPtrToCopyType(String),
+    VerifyIntToPtrToNonPointer(String),
     VerifyIntToPtrUnknownSourceType,
-    VerifyLoadFromNonPointer,
-    VerifyMemcopyNonExistentPointer,
-    VerifyMismatchedReturnTypes(String),
-    VerifyBlockArgMalformed,
-    VerifyPtrCastFromNonPointer,
-    VerifyPtrCastToNonPointer,
-    VerifyReturnRefTypeValue(String, String),
-    VerifyStateAccessNumOfSlots,
-    VerifyStateKeyBadType,
-    VerifyStateDestBadType(String),
-    VerifyStoreMismatchedTypes,
-    VerifyStoreNonExistentPointer,
-    VerifyStoreToNonPointer,
-    VerifyUntypedValuePassedToFunction,
     VerifyInvalidGtfIndexType,
+    VerifyLoadFromNonPointer(String),
     VerifyLogId,
-    VerifyMismatchedLoggedTypes,
+    VerifyLogMismatchedTypes,
+    VerifyMemcopyNonPointer(String),
+    VerifyMemcopyMismatchedTypes(String, String),
+    VerifyPtrCastFromNonPointer(String),
+    VerifyPtrCastToNonPointer(String),
+    VerifyPtrToIntToNonInteger(String),
+    VerifyReturnMismatchedTypes(String),
     VerifyRevertCodeBadType,
-    VerifySmoRecipientBadType,
     VerifySmoBadRecipientAndMessageType,
-    VerifySmoMessageSize,
     VerifySmoCoins,
+    VerifySmoMessageSize,
+    VerifySmoNonPointer(String),
     VerifySmoOutputIndex,
+    VerifySmoRecipientBadType,
+    VerifyStateAccessNumOfSlots,
+    VerifyStateAccessQuadNonPointer(String),
+    VerifyStateDestBadType(String),
+    VerifyStateKeyBadType,
+    VerifyStateKeyNonPointer(String),
+    VerifyStoreMismatchedTypes,
+    VerifyStoreToNonPointer(String),
+    VerifyUntypedValuePassedToFunction,
 }
 
 impl std::error::Error for IrError {}
@@ -106,64 +103,15 @@ impl fmt::Display for IrError {
             IrError::ValueNotFound(reason) => {
                 write!(f, "Invalid value: {reason}.")
             }
-
-            // Verification failures:
-            IrError::VerifyAccessElementNonIntIndex => {
-                write!(
-                    f,
-                    "Verification failed: Array index is not an integral type."
-                )
-            }
-            IrError::VerifyAccessElementInconsistentTypes => {
-                write!(
-                    f,
-                    "Verification failed: Array type mismatch in when accessing array element."
-                )
-            }
-            IrError::VerifyAccessElementOnNonArray => {
-                write!(
-                    f,
-                    "Verification failed: Attempt to access an element from a non array."
-                )
-            }
-            IrError::VerifyAccessValueInconsistentTypes => {
-                write!(f, "Verification failed: Struct field type mismatch.")
-            }
-            IrError::VerifyAccessValueInvalidIndices => {
-                write!(
-                    f,
-                    "Verification failed: Struct index to non-existent field."
-                )
-            }
-            IrError::VerifyAccessValueOnNonStruct => {
-                write!(
-                    f,
-                    "Verification failed: Attempt to access a field from a non struct."
-                )
-            }
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
                 "Verification failed: Argument specifier for function '{callee}' is not an \
                 argument value."
             ),
-            IrError::VerifyAddrOfUnknownSourceType => write!(
-                f,
-                "Verification failed: addr_of unable to determine source type."
-            ),
-            IrError::VerifyAddrOfCopyType => write!(
-                f,
-                "Verification failed: addr_of argument must be non-copy (memory) type."
-            ),
             IrError::VerifyBitcastUnknownSourceType => write!(
                 f,
                 "Verification failed: Bitcast unable to determine source type."
             ),
-            IrError::VerifyBitcastFromNonCopyType(ty) => {
-                write!(f, "Verification failed: Bitcast cannot be from a {ty}.")
-            }
-            IrError::VerifyBitcastToNonCopyType(ty) => {
-                write!(f, "Verification failed: Bitcast cannot be to a {ty}.")
-            }
             IrError::VerifyBitcastBetweenInvalidTypes(from_ty, to_ty) => write!(
                 f,
                 "Verification failed: Bitcast not allowed from a {from_ty} to a {to_ty}."
@@ -177,8 +125,8 @@ impl fmt::Display for IrError {
             IrError::VerifyBranchToMissingBlock(label) => {
                 write!(
                     f,
-                    "Verification failed: Branch to block '{label}' is not a block in the current \
-                    function."
+                    "Verification failed: \
+                    Branch to block '{label}' is not a block in the current function."
                 )
             }
             IrError::VerifyCallArgTypeMismatch(callee) => {
@@ -202,8 +150,8 @@ impl fmt::Display for IrError {
             IrError::VerifyCmpTypeMismatch(lhs_ty, rhs_ty) => {
                 write!(
                     f,
-                    "Verification failed: Cannot compare values with different widths of {lhs_ty} \
-                    and {rhs_ty}."
+                    "Verification failed: \
+                    Cannot compare values with different widths of {lhs_ty} and {rhs_ty}."
                 )
             }
             IrError::VerifyCmpUnknownTypes => {
@@ -221,8 +169,26 @@ impl fmt::Display for IrError {
             IrError::VerifyContractCallBadTypes(arg_name) => {
                 write!(
                     f,
-                    "Verification failed: Argument {arg_name} passed to contract call has the \
-                    incorrect type."
+                    "Verification failed: \
+                    Argument {arg_name} passed to contract call has the incorrect type."
+                )
+            }
+            IrError::VerifyGepElementTypeNonPointer => {
+                write!(f, "Verification failed: GEP on a non-pointer.")
+            }
+            IrError::VerifyGepInconsistentTypes => {
+                write!(f, "Verification failed: Struct field type mismatch.")
+            }
+            IrError::VerifyGepFromNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: Struct access must be to a pointer value, not a {ty}."
+                )
+            }
+            IrError::VerifyGepOnNonAggregate => {
+                write!(
+                    f,
+                    "Verification failed: Attempt to access a field from a non struct."
                 )
             }
             IrError::VerifyGetNonExistentPointer => {
@@ -246,26 +212,39 @@ impl fmt::Display for IrError {
             IrError::VerifyIntToPtrFromNonIntegerType(ty) => {
                 write!(f, "Verification failed: int_to_ptr cannot be from a {ty}.")
             }
-            IrError::VerifyIntToPtrToCopyType(ty) => {
-                write!(f, "Verification failed: int_to_ptr cannot be to a {ty}.")
+            IrError::VerifyIntToPtrToNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: int_to_ptr cannot be to a non-pointer {ty}."
+                )
             }
             IrError::VerifyIntToPtrUnknownSourceType => write!(
                 f,
                 "Verification failed: int_to_ptr unable to determine source type."
             ),
-            IrError::VerifyLoadFromNonPointer => {
-                write!(f, "Verification failed: Load must be from a pointer.")
-            }
-            IrError::VerifyMemcopyNonExistentPointer => {
+            IrError::VerifyLoadFromNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: Attempt to use non pointer with `mem_copy`."
+                    "Verification failed: Load cannot be from a non-pinter {ty}."
                 )
             }
-            IrError::VerifyMismatchedReturnTypes(fn_str) => write!(
+            IrError::VerifyMemcopyNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: mem_copy cannot be to or from a non-pointer {ty}.",
+                )
+            }
+            IrError::VerifyMemcopyMismatchedTypes(dst_ty, src_ty) => {
+                write!(
+                    f,
+                    "Verification failed: mem_copy cannot be from {src_ty} pointer to {dst_ty} \
+                    pointer.",
+                )
+            }
+            IrError::VerifyReturnMismatchedTypes(fn_str) => write!(
                 f,
-                "Verification failed: Function {fn_str} return type must match its RET \
-                instructions."
+                "Verification failed: \
+                Function {fn_str} return type must match its RET instructions."
             ),
             IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
@@ -276,21 +255,17 @@ impl fmt::Display for IrError {
                     "Verification failed: Block parameter passed in branch is malformed"
                 )
             }
-            IrError::VerifyPtrCastFromNonPointer => {
+            IrError::VerifyPtrCastFromNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: Pointer cast from non pointer value."
+                    "Verification failed: Pointer cast from non pointer {ty}."
                 )
             }
-            IrError::VerifyPtrCastToNonPointer => {
-                write!(f, "Verification failed: Pointer cast to non pointer type.")
+            IrError::VerifyPtrCastToNonPointer(ty) => {
+                write!(f, "Verification failed: Pointer cast to non pointer {ty}.")
             }
-            IrError::VerifyReturnRefTypeValue(fn_str, ty_str) => {
-                write!(
-                    f,
-                    "Verification failed: Function {fn_str} must not return value with reference \
-                    type of {ty_str}.",
-                )
+            IrError::VerifyPtrToIntToNonInteger(ty) => {
+                write!(f, "Verification failed: Pointer cast to non integer {ty}.")
             }
             IrError::VerifyStateAccessNumOfSlots => {
                 write!(
@@ -298,10 +273,23 @@ impl fmt::Display for IrError {
                     "Verification failed: Number of slots for state access must be an integer."
                 )
             }
+            IrError::VerifyStateAccessQuadNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: \
+                    State quad access must be to or from a pointer, not a {ty}."
+                )
+            }
             IrError::VerifyStateKeyBadType => {
                 write!(
                     f,
                     "Verification failed: State load or store key must be a b256 pointer."
+                )
+            }
+            IrError::VerifyStateKeyNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: State load or store key must be a pointer, not a {ty}."
                 )
             }
             IrError::VerifyStateDestBadType(ty) => {
@@ -316,11 +304,9 @@ impl fmt::Display for IrError {
                     "Verification failed: Store value and pointer type mismatch."
                 )
             }
-            IrError::VerifyStoreNonExistentPointer => write!(
-                f,
-                "Verification failed: Attempt to store to a pointer not found in function locals."
-            ),
-            IrError::VerifyStoreToNonPointer => write!(f, "Store must be to a pointer."),
+            IrError::VerifyStoreToNonPointer(ty) => {
+                write!(f, "Store must be to a pointer, not a {ty}.")
+            }
             IrError::VerifyUntypedValuePassedToFunction => write!(
                 f,
                 "Verification failed: An untyped/void value has been passed to a function call."
@@ -332,7 +318,7 @@ impl fmt::Display for IrError {
             IrError::VerifyLogId => {
                 write!(f, "Verification failed: log ID must be an integer.")
             }
-            IrError::VerifyMismatchedLoggedTypes => {
+            IrError::VerifyLogMismatchedTypes => {
                 write!(
                     f,
                     "Verification failed: log type must match the type of the value being logged."
@@ -347,14 +333,14 @@ impl fmt::Display for IrError {
             IrError::VerifySmoRecipientBadType => {
                 write!(
                     f,
-                    "Verification failed: the struct `recipient_and_message` of `smo` must have a `b256` \
-                    as its first field."
+                    "Verification failed: \
+                    the struct first arg struct of `smo` must have a `b256` as its first field."
                 )
             }
             IrError::VerifySmoBadRecipientAndMessageType => {
                 write!(
                     f,
-                    "Verification failed: `recipient_and_message` of `smo` must have a struct"
+                    "Verification failed: the first arg of of `smo` must be a struct."
                 )
             }
             IrError::VerifySmoMessageSize => {
@@ -363,14 +349,23 @@ impl fmt::Display for IrError {
                     "Verification failed: smo message size must be an integer."
                 )
             }
+            IrError::VerifySmoNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: the first arg of `smo` cannot be a non-pointer of {ty}."
+                )
+            }
             IrError::VerifySmoOutputIndex => {
                 write!(
                     f,
-                    "Verification failed: smo output index value must be an integer"
+                    "Verification failed: smo output index value must be an integer."
                 )
             }
             IrError::VerifySmoCoins => {
-                write!(f, "Verification failed: smo coins value must be an integer")
+                write!(
+                    f,
+                    "Verification failed: smo coins value must be an integer."
+                )
             }
         }
     }

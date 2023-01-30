@@ -5,7 +5,7 @@ use crate::{
     TypeEngine,
 };
 
-use super::types::{create_enum_aggregate, create_tuple_aggregate};
+use super::types::{create_tagged_union_type, create_tuple_aggregate};
 
 use sway_error::error::CompileError;
 use sway_ir::{Constant, Context, Type, Value};
@@ -19,6 +19,8 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         // consistent and doesn't tolerate mising integers of different width, so for now, until we
         // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
         // concerned.
+        //
+        // XXX The above isn't true for other targets.  We need to improved this.
         Literal::U8(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U16(n) => Constant::get_uint(context, 64, *n as u64),
         Literal::U32(n) => Constant::get_uint(context, 64, *n as u64),
@@ -102,7 +104,7 @@ fn convert_resolved_type(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
-        TypeInfo::Struct(decl_ref) => super::types::get_aggregate_for_types(
+        TypeInfo::Struct(decl_ref) => super::types::get_struct_for_types(
             type_engine,
             decl_engine,
             context,
@@ -114,7 +116,7 @@ fn convert_resolved_type(
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
-        TypeInfo::Enum(decl_ref) => create_enum_aggregate(
+        TypeInfo::Enum(decl_ref) => create_tagged_union_type(
             type_engine,
             decl_engine,
             context,

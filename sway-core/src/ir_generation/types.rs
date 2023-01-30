@@ -11,7 +11,7 @@ use sway_error::error::CompileError;
 use sway_ir::{Context, Type};
 use sway_types::span::Spanned;
 
-pub(super) fn create_enum_aggregate(
+pub(super) fn create_tagged_union_type(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
@@ -69,7 +69,7 @@ pub(super) fn create_array_aggregate(
     Ok(Type::new_array(context, element_type, count))
 }
 
-pub(super) fn get_aggregate_for_types(
+pub(super) fn get_struct_for_types(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,

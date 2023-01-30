@@ -1306,7 +1306,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             address.span.clone(),
             options,
         ),
-        Array { contents } => {
+        Array {
+            elem_type: _,
+            contents,
+        } => {
             let nodes = contents
                 .iter()
                 .map(|elem| {

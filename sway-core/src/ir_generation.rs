@@ -90,6 +90,10 @@ pub fn compile_program(
             &test_fns,
         ),
     }?;
-    ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
+
+    //println!("{ctx}");
+
+    ctx.verify().map_err(|ir_error: sway_ir::IrError| {
+        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+    })
 }

@@ -274,7 +274,10 @@ impl ty::TyImplTrait {
                         || expr_contains_get_storage_index(decl_engine, expr2, access_span)?
                 }
                 ty::TyExpressionVariant::Tuple { fields: exprvec }
-                | ty::TyExpressionVariant::Array { contents: exprvec } => {
+                | ty::TyExpressionVariant::Array {
+                    elem_type: _,
+                    contents: exprvec,
+                } => {
                     for f in exprvec.iter() {
                         let b = expr_contains_get_storage_index(decl_engine, f, access_span)?;
                         if b {

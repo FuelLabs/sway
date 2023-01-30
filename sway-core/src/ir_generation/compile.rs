@@ -1,10 +1,10 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclRefFunction},
+    decl_engine::DeclRefFunction,
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
     type_system::{LogId, MessageId, TypeId},
-    Engines, TypeEngine,
+    Engines,
 };
 
 use super::{
@@ -15,7 +15,7 @@ use super::{
 
 use sway_error::error::CompileError;
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{span::Span, Spanned};
+use sway_types::Spanned;
 
 use std::collections::HashMap;
 
@@ -308,27 +308,18 @@ pub(super) fn compile_function(
     is_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Option<Function>, CompileError> {
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
     if !ast_fn_decl.type_parameters.is_empty() {
         Ok(None)
     } else {
-        let args = ast_fn_decl
-            .parameters
-            .iter()
-            .map(|param| convert_fn_param(type_engine, decl_engine, context, param))
-            .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
-
-        compile_fn_with_args(
+        compile_fn(
             engines,
             context,
             md_mgr,
             module,
             ast_fn_decl,
             is_entry,
-            args,
             None,
             logged_types_map,
             messages_types_map,
@@ -390,35 +381,14 @@ pub(super) fn compile_tests(
         .collect()
 }
 
-fn convert_fn_param(
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
-    context: &mut Context,
-    param: &ty::TyFunctionParameter,
-) -> Result<(String, Type, bool, Span), CompileError> {
-    convert_resolved_typeid(
-        type_engine,
-        decl_engine,
-        context,
-        &param.type_argument.type_id,
-        &param.type_argument.span,
-    )
-    .map(|ty| {
-        let by_ref =
-            param.is_reference && type_engine.get(param.type_argument.type_id).is_copy_type();
-        (param.name.as_str().into(), ty, by_ref, param.name.span())
-    })
-}
-
 #[allow(clippy::too_many_arguments)]
-fn compile_fn_with_args(
+fn compile_fn(
     engines: Engines<'_>,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     ast_fn_decl: &ty::TyFunctionDeclaration,
     is_entry: bool,
-    args: Vec<(String, Type, bool, Span)>,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -438,10 +408,33 @@ fn compile_fn_with_args(
         ..
     } = ast_fn_decl;
 
-    let mut args = args
-        .into_iter()
-        .map(|(name, ty, by_ref, span)| (name, ty, by_ref, md_mgr.span_to_md(context, &span)))
-        .collect::<Vec<_>>();
+    let args = ast_fn_decl
+        .parameters
+        .iter()
+        .map(|param| {
+            // Convert to an IR type.
+            convert_resolved_typeid(
+                type_engine,
+                decl_engine,
+                context,
+                &param.type_argument.type_id,
+                &param.type_argument.span,
+            )
+            .map(|ty| {
+                (
+                    // Convert the name.
+                    param.name.as_str().into(),
+                    // Convert the type further to a pointer if it's a reference.
+                    param
+                        .is_reference
+                        .then(|| Type::new_ptr(context, ty))
+                        .unwrap_or(ty),
+                    // Convert the span to a metadata index.
+                    md_mgr.span_to_md(context, &param.name.span()),
+                )
+            })
+        })
+        .collect::<Result<Vec<_>, CompileError>>()?;
 
     let ret_type = convert_resolved_typeid(
         type_engine,
@@ -450,17 +443,6 @@ fn compile_fn_with_args(
         &return_type.type_id,
         &return_type.span,
     )?;
-
-    let returns_by_ref = !is_entry && !type_engine.get(return_type.type_id).is_copy_type();
-    if returns_by_ref {
-        // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
-        args.push((
-            "__ret_value".to_owned(),
-            ret_type,
-            true,
-            md_mgr.span_to_md(context, &return_type.span),
-        ));
-    }
 
     let span_md_idx = md_mgr.span_to_md(context, span);
     let storage_md_idx = md_mgr.purity_to_md(context, *purity);
@@ -493,7 +475,6 @@ fn compile_fn_with_args(
         context,
         module,
         func,
-        returns_by_ref,
         logged_types_map,
         messages_types_map,
     );
@@ -526,10 +507,6 @@ fn compile_fn_with_args(
             || compiler.current_block == compiler.function.get_entry_block(context)
             || compiler.current_block.num_predecessors(context) > 0)
     {
-        if returns_by_ref {
-            // Need to copy ref-type return values to the 'out' parameter.
-            ret_val = compiler.compile_copy_to_last_arg(context, ret_val, None);
-        }
         if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
@@ -537,34 +514,6 @@ fn compile_fn_with_args(
     }
     Ok(func)
 }
-
-/* Disabled until we can improve symbol resolution.  See comments above in compile_declarations().
-
-fn compile_impl(
-    context: &mut Context,
-    module: Module,
-    self_type: TypeInfo,
-    ast_methods: Vec<TypedFunctionDeclaration>,
-) -> Result<(), CompileError> {
-    for method in ast_methods {
-        let args = method
-            .parameters
-            .iter()
-            .map(|param| {
-                if param.name.as_str() == "self" {
-                    convert_resolved_type(context, &self_type)
-                } else {
-                    convert_resolved_typeid(context, &param.type_id, &param.type_span)
-                }
-                .map(|ty| (param.name.as_str().into(), ty, param.name.span().clone()))
-            })
-            .collect::<Result<Vec<(String, Type, Span)>, CompileError>>()?;
-
-        compile_fn_with_args(context, module, method, args, None)?;
-    }
-    Ok(())
-}
-*/
 
 fn compile_abi_method(
     context: &mut Context,
@@ -602,29 +551,13 @@ fn compile_abi_method(
     // An ABI method is always an entry point.
     let is_entry = true;
 
-    let args = ast_fn_decl
-        .parameters
-        .iter()
-        .map(|param| {
-            convert_resolved_typeid(
-                type_engine,
-                decl_engine,
-                context,
-                &param.type_argument.type_id,
-                &param.type_argument.span,
-            )
-            .map(|ty| (param.name.as_str().into(), ty, false, param.name.span()))
-        })
-        .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
-
-    compile_fn_with_args(
+    compile_fn(
         engines,
         context,
         md_mgr,
         module,
         ast_fn_decl,
         is_entry,
-        args,
         Some(selector),
         logged_types_map,
         messages_types_map,

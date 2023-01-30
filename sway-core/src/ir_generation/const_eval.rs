@@ -51,7 +51,7 @@ pub(crate) fn compile_const_decl(
             let mut stored_const_opt: Option<&Constant> = None;
             for ins in fn_compiler.current_block.instruction_iter(env.context) {
                 if let Some(Instruction::Store {
-                    dst_val,
+                    dst_val_ptr: dst_val,
                     stored_val,
                 }) = ins.get_instruction(env.context)
                 {
@@ -292,7 +292,7 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant.
                 return Ok(None);
             }
-            get_aggregate_for_types(
+            get_struct_for_types(
                 lookup.type_engine,
                 lookup.decl_engine,
                 lookup.context,
@@ -333,7 +333,10 @@ fn const_eval_typed_expr(
                 ))
             })
         }
-        ty::TyExpressionVariant::Array { contents } => {
+        ty::TyExpressionVariant::Array {
+            elem_type,
+            contents,
+        } => {
             let (mut element_typs, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
             for value in contents {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
@@ -346,11 +349,10 @@ fn const_eval_typed_expr(
                 // We couldn't evaluate all fields to a constant or cannot determine element type.
                 return Ok(None);
             }
-            let mut element_iter = element_typs.iter();
-            let element_type_id = *element_iter.next().unwrap();
-            if !element_iter.all(|tid| {
+            let elem_type_info = lookup.type_engine.get(*elem_type);
+            if !element_typs.iter().all(|tid| {
                 lookup.type_engine.get(*tid).eq(
-                    &lookup.type_engine.get(element_type_id),
+                    &elem_type_info,
                     Engines::new(lookup.type_engine, lookup.decl_engine),
                 )
             }) {
@@ -361,7 +363,7 @@ fn const_eval_typed_expr(
                 lookup.type_engine,
                 lookup.decl_engine,
                 lookup.context,
-                element_type_id,
+                *elem_type,
                 element_typs.len().try_into().unwrap(),
             )
             .map_or(None, |array_ty| {
@@ -378,7 +380,7 @@ fn const_eval_typed_expr(
             contents,
             ..
         } => {
-            let aggregate = create_enum_aggregate(
+            let aggregate = create_tagged_union_type(
                 lookup.type_engine,
                 lookup.decl_engine,
                 lookup.context,
