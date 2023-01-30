@@ -67,7 +67,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// // allocates when an element is pushed
     /// vec.push(5);
     /// ```
@@ -91,7 +91,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::with_capacity(2);
+    /// let mut vec = Vec::with_capacity(2);
     /// // does not allocate
     /// vec.push(5);
     /// // does not re-allocate
@@ -111,7 +111,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// let last_element = vec.pop().unwrap();
     /// assert(last_element == 5);
@@ -140,7 +140,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::with_capacity(5);
+    /// let mut vec = Vec::with_capacity(5);
     /// let cap = vec.capacity();
     /// assert(cap == 5);
     /// ```
@@ -158,7 +158,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.clear()
     /// assert(vec.is_empty());
@@ -175,7 +175,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.push(10);
     /// vec.push(15);
@@ -205,7 +205,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// assert(vec.len() == 1);
     /// vec.push(10);
@@ -222,7 +222,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// assert(vec.is_empty());
     /// vec.push(5);
     /// assert(!vec.is_empty());
@@ -245,7 +245,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.push(10);
     /// vec.push(15);
@@ -286,7 +286,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.push(10);
     ///
@@ -332,7 +332,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     ///
     /// let res = vec.pop();
     /// assert(res.is_none());
@@ -366,7 +366,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.push(10);
     ///
@@ -407,7 +407,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(5);
     /// vec.push(10);
     ///
@@ -489,7 +489,7 @@ impl<T> Vec<T> {
     /// vec.push(1);
     /// vec.push(2);
     /// vec.push(3);
-    /// let vec2 = vec.split_off(1);
+    /// let mut vec2 = vec.split_off(1);
     ///
     /// assert(vec.get(0).unwrap() == 1);
     /// assert(vec2.get(0).unwrap() == 2);
@@ -566,7 +566,7 @@ impl<T> Vec<T> {
     /// vec.push(1);
     /// vec.push(2);
     ///
-    /// let vec2 = Vec::new();
+    /// let mut vec2 = Vec::new();
     ///
     /// assert(vec.first().unwrap() == 1);
     /// assert(vec2.first().is_none());
@@ -587,7 +587,7 @@ impl<T> Vec<T> {
     /// vec.push(1); 
     /// vec.push(2);
     ///
-    /// let vec2 = Vec::new();
+    /// let mut vec2 = Vec::new();
     ///
     /// assert(vec.last().unwrap() == 2);
     /// assert(vec2.last().is_none());
@@ -673,7 +673,7 @@ impl<T> Vec<T> {
     /// ```sway
     /// use std::vec::Vec;
     ///
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(1);
     /// vec.push(2);
     ///
@@ -710,11 +710,11 @@ impl<T> Vec<T> {
     /// ### Examples
     ///
     /// ```sway
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(0);
     /// vec.fill(3, 1);
     ///
-    /// let vec2 = Vec::new();
+    /// let mut vec2 = Vec::new();
     /// vec2.push(1);
     /// vec2.push(2);
     /// vec.fill(1, 3);
@@ -748,6 +748,43 @@ impl<T> Vec<T> {
         }
 
         self.len = new_len;
+    }
+
+    /// Checks if the elements of the vector are sorted.
+    ///
+    /// That is, for every element `a` and its following element `b`, `a <= b` must hold. If the
+    /// vector holds zero or one element, `true` is returned.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// let mut vec = Vec::new();
+    /// vec.push(1);
+    /// vec.push(2);
+    /// vec.push(3);
+    ///
+    /// assert(vec.is_sorted());
+    ///
+    /// vec.swap(0, 1);
+    ///
+    /// assert(!vec.is_sorted());
+    /// ```
+    pub fn is_sorted<O>(ref mut v: Vec<O>) -> bool where O: Ord {
+        let len = v.len();
+
+        if len < 2 {
+            return true;
+        }
+
+        let mut i = 0;
+        while i < len - 1 {
+            if v.get(i).unwrap() > v.get(i + 1).unwrap() {
+                return false;
+            }
+            i += 1;
+        }
+
+        true
     }
 }
 
@@ -939,7 +976,7 @@ impl<T> Vec<T> {
     /// ### Examples
     ///
     /// ```sway
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(3);
     /// vec.push(2);
     /// vec.push(4);
@@ -967,7 +1004,7 @@ impl<T> Vec<T> {
     /// ### Examples
     ///
     /// ```sway
-    /// let vec = Vec::new();
+    /// let mut vec = Vec::new();
     /// vec.push(3);
     /// vec.push(2);
     /// vec.push(4);

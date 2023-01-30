@@ -197,15 +197,15 @@ pub fn without_capacity<T>(
     assert(vector.get(2).unwrap() == value5);
 
     // create other vector
-    let mut other_vector = Vec::new;
+    let mut other_vector = Vec::new();
     other_vector.push(value0);
     other_vector.push(value1);
     other_vector.push(value2);
 
     assert_bounds(other_vector, 3, 4);
-    assert(other_vector.get(0).unrwap() == value0);
-    assert(other_vector.get(1).unrwap() == value1);
-    assert(other_vector.get(2).unrwap() == value2);
+    assert(other_vector.get(0).unwrap() == value0);
+    assert(other_vector.get(1).unwrap() == value1);
+    assert(other_vector.get(2).unwrap() == value2);
 
     // append other vector to vector
     vector.append(other_vector);
@@ -246,7 +246,7 @@ pub fn without_capacity<T>(
     assert(other_vector.get(0).is_none());
 
     // split at index
-    let (vector, other_vector) = vector.split_at(3);
+    let (mut vector, mut other_vector) = vector.split_at(3);
 
     assert_bounds(vector, 3, 3);
     assert_bounds(other_vector, 3, 3);
@@ -311,7 +311,10 @@ pub fn without_capacity<T>(
     assert(vector.get(6).unwrap() == value1);
     assert(vector.get(7).unwrap() == value1);
 
-    // TODO: contains, quick sort, merge sort
+    // test contains
+    assert(Vec::contains(vector, value0));
+    assert(Vec::contains(vector, value1));
+    assert(!Vec::contains(vector, value2));
 }
 
 pub fn with_capacity<T>(
@@ -407,16 +410,36 @@ pub fn sort<T>(
     value0: T,
     value1: T,
 ) where T: Ord + Eq {
+    // create new vector
     let mut vector = Vec::with_capacity(2);
+
+    // push 2
     vector.push(value0);
     vector.push(value1);
 
-    if is_sorted(vector) {
+    // reverse if sorted
+    if vector.is_sorted() {
         vector.reverse();
     }
 
-    vector.sort()
+    // sort
+    Vec::sort(vector);
 
+    // assert sorted
+    assert(vector.is_sorted());
+
+    // push 1
+    vector.push(value3);
+
+    // swap if sorted
+    if vector.is_sorted() {
+        vector.swap(0, 2);
+    }
+
+    Vec::sort(vector);
+
+    // assert sorted
+    assert(vector.is_sorted());
 }
 
 fn assert_bounds<T>(ref mut vector: Vec<T>, expected_len: u64, expected_cap: u64) {
