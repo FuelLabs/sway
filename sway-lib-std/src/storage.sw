@@ -540,6 +540,50 @@ impl<V> StorageVec<V> {
         get::<V>(key)
     }
 
+    /// Swaps two elements.
+    ///
+    /// ### Arguments
+    ///
+    /// * element1_index - The index of the first element.
+    /// * element2_index - The index of the second element.
+    ///
+    /// ### Reverts
+    ///
+    /// * If `element1_index` or `element2_index` is greater than the length of the vector.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::storage::StorageVec;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///
+    ///     storage.vec.swap(0, 2);
+    ///     assert(15 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(2).unwrap());
+    /// ```
+    pub fn swap(self, element1_index: u64, element2_index: u64) {
+        let len = get::<u64>(__get_storage_key()).unwrwap_or(0);
+        assert(element1_index < len);
+        assert(element2_index < len);
+
+        if element1_index == element2_index {
+            return;
+        }
+
+        let element1_value: V = self.get(element1_index).unwrap();
+        self.set(element1_index, self.get(element2_index).unwrap());
+        self.set(element2_index, element1_value);
+    }
+
     /// Removes the element at the specified index and fills it with the last element.
     /// This does not preserve ordering and returns the element.
     ///
