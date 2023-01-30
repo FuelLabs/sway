@@ -176,16 +176,20 @@ pub(crate) type ModulePrefix = String;
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
-    pub(crate) fn location(&self) -> Result<&String> {
+    ///
+    /// Panics if there are no modules.
+    pub(crate) fn location(&self) -> &str {
         self.0
             .last()
-            .ok_or_else(|| anyhow::anyhow!("Expected Some module location, found None"))
+            .expect("Expected Some module location, found None")
     }
     /// The name of the project.
-    pub(crate) fn project_name(&self) -> Result<&String> {
+    ///
+    /// Panics if the project root is missing.
+    pub(crate) fn project_name(&self) -> &str {
         self.0
-            .last()
-            .ok_or_else(|| anyhow::anyhow!("Expected Some module location, found None"))
+            .first()
+            .expect("Expected root module, project root missing")
     }
     /// The location of the parent of the current module.
     ///

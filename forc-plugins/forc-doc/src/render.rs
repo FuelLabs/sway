@@ -45,7 +45,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
-                file_contents: HTMLString::from(doc.clone().render()),
+                file_contents: HTMLString::from(doc.clone().render()?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
             let location = doc.module_info.location().to_string();
@@ -209,7 +209,7 @@ impl RenderedDocumentation {
             }
         }
         // ProjectIndex
-        match module_map.get(root_module.location()?) {
+        match module_map.get(root_module.location()) {
             Some(doc_links) => rendered_docs.0.push(RenderedDocument {
                 module_info: root_module.clone(),
                 html_filename: INDEX_FILENAME.to_string(),
@@ -222,13 +222,13 @@ impl RenderedDocumentation {
                             links: doc_links.to_owned(),
                         },
                     }
-                    .render(),
+                    .render()?,
                 ),
             }),
             None => panic!("Project does not contain a root module."),
         }
         if module_map.len() > 1 {
-            module_map.remove_entry(root_module.location()?);
+            module_map.remove_entry(root_module.location());
 
             // ModuleIndex(s)
             for (_, doc_links) in module_map {
@@ -251,7 +251,7 @@ impl RenderedDocumentation {
                                 links: doc_links.to_owned(),
                             },
                         }
-                        .render(),
+                        .render()?,
                     ),
                 })
             }
@@ -310,7 +310,6 @@ impl Renderable for ItemHeader {
         let normalize = module_info.to_html_shorthand_path_string("assets/normalize.css");
         let swaydoc = module_info.to_html_shorthand_path_string("assets/swaydoc.css");
         let ayu = module_info.to_html_shorthand_path_string("assets/ayu.css");
-        let location = module_info.location()?.to_owned();
 
         Ok(box_html! {
             head {
@@ -321,12 +320,12 @@ impl Renderable for ItemHeader {
                     name="description",
                     content=format!(
                         "API documentation for the Sway `{}` {} in `{}`.",
-                        item_name.as_str(), friendly_name, &location,
+                        item_name.as_str(), friendly_name, module_info.location(),
                     )
                 );
                 meta(name="keywords", content=format!("sway, swaylang, sway-lang, {}", item_name.as_str()));
                 link(rel="icon", href=favicon);
-                title: format!("{} in {} - Sway", item_name.as_str(), location);
+                title: format!("{} in {} - Sway", item_name.as_str(), module_info.location());
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
@@ -377,8 +376,8 @@ impl Renderable for ItemBody {
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
         let sidebar = sidebar.render()?;
-        let context_is_some = item_context.context.is_some();
-        let item_context = item_context.render()?;
+        let item_context = (item_context.context.is_some())
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render() });
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -438,8 +437,8 @@ impl Renderable for ItemBody {
                                     }
                                 }
                             }
-                            @ if context_is_some {
-                                : item_context;
+                            @ if item_context.is_some() {
+                                : item_context.unwrap();
                             }
                         }
                     }
@@ -542,13 +541,13 @@ impl ItemContext {
 impl Renderable for ItemContext {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => Ok(context_section(fields, BlockTitle::Fields)),
-            ContextType::StorageFields(fields) => Ok(context_section(fields, BlockTitle::Fields)),
+            ContextType::StructFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
+            ContextType::StorageFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
             ContextType::EnumVariants(variants) => {
-                Ok(context_section(variants, BlockTitle::Variants))
+                Ok(context_section(variants, BlockTitle::Variants)?)
             }
             ContextType::RequiredMethods(methods) => {
-                Ok(context_section(methods, BlockTitle::RequiredMethods))
+                Ok(context_section(methods, BlockTitle::RequiredMethods)?)
             }
         }
     }
@@ -557,18 +556,22 @@ impl Renderable for ItemContext {
 fn context_section<'title, S: Renderable + 'static>(
     list: Vec<S>,
     title: BlockTitle,
-) -> Box<dyn RenderBox + 'title> {
+) -> Result<Box<dyn RenderBox + 'title>> {
     let lct = title.html_title_string();
-    box_html! {
+    let mut rendered_list: Vec<_> = Vec::new();
+    for item in list {
+        rendered_list.push(item.render()?)
+    }
+    Ok(box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
             : title.as_str();
             a(class="anchor", href=format!("{IDENTITY}{lct}"));
         }
-        @ for item in list {
+        @ for item in rendered_list {
             // TODO: Check for visibility of the field itself
-            : item.render();
+            : item;
         }
-    }
+    })
 }
 impl Renderable for TyStructField {
     fn render(self) -> Result<Box<dyn RenderBox>> {
@@ -911,7 +914,7 @@ impl SidebarNav for AllDocIndex {
 impl Renderable for AllDocIndex {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let doc_links = self.all_docs.clone().render()?;
-        let sidebar = self.sidebar();
+        let sidebar = self.sidebar().render()?;
         Ok(box_html! {
             head {
                 meta(charset="utf-8");
@@ -991,7 +994,7 @@ impl SidebarNav for ModuleIndex {
 impl Renderable for ModuleIndex {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let doc_links = self.module_docs.clone().render()?;
-        let sidebar = self.sidebar();
+        let sidebar = self.sidebar().render()?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex => "Project ",
             DocStyle::ModuleIndex => "Module ",
@@ -1031,7 +1034,7 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=ayu);
             }
             body(class="swaydoc mod") {
-                : sidebar.render()?;
+                : sidebar;
                 main {
                     div(class="width-limiter") {
                         div(class="sub-container") {
@@ -1103,12 +1106,12 @@ impl Renderable for Sidebar {
             .to_html_shorthand_path_string("assets/sway-logo.svg");
         let location_with_prefix = match &self.style {
             DocStyle::AllDoc | DocStyle::ProjectIndex => {
-                format!("Project {}", self.module_info.location()?)
+                format!("Project {}", self.module_info.location())
             }
             DocStyle::ModuleIndex | DocStyle::Item => format!(
                 "{} {}",
                 BlockTitle::Modules.item_title_str(),
-                self.module_info.location()?
+                self.module_info.location()
             ),
         };
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
