@@ -545,7 +545,18 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     fn compile_ret_from_entry(&mut self, instr_val: &Value, ret_val: &Value, ret_type: &Type) {
-        todo!();
+        if ret_type.is_unit(self.context) {
+            // Unit returns should always be zero, although because they can be omitted from
+            // functions, the register is sometimes uninitialized. Manually return zero in this
+            // case.
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Op(Op::Return(Return)));
+        } else {
+            todo!();
+        }
     }
 
     fn compile_revert(&mut self, instr_val: &Value, revert_val: &Value) {
@@ -605,6 +616,87 @@ impl<'ir> EvmAsmBuilder<'ir> {
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
+        self.cur_section = Some(EvmAsmSection::new());
+
+        // push1 0x80
+        // push1 0x40
+        // mstore
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::MStore(MStore)));
+
+        //self.init_locals(function);
+        let func_is_entry = function.is_entry(self.context);
+
+        // Compile instructions.
+        let mut warnings = Vec::new();
+        let mut errors = Vec::new();
+        for block in function.block_iter(self.context) {
+            self.insert_block_label(block);
+            for instr_val in block.instruction_iter(self.context) {
+                check!(
+                    self.compile_instruction(&instr_val, func_is_entry),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+            }
+        }
+
+        // push1 0x00
+        // dup1
+        // revert
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Dup1(Dup1)));
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .ops
+            .push(AbstractOp::new(Op::Revert(Revert)));
+
+        // Generate the ABI.
+        #[allow(deprecated)]
+        self.cur_section
+            .as_mut()
+            .unwrap()
+            .abi
+            .push(ethabi::operation::Operation::Function(ethabi::Function {
+                name: function.get_name(self.context).to_string(),
+                inputs: vec![],
+                outputs: vec![],
+                constant: None,
+                state_mutability: ethabi::StateMutability::NonPayable,
+            }));
+
+        self.sections.push(self.cur_section.take().unwrap());
+        self.cur_section = None;
+
         ok((), vec![], vec![])
     }
 
@@ -614,5 +706,24 @@ impl<'ir> EvmAsmBuilder<'ir> {
 
     pub(super) fn compile_ret_from_call(&mut self, instr_val: &Value, ret_val: &Value) {
         todo!();
+    }
+
+    pub(super) fn insert_block_label(&mut self, block: Block) {
+        if &block.get_label(self.context) != "entry" {
+            let label = self.block_to_label(&block);
+            self.cur_section
+                .as_mut()
+                .unwrap()
+                .ops
+                .push(AbstractOp::Label(label.to_string()));
+        }
+    }
+
+    fn block_to_label(&mut self, block: &Block) -> Label {
+        self.block_label_map.get(block).cloned().unwrap_or_else(|| {
+            let label = self.get_label();
+            self.block_label_map.insert(*block, label);
+            label
+        })
     }
 }
