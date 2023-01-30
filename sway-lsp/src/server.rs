@@ -766,7 +766,7 @@ mod tests {
         let response = call_request(service, show_ast.clone()).await;
         let expected = Response::from_ok(
             1.into(),
-            json!({ "uri": format!("{}/{}.rs", save_path, ast_kind) }),
+            json!({ "uri": format!("{save_path}/{ast_kind}.rs") }),
         );
         assert_json_eq!(expected, response.ok().unwrap());
         show_ast
@@ -1168,7 +1168,7 @@ mod tests {
 
                 let example_dir = Some(Url::from_file_path(example_dir).unwrap());
                 let (uri, sway_program) = load_sway_example(manifest_dir);
-                let _ = did_open_notification(&mut service, &uri, &sway_program).await;
+                did_open_notification(&mut service, &uri, &sway_program).await;
                 let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
                 let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
                 let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
