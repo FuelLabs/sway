@@ -27,8 +27,13 @@ pub fn hover_data(
 
     // check if our token is a keyword
     if token.kind == SymbolKind::Keyword {
-        let documentation = keyword_docs.get(ident.as_str()).unwrap();
-        let content = Markup::new().maybe_add_sway_block(None).text(documentation);
+        let name = ident.as_str();
+        let documentation = keyword_docs.get(name).unwrap();
+        let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
+        let formatted_doc = format!("{prefix}{documentation}");
+        let content = Markup::new()
+            .maybe_add_sway_block(None)
+            .text(&formatted_doc);
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,
