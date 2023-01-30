@@ -4,6 +4,7 @@
 //! however the defualt formatter does not require the presence of one and any fields omitted will remain as default.
 
 #![allow(dead_code)]
+pub mod comments;
 pub mod config;
 mod constants;
 mod error;

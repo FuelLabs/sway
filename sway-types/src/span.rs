@@ -82,6 +82,15 @@ pub struct Span {
     path: Option<Arc<PathBuf>>,
 }
 
+impl From<Span> for std::ops::Range<usize> {
+    fn from(value: Span) -> Self {
+        Self {
+            start: value.start,
+            end: value.end,
+        }
+    }
+}
+
 impl Span {
     pub fn dummy() -> Span {
         DUMMY_SPAN.clone()
