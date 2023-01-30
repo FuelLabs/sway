@@ -194,8 +194,24 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
+
+                // save decl_ids for the LSP
+                for supertrait in trait_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
+                                supertrait_decl
+                            {
+                                supertrait.decl_id = Some(supertrait_decl_id);
+                            }
+                        });
+                }
+
                 let decl_id = decl_engine.insert(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+
                 trait_decl
                     .methods
                     .iter_mut()
