@@ -1,7 +1,5 @@
 script;
 
-use std::logging::log;
-
 pub struct MyInnerStruct {
     x: u64,
     y: u64,

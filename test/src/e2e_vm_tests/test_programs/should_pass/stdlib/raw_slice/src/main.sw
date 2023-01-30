@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, intrinsics::{size_of, size_of_val}};
+use std::{intrinsics::{size_of, size_of_val}};
 
 struct TestStruct {
     boo: bool,

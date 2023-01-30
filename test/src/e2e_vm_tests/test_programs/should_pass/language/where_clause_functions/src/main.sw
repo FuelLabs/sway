@@ -2,11 +2,6 @@ script;
 
 use core::ops::*;
 
-use std::{
-    assert::assert,
-    logging::log,
-};
-
 trait MyAdd {
     fn my_add(self, other: Self) -> Self;
 }

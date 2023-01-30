@@ -1,6 +1,6 @@
 script;
 
-use std::{assert::assert, result::Result, u128::U128, u256::{U256, U256Error}};
+use std::{u128::U128, u256::{U256, U256Error}};
 
 fn main() -> bool {
     // test new()

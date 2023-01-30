@@ -192,6 +192,10 @@ impl<'a> InstructionVerifier<'a> {
                             output_index,
                             coins,
                         )?,
+                        FuelVmInstruction::StateClear {
+                            key,
+                            number_of_slots,
+                        } => self.verify_state_clear(key, number_of_slots)?,
                         FuelVmInstruction::StateLoadWord(key) => {
                             self.verify_state_load_word(key)?
                         }
@@ -774,6 +778,19 @@ impl<'a> InstructionVerifier<'a> {
         }
 
         Ok(())
+    }
+
+    fn verify_state_clear(&self, key: &Value, number_of_slots: &Value) -> Result<(), IrError> {
+        if !key.get_type(self.context).is(Type::is_b256, self.context) {
+            Err(IrError::VerifyStateKeyBadType)
+        } else if !number_of_slots
+            .get_type(self.context)
+            .is(Type::is_uint, self.context)
+        {
+            Err(IrError::VerifyStateAccessNumOfSlots)
+        } else {
+            Ok(())
+        }
     }
 
     fn verify_state_load_store(
