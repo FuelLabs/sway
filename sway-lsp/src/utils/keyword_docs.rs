@@ -297,7 +297,7 @@ impl KeywordDocs {
             ///        x: a.x.my_add(b.x),
             ///        y: a.y.my_add(b.y),
             ///    }
-            ///}
+            /// }
             /// ```
             mod fn_keyword {}
         };
@@ -555,19 +555,6 @@ impl KeywordDocs {
             ///
             /// let mut changing_thing = true;
             /// changing_thing = false;
-            ///
-            /// let (part1, part2) = ("first", "second");
-            ///
-            /// struct Example {
-            ///     a: bool,
-            ///     b: u64,
-            /// }
-            ///
-            /// let Example { a, b: _ } = Example {
-            ///     a: true,
-            ///     b: 10004,
-            /// };
-            /// assert(a == true);
             /// ```
             ///
             /// The pattern is most commonly a single variable, which means no pattern matching is done and
@@ -807,9 +794,12 @@ impl KeywordDocs {
             keyword.attrs.iter().for_each(|attr| {
                 let tokens = attr.tokens.to_token_stream();
                 let lit = extract_lit(tokens);
-                writeln!(documentation, "{}", lit).unwrap();
+                writeln!(documentation, "{lit}").unwrap();
             });
-            keyword_docs.insert(name, documentation);
+            keyword_docs.insert(
+                name,
+                documentation.replace("///\n", "\n").replace("/// ", ""),
+            );
         });
 
         Self {
@@ -821,12 +811,6 @@ impl KeywordDocs {
     pub fn get(&self, keyword: &str) -> Option<&String> {
         self.inner.get(keyword)
     }
-}
-
-#[test]
-fn test2() {
-    let kw_docs = KeywordDocs::new();
-    eprintln!("{}", kw_docs.get("true").unwrap());
 }
 
 /// Extracts the literal from a token stream and returns it as a string.
