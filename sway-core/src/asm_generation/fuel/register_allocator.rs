@@ -1,12 +1,14 @@
 use crate::{
     asm_generation::fuel::compiler_constants,
-    asm_lang::{allocated_ops::AllocatedRegister, virtual_register::*, Op, VirtualOp},
+    asm_lang::{
+        allocated_ops::AllocatedRegister, virtual_register::*, ControlFlowOp, Label, Op, VirtualOp,
+    },
 };
-
-use std::collections::{BTreeSet, HashMap};
 
 use either::Either;
 use petgraph::graph::{node_index, NodeIndex};
+use rustc_hash::FxHashSet;
+use std::collections::{BTreeSet, HashMap};
 
 pub type InterferenceGraph =
     petgraph::stable_graph::StableGraph<Option<VirtualRegister>, (), petgraph::Undirected>;
@@ -127,13 +129,19 @@ impl RegisterPool {
 /// This function finally returns `live_out` because it has all the liveness information needed.
 /// `live_in` is computed because it is needed to compute `live_out` iteratively.
 ///
-pub(crate) fn liveness_analysis(ops: &[Op]) -> HashMap<usize, BTreeSet<VirtualRegister>> {
-    // Hash maps that will reprsent the live_in and live_out tables. The key of each hash map is
-    // simply the index of each instruction in the `ops` vector.
-    let mut live_in: HashMap<usize, BTreeSet<VirtualRegister>> =
-        HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
-    let mut live_out: HashMap<usize, BTreeSet<VirtualRegister>> =
-        HashMap::from_iter((0..ops.len()).into_iter().map(|idx| (idx, BTreeSet::new())));
+pub(crate) fn liveness_analysis(ops: &[Op]) -> Vec<FxHashSet<VirtualRegister>> {
+    // Vectors representing maps that will reprsent the live_in and live_out tables. Each entry
+    // corresponds to an instruction in `ops`.
+    let mut live_in: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
+    let mut live_out: Vec<FxHashSet<VirtualRegister>> = vec![FxHashSet::default(); ops.len()];
+    let mut label_to_index: HashMap<Label, usize> = HashMap::new();
+
+    // Keep track of an map between jump labels and op indices. Useful to compute op successors.
+    for (idx, op) in ops.iter().enumerate() {
+        if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
+            label_to_index.insert(op_label, idx);
+        }
+    }
 
     let mut modified = true;
     while modified {
@@ -141,6 +149,7 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> HashMap<usize, BTreeSet<VirtualRe
         // Iterate in reverse topological order of the CFG (which is basically the same as the
         // reverse order of `ops`. This makes the outer `while` loop converge faster.
         for (ix, op) in ops.iter().rev().enumerate() {
+            let mut local_modified = false;
             let rev_ix = ops.len() - ix - 1;
 
             // Get use and def vectors without any of the Constant registers
@@ -149,36 +158,28 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> HashMap<usize, BTreeSet<VirtualRe
             op_use.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
             op_def.retain(|&reg| matches!(reg, VirtualRegister::Virtual(_)));
 
-            let prev_live_out_op = live_out.get(&rev_ix).expect("ix must exist").clone();
-            let prev_live_in_op = live_in.get(&rev_ix).expect("ix must exist").clone();
-
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
             // are successors of op
-            let live_out_op = live_out.get_mut(&rev_ix).expect("ix must exist");
-            for s in &op.successors(rev_ix, ops) {
-                for l in live_in.get(s).expect("ix must exist") {
-                    live_out_op.insert(l.clone());
+            for s in &op.successors(rev_ix, ops, &label_to_index) {
+                for l in live_in[*s].iter() {
+                    local_modified |= live_out[rev_ix].insert(l.clone());
                 }
             }
 
             // Compute live_in(op) = use(op) UNION (live_out(op) - def(op))
             // Add use(op)
-            let live_in_op = live_in.get_mut(&rev_ix).expect("ix must exist");
             for u in op_use {
-                live_in_op.insert(u.clone());
+                local_modified |= live_in[rev_ix].insert(u.clone());
             }
-
             // Add live_out(op) - def(op)
-            let mut live_out_op_minus_defs = live_out_op.clone();
-            for d in &op_def {
-                live_out_op_minus_defs.remove(d);
-            }
-            for l in &live_out_op_minus_defs {
-                live_in_op.insert(l.clone());
+            for l in live_out[rev_ix].iter() {
+                if !op_def.contains(&l) {
+                    local_modified |= live_in[rev_ix].insert(l.clone());
+                }
             }
 
             // Did anything change in this iteration?
-            modified |= (prev_live_in_op != *live_in_op) || (prev_live_out_op != *live_out_op);
+            modified |= local_modified;
         }
     }
 
@@ -204,7 +205,7 @@ pub(crate) fn liveness_analysis(ops: &[Op]) -> HashMap<usize, BTreeSet<VirtualRe
 ///
 pub(crate) fn create_interference_graph(
     ops: &[Op],
-    live_out: &HashMap<usize, BTreeSet<VirtualRegister>>,
+    live_out: &[FxHashSet<VirtualRegister>],
 ) -> (InterferenceGraph, HashMap<VirtualRegister, NodeIndex>) {
     let mut interference_graph = InterferenceGraph::with_capacity(0, 0);
 
@@ -225,8 +226,8 @@ pub(crate) fn create_interference_graph(
             reg_to_node_map.insert(reg.clone(), interference_graph.add_node(Some(reg.clone())));
         });
 
-    for (ix, regs) in live_out {
-        match &ops[*ix].opcode {
+    for (ix, regs) in live_out.iter().enumerate() {
+        match &ops[ix].opcode {
             Either::Left(VirtualOp::MOVE(v, c)) => {
                 if let Some(ix1) = reg_to_node_map.get(v) {
                     for b in regs.iter() {
@@ -242,7 +243,7 @@ pub(crate) fn create_interference_graph(
                 }
             }
             _ => {
-                for v in &ops[*ix].def_registers() {
+                for v in &ops[ix].def_registers() {
                     if let Some(ix1) = reg_to_node_map.get(v) {
                         for b in regs.iter() {
                             if let Some(ix2) = reg_to_node_map.get(b) {

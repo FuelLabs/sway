@@ -1,6 +1,5 @@
 contract;
 
-use std::contract_id::ContractId;
 use std::external::bytecode_root;
 
 abi ContractBytecodeTest {

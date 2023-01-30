@@ -8,5 +8,5 @@ fn test_meaning_of_life_inner2() {
 
 #[test]
 fn log_test_inner2() {
-    std::logging::log(1u8);
+    log(1u8);
 }

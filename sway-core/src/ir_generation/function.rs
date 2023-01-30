@@ -587,6 +587,20 @@ impl<'eng> FnCompiler<'eng> {
                     .addr_of(value)
                     .add_metadatum(context, span_md_idx))
             }
+            Intrinsic::StateClear => {
+                let key_exp = arguments[0].clone();
+                let number_of_slots_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_clear(key_var, number_of_slots_value)
+                    .add_metadatum(context, span_md_idx))
+            }
             Intrinsic::StateLoadWord => {
                 let exp = &arguments[0];
                 let value = self.compile_expression(context, md_mgr, exp)?;

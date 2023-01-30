@@ -1,7 +1,6 @@
 script;
 
 use std::intrinsics::*;
-use std::assert::assert;
 
 struct TestStruct {
     field_1: bool,

@@ -342,6 +342,11 @@ mod ir_builder {
                     IrAstOperation::Smo(recipient_and_message, message_size, output_index, coins)
             }
 
+            rule op_state_clear() -> IrAstOperation
+                = "state_clear" _ "key" _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateClear(key, number_of_slots)
+                }
+
             rule op_state_load_quad_word() -> IrAstOperation
                 = "state_load_quad_word" _ dst:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
@@ -690,6 +695,7 @@ mod ir_builder {
         Ret(IrAstTy, String),
         Revert(String),
         Smo(String, String, String, String),
+        StateClear(String, String),
         StateLoadQuadWord(String, String, String),
         StateLoadWord(String),
         StateStoreQuadWord(String, String, String),
@@ -1274,6 +1280,13 @@ mod ir_builder {
                             *val_map.get(&message_size).unwrap(),
                             *val_map.get(&output_index).unwrap(),
                             *val_map.get(&coins).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateClear(key, number_of_slots) => block
+                        .ins(context)
+                        .state_clear(
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots) => block
