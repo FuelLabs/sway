@@ -268,7 +268,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
     }
 
-    /// Removes the last element of the vector and returns it, `None` if empty.
+    /// Sets the len to zero.
     ///
     /// ### Examples
     ///
@@ -280,28 +280,16 @@ impl<V> StorageVec<V> {
     /// }
     ///
     /// fn foo() {
-    ///     let five = 5_u64;
-    ///     storage.vec.push(five);
-    ///     let popped_value = storage.vec.pop().unwrap();
-    ///     assert(five == popped_value);
-    ///     let none_value = storage.vec.pop();
-    ///     assert(none_value.is_none())
+    ///     assert(0 == storage.vec.len());
+    ///     storage.vec.push(5);
+    ///     assert(1 == storage.vec.len());
+    ///     storage.vec.clear();
+    ///     assert(0 == storage.vec.len());
     /// }
     /// ```
-    #[storage(read, write)]
-    pub fn pop(self) -> Option<V> {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
-        // if the length is 0, there is no item to pop from the vec
-        if len == 0 {
-            return Option::None;
-        }
-
-        // reduces len by 1, effectively removing the last item in the vec
-        store(__get_storage_key(), len - 1);
-
-        let key = sha256((len - 1, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+    #[storage(write)]
+    pub fn clear(self) {
+        store(__get_storage_key(), 0);
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -330,15 +318,64 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
         // if the index is larger or equal to len, there is no item to return
-        if len <= index {
+        if get::<u64>(__get_storage_key()).unwrap_or(0) <= index {
             return Option::None;
         }
 
-        let key = sha256((index, __get_storage_key()));
-        Option::Some::<V>(get::<V>(key).unwrap())
+        get::<V>(sha256((index, __get_storage_key())))
+    }
+
+    /// Returns the length of the vector.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::storage::StorageVec;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     assert(0 == storage.vec.len());
+    ///     storage.vec.push(5);
+    ///     assert(1 == storage.vec.len());
+    ///     storage.vec.push(10);
+    ///     assert(2 == storage.vec.len());
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn len(self) -> u64 {
+        get::<u64>(__get_storage_key()).unwrap_or(0)
+    }
+
+    /// Checks whether the len is zero or not.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::storage::StorageVec;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     assert(true == storage.vec.is_empty());
+    ///
+    ///     storage.vec.push(5);
+    ///
+    ///     assert(false == storage.vec.is_empty());
+    ///
+    ///     storage.vec.clear();
+    ///
+    ///     assert(true == storage.vec.is_empty());
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn is_empty(self) -> bool {
+        get::<u64>(__get_storage_key()).unwrap_or(0) == 0
     }
 
     /// Removes the element in the given index and moves all the elements in the following indexes
@@ -398,96 +435,6 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len - 1);
 
         removed_element
-    }
-
-    /// Removes the element at the specified index and fills it with the last element.
-    /// This does not preserve ordering and returns the element.
-    ///
-    /// ### Arguments
-    ///
-    /// * `index` - The index of the vec to remove the item from.
-    ///
-    /// ### Reverts
-    ///
-    /// Reverts if index is larger or equal to length of the vec.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::storage::StorageVec;
-    ///
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     storage.vec.push(5);
-    ///     storage.vec.push(10);
-    ///     storage.vec.push(15);
-    ///     let removed_value = storage.vec.swap_remove(0);
-    ///     assert(5 == removed_value);
-    ///     let swapped_value = storage.vec.get(0);
-    ///     assert(15 == swapped_value);
-    /// }
-    /// ```
-    #[storage(read, write)]
-    pub fn swap_remove(self, index: u64) -> V {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
-        // if the index is larger or equal to len, there is no item to remove
-        assert(index < len);
-
-        let hash_of_to_be_removed = sha256((index, __get_storage_key()));
-        // gets the element before removing it, so it can be returned
-        let element_to_be_removed = get::<V>(hash_of_to_be_removed).unwrap();
-
-        let last_element = get::<V>(sha256((len - 1, __get_storage_key()))).unwrap();
-        store::<V>(hash_of_to_be_removed, last_element);
-
-        // decrements len by 1
-        store(__get_storage_key(), len - 1);
-
-        element_to_be_removed
-    }
-    /// Sets or mutates the value at the given index.
-    ///
-    /// ### Arguments
-    ///
-    /// * `index` - The index of the vec to set the value at
-    /// * `value` - The value to be set
-    ///
-    /// ### Reverts
-    ///
-    /// Reverts if index is larger than or equal to the length of the vec.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::storage::StorageVec;
-    ///
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     storage.vec.push(5);
-    ///     storage.vec.push(10);
-    ///     storage.vec.push(15);
-    ///
-    ///     storage.vec.set(0, 20);
-    ///     let set_value = storage.vec.get(0);
-    ///     assert(20 == set_value);
-    /// }
-    /// ```
-    #[storage(read, write)]
-    pub fn set(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-
-        // if the index is higher than or equal len, there is no element to set
-        assert(index < len);
-
-        let key = sha256((index, __get_storage_key()));
-        store::<V>(key, value);
     }
 
     /// Inserts the value at the given index, moving the current index's value
@@ -562,7 +509,7 @@ impl<V> StorageVec<V> {
         store(__get_storage_key(), len + 1);
     }
 
-    /// Returns the length of the vector.
+    /// Removes the last element of the vector and returns it, `None` if empty.
     ///
     /// ### Examples
     ///
@@ -574,19 +521,90 @@ impl<V> StorageVec<V> {
     /// }
     ///
     /// fn foo() {
-    ///     assert(0 == storage.vec.len());
+    ///     let five = 5_u64;
+    ///     storage.vec.push(five);
+    ///     let popped_value = storage.vec.pop().unwrap();
+    ///     assert(five == popped_value);
+    ///     let none_value = storage.vec.pop();
+    ///     assert(none_value.is_none())
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn pop(self) -> Option<V> {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        // if the length is 0, there is no item to pop from the vec
+        if len == 0 {
+            return Option::None;
+        }
+
+        // reduces len by 1, effectively removing the last item in the vec
+        store(__get_storage_key(), len - 1);
+
+        let key = sha256((len - 1, __get_storage_key()));
+        get::<V>(key)
+    }
+
+    /// Removes the element at the specified index and fills it with the last element.
+    /// This does not preserve ordering and returns the element.
+    ///
+    /// ### Arguments
+    ///
+    /// * `index` - The index of the vec to remove the item from.
+    ///
+    /// ### Reverts
+    ///
+    /// Reverts if index is larger or equal to length of the vec.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std::storage::StorageVec;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}
+    /// }
+    ///
+    /// fn foo() {
     ///     storage.vec.push(5);
-    ///     assert(1 == storage.vec.len());
     ///     storage.vec.push(10);
-    ///     assert(2 == storage.vec.len());
+    ///     storage.vec.push(15);
+    ///     let removed_value = storage.vec.swap_remove(0);
+    ///     assert(5 == removed_value);
+    ///     let swapped_value = storage.vec.get(0);
+    ///     assert(15 == swapped_value);
     /// }
     /// ```
-    #[storage(read)]
-    pub fn len(self) -> u64 {
-        get::<u64>(__get_storage_key()).unwrap_or(0)
+    #[storage(read, write)]
+    pub fn swap_remove(self, index: u64) -> V {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        // if the index is larger or equal to len, there is no item to remove
+        assert(index < len);
+
+        let hash_of_to_be_removed = sha256((index, __get_storage_key()));
+        // gets the element before removing it, so it can be returned
+        let element_to_be_removed = get::<V>(hash_of_to_be_removed).unwrap();
+
+        let last_element = get::<V>(sha256((len - 1, __get_storage_key()))).unwrap();
+        store::<V>(hash_of_to_be_removed, last_element);
+
+        // decrements len by 1
+        store(__get_storage_key(), len - 1);
+
+        element_to_be_removed
     }
 
-    /// Checks whether the len is zero or not.
+    /// Sets or mutates the value at the given index.
+    ///
+    /// ### Arguments
+    ///
+    /// * `index` - The index of the vec to set the value at
+    /// * `value` - The value to be set
+    ///
+    /// ### Reverts
+    ///
+    /// Reverts if index is larger than or equal to the length of the vec.
     ///
     /// ### Examples
     ///
@@ -598,43 +616,23 @@ impl<V> StorageVec<V> {
     /// }
     ///
     /// fn foo() {
-    ///     assert(true == storage.vec.is_empty());
-    ///
     ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
     ///
-    ///     assert(false == storage.vec.is_empty());
-    ///
-    ///     storage.vec.clear();
-    ///
-    ///     assert(true == storage.vec.is_empty());
+    ///     storage.vec.set(0, 20);
+    ///     let set_value = storage.vec.get(0);
+    ///     assert(20 == set_value);
     /// }
     /// ```
-    #[storage(read)]
-    pub fn is_empty(self) -> bool {
-        get::<u64>(__get_storage_key()).unwrap_or(0) == 0
-    }
+    #[storage(read, write)]
+    pub fn set(self, index: u64, value: V) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
-    /// Sets the len to zero.
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// use std::storage::StorageVec;
-    ///
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     assert(0 == storage.vec.len());
-    ///     storage.vec.push(5);
-    ///     assert(1 == storage.vec.len());
-    ///     storage.vec.clear();
-    ///     assert(0 == storage.vec.len());
-    /// }
-    /// ```
-    #[storage(write)]
-    pub fn clear(self) {
-        store(__get_storage_key(), 0);
+        // if the index is higher than or equal len, there is no element to set
+        assert(index < len);
+
+        let key = sha256((index, __get_storage_key()));
+        store::<V>(key, value);
     }
 }
