@@ -202,33 +202,34 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            ImplTrait(ref decl_id) => {
-                // TODO: figure out how to use this, likely we don't want to document this directly.
-                //
-                // This declaration type may make more sense to document as part of another declaration
-                // much like how we document method functions for traits or fields on structs.
-                let impl_trait = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
-                let item_name = impl_trait.trait_name.suffix;
-                Ok(Descriptor::Documentable(Document {
-                    module_info: module_info.clone(),
-                    item_header: ItemHeader {
-                        module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
-                        item_name: item_name.clone(),
-                    },
-                    item_body: ItemBody {
-                        module_info,
-                        ty_decl: ty_decl.clone(),
-                        item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemImpl>(
-                            impl_trait.span.as_str(),
-                        ),
-                        attrs_opt: None, // no attributes field
-                        item_context: ItemContext { context: None },
-                    },
-                    raw_attributes: None,
-                }))
-            }
+            // Uncomment this when we decide how to handle ImplTraits
+            // ImplTrait(ref decl_id) => {
+            // TODO: figure out how to use this, likely we don't want to document this directly.
+            //
+            // This declaration type may make more sense to document as part of another declaration
+            // much like how we document method functions for traits or fields on structs.
+            //     let impl_trait = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
+            //     let item_name = impl_trait.trait_name.suffix;
+            //     Ok(Descriptor::Documentable(Document {
+            //         module_info: module_info.clone(),
+            //         item_header: ItemHeader {
+            //             module_info: module_info.clone(),
+            //             friendly_name: ty_decl.friendly_name(),
+            //             item_name: item_name.clone(),
+            //         },
+            //         item_body: ItemBody {
+            //             module_info,
+            //             ty_decl: ty_decl.clone(),
+            //             item_name,
+            //             code_str: parse::parse_format::<sway_ast::ItemImpl>(
+            //                 impl_trait.span.as_str(),
+            //             ),
+            //             attrs_opt: None, // no attributes field
+            //             item_context: ItemContext { context: None },
+            //         },
+            //         raw_attributes: None,
+            //     }))
+            // }
             FunctionDeclaration(ref decl_id) => {
                 let fn_decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && fn_decl.visibility.is_private() {

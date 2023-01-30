@@ -4,7 +4,7 @@ use sway_core::{
         parsed::{
             Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
             ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            TraitFn,
+            Supertrait, TraitFn,
         },
         ty,
     },
@@ -47,6 +47,7 @@ pub enum TypedAstToken {
     TypedStructField(ty::TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
+    TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),

@@ -8,7 +8,10 @@ use crate::core::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    language::ty::{self, TyEnumVariant},
+    language::{
+        parsed::Supertrait,
+        ty::{self, TyEnumVariant},
+    },
     type_system::TypeArgument,
     Engines, TypeId, TypeInfo,
 };
@@ -106,6 +109,9 @@ impl<'a> TypedTree<'a> {
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
                     }
+                    for supertrait in trait_decl.supertraits {
+                        self.collect_supertrait(&supertrait);
+                    }
                 }
             }
             ty::TyDeclaration::StructDeclaration(decl_id) => {
@@ -171,6 +177,7 @@ impl<'a> TypedTree<'a> {
                     impl_type_parameters,
                     trait_name,
                     trait_type_arguments,
+                    trait_decl_id,
                     methods,
                     implementing_for_type_id,
                     type_implementing_for_span,
@@ -200,7 +207,17 @@ impl<'a> TypedTree<'a> {
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::TypeId(implementing_for_type_id));
+                        token.type_def = if let Some(decl_id) = &trait_decl_id {
+                            if let Ok(trait_decl) =
+                                decl_engine.get_trait(decl_id.clone(), &decl_id.span())
+                            {
+                                Some(TypeDefinition::Ident(trait_decl.name))
+                            } else {
+                                Some(TypeDefinition::TypeId(implementing_for_type_id))
+                            }
+                        } else {
+                            Some(TypeDefinition::TypeId(implementing_for_type_id))
+                        };
                     }
 
                     for type_arg in trait_type_arguments {
@@ -627,6 +644,26 @@ impl<'a> TypedTree<'a> {
         self.handle_expression(condition);
         for node in &body.contents {
             self.traverse_node(node);
+        }
+    }
+
+    fn collect_supertrait(&self, supertrait: &Supertrait) {
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&supertrait.name.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedSupertrait(supertrait.clone()));
+            token.type_def = if let Some(decl_id) = &supertrait.decl_id {
+                let decl_engine = self.engines.de();
+                if let Ok(trait_decl) = decl_engine.get_trait(decl_id.clone(), &decl_id.span()) {
+                    Some(TypeDefinition::Ident(trait_decl.name))
+                } else {
+                    Some(TypeDefinition::Ident(supertrait.name.suffix.clone()))
+                }
+            } else {
+                Some(TypeDefinition::Ident(supertrait.name.suffix.clone()))
+            }
         }
     }
 

@@ -368,13 +368,17 @@ impl Power for U128 {
             return one;
         }
 
+        if exp == one {
+            return self;
+        }
+
         while exp & one == zero {
             value = value * value;
             exp >>= 1;
         }
 
         if exp == one {
-            return self;
+            return value;
         }
 
         let mut acc = value;
