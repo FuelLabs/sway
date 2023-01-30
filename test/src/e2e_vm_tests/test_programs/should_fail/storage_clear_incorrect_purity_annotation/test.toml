@@ -1,0 +1,3 @@
+category = "fail"
+
+#check: $()Storage attribute access mismatch. Try giving the surrounding function more access by adding "#[storage(write)]" to the function declaration.

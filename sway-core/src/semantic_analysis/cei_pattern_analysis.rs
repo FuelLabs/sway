@@ -612,7 +612,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
 fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
-        StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
+        StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
@@ -622,7 +622,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
-        "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
+        "scwq" | "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
         "srw" | "srwq" => HashSet::from([Effect::StorageRead]),
         "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
