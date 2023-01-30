@@ -1126,7 +1126,7 @@ mod tests {
     }
 
     // This method iterates over all of the examples in the e2e langauge should_pass dir
-    // and saves the lexex, parsed and typed ASTs to the users home directory.
+    // and saves the lexed, parsed, and typed ASTs to the users home directory.
     // This makes it easy to grep for certain compiler types to inspect their use cases,
     // providing necessary context when working on the traversal modules.
     #[allow(unused)]
