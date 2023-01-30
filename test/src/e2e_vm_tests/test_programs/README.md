@@ -51,6 +51,10 @@ be compiled and deployed.  It is important that these paths remain relative to t
 Some tests also require their ABI is verified.  To indicate this the `validate_abi` field may be
 specified, as a boolean value.
 
+## supported_targets
+
+Some tests are only compatible with some build targets. To indicate this the `supported_targets` field may be specified, as an array value.
+
 ## FileCheck for 'fail' tests
 
 The tests in the `fail` category _must_ employ verification using pattern matching via the [FileCheck](https://docs.rs/filecheck/latest/filecheck/)
