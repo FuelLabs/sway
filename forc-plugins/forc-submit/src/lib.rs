@@ -58,7 +58,7 @@ pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
     Ok(tx)
 }
 
-/// Print the transaction status in a more
+/// Format the transaction status in a more human-friendly manner.
 pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<()> {
     use std::fmt::Write;
     match status {
