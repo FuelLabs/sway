@@ -127,7 +127,7 @@ impl RenderedDocumentation {
                     module_map.insert(location.clone(), doc_links);
                 }
             }
-            // create links to child modules
+            // Create links to child modules.
             if let Some(parent_module) = doc.module_info.parent() {
                 let module_link = DocLink {
                     name: location.clone(),
@@ -153,7 +153,7 @@ impl RenderedDocumentation {
                     }
                 }
             }
-            // above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow
+            // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
                 StructDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Structs) {
                     Some(links) => links.push(doc.link()),
@@ -231,31 +231,32 @@ impl RenderedDocumentation {
 
             // ModuleIndex(s)
             for (_, doc_links) in module_map {
-                let module_info = match doc_links.values().last() {
-                    Some(doc_links) => match doc_links.first() {
-                        Some(doc_link) => doc_link.module_info.clone(),
-                        None => panic!("document is empty"),
-                    },
-                    None => panic!("document is empty"),
+                let module_info_opt = match doc_links.values().last() {
+                    Some(doc_links) => doc_links
+                        .first()
+                        .map(|doc_link| doc_link.module_info.clone()),
+                    // No module to be documented
+                    None => None,
                 };
-                rendered_docs.0.push(RenderedDocument {
-                    module_info: module_info.clone(),
-                    html_filename: INDEX_FILENAME.to_string(),
-                    file_contents: HTMLString::from(
-                        ModuleIndex {
-                            version_opt: None,
-                            module_info,
-                            module_docs: DocLinks {
-                                style: DocStyle::ModuleIndex,
-                                links: doc_links.to_owned(),
-                            },
-                        }
-                        .render(),
-                    ),
-                })
+                if let Some(module_info) = module_info_opt {
+                    rendered_docs.0.push(RenderedDocument {
+                        module_info: module_info.clone(),
+                        html_filename: INDEX_FILENAME.to_string(),
+                        file_contents: HTMLString::from(
+                            ModuleIndex {
+                                version_opt: None,
+                                module_info,
+                                module_docs: DocLinks {
+                                    style: DocStyle::ModuleIndex,
+                                    links: doc_links.to_owned(),
+                                },
+                            }
+                            .render(),
+                        ),
+                    })
+                }
             }
         }
-
         // AllDocIndex
         rendered_docs.0.push(RenderedDocument {
             module_info: root_module.clone(),
@@ -717,7 +718,7 @@ impl Renderable for TyTraitFn {
     }
 }
 /// Used for creating links between docs.
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct DocLink {
     pub(crate) name: String,
     pub(crate) module_info: ModuleInfo,
@@ -829,7 +830,7 @@ impl Renderable for DocLinks {
 }
 /// Represents all of the possible titles
 /// belonging to an index or sidebar.
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 enum BlockTitle {
     Modules,
     Structs,
