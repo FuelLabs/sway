@@ -762,15 +762,12 @@ mod tests {
             "astKind": ast_kind,
             "savePath": save_path,
         });
-        eprintln!("params: {:#?}", params);
         let show_ast = build_request_with_id("sway/show_ast", params, 1);
         let response = call_request(service, show_ast.clone()).await;
         let expected = Response::from_ok(
             1.into(),
             json!({ "uri": format!("{}/{}.rs", save_path, ast_kind) }),
         );
-        eprintln!("response: {:#?}", response);
-        eprintln!("expected: {:#?}", expected);
         assert_json_eq!(expected, response.ok().unwrap());
         show_ast
     }
@@ -1128,6 +1125,58 @@ mod tests {
         exit_notification(service).await;
     }
 
+    // This method iterates over all of the examples in the e2e langauge should_pass dir
+    // and saves the lexex, parsed and typed ASTs to the users home directory.
+    // This makes it easy to grep for certain compiler types to inspect their use cases,
+    // providing necessary context when working on the traversal modules.
+    #[allow(unused)]
+    //#[tokio::test]
+    async fn write_all_example_asts() {
+        let (mut service, _) = LspService::build(Backend::new)
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
+        let _ = initialize_request(&mut service).await;
+        initialized_notification(&mut service).await;
+
+        let ast_folder = dirs::home_dir()
+            .expect("could not get users home directory")
+            .join("sway_asts");
+        let _ = fs::create_dir(&ast_folder);
+        let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
+        let mut entries = fs::read_dir(&e2e_dir)
+            .unwrap()
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()
+            .unwrap();
+
+        // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+        // ordering is required the entries should be explicitly sorted.
+        entries.sort();
+
+        for entry in entries {
+            let manifest_dir = entry;
+            let example_name = manifest_dir.file_name().unwrap();
+            if manifest_dir.is_dir() {
+                let example_dir = ast_folder.join(example_name);
+                if !dir_contains_forc_manifest(manifest_dir.as_path()) {
+                    continue;
+                }
+                match fs::create_dir(&example_dir) {
+                    Ok(_) => (),
+                    Err(_) => continue,
+                }
+
+                let example_dir = Some(Url::from_file_path(example_dir).unwrap());
+                let (uri, sway_program) = load_sway_example(manifest_dir);
+                let _ = did_open_notification(&mut service, &uri, &sway_program).await;
+                let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
+            }
+        }
+        shutdown_and_exit(&mut service).await;
+    }
+
     #[tokio::test]
     async fn initialize() {
         let (mut service, _) = LspService::new(Backend::new);
@@ -1214,66 +1263,6 @@ mod tests {
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
         let _ = show_ast_request(&mut service, &uri, "typed", None).await;
-        shutdown_and_exit(&mut service).await;
-    }
-
-    // Check if the given directory contains `Forc.toml` at its root.
-    fn dir_contains_forc_manifest(path: &Path) -> bool {
-        if let Ok(entries) = fs::read_dir(path) {
-            for entry in entries.flatten() {
-                if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
-    #[tokio::test]
-    async fn write_all_example_asts() {
-        let (mut service, _) = LspService::build(Backend::new)
-            .custom_method("sway/show_ast", Backend::show_ast)
-            .finish();
-        let _ = initialize_request(&mut service).await;
-        initialized_notification(&mut service).await;
-
-        let ast_folder = Path::new("/home/josh/Desktop/asts");
-        let _ = fs::create_dir(ast_folder);
-        let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
-        let mut entries = fs::read_dir(&e2e_dir)
-            .unwrap()
-            .map(|res| res.map(|e| e.path()))
-            .collect::<Result<Vec<_>, std::io::Error>>()
-            .unwrap();
-
-        // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-        // ordering is required the entries should be explicitly sorted.
-        entries.sort();
-
-        for entry in entries {
-            let manifest_dir = entry;
-            let example_name = manifest_dir.file_name().unwrap();
-            if manifest_dir.is_dir() {
-                let example_dir = ast_folder.join(example_name);
-                if !dir_contains_forc_manifest(manifest_dir.as_path()) {
-                    continue;
-                }
-                match fs::create_dir(&example_dir) {
-                    Ok(_) => (),
-                    Err(_) => continue,
-                }
-
-                let example_dir = Some(Url::from_file_path(example_dir).unwrap());
-
-                eprintln!("manifest_dir: {:?}", manifest_dir);
-
-                let (uri, sway_program) = load_sway_example(manifest_dir);
-                let _ = did_open_notification(&mut service, &uri, &sway_program).await;
-                let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
-                let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
-                let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
-            }
-        }
         shutdown_and_exit(&mut service).await;
     }
 
