@@ -388,7 +388,7 @@ impl fmt::Display for AllocatedOpcode {
             RETD(a, b) => write!(fmtr, "retd  {a} {b}"),
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo  {a} {b} {c} {d}"),
-            SCWQ(a, b, c) => write!(fmtr, "scwq  {a} {b} {c}"),
+            SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
             SRW(a, b, c) => write!(fmtr, "srw  {a} {b} {c}"),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
             SWW(a, b, c) => write!(fmtr, "sww  {a} {b} {c}"),
@@ -558,7 +558,7 @@ impl AllocatedOp {
                 c.to_register_id(),
                 d.to_register_id(),
             ),
-            SCWQ(a, b, c) => VmOp::SRW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            SCWQ(a, b, c) => VmOp::SCWQ(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             SRW(a, b, c) => VmOp::SRW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
             SRWQ(a, b, c, d) => VmOp::SRWQ(
                 a.to_register_id(),

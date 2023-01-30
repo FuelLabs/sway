@@ -1,7 +1,6 @@
 script;
 
-use std::{assert::assert, math::*};
-use std::revert::revert;
+use std::math::*;
 
 fn main() -> bool {
     // u64

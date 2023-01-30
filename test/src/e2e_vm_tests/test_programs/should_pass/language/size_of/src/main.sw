@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 // 24 bytes
 // (8 bytes per elemet)
 struct Data {

@@ -431,6 +431,12 @@ fn inline_instruction(
                     map_value(output_index),
                     map_value(coins),
                 ),
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => new_block
+                    .ins(context)
+                    .state_clear(map_value(key), map_value(number_of_slots)),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,

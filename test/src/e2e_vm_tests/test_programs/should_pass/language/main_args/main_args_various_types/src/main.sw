@@ -1,7 +1,5 @@
 script;
 
-use std::revert::revert;
-
 fn eq_str_3(a: str[3], b: str[3]) -> bool {
     asm(a: a, b: b, len: 3, r) {
         meq r a b len;

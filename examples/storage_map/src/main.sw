@@ -1,7 +1,5 @@
 contract;
 
-use std::logging::log;
-
 storage {
     // ANCHOR: storage_map_decl
     map: StorageMap<Address, u64> = StorageMap {},

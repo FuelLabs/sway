@@ -1,7 +1,5 @@
 script;
 
-use std::{address::Address, assert::assert, contract_id::ContractId, identity::Identity};
-
 fn main() -> bool {
     let b1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let b2 = 0x0000000000000000000000000000000000000000000000000000000000000002;

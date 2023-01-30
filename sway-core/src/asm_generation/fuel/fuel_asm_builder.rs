@@ -242,6 +242,15 @@ impl<'ir> FuelAsmBuilder<'ir> {
                         output_index,
                         coins,
                     ),
+                    FuelVmInstruction::StateClear {
+                        key,
+                        number_of_slots,
+                    } => check!(
+                        self.compile_state_clear(instr_val, key, number_of_slots,),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    ),
                     FuelVmInstruction::StateLoadQuadWord {
                         load_val,
                         key,
@@ -1553,6 +1562,56 @@ impl<'ir> FuelAsmBuilder<'ir> {
         offset_reg
     }
 
+    fn compile_state_clear(
+        &mut self,
+        instr_val: &Value,
+        key: &Value,
+        number_of_slots: &Value,
+    ) -> CompileResult<()> {
+        // Make sure that key is a pointer to B256.
+        assert!(key.get_type(self.context).is(Type::is_b256, self.context));
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_var = self.resolve_ptr(key);
+        if key_var.value.is_none() {
+            return key_var.map(|_| ());
+        }
+        let (key_var, var_ty, offset) = key_var.value.unwrap();
+
+        // Not expecting an offset here nor a pointer cast
+        assert!(offset == 0);
+        assert!(var_ty.is_b256(self.context));
+
+        let key_reg = match self.ptr_map.get(&key_var) {
+            Some(Storage::Stack(key_offset)) => {
+                let base_reg = self.locals_base_reg().clone();
+                let key_offset_in_bytes = key_offset * 8;
+                self.offset_reg(&base_reg, key_offset_in_bytes, owning_span.clone())
+            }
+            _ => unreachable!("Unexpected storage locations for key and val"),
+        };
+
+        // capture the status of whether the slot was set before calling this instruction
+        let was_slot_set_reg = self.reg_seqr.next();
+
+        // Number of slots to be cleared
+        let number_of_slots_reg = self.value_to_register(number_of_slots);
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SCWQ(
+                key_reg,
+                was_slot_set_reg.clone(),
+                number_of_slots_reg,
+            )),
+            comment: "clear a sequence of storage slots".into(),
+            owning_span,
+        });
+
+        self.reg_map.insert(*instr_val, was_slot_set_reg);
+
+        ok((), Vec::new(), Vec::new())
+    }
+
     fn compile_state_access_quad_word(
         &mut self,
         instr_val: &Value,
@@ -1633,7 +1692,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                     number_of_slots_reg,
                 ),
             }),
-            comment: "quad word state access".into(),
+            comment: "access a sequence of storage slots".into(),
             owning_span,
         });
 
