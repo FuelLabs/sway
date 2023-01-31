@@ -1,7 +1,5 @@
 contract;
 
-use std::logging::log;
-
 abi MyContract {
     fn test_function() -> bool;
 }

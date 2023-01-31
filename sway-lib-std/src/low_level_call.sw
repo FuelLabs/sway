@@ -62,12 +62,15 @@ fn create_payload(
     */
     require(function_selector.len() == 8, "function selector must be 8 bytes");
 
-    let mut payload = Bytes::new().join(contract_id_to_bytes(target)).join(function_selector);
+    // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
+    let mut payload = Bytes::new();
+    payload.append(contract_id_to_bytes(target));
+    payload.append(function_selector);
 
     if (single_value_type_arg) {
-        payload = payload.join(calldata); // When calldata is copy type, just pass calldata
+        payload.append(calldata); // When calldata is copy type, just pass calldata
     } else {
-        payload = payload.join(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
+        payload.append(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
     };
 
     payload

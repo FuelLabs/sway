@@ -48,7 +48,8 @@ pub(crate) fn check_function_purity(
                             (true, writes)
                         }
 
-                        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
+                        Instruction::FuelVm(FuelVmInstruction::StateClear { .. })
+                        | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
                         | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
                             (reads, true)
                         }
@@ -58,7 +59,7 @@ pub(crate) fn check_function_purity(
                             asm_block.get_content(context).body.iter().fold(
                                 (reads, writes),
                                 |(reads, writes), asm_op| match asm_op.name.as_str() {
-                                    "srw" | "srwq" => (true, writes),
+                                    "scwq" | "srw" | "srwq" => (true, writes),
                                     "sww" | "swwq" => (reads, true),
                                     _ => (reads, writes),
                                 },

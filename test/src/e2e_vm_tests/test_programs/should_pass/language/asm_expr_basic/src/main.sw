@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 // This file tests different kinds of ASM generation and parsing.
 
 fn blockheight() -> u64 {

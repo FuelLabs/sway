@@ -1,7 +1,5 @@
 script;
 
-use std::logging::log;
-
 fn main() {
     revert(0);
 }

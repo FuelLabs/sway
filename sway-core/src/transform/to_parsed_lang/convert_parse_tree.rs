@@ -30,7 +30,7 @@ use sway_types::{
     },
     integer_bits::IntegerBits,
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Span, SpanTree, Spanned};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -802,8 +802,6 @@ fn item_configurable_to_constant_declarations(
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
 
-    dbg!(context.module_has_configurable_block());
-
     if context.module_has_configurable_block() {
         errors.push(ConvertParseTreeError::MultipleConfigurableBlocksInModule {
             span: item_configurable.span(),
@@ -1108,6 +1106,27 @@ fn ty_to_type_info(
     Ok(type_info)
 }
 
+fn ty_to_span_tree(ty: &Ty) -> Result<Option<SpanTree>, ErrorEmitted> {
+    if let Some(span) = ty.name_span() {
+        let children = if let Ty::Path(path_type) = &ty {
+            if let Some((_, generic_args)) = &path_type.last_segment().generics_opt {
+                (&generic_args.parameters.inner)
+                    .into_iter()
+                    .filter_map(|ty| ty_to_span_tree(ty).transpose())
+                    .collect::<Result<Vec<_>, _>>()?
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        };
+
+        Ok(Some(SpanTree { span, children }))
+    } else {
+        Ok(None)
+    }
+}
+
 fn ty_to_type_argument(
     context: &mut Context,
     handler: &Handler,
@@ -1117,11 +1136,14 @@ fn ty_to_type_argument(
     let type_engine = engines.te();
     let decl_engine = engines.de();
     let span = ty.span();
+    let name_spans = ty_to_span_tree(&ty)?;
     let initial_type_id =
         type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
+
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
+        name_spans,
         span,
     };
     Ok(type_argument)
@@ -2238,6 +2260,7 @@ fn path_type_to_supertrait(
     */
     let supertrait = Supertrait {
         name,
+        decl_id: None,
         //type_parameters,
     };
     Ok(supertrait)
@@ -3416,23 +3439,11 @@ fn generic_args_to_type_arguments(
     engines: Engines<'_>,
     generic_args: GenericArgs,
 ) -> Result<Vec<TypeArgument>, ErrorEmitted> {
-    let type_engine = engines.te();
-    let decl_engine = engines.de();
-
     generic_args
         .parameters
         .into_inner()
         .into_iter()
-        .map(|ty| {
-            let span = ty.span();
-            let type_id =
-                type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
-            Ok(TypeArgument {
-                type_id,
-                initial_type_id: type_id,
-                span,
-            })
-        })
+        .map(|ty| ty_to_type_argument(context, handler, engines, ty))
         .collect()
 }
 
