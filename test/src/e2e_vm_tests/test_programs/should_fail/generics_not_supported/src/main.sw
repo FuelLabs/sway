@@ -12,5 +12,8 @@ fn main() -> u64 {
 
     let c = lib_a::inner_lib::<u32>::C;
 
+
+    let s = lib_a::inner_lib::<u32>::S2 {};
+
     5
 }

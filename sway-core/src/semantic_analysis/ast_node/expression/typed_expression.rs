@@ -70,8 +70,7 @@ impl ty::TyExpression {
             inner: MethodName::FromTrait {
                 call_path: call_path.clone(),
             },
-            type_arguments: vec![],
-            prefix_type_arguments: vec![],
+            type_arguments: TypeArgs::Regular(vec![]),
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
@@ -980,7 +979,6 @@ impl ty::TyExpression {
                     is_absolute,
                 },
             type_arguments,
-            prefix_type_arguments: _,
             span: path_span,
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
@@ -1023,7 +1021,6 @@ impl ty::TyExpression {
                     call_path_binding: TypeBinding {
                         span: before_span,
                         type_arguments: before.type_arguments,
-                        prefix_type_arguments: vec![],
                         inner: CallPath {
                             prefixes,
                             suffix: (type_info, type_name),
@@ -1033,11 +1030,25 @@ impl ty::TyExpression {
                     method_name: suffix,
                 },
                 type_arguments,
-                prefix_type_arguments: vec![],
                 span: path_span,
             };
             type_check_method_application(ctx.by_ref(), method_name_binding, Vec::new(), args, span)
         } else {
+            let mut type_arguments = type_arguments;
+            if let TypeArgs::Regular(vec) = before.type_arguments {
+                if !vec.is_empty() {
+                    if !type_arguments.to_vec().is_empty() {
+                        return err(
+                            vec![],
+                            vec![
+                                ConvertParseTreeError::MultipleGenericsNotSupported { span }.into()
+                            ],
+                        );
+                    }
+                    type_arguments = TypeArgs::Prefix(vec)
+                }
+            }
+
             let call_path_binding = TypeBinding {
                 inner: CallPath {
                     prefixes: path,
@@ -1045,7 +1056,6 @@ impl ty::TyExpression {
                     is_absolute,
                 },
                 type_arguments,
-                prefix_type_arguments: before.type_arguments,
                 span: path_span,
             };
             Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args))
@@ -1108,24 +1118,9 @@ impl ty::TyExpression {
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
 
-            let type_arguments: Vec<TypeArgument> = match (
-                call_path_binding.type_arguments.is_empty(),
-                call_path_binding.prefix_type_arguments.is_empty(),
-            ) {
-                (false, true) => call_path_binding.type_arguments.clone(),
-                (true, false) => call_path_binding.prefix_type_arguments.clone(),
-                (true, true) => vec![],
-                (false, false) => {
-                    // return one type_arguments for now and throw an error below
-                    // when we know for sure that we have an enum.
-                    call_path_binding.type_arguments.clone()
-                }
-            };
-
             let mut call_path_binding = TypeBinding {
                 inner: enum_call_path,
-                type_arguments,
-                prefix_type_arguments: vec![],
+                type_arguments: call_path_binding.type_arguments,
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
@@ -1135,18 +1130,6 @@ impl ty::TyExpression {
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
                 .map(|enum_decl| (enum_decl, enum_name, variant_name, call_path_binding))
         };
-
-        let type_parameters_empty_check =
-            |type_parameters: Vec<TypeArgument>, errors: &mut Vec<CompileError>| {
-                if !type_parameters.is_empty() {
-                    errors.push(
-                        ConvertParseTreeError::GenericsNotSupportedHere {
-                            span: Span::join_all(type_parameters.iter().map(|t| t.span())),
-                        }
-                        .into(),
-                    );
-                }
-            };
 
         // Check if this could be a constant
         let mut const_probe_warnings = vec![];
@@ -1166,13 +1149,6 @@ impl ty::TyExpression {
             (false, None, Some((enum_decl, enum_name, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
-                if !call_path_binding.type_arguments.is_empty()
-                    && !call_path_binding.prefix_type_arguments.is_empty()
-                {
-                    errors.push(CompileError::EnumMultipleTurbofish {
-                        span: call_path_binding.span(),
-                    });
-                }
                 check!(
                     instantiate_enum(
                         ctx,
@@ -1192,10 +1168,14 @@ impl ty::TyExpression {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
-                type_parameters_empty_check(
-                    call_path_binding.prefix_type_arguments.clone(),
-                    &mut errors,
-                );
+                if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
+                    errors.push(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: call_path_binding.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
                 check!(
                     instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
                     return err(warnings, errors),
@@ -1213,13 +1193,16 @@ impl ty::TyExpression {
             (false, None, None, Some((const_decl, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
-                // In case `foo::bar::CONST::<TyArgs>` throw an error.
-                type_parameters_empty_check(unknown_call_path_binding.type_arguments, &mut errors);
-                // In case `foo::bar::<TyArgs>::CONST` throw an error.
-                type_parameters_empty_check(
-                    unknown_call_path_binding.prefix_type_arguments,
-                    &mut errors,
-                );
+                if !unknown_call_path_binding.type_arguments.to_vec().is_empty() {
+                    // In case `foo::bar::CONST::<TyArgs>` throw an error.
+                    // In case `foo::bar::<TyArgs>::CONST` throw an error.
+                    errors.push(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: unknown_call_path_binding.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
                 check!(
                     instantiate_constant_decl(const_decl, call_path_binding),
                     return err(warnings, errors),
@@ -1566,8 +1549,7 @@ impl ty::TyExpression {
                         is_absolute: true,
                     },
                 },
-                type_arguments: vec![],
-                prefix_type_arguments: vec![],
+                type_arguments: TypeArgs::Regular(vec![]),
                 span: span.clone(),
             };
             type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)

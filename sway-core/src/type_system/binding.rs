@@ -79,9 +79,41 @@ pub struct TypeBinding<T> {
 }
 
 #[derive(Debug, Clone)]
-enum TypeArgs {
+pub enum TypeArgs {
     Regular(Vec<TypeArgument>),
     Prefix(Vec<TypeArgument>),
+}
+
+impl TypeArgs {
+    pub(crate) fn to_vec(&self) -> Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec.to_vec(),
+            TypeArgs::Prefix(vec) => vec.to_vec(),
+        }
+    }
+
+    pub(crate) fn to_vec_mut(self: &mut Self) -> &mut Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec,
+            TypeArgs::Prefix(vec) => vec,
+        }
+    }
+}
+
+impl Spanned for TypeArgs {
+    fn span(&self) -> Span {
+        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+    }
+}
+
+impl PartialEqWithEngines for TypeArgs {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(&vec2, engines),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(&vec2, engines),
+            _ => false,
+        }
+    }
 }
 
 impl<T> Spanned for TypeBinding<T> {
@@ -105,13 +137,6 @@ impl<T> TypeBinding<T> {
             inner: (),
             type_arguments: self.type_arguments,
             span: self.span,
-        }
-    }
-
-    pub(crate) fn type_args_vec(self: Self) -> Vec<TypeArgument> {
-        match self.type_arguments {
-            TypeArgs::Regular(vec) => vec,
-            TypeArgs::Prefix(vec) => vec,
         }
     }
 }
@@ -141,7 +166,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 
         // create the type info object
         let type_info = check!(
-            type_info.apply_type_arguments(self.type_arguments.clone(), &type_info_span),
+            type_info.apply_type_arguments(self.type_arguments.to_vec().clone(), &type_info_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -185,7 +210,7 @@ impl TypeBinding<CallPath> {
         );
 
         // replace the self types inside of the type arguments
-        for type_argument in self.type_arguments.iter_mut() {
+        for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
             check!(
                 ctx.resolve_type_with_self(
                     type_argument.type_id,
@@ -219,17 +244,19 @@ impl TypeBinding<CallPath> {
                 );
 
                 // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        &mut self.type_arguments,
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                if let TypeArgs::Regular(_) = self.type_arguments {
+                    check!(
+                        ctx.monomorphize(
+                            &mut new_copy,
+                            &mut self.type_arguments.to_vec_mut(),
+                            EnforceTypeArguments::No,
+                            &self.span
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
 
                 // insert the new copy into the declaration engine
                 let new_id = ctx
@@ -252,7 +279,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        &mut self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),
@@ -285,7 +312,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        &mut self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),

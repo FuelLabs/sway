@@ -1329,8 +1329,7 @@ fn method_call_fields_to_method_application_expression(
 
     let method_name_binding = TypeBinding {
         inner: MethodName::FromModule { method_name },
-        type_arguments,
-        prefix_type_arguments: vec![],
+        type_arguments: TypeArgs::Regular(type_arguments),
         span,
     };
     let contract_call_params = match contract_args_opt {
@@ -1436,8 +1435,7 @@ fn expr_func_app_to_expression_kind(
                     name: call_seg.name,
                     kind_binding: TypeBinding {
                         inner: intrinsic,
-                        type_arguments,
-                        prefix_type_arguments: vec![],
+                        type_arguments: TypeArgs::Regular(type_arguments),
                         span: name_args_span(span, type_arguments_span),
                     },
                     arguments,
@@ -1462,8 +1460,7 @@ fn expr_func_app_to_expression_kind(
             };
             let call_path_binding = TypeBinding {
                 inner: call_path,
-                type_arguments,
-                prefix_type_arguments: vec![],
+                type_arguments: TypeArgs::Regular(type_arguments),
                 span,
             };
             return Ok(ExpressionKind::FunctionApplication(Box::new(
@@ -1481,8 +1478,7 @@ fn expr_func_app_to_expression_kind(
     let before = TypeBinding {
         span: name_args_span(last.name.span(), last_ty_args_span),
         inner: last.name,
-        type_arguments: last_ty_args,
-        prefix_type_arguments: vec![],
+        type_arguments: TypeArgs::Regular(last_ty_args),
     };
     let suffix = AmbiguousSuffix {
         before,
@@ -1496,8 +1492,7 @@ fn expr_func_app_to_expression_kind(
     let call_path_binding = TypeBinding {
         span: name_args_span(call_path.span(), type_arguments_span),
         inner: call_path,
-        type_arguments,
-        prefix_type_arguments: vec![],
+        type_arguments: TypeArgs::Regular(type_arguments),
     };
     Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
         AmbiguousPathExpression {
@@ -2034,8 +2029,7 @@ fn op_call(
                 is_absolute: true,
             },
         },
-        type_arguments: vec![],
-        prefix_type_arguments: vec![],
+        type_arguments: TypeArgs::Regular(vec![]),
         span: op_span,
     };
     Ok(Expression {
@@ -2664,6 +2658,16 @@ fn path_expr_to_call_path_binding(
             (vec![], suffix, span, ty_args, vec![])
         }
     };
+
+    let type_arguments = if !type_arguments.is_empty() && !prefix_type_arguments.is_empty() {
+        let error = ConvertParseTreeError::MultipleGenericsNotSupported { span };
+        return Err(handler.emit_err(error.into()));
+    } else if !prefix_type_arguments.is_empty() {
+        TypeArgs::Prefix(prefix_type_arguments)
+    } else {
+        TypeArgs::Regular(type_arguments)
+    };
+
     Ok(TypeBinding {
         inner: CallPath {
             prefixes,
@@ -2671,7 +2675,6 @@ fn path_expr_to_call_path_binding(
             is_absolute,
         },
         type_arguments,
-        prefix_type_arguments,
         span,
     })
 }
