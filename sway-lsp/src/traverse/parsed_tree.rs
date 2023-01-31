@@ -487,7 +487,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens
                         .insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-                    for type_arg in &call_path_binding.type_arguments {
+                    for type_arg in &call_path_binding.type_arguments.to_vec() {
                         self.collect_type_arg(type_arg, &token);
                     }
                 }
@@ -565,7 +565,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 let name = &call_path_binding.inner.suffix;
-                let type_arguments = &call_path_binding.type_arguments;
+                let type_arguments = &call_path_binding.type_arguments.to_vec();
 
                 let token = Token::from_parsed(
                     AstToken::Expression(expression.clone()),
@@ -647,7 +647,7 @@ impl<'a> ParsedTree<'a> {
                     SymbolKind::Struct,
                 );
 
-                for type_arg in &method_name_binding.type_arguments {
+                for type_arg in &method_name_binding.type_arguments.to_vec() {
                     self.collect_type_arg(type_arg, &token);
                 }
 
@@ -714,7 +714,7 @@ impl<'a> ParsedTree<'a> {
                     token.clone(),
                 );
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_arg(type_arg, &token);
                 }
 
@@ -745,7 +745,7 @@ impl<'a> ParsedTree<'a> {
                 self.tokens
                     .insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_arg(type_arg, &token);
                 }
 

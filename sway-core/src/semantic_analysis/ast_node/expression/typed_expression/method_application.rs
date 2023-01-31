@@ -526,7 +526,7 @@ pub(crate) fn resolve_method_name(
     check!(
         ctx.monomorphize(
             &mut func_decl,
-            &mut method_name.type_arguments.to_vec_mut(),
+            method_name.type_arguments.to_vec_mut(),
             EnforceTypeArguments::No,
             &method_name_span,
         ),

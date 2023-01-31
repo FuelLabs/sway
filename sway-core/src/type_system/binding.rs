@@ -85,14 +85,14 @@ pub enum TypeArgs {
 }
 
 impl TypeArgs {
-    pub(crate) fn to_vec(&self) -> Vec<TypeArgument> {
+    pub fn to_vec(&self) -> Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec.to_vec(),
             TypeArgs::Prefix(vec) => vec.to_vec(),
         }
     }
 
-    pub(crate) fn to_vec_mut(self: &mut Self) -> &mut Vec<TypeArgument> {
+    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
             TypeArgs::Prefix(vec) => vec,
@@ -109,8 +109,8 @@ impl Spanned for TypeArgs {
 impl PartialEqWithEngines for TypeArgs {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
-            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(&vec2, engines),
-            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(&vec2, engines),
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
             _ => false,
         }
     }
@@ -166,7 +166,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 
         // create the type info object
         let type_info = check!(
-            type_info.apply_type_arguments(self.type_arguments.to_vec().clone(), &type_info_span),
+            type_info.apply_type_arguments(self.type_arguments.to_vec(), &type_info_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -248,7 +248,7 @@ impl TypeBinding<CallPath> {
                     check!(
                         ctx.monomorphize(
                             &mut new_copy,
-                            &mut self.type_arguments.to_vec_mut(),
+                            self.type_arguments.to_vec_mut(),
                             EnforceTypeArguments::No,
                             &self.span
                         ),
@@ -279,7 +279,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments.to_vec_mut(),
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),
@@ -312,7 +312,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments.to_vec_mut(),
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),

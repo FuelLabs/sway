@@ -2616,7 +2616,7 @@ fn path_expr_to_call_path_binding(
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
     let (prefixes, suffix, span, type_arguments, prefix_type_arguments) = match suffix.pop() {
         Some((_, call_path_suffix)) => {
-            let (prefix_ident, mut prefix_type_arguments) = if suffix.len() == 0 {
+            let (prefix_ident, mut prefix_type_arguments) = if suffix.is_empty() {
                 path_expr_segment_to_ident_or_type_argument(context, handler, engines, prefix)?
             } else {
                 (
