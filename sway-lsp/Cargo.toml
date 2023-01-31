@@ -29,12 +29,13 @@ swayfmt = { version = "0.33.1", path = "../swayfmt" }
 tempfile = "3"
 thiserror = "1.0.30"
 tokio = { version = "1.3", features = ["io-std", "io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
-toml_edit = "0.14.4"
-tower-lsp = { version = "0.17", features = ["proposed"] }
+toml_edit = "0.19"
+tower-lsp = { version = "0.18", features = ["proposed"] }
 tracing = "0.1"
 
 [dev-dependencies]
 assert-json-diff = "2.0"
 async-trait = "0.1"
+dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 tower = { version = "0.4.12", default-features = false, features = ["util"] }

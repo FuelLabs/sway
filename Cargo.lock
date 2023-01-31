@@ -71,6 +71,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloc-no-stdlib"
+version = "2.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3"
+
+[[package]]
+name = "alloc-stdlib"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94fb8275041c72129eb51b7d0322c29b8387a0386127718b096429201a5d6ece"
+dependencies = [
+ "alloc-no-stdlib",
+]
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -164,18 +179,6 @@ dependencies = [
  "hermit-abi 0.1.19",
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "auto_impl"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7862e21c893d65a1650125d157eaeec691439379a1cee17ee49031b79236ada4"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -401,6 +404,27 @@ name = "borrown"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "008b57b368e638ed60664350ea4f2f3647a0192173478df2736cc255a025a796"
+
+[[package]]
+name = "brotli"
+version = "3.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1a0b1dbcc8ae29329621f8d4f0d835787c1c38bb1401979b49d13b0b305ff68"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
+name = "brotli-decompressor"
+version = "2.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b6561fd3f895a11e8f72af2cb7d22e08366bebc2b6b57f7744c4bda27034744"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+]
 
 [[package]]
 name = "bs58"
@@ -697,16 +721,6 @@ dependencies = [
  "either",
  "memchr",
  "unreachable",
-]
-
-[[package]]
-name = "combine"
-version = "4.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35ed6e9d84f0b51a7f52daf1c7d71dd136fd7a3f41a8462b8cdb8c78d920fad4"
-dependencies = [
- "bytes",
- "memchr",
 ]
 
 [[package]]
@@ -1087,6 +1101,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "devault"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc1d36b1abcd53bf307972de38ed2da0a57ddeb762b141420067149d3952c9a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1195,6 +1220,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "educe"
+version = "0.4.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb0188e3c3ba8df5753894d54461f0e39bc91741dc5b22e1c46999ec2c71f4e4"
+dependencies = [
+ "enum-ordinalize",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1261,6 +1298,20 @@ name = "entities"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
+
+[[package]]
+name = "enum-ordinalize"
+version = "3.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a62bb1df8b45ecb7ffa78dca1c17a438fb193eb083db0b1b494d2a61bcb5096a"
+dependencies = [
+ "num-bigint",
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "syn",
+]
 
 [[package]]
 name = "env_logger"
@@ -1343,21 +1394,6 @@ dependencies = [
  "impl-serde",
  "primitive-types",
  "uint",
-]
-
-[[package]]
-name = "etk-asm"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f930978593dfe8eb61901b68b083f5b08898f45ed7387ca627ede2f036b426a"
-dependencies = [
- "hex",
- "num-bigint",
- "pest",
- "pest_derive",
- "rand",
- "sha3 0.10.6",
- "snafu",
 ]
 
 [[package]]
@@ -1546,8 +1582,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "clap 3.2.23",
+ "forc",
  "forc-pkg",
  "forc-tracing",
+ "forc-tx",
  "forc-util",
  "fuel-gql-client",
  "fuel-tx",
@@ -1665,6 +1703,7 @@ version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
+ "devault",
  "fuel-tx",
  "serde",
  "serde_json",
@@ -1808,6 +1847,60 @@ dependencies = [
  "sha3 0.10.6",
  "thiserror",
  "uint",
+]
+
+[[package]]
+name = "fuel-etk-4byte"
+version = "0.3.0-dev"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38224fd7fd560d6940f1940f12227194302feb1382fc2d5fb1e72b66d0858803"
+dependencies = [
+ "bincode",
+ "brotli",
+ "lazy_static",
+ "serde",
+]
+
+[[package]]
+name = "fuel-etk-asm"
+version = "0.3.0-dev"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d82f8a8705e958dadfc332f152d0367e5b5661d2a098467306ec18dcc10ce62d"
+dependencies = [
+ "fuel-etk-ops",
+ "hex",
+ "num-bigint",
+ "pest",
+ "pest_derive",
+ "rand",
+ "sha3 0.10.6",
+ "snafu",
+]
+
+[[package]]
+name = "fuel-etk-dasm"
+version = "0.3.0-dev"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1018ec288a5a28e4b7f4ea2599a0a5b46880b6e118f30211980f03e0625fe798"
+dependencies = [
+ "fuel-etk-4byte",
+ "fuel-etk-asm",
+ "fuel-etk-ops",
+ "hex",
+]
+
+[[package]]
+name = "fuel-etk-ops"
+version = "0.3.0-dev"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed2bdf975af67b4baad4d2f5d59c7ec82c73511b6e87aa60acab7326418e8ef3"
+dependencies = [
+ "educe",
+ "indexmap",
+ "quote",
+ "serde",
+ "snafu",
+ "toml",
 ]
 
 [[package]]
@@ -2186,7 +2279,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ebc8013b4426d5b81a4364c419a95ed0b404af2b82e2457de52d9348f0e474"
 dependencies = [
- "combine 3.8.1",
+ "combine",
  "thiserror",
 ]
 
@@ -2561,6 +2654,7 @@ checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
+ "serde",
 ]
 
 [[package]]
@@ -2928,6 +3022,15 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.42.0",
+]
+
+[[package]]
+name = "nom8"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae01545c9c7fc4486ab7debaf2aad7003ac19431791868fb2e8066df97fad2f8"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -3811,7 +3914,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73d84c8f9836efb0f5f5f8de4700a953c4e1f3119e5cfcb0aad8e5be73daf991"
 dependencies = [
  "arrayref",
- "auto_impl 1.0.1",
+ "auto_impl",
  "bytes",
  "hashbrown 0.13.1",
  "num_enum",
@@ -4555,15 +4658,19 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "etk-asm",
  "fuel-abi-types",
  "fuel-ethabi",
+ "fuel-etk-asm",
+ "fuel-etk-dasm",
+ "fuel-etk-ops",
  "fuel-vm",
  "hashbrown 0.13.1",
  "hex",
  "im",
  "itertools",
  "lazy_static",
+ "pest",
+ "pest_derive",
  "petgraph",
  "rustc-hash",
  "serde",
@@ -4626,6 +4733,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "dashmap",
+ "dirs 4.0.0",
  "forc-pkg",
  "forc-tracing",
  "futures",
@@ -5084,14 +5192,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml_edit"
-version = "0.14.4"
+name = "toml_datetime"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5376256e44f2443f8896ac012507c19a012df0fe8758b55246ae51a2279db51f"
+checksum = "3ab8ed2edee10b50132aed5f331333428b011c99402b5a534154ed15746f9622"
+
+[[package]]
+name = "toml_edit"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90a238ee2e6ede22fb95350acc78e21dc40da00bb66c0334bde83de4ed89424e"
 dependencies = [
- "combine 4.6.6",
  "indexmap",
- "itertools",
+ "nom8",
+ "toml_datetime",
 ]
 
 [[package]]
@@ -5122,17 +5236,16 @@ checksum = "c20c8dbed6283a09604c3e69b4b7eeb54e298b8a600d4d5ecb5ad39de609f1d0"
 
 [[package]]
 name = "tower-lsp"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43e094780b4447366c59f79acfd65b1375ecaa84e61dddbde1421aa506334024"
+checksum = "7d0ad391e4e58fccec398abd3da22d5e59fbcbae8d036df0d00dfd9703c7ee96"
 dependencies = [
  "async-trait",
- "auto_impl 0.5.0",
+ "auto_impl",
  "bytes",
  "dashmap",
  "futures",
  "httparse",
- "log",
  "lsp-types",
  "memchr",
  "serde",
@@ -5141,13 +5254,14 @@ dependencies = [
  "tokio-util",
  "tower",
  "tower-lsp-macros",
+ "tracing",
 ]
 
 [[package]]
 name = "tower-lsp-macros"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ebd99eec668d0a450c177acbc4d05e0d0d13b1f8d3db13cd706c52cbec4ac04"
+checksum = "74697a0324a76eedfc784ffef1cc4de2300af19720de3c3fd99cd7ec484479da"
 dependencies = [
  "proc-macro2",
  "quote",
