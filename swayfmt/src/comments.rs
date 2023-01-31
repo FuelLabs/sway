@@ -1,22 +1,7 @@
 use std::{fmt::Write, ops::Range};
-use sway_ast::token::Comment;
 use sway_types::Spanned;
 
 use crate::{formatter::FormattedCode, Formatter, FormatterError};
-
-/// Given a range, return an iterator to comments contained within the range.
-pub fn comments_between<'a>(
-    range: &'a Range<usize>,
-    formatter: &'a Formatter,
-) -> impl Iterator<Item = &'a Comment> {
-    formatter.comment_map.iter().filter_map(|(bs, c)| {
-        if bs.contained_within(range) {
-            Some(c)
-        } else {
-            None
-        }
-    })
-}
 
 pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
@@ -35,7 +20,11 @@ pub fn maybe_write_comments_from_map(
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
     {
-        let mut comments_iter = comments_between(&range, formatter).enumerate().peekable();
+        let mut comments_iter = formatter
+            .comment_map
+            .comments_between(&range)
+            .enumerate()
+            .peekable();
 
         if comments_iter.peek().is_none() {
             return Ok(false);
