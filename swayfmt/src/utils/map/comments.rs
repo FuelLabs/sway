@@ -396,7 +396,6 @@ mod tests {
         let range_start_span = ByteSpan { start: 0, end: 32 };
         let range_end_span = ByteSpan { start: 33, end: 34 };
         let found_comment = map
-            .0
             .range((Included(range_start_span), Included(range_end_span)))
             .last()
             .unwrap();
@@ -422,7 +421,6 @@ mod tests {
             end: 115,
         };
         let found_comment = map
-            .0
             .range((Included(range_start_span), Included(range_end_span)))
             .last()
             .unwrap();
@@ -451,7 +449,6 @@ mod tests {
             end: 201,
         };
         let found_comment = map
-            .0
             .range((Included(range_start_span), Included(range_end_span)))
             .last()
             .unwrap();
