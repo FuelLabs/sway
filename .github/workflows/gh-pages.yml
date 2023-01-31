@@ -48,7 +48,7 @@ jobs:
         run: mdbook build docs/reference
 
       - name: Build Sway std library
-        run: forc doc --manifest-path ./sway-lib-std && cp sway-lib-std/out/doc/* docs/std
+        run: forc doc --manifest-path ./sway-lib-std
 
       - name: Deploy master book
         uses: peaceiris/actions-gh-pages@v3
@@ -70,7 +70,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/std/book
+          publish_dir: ./sway-lib-std/out
           destination_dir: master/std
         if: github.ref == 'refs/heads/master'
 
