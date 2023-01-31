@@ -16,6 +16,8 @@ use crate::{
 
 use sway_ir::*;
 
+use std::collections::{HashSet, VecDeque};
+
 use either::Either;
 
 /// A summary of the adopted calling convention:
@@ -205,15 +207,27 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // Compile instructions.
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        for block in function.block_iter(self.context) {
-            self.insert_block_label(block);
-            for instr_val in block.instruction_iter(self.context) {
-                check!(
-                    self.compile_instruction(&instr_val, func_is_entry),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+
+        // Traverse the control flow graph using BFS. This is important to make sure that all
+        // values are inserted into `self.reg_map` in the right order.
+        let mut block_queue = VecDeque::new();
+        block_queue.push_back(function.get_entry_block(self.context));
+        let mut visited: HashSet<String> = HashSet::new();
+        while !block_queue.is_empty() {
+            let block = block_queue.pop_front().unwrap();
+            if visited.insert(block.get_label(self.context)) {
+                self.insert_block_label(block);
+                for instr_val in block.instruction_iter(self.context) {
+                    check!(
+                        self.compile_instruction(&instr_val, func_is_entry),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
+                for succ in &block.successors(self.context) {
+                    block_queue.push_back(succ.block);
+                }
             }
         }
 

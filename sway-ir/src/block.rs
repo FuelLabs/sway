@@ -209,7 +209,7 @@ impl Block {
     }
 
     /// Get the CFG successors (and the parameters passed to them) of this block.
-    pub(super) fn successors<'a>(&'a self, context: &'a Context) -> Vec<BranchToWithArgs> {
+    pub fn successors<'a>(&'a self, context: &'a Context) -> Vec<BranchToWithArgs> {
         match self.get_terminator(context) {
             Some(Instruction::ConditionalBranch {
                 true_block,
