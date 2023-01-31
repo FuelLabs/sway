@@ -63,7 +63,7 @@ impl CommentMap {
         &'a self,
         range: &'a Range<usize>,
     ) -> impl Iterator<Item = &'a Comment> {
-        self.0.iter().filter_map(|(bs, c)| {
+        self.iter().filter_map(|(bs, c)| {
             if bs.contained_within(range) {
                 Some(c)
             } else {
@@ -104,13 +104,11 @@ impl CommentRange for CommentMap {
         // If that is the case we need to collect all the comments until the provided `to` ByteSpan. BtreeMap::range((Inclusive(from), Excluded(to))) won't be able to find comments
         // since both beginning of the file and first byte span have their start = 0. If we are looking from STARTING_BYTE_SPAN to `to`, we need to collect all until `to` byte span.
         if from == &byte_span::STARTING_BYTE_SPAN {
-            self.0
-                .range(..to)
+            self.range(..to)
                 .map(|(byte_span, comment)| (byte_span.clone(), comment.clone()))
                 .collect()
         } else {
-            self.0
-                .range((Included(from), Excluded(to)))
+            self.range((Included(from), Excluded(to)))
                 .map(|(byte_span, comment)| (byte_span.clone(), comment.clone()))
                 .collect()
         }
