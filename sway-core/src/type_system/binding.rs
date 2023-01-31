@@ -74,9 +74,14 @@ use super::{TypeArgument, TypeId};
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
     pub inner: T,
-    pub type_arguments: Vec<TypeArgument>,
-    pub prefix_type_arguments: Vec<TypeArgument>,
+    pub type_arguments: TypeArgs,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+enum TypeArgs {
+    Regular(Vec<TypeArgument>),
+    Prefix(Vec<TypeArgument>),
 }
 
 impl<T> Spanned for TypeBinding<T> {
@@ -99,8 +104,14 @@ impl<T> TypeBinding<T> {
         TypeBinding {
             inner: (),
             type_arguments: self.type_arguments,
-            prefix_type_arguments: self.prefix_type_arguments,
             span: self.span,
+        }
+    }
+
+    pub(crate) fn type_args_vec(self: Self) -> Vec<TypeArgument> {
+        match self.type_arguments {
+            TypeArgs::Regular(vec) => vec,
+            TypeArgs::Prefix(vec) => vec,
         }
     }
 }
