@@ -4733,6 +4733,7 @@ dependencies = [
  "assert-json-diff",
  "async-trait",
  "dashmap",
+ "dirs 4.0.0",
  "forc-pkg",
  "forc-tracing",
  "futures",
