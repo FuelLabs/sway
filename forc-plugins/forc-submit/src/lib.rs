@@ -62,6 +62,7 @@ pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
 
 /// Format the transaction status in a more human-friendly manner.
 pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<()> {
+    use chrono::TimeZone;
     use std::fmt::Write;
     match status {
         TransactionStatus::Submitted { submitted_at } => {
@@ -72,9 +73,10 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             time,
             program_state,
         } => {
+            let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Succeeded")?;
             writeln!(s, "  Block ID:      {block_id}")?;
-            writeln!(s, "  Time:          {time:?}")?;
+            writeln!(s, "  Time:          {utc}",)?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }
         TransactionStatus::SqueezedOut { reason } => {
@@ -86,10 +88,11 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             reason,
             program_state,
         } => {
+            let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Failed")?;
             writeln!(s, "  Reason: {reason}")?;
             writeln!(s, "  Block ID:      {block_id}")?;
-            writeln!(s, "  Time:          {time:?}")?;
+            writeln!(s, "  Time:          {utc}")?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }
     }

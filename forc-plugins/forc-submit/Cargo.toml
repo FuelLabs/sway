@@ -17,6 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 clap = { version = "3", features = ["derive", "env"] }
 fuel-gql-client = { version = "0.15", default-features = false }
 serde = "1"

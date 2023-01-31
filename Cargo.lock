@@ -1734,6 +1734,7 @@ name = "forc-submit"
 version = "0.33.1"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap 3.2.23",
  "fuel-gql-client",
  "serde",
