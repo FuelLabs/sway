@@ -1,8 +1,8 @@
 use anyhow::{bail, Result};
 use colored::Colorize;
-use forc_client::ops::{
-    deploy::{cmd::DeployCommand, op::deploy},
-    run::{cmd::RunCommand, op::run},
+use forc_client::{
+    cmd::{Deploy as DeployCommand, Run as RunCommand},
+    op::{deploy, run},
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;

@@ -1,3 +1,10 @@
+use crate::{
+    cmd,
+    util::{
+        pkg::built_pkgs_with_manifest,
+        tx::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS},
+    },
+};
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_gql_client::client::types::TransactionStatus;
@@ -15,11 +22,6 @@ use sway_core::BuildTarget;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::pkg_util::built_pkgs_with_manifest;
-use crate::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
-
-use super::cmd::DeployCommand;
-
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
 }
@@ -30,7 +32,7 @@ pub struct DeployedContract {
 /// Upon success, returns the ID of each deployed contract in order of deployment.
 ///
 /// When deploying a single contract, only that contract's ID is returned.
-pub async fn deploy(command: DeployCommand) -> Result<Vec<DeployedContract>> {
+pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     let mut contract_ids = Vec::new();
     let curr_dir = if let Some(ref path) = command.path {
         PathBuf::from(path)
@@ -53,7 +55,7 @@ pub async fn deploy(command: DeployCommand) -> Result<Vec<DeployedContract>> {
 
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
-    command: &DeployCommand,
+    command: &cmd::Deploy,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<DeployedContract> {
@@ -119,7 +121,7 @@ pub async fn deploy_pkg(
     Ok(DeployedContract { id: contract_id })
 }
 
-fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
     let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {

@@ -1,3 +1,10 @@
+use crate::{
+    cmd,
+    util::{
+        pkg::built_pkgs_with_manifest,
+        tx::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS},
+    },
+};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_util::format_log_receipts;
@@ -12,11 +19,6 @@ use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
 
-use crate::pkg_util::built_pkgs_with_manifest;
-use crate::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
-
-use super::cmd::RunCommand;
-
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
 pub struct RanScript {
@@ -29,7 +31,7 @@ pub struct RanScript {
 /// Upon success, returns the receipts of each script in the order they are executed.
 ///
 /// When running a single script, only that script's receipts are returned.
-pub async fn run(command: RunCommand) -> Result<Vec<RanScript>> {
+pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let mut receipts = Vec::new();
     let curr_dir = if let Some(path) = &command.path {
         PathBuf::from(path)
@@ -52,7 +54,7 @@ pub async fn run(command: RunCommand) -> Result<Vec<RanScript>> {
 }
 
 pub async fn run_pkg(
-    command: &RunCommand,
+    command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
@@ -140,7 +142,7 @@ async fn send_tx(
     }
 }
 
-fn build_opts_from_cmd(cmd: &RunCommand) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
     let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
