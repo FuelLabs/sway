@@ -233,7 +233,7 @@ mod success {
     }
 }
 
-// Some of these are meant to be tests for None returns but since the SDK doesnt support options;
+// Some of these are meant to be tests for None returns but since the SDK doesn't support options;
 // the options are being unwrapped in the contract and tested as reverts instead
 mod failure {
     use super::*;
