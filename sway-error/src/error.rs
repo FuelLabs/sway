@@ -721,8 +721,6 @@ pub enum CompileError {
         missing_impl_attribute: bool,
         span: Span,
     },
-    #[error("Enum instantiated with multiple generic type parameters. Try removing generic type parameters before or after the enum variant name.")]
-    EnumMultipleTurbofish { span: Span },
     #[error("Configurable constants are not allowed in libraries.")]
     ConfigurableInLibrary { span: Span },
     #[error("The name `{name}` is defined multiple times")]
@@ -918,7 +916,6 @@ impl Spanned for CompileError {
             DisallowedWhileInPredicate { span } => span.clone(),
             CoinsPassedToNonPayableMethod { span, .. } => span.clone(),
             TraitImplPayabilityMismatch { span, .. } => span.clone(),
-            EnumMultipleTurbofish { span } => span.clone(),
             ConfigurableInLibrary { span } => span.clone(),
             NameDefinedMultipleTimes { span, .. } => span.clone(),
         }
