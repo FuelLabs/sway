@@ -666,12 +666,63 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        let len = get::<u64>(x()).unwrap_or(0);
 
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
 
         let key = sha256((index, __get_storage_key()));
         store::<V>(key, value);
+    }
+
+    /// Returns the first element of the vector, or `None` if it is empty.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    ///     vec2: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///
+    ///     assert(5 == storage.vec.first());
+    ///     assert(storage.vec2.first().is_none());
+    /// }
+    /// ```
+    pub fn first(self) -> Option<V> {
+        // TODO: should we omit this and just check if the first element is `None`?
+        // are there cases where length is set to zero, but the elements remain?
+        match get::<u64>(__get_storage_key()).unrwap_or(0) {
+            0 => None,
+            _ => self.get(0),
+        }
+    }
+
+    /// Returns the last element of the vector, or `None` if it is empty.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    ///     vec2: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///
+    ///     assert(10 == storage.vec.last());
+    ///     assert(storage.vec2.last().is_none());
+    /// }
+    /// ```
+    pub fn last(self) -> Option<V> {
+        match get::<u64>(__get_storage_key()).unwrap_or(0) {
+            0 => None,
+            len => self.get(len - 1),
+        }
     }
 }
