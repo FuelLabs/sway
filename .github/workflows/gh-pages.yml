@@ -116,6 +116,14 @@ jobs:
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/reference
         if: startsWith(github.ref, 'refs/tags')
 
+      - name: Deploy std tag
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/std/book
+          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
+        if: startsWith(github.ref, 'refs/tags')
+
       - name: Create tag book redirect file
         run: |
           mkdir ./tmp
