@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
@@ -161,15 +161,32 @@ pub(crate) fn runs_in_vm(
             ))
         }
         BuildTarget::EVM => {
-            let mut database = revm::InMemoryDB::default();
-            let mut env = revm::Env::default();
-            env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
             let mut evm = revm::new();
-            evm.database(&mut database);
-            evm.env = env;
+            evm.database(revm::InMemoryDB::default());
+            evm.env = revm::Env::default();
 
+            // Transaction to create the smart contract
+            evm.env.tx.transact_to = revm::TransactTo::create();
+            evm.env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
             let result = evm.transact_commit();
-            Ok(VMExecutionResult::Evm(result))
+
+            match result.out {
+                revm::TransactOut::None => Err(anyhow!("Could not create smart contract")),
+                revm::TransactOut::Call(_) => todo!(),
+                revm::TransactOut::Create(ref _bytes, account_opt) => {
+                    match account_opt {
+                        Some(account) => {
+                            evm.env.tx.transact_to = revm::TransactTo::Call(account);
+
+                            // Now issue a call.
+                            //evm.env.tx. = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+                            let result = evm.transact_commit();
+                            Ok(VMExecutionResult::Evm(result))
+                        }
+                        None => todo!(),
+                    }
+                }
+            }
         }
     }
 }
