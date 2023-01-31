@@ -1,0 +1,13 @@
+[[package]]
+name = 'complex_cfg'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-8B200AD7FF2D8C10'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8B200AD7FF2D8C10'
+dependencies = ['core']
