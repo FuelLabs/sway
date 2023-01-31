@@ -443,10 +443,10 @@ impl KeywordDocs {
             ///
             /// ```sway
             /// if 1 == 2 {
-            ///     // whoops, mathematics broke
+            ///     log("whoops, mathematics broke");
             ///     revert(0);
             /// } else {
-            ///     // everything's fine!
+            ///     log("everything's fine!");
             /// }
             ///
             /// let x = 5;
