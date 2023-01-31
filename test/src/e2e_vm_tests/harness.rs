@@ -62,11 +62,14 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     deploy(DeployCommand {
-        path: Some(format!(
-            "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-        )),
-        terse_mode: !run_config.verbose,
-        locked: run_config.locked,
+        pkg: forc_client::cmd::deploy::Pkg {
+            path: Some(format!(
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+            )),
+            terse: !run_config.verbose,
+            locked: run_config.locked,
+            ..Default::default()
+        },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     })
@@ -96,13 +99,16 @@ pub(crate) async fn runs_on_node(
         }
 
         let command = RunCommand {
-            path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-            )),
+            pkg: forc_client::cmd::run::Pkg {
+                path: Some(format!(
+                    "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+                )),
+                locked: run_config.locked,
+                terse: !run_config.verbose,
+                ..Default::default()
+            },
             node_url: Some(NODE_URL.into()),
-            terse_mode: !run_config.verbose,
             contract: Some(contracts),
-            locked: run_config.locked,
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()
         };

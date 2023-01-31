@@ -1065,6 +1065,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "devault"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc1d36b1abcd53bf307972de38ed2da0a57ddeb762b141420067149d3952c9a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1524,8 +1535,10 @@ dependencies = [
  "anyhow",
  "async-trait",
  "clap 3.2.23",
+ "forc",
  "forc-pkg",
  "forc-tracing",
+ "forc-tx",
  "forc-util",
  "fuel-gql-client",
  "fuel-tx",
@@ -1643,6 +1656,7 @@ version = "0.33.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
+ "devault",
  "fuel-tx",
  "serde",
  "serde_json",
