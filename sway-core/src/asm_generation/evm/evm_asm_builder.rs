@@ -10,7 +10,7 @@ use crate::{
     error::*,
     metadata::MetadataManager,
 };
-
+use etk_ops::london::*;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
 use sway_types::Span;
@@ -60,6 +60,9 @@ pub struct EvmAsmBuilder<'ir> {
 
     // Monotonically increasing unique identifier for label generation.
     label_idx: usize,
+
+    // In progress EVM asm section.
+    pub(super) cur_section: Option<EvmAsmSection>,
 }
 
 #[derive(Default, Debug)]
@@ -73,12 +76,12 @@ impl EvmAsmSection {
         Self::default()
     }
 
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> usize {
         let mut asm = Assembler::new();
         if asm.push_all(self.ops.clone()).is_err() {
             panic!("Could not size EVM assembly section");
         }
-        asm.take().len() as u32
+        asm.take().len()
     }
 }
 
@@ -108,7 +111,7 @@ impl<'ir> AsmBuilder for EvmAsmBuilder<'ir> {
 #[allow(dead_code)]
 impl<'ir> EvmAsmBuilder<'ir> {
     pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
-        let mut b = EvmAsmBuilder {
+        Self {
             program_kind,
             sections: Vec::new(),
             func_label_map: HashMap::new(),
@@ -116,10 +119,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
             context,
             md_mgr: MetadataManager::default(),
             label_idx: 0,
-        };
-        let s = b.generate_function();
-        b.sections.push(s);
-        b
+            cur_section: None,
+        }
     }
 
     pub fn finalize(&self) -> AsmBuilderResult {
@@ -134,8 +135,10 @@ impl<'ir> EvmAsmBuilder<'ir> {
             global_abi.append(&mut section.abi.clone());
 
             if it.peek().is_some() {
-                size += AbstractOp::Op(Op::Invalid).size().unwrap();
-                global_ops.push(AbstractOp::Op(Op::Invalid));
+                size += AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid))
+                    .size()
+                    .unwrap();
+                global_ops.push(AbstractOp::Op(Op::Invalid(etk_ops::london::Invalid)));
             }
         }
 
@@ -157,8 +160,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn generate_constructor(
         &self,
         is_payable: bool,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) -> EvmAsmSection {
         // For more details and explanations see:
         // https://medium.com/@hayeah/diving-into-the-ethereum-vm-part-5-the-smart-contract-creation-process-cb7b6133b855.
@@ -182,24 +185,31 @@ impl<'ir> EvmAsmBuilder<'ir> {
             //   jumpdest
             //   pop
 
-            s.ops.push(AbstractOp::new(Op::CallValue).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::IsZero).unwrap());
+            s.ops.push(AbstractOp::new(Op::CallValue(CallValue)));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::IsZero(IsZero)));
             let tag_label = "tag_1";
+            s.ops.push(AbstractOp::new(Op::Push1(Push1(Imm::with_label(
+                tag_label,
+            )))));
+            s.ops.push(AbstractOp::new(Op::JumpI(JumpI)));
             s.ops
-                .push(AbstractOp::Op(Op::with_label(Op::Push1(()), tag_label)));
-            s.ops.push(AbstractOp::new(Op::JumpI).unwrap());
-            s.ops
-                .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-            s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-            s.ops.push(AbstractOp::new(Op::Revert).unwrap());
+                .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                    Expression::Terminal(0x00.into()),
+                )))));
+            s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
+            s.ops.push(AbstractOp::new(Op::Revert(Revert)));
 
             s.ops.push(AbstractOp::Label("tag_1".into()));
-            s.ops.push(AbstractOp::new(Op::JumpDest).unwrap());
-            s.ops.push(AbstractOp::Op(Op::Pop));
+            s.ops.push(AbstractOp::new(Op::JumpDest(JumpDest)));
+            s.ops.push(AbstractOp::Op(Op::Pop(Pop)));
         }
 
         self.copy_contract_code_to_memory(&mut s, data_size, data_offset);
+
+        s.abi.push(ethabi::operation::Operation::Constructor(
+            ethabi::Constructor { inputs: vec![] },
+        ));
 
         s
     }
@@ -207,8 +217,8 @@ impl<'ir> EvmAsmBuilder<'ir> {
     fn copy_contract_code_to_memory(
         &self,
         s: &mut EvmAsmSection,
-        data_size: u32,
-        data_offset: u32,
+        data_size: usize,
+        data_offset: usize,
     ) {
         // Copy contract code into memory, and return.
         //   push1 dataSize
@@ -221,42 +231,21 @@ impl<'ir> EvmAsmBuilder<'ir> {
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_size.into(),
         ))));
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
+        s.ops.push(AbstractOp::new(Op::Dup1(Dup1)));
         s.ops.push(AbstractOp::Push(Imm::from(Terminal::Number(
             data_offset.into(),
         ))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::CodeCopy));
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::Op(Op::Return));
-    }
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::CodeCopy(CodeCopy)));
 
-    fn generate_function(&mut self) -> EvmAsmSection {
-        let mut s = EvmAsmSection::new();
-
-        // push1 0x80 # selector("conduct_auto(uint256,uint256,uint256)")
-        // push1 0x40
-        // mstore
-        // push1 0x00
-        // dup1
-        // revert
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
-        s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x00]).unwrap());
-        s.ops.push(AbstractOp::new(Op::Dup1).unwrap());
-        s.ops.push(AbstractOp::new(Op::Revert).unwrap());
-
-        s.abi.push(ethabi::operation::Operation::Constructor(
-            ethabi::Constructor { inputs: vec![] },
-        ));
-
-        s
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x00.into()),
+            )))));
+        s.ops.push(AbstractOp::Op(Op::Return(Return)));
     }
 
     fn setup_free_memory_pointer(&self, s: &mut EvmAsmSection) {
@@ -272,11 +261,16 @@ impl<'ir> EvmAsmBuilder<'ir> {
         //   push1 0x80
         //   push1 0x40
         //   mstore
+
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x80]).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x80.into()),
+            )))));
         s.ops
-            .push(AbstractOp::with_immediate(Op::Push1(()), &[0x40]).unwrap());
-        s.ops.push(AbstractOp::new(Op::MStore).unwrap());
+            .push(AbstractOp::new(Op::Push1(Push1(Imm::with_expression(
+                Expression::Terminal(0x40.into()),
+            )))));
+        s.ops.push(AbstractOp::new(Op::MStore(MStore)));
     }
 
     fn empty_span() -> Span {
