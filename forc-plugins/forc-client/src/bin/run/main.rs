@@ -1,4 +1,4 @@
-use forc_client::ops::run::{cmd::RunCommand, op::run};
+use forc_client::run::{cmd::RunCommand, op::run};
 use forc_tracing::init_tracing_subscriber;
 use std::process;
 

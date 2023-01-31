@@ -1,4 +1,4 @@
-use forc_client::ops::deploy::{cmd::DeployCommand, op::deploy};
+use forc_client::deploy::{cmd::DeployCommand, op::deploy};
 use forc_tracing::init_tracing_subscriber;
 use std::process;
 

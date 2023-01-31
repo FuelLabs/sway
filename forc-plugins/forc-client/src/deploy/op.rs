@@ -15,8 +15,8 @@ use sway_core::BuildTarget;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::ops::pkg_util::built_pkgs_with_manifest;
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
+use crate::pkg_util::built_pkgs_with_manifest;
+use crate::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
 
 use super::cmd::DeployCommand;
 
