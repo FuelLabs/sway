@@ -2,7 +2,11 @@
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
 use serde_json::Value;
-use std::{env, path::PathBuf, time::Duration};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use tokio::task::JoinHandle;
 use tower_lsp::{lsp_types::Url, ClientSocket};
 
@@ -55,6 +59,18 @@ pub(crate) fn get_fixture(path: PathBuf) -> Value {
 
 pub(crate) fn sway_example_dir() -> PathBuf {
     sway_workspace_dir().join("examples/storage_variables")
+}
+
+// Check if the given directory contains `Forc.toml` at its root.
+pub(crate) fn dir_contains_forc_manifest(path: &Path) -> bool {
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub(crate) async fn assert_server_requests(
