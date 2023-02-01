@@ -313,6 +313,24 @@ impl GetDeclIdent for TyDeclaration {
     }
 }
 
+impl GetDeclId for TyDeclaration {
+    fn get_decl_id(&self) -> Option<DeclId> {
+        match self {
+            TyDeclaration::VariableDeclaration(_) => todo!("not a declaration id yet"),
+            TyDeclaration::ConstantDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::FunctionDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::TraitDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::StructDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::EnumDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::ImplTrait(decl) => Some(decl.clone()),
+            TyDeclaration::AbiDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::GenericTypeForFunctionScope { .. } => None,
+            TyDeclaration::ErrorRecovery(_) => None,
+            TyDeclaration::StorageDeclaration(_decl) => None,
+        }
+    }
+}
+
 impl TyDeclaration {
     /// Retrieves the declaration as an enum declaration.
     ///

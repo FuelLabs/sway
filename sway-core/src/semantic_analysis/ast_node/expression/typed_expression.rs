@@ -19,7 +19,11 @@ pub(crate) use self::{
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, GetDeclId},
+        *,
+    },
     semantic_analysis::*,
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -484,7 +488,7 @@ impl ty::TyExpression {
         );
 
         // check that the decl is a function decl
-        let function_decl = check!(
+        let _ = check!(
             unknown_decl.expect_function(decl_engine, &span),
             return err(warnings, errors),
             warnings,
@@ -493,7 +497,7 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            function_decl,
+            unknown_decl.get_decl_id().unwrap(),
             call_path_binding,
             Some(arguments),
             span,
@@ -1107,12 +1111,22 @@ impl ty::TyExpression {
         // Check if this could be a function
         let mut function_probe_warnings = Vec::new();
         let mut function_probe_errors = Vec::new();
-        let maybe_function = {
+
+        let maybe_function_decl = {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_function(decl_engine, &span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
                 .map(|func_decl| (func_decl, call_path_binding))
+        };
+
+        let maybe_function = {
+            maybe_function_decl.clone().and_then(|f| {
+                let (fn_decl, call_path_binding) = f;
+                fn_decl
+                    .expect_function(decl_engine, &span)
+                    .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                    .map(|func_decl| (func_decl, call_path_binding))
+            })
         };
 
         // Check if this could be an enum
@@ -1169,11 +1183,12 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some((func_decl, call_path_binding)), None, None) => {
+            (false, Some((_func_decl, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
+                let decl_id = maybe_function_decl.and_then(|d| d.0.get_decl_id()).unwrap();
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding, args, span),
+                    instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors

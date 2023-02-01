@@ -17,6 +17,10 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident>;
 }
 
+pub trait GetDeclId {
+    fn get_decl_id(&self) -> Option<DeclId>;
+}
+
 #[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
