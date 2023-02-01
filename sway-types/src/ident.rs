@@ -119,14 +119,6 @@ impl fmt::Display for Ident {
 #[derive(Debug, Clone)]
 pub struct IdentUnique(BaseIdent);
 
-impl IdentUnique {
-    pub fn as_str(&self) -> &str {
-        self.0
-            .name_override_opt
-            .unwrap_or_else(|| self.0.span.as_str())
-    }
-}
-
 impl From<Ident> for IdentUnique {
     fn from(item: Ident) -> Self {
         IdentUnique(item)
