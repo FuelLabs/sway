@@ -147,6 +147,10 @@ impl<K, V> StorageMap<K, V> {
     /// * `key` - The key to which the value is paired.
     /// * `value` - The value to be stored.
     ///
+    /// ### Storage Access
+    ///
+    /// * Writes - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -176,6 +180,10 @@ impl<K, V> StorageMap<K, V> {
     ///
     /// * `key` - The key to which the value is paired.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -203,6 +211,10 @@ impl<K, V> StorageMap<K, V> {
     /// ### Arguments
     ///
     /// * `key` - The key to which the value is paired
+    ///
+    /// ### Storage Access
+    ///
+    /// * Clears - `1`
     ///
     /// ### Examples
     ///
@@ -237,6 +249,11 @@ impl<V> StorageVec<V> {
     ///
     /// * `value` - The item being added to the end of the vector.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    /// * Writes - `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -267,6 +284,10 @@ impl<V> StorageVec<V> {
 
     /// Sets the len to zero.
     ///
+    /// ### Storage Access
+    ///
+    /// * Clears - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -286,7 +307,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        store(__get_storage_key(), 0);
+        clear::<u64>(__get_storage_key(), 0);
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -294,6 +315,10 @@ impl<V> StorageVec<V> {
     /// ### Arguments
     ///
     /// * `index` - The index of the vec to retrieve the item from.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `2`
     ///
     /// ### Examples
     ///
@@ -323,6 +348,10 @@ impl<V> StorageVec<V> {
 
     /// Returns the length of the vector.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -346,6 +375,10 @@ impl<V> StorageVec<V> {
     }
 
     /// Checks whether the len is zero or not.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
     ///
     /// ### Examples
     ///
@@ -385,6 +418,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `2 + N` where `N` is `self.len() - index`
+    /// * Writes - `N` where `N` is `self.len() - index`
     ///
     /// ### Examples
     ///
@@ -446,6 +484,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than the length of the vec.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1` if `index` is `self.len()` else `1 + N` where `N` is `self.len() - index`
+    /// * Writes - `2` if `index` is `self.len()` else `2 + N` where `N` is `self.len() - index`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -506,6 +549,11 @@ impl<V> StorageVec<V> {
 
     /// Removes the last element of the vector and returns it, `None` if empty.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `2`
+    /// * Writes - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -550,6 +598,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// * If `element1_index` or `element2_index` is greater than the length of the vector.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `3`
+    /// * Writes - `2`
     ///
     /// ### Examples
     ///
@@ -598,6 +651,11 @@ impl<V> StorageVec<V> {
     /// ### Reverts
     ///
     /// Reverts if index is larger or equal to length of the vec.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `3`
+    /// * Writes - `2`
     ///
     /// ### Examples
     ///
@@ -649,6 +707,11 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than or equal to the length of the vec.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    /// * Writes - `1`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -687,6 +750,11 @@ impl<V> StorageVec<V> {
     /// ### Arguments
     ///
     /// * other - The vector to append to `self`.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1 + (2 * N)` where `N` is `other.len()`
+    /// * Writes - `1 + N` where `N` is `other.len()`
     ///
     /// ### Examples
     ///
@@ -729,6 +797,10 @@ impl<V> StorageVec<V> {
 
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -756,6 +828,10 @@ impl<V> StorageVec<V> {
 
     /// Returns the last element of the vector, or `None` if it is empty.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `2`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -781,6 +857,11 @@ impl<V> StorageVec<V> {
     }
 
     /// Reverses the order of elements in the vector, in place.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1 + (2 * N)` where `N` is `self.len() / 2`
+    /// * Writes - `2 * N` where `N` is `self.len() / 2`
     ///
     /// ### Examples
     ///
@@ -828,6 +909,11 @@ impl<V> StorageVec<V> {
     ///
     /// * value - Value to copy to each element of the vector.
     ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    /// * Writes - `N` where `N` is `self.len()`
+    ///
     /// ### Examples
     ///
     /// ```sway
@@ -866,6 +952,11 @@ impl<V> StorageVec<V> {
     ///
     /// new_len - The new length to expand or truncate to
     /// value - The value to fill into new slots if the `new_len` is greater than the current length
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1`
+    /// * Writes - `1 + N` where `N` is `new_len - len` if `new_len > self.len()` else `0`
     ///
     /// ### Examples
     ///
