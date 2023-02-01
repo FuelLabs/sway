@@ -823,7 +823,7 @@ mod tests {
         go_to: &'a GotoDefintion<'a>,
         id: i64,
     ) -> Request {
-        let definition = definition_request(&go_to.req_uri, go_to.req_line, go_to.req_char, id);
+        let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
         let response = call_request(service, definition.clone())
             .await
             .unwrap()
@@ -1216,7 +1216,7 @@ mod tests {
             def_line: 19,
             def_start_char: 7,
             def_end_char: 11,
-            def_path: &uri.as_str(),
+            def_path: uri.as_str(),
         };
         let _ = definition_check(&mut service, &go_to, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
@@ -1249,7 +1249,7 @@ mod tests {
             def_line: 19,
             def_start_char: 7,
             def_end_char: 11,
-            def_path: &uri.as_str(),
+            def_path: uri.as_str(),
         };
         let _ = definition_check(&mut service, &go_to, 1).await;
         shutdown_and_exit(&mut service).await;
