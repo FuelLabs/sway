@@ -25,4 +25,3 @@ pub fn g(amount: u64, to: Identity) {
 }
 
 fn fun<T>(t: T){}
-
