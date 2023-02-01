@@ -28,7 +28,7 @@ fn check(unformatted: &str, expected: &str) {
 }
 
 #[test]
-fn test_const() {
+fn const_spacing() {
     check(
         r#"contract;
 pub const TEST:u16=10;
@@ -40,7 +40,7 @@ pub const TEST: u16 = 10;
 }
 
 #[test]
-fn test_struct_alignment() {
+fn struct_alignment() {
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
 
@@ -61,7 +61,7 @@ pub struct Foo<T, P> {
     );
 }
 #[test]
-fn test_struct() {
+fn struct_ending_comma() {
     check(
         r#"contract;
 pub struct Foo {
@@ -79,7 +79,7 @@ pub struct Foo {
 }
 
 #[test]
-fn test_enum_without_variant_alignment() {
+fn enum_without_variant_alignment() {
     check(
         r#"contract;
 
@@ -102,7 +102,7 @@ enum Color {
     );
 }
 #[test]
-fn test_enum_with_variant_alignment() {
+fn enum_with_variant_alignment() {
     // Creating a config with enum_variant_align_threshold that exceeds longest variant length
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
@@ -129,7 +129,7 @@ enum Color {
     );
 }
 #[test]
-fn test_item_abi_with_generics_and_attributes() {
+fn item_abi_with_generics_and_attributes() {
     check(
         r#"contract;
 
@@ -151,7 +151,7 @@ abi StorageMapExample {
 }
 
 #[test]
-fn test_multi_items() {
+fn multi_items() {
     check(
         r#"contract;
 
@@ -165,7 +165,7 @@ pub const TEST1: u16 = 10;
     );
 }
 #[test]
-fn test_ty_formatting() {
+fn ty_formatting() {
     check(
         r#"contract;
 
@@ -199,7 +199,7 @@ enum TestTy {
     );
 }
 #[test]
-fn test_storage_without_alignment() {
+fn storage_without_alignment() {
     check(
         r#"contract;
         struct Type1 {
@@ -232,7 +232,7 @@ storage {
     );
 }
 #[test]
-fn test_storage_with_alignment() {
+fn storage_with_alignment() {
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
     check_custom_config(
@@ -268,7 +268,7 @@ storage {
     );
 }
 #[test]
-fn test_storage_initializer() {
+fn storage_initializer() {
     check(
         r#"contract;
 
@@ -318,7 +318,7 @@ storage {
     );
 }
 #[test]
-fn test_item_fn() {
+fn item_fn() {
     check(
         r#"contract;
 
@@ -338,7 +338,7 @@ fn goodbye() -> usize {
     );
 }
 #[test]
-fn test_same_line_where() {
+fn same_line_where() {
     check(
         r#"contract;
 
@@ -356,7 +356,7 @@ where
     );
 }
 #[test]
-fn test_trait_and_super_trait() {
+fn trait_and_super_trait() {
     check(
         r#"library traits;
 
@@ -390,7 +390,7 @@ where
     );
 }
 #[test]
-fn test_method_calls() {
+fn method_calls() {
     let mut formatter = Formatter::default();
     formatter.config.structures.small_structures_single_line = true;
     formatter.config.whitespace.max_width = 220;
@@ -484,7 +484,7 @@ fn main() -> bool {
 }
 
 #[test]
-fn test_struct_comments() {
+fn struct_comments() {
     check(
         r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
@@ -574,7 +574,7 @@ trait AlignMyComments {
 }
 
 #[test]
-fn test_enum_comments() {
+fn enum_comments() {
     check(
         r#"contract;
 pub enum Bazz { // Here is a comment
@@ -603,7 +603,7 @@ pub enum Bazz { // Here is a comment
 }
 
 #[test]
-fn test_fn_comments() {
+fn fn_comments() {
     check(
         r#"contract;
 // This is a comment before a fn
@@ -622,7 +622,7 @@ fn hello_world(baz: /* this is a comment */ u64) {
 }
 
 #[test]
-fn test_abi_comments() {
+fn abi_comments() {
     check(
         r#"contract;
 // This is an abi
@@ -645,7 +645,7 @@ abi StorageMapExample {
 }
 
 #[test]
-fn test_const_comments() {
+fn const_comments() {
     check(
         r#"contract;
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#,
@@ -655,7 +655,7 @@ pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next 
     );
 }
 #[test]
-fn test_storage_comments() {
+fn storage_comments() {
     check(
         r#"contract;
 
@@ -690,7 +690,7 @@ storage {
 }
 
 #[test]
-fn test_trait_comments() {
+fn trait_comments() {
     check(
         r#"contract;
 // This is the programmer trait
@@ -709,7 +709,7 @@ trait Programmer {
 }
 
 #[test]
-fn test_where_comment() {
+fn where_comment() {
     check(
         r#"contract;
 
@@ -727,7 +727,7 @@ where /* This is next to where */
     );
 }
 #[test]
-fn test_impl() {
+fn impl_spacing() {
     check(
         r#"script;
 
@@ -772,7 +772,7 @@ impl<A, B> Qux<A, B> for Foo where
 }
 
 #[test]
-fn test_impl_without_generics() {
+fn impl_without_generics() {
     check(
         r#"script;
 
@@ -811,7 +811,7 @@ impl Qux for Foo {
 }
 
 #[test]
-fn test_newline_sequence_formatting() {
+fn newline_sequence_formatting() {
     check(
         r#"script;
 
@@ -841,7 +841,7 @@ fn main() {
 }
 
 #[test]
-fn test_doc_comments() {
+fn doc_comments() {
     check(
         r#"script;
 
@@ -869,7 +869,7 @@ fn main() {}
 }
 
 #[test]
-fn test_newline_comment_handler_interaction() {
+fn newline_comment_handler_interaction() {
     check(
         r#"script;
 
@@ -929,7 +929,7 @@ library test_module_kind_with_comments;
     );
 }
 #[test]
-fn test_destructure_structs() {
+fn destructure_structs() {
     check(
         r#"library test_destructure_structs;
 
@@ -987,7 +987,7 @@ fn struct_destructuring() {
     );
 }
 #[test]
-fn test_multiline_collections() {
+fn multiline_collections() {
     check(
         r#"library test_multiline_collections;
 fn func_with_multiline_collections() {
@@ -1049,7 +1049,7 @@ fn main() {
     );
 }
 #[test]
-fn test_parameterless_attributes() {
+fn parameterless_attributes() {
     check(
         r#"library my_lib;
 
@@ -1069,7 +1069,7 @@ abi MyContract {
 }
 
 #[test]
-fn test_traits_with_def_block() {
+fn traits_with_def_block() {
     check(
         r#"script;
 
@@ -1095,7 +1095,7 @@ fn main() {}
 }
 
 #[test]
-fn test_if_else_multiline_to_inline() {
+fn if_else_multiline_to_inline() {
     check(
         r#"script;
 
@@ -1117,7 +1117,7 @@ fn main() {
 }
 
 #[test]
-fn test_if_else_retain_multiline() {
+fn if_else_retain_multiline() {
     check(
         r#"script;
 
@@ -1143,7 +1143,7 @@ fn main() {
 }
 
 #[test]
-fn test_multiple_comma_separated_attributes() {
+fn multiple_comma_separated_attributes() {
     check(
         r#"library my_lib;
 
@@ -1159,7 +1159,7 @@ fn foo() {}
 }
 
 #[test]
-fn test_stack_of_comma_separated_attributes1() {
+fn stack_of_comma_separated_attributes1() {
     check(
         r#"library my_lib;
 
@@ -1179,7 +1179,7 @@ fn foo() {}
 }
 
 #[test]
-fn test_stack_of_comma_separated_attributes2() {
+fn stack_of_comma_separated_attributes2() {
     check(
         r#"library my_lib;
 
@@ -1203,7 +1203,7 @@ fn foo() {}
 }
 
 #[test]
-fn test_comment_between_closing_brace_and_else() {
+fn comment_between_closing_brace_and_else() {
     check(
         r#"contract;
 
@@ -1247,7 +1247,7 @@ impl MyContract for Contract {
 }
 
 #[test]
-fn test_comment_between_if_else_inline_to_multiline() {
+fn comment_between_if_else_inline_to_multiline() {
     check(
         r#"contract;
 
@@ -1276,7 +1276,7 @@ impl MyContract for Contract {
 }
 
 #[test]
-fn test_asm_block() {
+fn asm_block() {
     check(
         r#"library my_lib;
 
@@ -1302,7 +1302,7 @@ fn foo() {
 }
 
 #[test]
-fn test_empty_blocks() {
+fn empty_blocks() {
     check(
         r#"contract;
         
