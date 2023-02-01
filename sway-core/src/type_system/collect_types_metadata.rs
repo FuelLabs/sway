@@ -47,6 +47,7 @@ impl MessageId {
 }
 
 #[allow(clippy::enum_variant_names)]
+#[derive(Debug, Clone)]
 pub enum TypeMetadata {
     // UnresolvedType receives the Ident of the type and a call site span.
     UnresolvedType(Ident, Option<Span>),

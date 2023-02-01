@@ -1,9 +1,12 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::core::{Bits256, SizedAsciiString},
+};
 
-abigen!(
-    ParsingLogsTestContract,
-    "test_projects/parsing_logs/out/debug/parsing_logs-abi.json"
-);
+abigen!(Contract(
+    name = "ParsingLogsTestContract",
+    abi = "test_projects/parsing_logs/out/debug/parsing_logs-abi.json"
+));
 
 async fn get_parsing_logs_instance() -> (ParsingLogsTestContract, ContractId) {
     let wallet = launch_provider_and_get_wallet().await;

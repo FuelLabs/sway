@@ -1,5 +1,9 @@
 use crate::{
-    asm_generation::{compiler_constants, from_ir::*, Entry, ProgramKind},
+    asm_generation::{
+        from_ir::*,
+        fuel::{compiler_constants, data_section::Entry, fuel_asm_builder::FuelAsmBuilder},
+        ProgramKind,
+    },
     asm_lang::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
         VirtualImmediate24, VirtualOp,
@@ -13,8 +17,6 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
-
-use super::FuelAsmBuilder;
 
 /// A summary of the adopted calling convention:
 ///
@@ -203,8 +205,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // Compile instructions.
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        for block in function.block_iter(self.context) {
-            self.insert_block_label(block);
+
+        // Traverse the IR blocks in reverse post order. This guarantees that each block is
+        // processed after all its CFG predecessors have been processed.
+        let po = sway_ir::dominator::compute_post_order(self.context, &function);
+        for block in po.po_to_block.iter().rev() {
+            self.insert_block_label(*block);
             for instr_val in block.instruction_iter(self.context) {
                 check!(
                     self.compile_instruction(&instr_val, func_is_entry),
@@ -354,7 +360,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                     args_base_reg.clone(),
                                     offs_reg.clone(),
                                 )),
-                                comment: format!("get offset for arg {}", name),
+                                comment: format!("get offset for arg {name}"),
                                 owning_span: None,
                             });
                             self.cur_bytecode.push(Op {
@@ -363,7 +369,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                     offs_reg,
                                     VirtualImmediate12 { value: 0 },
                                 )),
-                                comment: format!("get arg {}", name),
+                                comment: format!("get arg {name}"),
                                 owning_span: None,
                             });
                         } else {
@@ -375,7 +381,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                         value: arg_word_offset as u16,
                                     },
                                 )),
-                                comment: format!("get arg {}", name),
+                                comment: format!("get arg {name}"),
                                 owning_span: None,
                             });
                         }
@@ -388,7 +394,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                 args_base_reg.clone(),
                                 offs_reg,
                             )),
-                            comment: format!("get offset or arg {}", name),
+                            comment: format!("get offset or arg {name}"),
                             owning_span: None,
                         });
                     } else {
@@ -400,7 +406,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                                     value: (arg_word_offset * 8) as u16,
                                 },
                             )),
-                            comment: format!("get address for arg {}", name),
+                            comment: format!("get address for arg {name}"),
                             owning_span: None,
                         });
                     }
@@ -650,7 +656,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
                     value: locals_size as u32,
                 })),
-                comment: format!("allocate {} bytes for locals", locals_size),
+                comment: format!("allocate {locals_size} bytes for locals"),
                 owning_span: None,
             });
         }
@@ -670,7 +676,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
                 opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
                     value: locals_size as u32,
                 })),
-                comment: format!("free {} bytes for locals", locals_size),
+                comment: format!("free {locals_size} bytes for locals"),
                 owning_span: None,
             });
         }

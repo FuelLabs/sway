@@ -70,7 +70,12 @@ impl ty::TyDeclaration {
                         type_ascription,
                         type_ascription_span,
                     }));
-                ctx.namespace.insert_symbol(name, typed_var_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_var_decl
             }
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {
@@ -139,7 +144,12 @@ impl ty::TyDeclaration {
                 };
                 let typed_const_decl =
                     ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
-                ctx.namespace.insert_symbol(name, typed_const_decl.clone());
+                check!(
+                    ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
                 typed_const_decl
             }
             parsed::Declaration::EnumDeclaration(decl) => {
@@ -184,8 +194,24 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
+
+                // save decl_ids for the LSP
+                for supertrait in trait_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
+                                supertrait_decl
+                            {
+                                supertrait.decl_id = Some(supertrait_decl_id);
+                            }
+                        });
+                }
+
                 let decl_id = decl_engine.insert(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+
                 trait_decl
                     .methods
                     .iter_mut()

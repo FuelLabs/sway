@@ -5,7 +5,7 @@ mod render;
 
 use crate::{
     doc::{Document, Documentation},
-    render::{RenderedDocumentation, ALL_DOC_FILENAME},
+    render::{RenderedDocumentation, INDEX_FILENAME},
 };
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -83,19 +83,24 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     // render docs to HTML
-    let rendered_docs = RenderedDocumentation::from(raw_docs);
+    let forc_version = pkg_manifest
+        .project
+        .forc_version
+        .as_ref()
+        .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
+    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version)?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.clone();
-        for prefix in doc.module_info {
+        for prefix in doc.module_info.0 {
             if &prefix != project_name {
                 doc_path.push(prefix);
             }
         }
 
         fs::create_dir_all(&doc_path)?;
-        doc_path.push(doc.html_file_name);
+        doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     // CSS, icons and logos
@@ -116,7 +121,7 @@ pub fn main() -> Result<()> {
     // if opening in the browser fails, attempt to open using a file explorer
     if open_result {
         const BROWSER_ENV_VAR: &str = "BROWSER";
-        let path = doc_path.join(ALL_DOC_FILENAME);
+        let path = doc_path.join(INDEX_FILENAME);
         let default_browser_opt = std::env::var_os(BROWSER_ENV_VAR);
         match default_browser_opt {
             Some(def_browser) => {

@@ -115,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -156,6 +156,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -169,7 +170,7 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -209,6 +210,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -550,6 +552,7 @@ impl ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
             trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+            trait_decl_id: None,
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
@@ -777,6 +780,7 @@ fn type_check_impl_method(
     if impld_method_ids.contains_key(&impl_method.name.clone()) {
         errors.push(CompileError::MultipleDefinitionsOfFunction {
             name: impl_method.name.clone(),
+            span: impl_method.name.span(),
         });
         return err(warnings, errors);
     }
@@ -827,6 +831,7 @@ fn type_check_impl_method(
         if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
             errors.push(CompileError::MutableParameterNotSupported {
                 param_name: impl_method_signature.name.clone(),
+                span: impl_method_signature.name.span(),
             });
         }
 
@@ -839,9 +844,6 @@ fn type_check_impl_method(
             });
         }
 
-        impl_method_param
-            .type_id
-            .replace_self_type(engines, self_type);
         if !type_engine.get(impl_method_param.type_id).eq(
             &type_engine.get(impl_method_signature_param.type_id),
             engines,
@@ -907,9 +909,6 @@ fn type_check_impl_method(
         (true, true) | (false, false) => (), // no payability mismatch
     }
 
-    impl_method
-        .return_type
-        .replace_self_type(engines, self_type);
     if !type_engine
         .get(impl_method.return_type)
         .eq(&type_engine.get(impl_method_signature.return_type), engines)
@@ -946,13 +945,13 @@ fn type_check_impl_method(
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect();
-    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> = ctx
-        .self_type()
-        .unconstrained_type_parameters(engines, impl_type_parameters)
-        .into_iter()
-        .cloned()
-        .map(|x| WithEngines::new(x, engines))
-        .collect::<HashSet<_>>();
+    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
+        self_type
+            .unconstrained_type_parameters(engines, impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .map(|x| WithEngines::new(x, engines))
+            .collect::<HashSet<_>>();
     let mut unconstrained_type_parameters_to_be_added =
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
@@ -1057,7 +1056,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", k),
+            ty: format!("{k}"),
             span: v,
         });
     }

@@ -1,7 +1,9 @@
 use super::FinalProgram;
 
 use crate::{
-    asm_generation::{instruction_set::InstructionSet, DataSection, ProgramABI},
+    asm_generation::{
+        fuel::data_section::DataSection, instruction_set::InstructionSet, ProgramABI,
+    },
     FinalizedAsm, FinalizedEntry,
 };
 
@@ -46,8 +48,38 @@ impl std::fmt::Display for FinalProgram {
         match self {
             FinalProgram::Fuel {
                 data_section, ops, ..
-            } => write!(f, "{:?}\n{}", ops, data_section),
-            FinalProgram::Evm { ops, .. } => write!(f, "{:?}", ops),
+            } => write!(f, "{ops:?}\n{data_section}"),
+            FinalProgram::Evm { ops, .. } => {
+                let mut separator = etk_dasm::blocks::basic::Separator::new();
+
+                let ctx = etk_asm::ops::Context::new();
+                let concretized_ops = ops
+                    .iter()
+                    .map(|op| etk_asm::disasm::Offset {
+                        item: op.clone().concretize(ctx).unwrap(),
+                        offset: 0,
+                    })
+                    .collect::<Vec<_>>();
+                separator.push_all(concretized_ops);
+
+                let basic_blocks = separator
+                    .take()
+                    .into_iter()
+                    .chain(separator.finish().into_iter());
+
+                for block in basic_blocks {
+                    let mut offset = block.offset;
+                    for op in block.ops {
+                        let len = op.size();
+                        let off = etk_asm::disasm::Offset::new(offset, etk_dasm::DisplayOp(op));
+                        offset += len;
+
+                        writeln!(f, "{}", off.item)?;
+                    }
+                }
+
+                Ok(())
+            }
         }
     }
 }

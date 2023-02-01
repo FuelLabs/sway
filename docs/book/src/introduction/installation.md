@@ -2,35 +2,91 @@
 
 The _Sway toolchain_ is sufficient to compile Sway smart contracts. Otherwise, note that if you want to run Sway smart contracts (e.g. for testing), a Fuel Core full node is required, which is packaged together with the _Sway toolchain_ together as the _Fuel toolchain_.
 
-## Installing from Pre-compiled Binaries
+## Install via Pre-compiled Binaries (Recommended)
 
-Pre-compiled release binaries for Linux and macOS are available for the Sway toolchain. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
+Installing via pre-compiled release binaries is the recommended way to get up and running with the Sway toolchain. Pre-compiled binaries for Linux and macOS are available. Native Windows is currently unsupported ([tracking issue for Windows support](https://github.com/FuelLabs/sway/issues/1526)). Windows Subsystem for Linux should work but is not officially supported.
 
 [`fuelup`](https://github.com/FuelLabs/fuelup) is the equivalent of Rust's `rustup` for the Fuel toolchain. It enables easily downloading binary releases of the Fuel toolchain.
 
-Start by installing `fuelup` with:
+1. Start by installing `fuelup` with the following command:
 
-```sh
-curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
-```
+   ```sh
+   curl --proto '=https' --tlsv1.2 -sSf \
+   https://fuellabs.github.io/fuelup/fuelup-init.sh | sh
+   ```
 
-`fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
+   This downloads the `fuelup-init` script to a temp directory on your machine, which installs `fuelup`. `fuelup-init` will ask for permission to add `~/.fuelup/bin` to your PATH. Otherwise, you can also pass `--no-modify-path` so that `fuelup-init` does not modify your PATH:
 
-```sh
-curl --proto '=https' --tlsv1.2 -sSf \
-    https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
-```
+   ```sh
+   curl --proto '=https' --tlsv1.2 -sSf \
+   https://fuellabs.github.io/fuelup/fuelup-init.sh | sh -s -- --no-modify-path
+   ```
 
-Once `fuelup` is installed, `fuelup-init` automatically runs the command below
+2. Once fuelup is installed, fuelup-init automatically runs `fuelup toolchain install latest` to install the latest toolchain
 
-```sh
-fuelup toolchain install latest
-```
+   You can run `fuelup update` at anytime to get the most up-to-date toolchain.
 
-to install the latest Fuel toolchain.
+3. (Optional) You can optionally install distributed toolchains optimized for different networks.
 
-You can run the same command at a later time to update the toolchain.
+   To configure the optimal toolchain for beta-2, run the following commands:
+
+   ```sh
+   $ fuelup self update
+   Fetching binary from https://github.com/FuelLabs/fuelup/releases/download/v0.16.1/fuelup-0.16.1-aarch64-apple-darwin.tar.gz
+    Downloading component fuelup without verifying checksum
+    Unpacking and moving fuelup to /var/folders/tp/0l8zdx9j4s9_n609ykwxl0qw0000gn/T/.tmpP3HfvR
+    Moving /var/folders/tp/0l8zdx9j4s9_n609ykwxl0qw0000gn/T/.tmpP3HfvR/fuelup to /Users/user/.fuelup/bin/fuelup
+
+
+   $ fuelup toolchain install beta-2
+   Downloading: forc forc-explore forc-wallet fuel-core fuel-indexer
+
+   Adding component forc v0.31.1 to 'beta-2-aarch64-apple-darwin'
+   Fetching binary from https://github.com/FuelLabs/sway/releases/download/v0.31.1/forc-binaries-darwin_arm64.tar.gz
+   npacking and moving forc-doc to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Unpacking and moving forc to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Unpacking and moving forc-deploy to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Unpacking and moving forc-run to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Unpacking and moving forc-lsp to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Unpacking and moving forc-fmt to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Fetching core forc dependencies
+   Installed forc v0.31.1 for toolchain 'beta-2-aarch64-apple-darwin'
+
+   Adding component forc-explore v0.28.1 to 'beta-2-aarch64-apple-darwin'
+   Fetching binary from https://github.com/FuelLabs/forc-explorer/releases/download/v0.28.1/forc-explore-0.28.1-aarch64-apple-darwin.tar.gz
+   Unpacking and moving forc-explore to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Installed forc-explore v0.28.1 for toolchain 'beta-2-aarch64-apple-darwin'
+
+   Adding component forc-wallet v0.1.2 to 'beta-2-aarch64-apple-darwin'
+   Fetching binary from https://github.com/FuelLabs/forc-wallet/releases/download/v0.1.2/forc-wallet-0.1.2-aarch64-apple-darwin.tar.gz
+   Unpacking and moving forc-wallet to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Installed forc-wallet v0.1.2 for toolchain 'beta-2-aarch64-apple-darwin'
+
+   Adding component fuel-core v0.15.3 to 'beta-2-aarch64-apple-darwin'
+   Fetching binary from https://github.com/FuelLabs/fuel-core/releases/download/v0.15.3/fuel-core-0.15.3-aarch64-apple-darwin.tar.gz
+   Unpacking and moving fuel-core to /Users/user/.fuelup/toolchains/    beta-2-aarch64-apple-darwin/bin
+   Installed fuel-core v0.15.3 for toolchain 'beta-2-aarch64-apple-darwin'
+
+   Adding component fuel-indexer v0.1.13 to 'beta-2-aarch64-apple-darwin'
+   Fetching binary from https://github.com/FuelLabs/fuel-indexer/releases/download/v0.1.13/fuel-indexer-0.1.13-aarch64-apple-darwin.tar.gz
+   Unpacking and moving fuel-indexer to /Users/user/.fuelup/toolchains/beta-2-aarch64-apple-darwin/bin
+   Installed fuel-indexer v0.1.13 for toolchain 'beta-2-aarch64-apple-darwin'
+
+   Installed:
+   - forc 0.31.1
+   - forc-explore 0.28.1
+   - forc-wallet 0.1.2
+   - fuel-core 0.15.3
+   - fuel-indexer 0.1.13
+
+   The Fuel toolchain is installed and up to date
+   ```
+
+You're all set to start building!
+
+### Need Help?
+
+You may refer to [The Fuelup Book](https://fuellabs.github.io/fuelup/latest/) for an in-depth look into fuelup, or check out the tooling section in the [Fuel forum](https://forum.fuel.network/) if you're running into problems through the installation process. If you don't see your question, post the issue you're running into with as many details as possible and the team will get back to you asap!
 
 ### Installing from Cargo
 

@@ -20,7 +20,7 @@ impl StorageExample for Contract {
 
     #[storage(read)]
     fn get_something() -> u64 {
-        let value = get::<u64>(STORAGE_KEY);
-        value
+        let value: Option<u64> = get::<u64>(STORAGE_KEY);
+        value.unwrap_or(0)
     }
 }

@@ -106,6 +106,9 @@ fn capabilities() -> ServerCapabilities {
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -326,6 +329,28 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn code_lens(&self, params: CodeLensParams) -> jsonrpc::Result<Option<Vec<CodeLens>>> {
+        let mut result = vec![];
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((_, session)) => {
+                // Construct code lenses for runnable functions
+                session.runnables.iter().for_each(|item| {
+                    let runnable = item.value();
+                    result.push(CodeLens {
+                        range: runnable.range(),
+                        command: Some(runnable.command()),
+                        data: None,
+                    });
+                });
+                Ok(Some(result))
+            }
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
     async fn completion(
         &self,
         params: CompletionParams,
@@ -454,15 +479,10 @@ impl LanguageServer for Backend {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnableParams {
-    pub text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
+    pub save_path: Url,
 }
 
 // Custom LSP-Server Methods
@@ -480,30 +500,6 @@ impl Backend {
                     &params.range,
                     config,
                 ))
-            }
-            Err(err) => {
-                tracing::error!("{}", err.to_string());
-                Ok(None)
-            }
-        }
-    }
-
-    pub async fn runnables(
-        &self,
-        params: RunnableParams,
-    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((_, session)) => {
-                let ranges = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        vec![(runnable.range, format!("{}", runnable.tree_type))]
-                    });
-
-                Ok(ranges)
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
@@ -537,7 +533,7 @@ impl Backend {
                 let write_ast_to_file =
                     |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
                         if let Ok(mut file) = File::create(path) {
-                            let _ = writeln!(&mut file, "{}", ast_string);
+                            let _ = writeln!(&mut file, "{ast_string}");
                             if let Ok(uri) = Url::from_file_path(path) {
                                 // Return the tmp file path where the AST has been written to.
                                 return Some(TextDocumentIdentifier::new(uri));
@@ -551,6 +547,7 @@ impl Backend {
                     ident.span().path().map(|a| a.deref()) == path.as_ref()
                 };
 
+                let ast_path = PathBuf::from(params.save_path.path());
                 {
                     let program = session.compiled_program.read();
                     match params.ast_kind.as_str() {
@@ -563,8 +560,10 @@ impl Backend {
                                         formatted_ast = format!("{:#?}", submodule.module.tree);
                                     }
                                 }
-                                let tmp_ast_path = Path::new("/tmp/lexed_ast.rs");
-                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("lexed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         "parsed" => {
@@ -579,8 +578,10 @@ impl Backend {
                                             format!("{:#?}", submodule.module.tree.root_nodes);
                                     }
                                 }
-                                let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("parsed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         "typed" => {
@@ -599,8 +600,10 @@ impl Backend {
                                         );
                                     }
                                 }
-                                let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                write_ast_to_file(tmp_ast_path, &formatted_ast)
+                                write_ast_to_file(
+                                    ast_path.join("typed.rs").as_path(),
+                                    &formatted_ast,
+                                )
                             }))
                         }
                         _ => Ok(None),
@@ -619,8 +622,10 @@ impl Backend {
 mod tests {
     use super::*;
     use crate::utils::test::{
-        assert_server_requests, doc_comments_dir, e2e_test_dir, get_fixture, test_fixtures_dir,
+        assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
+        e2e_test_dir, get_fixture, runnables_test_dir, sway_workspace_dir, test_fixtures_dir,
     };
+    use assert_json_diff::assert_json_eq;
     use serde_json::json;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
@@ -659,8 +664,8 @@ mod tests {
         let params = json!({ "capabilities": capabilities() });
         let initialize = build_request_with_id("initialize", params, 1);
         let response = call_request(service, initialize.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_json_eq!(expected, response.ok().unwrap());
         initialize
     }
 
@@ -673,8 +678,8 @@ mod tests {
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
         let response = call_request(service, shutdown.clone()).await;
-        let ok = Response::from_ok(1.into(), json!(null));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!(null));
+        assert_json_eq!(expected, response.ok().unwrap());
         shutdown
     }
 
@@ -738,17 +743,32 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn show_ast_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        ast_kind: &str,
+        save_path: Option<Url>,
+    ) -> Request {
+        // The path where the AST will be written to.
+        // If no path is provided, the default path is "/tmp"
+        let save_path = match save_path {
+            Some(path) => path,
+            None => Url::from_file_path(Path::new("/tmp")).unwrap(),
+        };
         let params = json!({
             "textDocument": {
                 "uri": uri
             },
-            "astKind": "typed",
+            "astKind": ast_kind,
+            "savePath": save_path,
         });
         let show_ast = build_request_with_id("sway/show_ast", params, 1);
         let response = call_request(service, show_ast.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(
+            1.into(),
+            json!({ "uri": format!("{save_path}/{ast_kind}.rs") }),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
         show_ast
     }
 
@@ -774,42 +794,116 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(
+    fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "position": {
+                "line": token_line,
+                "character": token_char,
+            }
+        });
+        build_request_with_id("textDocument/definition", params, id)
+    }
+
+    fn definition_response(
+        uri: &Url,
+        start_line: i32,
+        start_char: i32,
+        end_line: i32,
+        end_char: i32,
+        id: i64,
+    ) -> Response {
+        Response::from_ok(
+            id.into(),
+            json!({
+                "range": {
+                    "end": {
+                        "character": end_char,
+                        "line": end_line,
+                    },
+                    "start": {
+                        "character": start_char,
+                        "line": start_line,
+                    }
+                },
+                "uri": uri,
+            }),
+        )
+    }
+
+    async fn doc_comments_definition_check(
         service: &mut LspService<Backend>,
         uri: &Url,
         token_req_line: i32,
         token_def_line: i32,
         id: i64,
     ) -> Request {
-        let params = json!({
-            "textDocument": {
-                "uri": uri,
-            },
-            "position": {
-                "line": token_req_line,
-                "character": 24,
-            }
-        });
-        let definition = build_request_with_id("textDocument/definition", params, id);
+        let definition = definition_request(uri, token_req_line, 24, id);
         let response = call_request(service, definition.clone()).await;
-        let ok = Response::from_ok(
-            id.into(),
-            json!({
-                "range": {
-                    "end": {
-                        "character": 11,
-                        "line": token_def_line,
-                    },
-                    "start": {
-                        "character": 7,
-                        "line": token_def_line,
-                    }
-                },
-                "uri": uri,
-            }),
-        );
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = definition_response(uri, token_def_line, 7, token_def_line, 11, id);
+        assert_json_eq!(expected, response.ok().unwrap());
         definition
+    }
+
+    async fn turbofish_definition_check_option(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/option.sw"));
+    }
+
+    async fn turbofish_definition_check_result(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/result.sw"));
+    }
+    async fn traits_definition_check(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lsp/test/fixtures/tokens/traits/src/traits.sw"));
     }
 
     async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
@@ -824,7 +918,7 @@ mod tests {
         });
         let hover = build_request_with_id("textDocument/hover", params, 1);
         let response = call_request(service, hover.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!({
                 "contents": {
@@ -843,7 +937,7 @@ mod tests {
                 }
             }),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         hover
     }
 
@@ -874,7 +968,7 @@ mod tests {
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
         let response = call_request(service, highlight.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!([{
                     "range": {
@@ -890,8 +984,151 @@ mod tests {
                 }
             ]),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         highlight
+    }
+
+    async fn code_action_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "range" : {
+                "start":{
+                    "line": 27,
+                    "character": 4
+                },
+                "end":{
+                    "line": 27,
+                    "character": 9
+                },
+            },
+            "context": {
+                "diagnostics": [],
+                "triggerKind": 2
+            }
+        });
+        let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+        let response = call_request(service, code_action.clone()).await;
+        let uri_string = uri.to_string();
+        let expected = Response::from_ok(
+            1.into(),
+            json!([{
+                "data": uri,
+                "edit": {
+                  "changes": {
+                    uri_string: [
+                      {
+                        "newText": "\nimpl FooABI for Contract {\n    /// This is the `main` method on the `FooABI` abi\n    fn main() -> u64 {}\n}\n",
+                        "range": {
+                          "end": {
+                            "character": 0,
+                            "line": 31
+                          },
+                          "start": {
+                            "character": 0,
+                            "line": 31
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "kind": "refactor",
+                "title": "Generate impl for contract"
+            }]),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
+        code_action
+    }
+
+    async fn code_lens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
+        let response = call_request(service, code_lens.clone()).await;
+        let actual_results = response
+            .unwrap()
+            .unwrap()
+            .into_parts()
+            .1
+            .ok()
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
+        let expected_results = vec![
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_bar"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 11
+                },
+                "start": {
+                  "character": 0,
+                  "line": 11
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_foo"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 6
+                },
+                "start": {
+                  "character": 0,
+                  "line": 6
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "command": "sway.runScript",
+                "title": "▶︎ Run"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 2
+                },
+                "start": {
+                  "character": 3,
+                  "line": 2
+                }
+              }
+            }),
+        ];
+
+        assert_eq!(actual_results.len(), expected_results.len());
+        for expected in expected_results.iter() {
+            assert!(
+                actual_results.contains(expected),
+                "Expected {actual_results:?} to contain {expected:?}"
+            );
+        }
+        code_lens
     }
 
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
@@ -905,6 +1142,58 @@ mod tests {
     async fn shutdown_and_exit(service: &mut LspService<Backend>) {
         let _ = shutdown_request(service).await;
         exit_notification(service).await;
+    }
+
+    // This method iterates over all of the examples in the e2e langauge should_pass dir
+    // and saves the lexed, parsed, and typed ASTs to the users home directory.
+    // This makes it easy to grep for certain compiler types to inspect their use cases,
+    // providing necessary context when working on the traversal modules.
+    #[allow(unused)]
+    //#[tokio::test]
+    async fn write_all_example_asts() {
+        let (mut service, _) = LspService::build(Backend::new)
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
+        let _ = initialize_request(&mut service).await;
+        initialized_notification(&mut service).await;
+
+        let ast_folder = dirs::home_dir()
+            .expect("could not get users home directory")
+            .join("sway_asts");
+        let _ = fs::create_dir(&ast_folder);
+        let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
+        let mut entries = fs::read_dir(&e2e_dir)
+            .unwrap()
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()
+            .unwrap();
+
+        // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+        // ordering is required the entries should be explicitly sorted.
+        entries.sort();
+
+        for entry in entries {
+            let manifest_dir = entry;
+            let example_name = manifest_dir.file_name().unwrap();
+            if manifest_dir.is_dir() {
+                let example_dir = ast_folder.join(example_name);
+                if !dir_contains_forc_manifest(manifest_dir.as_path()) {
+                    continue;
+                }
+                match fs::create_dir(&example_dir) {
+                    Ok(_) => (),
+                    Err(_) => continue,
+                }
+
+                let example_dir = Some(Url::from_file_path(example_dir).unwrap());
+                let (uri, sway_program) = load_sway_example(manifest_dir);
+                did_open_notification(&mut service, &uri, &sway_program).await;
+                let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
+            }
+        }
+        shutdown_and_exit(&mut service).await;
     }
 
     #[tokio::test]
@@ -979,9 +1268,9 @@ mod tests {
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 45, 20, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -992,7 +1281,7 @@ mod tests {
             .finish();
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
-        let _ = show_ast_request(&mut service, &uri).await;
+        let _ = show_ast_request(&mut service, &uri, "typed", None).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1000,7 +1289,50 @@ mod tests {
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_inside_turbofish() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("turbofish"),
+        )
+        .await;
+
+        turbofish_definition_check_option(&mut service, &uri, 15, 12, 1).await;
+        turbofish_definition_check_option(&mut service, &uri, 16, 17, 2).await;
+        turbofish_definition_check_option(&mut service, &uri, 17, 29, 3).await;
+        turbofish_definition_check_option(&mut service, &uri, 18, 19, 4).await;
+
+        turbofish_definition_check_option(&mut service, &uri, 20, 13, 5).await;
+        turbofish_definition_check_result(&mut service, &uri, 20, 19, 6).await;
+        turbofish_definition_check_option(&mut service, &uri, 21, 19, 7).await;
+        turbofish_definition_check_result(&mut service, &uri, 21, 25, 8).await;
+        turbofish_definition_check_option(&mut service, &uri, 22, 29, 9).await;
+        turbofish_definition_check_result(&mut service, &uri, 22, 36, 10).await;
+        turbofish_definition_check_option(&mut service, &uri, 23, 18, 11).await;
+        turbofish_definition_check_result(&mut service, &uri, 23, 27, 12).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_traits() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("traits"),
+        )
+        .await;
+
+        traits_definition_check(&mut service, &uri, 6, 10, 1).await;
+        traits_definition_check(&mut service, &uri, 7, 10, 2).await;
+        traits_definition_check(&mut service, &uri, 7, 20, 3).await;
+        traits_definition_check(&mut service, &uri, 10, 6, 4).await;
+
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1017,7 +1349,7 @@ mod tests {
         .await;
         socket_handle
             .await
-            .unwrap_or_else(|e| panic!("Test failed: {:?}", e));
+            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1037,17 +1369,19 @@ mod tests {
     }
 
     macro_rules! lsp_capability_test {
-        ($test:ident, $capability:expr) => {
+        ($test:ident, $capability:expr, $dir:expr) => {
             #[tokio::test]
             async fn $test() {
-                test_lsp_capability!(doc_comments_dir(), $capability);
+                test_lsp_capability!($dir(), $capability);
             }
         };
     }
 
-    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
-    lsp_capability_test!(document_symbol, document_symbol_request);
-    lsp_capability_test!(format, format_request);
-    lsp_capability_test!(hover, hover_request);
-    lsp_capability_test!(highlight, highlight_request);
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request, doc_comments_dir);
+    lsp_capability_test!(document_symbol, document_symbol_request, doc_comments_dir);
+    lsp_capability_test!(format, format_request, doc_comments_dir);
+    lsp_capability_test!(hover, hover_request, doc_comments_dir);
+    lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
+    lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
+    lsp_capability_test!(code_lens, code_lens_request, runnables_test_dir);
 }

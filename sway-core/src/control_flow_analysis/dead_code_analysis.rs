@@ -815,11 +815,11 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
     Ok((leaves, exit_node))
 }
 
-fn get_trait_fn_node_index<'a, 'cfg>(
+fn get_trait_fn_node_index<'a>(
     engines: Engines<'_>,
     function_decl_id: DeclId,
     expression_span: Span,
-    graph: &'a ControlFlowGraph<'cfg>,
+    graph: &'a ControlFlowGraph,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {
     let decl_engine = engines.de();
     let fn_decl = decl_engine.get_function(function_decl_id, &expression_span)?;
@@ -1173,11 +1173,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let this_ix = graph.add_node(
                 engines,
-                format!(
-                    "Struct field access: {}.{}",
-                    resolved_type_of_parent, field_name
-                )
-                .into(),
+                format!("Struct field access: {resolved_type_of_parent}.{field_name}").into(),
             );
             for leaf in leaves {
                 graph.add_edge(*leaf, this_ix, "".into());
@@ -1495,7 +1491,7 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(engines, format!("Intrinsic {}", kind).into());
+    let node = graph.add_node(engines, format!("Intrinsic {kind}").into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }
@@ -1681,6 +1677,39 @@ fn construct_dead_code_warning_from_node(
             CompileWarning {
                 span: warning_span,
                 warning_content: Warning::DeadTrait,
+            }
+        }
+        ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_id)),
+            span,
+        } => {
+            let warning_span = match decl_engine.get_constant(decl_id.clone(), span) {
+                Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadDeclaration,
+            }
+        }
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
+            span,
+        } => {
+            // In rare cases, variable declaration spans don't have a path, so we need to check for that
+            if decl.name.span().path().is_some() {
+                CompileWarning {
+                    span: decl.name.span(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else if span.path().is_some() {
+                CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::DeadDeclaration,
+                }
+            } else {
+                return None;
             }
         }
         ty::TyAstNode {

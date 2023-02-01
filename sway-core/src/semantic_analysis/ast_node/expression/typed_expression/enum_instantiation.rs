@@ -16,7 +16,8 @@ pub(crate) fn instantiate_enum(
     enum_decl: ty::TyEnumDeclaration,
     enum_name: Ident,
     enum_variant_name: Ident,
-    args: Vec<Expression>,
+    args_opt: Option<Vec<Expression>>,
+    type_binding: TypeBinding<()>,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -35,6 +36,17 @@ pub(crate) fn instantiate_enum(
         errors
     );
 
+    // Return an error if enum variant is of type unit and it is called with parenthesis.
+    // args_opt.is_some() returns true when this variant was called with parenthesis.
+    if type_engine.get(enum_variant.initial_type_id).is_unit() && args_opt.is_some() {
+        errors.push(CompileError::UnitVariantWithParenthesesEnumInstantiator {
+            span: enum_variant_name.span(),
+            ty: enum_variant.name.as_str().to_string(),
+        });
+        return err(warnings, errors);
+    }
+    let args = args_opt.unwrap_or_default();
+
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
@@ -49,6 +61,7 @@ pub(crate) fn instantiate_enum(
                     variant_name: enum_variant.name,
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
+                    type_binding,
                 },
                 span: enum_variant_name.span(),
             },
@@ -94,6 +107,7 @@ pub(crate) fn instantiate_enum(
                         variant_name: enum_variant.name,
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
+                        type_binding,
                     },
                     span: enum_variant_name.span(),
                 },

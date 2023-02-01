@@ -1,7 +1,5 @@
 script;
 
-use std::{assert::assert, logging::log};
-
 enum Bool {
     True: (),
     False: (),

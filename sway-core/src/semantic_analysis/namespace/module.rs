@@ -98,7 +98,11 @@ impl Module {
             let attributes = Default::default();
             // convert to const decl
             let const_decl = to_parsed_lang::item_const_to_constant_declaration(
-                handler, engines, const_item, attributes,
+                &mut to_parsed_lang::Context::default(),
+                handler,
+                engines,
+                const_item,
+                attributes,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
@@ -210,7 +214,7 @@ impl Module {
         );
 
         let implemented_traits = src_ns.implemented_traits.clone();
-        let mut symbols = vec![];
+        let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
                 decl.visibility(decl_engine),
@@ -219,7 +223,7 @@ impl Module {
                 errors
             );
             if visibility == Visibility::Public {
-                symbols.push(symbol.clone());
+                symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
@@ -227,10 +231,11 @@ impl Module {
         dst_ns
             .implemented_traits
             .extend(implemented_traits, engines);
-        for symbol in symbols {
-            dst_ns
-                .use_synonyms
-                .insert(symbol, (src.to_vec(), GlobImport::Yes));
+        for symbol_and_decl in symbols_and_decls {
+            dst_ns.use_synonyms.insert(
+                symbol_and_decl.0,
+                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
+            );
         }
 
         ok((), warnings, errors)
@@ -262,7 +267,11 @@ impl Module {
 
         let implemented_traits = src_ns.implemented_traits.clone();
         let use_synonyms = src_ns.use_synonyms.clone();
-        let mut symbols = src_ns.use_synonyms.keys().cloned().collect::<Vec<_>>();
+        let mut symbols_and_decls = src_ns
+            .use_synonyms
+            .iter()
+            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
+            .collect::<Vec<_>>();
         for (symbol, decl) in src_ns.symbols.iter() {
             let visibility = check!(
                 decl.visibility(decl_engine),
@@ -271,7 +280,7 @@ impl Module {
                 errors
             );
             if visibility == Visibility::Public {
-                symbols.push(symbol.clone());
+                symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
@@ -279,14 +288,18 @@ impl Module {
         dst_ns
             .implemented_traits
             .extend(implemented_traits, engines);
-        let mut try_add = |symbol, path| {
-            dst_ns.use_synonyms.insert(symbol, (path, GlobImport::Yes));
+
+        let mut try_add = |symbol, path, decl: ty::TyDeclaration| {
+            dst_ns
+                .use_synonyms
+                .insert(symbol, (path, GlobImport::Yes, decl));
         };
 
-        for symbol in symbols {
-            try_add(symbol, src.to_vec());
+        for symbol_and_decl in symbols_and_decls {
+            try_add(symbol_and_decl.0, src.to_vec(), symbol_and_decl.1);
         }
-        for (symbol, (mod_path, _)) in use_synonyms {
+
+        for (symbol, (mod_path, _, decl)) in use_synonyms {
             // N.B. We had a path like `::bar::baz`, which makes the module `bar` "crate-relative".
             // Given that `bar`'s "crate" is `foo`, we'll need `foo::bar::baz` outside of it.
             //
@@ -294,7 +307,7 @@ impl Module {
             // distinguishing between external and crate-relative paths?
             let mut src = src[..1].to_vec();
             src.extend(mod_path);
-            try_add(symbol, src);
+            try_add(symbol, src, decl);
         }
 
         ok((), warnings, errors)
@@ -347,8 +360,12 @@ impl Module {
                     errors
                 );
                 if visibility != Visibility::Public {
-                    errors.push(CompileError::ImportPrivateSymbol { name: item.clone() });
+                    errors.push(CompileError::ImportPrivateSymbol {
+                        name: item.clone(),
+                        span: item.span(),
+                    });
                 }
+
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
@@ -361,13 +378,13 @@ impl Module {
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];
-                let mut add_synonym = |name| {
-                    if let Some((_, GlobImport::No)) = dst_ns.use_synonyms.get(name) {
+                let add_synonym = |name| {
+                    if let Some((_, GlobImport::No, _)) = dst_ns.use_synonyms.get(name) {
                         errors.push(CompileError::ShadowsOtherSymbol { name: name.clone() });
                     }
                     dst_ns
                         .use_synonyms
-                        .insert(name.clone(), (src.to_vec(), GlobImport::No));
+                        .insert(name.clone(), (src.to_vec(), GlobImport::No, decl));
                 };
                 match alias {
                     Some(alias) => {
@@ -380,7 +397,10 @@ impl Module {
                 };
             }
             None => {
-                errors.push(CompileError::SymbolNotFound { name: item.clone() });
+                errors.push(CompileError::SymbolNotFound {
+                    name: item.clone(),
+                    span: item.span(),
+                });
                 return err(warnings, errors);
             }
         };
@@ -409,14 +429,14 @@ impl<'a> std::ops::Index<&'a Path> for Module {
     type Output = Module;
     fn index(&self, path: &'a Path) -> &Self::Output {
         self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
 impl<'a> std::ops::IndexMut<&'a Path> for Module {
     fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
         self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 

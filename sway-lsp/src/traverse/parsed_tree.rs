@@ -542,15 +542,19 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
                 }
 
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Struct,
+                );
+
+                for type_arg in &method_name_binding.type_arguments {
+                    self.collect_type_arg(type_arg, &token);
+                }
+
                 // Don't collect applications of desugared operators due to mismatched ident lengths.
                 if !desugared_op(&prefixes) {
-                    self.tokens.insert(
-                        to_ident_key(&method_name_binding.inner.easy_name()),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Struct,
-                        ),
-                    );
+                    self.tokens
+                        .insert(to_ident_key(&method_name_binding.inner.easy_name()), token);
                 }
 
                 for exp in arguments {
@@ -645,8 +649,10 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
 
-                for exp in args {
-                    self.handle_expression(exp);
+                if let Some(args_vec) = args.as_ref() {
+                    args_vec.iter().for_each(|exp| {
+                        self.handle_expression(exp);
+                    });
                 }
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
@@ -748,6 +754,22 @@ impl<'a> ParsedTree<'a> {
                 for type_arg in type_arguments {
                     self.collect_type_arg(type_arg, &token);
                 }
+            }
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                if let Some(type_args) = type_arguments {
+                    for type_arg in type_args {
+                        self.collect_type_arg(type_arg, &token);
+                    }
+                }
+
+                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
+                token.kind = symbol_kind;
+                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
+                self.tokens
+                    .insert(to_ident_key(&Ident::new(name.span())), token);
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);

@@ -4,20 +4,20 @@ use ::logging::log;
 use ::error_signals::FAILED_REQUIRE_SIGNAL;
 
 /// Context-dependent:
-/// will panic if used in a predicate
-/// will revert if used in a contract
+/// Will panic if used in a predicate.
+/// Will revert if used in a contract.
 ///
 /// ### Arguments
 ///
-/// * `code` - The code with which to revert the program
+/// * `code` - The code with which to revert the program.
 ///
 /// ### Reverts
 ///
-/// Reverts when called in a contract
+/// Reverts when called in a contract.
 ///
 /// ### Panics
 ///
-/// Panics when called in a predicate
+/// Panics when called in a predicate.
 ///
 /// ### Examples
 ///
@@ -37,12 +37,12 @@ pub fn revert(code: u64) {
 ///
 /// ### Arguments
 ///
-/// * `condition` - The condition upon which to decide whether to revert or not
-/// * `value` - The value which will be logged in case `condition` is `false`
+/// * `condition` - The condition upon which to decide whether to revert or not.
+/// * `value` - The value which will be logged in case `condition` is `false`.
 ///
 /// ### Reverts
 ///
-/// Reverts when `condition` is false
+/// Reverts when `condition` is `false`.
 ///
 /// ### Examples
 ///
