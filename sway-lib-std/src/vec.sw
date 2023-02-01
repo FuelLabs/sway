@@ -144,7 +144,7 @@ impl<T> Vec<T> {
     /// let cap = vec.capacity();
     /// assert(cap == 5);
     /// ```
-    pub fn capacity(ref self) -> u64 {
+    pub fn capacity(self) -> u64 {
         self.buf.cap
     }
 
@@ -184,7 +184,7 @@ impl<T> Vec<T> {
     /// let res = vec.get(10);
     /// assert(res.is_none()); // index out of bounds
     /// ```
-    pub fn get(ref self, index: u64) -> Option<T> {
+    pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if self.len <= index {
             return Option::None;
@@ -211,7 +211,7 @@ impl<T> Vec<T> {
     /// vec.push(10);
     /// assert(vec.len() == 2);
     /// ```
-    pub fn len(ref self) -> u64 {
+    pub fn len(self) -> u64 {
         self.len
     }
 
@@ -229,7 +229,7 @@ impl<T> Vec<T> {
     /// vec.clear()
     /// assert(vec.is_empty());
     /// ```
-    pub fn is_empty(ref self) -> bool {
+    pub fn is_empty(self) -> bool {
         self.len == 0
     }
 
@@ -539,7 +539,7 @@ impl<T> Vec<T> {
     /// assert(right.get(0).unwrap() == 3);
     /// assert(right.get(1).unwrap() == 4);
     /// ```
-    pub fn split_at(ref self, mid: u64) -> (Vec<T>, Vec<T>) {
+    pub fn split_at(self, mid: u64) -> (Vec<T>, Vec<T>) {
         assert(self.len >= mid);
 
         let left_len = mid;
@@ -571,7 +571,7 @@ impl<T> Vec<T> {
     /// assert(vec.first().unwrap() == 1);
     /// assert(vec2.first().is_none());
     /// ```
-    pub fn first(ref self) -> Option<T> {
+    pub fn first(self) -> Option<T> {
         match self.len {
             0 => Option::None,
             _ => Option::Some(self.buf.ptr.read::<T>()),
@@ -592,7 +592,7 @@ impl<T> Vec<T> {
     /// assert(vec.last().unwrap() == 2);
     /// assert(vec2.last().is_none());
     /// ```
-    pub fn last(ref self) -> Option<T> {
+    pub fn last(self) -> Option<T> {
         match self.len {
             0 => Option::None,
             n => Option::Some(self.buf.ptr().add::<T>(n - 1).read::<T>()),
