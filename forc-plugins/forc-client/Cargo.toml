@@ -12,8 +12,10 @@ description = "A `forc` plugin for interacting with a Fuel node."
 anyhow = "1"
 async-trait = "0.1.58"
 clap = { version = "3", features = ["derive", "env"] }
+forc = { version = "0.33.1", path = "../../forc" }
 forc-pkg = { version = "0.33.1", path = "../../forc-pkg" }
 forc-tracing = { version = "0.33.1", path = "../../forc-tracing" }
+forc-tx = { version = "0.33.1", path = "../forc-tx" }
 forc-util = { version = "0.33.1", path = "../../forc-util" }
 fuel-gql-client = { version = "0.15", default-features = false }
 fuel-tx = { version = "0.23", features = ["builder"] }

@@ -1,3 +1,10 @@
+use crate::{
+    cmd,
+    util::{
+        pkg::built_pkgs_with_manifest,
+        tx::{TransactionBuilderExt, TX_SUBMIT_TIMEOUT_MS},
+    },
+};
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_gql_client::client::types::TransactionStatus;
@@ -15,11 +22,6 @@ use sway_core::BuildTarget;
 use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
-use crate::ops::pkg_util::built_pkgs_with_manifest;
-use crate::ops::tx_util::{TransactionBuilderExt, TxParameters, TX_SUBMIT_TIMEOUT_MS};
-
-use super::cmd::DeployCommand;
-
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
 }
@@ -30,9 +32,9 @@ pub struct DeployedContract {
 /// Upon success, returns the ID of each deployed contract in order of deployment.
 ///
 /// When deploying a single contract, only that contract's ID is returned.
-pub async fn deploy(command: DeployCommand) -> Result<Vec<DeployedContract>> {
+pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     let mut contract_ids = Vec::new();
-    let curr_dir = if let Some(ref path) = command.path {
+    let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
         std::env::current_dir()?
@@ -53,7 +55,7 @@ pub async fn deploy(command: DeployCommand) -> Result<Vec<DeployedContract>> {
 
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
-    command: &DeployCommand,
+    command: &cmd::Deploy,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<DeployedContract> {
@@ -62,7 +64,7 @@ pub async fn deploy_pkg(
         _ => DEFAULT_NODE_URL,
     };
 
-    let node_url = command.url.as_deref().unwrap_or(node_url);
+    let node_url = command.node_url.as_deref().unwrap_or(node_url);
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
@@ -77,7 +79,8 @@ pub async fn deploy_pkg(
     info!("Contract id: 0x{}", hex::encode(contract_id));
 
     let tx = TransactionBuilder::create(bytecode, salt, storage_slots.clone())
-        .params(TxParameters::new(command.gas_limit, command.gas_price))
+        .gas_limit(command.gas.limit)
+        .gas_price(command.gas.price)
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
@@ -119,33 +122,33 @@ pub async fn deploy_pkg(
     Ok(DeployedContract { id: contract_id })
 }
 
-fn build_opts_from_cmd(cmd: &DeployCommand) -> pkg::BuildOpts {
+fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
     let const_inject_map = std::collections::HashMap::new();
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
-            path: cmd.path.clone(),
-            offline: cmd.offline_mode,
-            terse: cmd.terse_mode,
-            locked: cmd.locked,
-            output_directory: cmd.output_directory.clone(),
+            path: cmd.pkg.path.clone(),
+            offline: cmd.pkg.offline,
+            terse: cmd.pkg.terse,
+            locked: cmd.pkg.locked,
+            output_directory: cmd.pkg.output_directory.clone(),
         },
         print: pkg::PrintOpts {
-            ast: cmd.print_ast,
-            dca_graph: cmd.print_dca_graph,
-            finalized_asm: cmd.print_finalized_asm,
-            intermediate_asm: cmd.print_intermediate_asm,
-            ir: cmd.print_ir,
+            ast: cmd.print.ast,
+            dca_graph: cmd.print.dca_graph,
+            finalized_asm: cmd.print.finalized_asm,
+            intermediate_asm: cmd.print.intermediate_asm,
+            ir: cmd.print.ir,
         },
+        time_phases: cmd.print.time_phases,
         minify: pkg::MinifyOpts {
-            json_abi: cmd.minify_json_abi,
-            json_storage_slots: cmd.minify_json_storage_slots,
+            json_abi: cmd.minify.json_abi,
+            json_storage_slots: cmd.minify.json_storage_slots,
         },
+        build_profile: cmd.build_profile.build_profile.clone(),
+        release: cmd.build_profile.release,
+        binary_outfile: cmd.build_output.bin_file.clone(),
+        debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
-        build_profile: cmd.build_profile.clone(),
-        release: cmd.release,
-        time_phases: cmd.time_phases,
-        binary_outfile: cmd.binary_outfile.clone(),
-        debug_outfile: cmd.debug_outfile.clone(),
         tests: false,
         const_inject_map,
     }

@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
+use std::option::Option;
 use std::path::PathBuf;
 use sway_core::{
     decl_engine::DeclEngine,
@@ -160,26 +161,35 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self) -> Box<dyn RenderBox> {
-        box_html! {
-            : self.item_header.render();
-            : self.item_body.render();
-        }
+    fn render(self) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render()?;
+        let body = self.item_body.render()?;
+        Ok(box_html! {
+            : header;
+            : body;
+        })
     }
 }
+
 pub(crate) type ModulePrefix = String;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
+    ///
+    /// Panics if there are no modules.
     pub(crate) fn location(&self) -> &str {
         self.0
             .last()
-            .expect("There will always be at least the project name")
+            .expect("Expected Some module location, found None")
     }
     /// The name of the project.
+    ///
+    /// Panics if the project root is missing.
     pub(crate) fn project_name(&self) -> &str {
-        self.0.first().expect("Project name missing")
+        self.0
+            .first()
+            .expect("Expected root module, project root missing")
     }
     /// The location of the parent of the current module.
     ///
@@ -228,7 +238,7 @@ impl ModuleInfo {
     /// used in navigation between pages.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> String {
+    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> Result<String> {
         let mut iter = self.0.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
@@ -240,8 +250,8 @@ impl ModuleInfo {
 
         file_path
             .to_str()
-            .expect("There will always be at least the item name")
-            .to_string()
+            .map(|file_path_str| file_path_str.to_string())
+            .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///
