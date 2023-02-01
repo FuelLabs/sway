@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
-# The script runs almost all CI checks locally except tests with `fuel-core` node instance.
-# If you have `fuel-core` node installed, you also can run tests for it.
-# First, you need to run it: `fuel-core run --db-type in-memory`
-# After, you can run tests: `cargo run --locked --release --bin test -- --locked`
+# The script runs almost all CI checks locally.
+#
+# Tests below requires running `fuel-core` node locally:
+# - `cargo run --locked --release --bin test -- --locked`
+# - `cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture`
+#
+# You can install `fuel-core` node by:
+# `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.16.1 --locked`
+#
+# And run it with:
+# `fuel-core run --db-type in-memory`
 
 # Requires installed:
 # `cargo install cargo-sort`
@@ -40,4 +47,5 @@ echo "[workspace]" >> test-proj/Cargo.toml &&
 rm -R test-proj &&
 cd test/src/sdk-harness && bash build.sh --locked && cd ../../../ &&
 cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
+cargo run --locked --release --bin test -- --locked &&
 cargo run --locked --release --bin test -- --target evm --locked
