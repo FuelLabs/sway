@@ -123,7 +123,7 @@ impl DisplayWithEngines for TyDeclaration {
         write!(
             f,
             "{} declaration ({})",
-            self.friendly_name(),
+            self.friendly_type_name(),
             match self {
                 TyDeclaration::VariableDeclaration(decl) => {
                     let TyVariableDeclaration {
@@ -330,7 +330,7 @@ impl TyDeclaration {
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnEnum {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 }],
             ),
@@ -360,7 +360,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAStruct {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -391,7 +391,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAFunction {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -410,7 +410,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -434,7 +434,7 @@ impl TyDeclaration {
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnAbi {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 }],
             ),
@@ -457,7 +457,7 @@ impl TyDeclaration {
             decl => {
                 let errors = vec![
                     (CompileError::DeclIsNotAConstant {
-                        actually: decl.friendly_name().to_string(),
+                        actually: decl.friendly_type_name().to_string(),
                         span: decl.span(),
                     }),
                 ];
@@ -466,8 +466,9 @@ impl TyDeclaration {
         }
     }
 
-    /// friendly name string used for error reporting.
-    pub fn friendly_name(&self) -> &'static str {
+
+    /// friendly type name string used for error reporting.
+    pub fn friendly_type_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
@@ -557,7 +558,7 @@ impl TyDeclaration {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
                     name: engines.help_out(decl).to_string(),
-                    actually_is: decl.friendly_name(),
+                    actually_is: decl.friendly_type_name(),
                 });
                 return err(warnings, errors);
             }

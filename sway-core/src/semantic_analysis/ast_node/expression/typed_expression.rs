@@ -448,7 +448,7 @@ impl ty::TyExpression {
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
-                    what_it_is: a.friendly_name(),
+                    what_it_is: a.friendly_type_name(),
                     span,
                 });
                 ty::TyExpression::error(name.span(), engines)
@@ -1272,7 +1272,7 @@ impl ty::TyExpression {
                     _ => {
                         errors.push(CompileError::NotAnAbi {
                             span: abi_name.span(),
-                            actually_is: abi.friendly_name(),
+                            actually_is: abi.friendly_type_name(),
                         });
                         return err(warnings, errors);
                     }
@@ -1315,7 +1315,7 @@ impl ty::TyExpression {
             a => {
                 errors.push(CompileError::NotAnAbi {
                     span: abi_name.span(),
-                    actually_is: a.friendly_name(),
+                    actually_is: a.friendly_type_name(),
                 });
                 return err(warnings, errors);
             }
