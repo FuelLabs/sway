@@ -11,17 +11,17 @@ use sway_core::{
 use sway_types::Spanned;
 
 trait RequiredMethods {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>>;
 }
 impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
         self.iter()
             .map(|decl_id| {
                 decl_engine
                     .get_trait_fn(decl_id.clone(), &decl_id.span())
-                    .expect("could not get trait fn from declaration id")
+                    .map_err(|e| anyhow::anyhow!("{}", e))
             })
-            .collect()
+            .collect::<anyhow::Result<_>>()
     }
 }
 
@@ -118,7 +118,7 @@ impl Descriptor {
                         .then(|| trait_decl.attributes.to_html_string());
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
-                            trait_decl.interface_surface.to_methods(decl_engine),
+                            trait_decl.interface_surface.to_methods(decl_engine)?,
                         ),
                     );
 
@@ -150,7 +150,7 @@ impl Descriptor {
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
-                        abi_decl.interface_surface.to_methods(decl_engine),
+                        abi_decl.interface_surface.to_methods(decl_engine)?,
                     ),
                 );
 
