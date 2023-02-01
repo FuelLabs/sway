@@ -824,7 +824,7 @@ fn extract_lit(tokens: TokenStream) -> String {
         if let TokenTree::Literal(l) = token {
             let s = l.to_string();
             let s = s.trim_start_matches("r\""); // remove the r" sequence at the beginning
-            let s = s.trim_end_matches("\""); // remove the " at the end
+            let s = s.trim_end_matches('\"'); // remove the " at the end
             res.push_str(s);
         }
     }
