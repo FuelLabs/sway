@@ -12,6 +12,8 @@ pub struct Config {
     pub inlay_hints: InlayHintsConfig,
     #[serde(default)]
     pub diagnostic: DiagnosticConfig,
+    #[serde(default)]
+    pub on_enter: OnEnterConfig,
     #[serde(default, skip_serializing)]
     trace: TraceConfig,
 }
@@ -105,6 +107,22 @@ impl Default for InlayHintsConfig {
             render_colons: true,
             type_hints: true,
             max_length: Some(25),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OnEnterConfig {
+    pub continue_doc_comments: Option<bool>,
+    pub continue_comments: Option<bool>,
+}
+
+impl Default for OnEnterConfig {
+    fn default() -> Self {
+        Self {
+            continue_doc_comments: Some(true),
+            continue_comments: Some(false),
         }
     }
 }

@@ -39,11 +39,12 @@ fn not_used1() -> bool {
     }
     return true;
 }
-/// Comments about unused code
+/// Doc comments about unused code
 fn not_used2(input: u64) -> u64 {
     return input + 1;
 }
 
 fn alive() -> NotUsedEnumVariant {
+    // Comments about return value
     return NotUsedEnumVariant::A;
 }
