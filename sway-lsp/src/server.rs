@@ -1264,7 +1264,7 @@ mod tests {
     ) {
         go_to.req_line = req_line;
         go_to.req_char = req_char;
-        let _ = definition_check(service, &go_to, id).await;
+        let _ = definition_check(service, go_to, id).await;
     }
 
     #[tokio::test]
