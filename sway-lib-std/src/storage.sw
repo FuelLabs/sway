@@ -679,6 +679,54 @@ impl<V> StorageVec<V> {
         store::<V>(key, value);
     }
 
+    /// Copies all elements of `other` into `self`.
+    ///
+    /// > NOTE: While `Vec` clears `other`, `StorageVec` does not clear `other` to reduce storage
+    /// > operations.
+    ///
+    /// ### Arguments
+    ///
+    /// * other - The vector to append to `self`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    ///     vec2: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///
+    ///     storage.vec2.push(15);
+    ///     storage.vec2.push(20);
+    ///
+    ///     storage.vec.append(storage.vec2);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///
+    ///     assert(15 == storage.vec2.get(0).unwrap());
+    ///     assert(20 == storage.vec2.get(1).unwrap());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn append(self, other: StorageVec<V>) {
+        let len = get::<u64>(__get_storage_key());
+        let combined_len = len + other.len();
+
+        let mut i_self = len;
+        while i < combined_len {
+            store::<V>(sha256((i, __get_storage_key())), other.get(i - len).unwrap());
+        }
+
+        store::<u64>(sha256(__get_storage_key()), combined_len);
+    }
+
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
     /// ### Examples
@@ -796,7 +844,9 @@ impl<V> StorageVec<V> {
     ///     assert(20 == storage.vec.get(0).unwrap());
     ///     assert(20 == storage.vec.get(1).unwrap());
     ///     assert(20 == storage.vec.get(2).unwrap());
+    /// }
     /// ```
+    #[storage(read, write)]
     pub fn fill(self, value: V) {
         let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
@@ -843,7 +893,9 @@ impl<V> StorageVec<V> {
     ///
     ///     assert(5 == storage.vec.get(0).unwrap());
     ///     assert(10 == storage.vec.get(1).unwrap());
+    /// }
     /// ```
+    #[storage(read, write)]
     pub fn resize(self, new_len: u64, value: V) {
         let len = get::<u64>(__get_storage_key()).unwrap_or(0);
         if new_len > len {
