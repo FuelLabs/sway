@@ -1222,10 +1222,8 @@ mod tests {
         };
         let _ = definition_check(&mut service, &go_to, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        go_to.req_line = 45;
-        go_to.req_char = 24;
         go_to.def_line = 20;
-        let _ = definition_check(&mut service, &go_to, 2).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 24, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1257,6 +1255,18 @@ mod tests {
         shutdown_and_exit(&mut service).await;
     }
 
+    async fn definition_check_with_req_offset<'a>(
+        service: &mut LspService<Backend>,
+        go_to: &mut GotoDefintion<'a>,
+        req_line: i32,
+        req_char: i32,
+        id: i64,
+    ) {
+        go_to.req_line = req_line;
+        go_to.req_char = req_char;
+        let _ = definition_check(service, &go_to, id).await;
+    }
+
     #[tokio::test]
     async fn go_to_definition_inside_turbofish() {
         let (mut service, _) = LspService::new(Backend::new);
@@ -1275,29 +1285,15 @@ mod tests {
             def_end_char: 15,
             def_path: "sway-lib-std/src/option.sw",
         };
-
+        // option.sw
         let _ = definition_check(&mut service, &opt_go_to, 1).await;
-        opt_go_to.req_line = 16;
-        opt_go_to.req_char = 17;
-        let _ = definition_check(&mut service, &opt_go_to, 2).await;
-        opt_go_to.req_line = 17;
-        opt_go_to.req_char = 29;
-        let _ = definition_check(&mut service, &opt_go_to, 3).await;
-        opt_go_to.req_line = 18;
-        opt_go_to.req_char = 19;
-        let _ = definition_check(&mut service, &opt_go_to, 4).await;
-        opt_go_to.req_line = 20;
-        opt_go_to.req_char = 13;
-        let _ = definition_check(&mut service, &opt_go_to, 5).await;
-        opt_go_to.req_line = 21;
-        opt_go_to.req_char = 19;
-        let _ = definition_check(&mut service, &opt_go_to, 6).await;
-        opt_go_to.req_line = 22;
-        opt_go_to.req_char = 29;
-        let _ = definition_check(&mut service, &opt_go_to, 7).await;
-        opt_go_to.req_line = 23;
-        opt_go_to.req_char = 18;
-        let _ = definition_check(&mut service, &opt_go_to, 8).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 16, 17, 2).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 17, 29, 3).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 18, 19, 4).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 20, 13, 5).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 21, 19, 6).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 22, 29, 7).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 23, 18, 8).await;
 
         let mut res_go_to = GotoDefintion {
             req_uri: &uri,
@@ -1308,17 +1304,11 @@ mod tests {
             def_end_char: 15,
             def_path: "sway-lib-std/src/result.sw",
         };
-
+        // result.sw
         let _ = definition_check(&mut service, &res_go_to, 9).await;
-        res_go_to.req_line = 21;
-        res_go_to.req_char = 25;
-        let _ = definition_check(&mut service, &res_go_to, 10).await;
-        res_go_to.req_line = 22;
-        res_go_to.req_char = 36;
-        let _ = definition_check(&mut service, &res_go_to, 11).await;
-        res_go_to.req_line = 23;
-        res_go_to.req_char = 27;
-        let _ = definition_check(&mut service, &res_go_to, 12).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 21, 25, 10).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 22, 36, 11).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 23, 27, 12).await;
 
         shutdown_and_exit(&mut service).await;
     }
@@ -1343,12 +1333,8 @@ mod tests {
         };
 
         let _ = definition_check(&mut service, &trait_go_to, 1).await;
-        trait_go_to.req_line = 7;
-        trait_go_to.req_char = 10;
-        let _ = definition_check(&mut service, &trait_go_to, 2).await;
-        trait_go_to.req_line = 10;
-        trait_go_to.req_char = 6;
-        let _ = definition_check(&mut service, &trait_go_to, 4).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 7, 10, 2).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 10, 6, 3).await;
         trait_go_to.req_line = 7;
         trait_go_to.req_char = 20;
         trait_go_to.def_line = 3;
@@ -1379,58 +1365,42 @@ mod tests {
         let _ = definition_check(&mut service, &go_to, 1).await;
 
         // Function arguments
-        go_to.req_line = 28;
-        go_to.req_char = 35;
         go_to.def_line = 23;
-        let _ = definition_check(&mut service, &go_to, 2).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 28, 35, 2).await;
 
         // Struct fields
-        go_to.req_line = 31;
-        go_to.req_char = 45;
         go_to.def_line = 22;
-        let _ = definition_check(&mut service, &go_to, 3).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 31, 45, 3).await;
 
         // Enum fields
-        go_to.req_line = 34;
-        go_to.req_char = 39;
         go_to.def_line = 22;
-        let _ = definition_check(&mut service, &go_to, 4).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 34, 39, 4).await;
 
         // Tuple elements
-        go_to.req_line = 37;
-        go_to.req_char = 20;
         go_to.def_line = 24;
-        let _ = definition_check(&mut service, &go_to, 5).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 37, 20, 5).await;
 
         // Array elements
-        go_to.req_line = 40;
-        go_to.req_char = 20;
         go_to.def_line = 25;
-        let _ = definition_check(&mut service, &go_to, 6).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 40, 20, 6).await;
 
         // Scoped declarations
-        go_to.req_line = 45;
-        go_to.req_char = 13;
         go_to.def_line = 44;
         go_to.def_start_char = 12;
         go_to.def_end_char = 21;
-        let _ = definition_check(&mut service, &go_to, 7).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 13, 7).await;
 
         // If let scopes
-        go_to.req_line = 50;
-        go_to.req_char = 47;
         go_to.def_line = 50;
         go_to.def_start_char = 38;
         go_to.def_end_char = 39;
-        let _ = definition_check(&mut service, &go_to, 7).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 50, 47, 8).await;
 
         // Shadowing
-        go_to.req_line = 53;
-        go_to.req_char = 29;
         go_to.def_line = 50;
         go_to.def_start_char = 8;
         go_to.def_end_char = 17;
-        let _ = definition_check(&mut service, &go_to, 7).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 53, 29, 9).await;
 
         shutdown_and_exit(&mut service).await;
     }
