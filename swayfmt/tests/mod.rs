@@ -19,7 +19,7 @@ pub const TEST: u16 = 10;
     let mut formatter = Formatter::default();
     let formatted_sway_code =
         Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    eqnice!(correct_sway_code, formatted_sway_code);
+    assert_eq!(correct_sway_code, formatted_sway_code);
     assert!(test_stability(formatted_sway_code, formatter));
 }
 
