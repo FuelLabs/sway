@@ -26,19 +26,19 @@ fn main() {
     let variable4 = "test";
 
     // Variable usage: Function arguments
-    let result = example_function(variable2);
+    let _ = example_function(variable2);
 
     // Variable usage: Struct fields
-    let example_struct = ExampleStruct { variable: variable1 };
+    let _ = ExampleStruct { variable: variable1 };
 
     // Variable usage: Enum variants
-    let example_enum = ExampleEnum::Variants(variable1);
+    let _ = ExampleEnum::Variants(variable1);
 
     // Variable usage: Tuple elements
-    let example_tuple = (variable3, 20);
+    let _ = (variable3, 20);
 
     // Variable usage: Array elements
-    let example_array = [variable4, 20];
+    let _ = [variable4, 20];
 
     // Variable usage: Scoped Declarations
     {
