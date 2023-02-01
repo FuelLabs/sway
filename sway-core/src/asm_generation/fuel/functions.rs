@@ -16,8 +16,6 @@ use crate::{
 
 use sway_ir::*;
 
-use std::collections::{HashSet, VecDeque};
-
 use either::Either;
 
 /// A summary of the adopted calling convention:
@@ -208,45 +206,18 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
-        if let ProgramKind::Predicate = self.program_kind {
-            // For predicates, simply respect the original order in which the blocks are generated,
-            // assuming no CFG-altering passes have been run (e.g. simplify-cfg). This is temporary
-            // until restrictions on predicates are relaxed (namely allowing them to jump
-            // backwards).
-            for block in function.block_iter(self.context) {
-                self.insert_block_label(block);
-                for instr_val in block.instruction_iter(self.context) {
-                    check!(
-                        self.compile_instruction(&instr_val, func_is_entry),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
-                }
-            }
-        } else {
-            // For non-predicates, traverse the control flow graph using BFS. This is important to
-            // make sure that all values are inserted into `self.reg_map` in the right order,
-            // especially after CFG-altering optimization passes have been run.
-            let mut block_queue = VecDeque::new();
-            block_queue.push_back(function.get_entry_block(self.context));
-            let mut visited: HashSet<String> = HashSet::new();
-            while !block_queue.is_empty() {
-                let block = block_queue.pop_front().unwrap();
-                if visited.insert(block.get_label(self.context)) {
-                    self.insert_block_label(block);
-                    for instr_val in block.instruction_iter(self.context) {
-                        check!(
-                            self.compile_instruction(&instr_val, func_is_entry),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
-                    }
-                    for succ in &block.successors(self.context) {
-                        block_queue.push_back(succ.block);
-                    }
-                }
+        // Traverse the IR blocks in reverse post order. This guarantees that each block is
+        // processed after all its CFG predecessors have been processed.
+        let po = sway_ir::dominator::compute_post_order(self.context, &function);
+        for block in po.po_to_block.iter().rev() {
+            self.insert_block_label(*block);
+            for instr_val in block.instruction_iter(self.context) {
+                check!(
+                    self.compile_instruction(&instr_val, func_is_entry),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
             }
         }
 

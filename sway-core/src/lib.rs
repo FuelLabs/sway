@@ -492,17 +492,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         // TODO: Experiment with putting combine-constants and simplify-cfg
         // in a loop, but per function.
         combine_constants(handler, &mut ir, &all_functions)?;
-
-        // Do not run any CFG-altering passes on predicates. That's because CFG-altering passes can
-        // move IR blocks around, leading to backward jumps. This is temporary until restrictions
-        // on predicates are relaxed (namely allowing them to jump backwards).
-        if !matches!(tree_type, parsed::TreeType::Predicate) {
-            simplify_cfg(handler, &mut ir, &all_functions)?;
-            // Simplify-CFG helps combine constants.
-            combine_constants(handler, &mut ir, &all_functions)?;
-            // And that in-turn enables more simplify-cfg.
-            simplify_cfg(handler, &mut ir, &all_functions)?;
-        }
+        simplify_cfg(handler, &mut ir, &all_functions)?;
+        // Simplify-CFG helps combine constants.
+        combine_constants(handler, &mut ir, &all_functions)?;
+        // And that in-turn enables more simplify-cfg.
+        simplify_cfg(handler, &mut ir, &all_functions)?;
 
         // Remove dead definitions based on the entry points root set.
         dce(handler, &mut ir, &entry_point_functions)?;
