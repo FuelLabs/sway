@@ -14,9 +14,9 @@ derivative = "2.2.0"
 dirs = "3.0"
 either = "1.6"
 ethabi = { package = "fuel-ethabi", version = "18.0.0" }
-etk-asm = { package = "fuel-etk-asm", version = "0.3.0-dev", features = ["backtraces"] }
-etk-dasm = { package = "fuel-etk-dasm", version = "0.3.0-dev" }
-etk-ops = { package = "fuel-etk-ops", version = "0.3.0-dev" }
+etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = ["backtraces"] }
+etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
+etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 fuel-abi-types = "0.1" 
 fuel-vm = { version = "0.22", features = ["serde"] }
 hashbrown = "0.13.1"
