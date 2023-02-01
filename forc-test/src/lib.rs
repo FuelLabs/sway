@@ -2,6 +2,8 @@ use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
+use fuel_vm::gas::GasCosts;
+use fuel_vm::prelude::TransactionBuilderExt;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::{Built, BuiltPackage};
 use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
@@ -375,7 +377,8 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     // Setup the interpreter for deployment.
     let params = tx::ConsensusParameters::default();
     let storage = vm::storage::MemoryStorage::default();
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Create the deployment transaction.
     let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
@@ -392,7 +395,7 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
         )
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(metadata.maturity)
-        .finalize_checked(metadata.block_height, &params);
+        .finalize_checked(metadata.block_height, &params, &GasCosts::default());
 
     // Deploy the contract.
     interpreter.transact(tx)?;
@@ -520,9 +523,10 @@ fn exec_test(
             state_root: tx::Bytes32::zeroed(),
         });
     }
-    let tx = tx.finalize_checked(metadata.block_height, &params);
+    let tx = tx.finalize_checked(metadata.block_height, &params, &GasCosts::default());
 
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Execute and return the result.
     let start = std::time::Instant::now();

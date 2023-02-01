@@ -15,8 +15,10 @@ clap = { version = "3", features = ["derive", "env"] }
 forc-pkg = { version = "0.33.1", path = "../../forc-pkg" }
 forc-tracing = { version = "0.33.1", path = "../../forc-tracing" }
 forc-util = { version = "0.33.1", path = "../../forc-util" }
-fuel-gql-client = { version = "0.15", default-features = false }
-fuel-tx = { version = "0.23", features = ["builder"] }
+fuel-core-client = { workspace = true, default-features = false }
+fuel-tx = { workspace = true, features = ["builder"] }
+fuel-vm = { workspace = true }
+fuel-crypto = { workspace = true }
 fuels-core = "0.33"
 fuels-signers = "0.33"
 fuels-types = "0.33"

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
-use fuel_gql_client::client::FuelClient;
+use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
 use pkg::BuiltPackage;

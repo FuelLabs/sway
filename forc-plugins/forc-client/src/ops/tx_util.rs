@@ -2,13 +2,10 @@ use std::{io::Write, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use fuel_gql_client::{
-    client::FuelClient,
-    fuel_crypto::{Message, SecretKey, Signature},
-    fuel_tx::{Address, ContractId, Input, Output, TransactionBuilder, Witness},
-    prelude::SerializableVec,
-};
-use fuel_tx::{field, Buildable};
+use fuel_core_client::client::FuelClient;
+use fuel_crypto::{Message, SecretKey, Signature};
+use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
+use fuel_vm::prelude::SerializableVec;
 use fuels_core::constants::BASE_ASSET_ID;
 use fuels_signers::{provider::Provider, Wallet};
 use fuels_types::bech32::Bech32Address;

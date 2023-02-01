@@ -31,3 +31,10 @@ exclude = [
 
 [profile.dev.package.sway-lsp]
 debug = 2
+
+[workspace.dependencies]
+fuel-asm = "0.25" # used
+fuel-crypto = "0.25" # used
+fuel-tx = "0.25" # used
+fuel-core-client = "0.16" # used
+fuel-vm = "0.25" # used
