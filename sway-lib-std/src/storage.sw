@@ -570,8 +570,9 @@ impl<V> StorageVec<V> {
     ///     assert(10 == storage.vec.get(1).unwrap());
     ///     assert(5 == storage.vec.get(2).unwrap());
     /// ```
+    #[storage(read, write)]
     pub fn swap(self, element1_index: u64, element2_index: u64) {
-        let len = get::<u64>(__get_storage_key()).unwrwap_or(0);
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
         assert(element1_index < len);
         assert(element2_index < len);
 
@@ -579,9 +580,12 @@ impl<V> StorageVec<V> {
             return;
         }
 
-        let element1_value: V = self.get(element1_index).unwrap();
-        self.set(element1_index, self.get(element2_index).unwrap());
-        self.set(element2_index, element1_value);
+        let element1_key: b256 = sha256((element1_index, __get_storage_key()));
+        let element2_key: b256 = sha256((element2_index, __get_storage_key()));
+
+        let element1_value: V = get::<V>(element1_key).unwrap();
+        store::<V>(element1_key, get::<V>(element2_key).unwrap());
+        store::<V>(element2_key, element1_value);
     }
 
     /// Removes the element at the specified index and fills it with the last element.
@@ -666,7 +670,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read, write)]
     pub fn set(self, index: u64, value: V) {
-        let len = get::<u64>(x()).unwrap_or(0);
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         // if the index is higher than or equal len, there is no element to set
         assert(index < len);
@@ -692,12 +696,13 @@ impl<V> StorageVec<V> {
     ///     assert(storage.vec2.first().is_none());
     /// }
     /// ```
+    #[storage(read)]
     pub fn first(self) -> Option<V> {
         // TODO: should we omit this and just check if the first element is `None`?
         // are there cases where length is set to zero, but the elements remain?
-        match get::<u64>(__get_storage_key()).unrwap_or(0) {
-            0 => None,
-            _ => self.get(0),
+        match get::<u64>(__get_storage_key()).unwrap_or(0) {
+            0 => Option::None,
+            _ => get::<V>(sha256((0, __get_storage_key()))),
         }
     }
 
@@ -719,10 +724,136 @@ impl<V> StorageVec<V> {
     ///     assert(storage.vec2.last().is_none());
     /// }
     /// ```
+    #[storage(read)]
     pub fn last(self) -> Option<V> {
         match get::<u64>(__get_storage_key()).unwrap_or(0) {
-            0 => None,
-            len => self.get(len - 1),
+            0 => Option::None,
+            len => get::<V>(sha256((len - 1, __get_storage_key()))),
         }
+    }
+
+    /// Reverses the order of elements in the vector, in place.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///     storage.vec.reverse();
+    ///
+    ///     assert(15 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(2).unwrap());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn reverse(self) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        if len < 2 {
+            return;
+        }
+
+        let mid = len / 2;
+        let mut i = 0;
+        while i < mid {
+            let element1_key = sha256((i, __get_storage_key()));
+            let element2_key = sha256((len - i - 1, __get_storage_key()));
+
+            let element1_value: V = get::<V>(element1_key).unwrap();
+            store::<V>(element1_key, get::<V>(element2_key).unwrap());
+            store::<V>(element2_key, element1_value);
+
+            i += 1;
+        }
+    }
+
+    /// Fills `self` with elements by cloning `value`.
+    ///
+    /// ### Arguments
+    ///
+    /// * value - Value to copy to each element of the vector.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///     storage.vec.fill(20);
+    ///
+    ///     assert(20 == storage.vec.get(0).unwrap());
+    ///     assert(20 == storage.vec.get(1).unwrap());
+    ///     assert(20 == storage.vec.get(2).unwrap());
+    /// ```
+    pub fn fill(self, value: V) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        let mut i = 0;
+        while i < len {
+            store::<V>(sha256((i, __get_storage_key())), value);
+        }
+    }
+
+    /// Resizes `self` in place so that `len` is equal to `new_len`.
+    ///
+    /// If `new_len` is greater than `len`, `self` is extended by the difference, with each
+    /// additional slot being filled with `value`. If the `new_len` is less than `len`, `self` is
+    /// simply truncated.
+    ///
+    /// ### Arguments
+    ///
+    /// new_len - The new length to expand or truncate to
+    /// value - The value to fill into new slots if the `new_len` is greater than the current length
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    ///     vec2: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///     storage.vec.push(15);
+    ///     storage.vec.resize(4, 20);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///
+    ///     storage.vec2.push(5);
+    ///     storage.vec2.push(10);
+    ///     storage.vec2.push(15);
+    ///     storage.vec2.resize(2, 0);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    /// ```
+    pub fn resize(self, new_len: u64, value: V) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        if new_len > len {
+            let mut i = len;
+            while i < new_len {
+                store::<V>(sha256((i, __get_storage_key())), value);
+                i += 1;
+            }
+        }
+        // TODO: should we clear the old slots if new_len < len?
+        store::<u64>(__get_storage_key(), new_len);
     }
 }
