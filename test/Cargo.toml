@@ -23,7 +23,7 @@ gag = "1.0"
 hex = "0.4.3"
 prettydiff = "0.6"
 rand = "0.8"
-regex = "1"
+regex = "1.7"
 revm = "2.3.1"
 serde_json = "1.0.73"
 sway-core = { path = "../sway-core" }

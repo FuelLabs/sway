@@ -19,9 +19,9 @@ fuel-core-client = { workspace = true, default-features = false }
 fuel-tx = { workspace = true, features = ["builder"] }
 fuel-vm = { workspace = true }
 fuel-crypto = { workspace = true }
-fuels-core = "0.33"
-fuels-signers = "0.33"
-fuels-types = "0.33"
+fuels-core = { workspace = true }
+fuels-signers = { workspace = true }
+fuels-types = { workspace = true }
 futures = "0.3"
 hex = "0.4.3"
 serde = "1.0"
