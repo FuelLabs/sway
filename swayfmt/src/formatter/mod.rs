@@ -679,6 +679,58 @@ pub struct Foo { // Here is a comment
     }
 
     #[test]
+    fn test_comments_empty_struct() {
+        let sway_code_to_format = r#"contract;
+
+struct AlignMyComments {
+    // Align here please
+        // Overindented comment
+// Underindented comment
+}"#;
+
+        let correct_sway_code = r#"contract;
+
+struct AlignMyComments {
+    // Align here please
+    // Overindented comment
+    // Underindented comment
+}
+"#;
+
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
+    fn test_comments_empty_traits() {
+        let sway_code_to_format = r#"contract;
+
+trait AlignMyComments {
+    // Align here please
+        // Overindented comment
+// Underindented comment
+}"#;
+
+        let correct_sway_code = r#"contract;
+
+trait AlignMyComments {
+    // Align here please
+    // Overindented comment
+    // Underindented comment
+}
+"#;
+
+        let mut formatter = Formatter::default();
+        let formatted_sway_code =
+            Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
+        assert_eq!(correct_sway_code, formatted_sway_code);
+        assert!(test_stability(formatted_sway_code, formatter));
+    }
+
+    #[test]
     fn test_enum_comments() {
         let sway_code_to_format = r#"contract;
 pub enum Bazz { // Here is a comment
