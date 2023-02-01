@@ -679,7 +679,7 @@ pub struct Foo { // Here is a comment
     }
 
     #[test]
-    fn test_comments_empty_struct() {
+    fn comments_empty_struct() {
         let sway_code_to_format = r#"contract;
 
 struct AlignMyComments {
@@ -705,7 +705,7 @@ struct AlignMyComments {
     }
 
     #[test]
-    fn test_comments_empty_traits() {
+    fn comments_empty_traits() {
         let sway_code_to_format = r#"contract;
 
 trait AlignMyComments {
