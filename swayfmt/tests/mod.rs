@@ -1,6 +1,3 @@
-#[macro_use]
-mod macros;
-
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 
