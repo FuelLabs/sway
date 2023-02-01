@@ -1851,9 +1851,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-etk-4byte"
-version = "0.3.0-dev"
+version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38224fd7fd560d6940f1940f12227194302feb1382fc2d5fb1e72b66d0858803"
+checksum = "20de1b9dab67b0d41d84c931b34f15c4913d5f01f737f65e607d22073ef08773"
 dependencies = [
  "bincode",
  "brotli",
@@ -1863,9 +1863,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-etk-asm"
-version = "0.3.0-dev"
+version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d82f8a8705e958dadfc332f152d0367e5b5661d2a098467306ec18dcc10ce62d"
+checksum = "51a7d3bc506ec00d5967578290cdeed4969e7a97d36e7eb46e7dc8522e9c5af5"
 dependencies = [
  "fuel-etk-ops",
  "hex",
@@ -1879,9 +1879,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-etk-dasm"
-version = "0.3.0-dev"
+version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1018ec288a5a28e4b7f4ea2599a0a5b46880b6e118f30211980f03e0625fe798"
+checksum = "79d079b7d3316144601a77f6d3fe54cbf354f5c74e1ce3e86d43289bf0b16462"
 dependencies = [
  "fuel-etk-4byte",
  "fuel-etk-asm",
@@ -1891,9 +1891,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-etk-ops"
-version = "0.3.0-dev"
+version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed2bdf975af67b4baad4d2f5d59c7ec82c73511b6e87aa60acab7326418e8ef3"
+checksum = "7eed51e8869a40529c44dc6d971f3509f2a3aa55dc9b213d6f88ee2da38a3d44"
 dependencies = [
  "educe",
  "indexmap",
