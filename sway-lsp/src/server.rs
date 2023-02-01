@@ -843,6 +843,8 @@ mod tests {
             });
             assert_json_eq!(response.range, range);
             assert!(uri.ends_with(go_to.def_path));
+        } else {
+            panic!("Expected GotoDefinitionResponse::Scalar");
         }
         definition
     }
