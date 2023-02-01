@@ -5,7 +5,7 @@ use swayfmt::{config::user_def::FieldAlignment, Formatter};
 mod macros;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
-/// expected string. The check runs format() twice to ensure the received output does not change on a second pass.
+/// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_custom_config(unformatted: &str, expected: &str, formatter: &mut Formatter) {
     let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
     assert_eq_pretty!(first_formatted, expected);
@@ -16,7 +16,7 @@ fn check_custom_config(unformatted: &str, expected: &str, formatter: &mut Format
 }
 
 /// Using a default Formatter, formats a given input and checks the actual output against an expected
-/// string. The check runs format() twice to ensure the received output does not change on a second pass.
+/// output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check(unformatted: &str, expected: &str) {
     let mut formatter = Formatter::default();
     let first_formatted = Formatter::format(&mut formatter, Arc::from(unformatted), None).unwrap();
