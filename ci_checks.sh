@@ -4,7 +4,6 @@
 #
 # Tests below requires running `fuel-core` node locally:
 # - `cargo run --locked --release --bin test -- --locked`
-# - `cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture`
 #
 # You can install `fuel-core` node by:
 # `cargo install fuel-core-bin --git https://github.com/FuelLabs/fuel-core --tag v0.16.1 --locked`
@@ -45,7 +44,7 @@ forc build --path test-proj &&
 echo "[workspace]" >> test-proj/Cargo.toml &&
 (cd test-proj && cargo test) &&
 rm -R test-proj &&
-cd test/src/sdk-harness && bash build.sh --locked && cd ../../../ &&
+cargo run --locked --release --bin test -- --target evm --locked &&
+(cd test/src/sdk-harness && bash build.sh --locked) &&
 cargo test --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
-cargo run --locked --release --bin test -- --locked &&
-cargo run --locked --release --bin test -- --target evm --locked
+cargo run --locked --release --bin test -- --locked
