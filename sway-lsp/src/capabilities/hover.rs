@@ -31,9 +31,7 @@ pub fn hover_data(
         let documentation = keyword_docs.get(name).unwrap();
         let prefix = format!("\n```sway\n{name}\n```\n\n---\n\n");
         let formatted_doc = format!("{prefix}{documentation}");
-        let content = Markup::new()
-            .maybe_add_sway_block(None)
-            .text(&formatted_doc);
+        let content = Markup::new().text(&formatted_doc);
         let contents = lsp_types::HoverContents::Markup(markup_content(content));
         return Some(lsp_types::Hover {
             contents,

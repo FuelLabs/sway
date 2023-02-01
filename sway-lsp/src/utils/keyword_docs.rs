@@ -9,12 +9,10 @@ use syn::{parse_quote, ItemMod};
 
 /// Documentation for sway keywords.
 /// Primarily used for showing documentation on LSP hover requests.
+/// Key = keyword
+/// Value = documentation
 #[derive(Debug)]
-pub struct KeywordDocs {
-    /// Key = keyword
-    /// Value = documentation
-    inner: HashMap<String, String>,
-}
+pub struct KeywordDocs(HashMap<String, String>);
 
 impl KeywordDocs {
     pub fn new() -> Self {
@@ -683,6 +681,11 @@ impl KeywordDocs {
         };
 
         // TODO
+        let str_keyword: ItemMod = parse_quote! {
+            mod str_keyword {}
+        };
+
+        // TODO
         let for_keyword: ItemMod = parse_quote! {
             mod for_keyword {}
         };
@@ -774,6 +777,7 @@ impl KeywordDocs {
             false_keyword,
             break_keyword,
             continue_keyword,
+            str_keyword,
             script_keyword,
             contract_keyword,
             predicate_keyword,
@@ -802,14 +806,14 @@ impl KeywordDocs {
             );
         });
 
-        Self {
-            inner: keyword_docs,
-        }
+        Self(keyword_docs)
     }
+}
 
-    /// Returns the documentation for the given keyword.
-    pub fn get(&self, keyword: &str) -> Option<&String> {
-        self.inner.get(keyword)
+impl std::ops::Deref for KeywordDocs {
+    type Target = HashMap<String, String>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
@@ -825,4 +829,22 @@ fn extract_lit(tokens: TokenStream) -> String {
         }
     }
     res
+}
+
+#[tokio::test]
+async fn keywords_in_sync() {
+    let keyword_docs = KeywordDocs::new();
+    let lsp_keywords: Vec<_> = keyword_docs.keys().collect();
+    let compiler_keywords: Vec<_> = sway_parse::RESERVED_KEYWORDS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    for keyword in &compiler_keywords {
+        if !lsp_keywords.contains(&keyword) {
+            let err =
+                format!("Error: Documention for the `{keyword}` keyword is not implemented in LSP");
+            panic!("{err}");
+        }
+    }
 }
