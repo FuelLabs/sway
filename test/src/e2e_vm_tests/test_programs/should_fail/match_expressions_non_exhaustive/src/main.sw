@@ -1,12 +1,11 @@
 script;
 
 dep primitive_tests;
-use primitive_tests::*;
-
 dep adt_tests;
-use adt_tests::*;
-
 dep complex_tests;
+
+use primitive_tests::*;
+use adt_tests::*;
 use complex_tests::*;
 
 fn main() -> u64 {
