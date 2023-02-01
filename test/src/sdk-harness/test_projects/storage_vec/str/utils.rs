@@ -1,4 +1,4 @@
-use fuels::{prelude::*, tx::ContractId, types::core::SizedAsciiString};
+use fuels::{prelude::*, tx::ContractId, types::SizedAsciiString};
 // Load abi from json
 abigen!(Contract(
     name = "MyContract",

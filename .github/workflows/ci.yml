@@ -442,7 +442,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} sway-utils/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} swayfmt/Cargo.toml
       - name: Publish crate
-        uses: katyo/publish-crates@v1
+        uses: katyo/publish-crates@v2
         with:
           publish-delay: 30000
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}

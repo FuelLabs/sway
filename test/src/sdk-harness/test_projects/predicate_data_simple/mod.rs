@@ -6,7 +6,7 @@ use fuels::{
     signers::wallet::Wallet,
     test_helpers::Config,
     tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
-    types::{core::Token, resource::Resource},
+    types::{resource::Resource, Token},
 };
 use std::str::FromStr;
 use {

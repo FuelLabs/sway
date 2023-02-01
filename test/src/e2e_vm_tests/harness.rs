@@ -6,6 +6,7 @@ use forc_client::{
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;

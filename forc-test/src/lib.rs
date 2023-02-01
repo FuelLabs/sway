@@ -2,8 +2,8 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::gas::GasCosts;
-use fuel_vm::prelude::TransactionBuilderExt;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};

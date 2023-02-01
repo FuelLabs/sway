@@ -1,7 +1,7 @@
 use fuels::{
     prelude::*,
     tx::AssetId,
-    types::core::{Bits256, Identity},
+    types::{Bits256, Identity},
 };
 use std::str::FromStr;
 
