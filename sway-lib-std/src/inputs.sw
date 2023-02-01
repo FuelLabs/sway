@@ -45,16 +45,13 @@ const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
 // const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
 // const GTF_INPUT_MESSAGE_NONCE = 0x118;
 // These are based on the old spec (before
-// https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
-// currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
-// eventually be updated.
-// const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
-// const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11B;
-// const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11C;
-// const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11D;
-// const GTF_INPUT_MESSAGE_DATA = 0x11E;
-// const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
-const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
+pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
+pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
+pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
+pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
+pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
 pub enum Input {
     Coin: (),
