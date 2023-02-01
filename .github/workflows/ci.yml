@@ -285,11 +285,26 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Cargo Run E2E Tests
+      - name: Cargo Run E2E Tests (Fuel VM)
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --locked --release --bin test -- --locked
+
+  cargo-run-e2e-test-evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Cargo Run E2E Tests (EVM)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked --release --bin test -- --target evm --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
@@ -373,6 +388,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -404,6 +420,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -474,6 +491,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,

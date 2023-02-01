@@ -7,7 +7,10 @@ use ropey::Rope;
 use std::{
     collections::BTreeMap,
     fmt::Write,
-    ops::Bound::{Excluded, Included},
+    ops::{
+        Bound::{Excluded, Included},
+        Deref, DerefMut, Range,
+    },
     path::PathBuf,
     sync::Arc,
 };
@@ -19,7 +22,76 @@ use sway_types::Spanned;
 
 use super::byte_span;
 
-pub type CommentMap = BTreeMap<ByteSpan, Comment>;
+#[derive(Clone, Default, Debug)]
+pub struct CommentMap(pub BTreeMap<ByteSpan, Comment>);
+
+impl Deref for CommentMap {
+    type Target = BTreeMap<ByteSpan, Comment>;
+
+    fn deref(&self) -> &BTreeMap<ByteSpan, Comment> {
+        &self.0
+    }
+}
+
+impl DerefMut for CommentMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl CommentMap {
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    /// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
+    /// code.
+    pub fn from_src(input: Arc<str>) -> Result<Self, FormatterError> {
+        // Pass the input through the lexer.
+        let tts = lex(&input)?;
+        let tts = tts.token_trees().iter();
+
+        let mut comment_map = CommentMap::new();
+        for comment in tts {
+            comment_map.collect_comments_from_token_stream(comment);
+        }
+        Ok(comment_map)
+    }
+
+    /// Given a range, return an iterator to comments contained within the range.
+    pub fn comments_between<'a>(
+        &'a self,
+        range: &'a Range<usize>,
+    ) -> impl Iterator<Item = &'a Comment> {
+        self.iter().filter_map(|(bs, c)| {
+            if bs.contained_within(range) {
+                Some(c)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Collects `Comment`s from the token stream and insert it with its span to the `CommentMap`.
+    /// Handles both the standalone and in-block comments.
+    fn collect_comments_from_token_stream(&mut self, commented_token_tree: &CommentedTokenTree) {
+        match commented_token_tree {
+            CommentedTokenTree::Comment(comment) => {
+                let comment_span = ByteSpan {
+                    start: comment.span.start(),
+                    end: comment.span.end(),
+                };
+                self.insert(comment_span, comment.clone());
+            }
+            CommentedTokenTree::Tree(CommentedTree::Group(group)) => {
+                for item in group.token_stream.token_trees().iter() {
+                    self.collect_comments_from_token_stream(item);
+                }
+            }
+            _ => {}
+        }
+    }
+}
 
 trait CommentRange {
     /// Get comments in between given ByteSpans. This is wrapper around BtreeMap::range with a custom logic for beginning of the file.
@@ -40,43 +112,6 @@ impl CommentRange for CommentMap {
                 .map(|(byte_span, comment)| (byte_span.clone(), comment.clone()))
                 .collect()
         }
-    }
-}
-
-/// Get the CommentedTokenStream and collect the spans -> Comment mapping for the input source
-/// code.
-pub fn comment_map_from_src(input: Arc<str>) -> Result<CommentMap, FormatterError> {
-    // Pass the input through the lexer.
-    let tts = lex(&input)?;
-    let tts = tts.token_trees().iter();
-
-    let mut comment_map = BTreeMap::new();
-    for comment in tts {
-        collect_comments_from_token_stream(comment, &mut comment_map);
-    }
-    Ok(comment_map)
-}
-
-/// Collects `Comment`s from the token stream and insert it with its span to the `CommentMap`.
-/// Handles both the standalone and in-block comments.
-fn collect_comments_from_token_stream(
-    commented_token_tree: &CommentedTokenTree,
-    comment_map: &mut CommentMap,
-) {
-    match commented_token_tree {
-        CommentedTokenTree::Comment(comment) => {
-            let comment_span = ByteSpan {
-                start: comment.span.start(),
-                end: comment.span.end(),
-            };
-            comment_map.insert(comment_span, comment.clone());
-        }
-        CommentedTokenTree::Tree(CommentedTree::Group(group)) => {
-            for item in group.token_stream.token_trees().iter() {
-                collect_comments_from_token_stream(item, comment_map);
-            }
-        }
-        _ => {}
     }
 }
 
@@ -340,9 +375,8 @@ fn format_comment(comment: &Comment) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::map::comments::CommentRange;
-
-    use super::{comment_map_from_src, ByteSpan};
+    use super::ByteSpan;
+    use crate::utils::map::comments::{CommentMap, CommentRange};
     use std::{ops::Bound::Included, sync::Arc};
 
     #[test]
@@ -357,7 +391,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 0, end: 32 };
         let range_end_span = ByteSpan { start: 33, end: 34 };
@@ -379,7 +413,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan { start: 40, end: 54 };
         let range_end_span = ByteSpan {
@@ -404,7 +438,7 @@ mod tests {
             bar: i32,
         }
         "#;
-        let map = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let range_start_span = ByteSpan {
             start: 110,
@@ -429,7 +463,7 @@ mod tests {
         let range_end_span = ByteSpan { start: 8, end: 16 };
         let input = r#"// test
 contract;"#;
-        let map = comment_map_from_src(Arc::from(input)).unwrap();
+        let map = CommentMap::from_src(Arc::from(input)).unwrap();
         assert!(!map.is_empty());
         let found_comments = map.comments_in_range(&range_start_span, &range_end_span);
         assert_eq!(found_comments[0].1.span.as_str(), "// test");

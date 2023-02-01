@@ -117,8 +117,8 @@ impl Matrix {
                 warnings,
                 errors
             );
-            pat_stack.push(first)
+            pat_stack.push(first.into_root_constructor())
         }
-        ok(pat_stack.flatten().filter_out_wildcards(), warnings, errors)
+        ok(pat_stack.remove_duplicates(), warnings, errors)
     }
 }

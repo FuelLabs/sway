@@ -205,8 +205,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // Compile instructions.
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        for block in function.block_iter(self.context) {
-            self.insert_block_label(block);
+
+        // Traverse the IR blocks in reverse post order. This guarantees that each block is
+        // processed after all its CFG predecessors have been processed.
+        let po = sway_ir::dominator::compute_post_order(self.context, &function);
+        for block in po.po_to_block.iter().rev() {
+            self.insert_block_label(*block);
             for instr_val in block.instruction_iter(self.context) {
                 check!(
                     self.compile_instruction(&instr_val, func_is_entry),
