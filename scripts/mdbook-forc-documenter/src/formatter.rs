@@ -153,7 +153,7 @@ fn format_option(option: &str) -> String {
 pub fn format_index_entry(forc_command_str: &str) -> String {
     let command_name = forc_command_str;
     let command_link = forc_command_str.replace(' ', "_");
-    format!("- [{}](./{}.md)\n", command_name, command_link)
+    format!("- [{command_name}](./{command_link}.md)\n")
 }
 
 #[cfg(test)]

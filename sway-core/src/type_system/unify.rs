@@ -225,17 +225,11 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => {
-                self.engines.te().insert_unified_type(received, expected);
-                self.engines.te().insert_unified_type(expected, received);
-                (vec![], vec![])
-            }
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
             (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
-                self.engines.te().insert_unified_type(expected, received);
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
             (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r, span) => {
-                self.engines.te().insert_unified_type(received, expected);
                 self.replace_expected_with_received(received, expected, r, &e, span)
             }
 

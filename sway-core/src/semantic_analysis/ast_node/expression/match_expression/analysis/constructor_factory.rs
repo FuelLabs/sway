@@ -402,12 +402,14 @@ impl ConstructorFactory {
     ) -> CompileResult<bool> {
         let mut warnings = vec![];
         let mut errors = vec![];
-        let preprocessed = pat_stack.flatten().filter_out_wildcards();
-        if preprocessed.is_empty() {
+        if pat_stack.is_empty() {
             return ok(false, warnings, errors);
         }
+        if pat_stack.contains(&Pattern::Wildcard) {
+            return ok(true, warnings, errors);
+        }
         let (first, rest) = check!(
-            preprocessed.split_first(span),
+            pat_stack.split_first(span),
             return err(warnings, errors),
             warnings,
             errors

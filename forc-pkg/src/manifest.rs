@@ -4,12 +4,12 @@ use forc_tracing::println_yellow_err;
 use forc_util::{find_manifest_dir, validate_name};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type};
+use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
@@ -143,6 +143,7 @@ pub struct PackageManifest {
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
     pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
+    pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }
@@ -433,7 +434,7 @@ impl PackageManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -829,7 +830,7 @@ impl WorkspaceManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = &mut toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {}", path);
+            let warning = format!("  WARNING! unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -843,6 +844,7 @@ impl WorkspaceManifest {
     ///
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
+        let mut pkg_name_to_paths: HashMap<String, Vec<PathBuf>> = HashMap::new();
         for member in self.workspace.members.iter() {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
@@ -852,6 +854,32 @@ impl WorkspaceManifest {
                     member_path
                 );
             }
+            let member_manifest_file = PackageManifestFile::from_file(member_path.clone())?;
+            let pkg_name = member_manifest_file.manifest.project.name;
+            pkg_name_to_paths
+                .entry(pkg_name)
+                .or_default()
+                .push(member_path);
+        }
+
+        // Check for duplicate pkg name entries in member manifests of this workspace.
+        let duplciate_pkg_lines = pkg_name_to_paths
+            .iter()
+            .filter(|(_, paths)| paths.len() > 1)
+            .map(|(pkg_name, _)| {
+                let duplicate_paths = pkg_name_to_paths
+                    .get(pkg_name)
+                    .expect("missing duplicate paths");
+                format!("{pkg_name}: {duplicate_paths:#?}")
+            })
+            .collect::<Vec<_>>();
+
+        if !duplciate_pkg_lines.is_empty() {
+            let error_message = duplciate_pkg_lines.join("\n");
+            bail!(
+                "Duplicate package names detected in the workspace:\n\n{}",
+                error_message
+            );
         }
         Ok(())
     }

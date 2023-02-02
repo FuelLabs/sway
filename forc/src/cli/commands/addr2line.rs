@@ -50,7 +50,7 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         let rr = read_range(&path, range, command.context)
             .map_err(|err| anyhow!("{:?}: could not read: {:?}", path, err))?;
 
-        let path_str = format!("{:?}", path);
+        let path_str = format!("{path:?}");
         let snippet = Snippet {
             title: None,
             footer: vec![],

@@ -39,7 +39,6 @@ impl ty::TyFunctionDeclaration {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
@@ -60,7 +59,7 @@ impl ty::TyFunctionDeclaration {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx
+        let mut ctx = ctx
             .by_ref()
             .scoped(&mut fn_namespace)
             .with_purity(purity)
@@ -70,7 +69,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_type_parameters = vec![];
         for type_parameter in type_parameters.into_iter() {
             new_type_parameters.push(check!(
-                TypeParameter::type_check(fn_ctx.by_ref(), type_parameter),
+                TypeParameter::type_check(ctx.by_ref(), type_parameter),
                 continue,
                 warnings,
                 errors
@@ -84,7 +83,7 @@ impl ty::TyFunctionDeclaration {
         let mut new_parameters = vec![];
         for parameter in parameters.into_iter() {
             new_parameters.push(check!(
-                ty::TyFunctionParameter::type_check(fn_ctx.by_ref(), parameter, is_method),
+                ty::TyFunctionParameter::type_check(ctx.by_ref(), parameter, is_method),
                 continue,
                 warnings,
                 errors
@@ -97,7 +96,7 @@ impl ty::TyFunctionDeclaration {
         // type check the return type
         let initial_return_type = type_engine.insert(decl_engine, return_type);
         let return_type = check!(
-            fn_ctx.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 initial_return_type,
                 &return_type_span,
                 EnforceTypeArguments::Yes,
@@ -113,13 +112,13 @@ impl ty::TyFunctionDeclaration {
         // If there are no implicit block returns, then we do not want to type check them, so we
         // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
         let (body, _implicit_block_return) = {
-            let fn_ctx = fn_ctx
+            let ctx = ctx
                 .by_ref()
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
                 .with_type_annotation(return_type);
             check!(
-                ty::TyCodeBlock::type_check(fn_ctx, body),
+                ty::TyCodeBlock::type_check(ctx, body),
                 (
                     ty::TyCodeBlock { contents: vec![] },
                     type_engine.insert(decl_engine, TypeInfo::ErrorRecovery)
@@ -137,7 +136,7 @@ impl ty::TyFunctionDeclaration {
             .collect();
 
         check!(
-            unify_return_statements(fn_ctx.by_ref(), &return_statements, return_type),
+            unify_return_statements(ctx.by_ref(), &return_statements, return_type),
             return err(warnings, errors),
             warnings,
             errors
@@ -150,7 +149,7 @@ impl ty::TyFunctionDeclaration {
                 (Visibility::Public, false)
             }
         } else {
-            (visibility, fn_ctx.mode() == Mode::ImplAbiFn)
+            (visibility, ctx.mode() == Mode::ImplAbiFn)
         };
 
         let function_decl = ty::TyFunctionDeclaration {
@@ -168,20 +167,6 @@ impl ty::TyFunctionDeclaration {
             is_contract_call,
             purity,
         };
-
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace. We don't want to include any
-        // type parameters, so we filter them out.
-        let mut return_type_namespace = fn_ctx
-            .namespace
-            .implemented_traits
-            .filter_by_type(function_decl.return_type, fn_ctx.engines());
-        for type_param in function_decl.type_parameters.iter() {
-            return_type_namespace.filter_against_type(engines, type_param.type_id);
-        }
-        ctx.namespace
-            .implemented_traits
-            .extend(return_type_namespace, engines);
 
         ok(function_decl, warnings, errors)
     }

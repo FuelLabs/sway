@@ -25,9 +25,9 @@ impl From<ConstantRegister> for VirtualRegister {
 impl fmt::Display for VirtualRegister {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VirtualRegister::Virtual(name) => write!(f, "$r{}", name),
+            VirtualRegister::Virtual(name) => write!(f, "$r{name}"),
             VirtualRegister::Constant(name) => {
-                write!(f, "{}", name)
+                write!(f, "{name}")
             }
         }
     }
@@ -69,7 +69,7 @@ pub enum ConstantRegister {
     FuncArg5,
 }
 
-use crate::asm_generation::compiler_constants;
+use crate::asm_generation::fuel::compiler_constants;
 
 impl ConstantRegister {
     pub(crate) fn to_register_id(self) -> fuel_asm::RegisterId {

@@ -1,12 +1,13 @@
 use crate::{engine_threading::*, type_system::*};
 use std::{fmt, hash::Hasher};
-use sway_types::{Span, Spanned};
+use sway_types::{Span, SpanTree, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
+    pub name_spans: Option<SpanTree>,
 }
 
 impl Spanned for TypeArgument {
@@ -56,13 +57,8 @@ impl From<&TypeParameter> for TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,
             span: type_param.name_ident.span(),
+            name_spans: None,
         }
-    }
-}
-
-impl TypeArgument {
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine.get(self.type_id).json_abi_str(type_engine)
     }
 }
 

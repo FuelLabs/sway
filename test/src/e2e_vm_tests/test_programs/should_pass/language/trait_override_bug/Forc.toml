@@ -1,8 +1,0 @@
-[project]
-name = "trait_override_bug"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
-license = "Apache-2.0"
-
-[dependencies]
-core = { path = "../../../../../../../sway-lib-core" }

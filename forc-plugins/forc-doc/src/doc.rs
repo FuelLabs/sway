@@ -1,9 +1,10 @@
 use crate::{
     descriptor::Descriptor,
-    render::{DocLink, ItemBody, ItemHeader, Renderable},
+    render::{split_at_markdown_header, DocLink, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
+use std::option::Option;
 use std::path::PathBuf;
 use sway_core::{
     decl_engine::DeclEngine,
@@ -18,6 +19,7 @@ pub(crate) struct Document {
     pub(crate) module_info: ModuleInfo,
     pub(crate) item_header: ItemHeader,
     pub(crate) item_body: ItemBody,
+    pub(crate) raw_attributes: Option<String>,
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
@@ -44,7 +46,39 @@ impl Document {
             name: self.item_header.item_name.as_str().to_owned(),
             module_info: self.module_info.clone(),
             html_filename: self.html_filename(),
+            preview_opt: self.preview_opt(),
         }
+    }
+    fn preview_opt(&self) -> Option<String> {
+        const MAX_PREVIEW_CHARS: usize = 100;
+        const CLOSING_PARAGRAPH_TAG: &str = "</p>";
+
+        self.raw_attributes.as_ref().map(|description| {
+            let preview = split_at_markdown_header(description);
+            if preview.chars().count() > MAX_PREVIEW_CHARS
+                && preview.contains(CLOSING_PARAGRAPH_TAG)
+            {
+                match preview.find(CLOSING_PARAGRAPH_TAG) {
+                    Some(index) => {
+                        // We add 1 here to get the index of the char after the closing tag.
+                        // This ensures we retain the closing tag and don't break the html.
+                        let (preview, _) =
+                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.len() + 1);
+                        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
+                            match preview.find('\n') {
+                                Some(index) => preview.split_at(index).0.to_string(),
+                                None => unreachable!("Previous logic prevents this panic"),
+                            }
+                        } else {
+                            preview.to_string()
+                        }
+                    }
+                    None => unreachable!("Previous logic prevents this panic"),
+                }
+            } else {
+                preview.to_string()
+            }
+        })
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
@@ -127,26 +161,35 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self) -> Box<dyn RenderBox> {
-        box_html! {
-            : self.item_header.render();
-            : self.item_body.render();
-        }
+    fn render(self) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render()?;
+        let body = self.item_body.render()?;
+        Ok(box_html! {
+            : header;
+            : body;
+        })
     }
 }
+
 pub(crate) type ModulePrefix = String;
-#[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
 impl ModuleInfo {
     /// The current module.
+    ///
+    /// Panics if there are no modules.
     pub(crate) fn location(&self) -> &str {
         self.0
             .last()
-            .expect("There will always be at least the project name")
+            .expect("Expected Some module location, found None")
     }
     /// The name of the project.
+    ///
+    /// Panics if the project root is missing.
     pub(crate) fn project_name(&self) -> &str {
-        self.0.first().expect("Project name missing")
+        self.0
+            .first()
+            .expect("Expected root module, project root missing")
     }
     /// The location of the parent of the current module.
     ///
@@ -175,7 +218,7 @@ impl ModuleInfo {
         let prefix = self.to_path_literal_prefix(location);
         match prefix.is_empty() {
             true => item_name.to_owned(),
-            false => format!("{}::{}", prefix, item_name),
+            false => format!("{prefix}::{item_name}"),
         }
     }
     /// Create a path literal prefix from the module prefixes.
@@ -195,7 +238,7 @@ impl ModuleInfo {
     /// used in navigation between pages.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> String {
+    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> Result<String> {
         let mut iter = self.0.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
@@ -207,8 +250,8 @@ impl ModuleInfo {
 
         file_path
             .to_str()
-            .expect("There will always be at least the item name")
-            .to_string()
+            .map(|file_path_str| file_path_str.to_string())
+            .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///

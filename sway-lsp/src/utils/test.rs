@@ -2,7 +2,11 @@
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
 use serde_json::Value;
-use std::{env, path::PathBuf, time::Duration};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use tokio::task::JoinHandle;
 use tower_lsp::{lsp_types::Url, ClientSocket};
 
@@ -14,10 +18,20 @@ pub(crate) fn e2e_language_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
 }
 
+pub(crate) fn e2e_unit_dir() -> PathBuf {
+    PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/unit_tests")
+}
+
 pub(crate) fn e2e_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
         .join("struct_field_access")
+}
+
+pub(crate) fn runnables_test_dir() -> PathBuf {
+    sway_workspace_dir()
+        .join(e2e_unit_dir())
+        .join("script_multi_test")
 }
 
 pub(crate) fn test_fixtures_dir() -> PathBuf {
@@ -45,6 +59,18 @@ pub(crate) fn get_fixture(path: PathBuf) -> Value {
 
 pub(crate) fn sway_example_dir() -> PathBuf {
     sway_workspace_dir().join("examples/storage_variables")
+}
+
+// Check if the given directory contains `Forc.toml` at its root.
+pub(crate) fn dir_contains_forc_manifest(path: &Path) -> bool {
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub(crate) async fn assert_server_requests(

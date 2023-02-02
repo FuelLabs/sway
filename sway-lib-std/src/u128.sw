@@ -114,7 +114,7 @@ impl U128 {
     }
 
     /// Safely downcast to `u64` without loss of precision.
-    /// Returns Err if the number > u64::max()
+    /// Returns `Err` if the `number > u64::max()`.
     ///
     /// ### Examples
     ///
@@ -159,7 +159,7 @@ impl U128 {
     }
 
     /// The largest value that can be represented by this type,
-    /// 2<sup>128</sup> - 1.
+    /// `2<sup>128</sup> - 1`.
     ///
     /// ### Examples
     ///
@@ -206,7 +206,7 @@ impl core::ops::BitwiseOr for U128 {
     }
 }
 
-impl core::ops::Shiftable for U128 {
+impl core::ops::Shift for U128 {
     fn lsh(self, rhs: u64) -> Self {
         // If shifting by at least the number of bits, then saturate with
         // zeroes.
@@ -257,7 +257,7 @@ impl core::ops::Shiftable for U128 {
 }
 
 impl core::ops::Add for U128 {
-    /// Add a U128 to a U128. Panics on overflow.
+    /// Add a `U128` to a `U128`. Panics on overflow.
     fn add(self, other: Self) -> Self {
         let mut upper_128 = self.upper.overflowing_add(other.upper);
 
@@ -357,7 +357,7 @@ impl core::ops::Divide for U128 {
     }
 }
 
-impl Exponentiate for U128 {
+impl Power for U128 {
     fn pow(self, exponent: Self) -> Self {
         let mut value = self;
         let mut exp = exponent;
@@ -368,13 +368,17 @@ impl Exponentiate for U128 {
             return one;
         }
 
+        if exp == one {
+            return self;
+        }
+
         while exp & one == zero {
             value = value * value;
             exp >>= 1;
         }
 
         if exp == one {
-            return self;
+            return value;
         }
 
         let mut acc = value;
@@ -390,7 +394,7 @@ impl Exponentiate for U128 {
 }
 
 impl Root for U128 {
-    /// Newton's method as in https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method
+    /// Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
     fn sqrt(self) -> Self {
         let zero = U128::from((0, 0));
         let mut x0 = self >> 1;
@@ -412,7 +416,7 @@ impl Root for U128 {
 }
 
 impl BinaryLogarithm for U128 {
-    /// log2 of `x` is the largest `n` such that `2^n <= x < 2^(n+1)`.
+    /// `log2` of `x` is the largest `n` such that `2^n <= x < 2^(n+1)`.
     ///
     /// * If `x` is smaller than `2^64`, we could just rely on the `log` method by setting
     /// the base to 2.

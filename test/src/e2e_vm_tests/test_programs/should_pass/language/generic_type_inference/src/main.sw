@@ -2,8 +2,6 @@ script;
 
 dep utils;
 
-use std::assert::assert;
-
 use utils::*;
 
 struct CustomType {
@@ -42,10 +40,29 @@ fn complex_vec_test() {
     assert(exp_vec_in_a_vec_in_a_struct_in_a_vec.get(0).unwrap().a.get(0).unwrap().get(2).unwrap() == 2);
 }
 
+fn simple_option_generics_test() {
+    assert(get_an_option::<u64>().is_none());
+}
+
+// Disabled until https://github.com/FuelLabs/sway/issues/3946 is resolved
+/*fn test_assert_eq_u64() {
+    let a = 42;
+    let b = 40 + 2;
+    assert_eq(a, b);
+}*/
+
+fn test_try_from() {
+    let x = u64::try_from(7);
+    assert(x.unwrap() == 42);
+}
+
 fn main() {
     sell_product();
     simple_vec_test();
     complex_vec_test();
+    simple_option_generics_test();
+    // test_assert_eq_u64();
+    test_try_from();
 }
 
 fn sell_product() -> MyResult<bool, CustomType> {
