@@ -19,6 +19,7 @@ mod where_clause;
 
 use crate::priv_prelude::*;
 pub use crate::{
+    keywords::RESERVED_KEYWORDS,
     parse::Parse,
     parser::Parser,
     token::{lex, lex_commented},
