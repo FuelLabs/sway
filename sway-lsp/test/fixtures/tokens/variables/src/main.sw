@@ -52,4 +52,7 @@ fn main() {
     
     // Variable usage: Shadowing
     let variable5 = variable3; 
+
+    // Variable type ascriptions
+    let variable6: ExampleEnum = ExampleEnum::Variants(101);
 }
