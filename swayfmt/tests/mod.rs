@@ -15,8 +15,8 @@ fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Forma
     assert_eq_pretty!(second_formatted, first_formatted);
 }
 
-/// Using a default Formatter, formats a given input and checks the actual output against an expected
-/// output. There are two format passes to ensure that the received output does not change on a second pass.
+/// Formats a given input and checks the actual output against an expected
+/// output by calling check_with_formatter() with a default Formatter as input.
 fn check(unformatted: &str, expected: &str) {
     let mut formatter = Formatter::default();
     check_with_formatter(unformatted, expected, &mut formatter);
