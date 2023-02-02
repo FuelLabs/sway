@@ -642,6 +642,17 @@ mod tests {
         ExitedError, LspService,
     };
 
+    /// Holds the information needed to check the response of a goto definition request.
+    struct GotoDefintion<'a> {
+        req_uri: &'a Url,
+        req_line: i32,
+        req_char: i32,
+        def_line: i32,
+        def_start_char: i32,
+        def_end_char: i32,
+        def_path: &'a str,
+    }
+
     fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
         let mut file = fs::File::open(&src_path).unwrap();
@@ -815,103 +826,35 @@ mod tests {
         build_request_with_id("textDocument/definition", params, id)
     }
 
-    fn definition_response(
-        uri: &Url,
-        start_line: i32,
-        start_char: i32,
-        end_line: i32,
-        end_char: i32,
-        id: i64,
-    ) -> Response {
-        Response::from_ok(
-            id.into(),
-            json!({
-                "range": {
-                    "end": {
-                        "character": end_char,
-                        "line": end_line,
-                    },
-                    "start": {
-                        "character": start_char,
-                        "line": start_line,
-                    }
-                },
-                "uri": uri,
-            }),
-        )
-    }
-
-    async fn doc_comments_definition_check(
+    async fn definition_check<'a>(
         service: &mut LspService<Backend>,
-        uri: &Url,
-        token_req_line: i32,
-        token_def_line: i32,
+        go_to: &'a GotoDefintion<'a>,
         id: i64,
     ) -> Request {
-        let definition = definition_request(uri, token_req_line, 24, id);
-        let response = call_request(service, definition.clone()).await;
-        let expected = definition_response(uri, token_def_line, 7, token_def_line, 11, id);
-        assert_json_eq!(expected, response.ok().unwrap());
+        let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+        let response = call_request(service, definition.clone())
+            .await
+            .unwrap()
+            .unwrap();
+        let value = response.result().unwrap().clone();
+        if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+            let uri = response.uri.as_str();
+            let range = json!({
+                "end": {
+                    "character": go_to.def_end_char,
+                    "line": go_to.def_line,
+                },
+                "start": {
+                    "character": go_to.def_start_char,
+                    "line": go_to.def_line,
+                }
+            });
+            assert_json_eq!(response.range, range);
+            assert!(uri.ends_with(go_to.def_path));
+        } else {
+            panic!("Expected GotoDefinitionResponse::Scalar");
+        }
         definition
-    }
-
-    async fn turbofish_definition_check_option(
-        service: &mut LspService<Backend>,
-        uri: &Url,
-        token_line: i32,
-        token_char: i32,
-        id: i64,
-    ) {
-        let definition = definition_request(uri, token_line, token_char, id);
-        let response = call_request(service, definition).await.unwrap().unwrap();
-        let json = response.result().unwrap();
-        let uri = json
-            .as_object()
-            .unwrap()
-            .get("uri")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        assert!(uri.ends_with("sway-lib-std/src/option.sw"));
-    }
-
-    async fn turbofish_definition_check_result(
-        service: &mut LspService<Backend>,
-        uri: &Url,
-        token_line: i32,
-        token_char: i32,
-        id: i64,
-    ) {
-        let definition = definition_request(uri, token_line, token_char, id);
-        let response = call_request(service, definition).await.unwrap().unwrap();
-        let json = response.result().unwrap();
-        let uri = json
-            .as_object()
-            .unwrap()
-            .get("uri")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        assert!(uri.ends_with("sway-lib-std/src/result.sw"));
-    }
-    async fn traits_definition_check(
-        service: &mut LspService<Backend>,
-        uri: &Url,
-        token_line: i32,
-        token_char: i32,
-        id: i64,
-    ) {
-        let definition = definition_request(uri, token_line, token_char, id);
-        let response = call_request(service, definition).await.unwrap().unwrap();
-        let json = response.result().unwrap();
-        let uri = json
-            .as_object()
-            .unwrap()
-            .get("uri")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        assert!(uri.ends_with("sway-lsp/test/fixtures/tokens/traits/src/traits.sw"));
     }
 
     async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
@@ -1276,9 +1219,19 @@ mod tests {
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            def_line: 19,
+            def_start_char: 7,
+            def_end_char: 11,
+            def_path: uri.as_str(),
+        };
+        let _ = definition_check(&mut service, &go_to, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = doc_comments_definition_check(&mut service, &uri, 45, 20, 2).await;
+        go_to.def_line = 20;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 24, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -1297,8 +1250,29 @@ mod tests {
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = doc_comments_definition_check(&mut service, &uri, 44, 19, 1).await;
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            def_line: 19,
+            def_start_char: 7,
+            def_end_char: 11,
+            def_path: uri.as_str(),
+        };
+        let _ = definition_check(&mut service, &go_to, 1).await;
         shutdown_and_exit(&mut service).await;
+    }
+
+    async fn definition_check_with_req_offset<'a>(
+        service: &mut LspService<Backend>,
+        go_to: &mut GotoDefintion<'a>,
+        req_line: i32,
+        req_char: i32,
+        id: i64,
+    ) {
+        go_to.req_line = req_line;
+        go_to.req_char = req_char;
+        let _ = definition_check(service, go_to, id).await;
     }
 
     #[tokio::test]
@@ -1310,19 +1284,39 @@ mod tests {
         )
         .await;
 
-        turbofish_definition_check_option(&mut service, &uri, 15, 12, 1).await;
-        turbofish_definition_check_option(&mut service, &uri, 16, 17, 2).await;
-        turbofish_definition_check_option(&mut service, &uri, 17, 29, 3).await;
-        turbofish_definition_check_option(&mut service, &uri, 18, 19, 4).await;
+        let mut opt_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 15,
+            req_char: 12,
+            def_line: 80,
+            def_start_char: 9,
+            def_end_char: 15,
+            def_path: "sway-lib-std/src/option.sw",
+        };
+        // option.sw
+        let _ = definition_check(&mut service, &opt_go_to, 1).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 16, 17, 2).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 17, 29, 3).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 18, 19, 4).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 20, 13, 5).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 21, 19, 6).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 22, 29, 7).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 23, 18, 8).await;
 
-        turbofish_definition_check_option(&mut service, &uri, 20, 13, 5).await;
-        turbofish_definition_check_result(&mut service, &uri, 20, 19, 6).await;
-        turbofish_definition_check_option(&mut service, &uri, 21, 19, 7).await;
-        turbofish_definition_check_result(&mut service, &uri, 21, 25, 8).await;
-        turbofish_definition_check_option(&mut service, &uri, 22, 29, 9).await;
-        turbofish_definition_check_result(&mut service, &uri, 22, 36, 10).await;
-        turbofish_definition_check_option(&mut service, &uri, 23, 18, 11).await;
-        turbofish_definition_check_result(&mut service, &uri, 23, 27, 12).await;
+        let mut res_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 20,
+            req_char: 19,
+            def_line: 60,
+            def_start_char: 9,
+            def_end_char: 15,
+            def_path: "sway-lib-std/src/result.sw",
+        };
+        // result.sw
+        let _ = definition_check(&mut service, &res_go_to, 9).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 21, 25, 10).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 22, 36, 11).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 23, 27, 12).await;
 
         shutdown_and_exit(&mut service).await;
     }
@@ -1336,10 +1330,85 @@ mod tests {
         )
         .await;
 
-        traits_definition_check(&mut service, &uri, 6, 10, 1).await;
-        traits_definition_check(&mut service, &uri, 7, 10, 2).await;
-        traits_definition_check(&mut service, &uri, 7, 20, 3).await;
-        traits_definition_check(&mut service, &uri, 10, 6, 4).await;
+        let mut trait_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 6,
+            req_char: 10,
+            def_line: 2,
+            def_start_char: 10,
+            def_end_char: 15,
+            def_path: "sway-lsp/test/fixtures/tokens/traits/src/traits.sw",
+        };
+
+        let _ = definition_check(&mut service, &trait_go_to, 1).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 7, 10, 2).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 10, 6, 3).await;
+        trait_go_to.req_line = 7;
+        trait_go_to.req_char = 20;
+        trait_go_to.def_line = 3;
+        let _ = definition_check(&mut service, &trait_go_to, 3).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_variables() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("variables"),
+        )
+        .await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 26,
+            def_line: 22,
+            def_start_char: 8,
+            def_end_char: 17,
+            def_path: uri.as_str(),
+        };
+        // Variable expressions
+        let _ = definition_check(&mut service, &go_to, 1).await;
+
+        // Function arguments
+        go_to.def_line = 23;
+        definition_check_with_req_offset(&mut service, &mut go_to, 28, 35, 2).await;
+
+        // Struct fields
+        go_to.def_line = 22;
+        definition_check_with_req_offset(&mut service, &mut go_to, 31, 45, 3).await;
+
+        // Enum fields
+        go_to.def_line = 22;
+        definition_check_with_req_offset(&mut service, &mut go_to, 34, 39, 4).await;
+
+        // Tuple elements
+        go_to.def_line = 24;
+        definition_check_with_req_offset(&mut service, &mut go_to, 37, 20, 5).await;
+
+        // Array elements
+        go_to.def_line = 25;
+        definition_check_with_req_offset(&mut service, &mut go_to, 40, 20, 6).await;
+
+        // Scoped declarations
+        go_to.def_line = 44;
+        go_to.def_start_char = 12;
+        go_to.def_end_char = 21;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 13, 7).await;
+
+        // If let scopes
+        go_to.def_line = 50;
+        go_to.def_start_char = 38;
+        go_to.def_end_char = 39;
+        definition_check_with_req_offset(&mut service, &mut go_to, 50, 47, 8).await;
+
+        // Shadowing
+        go_to.def_line = 50;
+        go_to.def_start_char = 8;
+        go_to.def_end_char = 17;
+        definition_check_with_req_offset(&mut service, &mut go_to, 53, 29, 9).await;
 
         shutdown_and_exit(&mut service).await;
     }
