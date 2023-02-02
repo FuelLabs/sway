@@ -120,7 +120,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/std/book
+          publish_dir: ./sway-lib-std/out
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
         if: startsWith(github.ref, 'refs/tags')
 
