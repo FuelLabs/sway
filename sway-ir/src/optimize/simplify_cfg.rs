@@ -8,9 +8,11 @@
 //! data flow via PHI instructions which in turn can make analyses for passes like constant folding
 //! much simpler.
 
+use rustc_hash::{FxHashMap, FxHashSet};
+
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, BranchToWithArgs, NamedPass,
+    value::ValueDatum, BranchToWithArgs, NamedPass, Value,
 };
 
 pub struct SimplifyCfgPass;
@@ -32,17 +34,8 @@ impl NamedPass for SimplifyCfgPass {
 pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     let mut modified = false;
     modified |= remove_dead_blocks(context, function)?;
-
-    loop {
-        if merge_blocks(context, function)? {
-            modified = true;
-            continue;
-        }
-        break;
-    }
-
+    modified |= merge_blocks(context, function)?;
     modified |= unlink_empty_blocks(context, function)?;
-
     Ok(modified)
 }
 
@@ -148,7 +141,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
 
 fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
     // Check if block branches soley to another block B, and that B has exactly one predecessor.
-    let check_candidate = |from_block: Block| -> Option<(Block, Block)> {
+    fn check_candidate(context: &Context, from_block: Block) -> Option<(Block, Block)> {
         from_block
             .get_terminator(context)
             .and_then(|term| match term {
@@ -157,76 +150,91 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
                 }) if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
                 _ => None,
             })
-    };
-
-    // Find a block with an unconditional branch terminator which branches to a block with that
-    // single predecessor.
-    let twin_blocks = function
-        .block_iter(context)
-        // Find our candidate.
-        .find_map(check_candidate);
-
-    // If not found then abort here.
-    let mut block_chain = match twin_blocks {
-        Some((from_block, to_block)) => vec![from_block, to_block],
-        None => return Ok(false),
-    };
-
-    // There may be more blocks which are also singly paired with these twins, so iteratively
-    // search for more blocks in a chain which can be all merged into one.
-    loop {
-        match check_candidate(block_chain.last().copied().unwrap()) {
-            None => {
-                // There is no twin for this block.
-                break;
-            }
-            Some(next_pair) => {
-                block_chain.push(next_pair.1);
-            }
-        }
     }
 
-    // Keep a copy of the final block in the chain so we can adjust the successors below.
-    let final_to_block = block_chain.last().copied().unwrap();
-    let final_to_block_succs = final_to_block.successors(context);
+    let blocks: Vec<_> = function.block_iter(context).collect();
+    let mut deleted_blocks = FxHashSet::<Block>::default();
+    let mut replace_map: FxHashMap<Value, Value> = FxHashMap::default();
+    let mut modified = false;
 
-    // The first block in the chain will be extended with the contents of the rest of the blocks in
-    // the chain, which we'll call `from_block` since we're branching from here to the next one.
-    let mut block_chain = block_chain.into_iter();
-    let from_block = block_chain.next().unwrap();
-
-    // Loop for the rest of the chain, to all the `to_block`s.
-    for to_block in block_chain {
-        let from_params = from_block.get_succ_params(context, &to_block);
-        // We collect here so that we can have &mut Context later on.
-        let to_blocks: Vec<_> = to_block.arg_iter(context).copied().enumerate().collect();
-        for (arg_idx, to_block_arg) in to_blocks {
-            // replace all uses of `to_block_arg` with the parameter from `from_block`.
-            function.replace_value(context, to_block_arg, from_params[arg_idx], None);
+    for from_block in blocks {
+        if deleted_blocks.contains(&from_block) {
+            continue;
         }
 
-        // Re-get the block contents mutably.
-        let (from_contents, to_contents) = context.blocks.get2_mut(from_block.0, to_block.0);
-        let from_contents = from_contents.unwrap();
-        let to_contents = to_contents.unwrap();
+        // Find a block with an unconditional branch terminator which branches to a block with that
+        // single predecessor.
+        let twin_blocks = check_candidate(context, from_block);
 
-        // Drop the terminator from `from_block`.
-        from_contents.instructions.pop();
+        // If not found then abort here.
+        let mut block_chain = match twin_blocks {
+            Some((from_block, to_block)) => vec![from_block, to_block],
+            None => continue,
+        };
 
-        // Move instructions from `to_block` to `from_block`.
-        from_contents
-            .instructions
-            .append(&mut to_contents.instructions);
+        // There may be more blocks which are also singly paired with these twins, so iteratively
+        // search for more blocks in a chain which can be all merged into one.
+        loop {
+            match check_candidate(context, block_chain.last().copied().unwrap()) {
+                None => {
+                    // There is no twin for this block.
+                    break;
+                }
+                Some(next_pair) => {
+                    block_chain.push(next_pair.1);
+                }
+            }
+        }
 
-        // Remove `to_block`.
-        function.remove_block(context, &to_block)?;
+        // Keep a copy of the final block in the chain so we can adjust the successors below.
+        let final_to_block = block_chain.last().copied().unwrap();
+        let final_to_block_succs = final_to_block.successors(context);
+
+        // The first block in the chain will be extended with the contents of the rest of the blocks in
+        // the chain, which we'll call `from_block` since we're branching from here to the next one.
+        let mut block_chain = block_chain.into_iter();
+        let from_block = block_chain.next().unwrap();
+
+        // Loop for the rest of the chain, to all the `to_block`s.
+        for to_block in block_chain {
+            let from_params = from_block.get_succ_params(context, &to_block);
+            // We collect here so that we can have &mut Context later on.
+            let to_blocks: Vec<_> = to_block.arg_iter(context).copied().enumerate().collect();
+            for (arg_idx, to_block_arg) in to_blocks {
+                // replace all uses of `to_block_arg` with the parameter from `from_block`.
+                replace_map.insert(to_block_arg, from_params[arg_idx]);
+            }
+
+            // Re-get the block contents mutably.
+            let (from_contents, to_contents) = context.blocks.get2_mut(from_block.0, to_block.0);
+            let from_contents = from_contents.unwrap();
+            let to_contents = to_contents.unwrap();
+
+            // Drop the terminator from `from_block`.
+            from_contents.instructions.pop();
+
+            // Move instructions from `to_block` to `from_block`.
+            from_contents
+                .instructions
+                .append(&mut to_contents.instructions);
+
+            // Remove `to_block`.
+            function.remove_block(context, &to_block)?;
+            deleted_blocks.insert(to_block);
+        }
+
+        // Adjust the successors to the final `to_block` to now be successors of the fully merged
+        // `from_block`.
+        for BranchToWithArgs { block: succ, .. } in final_to_block_succs {
+            succ.replace_pred(context, &final_to_block, &from_block)
+        }
+        modified = true;
     }
 
-    // Adjust the successors to the final `to_block` to now be successors of the fully merged
-    // `from_block`.
-    for BranchToWithArgs { block: succ, .. } in final_to_block_succs {
-        succ.replace_pred(context, &final_to_block, &from_block)
+    if !replace_map.is_empty() {
+        assert!(modified);
+        function.replace_values(context, &replace_map, None);
     }
 
-    Ok(true)
+    Ok(modified)
 }

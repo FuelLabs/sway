@@ -1,7 +1,5 @@
 library utils;
 
-use std::revert::revert;
-
 pub fn vec_from(vals: [u32; 3]) -> Vec<u32> {
     let mut vec = Vec::new();
     vec.push(vals[0]);

@@ -2,6 +2,7 @@
 
 use anyhow::{bail, Context};
 use clap::Parser;
+use devault::Devault;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -99,15 +100,15 @@ pub struct Script {
 }
 
 /// Flag set for specifying gas price and limit.
-#[derive(Debug, Parser, Deserialize, Serialize)]
+#[derive(Debug, Devault, Parser, Deserialize, Serialize)]
 pub struct Gas {
     /// Gas price for the transaction.
-    ///
-    /// Defaults to `fuel_tx::TxParameters::DEFAULT.gas_limit`.
-    #[clap(long = "gas-price")]
+    #[clap(long = "gas-price", default_value_t = 0)]
+    #[devault("0")]
     pub price: u64,
     /// Gas limit for the transaction.
-    #[clap(long = "gas-limit")]
+    #[clap(long = "gas-limit", default_value_t = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)]
+    #[devault("fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx")]
     pub limit: u64,
 }
 

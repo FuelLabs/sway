@@ -33,35 +33,8 @@ fn prompt_signature(tx_id: fuel_tx::Bytes32) -> Result<Signature> {
     Signature::from_str(buf.trim()).map_err(Error::msg)
 }
 
-#[derive(Debug)]
-pub struct TxParameters {
-    pub gas_limit: u64,
-    pub gas_price: u64,
-}
-
-impl TxParameters {
-    pub const DEFAULT: Self = Self {
-        gas_limit: fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx,
-        gas_price: 0,
-    };
-
-    pub fn new(gas_limit: Option<u64>, gas_price: Option<u64>) -> Self {
-        Self {
-            gas_limit: gas_limit.unwrap_or(TxParameters::DEFAULT.gas_limit),
-            gas_price: gas_price.unwrap_or(TxParameters::DEFAULT.gas_price),
-        }
-    }
-}
-
-impl Default for TxParameters {
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
-
 #[async_trait]
 pub trait TransactionBuilderExt<Tx> {
-    fn params(&mut self, params: TxParameters) -> &mut Self;
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self;
     fn add_contracts(&mut self, contract_ids: Vec<ContractId>) -> &mut Self;
     fn add_inputs(&mut self, inputs: Vec<Input>) -> &mut Self;
@@ -83,9 +56,6 @@ pub trait TransactionBuilderExt<Tx> {
 impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuilderExt<Tx>
     for TransactionBuilder<Tx>
 {
-    fn params(&mut self, params: TxParameters) -> &mut Self {
-        self.gas_limit(params.gas_limit).gas_price(params.gas_price)
-    }
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self {
         let input_index = self
             .inputs()

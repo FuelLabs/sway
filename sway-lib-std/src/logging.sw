@@ -1,4 +1,4 @@
-//! Allows logging of arbitrary types, emitted as either `Log` or `Logd` receipts.
+//! Allows logging of arbitrary stack types, emitted as either `Log` or `Logd` receipts.
 library logging;
 
 /// Log any stack type.

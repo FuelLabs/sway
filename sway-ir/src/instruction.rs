@@ -148,23 +148,29 @@ pub enum FuelVmInstruction {
         output_index: Value,
         coins: Value,
     },
-    /// Read a quad word from a storage slot. Type of `load_val` must be a B256 ptr.
+    /// Clears `number_of_slots` storage slots (`b256` each) starting at key `key`.
+    StateClear {
+        key: Value,
+        number_of_slots: Value,
+    },
+    /// Reads `number_of_slots` slots (`b256` each) from storage starting at key `key` and stores
+    /// them in memory starting at address `load_val`.
     StateLoadQuadWord {
         load_val: Value,
         key: Value,
         number_of_slots: Value,
     },
-    /// Read a single word from a storage slot.
+    /// Reads and returns single word from a storage slot.
     StateLoadWord(Value),
-    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
-    /// Uint(256) ptr.
+    /// Stores `number_of_slots` slots (`b256` each) starting at address `stored_val` in memory into
+    /// storage starting at key `key`. `key` must be a `b256`.
     StateStoreQuadWord {
         stored_val: Value,
         key: Value,
         number_of_slots: Value,
     },
-    /// Write a value to a storage slot.  Key must be a B256, type of `stored_val` must be a
-    /// Uint(64) value.
+    /// Writes a single word to a storage slot. `key` must be a `b256` and the type of `stored_val`
+    /// must be a `u64`.
     StateStoreWord {
         stored_val: Value,
         key: Value,
@@ -267,6 +273,9 @@ impl Instruction {
             Instruction::Ret(..) => None,
 
             Instruction::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
+            Instruction::FuelVm(FuelVmInstruction::StateClear { .. }) => {
+                Some(Type::get_bool(context))
+            }
             Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. }) => {
                 Some(Type::get_bool(context))
             }
@@ -363,6 +372,10 @@ impl Instruction {
                     output_index,
                     coins,
                 } => vec![*recipient_and_message, *message_size, *output_index, *coins],
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => vec![*key, *number_of_slots],
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -503,6 +516,13 @@ impl Instruction {
                     replace(output_index);
                     replace(coins);
                 }
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => {
+                    replace(key);
+                    replace(number_of_slots);
+                }
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -552,6 +572,7 @@ impl Instruction {
                 | Instruction::ContractCall { .. }
                 | Instruction::FuelVm(FuelVmInstruction::Log { .. })
                 | Instruction::FuelVm(FuelVmInstruction::Smo { .. })
+                | Instruction::FuelVm(FuelVmInstruction::StateClear { .. })
                 | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
                 | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
                 | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. })
@@ -915,6 +936,16 @@ impl<'a> InstructionInserter<'a> {
                 message_size,
                 output_index,
                 coins,
+            })
+        )
+    }
+
+    pub fn state_clear(self, key: Value, number_of_slots: Value) -> Value {
+        make_instruction!(
+            self,
+            Instruction::FuelVm(FuelVmInstruction::StateClear {
+                key,
+                number_of_slots
             })
         )
     }

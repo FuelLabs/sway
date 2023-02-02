@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type};
+use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 pub use sway_types::ConfigTimeConstant;
 use sway_utils::constants;
 
@@ -143,6 +143,7 @@ pub struct PackageManifest {
     pub patch: Option<BTreeMap<String, PatchMap>>,
     /// A list of [configuration-time constants](https://github.com/FuelLabs/sway/issues/1498).
     pub constants: Option<BTreeMap<String, ConfigTimeConstant>>,
+    pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
 }

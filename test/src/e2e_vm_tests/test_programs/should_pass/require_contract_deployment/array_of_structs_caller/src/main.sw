@@ -1,6 +1,7 @@
 script;
+
 use array_of_structs_abi::{Id, TestContract, Wrapper};
-use std::{assert::assert, hash::sha256};
+use std::hash::sha256;
 
 fn main() -> u64 {
     let addr = abi(TestContract, 0xff3e4c9b18b7cd20e952b5498ebf05fbe49a70163923d6c6e13913aa0e78c697);

@@ -26,7 +26,6 @@ use std::{
         msg_asset_id,
     },
     context::msg_amount,
-    storage::StorageMap,
 };
 
 storage {

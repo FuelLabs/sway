@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -9,7 +10,7 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::fmt::Write;
+use std::{fmt::Write, ops::Range};
 use sway_ast::{token::Delimiter, ItemStruct};
 use sway_types::Spanned;
 
@@ -43,6 +44,12 @@ impl Format for ItemStruct {
 
                 // Handle openning brace
                 Self::open_curly_brace(formatted_code, formatter)?;
+
+                if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
+                    let range: Range<usize> = self.span().into();
+                    maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                }
+
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(enum_variant_align_threshold) => {

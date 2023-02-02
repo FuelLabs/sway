@@ -1,6 +1,6 @@
 script;
 
-use std::{hash::{keccak256, sha256}, logging::log};
+use std::hash::{keccak256, sha256};
 
 const VALUE_A = 0x9280359a3b96819889d30614068715d634ad0cf9bba70c0f430a8c201138f79f;
 
