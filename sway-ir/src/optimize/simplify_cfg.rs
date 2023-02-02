@@ -8,9 +8,7 @@
 //! data flow via PHI instructions which in turn can make analyses for passes like constant folding
 //! much simpler.
 
-use std::collections::HashSet;
-
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
@@ -155,7 +153,7 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
     }
 
     let blocks: Vec<_> = function.block_iter(context).collect();
-    let mut deleted_blocks = HashSet::<Block>::new();
+    let mut deleted_blocks = FxHashSet::<Block>::default();
     let mut replace_map: FxHashMap<Value, Value> = FxHashMap::default();
     let mut modified = false;
 
