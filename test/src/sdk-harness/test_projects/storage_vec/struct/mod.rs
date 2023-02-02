@@ -262,7 +262,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_remove() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -270,7 +270,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -278,7 +278,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_insert() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -286,7 +286,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_set() {
         let (instance, _id) = get_contract_instance().await;
 
