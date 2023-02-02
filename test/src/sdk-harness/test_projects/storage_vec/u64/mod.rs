@@ -233,7 +233,7 @@ mod success {
     }
 }
 
-// Some of these are meant to be tests for None returns but since the SDK doesnt support options;
+// Some of these are meant to be tests for None returns but since the SDK doesn't support options;
 // the options are being unwrapped in the contract and tested as reverts instead
 mod failure {
     use super::*;
@@ -255,7 +255,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_remove() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -263,7 +263,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_swap_remove() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -271,7 +271,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_insert() {
         let (instance, _id) = get_contract_instance().await;
 
@@ -279,7 +279,7 @@ mod failure {
     }
 
     #[tokio::test]
-    #[should_panic(expected = "Revert(0)")]
+    #[should_panic(expected = "Revert(18446744073709486084)")]
     async fn cant_set() {
         let (instance, _id) = get_contract_instance().await;
 

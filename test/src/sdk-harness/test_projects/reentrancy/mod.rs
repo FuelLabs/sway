@@ -29,7 +29,7 @@ async fn can_detect_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Revert(0)")]
+#[should_panic(expected = "Revert(18446744073709486084)")]
 async fn can_block_reentrancy() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
@@ -45,7 +45,7 @@ async fn can_block_reentrancy() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Revert(0)")]
+#[should_panic(expected = "Revert(18446744073709486084)")]
 async fn can_block_cross_function_reentrancy() {
     let wallet = launch_provider_and_get_wallet().await;
     let (attacker_instance, _) = get_attacker_instance(wallet.clone()).await;
