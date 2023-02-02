@@ -647,8 +647,8 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
     // get to a fully usable state, we should update this.
     let supported_targets = toml_content
         .get("supported_targets")
-        .map(|v| v.as_array().cloned().unwrap_or(vec![]))
-        .unwrap_or(vec![])
+        .map(|v| v.as_array().cloned().unwrap_or_default())
+        .unwrap_or_default()
         .iter()
         .map(get_test_abi_from_value)
         .collect::<Result<Vec<BuildTarget>>>()?;

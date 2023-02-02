@@ -1,6 +1,6 @@
 # The Sway Programming Language
 
-Sway is a domain-specific language (DSL) for the [Fuel Virtual Machine (FuelVM)](https://github.com/FuelLabs/fuel-specs), a blockchain-optimized VM designed for the Fuel blockchain. Sway is based on [Rust](https://doc.rust-lang.org/book/), and includes syntax to leverage a blockchain VM without needlessly verbose boilerplate.
+Sway is a domain-specific language (DSL) for the [Fuel Virtual Machine (FuelVM)](https://fuellabs.github.io/fuel-specs/master/vm/index.html), a blockchain-optimized VM designed for the Fuel blockchain. Sway is based on [Rust](https://doc.rust-lang.org/book/), and includes syntax to leverage a blockchain VM without needlessly verbose boilerplate.
 
 This book documents how to write smart contracts in Sway, along with how to install and use the Sway toolchain.
 
