@@ -6,7 +6,7 @@ mod macros;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
-fn check_custom_config(unformatted: &str, expected: &str, formatter: &mut Formatter) {
+fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
     let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
     assert_eq_pretty!(first_formatted, expected);
 
@@ -19,12 +19,7 @@ fn check_custom_config(unformatted: &str, expected: &str, formatter: &mut Format
 /// output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check(unformatted: &str, expected: &str) {
     let mut formatter = Formatter::default();
-    let first_formatted = Formatter::format(&mut formatter, Arc::from(unformatted), None).unwrap();
-    assert_eq_pretty!(first_formatted, expected);
-
-    let second_formatted =
-        Formatter::format(&mut formatter, Arc::from(first_formatted.clone()), None).unwrap();
-    assert_eq_pretty!(second_formatted, first_formatted);
+    check_with_formatter(unformatted, expected, &mut formatter);
 }
 
 #[test]
@@ -44,7 +39,7 @@ fn struct_alignment() {
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
 
-    check_custom_config(
+    check_with_formatter(
         r#"contract;
 pub struct Foo<T, P> {
    barbazfoo: u64,
@@ -106,7 +101,7 @@ fn enum_with_variant_alignment() {
     // Creating a config with enum_variant_align_threshold that exceeds longest variant length
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
-    check_custom_config(
+    check_with_formatter(
         r#"contract;
 
 enum Color {
@@ -235,7 +230,7 @@ storage {
 fn storage_with_alignment() {
     let mut formatter = Formatter::default();
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
-    check_custom_config(
+    check_with_formatter(
         r#"contract;
 struct Type1 {
     foo: u64,
@@ -394,7 +389,7 @@ fn method_calls() {
     let mut formatter = Formatter::default();
     formatter.config.structures.small_structures_single_line = true;
     formatter.config.whitespace.max_width = 220;
-    check_custom_config(
+    check_with_formatter(
         r#"script;
 
 struct Opts {
