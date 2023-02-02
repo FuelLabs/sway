@@ -1,8 +1,8 @@
 #[macro_export]
 macro_rules! assert_eq_pretty {
     ($got:expr, $expected:expr) => {
-        let got = &*$got;
-        let expected = &*$expected;
+        let got = &$got;
+        let expected = &$expected;
         if got != expected {
             panic!(
                 "
