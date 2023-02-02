@@ -197,6 +197,7 @@ enum TestTy {
 fn storage_without_alignment() {
     check(
         r#"contract;
+
         struct Type1 {
             foo: u64,
         }
@@ -211,6 +212,7 @@ fn storage_without_alignment() {
         }
         "#,
         r#"contract;
+
 struct Type1 {
     foo: u64,
 }
@@ -232,6 +234,7 @@ fn storage_with_alignment() {
     formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
     check_with_formatter(
         r#"contract;
+
 struct Type1 {
     foo: u64,
 }
@@ -246,6 +249,7 @@ storage {
 }
 "#,
         r#"contract;
+
 struct Type1 {
     foo : u64,
 }
@@ -279,8 +283,6 @@ struct Type2 {
 
 storage {
     var1: Type1 = Type1 {
-
-
 
         x: 0,
 
@@ -620,6 +622,7 @@ fn hello_world(baz: /* this is a comment */ u64) {
 fn abi_comments() {
     check(
         r#"contract;
+
 // This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
@@ -628,6 +631,7 @@ abi StorageMapExample {
     // this is the last comment inside the StorageMapExample
 }"#,
         r#"contract;
+
 // This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
@@ -1116,6 +1120,7 @@ fn if_else_retain_multiline() {
     check(
         r#"script;
 
+
 fn main() {
     if foo    {
            let really_long_variable = 1;
@@ -1300,7 +1305,7 @@ fn foo() {
 fn empty_blocks() {
     check(
         r#"contract;
-        
+
 fn contents() {
     let i = {    };
     match i {
