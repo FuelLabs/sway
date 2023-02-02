@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::{AddCommand, RemoveCommand};
+use crate::cli::AddCommand;
 use anyhow::{bail, Result};
 use forc_pkg::manifest::{Dependency, DependencyDetails, ManifestFile};
 
@@ -51,8 +51,5 @@ pub fn add(
         deps.insert(key, value);
     }
 
-    Ok(())
-}
-pub fn remove(_command: RemoveCommand) -> Result<()> {
     Ok(())
 }
