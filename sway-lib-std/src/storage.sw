@@ -4,6 +4,8 @@ use ::alloc::alloc;
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
+use ::bytes::Bytes;
+use ::convert::From;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -636,5 +638,33 @@ impl<V> StorageVec<V> {
     #[storage(write)]
     pub fn clear(self) {
         store(__get_storage_key(), 0);
+    }
+}
+
+pub struct StorageBytes {}
+
+impl StorageBytes {
+    #[storage(write)]
+    pub fn write_bytes(self, bytes: Bytes) {
+        // Get the number of storage slots needed based on the size of bytes.
+        let number_of_slots = (bytes.len() + 31) >> 5;
+
+        // Store `number_of_slots * 32` bytes starting at storage slot `key` and the length.
+        store::<u64>(__get_storage_key(), bytes.len());
+        let _ = __state_store_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
+    }
+
+    #[storage(read)]
+    pub fn into_bytes(self) -> Bytes {
+        // Get the length of the bytes and create a new `Bytes` type on the heap.
+        let len = get::<u64>(__get_storage_key()).unwrap();
+        let mut bytes = Bytes::with_capacity(len);
+        bytes.len = len;
+
+        // Load the stores bytes into the `Bytes` type pointer.
+        let number_of_slots = (len + 31) >> 5;
+        let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
+        
+        bytes
     }
 }
