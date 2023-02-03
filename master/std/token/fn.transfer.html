@@ -1,0 +1,31 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `transfer` function in `token`."><meta name="keywords" content="sway, swaylang, sway-lang, transfer"><link rel="icon" href="../assets/sway-logo.svg"><title>transfer in token - Sway</title><link rel="stylesheet" type="text/css" href="../assets/normalize.css"><link rel="stylesheet" type="text/css" href="../assets/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../assets/ayu.css"></head><body class="swaydoc fn"><nav class="sidebar"><a class="sidebar-logo" href="index.html"><div class="logo-container"><img class="sway-logo" src="../assets/sway-logo.svg" alt="logo"></div></a><h2 class="location"><a href="index.html">Module token</a></h2><div class="sidebar-elems"><section><div class="block"><ul></ul></div></section></div></nav><main><div class="width-limiter"><div class="sub-container"><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Searchbar unimplemented, see issue #3480..." type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div></div></form></nav></div><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">function <a class="fn" href="#">transfer</a></span></h1></div><div class="docblock item-decl"><pre class="sway fn"><code>pub fn transfer(amount: u64, asset_id: ContractId, to: Identity) </code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Transfer <code>amount</code> coins of the type <code>asset_id</code> and send them<br />
+to <code>to</code> by calling either <code>force_transfer_to_contract</code> or<br />
+<code>transfer_to_address</code>, depending on the type of <code>Identity</code>.</p>
+<blockquote>
+<p><strong><em>WARNING:</em></strong></p>
+<p>If the <code>to</code> Identity is a contract this may transfer coins to the contract even with no way to retrieve them<br />
+(i.e. no withdrawal functionality on receiving contract), possibly leading<br />
+to the <strong><em>PERMANENT LOSS OF COINS</em></strong> if not used with care.</p>
+</blockquote>
+<h3>Arguments</h3>
+<ul>
+<li><code>amount</code> - The amount of tokens to transfer.</li>
+<li><code>asset_id</code> - The <code>ContractId</code> of the token to transfer.</li>
+<li><code>to</code> - The <code>Identity</code> of the recipient.</li>
+</ul>
+<h3>Reverts</h3>
+<ul>
+<li>If <code>amount</code> is greater than the contract balance for <code>asset_id</code>.</li>
+<li>If <code>amount</code> is equal to zero.</li>
+<li>If there are no free variable outputs when transferring to an <code>Address</code>.</li>
+</ul>
+<h3>Examples</h3>
+<pre lang="sway"><code>use std::{constants::{BASE_ASSET_ID, ZERO_B256}, token::transfer};
+
+// replace the zero Address/ContractId with your desired Address/ContractId
+let to_address = Identity::Address(Address::from(ZERO_B256));
+let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+transfer(500, BASE_ASSET_ID, to_address);
+transfer(500, BASE_ASSET_ID, to_contract_id);
+</code></pre>
+</div></details></section></div></main></body></html>
