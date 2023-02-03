@@ -9,7 +9,6 @@ fn test_foo() {
     assert(true);
 }
 
-/// Comment
 #[test]
 fn test_bar() {
     log("test");
