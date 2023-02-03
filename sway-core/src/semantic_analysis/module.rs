@@ -65,12 +65,14 @@ impl ty::TySubmodule {
         let ParseSubmodule {
             library_name,
             module,
+            dependency_path_span,
         } = submodule;
         parent_ctx.enter_submodule(dep_name, |submod_ctx| {
             let module_res = ty::TyModule::type_check(submod_ctx, module);
             module_res.map(|module| ty::TySubmodule {
                 library_name: library_name.clone(),
                 module,
+                dependency_path_span: dependency_path_span.clone(),
             })
         })
     }

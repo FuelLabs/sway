@@ -11,7 +11,7 @@ use sway_core::{
     decl_engine::DeclId,
     language::{
         parsed::Supertrait,
-        ty::{self, GetDeclIdent, TyEnumVariant},
+        ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
         CallPath,
     },
     namespace,
@@ -41,6 +41,56 @@ impl<'a> TypedTree<'a> {
             }
             ty::TyAstNodeContent::SideEffect => (),
         };
+    }
+
+    pub fn collect_module_spans(&self, typed_program: &TyProgram) {
+        self.collect_program_kind(&typed_program.kind);
+        self.collect_module(&typed_program.root);
+    }
+
+    pub fn collect_module(&self, typed_module: &TyModule) {
+        for (
+            _,
+            TySubmodule {
+                library_name,
+                module,
+                dependency_path_span,
+            },
+        ) in &typed_module.submodules
+        {
+            if let Some(mut token) = self
+                .tokens
+                .try_get_mut(&to_ident_key(&Ident::new(dependency_path_span.clone())))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypedIncludeStatement);
+                token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
+            }
+
+            if let Some(mut token) = self
+                .tokens
+                .try_get_mut(&to_ident_key(library_name))
+                .try_unwrap()
+            {
+                token.typed = Some(TypedAstToken::TypedLibraryName(library_name.clone()));
+                token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
+            }
+
+            self.collect_module(module);
+        }
+    }
+
+    fn collect_program_kind(&self, program_kind: &TyProgramKind) {
+        use TyProgramKind::*;
+        match program_kind {
+            Library { name } => {
+                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                    token.typed = Some(TypedAstToken::TypedProgramKind(program_kind.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
+                }
+            }
+            Script { .. } | Contract { .. } | Predicate { .. } => {}
+        }
     }
 
     fn handle_declaration(&self, declaration: &ty::TyDeclaration, namespace: &namespace::Module) {
