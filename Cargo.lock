@@ -1633,7 +1633,9 @@ version = "0.35.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "clap 3.2.23",
+ "devault",
  "forc",
  "forc-pkg",
  "forc-tracing",
@@ -1649,6 +1651,7 @@ dependencies = [
  "futures",
  "hex",
  "serde",
+ "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -1727,19 +1730,6 @@ dependencies = [
  "url",
  "vec1",
  "walkdir",
-]
-
-[[package]]
-name = "forc-submit"
-version = "0.33.1"
-dependencies = [
- "anyhow",
- "chrono",
- "clap 3.2.23",
- "fuel-gql-client",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]

@@ -1,47 +1,26 @@
-//! A `forc` plugin for submitting transactions to a Fuel network.
+use crate::cmd;
+use anyhow::Context;
+use fuel_core_client::client::{types::TransactionStatus, FuelClient};
 
-use fuel_gql_client::{client::types::TransactionStatus, fuel_tx};
-use std::path::PathBuf;
-
-/// The default Fuel node URL to which the transaction is submitted.
-pub const DEFAULT_URL: &str = "http://127.0.0.1:4000";
-
-/// Submit a transaction to the specified fuel node.
-#[derive(Debug, clap::Parser)]
-#[clap(about, version)]
-pub struct Command {
-    #[clap(flatten)]
-    pub network: Network,
-    #[clap(flatten)]
-    pub tx_status: TxStatus,
-    /// Path to the Transaction that is to be submitted to the Fuel node.
-    ///
-    /// Paths to files ending with `.json` will be deserialized from JSON.
-    /// Paths to files ending with `.bin` will be deserialized from bytes
-    /// using the `fuel_tx::Transaction::try_from_bytes` constructor.
-    pub tx_path: PathBuf,
-}
-
-/// Options related to networking.
-#[derive(Debug, clap::Args)]
-pub struct Network {
-    /// The URL of the Fuel node to which we're submitting the transaction.
-    #[clap(long, default_value_t = String::from(DEFAULT_URL))]
-    pub node_url: String,
-    /// Whether or not to await confirmation that the transaction has been committed.
-    ///
-    /// When `true`, await commitment and output the transaction status.
-    /// When `false`, do not await confirmation and simply output the transaction ID.
-    #[clap(long = "await", default_value_t = true)]
-    pub await_: bool,
-}
-
-/// Options related to the transaction status.
-#[derive(Debug, clap::Args)]
-pub struct TxStatus {
-    /// Output the resulting transaction status as JSON rather than the default output.
-    #[clap(long = "tx-status-json", default_value_t = false)]
-    pub json: bool,
+/// A command for submitting transactions to a Fuel network.
+pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
+    let tx = read_tx(&cmd.tx_path)?;
+    let client = FuelClient::new(&cmd.network.node_url)?;
+    if cmd.network.await_ {
+        let status = client
+            .submit_and_await_commit(&tx)
+            .await
+            .context("Submission of tx or awaiting commit failed")?;
+        if cmd.tx_status.json {
+            print_status_json(&status)?;
+        } else {
+            print_status(&status);
+        }
+    } else {
+        let id = client.submit(&tx).await.context("Failed to submit tx")?;
+        println!("{id}");
+    }
+    Ok(())
 }
 
 /// Deserialize a `Transaction` from the given file into memory.
