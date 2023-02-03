@@ -403,6 +403,7 @@ impl ty::TyExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
+                        call_path: None,
                     },
                     span,
                 }
@@ -426,6 +427,7 @@ impl ty::TyExpression {
                         name: decl_name,
                         span: name.span(),
                         mutability: ty::VariableMutability::Immutable,
+                        call_path: None,
                     },
                     span,
                 }
@@ -1005,9 +1007,8 @@ impl ty::TyExpression {
         if is_associated_call {
             let before_span = before.span();
             let type_name = before.inner;
-            let type_info_span = type_name.span();
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                name: type_name,
+                name: type_name.clone(),
                 type_arguments: None,
             });
 
@@ -1018,7 +1019,7 @@ impl ty::TyExpression {
                         type_arguments: before.type_arguments,
                         inner: CallPath {
                             prefixes,
-                            suffix: (type_info, type_info_span),
+                            suffix: (type_info, type_name),
                             is_absolute,
                         },
                     },
@@ -1145,7 +1146,7 @@ impl ty::TyExpression {
                     unknown_decl.expect_const(decl_engine, &call_path_binding.span())
                 })
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
-                .map(|const_decl| (const_decl, call_path_binding.span()))
+                .map(|const_decl| (const_decl, call_path_binding))
         };
 
         // compare the results of the checks
@@ -1160,7 +1161,7 @@ impl ty::TyExpression {
                         enum_name,
                         variant_name,
                         args,
-                        call_path_binding.strip_inner(),
+                        call_path_binding,
                         &span
                     ),
                     return err(warnings, errors),
@@ -1185,11 +1186,11 @@ impl ty::TyExpression {
                 ));
                 return err(module_probe_warnings, module_probe_errors);
             }
-            (false, None, None, Some((const_decl, span))) => {
+            (false, None, None, Some((const_decl, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
                 check!(
-                    instantiate_constant_decl(const_decl, span),
+                    instantiate_constant_decl(const_decl, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -1,5 +1,3 @@
-use sway_types::Span;
-
 use crate::language::CallPath;
 use crate::type_system::TypeBinding;
 use crate::{Ident, TypeInfo};
@@ -10,7 +8,7 @@ pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
     /// like `a::b::C::d()` with `C` being the type.
     FromType {
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Span)>>,
+        call_path_binding: TypeBinding<CallPath<(TypeInfo, Ident)>>,
         method_name: Ident,
     },
     /// Represents a method lookup that does not contain any types in the path

@@ -329,9 +329,10 @@ impl Namespace {
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name))
+            .chain(Some(dep_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        self.name = Some(dep_name);
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

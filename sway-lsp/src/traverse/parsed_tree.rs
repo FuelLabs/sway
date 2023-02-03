@@ -538,8 +538,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Expression(expression.clone()),
                         SymbolKind::Struct,
                     );
-                    let (type_info, span) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
+                    let (type_info, ident) = &call_path_binding.inner.suffix;
+                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
                 }
 
                 let token = Token::from_parsed(
