@@ -49,11 +49,6 @@ impl u16 {
     }
 
     /// The size of this integer type in bits.
-    ///
-    /// pub fn bits() -> u32 {
-    ///     16
-    /// }
-    ///
     pub fn bits() -> u32 {
         16
     }
