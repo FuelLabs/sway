@@ -160,10 +160,10 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = enum_decl.name.clone();
+                let call_path = enum_decl.call_path.clone();
                 let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -290,12 +290,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = decl.name.clone();
+                let call_path = decl.call_path.clone();
                 let decl_id = decl_engine.insert(decl);
                 let decl = ty::TyDeclaration::StructDeclaration(decl_id);
                 // insert the struct decl into namespace
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

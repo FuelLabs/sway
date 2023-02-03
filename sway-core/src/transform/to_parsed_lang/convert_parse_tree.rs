@@ -3186,7 +3186,7 @@ fn pattern_to_scrutinee(
                 .collect::<Result<_, _>>()?;
 
             Scrutinee::StructScrutinee {
-                struct_name: path_expr_to_ident(context, handler, path)?,
+                struct_name: path_expr_to_ident(context, handler, path)?.into(),
                 fields: { scrutinee_fields },
                 span,
             }

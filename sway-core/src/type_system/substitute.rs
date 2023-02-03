@@ -321,7 +321,7 @@ impl TypeSubstMap {
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::Struct {
                 fields,
-                name,
+                call_path,
                 type_parameters,
             } => {
                 let mut need_to_create_new = false;
@@ -350,7 +350,7 @@ impl TypeSubstMap {
                         decl_engine,
                         TypeInfo::Struct {
                             fields,
-                            name,
+                            call_path,
                             type_parameters,
                         },
                     ))
@@ -360,7 +360,7 @@ impl TypeSubstMap {
             }
             TypeInfo::Enum {
                 variant_types,
-                name,
+                call_path,
                 type_parameters,
             } => {
                 let mut need_to_create_new = false;
@@ -390,7 +390,7 @@ impl TypeSubstMap {
                         TypeInfo::Enum {
                             variant_types,
                             type_parameters,
-                            name,
+                            call_path,
                         },
                     ))
                 } else {

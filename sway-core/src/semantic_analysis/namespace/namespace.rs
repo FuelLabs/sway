@@ -7,12 +7,15 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
+use super::{
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
+    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
+};
 
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
-use std::collections::VecDeque;
+use std::{cmp::Ordering, collections::VecDeque};
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -217,6 +220,8 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
+        let mut matching_method_decl_ids: Vec<DeclId> = vec![];
+
         for decl_id in methods.into_iter() {
             let method = check!(
                 CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
@@ -225,8 +230,49 @@ impl Namespace {
                 errors
             );
             if &method.name == method_name {
-                return ok(decl_id, warnings, errors);
+                matching_method_decl_ids.push(decl_id);
             }
+        }
+
+        let matching_method_decl_id = match matching_method_decl_ids.len().cmp(&1) {
+            Ordering::Equal => matching_method_decl_ids.get(0).cloned(),
+            Ordering::Greater => {
+                // Case where multiple methods exist with the same name
+                // This is the case of https://github.com/FuelLabs/sway/issues/3633
+                // where multiple generic trait impls use the same method name but with different parameter types
+                let mut maybe_method_decl_id: Option<DeclId> = Option::None;
+                for decl_id in matching_method_decl_ids.clone().into_iter() {
+                    let method = check!(
+                        CompileResult::from(
+                            decl_engine.get_function(decl_id.clone(), &decl_id.span())
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if method.parameters.len() == args_buf.len()
+                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
+                            !are_equal_minus_dynamic_types(engines, p.type_id, a.return_type)
+                        })
+                    {
+                        maybe_method_decl_id = Some(decl_id);
+                        break;
+                    }
+                }
+                if let Some(matching_method_decl_id) = maybe_method_decl_id {
+                    // In case one or more methods match the parameter types we return the first match.
+                    Some(matching_method_decl_id)
+                } else {
+                    // When we can't match any method with parameter types we still return the first method found
+                    // This was the behavior before introducing the parameter type matching
+                    matching_method_decl_ids.get(0).cloned()
+                }
+            }
+            Ordering::Less => None,
+        };
+
+        if let Some(method_decl_id) = matching_method_decl_id {
+            return ok(method_decl_id, warnings, errors);
         }
 
         if !args_buf
