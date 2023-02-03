@@ -134,7 +134,6 @@ impl<'a> Unifier<'a> {
                     variant_types: rvs, ..
                 },
             ) if rvs.is_empty() => (vec![], vec![]),
-
             (
                 Enum {
                     call_path: rn,
