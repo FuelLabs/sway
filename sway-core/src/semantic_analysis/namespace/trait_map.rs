@@ -190,7 +190,7 @@ impl TraitMap {
                     type_implementing_for: engines.help_out(type_id).to_string(),
                     second_impl_span: impl_span.clone(),
                 });
-            } else if types_are_subset {
+            } else if types_are_subset && (traits_are_subset || is_impl_self) {
                 for (name, decl_id) in trait_methods.iter() {
                     if map_trait_methods.get(name).is_some() {
                         let method = check!(
@@ -793,7 +793,11 @@ impl TraitMap {
     }
 }
 
-fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: TypeId) -> bool {
+pub(crate) fn are_equal_minus_dynamic_types(
+    engines: Engines<'_>,
+    left: TypeId,
+    right: TypeId,
+) -> bool {
     if left.index() == right.index() {
         return true;
     }
