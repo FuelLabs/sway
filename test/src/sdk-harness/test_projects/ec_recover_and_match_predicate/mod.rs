@@ -57,7 +57,6 @@ async fn ec_recover_and_match_predicate_test() -> Result<(), Error> {
         "test_projects/ec_recover_and_match_predicate/out/debug/ec_recover_and_match_predicate.bin",
     )?;
 
-    let predicate_code = predicate.code();
     let predicate_address = predicate.address();
     let amount_to_predicate = 1000;
     let asset_id = AssetId::default();

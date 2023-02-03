@@ -45,7 +45,7 @@ impl ty::TyScrutinee {
                 struct_name,
                 fields,
                 span,
-            } => type_check_struct(ctx, struct_name, fields, span),
+            } => type_check_struct(ctx, struct_name.suffix, fields, span),
             Scrutinee::EnumScrutinee {
                 call_path,
                 value,
@@ -201,7 +201,10 @@ fn type_check_struct(
     }
 
     let typed_scrutinee = ty::TyScrutinee {
-        variant: ty::TyScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
+        variant: ty::TyScrutineeVariant::StructScrutinee(
+            struct_decl.call_path.suffix.clone(),
+            typed_fields,
+        ),
         type_id: struct_decl.create_type_id(ctx.engines()),
         span,
     };
@@ -318,6 +321,7 @@ fn type_check_tuple(
                     type_id: x.type_id,
                     initial_type_id: x.type_id,
                     span: span.clone(),
+                    name_spans: None,
                 })
                 .collect(),
         ),

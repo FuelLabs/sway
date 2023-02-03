@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -58,9 +58,12 @@ impl ty::TyStructDeclaration {
             ));
         }
 
+        let mut path: CallPath = name.into();
+        path = path.to_fullpath(ctx.namespace);
+
         // create the struct decl
         let decl = ty::TyStructDeclaration {
-            name,
+            call_path: path,
             type_parameters: new_type_parameters,
             fields: new_fields,
             visibility,

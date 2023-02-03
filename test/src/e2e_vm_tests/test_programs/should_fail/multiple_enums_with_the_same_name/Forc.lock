@@ -1,0 +1,8 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-7683E8E5A9EFF30D'
+
+[[package]]
+name = 'multiple_enums_with_the_same_name'
+source = 'member'
+dependencies = ['core']

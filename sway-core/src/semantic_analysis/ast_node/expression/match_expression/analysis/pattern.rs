@@ -306,7 +306,16 @@ impl Pattern {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match c {
-            Pattern::Wildcard => unreachable!(),
+            Pattern::Wildcard => {
+                if !args.is_empty() {
+                    errors.push(CompileError::Internal(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::Wildcard
+            }
             Pattern::U8(range) => {
                 if !args.is_empty() {
                     errors.push(CompileError::Internal(
@@ -508,8 +517,8 @@ impl Pattern {
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
             Pattern::Enum(_) => 1,
             Pattern::Tuple(elems) => elems.len(),
-            Pattern::Wildcard => unreachable!(),
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Wildcard => 0,
+            Pattern::Or(elems) => elems.len(),
         }
     }
 
@@ -638,6 +647,33 @@ impl Pattern {
         }
     }
 
+    /// Transforms this [Pattern] into a new [Pattern] that is a "root
+    /// constructor" of the given pattern. A root constructor [Pattern] is
+    /// defined as a pattern containing only wildcards as the subpatterns.
+    pub(super) fn into_root_constructor(self) -> Pattern {
+        match self {
+            Pattern::Wildcard => Pattern::Wildcard,
+            Pattern::U8(n) => Pattern::U8(n),
+            Pattern::U16(n) => Pattern::U16(n),
+            Pattern::U32(n) => Pattern::U32(n),
+            Pattern::U64(n) => Pattern::U64(n),
+            Pattern::B256(n) => Pattern::B256(n),
+            Pattern::Boolean(b) => Pattern::Boolean(b),
+            Pattern::Numeric(n) => Pattern::Numeric(n),
+            Pattern::String(s) => Pattern::String(s),
+            Pattern::Struct(pat) => Pattern::Struct(pat.into_root_constructor()),
+            Pattern::Enum(pat) => Pattern::Enum(pat.into_root_constructor()),
+            Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
+            Pattern::Or(elems) => {
+                let mut pat_stack = PatStack::empty();
+                for elem in elems.into_iter() {
+                    pat_stack.push(elem.into_root_constructor());
+                }
+                Pattern::Or(pat_stack)
+            }
+        }
+    }
+
     pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
         match (self, type_info) {
             (
@@ -647,12 +683,12 @@ impl Pattern {
                     ..
                 }),
                 TypeInfo::Enum {
-                    name: r_enum_name,
+                    call_path: r_enum_call_path,
                     variant_types,
                     ..
                 },
             ) => {
-                l_enum_name.as_str() == r_enum_name.as_str()
+                l_enum_name.as_str() == r_enum_call_path.suffix.as_str()
                     && variant_types
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
@@ -762,6 +798,20 @@ impl StructPattern {
     pub(crate) fn fields(&self) -> &Vec<(String, Pattern)> {
         &self.fields
     }
+
+    pub(super) fn into_root_constructor(self) -> StructPattern {
+        let StructPattern {
+            struct_name,
+            fields,
+        } = self;
+        StructPattern {
+            struct_name,
+            fields: fields
+                .into_iter()
+                .map(|(name, _)| (name, Pattern::Wildcard))
+                .collect(),
+        }
+    }
 }
 
 impl fmt::Display for StructPattern {
@@ -837,6 +887,21 @@ pub(crate) struct EnumPattern {
     pub(crate) enum_name: String,
     pub(crate) variant_name: String,
     pub(crate) value: Box<Pattern>,
+}
+
+impl EnumPattern {
+    pub(super) fn into_root_constructor(self) -> EnumPattern {
+        let EnumPattern {
+            enum_name,
+            variant_name,
+            value: _,
+        } = self;
+        EnumPattern {
+            enum_name,
+            variant_name,
+            value: Box::new(Pattern::Wildcard),
+        }
+    }
 }
 
 impl std::cmp::Ord for EnumPattern {

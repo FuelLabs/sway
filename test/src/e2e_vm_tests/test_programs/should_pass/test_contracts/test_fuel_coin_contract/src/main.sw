@@ -1,6 +1,6 @@
 contract;
 
-use std::{contract_id::ContractId, token::{burn, force_transfer_to_contract, mint}};
+use std::token::{burn, force_transfer_to_contract, mint};
 use test_fuel_coin_abi::*;
 
 impl TestFuelCoin for Contract {

@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn revert<T>() -> T {
     let code = 1u64;
     __revert(code)

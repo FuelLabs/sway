@@ -1,11 +1,13 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::EnforceTypeArguments,
-    CreateTypeId, TypeInfo,
+    type_system::*,
+    CreateTypeId, Ident, TypeInfo,
 };
 
 use super::{TypeArgument, TypeId};
@@ -82,6 +84,15 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEqWithEngines for TypeBinding<()> {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
+    }
+}
+
 impl<T> TypeBinding<T> {
     pub fn strip_inner(self) -> TypeBinding<()> {
         TypeBinding {
@@ -92,7 +103,7 @@ impl<T> TypeBinding<T> {
     }
 }
 
-impl TypeBinding<CallPath<(TypeInfo, Span)>> {
+impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
     pub(crate) fn type_check_with_type_info(
         &self,
         ctx: &mut TypeCheckContext,
@@ -103,7 +114,8 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
-        let (type_info, type_info_span) = self.inner.suffix.clone();
+        let (type_info, type_ident) = self.inner.suffix.clone();
+        let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
         let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);

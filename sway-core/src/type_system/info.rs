@@ -92,12 +92,12 @@ pub enum TypeInfo {
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
-        name: Ident,
+        call_path: CallPath,
         type_parameters: Vec<TypeParameter>,
         variant_types: Vec<ty::TyEnumVariant>,
     },
     Struct {
-        name: Ident,
+        call_path: CallPath,
         type_parameters: Vec<TypeParameter>,
         fields: Vec<ty::TyStructField>,
     },
@@ -172,22 +172,22 @@ impl HashWithEngines for TypeInfo {
                 state.write_u8(6);
             }
             TypeInfo::Enum {
-                name,
+                call_path,
                 variant_types,
                 type_parameters,
             } => {
                 state.write_u8(7);
-                name.hash(state);
+                call_path.hash(state);
                 variant_types.hash(state, type_engine);
                 type_parameters.hash(state, type_engine);
             }
             TypeInfo::Struct {
-                name,
+                call_path,
                 fields,
                 type_parameters,
             } => {
                 state.write_u8(8);
-                name.hash(state);
+                call_path.hash(state);
                 fields.hash(state, type_engine);
                 type_parameters.hash(state, type_engine);
             }
@@ -291,12 +291,12 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
                 Self::Enum {
-                    name: l_name,
+                    call_path: l_name,
                     variant_types: l_variant_types,
                     type_parameters: l_type_parameters,
                 },
                 Self::Enum {
-                    name: r_name,
+                    call_path: r_name,
                     variant_types: r_variant_types,
                     type_parameters: r_type_parameters,
                 },
@@ -307,12 +307,12 @@ impl PartialEqWithEngines for TypeInfo {
             }
             (
                 Self::Struct {
-                    name: l_name,
+                    call_path: l_name,
                     fields: l_fields,
                     type_parameters: l_type_parameters,
                 },
                 Self::Struct {
-                    name: r_name,
+                    call_path: r_name,
                     fields: r_fields,
                     type_parameters: r_type_parameters,
                 },
@@ -394,21 +394,21 @@ impl DisplayWithEngines for TypeInfo {
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
             Enum {
-                name,
+                call_path,
                 type_parameters,
                 ..
             } => print_inner_types(
                 engines,
-                name.as_str().to_string(),
+                call_path.suffix.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
             Struct {
-                name,
+                call_path,
                 type_parameters,
                 ..
             } => print_inner_types(
                 engines,
-                name.as_str().to_string(),
+                call_path.suffix.as_str().to_string(),
                 type_parameters.iter().map(|x| x.type_id),
             ),
             ContractCaller { abi_name, address } => {
@@ -541,52 +541,6 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        use TypeInfo::*;
-        match self {
-            Unknown => "unknown".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(_) => "_".to_string(),
-            Str(x) => format!("str[{}]", x.val()),
-            UnsignedInteger(x) => match x {
-                IntegerBits::Eight => "u8",
-                IntegerBits::Sixteen => "u16",
-                IntegerBits::ThirtyTwo => "u32",
-                IntegerBits::SixtyFour => "u64",
-            }
-            .into(),
-            Boolean => "bool".into(),
-            Custom { name, .. } => name.to_string(),
-            Tuple(fields) => {
-                let field_strs = fields
-                    .iter()
-                    .map(|field| field.json_abi_str(type_engine))
-                    .collect::<Vec<String>>();
-                format!("({})", field_strs.join(", "))
-            }
-            SelfType => "Self".into(),
-            B256 => "b256".into(),
-            Numeric => "u64".into(), // u64 is the default
-            Contract => "contract".into(),
-            ErrorRecovery => "unknown due to error".into(),
-            Enum { name, .. } => {
-                format!("enum {name}")
-            }
-            Struct { name, .. } => {
-                format!("struct {name}")
-            }
-            ContractCaller { abi_name, .. } => {
-                format!("contract caller {abi_name}")
-            }
-            Array(elem_ty, length) => {
-                format!("[{}; {}]", elem_ty.json_abi_str(type_engine), length.val())
-            }
-            Storage { .. } => "contract storage".into(),
-            RawUntypedPtr => "raw untyped ptr".into(),
-            RawUntypedSlice => "raw untyped slice".into(),
-        }
-    }
-
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
@@ -1487,12 +1441,12 @@ impl TypeInfo {
             }
             (
                 Self::Enum {
-                    name: l_name,
+                    call_path: l_name,
                     variant_types: l_variant_types,
                     type_parameters: l_type_parameters,
                 },
                 Self::Enum {
-                    name: r_name,
+                    call_path: r_name,
                     variant_types: r_variant_types,
                     type_parameters: r_type_parameters,
                 },
@@ -1519,12 +1473,12 @@ impl TypeInfo {
             }
             (
                 Self::Struct {
-                    name: l_name,
+                    call_path: l_name,
                     fields: l_fields,
                     type_parameters: l_type_parameters,
                 },
                 Self::Struct {
-                    name: r_name,
+                    call_path: r_name,
                     fields: r_fields,
                     type_parameters: r_type_parameters,
                 },
@@ -1580,7 +1534,12 @@ impl TypeInfo {
         let type_engine = engines.te();
         match (self, subfields.split_first()) {
             (TypeInfo::Struct { .. }, None) => err(warnings, errors),
-            (TypeInfo::Struct { name, fields, .. }, Some((first, rest))) => {
+            (
+                TypeInfo::Struct {
+                    call_path, fields, ..
+                },
+                Some((first, rest)),
+            ) => {
                 let field = match fields
                     .iter()
                     .find(|field| field.name.as_str() == first.as_str())
@@ -1592,7 +1551,7 @@ impl TypeInfo {
                             fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
                         errors.push(CompileError::FieldNotFound {
                             field_name: first.clone(),
-                            struct_name: name.clone(),
+                            struct_name: call_path.suffix.clone(),
                             available_fields: available_fields.join(", "),
                             span: first.span(),
                         });
@@ -1707,10 +1666,10 @@ impl TypeInfo {
         let errors = vec![];
         match self {
             TypeInfo::Enum {
-                name,
+                call_path,
                 variant_types,
                 ..
-            } => ok((name, variant_types), warnings, errors),
+            } => ok((&call_path.suffix, variant_types), warnings, errors),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],
@@ -1736,7 +1695,9 @@ impl TypeInfo {
         let warnings = vec![];
         let errors = vec![];
         match self {
-            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
+            TypeInfo::Struct {
+                call_path, fields, ..
+            } => ok((&call_path.suffix, fields), warnings, errors),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

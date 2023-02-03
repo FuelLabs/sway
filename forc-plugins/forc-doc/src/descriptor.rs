@@ -11,17 +11,17 @@ use sway_core::{
 use sway_types::Spanned;
 
 trait RequiredMethods {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>>;
 }
 impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
         self.iter()
             .map(|decl_id| {
                 decl_engine
                     .get_trait_fn(decl_id.clone(), &decl_id.span())
-                    .expect("could not get trait fn from declaration id")
+                    .map_err(|e| anyhow::anyhow!("{}", e))
             })
-            .collect()
+            .collect::<anyhow::Result<_>>()
     }
 }
 
@@ -49,7 +49,7 @@ impl Descriptor {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = struct_decl.name;
+                    let item_name = struct_decl.call_path.suffix;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
                     let context = (!struct_decl.fields.is_empty())
@@ -81,7 +81,7 @@ impl Descriptor {
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = enum_decl.name;
+                    let item_name = enum_decl.call_path.suffix;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
                     let context = (!enum_decl.variants.is_empty())
@@ -118,7 +118,7 @@ impl Descriptor {
                         .then(|| trait_decl.attributes.to_html_string());
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
-                            trait_decl.interface_surface.to_methods(decl_engine),
+                            trait_decl.interface_surface.to_methods(decl_engine)?,
                         ),
                     );
 
@@ -150,7 +150,7 @@ impl Descriptor {
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
-                        abi_decl.interface_surface.to_methods(decl_engine),
+                        abi_decl.interface_surface.to_methods(decl_engine)?,
                     ),
                 );
 
@@ -202,33 +202,34 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            ImplTrait(ref decl_id) => {
-                // TODO: figure out how to use this, likely we don't want to document this directly.
-                //
-                // This declaration type may make more sense to document as part of another declaration
-                // much like how we document method functions for traits or fields on structs.
-                let impl_trait = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
-                let item_name = impl_trait.trait_name.suffix;
-                Ok(Descriptor::Documentable(Document {
-                    module_info: module_info.clone(),
-                    item_header: ItemHeader {
-                        module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
-                        item_name: item_name.clone(),
-                    },
-                    item_body: ItemBody {
-                        module_info,
-                        ty_decl: ty_decl.clone(),
-                        item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemImpl>(
-                            impl_trait.span.as_str(),
-                        ),
-                        attrs_opt: None, // no attributes field
-                        item_context: ItemContext { context: None },
-                    },
-                    raw_attributes: None,
-                }))
-            }
+            // Uncomment this when we decide how to handle ImplTraits
+            // ImplTrait(ref decl_id) => {
+            // TODO: figure out how to use this, likely we don't want to document this directly.
+            //
+            // This declaration type may make more sense to document as part of another declaration
+            // much like how we document method functions for traits or fields on structs.
+            //     let impl_trait = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
+            //     let item_name = impl_trait.trait_name.suffix;
+            //     Ok(Descriptor::Documentable(Document {
+            //         module_info: module_info.clone(),
+            //         item_header: ItemHeader {
+            //             module_info: module_info.clone(),
+            //             friendly_name: ty_decl.friendly_name(),
+            //             item_name: item_name.clone(),
+            //         },
+            //         item_body: ItemBody {
+            //             module_info,
+            //             ty_decl: ty_decl.clone(),
+            //             item_name,
+            //             code_str: parse::parse_format::<sway_ast::ItemImpl>(
+            //                 impl_trait.span.as_str(),
+            //             ),
+            //             attrs_opt: None, // no attributes field
+            //             item_context: ItemContext { context: None },
+            //         },
+            //         raw_attributes: None,
+            //     }))
+            // }
             FunctionDeclaration(ref decl_id) => {
                 let fn_decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && fn_decl.visibility.is_private() {

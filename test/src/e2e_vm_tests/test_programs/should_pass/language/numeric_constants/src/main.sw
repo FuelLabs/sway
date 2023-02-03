@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn main() -> bool {
     assert(u64::max() == 18446744073709551615);
     assert(u64::min() == 0u64);

@@ -538,8 +538,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Expression(expression.clone()),
                         SymbolKind::Struct,
                     );
-                    let (type_info, span) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
+                    let (type_info, ident) = &call_path_binding.inner.suffix;
+                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
                 }
 
                 let token = Token::from_parsed(
@@ -755,6 +755,22 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
             }
+            TypeInfo::Custom {
+                name,
+                type_arguments,
+            } => {
+                if let Some(type_args) = type_arguments {
+                    for type_arg in type_args {
+                        self.collect_type_arg(type_arg, &token);
+                    }
+                }
+
+                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
+                token.kind = symbol_kind;
+                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
+                self.tokens
+                    .insert(to_ident_key(&Ident::new(name.span())), token);
+            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
@@ -790,7 +806,7 @@ impl<'a> ParsedTree<'a> {
             } => {
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
-                self.tokens.insert(to_ident_key(struct_name), token);
+                self.tokens.insert(to_ident_key(&struct_name.suffix), token);
 
                 for field in fields {
                     let token = Token::from_parsed(

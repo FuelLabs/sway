@@ -9,8 +9,6 @@ use crate::{
     type_system::*,
 };
 
-use fuel_abi_types::program_abi;
-
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
     Ident, Span, Spanned,
@@ -295,80 +293,6 @@ impl TyFunctionDeclaration {
             warnings,
             errors,
         )
-    }
-
-    pub(crate) fn generate_json_abi_function(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<program_abi::TypeDeclaration>,
-    ) -> program_abi::ABIFunction {
-        // A list of all `program_abi::TypeDeclaration`s needed for inputs
-        let input_types = self
-            .parameters
-            .iter()
-            .map(|x| program_abi::TypeDeclaration {
-                type_id: x.initial_type_id.index(),
-                type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                components: x.initial_type_id.get_json_type_components(
-                    type_engine,
-                    types,
-                    x.type_id,
-                ),
-                type_parameters: x
-                    .type_id
-                    .get_json_type_parameters(type_engine, types, x.type_id),
-            })
-            .collect::<Vec<_>>();
-
-        // The single `program_abi::TypeDeclaration` needed for the output
-        let output_type = program_abi::TypeDeclaration {
-            type_id: self.initial_return_type.index(),
-            type_field: self
-                .initial_return_type
-                .get_json_type_str(type_engine, self.return_type),
-            components: self.return_type.get_json_type_components(
-                type_engine,
-                types,
-                self.return_type,
-            ),
-            type_parameters: self.return_type.get_json_type_parameters(
-                type_engine,
-                types,
-                self.return_type,
-            ),
-        };
-
-        // Add the new types to `types`
-        types.extend(input_types);
-        types.push(output_type);
-
-        // Generate the JSON data for the function
-        program_abi::ABIFunction {
-            name: self.name.as_str().to_string(),
-            inputs: self
-                .parameters
-                .iter()
-                .map(|x| program_abi::TypeApplication {
-                    name: x.name.to_string(),
-                    type_id: x.initial_type_id.index(),
-                    type_arguments: x.initial_type_id.get_json_type_arguments(
-                        type_engine,
-                        types,
-                        x.type_id,
-                    ),
-                })
-                .collect(),
-            output: program_abi::TypeApplication {
-                name: "".to_string(),
-                type_id: self.initial_return_type.index(),
-                type_arguments: self.initial_return_type.get_json_type_arguments(
-                    type_engine,
-                    types,
-                    self.return_type,
-                ),
-            },
-            attributes: transform::generate_json_abi_attributes_map(&self.attributes),
-        }
     }
 
     /// Whether or not this function is the default entry point.

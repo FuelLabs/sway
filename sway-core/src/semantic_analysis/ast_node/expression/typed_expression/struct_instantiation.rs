@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) fn struct_instantiation(
     mut ctx: TypeCheckContext,
-    call_path_binding: TypeBinding<CallPath>,
+    mut call_path_binding: TypeBinding<CallPath>,
     fields: Vec<StructExpressionField>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
@@ -21,13 +21,19 @@ pub(crate) fn struct_instantiation(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
+    // We need the call_path_binding to have types that point to proper definitions so the LSP can
+    // look for them, but its types haven't been resolved yet.
+    // To that end we do a dummy type check which has the side effect of resolving the types.
+    let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
+
     let TypeBinding {
         inner: CallPath {
             prefixes, suffix, ..
         },
         type_arguments,
         span: inner_span,
-    } = call_path_binding;
+    } = call_path_binding.clone();
+
     let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
         ("Self", true) => TypeInfo::SelfType,
         ("Self", false) => {
@@ -114,6 +120,7 @@ pub(crate) fn struct_instantiation(
             struct_name: struct_name.clone(),
             fields: typed_fields,
             span: inner_span,
+            call_path_binding,
         },
         return_type: type_id,
         span,

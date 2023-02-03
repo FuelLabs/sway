@@ -1042,16 +1042,21 @@ impl Op {
         }
     }
 
-    pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> Vec<usize> {
+    pub(crate) fn successors(
+        &self,
+        index: usize,
+        ops: &[Op],
+        label_to_index: &HashMap<Label, usize>,
+    ) -> Vec<usize> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.successors(index, ops),
-            Either::Right(org_op) => org_op.successors(index, ops),
+            Either::Right(org_op) => org_op.successors(index, ops, label_to_index),
         }
     }
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<VirtualRegister, VirtualRegister>,
+        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         Op {
             opcode: match &self.opcode {
@@ -1647,13 +1652,8 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         .collect()
     }
 
-    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<Reg, Reg>) -> Self {
-        let update_reg = |reg: &Reg| -> Reg {
-            reg_to_reg_map
-                .get(reg)
-                .cloned()
-                .unwrap_or_else(|| reg.clone())
-        };
+    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
+        let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;
         match self {
@@ -1672,7 +1672,12 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         }
     }
 
-    pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> Vec<usize> {
+    pub(crate) fn successors(
+        &self,
+        index: usize,
+        ops: &[Op],
+        label_to_index: &HashMap<Label, usize>,
+    ) -> Vec<usize> {
         use ControlFlowOp::*;
 
         let mut next_ops = Vec::new();
@@ -1692,15 +1697,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | PopAll(_) => (),
 
             Jump(jump_label) | JumpIfNotEq(_, _, jump_label) | JumpIfNotZero(_, jump_label) => {
-                // Find the label in the ops list.
-                for (idx, op) in ops.iter().enumerate() {
-                    if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
-                        if op_label == *jump_label {
-                            next_ops.push(idx);
-                            break;
-                        }
-                    }
-                }
+                next_ops.push(label_to_index[jump_label]);
             }
         };
 
