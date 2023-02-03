@@ -83,7 +83,7 @@ A _stateless_ re-entrancy guard is included in the Sway-libs library. The guard 
 ```sway
 contract;
 
-use sway_libs::reentrancy::reentrancy_guard;
+use reentrancy::reentrancy_guard;
 
 abi MyContract {
     fn some_method();
