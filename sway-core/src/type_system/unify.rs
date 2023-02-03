@@ -125,6 +125,13 @@ impl<'a> Unifier<'a> {
                 _,
             ) if rvs.is_empty() => (vec![], vec![]),
             (
+                _,
+                Enum {
+                    variant_types: rvs, ..
+                },
+            ) if rvs.is_empty() => (vec![], vec![]),
+
+            (
                 Enum {
                     name: rn,
                     type_parameters: rtps,
