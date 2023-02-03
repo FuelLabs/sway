@@ -681,14 +681,14 @@ impl<T> Vec<T> {
     /// assert(!vec.contains(3));
     /// ```
     // TODO: replace `v` with `self` when trait constraints are merged
-    pub fn contains<T>(ref mut self, value: T) -> bool
+    pub fn contains<O>(ref mut v: Vec<O>, value: O) -> bool
     where
-        T: Eq
+        O: Eq
     {
         let mut i = 0;
         while i < v.len {
-            let index_ptr = v.buf.ptr.add::<T>(i);
-            if value == index_ptr.read::<T>() {
+            let index_ptr = v.buf.ptr.add::<O>(i);
+            if value == index_ptr.read::<O>() {
                 return true;
             }
             i += 1;
@@ -770,7 +770,7 @@ impl<T> Vec<T> {
     /// assert(!vec.is_sorted());
     /// ```
     pub fn is_sorted<O>(ref mut v: Vec<O>) -> bool where O: Ord {
-        let len = v.len();
+        let len = v.len;
 
         if len < 2 {
             return true;
@@ -778,7 +778,9 @@ impl<T> Vec<T> {
 
         let mut i = 0;
         while i < len - 1 {
-            if v.get(i).unwrap() > v.get(i + 1).unwrap() {
+            let current = v.buf.ptr.add::<O>(i).read::<O>();
+            let next = v.buf.ptr.add::<O>(i + 1).read::<O>();
+            if current > next {
                 return false;
             }
             i += 1;
