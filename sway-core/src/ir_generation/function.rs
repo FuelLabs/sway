@@ -1389,7 +1389,8 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)
+            .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument
