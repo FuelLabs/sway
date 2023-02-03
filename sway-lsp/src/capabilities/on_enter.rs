@@ -20,7 +20,6 @@ const DOC_COMMENT_START: &str = "///";
 
 /// If the change was an enter keypress or pasting multiple lines in a comment, it prefixes the line(s)
 /// with the appropriate comment start pattern (// or ///).
-/// If the change was an enter keypress after an open curly brace, it adds a closing curly brace.
 pub(crate) async fn on_enter(
     config: &OnEnterConfig,
     client: &Client,
@@ -34,23 +33,20 @@ pub(crate) async fn on_enter(
 
     let mut workspace_edit = None;
     let text_document = session
-        .get_text_document(&temp_uri)
+        .get_text_document(temp_uri)
         .expect("could not get text document");
 
-    if is_truthy(config.continue_doc_comments) {
+    if config.continue_doc_comments.unwrap_or(false) {
         workspace_edit = get_comment_workspace_edit(DOC_COMMENT_START, params, &text_document);
-    } else if is_truthy(config.continue_comments) {
+    } else if config.continue_comments.unwrap_or(false) {
         workspace_edit = get_comment_workspace_edit(COMMENT_START, params, &text_document);
     }
 
     // Apply any edits.
-    match workspace_edit {
-        Some(edit) => {
-            if let Err(err) = client.apply_edit(edit).await {
-                tracing::error!("on_enter failed to apply edit: {}", err);
-            }
+    if let Some(edit) = workspace_edit {
+        if let Err(err) = client.apply_edit(edit).await {
+            tracing::error!("on_enter failed to apply edit: {}", err);
         }
-        None => {}
     }
 }
 
@@ -99,13 +95,6 @@ fn get_comment_workspace_edit(
         })
     } else {
         None
-    }
-}
-
-fn is_truthy(boolean: Option<bool>) -> bool {
-    match boolean {
-        Some(b) => b,
-        None => false,
     }
 }
 

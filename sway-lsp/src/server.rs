@@ -17,7 +17,6 @@ use std::{
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Instant,
 };
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::*;
@@ -247,13 +246,10 @@ impl LanguageServer for Backend {
 
     ///
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let start1 = Instant::now();
-
         let config = self.config.read().on_enter.clone();
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
                 // handle on_enter capabilities if they are enabled
-                let start = Instant::now();
                 capabilities::on_enter(&config, &self.client, &session, &uri, &params).await;
 
                 // update this file with the new changes and write to disk
