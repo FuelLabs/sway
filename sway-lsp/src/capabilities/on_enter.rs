@@ -134,9 +134,8 @@ mod tests {
     fn get_comment_workspace_edit_double_slash_indented() {
         let path = get_absolute_path("sway-lsp/test/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document = TextDocument::build_from_path(&path.as_str())
-            .ok()
-            .expect("failed to build document");
+        let text_document =
+            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
         let params = DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier { uri, version: 1 },
             content_changes: vec![TextDocumentContentChangeEvent {
@@ -172,9 +171,8 @@ mod tests {
     fn get_comment_workspace_edit_triple_slash_paste() {
         let path = get_absolute_path("sway-lsp/test/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document = TextDocument::build_from_path(&path.as_str())
-            .ok()
-            .expect("failed to build document");
+        let text_document =
+            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
         let params = DidChangeTextDocumentParams {
             text_document: VersionedTextDocumentIdentifier { uri, version: 1 },
             content_changes: vec![TextDocumentContentChangeEvent {
