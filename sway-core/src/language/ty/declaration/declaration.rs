@@ -164,13 +164,15 @@ impl DisplayWithEngines for TyDeclaration {
                 }
                 TyDeclaration::StructDeclaration(decl_id) => {
                     match decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyStructDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyStructDeclaration { call_path, .. }) => {
+                            call_path.suffix.as_str().into()
+                        }
                         Err(_) => "unknown struct".into(),
                     }
                 }
                 TyDeclaration::EnumDeclaration(decl_id) => {
                     match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyEnumDeclaration { call_path, .. }) => call_path.suffix.as_str().into(),
                         Err(_) => "unknown enum".into(),
                     }
                 }
@@ -281,13 +283,15 @@ impl GetDeclIdent for TyDeclaration {
                 decl_engine
                     .get_struct(decl.clone(), &decl.span())
                     .unwrap()
-                    .name,
+                    .call_path
+                    .suffix,
             ),
             TyDeclaration::EnumDeclaration(decl) => Some(
                 decl_engine
                     .get_enum(decl.clone(), &decl.span())
                     .unwrap()
-                    .name,
+                    .call_path
+                    .suffix,
             ),
             TyDeclaration::ImplTrait(decl) => Some(
                 decl_engine

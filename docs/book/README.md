@@ -24,6 +24,7 @@ You must also install forc plugins that are already documented within the book. 
 cargo install --path ./forc-plugins/forc-fmt
 cargo install --path ./forc-plugins/forc-lsp
 cargo install --path ./forc-plugins/forc-explore
+cargo install --path ./forc-plugins/forc-doc
 ```
 
 To build book:

@@ -454,7 +454,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     tree_type: &TreeType,
 ) {
     let ty::TyStructDeclaration {
-        name,
+        call_path,
         fields,
         visibility,
         ..
@@ -478,9 +478,11 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
 
     // Now, populate the struct namespace with the location of this struct as well as the indexes
     // of the field names
-    graph
-        .namespace
-        .insert_struct(name.as_str().to_string(), entry_node, field_nodes);
+    graph.namespace.insert_struct(
+        call_path.suffix.as_str().to_string(),
+        entry_node,
+        field_nodes,
+    );
 }
 
 /// Implementations of traits are top-level things that are not conditional, so
@@ -601,10 +603,10 @@ fn connect_abi_declaration(
     // be used outside of the contract.
     for fn_decl_id in decl.interface_surface.iter() {
         let fn_decl = decl_engine.get_trait_fn(fn_decl_id.clone(), &decl.span)?;
-        if let Some(TypeInfo::Struct { name, .. }) =
+        if let Some(TypeInfo::Struct { call_path, .. }) =
             get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
         {
-            if let Some(ns) = graph.namespace.get_struct(&name).cloned() {
+            if let Some(ns) = graph.namespace.get_struct(&call_path.suffix).cloned() {
                 for (_, field_ix) in ns.fields.iter() {
                     graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
                 }
@@ -683,7 +685,7 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
 ) {
     graph
         .namespace
-        .insert_enum(enum_decl.name.clone(), entry_node);
+        .insert_enum(enum_decl.call_path.suffix.clone(), entry_node);
 
     // keep a mapping of each variant
     for variant in enum_decl.variants.iter() {
@@ -696,7 +698,7 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
         );
 
         graph.namespace.insert_enum_variant(
-            enum_decl.name.clone(),
+            enum_decl.call_path.suffix.clone(),
             entry_node,
             variant.name.clone(),
             variant_index,
@@ -770,21 +772,22 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
     for fn_param in &fn_decl.parameters {
         let ty = type_engine.to_typeinfo(fn_param.type_id, &fn_param.type_span)?;
         match ty {
-            TypeInfo::Enum { name, .. } => {
-                let ty_index = match graph.namespace.find_enum(&name) {
-                    Some(ix) => *ix,
-                    None => {
-                        graph.add_node(engines, format!("External enum  {}", name.as_str()).into())
-                    }
-                };
-                graph.add_edge(fn_decl_entry_node, ty_index, "".into());
-            }
-            TypeInfo::Struct { name, .. } => {
-                let ty_index = match graph.namespace.find_struct_decl(name.as_str()) {
+            TypeInfo::Enum { call_path, .. } => {
+                let ty_index = match graph.namespace.find_enum(&call_path.suffix) {
                     Some(ix) => *ix,
                     None => graph.add_node(
                         engines,
-                        format!("External struct  {}", name.as_str()).into(),
+                        format!("External enum  {}", call_path.suffix.as_str()).into(),
+                    ),
+                };
+                graph.add_edge(fn_decl_entry_node, ty_index, "".into());
+            }
+            TypeInfo::Struct { call_path, .. } => {
+                let ty_index = match graph.namespace.find_struct_decl(call_path.suffix.as_str()) {
+                    Some(ix) => *ix,
+                    None => graph.add_node(
+                        engines,
+                        format!("External struct  {}", call_path.suffix.as_str()).into(),
                     ),
                 };
                 graph.add_edge(fn_decl_entry_node, ty_index, "".into());
@@ -835,7 +838,7 @@ fn get_trait_fn_node_index<'a>(
                 let struct_decl = decl_engine.get_struct(decl, &expression_span)?;
                 Ok(graph
                     .namespace
-                    .find_trait_method(&struct_decl.name.into(), &fn_decl.name))
+                    .find_trait_method(&struct_decl.call_path.suffix.into(), &fn_decl.name))
             }
             ty::TyDeclaration::ImplTrait(decl) => {
                 let impl_trait = decl_engine.get_impl_trait(decl, &expression_span)?;
@@ -1158,14 +1161,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
             let resolved_type_of_parent = match resolved_type_of_parent {
-                TypeInfo::Struct { name, .. } => name,
+                TypeInfo::Struct { call_path, .. } => call_path,
                 _ => panic!("Called subfield on a non-struct"),
             };
             let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
                 .namespace
-                .find_struct_field_idx(resolved_type_of_parent.as_str(), field_name.as_str())
+                .find_struct_field_idx(resolved_type_of_parent.suffix.as_str(), field_name.as_str())
             {
                 Some(ix) => *ix,
                 None => graph.add_node(engines, "external struct".into()),
@@ -1563,16 +1566,16 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
     tree_type: &TreeType,
     options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let enum_name = &enum_decl.name;
+    let enum_call_path = enum_decl.call_path.clone();
     let (decl_ix, variant_index) = graph
         .namespace
-        .find_enum_variant_index(enum_name, variant_name)
+        .find_enum_variant_index(&enum_call_path.suffix, variant_name)
         .unwrap_or_else(|| {
             let node_idx = graph.add_node(
                 engines,
                 format!(
                     "extern enum {}::{}",
-                    enum_name.as_str(),
+                    enum_call_path.suffix.as_str(),
                     variant_name.as_str()
                 )
                 .into(),
@@ -1645,7 +1648,7 @@ fn construct_dead_code_warning_from_node(
             span,
         } => {
             let warning_span = match decl_engine.get_struct(decl_id.clone(), span) {
-                Ok(ty::TyStructDeclaration { name, .. }) => name.span(),
+                Ok(ty::TyStructDeclaration { call_path, .. }) => call_path.span(),
                 Err(_) => span.clone(),
             };
             CompileWarning {
@@ -1658,7 +1661,7 @@ fn construct_dead_code_warning_from_node(
             span,
         } => {
             let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
-                Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
+                Ok(ty::TyEnumDeclaration { call_path, .. }) => call_path.span(),
                 Err(_) => span.clone(),
             };
             CompileWarning {
