@@ -1,7 +1,7 @@
 contract;
 
 // ANCHOR: import
-use sway_libs::reentrancy::reentrancy_guard;
+use reentrancy::reentrancy_guard;
 // ANCHOR_END: import
 abi Vault {
     fn deposit();
