@@ -2,7 +2,7 @@ library assert;
 
 use ::logging::log;
 use ::revert::revert;
-use ::error_signals::FAILED_ASSERT_EQ_SIGNAL;
+use ::error_signals::{FAILED_ASSERT_SIGNAL, FAILED_ASSERT_EQ_SIGNAL};
 
 
 /// Asserts that the given `condition` will always be `true` during runtime.
@@ -28,7 +28,7 @@ use ::error_signals::FAILED_ASSERT_EQ_SIGNAL;
 /// ```
 pub fn assert(condition: bool) {
     if !condition {
-        revert(0);
+        revert(FAILED_ASSERT_SIGNAL);
     }
 }
 

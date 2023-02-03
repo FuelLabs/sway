@@ -37,7 +37,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{ParseProgram, TreeType},
-        ty::{self},
+        ty,
     },
     semantic_analysis::namespace,
     source_map::SourceMap,
@@ -1409,14 +1409,13 @@ fn pkg_graph_to_manifest_map(
         // Retrieve the parent node whose manifest is already stored.
         let (parent_manifest, dep_name) = graph
             .edges_directed(dep_node, Direction::Incoming)
-            .filter_map(|edge| {
+            .find_map(|edge| {
                 let parent_node = edge.source();
                 let dep_name = &edge.weight().name;
                 let parent = &graph[parent_node];
                 let parent_manifest = manifest_map.get(&parent.id())?;
                 Some((parent_manifest, dep_name))
             })
-            .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
         let dep_path = dep_path(graph, parent_manifest, dep_node, manifests).map_err(|e| {
             anyhow!(
@@ -2928,8 +2927,10 @@ pub fn build(
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
-        if let TreeType::Library { .. } = built_package.tree_type {
-            lib_namespace_map.insert(node, namespace.into());
+        if let TreeType::Library { ref name } = built_package.tree_type {
+            let mut namespace = namespace::Module::from(namespace);
+            namespace.name = Some(name.clone());
+            lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(manifest.dir());
         if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
@@ -3151,8 +3152,10 @@ pub fn check(
             Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-            lib_namespace_map.insert(node, typed_program.root.namespace.clone());
+        if let TreeType::Library { name } = typed_program.kind.tree_type() {
+            let mut namespace = typed_program.root.namespace.clone();
+            namespace.name = Some(name.clone());
+            lib_namespace_map.insert(node, namespace);
         }
 
         source_map.insert_dependency(manifest.dir());
