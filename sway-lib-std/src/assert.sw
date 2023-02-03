@@ -2,7 +2,7 @@ library assert;
 
 use ::logging::log;
 use ::revert::revert;
-use ::error_signals::FAILED_ASSERT_EQ_SIGNAL;
+use ::error_signals::{FAILED_ASSERT_SIGNAL, FAILED_ASSERT_EQ_SIGNAL};
 
 
 /// Asserts that the given `condition` will always be `true` during runtime.
@@ -28,10 +28,12 @@ use ::error_signals::FAILED_ASSERT_EQ_SIGNAL;
 /// ```
 pub fn assert(condition: bool) {
     if !condition {
-        revert(0);
+        revert(FAILED_ASSERT_SIGNAL);
     }
 }
 
+// NOTE: temporarily disabled until https://github.com/FuelLabs/sway/issues/3946 is fixed
+/*
 /// Asserts that the given values `v1` & `v2` will always be equal during runtime.
 ///
 /// ### Arguments
@@ -58,4 +60,4 @@ pub fn assert_eq<T>(v1: T, v2: T) where T: Eq {
         log(v2);
         revert(FAILED_ASSERT_EQ_SIGNAL);
     }
-}
+}*/

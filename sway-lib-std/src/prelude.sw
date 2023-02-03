@@ -13,7 +13,7 @@ use ::storage::StorageMap;
 use ::vec::Vec;
 
 // Error handling
-use ::assert::{assert, assert_eq};
+use ::assert::assert;
 use ::option::Option;
 use ::result::Result;
 use ::revert::{require, revert};

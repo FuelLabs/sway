@@ -28,6 +28,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
           cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
@@ -46,6 +47,9 @@ jobs:
       - name: Build Sway reference
         run: mdbook build docs/reference
 
+      - name: Build Sway std library
+        run: forc doc --manifest-path ./sway-lib-std
+
       - name: Deploy master book
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -60,6 +64,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/reference/book
           destination_dir: master/reference
+        if: github.ref == 'refs/heads/master'
+
+      - name: Deploy master std
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./sway-lib-std/out/doc
+          destination_dir: master/std
         if: github.ref == 'refs/heads/master'
 
       - name: Create master book redirect file
@@ -102,6 +114,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/reference/book
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/reference
+        if: startsWith(github.ref, 'refs/tags')
+
+      - name: Deploy std tag
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./sway-lib-std/out/doc
+          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
         if: startsWith(github.ref, 'refs/tags')
 
       - name: Create tag book redirect file
