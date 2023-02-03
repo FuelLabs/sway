@@ -3,11 +3,17 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    error::*,
+    language::{CallPath, Visibility},
+    transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
-    pub name: Ident,
+    pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
@@ -21,21 +27,21 @@ pub struct TyEnumDeclaration {
 impl EqWithEngines for TyEnumDeclaration {}
 impl PartialEqWithEngines for TyEnumDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
     }
 }
 
-impl CopyTypes for TyEnumDeclaration {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyEnumDeclaration {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -53,11 +59,11 @@ impl ReplaceSelfType for TyEnumDeclaration {
 impl CreateTypeId for TyEnumDeclaration {
     fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
-        type_engine.insert_type(
-            declaration_engine,
+        let decl_engine = engines.de();
+        type_engine.insert(
+            decl_engine,
             TypeInfo::Enum {
-                name: self.name.clone(),
+                call_path: self.call_path.clone(),
                 variant_types: self.variants.clone(),
                 type_parameters: self.type_parameters.clone(),
             },
@@ -77,7 +83,7 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 
     fn name(&self) -> &Ident {
-        &self.name
+        &self.call_path.suffix
     }
 }
 
@@ -96,7 +102,7 @@ impl TyEnumDeclaration {
             Some(variant) => ok(variant, warnings, errors),
             None => {
                 errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
+                    enum_name: self.call_path.suffix.clone(),
                     variant_name: variant_name.clone(),
                     span: variant_name.span(),
                 });
@@ -123,9 +129,7 @@ pub struct TyEnumVariant {
 impl HashWithEngines for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
         self.tag.hash(state);
     }
 }
@@ -139,15 +143,15 @@ impl PartialEqWithEngines for TyEnumVariant {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
             && self.tag == other.tag
     }
 }
 
-impl CopyTypes for TyEnumVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TyEnumVariant {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }
 

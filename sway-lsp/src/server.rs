@@ -1,10 +1,10 @@
 pub use crate::error::DocumentError;
 use crate::{
-    capabilities,
+    capabilities::{self, diagnostic::Diagnostics},
     config::{Config, Warnings},
     core::{session::Session, sync},
     error::{DirectoryError, LanguageServerError},
-    utils::debug,
+    utils::{debug, keyword_docs::KeywordDocs},
 };
 use dashmap::DashMap;
 use forc_pkg::manifest::PackageManifestFile;
@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_types::Spanned;
+use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::*;
 use tower_lsp::{jsonrpc, Client, LanguageServer};
 use tracing::metadata::LevelFilter;
@@ -27,6 +27,7 @@ use tracing::metadata::LevelFilter;
 pub struct Backend {
     pub client: Client,
     pub config: RwLock<Config>,
+    pub keyword_docs: KeywordDocs,
     sessions: DashMap<PathBuf, Arc<Session>>,
 }
 
@@ -34,10 +35,12 @@ impl Backend {
     pub fn new(client: Client) -> Self {
         let sessions = DashMap::new();
         let config = RwLock::new(Default::default());
+        let keyword_docs = KeywordDocs::new();
 
         Backend {
             client,
             config,
+            keyword_docs,
             sessions,
         }
     }
@@ -67,7 +70,10 @@ impl Backend {
                 if let LanguageServerError::FailedToParse { diagnostics } = err {
                     diagnostics
                 } else {
-                    vec![]
+                    Diagnostics {
+                        warnings: vec![],
+                        errors: vec![],
+                    }
                 }
             }
         };
@@ -103,6 +109,9 @@ fn capabilities() -> ServerCapabilities {
         definition_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         ..ServerCapabilities::default()
     }
@@ -145,20 +154,31 @@ impl Backend {
         uri: &Url,
         workspace_uri: &Url,
         session: Arc<Session>,
-        diagnostics: Vec<Diagnostic>,
+        diagnostics: Diagnostics,
     ) {
         let diagnostics_res = {
-            let debug = &self.config.read().debug;
+            let mut diagnostics_to_publish = vec![];
+            let config = &self.config.read();
             let tokens = session.token_map().tokens_for_file(uri);
-            match debug.show_collected_tokens_as_warnings {
-                Warnings::Default => diagnostics,
+            match config.debug.show_collected_tokens_as_warnings {
                 // If collected_tokens_as_warnings is Parsed or Typed,
                 // take over the normal error and warning display behavior
                 // and instead show the either the parsed or typed tokens as warnings.
                 // This is useful for debugging the lsp parser.
-                Warnings::Parsed => debug::generate_warnings_for_parsed_tokens(tokens),
-                Warnings::Typed => debug::generate_warnings_for_typed_tokens(tokens),
+                Warnings::Parsed => diagnostics_to_publish
+                    .extend(debug::generate_warnings_for_parsed_tokens(tokens)),
+                Warnings::Typed => {
+                    diagnostics_to_publish.extend(debug::generate_warnings_for_typed_tokens(tokens))
+                }
+                Warnings::Default => {}
             }
+            if config.diagnostic.show_warnings {
+                diagnostics_to_publish.extend(diagnostics.warnings);
+            }
+            if config.diagnostic.show_errors {
+                diagnostics_to_publish.extend(diagnostics.errors);
+            }
+            diagnostics_to_publish
         };
 
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
@@ -285,7 +305,12 @@ impl LanguageServer for Backend {
         match self.get_uri_and_session(&params.text_document_position_params.text_document.uri) {
             Ok((uri, session)) => {
                 let position = params.text_document_position_params.position;
-                Ok(capabilities::hover::hover_data(session, uri, position))
+                Ok(capabilities::hover::hover_data(
+                    session,
+                    &self.keyword_docs,
+                    uri,
+                    position,
+                ))
             }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
@@ -305,6 +330,28 @@ impl LanguageServer for Backend {
                 params.text_document,
                 &temp_uri,
             )),
+            Err(err) => {
+                tracing::error!("{}", err.to_string());
+                Ok(None)
+            }
+        }
+    }
+
+    async fn code_lens(&self, params: CodeLensParams) -> jsonrpc::Result<Option<Vec<CodeLens>>> {
+        let mut result = vec![];
+        match self.get_uri_and_session(&params.text_document.uri) {
+            Ok((_, session)) => {
+                // Construct code lenses for runnable functions
+                session.runnables.iter().for_each(|item| {
+                    let runnable = item.value();
+                    result.push(CodeLens {
+                        range: runnable.range(),
+                        command: Some(runnable.command()),
+                        data: None,
+                    });
+                });
+                Ok(Some(result))
+            }
             Err(err) => {
                 tracing::error!("{}", err.to_string());
                 Ok(None)
@@ -440,15 +487,10 @@ impl LanguageServer for Backend {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunnableParams {
-    pub text_document: TextDocumentIdentifier,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ShowAstParams {
     pub text_document: TextDocumentIdentifier,
     pub ast_kind: String,
+    pub save_path: Url,
 }
 
 // Custom LSP-Server Methods
@@ -474,38 +516,14 @@ impl Backend {
         }
     }
 
-    pub async fn runnables(
-        &self,
-        params: RunnableParams,
-    ) -> jsonrpc::Result<Option<Vec<(Range, String)>>> {
-        match self.get_uri_and_session(&params.text_document.uri) {
-            Ok((_, session)) => {
-                let ranges = session
-                    .runnables
-                    .try_get(&capabilities::runnable::RunnableType::MainFn)
-                    .try_unwrap()
-                    .map(|item| {
-                        let runnable = item.value();
-                        vec![(runnable.range, format!("{}", runnable.tree_type))]
-                    });
-
-                Ok(ranges)
-            }
-            Err(err) => {
-                tracing::error!("{}", err.to_string());
-                Ok(None)
-            }
-        }
-    }
-
     /// This method is triggered by a command palette request in VScode
-    /// The 2 commands are: "show parsed ast" or "show typed ast"
+    /// The 3 commands are: "show lexed ast", "show parsed ast" or "show typed ast"
     ///
-    /// If either command is executed, the client requests this method
+    /// If any of these commands are executed, the client requests this method
     /// by calling the "sway/show_ast".
     ///
     /// The function expects the URI of the current open file where the
-    /// request was made, and if the "parsed" or "typed" ast was requested.
+    /// request was made, and if the "lexed", "parsed" or "typed" ast was requested.
     ///
     /// A formatted AST is written to a temporary file and the URI is
     /// returned to the client so it can be opened and displayed in a
@@ -523,7 +541,7 @@ impl Backend {
                 let write_ast_to_file =
                     |path: &Path, ast_string: &String| -> Option<TextDocumentIdentifier> {
                         if let Ok(mut file) = File::create(path) {
-                            let _ = writeln!(&mut file, "{}", ast_string);
+                            let _ = writeln!(&mut file, "{ast_string}");
                             if let Ok(uri) = Url::from_file_path(path) {
                                 // Return the tmp file path where the AST has been written to.
                                 return Some(TextDocumentIdentifier::new(uri));
@@ -532,52 +550,69 @@ impl Backend {
                         None
                     };
 
+                // Returns true if the current path matches the path of a submodule
+                let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
+                    ident.span().path().map(|a| a.deref()) == path.as_ref()
+                };
+
+                let ast_path = PathBuf::from(params.save_path.path());
                 {
                     let program = session.compiled_program.read();
                     match params.ast_kind.as_str() {
-                        "parsed" => {
-                            match program.parsed {
-                                Some(ref parsed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", parsed_program.root.tree.root_nodes);
-
-                                    for (ident, submodule) in &parsed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                        "lexed" => {
+                            Ok(program.lexed.as_ref().and_then(|lexed_program| {
+                                let mut formatted_ast = format!("{:#?}", program.lexed);
+                                for (ident, submodule) in &lexed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.tree.root_nodes);
-                                        }
+                                        formatted_ast = format!("{:#?}", submodule.module.tree);
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/parsed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                write_ast_to_file(
+                                    ast_path.join("lexed.rs").as_path(),
+                                    &formatted_ast,
+                                )
+                            }))
+                        }
+                        "parsed" => {
+                            Ok(program.parsed.as_ref().and_then(|parsed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast =
+                                    format!("{:#?}", parsed_program.root.tree.root_nodes);
+                                for (ident, submodule) in &parsed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
+                                        // overwrite the root AST with the submodule AST
+                                        formatted_ast =
+                                            format!("{:#?}", submodule.module.tree.root_nodes);
+                                    }
+                                }
+                                write_ast_to_file(
+                                    ast_path.join("parsed.rs").as_path(),
+                                    &formatted_ast,
+                                )
+                            }))
                         }
                         "typed" => {
-                            match program.typed {
-                                Some(ref typed_program) => {
-                                    // Initialize the string with the AST from the root
-                                    let mut formatted_ast: String =
-                                        format!("{:#?}", typed_program.root.all_nodes);
-
-                                    for (ident, submodule) in &typed_program.root.submodules {
-                                        // if the current path matches the path of a submodule
+                            Ok(program.typed.as_ref().and_then(|typed_program| {
+                                // Initialize the string with the AST from the root
+                                let mut formatted_ast = debug::print_decl_engine_types(
+                                    &typed_program.root.all_nodes,
+                                    &session.decl_engine.read(),
+                                );
+                                for (ident, submodule) in &typed_program.root.submodules {
+                                    if path_is_submodule(ident, &path) {
                                         // overwrite the root AST with the submodule AST
-                                        if ident.span().path().map(|a| a.deref()) == path.as_ref() {
-                                            formatted_ast =
-                                                format!("{:#?}", submodule.module.all_nodes);
-                                        }
+                                        formatted_ast = debug::print_decl_engine_types(
+                                            &submodule.module.all_nodes,
+                                            &session.decl_engine.read(),
+                                        );
                                     }
-
-                                    let tmp_ast_path = Path::new("/tmp/typed_ast.rs");
-                                    Ok(write_ast_to_file(tmp_ast_path, &formatted_ast))
                                 }
-                                _ => Ok(None),
-                            }
+                                write_ast_to_file(
+                                    ast_path.join("typed.rs").as_path(),
+                                    &formatted_ast,
+                                )
+                            }))
                         }
                         _ => Ok(None),
                     }
@@ -594,7 +629,11 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{doc_comments_dir, e2e_test_dir};
+    use crate::utils::test::{
+        assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
+        e2e_test_dir, get_fixture, runnables_test_dir, sway_workspace_dir, test_fixtures_dir,
+    };
+    use assert_json_diff::assert_json_eq;
     use serde_json::json;
     use std::{borrow::Cow, fs, io::Read, path::PathBuf};
     use tower::{Service, ServiceExt};
@@ -602,6 +641,17 @@ mod tests {
         jsonrpc::{self, Id, Request, Response},
         ExitedError, LspService,
     };
+
+    /// Holds the information needed to check the response of a goto definition request.
+    struct GotoDefintion<'a> {
+        req_uri: &'a Url,
+        req_line: i32,
+        req_char: i32,
+        def_line: i32,
+        def_start_char: i32,
+        def_end_char: i32,
+        def_path: &'a str,
+    }
 
     fn load_sway_example(manifest_dir: PathBuf) -> (Url, String) {
         let src_path = manifest_dir.join("src/main.sw");
@@ -633,8 +683,8 @@ mod tests {
         let params = json!({ "capabilities": capabilities() });
         let initialize = build_request_with_id("initialize", params, 1);
         let response = call_request(service, initialize.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!({ "capabilities": capabilities() }));
+        assert_json_eq!(expected, response.ok().unwrap());
         initialize
     }
 
@@ -647,8 +697,8 @@ mod tests {
     async fn shutdown_request(service: &mut LspService<Backend>) -> Request {
         let shutdown = Request::build("shutdown").id(1).finish();
         let response = call_request(service, shutdown.clone()).await;
-        let ok = Response::from_ok(1.into(), json!(null));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(1.into(), json!(null));
+        assert_json_eq!(expected, response.ok().unwrap());
         shutdown
     }
 
@@ -712,17 +762,32 @@ mod tests {
         assert_eq!(response, Ok(None));
     }
 
-    async fn show_ast_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn show_ast_request(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        ast_kind: &str,
+        save_path: Option<Url>,
+    ) -> Request {
+        // The path where the AST will be written to.
+        // If no path is provided, the default path is "/tmp"
+        let save_path = match save_path {
+            Some(path) => path,
+            None => Url::from_file_path(Path::new("/tmp")).unwrap(),
+        };
         let params = json!({
             "textDocument": {
                 "uri": uri
             },
-            "astKind": "typed",
+            "astKind": ast_kind,
+            "savePath": save_path,
         });
         let show_ast = build_request_with_id("sway/show_ast", params, 1);
         let response = call_request(service, show_ast.clone()).await;
-        let ok = Response::from_ok(1.into(), json!({"uri": "file:///tmp/typed_ast.rs"}));
-        assert_eq!(response, Ok(Some(ok)));
+        let expected = Response::from_ok(
+            1.into(),
+            json!({ "uri": format!("{save_path}/{ast_kind}.rs") }),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
         show_ast
     }
 
@@ -748,41 +813,52 @@ mod tests {
         document_symbol
     }
 
-    async fn go_to_definition_request(
-        service: &mut LspService<Backend>,
-        uri: &Url,
-        token_req_line: i32,
-        token_def_line: i32,
-        id: i64,
-    ) -> Request {
+    fn definition_request(uri: &Url, token_line: i32, token_char: i32, id: i64) -> Request {
         let params = json!({
             "textDocument": {
                 "uri": uri,
             },
             "position": {
-                "line": token_req_line,
-                "character": 24,
+                "line": token_line,
+                "character": token_char,
             }
         });
-        let definition = build_request_with_id("textDocument/definition", params, id);
-        let response = call_request(service, definition.clone()).await;
-        let ok = Response::from_ok(
-            id.into(),
-            json!({
-                "range": {
-                    "end": {
-                        "character": 11,
-                        "line": token_def_line,
-                    },
-                    "start": {
-                        "character": 7,
-                        "line": token_def_line,
-                    }
+        build_request_with_id("textDocument/definition", params, id)
+    }
+
+    async fn definition_check<'a>(
+        service: &mut LspService<Backend>,
+        go_to: &'a GotoDefintion<'a>,
+        id: i64,
+    ) -> Request {
+        let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+        let response = call_request(service, definition.clone())
+            .await
+            .unwrap()
+            .unwrap();
+        let value = response.result().unwrap().clone();
+        if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+            let uri = response.uri.as_str();
+            let range = json!({
+                "end": {
+                    "character": go_to.def_end_char,
+                    "line": go_to.def_line,
                 },
-                "uri": uri,
-            }),
-        );
-        assert_eq!(response, Ok(Some(ok)));
+                "start": {
+                    "character": go_to.def_start_char,
+                    "line": go_to.def_line,
+                }
+            });
+            assert_json_eq!(response.range, range);
+            assert!(
+                uri.ends_with(go_to.def_path),
+                "{} doesn't end with {}",
+                uri,
+                go_to.def_path,
+            );
+        } else {
+            panic!("Expected GotoDefinitionResponse::Scalar");
+        }
         definition
     }
 
@@ -798,7 +874,7 @@ mod tests {
         });
         let hover = build_request_with_id("textDocument/hover", params, 1);
         let response = call_request(service, hover.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!({
                 "contents": {
@@ -817,7 +893,7 @@ mod tests {
                 }
             }),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         hover
     }
 
@@ -848,7 +924,7 @@ mod tests {
         });
         let highlight = build_request_with_id("textDocument/documentHighlight", params, 1);
         let response = call_request(service, highlight.clone()).await;
-        let ok = Response::from_ok(
+        let expected = Response::from_ok(
             1.into(),
             json!([{
                     "range": {
@@ -864,8 +940,151 @@ mod tests {
                 }
             ]),
         );
-        assert_eq!(response, Ok(Some(ok)));
+        assert_json_eq!(expected, response.ok().unwrap());
         highlight
+    }
+
+    async fn code_action_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+            "range" : {
+                "start":{
+                    "line": 27,
+                    "character": 4
+                },
+                "end":{
+                    "line": 27,
+                    "character": 9
+                },
+            },
+            "context": {
+                "diagnostics": [],
+                "triggerKind": 2
+            }
+        });
+        let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+        let response = call_request(service, code_action.clone()).await;
+        let uri_string = uri.to_string();
+        let expected = Response::from_ok(
+            1.into(),
+            json!([{
+                "data": uri,
+                "edit": {
+                  "changes": {
+                    uri_string: [
+                      {
+                        "newText": "\nimpl FooABI for Contract {\n    /// This is the `main` method on the `FooABI` abi\n    fn main() -> u64 {}\n}\n",
+                        "range": {
+                          "end": {
+                            "character": 0,
+                            "line": 31
+                          },
+                          "start": {
+                            "character": 0,
+                            "line": 31
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "kind": "refactor",
+                "title": "Generate impl for contract"
+            }]),
+        );
+        assert_json_eq!(expected, response.ok().unwrap());
+        code_action
+    }
+
+    async fn code_lens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+        let params = json!({
+            "textDocument": {
+                "uri": uri,
+            },
+        });
+        let code_lens = build_request_with_id("textDocument/codeLens", params, 1);
+        let response = call_request(service, code_lens.clone()).await;
+        let actual_results = response
+            .unwrap()
+            .unwrap()
+            .into_parts()
+            .1
+            .ok()
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .clone();
+        let expected_results = vec![
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_bar"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 11
+                },
+                "start": {
+                  "character": 0,
+                  "line": 11
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "arguments": [
+                  {
+                    "name": "test_foo"
+                  }
+                ],
+                "command": "sway.runTests",
+                "title": "▶︎ Run Test"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 6
+                },
+                "start": {
+                  "character": 0,
+                  "line": 6
+                }
+              }
+            }),
+            json!({
+              "command": {
+                "command": "sway.runScript",
+                "title": "▶︎ Run"
+              },
+              "range": {
+                "end": {
+                  "character": 7,
+                  "line": 2
+                },
+                "start": {
+                  "character": 3,
+                  "line": 2
+                }
+              }
+            }),
+        ];
+
+        assert_eq!(actual_results.len(), expected_results.len());
+        for expected in expected_results.iter() {
+            assert!(
+                actual_results.contains(expected),
+                "Expected {actual_results:?} to contain {expected:?}"
+            );
+        }
+        code_lens
     }
 
     async fn init_and_open(service: &mut LspService<Backend>, manifest_dir: PathBuf) -> Url {
@@ -879,6 +1098,58 @@ mod tests {
     async fn shutdown_and_exit(service: &mut LspService<Backend>) {
         let _ = shutdown_request(service).await;
         exit_notification(service).await;
+    }
+
+    // This method iterates over all of the examples in the e2e langauge should_pass dir
+    // and saves the lexed, parsed, and typed ASTs to the users home directory.
+    // This makes it easy to grep for certain compiler types to inspect their use cases,
+    // providing necessary context when working on the traversal modules.
+    #[allow(unused)]
+    //#[tokio::test]
+    async fn write_all_example_asts() {
+        let (mut service, _) = LspService::build(Backend::new)
+            .custom_method("sway/show_ast", Backend::show_ast)
+            .finish();
+        let _ = initialize_request(&mut service).await;
+        initialized_notification(&mut service).await;
+
+        let ast_folder = dirs::home_dir()
+            .expect("could not get users home directory")
+            .join("sway_asts");
+        let _ = fs::create_dir(&ast_folder);
+        let e2e_dir = sway_workspace_dir().join(e2e_language_dir());
+        let mut entries = fs::read_dir(&e2e_dir)
+            .unwrap()
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()
+            .unwrap();
+
+        // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+        // ordering is required the entries should be explicitly sorted.
+        entries.sort();
+
+        for entry in entries {
+            let manifest_dir = entry;
+            let example_name = manifest_dir.file_name().unwrap();
+            if manifest_dir.is_dir() {
+                let example_dir = ast_folder.join(example_name);
+                if !dir_contains_forc_manifest(manifest_dir.as_path()) {
+                    continue;
+                }
+                match fs::create_dir(&example_dir) {
+                    Ok(_) => (),
+                    Err(_) => continue,
+                }
+
+                let example_dir = Some(Url::from_file_path(example_dir).unwrap());
+                let (uri, sway_program) = load_sway_example(manifest_dir);
+                did_open_notification(&mut service, &uri, &sway_program).await;
+                let _ = show_ast_request(&mut service, &uri, "lexed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "parsed", example_dir.clone()).await;
+                let _ = show_ast_request(&mut service, &uri, "typed", example_dir).await;
+            }
+        }
+        shutdown_and_exit(&mut service).await;
     }
 
     #[tokio::test]
@@ -953,9 +1224,19 @@ mod tests {
     async fn lsp_syncs_with_workspace_edits() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            def_line: 19,
+            def_start_char: 7,
+            def_end_char: 11,
+            def_path: uri.as_str(),
+        };
+        let _ = definition_check(&mut service, &go_to, 1).await;
         let _ = did_change_request(&mut service, &uri).await;
-        let _ = go_to_definition_request(&mut service, &uri, 45, 20, 2).await;
+        go_to.def_line = 20;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 24, 2).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -966,7 +1247,7 @@ mod tests {
             .finish();
 
         let uri = init_and_open(&mut service, e2e_test_dir()).await;
-        let _ = show_ast_request(&mut service, &uri).await;
+        let _ = show_ast_request(&mut service, &uri, "typed", None).await;
         shutdown_and_exit(&mut service).await;
     }
 
@@ -974,7 +1255,456 @@ mod tests {
     async fn go_to_definition() {
         let (mut service, _) = LspService::new(Backend::new);
         let uri = init_and_open(&mut service, doc_comments_dir()).await;
-        let _ = go_to_definition_request(&mut service, &uri, 44, 19, 1).await;
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            def_line: 19,
+            def_start_char: 7,
+            def_end_char: 11,
+            def_path: uri.as_str(),
+        };
+        let _ = definition_check(&mut service, &go_to, 1).await;
+        shutdown_and_exit(&mut service).await;
+    }
+
+    async fn definition_check_with_req_offset<'a>(
+        service: &mut LspService<Backend>,
+        go_to: &mut GotoDefintion<'a>,
+        req_line: i32,
+        req_char: i32,
+        id: i64,
+    ) {
+        go_to.req_line = req_line;
+        go_to.req_char = req_char;
+        let _ = definition_check(service, go_to, id).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_inside_turbofish() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("turbofish"),
+        )
+        .await;
+
+        let mut opt_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 15,
+            req_char: 12,
+            def_line: 80,
+            def_start_char: 9,
+            def_end_char: 15,
+            def_path: "sway-lib-std/src/option.sw",
+        };
+        // option.sw
+        let _ = definition_check(&mut service, &opt_go_to, 1).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 16, 17, 2).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 17, 29, 3).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 18, 19, 4).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 20, 13, 5).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 21, 19, 6).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 22, 29, 7).await;
+        definition_check_with_req_offset(&mut service, &mut opt_go_to, 23, 18, 8).await;
+
+        let mut res_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 20,
+            req_char: 19,
+            def_line: 60,
+            def_start_char: 9,
+            def_end_char: 15,
+            def_path: "sway-lib-std/src/result.sw",
+        };
+        // result.sw
+        let _ = definition_check(&mut service, &res_go_to, 9).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 21, 25, 10).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 22, 36, 11).await;
+        definition_check_with_req_offset(&mut service, &mut res_go_to, 23, 27, 12).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_paths() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("paths"),
+        )
+        .await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 8,
+            req_char: 13,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 11,
+            def_path: "sway-lib-std/src/lib.sw",
+        };
+        // std
+        let _ = definition_check(&mut service, &go_to, 1).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 10, 14, 2).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 16, 5, 3).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 22, 13, 4).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 8,
+            req_char: 19,
+            def_line: 74,
+            def_start_char: 8,
+            def_end_char: 14,
+            def_path: "sway-lib-std/src/option.sw",
+        };
+        // option
+        let _ = definition_check(&mut service, &go_to, 5).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 8,
+            req_char: 27,
+            def_line: 80,
+            def_start_char: 9,
+            def_end_char: 15,
+            def_path: "sway-lib-std/src/option.sw",
+        };
+        // Option
+        let _ = definition_check(&mut service, &go_to, 6).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 9, 14, 7).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 10,
+            req_char: 17,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 10,
+            def_path: "sway-lib-std/src/vm/mod.sw",
+        };
+        // vm
+        let _ = definition_check(&mut service, &go_to, 8).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 10,
+            req_char: 22,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 11,
+            def_path: "sway-lib-std/src/vm/evm/mod.sw",
+        };
+        // evm
+        let _ = definition_check(&mut service, &go_to, 9).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 10,
+            req_char: 27,
+            def_line: 1,
+            def_start_char: 8,
+            def_end_char: 19,
+            def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
+        };
+        // evm_address
+        let _ = definition_check(&mut service, &go_to, 10).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 10,
+            req_char: 42,
+            def_line: 7,
+            def_start_char: 11,
+            def_end_char: 21,
+            def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
+        };
+        // EvmAddress
+        let _ = definition_check(&mut service, &go_to, 11).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 14,
+            req_char: 6,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 16,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        };
+        // test_mod
+        let _ = definition_check(&mut service, &go_to, 12).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 20, 7, 13).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 14,
+            req_char: 16,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        };
+        // test_fun
+        let _ = definition_check(&mut service, &go_to, 14).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 15,
+            req_char: 8,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 16,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod.sw",
+        };
+        // deep_mod
+        let _ = definition_check(&mut service, &go_to, 15).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 15,
+            req_char: 18,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 18,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
+        // deeper_mod
+        let _ = definition_check(&mut service, &go_to, 16).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 15,
+            req_char: 29,
+            def_line: 2,
+            def_start_char: 7,
+            def_end_char: 15,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        };
+        // deep_fun
+        let _ = definition_check(&mut service, &go_to, 17).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 16,
+            req_char: 11,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 14,
+            def_path: "sway-lib-std/src/assert.sw",
+        };
+        // assert
+        let _ = definition_check(&mut service, &go_to, 18).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 17,
+            req_char: 13,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 12,
+            def_path: "sway-lib-core/src/lib.sw",
+        };
+        // core
+        let _ = definition_check(&mut service, &go_to, 19).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 17,
+            req_char: 21,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 18,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // primitives
+        let _ = definition_check(&mut service, &go_to, 20).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 23, 20, 21).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 19,
+            req_char: 4,
+            def_line: 6,
+            def_start_char: 5,
+            def_end_char: 6,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        };
+        // A
+        let _ = definition_check(&mut service, &go_to, 22).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 20, 14, 23).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 19,
+            req_char: 7,
+            def_line: 7,
+            def_start_char: 11,
+            def_end_char: 14,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        };
+        // fun
+        let _ = definition_check(&mut service, &go_to, 24).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 20, 18, 25).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 22,
+            req_char: 20,
+            def_line: 0,
+            def_start_char: 8,
+            def_end_char: 17,
+            def_path: "sway-lib-std/src/constants.sw",
+        };
+        // constants
+        let _ = definition_check(&mut service, &go_to, 26).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 22,
+            req_char: 31,
+            def_line: 5,
+            def_start_char: 10,
+            def_end_char: 19,
+            def_path: "sway-lib-std/src/constants.sw",
+        };
+        // ZERO_B256
+        let _ = definition_check(&mut service, &go_to, 27).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 17,
+            req_char: 31,
+            def_line: 2,
+            def_start_char: 5,
+            def_end_char: 8,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // u64
+        let _ = definition_check(&mut service, &go_to, 28).await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 11,
+            req_char: 17,
+            def_line: 74,
+            def_start_char: 5,
+            def_end_char: 9,
+            def_path: "sway-lib-core/src/primitives.sw",
+        };
+        // b256
+        let _ = definition_check(&mut service, &go_to, 29).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 23, 31, 30).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_traits() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("traits"),
+        )
+        .await;
+
+        let mut trait_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 6,
+            req_char: 10,
+            def_line: 2,
+            def_start_char: 10,
+            def_end_char: 15,
+            def_path: "sway-lsp/test/fixtures/tokens/traits/src/traits.sw",
+        };
+
+        let _ = definition_check(&mut service, &trait_go_to, 1).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 7, 10, 2).await;
+        definition_check_with_req_offset(&mut service, &mut trait_go_to, 10, 6, 3).await;
+        trait_go_to.req_line = 7;
+        trait_go_to.req_char = 20;
+        trait_go_to.def_line = 3;
+        let _ = definition_check(&mut service, &trait_go_to, 3).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_variables() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("variables"),
+        )
+        .await;
+
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 26,
+            def_line: 22,
+            def_start_char: 8,
+            def_end_char: 17,
+            def_path: uri.as_str(),
+        };
+        // Variable expressions
+        let _ = definition_check(&mut service, &go_to, 1).await;
+
+        // Function arguments
+        go_to.def_line = 23;
+        definition_check_with_req_offset(&mut service, &mut go_to, 28, 35, 2).await;
+
+        // Struct fields
+        go_to.def_line = 22;
+        definition_check_with_req_offset(&mut service, &mut go_to, 31, 45, 3).await;
+
+        // Enum fields
+        go_to.def_line = 22;
+        definition_check_with_req_offset(&mut service, &mut go_to, 34, 39, 4).await;
+
+        // Tuple elements
+        go_to.def_line = 24;
+        definition_check_with_req_offset(&mut service, &mut go_to, 37, 20, 5).await;
+
+        // Array elements
+        go_to.def_line = 25;
+        definition_check_with_req_offset(&mut service, &mut go_to, 40, 20, 6).await;
+
+        // Scoped declarations
+        go_to.def_line = 44;
+        go_to.def_start_char = 12;
+        go_to.def_end_char = 21;
+        definition_check_with_req_offset(&mut service, &mut go_to, 45, 13, 7).await;
+
+        // If let scopes
+        go_to.def_line = 50;
+        go_to.def_start_char = 38;
+        go_to.def_end_char = 39;
+        definition_check_with_req_offset(&mut service, &mut go_to, 50, 47, 8).await;
+
+        // Shadowing
+        go_to.def_line = 50;
+        go_to.def_start_char = 8;
+        go_to.def_end_char = 17;
+        definition_check_with_req_offset(&mut service, &mut go_to, 53, 29, 9).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn publish_diagnostics_dead_code_warning() {
+        let (mut service, socket) = LspService::new(Backend::new);
+        let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
+        let expected_requests = vec![fixture];
+        let socket_handle = assert_server_requests(socket, expected_requests, None).await;
+        let _ = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("diagnostics/dead_code"),
+        )
+        .await;
+        socket_handle
+            .await
+            .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
         shutdown_and_exit(&mut service).await;
     }
 
@@ -994,17 +1724,19 @@ mod tests {
     }
 
     macro_rules! lsp_capability_test {
-        ($test:ident, $capability:expr) => {
+        ($test:ident, $capability:expr, $dir:expr) => {
             #[tokio::test]
             async fn $test() {
-                test_lsp_capability!(doc_comments_dir(), $capability);
+                test_lsp_capability!($dir(), $capability);
             }
         };
     }
 
-    lsp_capability_test!(semantic_tokens, semantic_tokens_request);
-    lsp_capability_test!(document_symbol, document_symbol_request);
-    lsp_capability_test!(format, format_request);
-    lsp_capability_test!(hover, hover_request);
-    lsp_capability_test!(highlight, highlight_request);
+    lsp_capability_test!(semantic_tokens, semantic_tokens_request, doc_comments_dir);
+    lsp_capability_test!(document_symbol, document_symbol_request, doc_comments_dir);
+    lsp_capability_test!(format, format_request, doc_comments_dir);
+    lsp_capability_test!(hover, hover_request, doc_comments_dir);
+    lsp_capability_test!(highlight, highlight_request, doc_comments_dir);
+    lsp_capability_test!(code_action, code_action_request, doc_comments_dir);
+    lsp_capability_test!(code_lens, code_lens_request, runnables_test_dir);
 }

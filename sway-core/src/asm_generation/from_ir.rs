@@ -1,13 +1,16 @@
 use super::{
-    asm_builder::AsmBuilder,
-    checks::check_invalid_opcodes,
-    finalized_asm::FinalizedAsm,
-    programs::{AbstractEntry, AbstractProgram, ProgramKind},
-    register_sequencer::RegisterSequencer,
-    DataId, DataSection,
+    asm_builder::{AsmBuilder, AsmBuilderResult},
+    evm::EvmAsmBuilder,
+    finalized_asm::{check_invalid_opcodes, FinalizedAsm},
+    fuel::{
+        data_section::{DataId, DataSection},
+        fuel_asm_builder::FuelAsmBuilder,
+        register_sequencer::RegisterSequencer,
+    },
+    programs::{AbstractEntry, AbstractProgram, FinalProgram, ProgramKind},
 };
 
-use crate::{err, ok, BuildConfig, CompileResult, CompileWarning};
+use crate::{err, ok, BuildConfig, BuildTarget, CompileResult, CompileWarning};
 
 use sway_error::error::CompileError;
 use sway_ir::*;
@@ -26,38 +29,8 @@ pub fn compile_ir_to_asm(
     let mut errors: Vec<CompileError> = Vec::new();
 
     let module = ir.module_iter().next().unwrap();
-    let abstract_program = check!(
-        compile_module_to_asm(RegisterSequencer::new(), ir, module),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
-        println!("{abstract_program}\n");
-    }
-
-    let allocated_program = check!(
-        CompileResult::from(abstract_program.into_allocated_program()),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    if build_config
-        .map(|cfg| cfg.print_intermediate_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
-        println!("{allocated_program}");
-    }
-
     let final_program = check!(
-        CompileResult::from(allocated_program.into_final_program()),
+        compile_module_to_asm(RegisterSequencer::new(), ir, module, build_config),
         return err(warnings, errors),
         warnings,
         errors
@@ -87,7 +60,8 @@ fn compile_module_to_asm(
     reg_seqr: RegisterSequencer,
     context: &Context,
     module: Module,
-) -> CompileResult<AbstractProgram> {
+    build_config: Option<&BuildConfig>,
+) -> CompileResult<FinalProgram> {
     let kind = match module.get_kind(context) {
         Kind::Contract => ProgramKind::Contract,
         Kind::Library => ProgramKind::Library,
@@ -95,7 +69,20 @@ fn compile_module_to_asm(
         Kind::Script => ProgramKind::Script,
     };
 
-    let mut builder = AsmBuilder::new(kind, DataSection::default(), reg_seqr, context);
+    let build_target = match build_config {
+        Some(cfg) => cfg.build_target,
+        None => BuildTarget::default(),
+    };
+
+    let mut builder: Box<dyn AsmBuilder> = match build_target {
+        BuildTarget::Fuel => Box::new(FuelAsmBuilder::new(
+            kind,
+            DataSection::default(),
+            reg_seqr,
+            context,
+        )),
+        BuildTarget::EVM => Box::new(EvmAsmBuilder::new(kind, context)),
+    };
 
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.
@@ -116,27 +103,65 @@ fn compile_module_to_asm(
     }
 
     // Get the compiled result and massage a bit for the AbstractProgram.
-    let (data_section, reg_seqr, entries, non_entries) = builder.finalize();
-    let entries = entries
-        .into_iter()
-        .map(|(func, label, ops, test_decl_id)| {
-            let selector = func.get_selector(context);
-            let name = func.get_name(context).to_string();
-            AbstractEntry {
-                test_decl_id,
-                selector,
-                label,
-                ops,
-                name,
-            }
-        })
-        .collect();
+    let result = builder.finalize();
+    let final_program = match result {
+        AsmBuilderResult::Fuel(result) => {
+            let (data_section, reg_seqr, entries, non_entries) = result;
+            let entries = entries
+                .into_iter()
+                .map(|(func, label, ops, test_decl_id)| {
+                    let selector = func.get_selector(context);
+                    let name = func.get_name(context).to_string();
+                    AbstractEntry {
+                        test_decl_id,
+                        selector,
+                        label,
+                        ops,
+                        name,
+                    }
+                })
+                .collect();
 
-    ok(
-        AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr),
-        warnings,
-        errors,
-    )
+            let abstract_program =
+                AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr);
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
+                println!("{abstract_program}\n");
+            }
+
+            let allocated_program = check!(
+                CompileResult::from(abstract_program.into_allocated_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+
+            if build_config
+                .map(|cfg| cfg.print_intermediate_asm)
+                .unwrap_or(false)
+            {
+                println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
+                println!("{allocated_program}");
+            }
+
+            check!(
+                CompileResult::from(allocated_program.into_final_program()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )
+        }
+        AsmBuilderResult::Evm(result) => FinalProgram::Evm {
+            ops: result.ops,
+            abi: result.abi,
+        },
+    };
+
+    ok(final_program, warnings, errors)
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -172,40 +197,26 @@ pub enum StateAccessType {
 }
 
 pub(crate) fn ir_type_size_in_bytes(context: &Context, ty: &Type) -> u64 {
-    match ty {
-        Type::Unit | Type::Bool | Type::Uint(_) => 8,
-        Type::Slice => 16,
-        Type::B256 => 32,
-        Type::String(n) => size_bytes_round_up_to_word_alignment!(n),
-        Type::Array(aggregate) => {
-            if let AggregateContent::ArrayType(el_ty, cnt) = aggregate.get_content(context) {
-                cnt * ir_type_size_in_bytes(context, el_ty)
-            } else {
-                unreachable!("Wrong content for array.")
-            }
+    match ty.get_content(context) {
+        TypeContent::Unit | TypeContent::Bool | TypeContent::Uint(_) => 8,
+        TypeContent::Slice => 16,
+        TypeContent::B256 => 32,
+        TypeContent::String(n) => size_bytes_round_up_to_word_alignment!(*n),
+        TypeContent::Array(el_ty, cnt) => cnt * ir_type_size_in_bytes(context, el_ty),
+        TypeContent::Struct(field_tys) => {
+            // Sum up all the field sizes.
+            field_tys
+                .iter()
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .sum()
         }
-        Type::Struct(aggregate) => {
-            if let AggregateContent::FieldTypes(field_tys) = aggregate.get_content(context) {
-                // Sum up all the field sizes.
-                field_tys
-                    .iter()
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .sum()
-            } else {
-                unreachable!("Wrong content for struct.")
-            }
-        }
-        Type::Union(aggregate) => {
-            if let AggregateContent::FieldTypes(field_tys) = aggregate.get_content(context) {
-                // Find the max size for field sizes.
-                field_tys
-                    .iter()
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .max()
-                    .unwrap_or(0)
-            } else {
-                unreachable!("Wrong content for union.")
-            }
+        TypeContent::Union(field_tys) => {
+            // Find the max size for field sizes.
+            field_tys
+                .iter()
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .max()
+                .unwrap_or(0)
         }
     }
 }
@@ -216,44 +227,40 @@ pub(crate) fn aggregate_idcs_to_field_layout(
     ty: &Type,
     idcs: &[u64],
 ) -> ((u64, u64), Type) {
-    idcs.iter()
-        .fold(((0, 0), *ty), |((offs, _), ty), idx| match ty {
-            Type::Struct(aggregate) => {
-                let idx = *idx as usize;
-                let field_types = &aggregate.get_content(context).field_types();
-                let field_type = field_types[idx];
-                let field_offs_in_bytes = field_types
-                    .iter()
-                    .take(idx)
-                    .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
-                    .sum::<u64>();
-                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+    idcs.iter().fold(((0, 0), *ty), |((offs, _), ty), idx| {
+        if ty.is_struct(context) {
+            let idx = *idx as usize;
+            let field_types = ty.get_field_types(context);
+            let field_type = field_types[idx];
+            let field_offs_in_bytes = field_types
+                .iter()
+                .take(idx)
+                .map(|field_ty| ir_type_size_in_bytes(context, field_ty))
+                .sum::<u64>();
+            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
 
+            (
                 (
-                    (
-                        offs + size_bytes_in_words!(field_offs_in_bytes),
-                        field_size_in_bytes,
-                    ),
-                    field_type,
-                )
-            }
-
-            Type::Union(aggregate) => {
-                let idx = *idx as usize;
-                let field_type = aggregate.get_content(context).field_types()[idx];
-                let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
-                let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
-
-                // The union fields are at offset (union_size - variant_size) due to left padding.
+                    offs + size_bytes_in_words!(field_offs_in_bytes),
+                    field_size_in_bytes,
+                ),
+                field_type,
+            )
+        } else if ty.is_union(context) {
+            let idx = *idx as usize;
+            let field_type = ty.get_field_types(context)[idx];
+            let union_size_in_bytes = ir_type_size_in_bytes(context, &ty);
+            let field_size_in_bytes = ir_type_size_in_bytes(context, &field_type);
+            // The union fields are at offset (union_size - variant_size) due to left padding.
+            (
                 (
-                    (
-                        offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
-                        field_size_in_bytes,
-                    ),
-                    field_type,
-                )
-            }
-
-            _otherwise => panic!("Attempt to access field in non-aggregate."),
-        })
+                    offs + size_bytes_in_words!(union_size_in_bytes - field_size_in_bytes),
+                    field_size_in_bytes,
+                ),
+                field_type,
+            )
+        } else {
+            panic!("Attempt to access field in non-aggregate.")
+        }
+    })
 }

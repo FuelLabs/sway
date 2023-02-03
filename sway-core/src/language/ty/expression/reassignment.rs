@@ -2,12 +2,7 @@ use std::borrow::Cow;
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
-use crate::{
-    declaration_engine::{DeclMapping, ReplaceDecls},
-    engine_threading::*,
-    language::ty::*,
-    type_system::*,
-};
+use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyReassignment {
@@ -29,10 +24,10 @@ impl PartialEqWithEngines for TyReassignment {
     }
 }
 
-impl CopyTypes for TyReassignment {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.rhs.copy_types(type_mapping, engines);
-        self.lhs_type.copy_types(type_mapping, engines);
+impl SubstTypes for TyReassignment {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.rhs.subst(type_mapping, engines);
+        self.lhs_type.subst(type_mapping, engines);
     }
 }
 
@@ -112,7 +107,7 @@ impl ProjectionKind {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
-            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{:#?}", index)),
+            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }
     }
 }
@@ -171,7 +166,7 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
         let type_engine = engines.te();
         self.name == other.name
             && type_engine
-                .look_up_type_id(self.type_id)
-                .eq(&type_engine.look_up_type_id(other.type_id), engines)
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
     }
 }

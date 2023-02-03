@@ -1,6 +1,6 @@
 use fuels::{
-    contract::execution_script::ExecutableFuelCall,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     tx::{ConsensusParameters, Transaction},
 };
 use hex;

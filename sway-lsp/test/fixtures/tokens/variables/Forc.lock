@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-516E592B177796C8'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-516E592B177796C8'
+dependencies = ['core']
+
+[[package]]
+name = 'variables'
+source = 'member'
+dependencies = ['std']

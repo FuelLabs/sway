@@ -30,7 +30,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Build sway-lib-core
         run: forc build --path sway-lib-core
 
@@ -47,7 +47,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Build sway-lib-std
         run: forc build --path sway-lib-std
 
@@ -64,17 +64,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Install Forc fmt
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-plugins/forc-fmt
+          args: --locked --debug --path ./forc-plugins/forc-fmt
       - name: Build Sway examples
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin examples-checker build --all-examples
+          args: --locked --bin examples-checker build --all-examples
 
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
@@ -89,17 +89,17 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Install Forc fmt
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc-plugins/forc-fmt
+          args: --locked --debug --path ./forc-plugins/forc-fmt
       - name: Check Sway examples formatting
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin examples-checker fmt --all-examples
+          args: --locked --bin examples-checker fmt --all-examples
 
   build-mdbook:
     runs-on: ubuntu-latest
@@ -114,18 +114,20 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Install Forc plugins
         run: |
-          cargo install --debug --path ./forc-plugins/forc-fmt
-          cargo install --debug --path ./forc-plugins/forc-lsp
-          cargo install --debug --path ./forc-plugins/forc-client
-          cargo install --debug forc-explore
+          cargo install --locked --debug --path ./forc-plugins/forc-fmt
+          cargo install --locked --debug --path ./forc-plugins/forc-lsp
+          cargo install --locked --debug --path ./forc-plugins/forc-client
+          cargo install --locked --debug --path ./forc-plugins/forc-tx
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
+          cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./scripts/mdbook-forc-documenter
+          args: --locked --debug --path ./scripts/mdbook-forc-documenter
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
@@ -153,6 +155,26 @@ jobs:
             rm tmp.txt && exit 0
           fi
 
+  build-forc-doc-sway-lib-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --locked --debug --path ./forc
+      - name: Install Forc plugins
+        run: |
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
+      - name: Build sway-lib-std docs
+        run: forc doc --manifest-path ./sway-lib-std
+
   build-forc-test-project:
     runs-on: ubuntu-latest
     steps:
@@ -166,7 +188,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Initialize test project
         run: forc new test-proj
       - name: Update project forc manifest to use local sway-lib-std
@@ -264,11 +286,26 @@ jobs:
           profile: minimal
           toolchain: stable
       - uses: Swatinem/rust-cache@v1
-      - name: Cargo Run E2E Tests
+      - name: Cargo Run E2E Tests (Fuel VM)
         uses: actions-rs/cargo@v1
         with:
           command: run
           args: --locked --release --bin test -- --locked
+
+  cargo-run-e2e-test-evm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Cargo Run E2E Tests (EVM)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked --release --bin test -- --target evm --locked
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
@@ -301,7 +338,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: --debug --path ./forc
+          args: --locked --debug --path ./forc
       - name: Run Unit Tests
         run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
 
@@ -352,6 +389,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -383,6 +421,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -409,6 +448,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-doc/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-fmt/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-lsp/Cargo.toml
+          ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-plugins/forc-tx/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-test/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-tracing/Cargo.toml
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} forc-util/Cargo.toml
@@ -452,6 +492,7 @@ jobs:
         cargo-clippy,
         cargo-fmt-check,
         cargo-run-e2e-test,
+        cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
         cargo-unused-deps-check,
@@ -636,7 +677,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc; do
+          for BINARY in forc forc-fmt forc-lsp forc-deploy forc-run forc-doc forc-tx; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

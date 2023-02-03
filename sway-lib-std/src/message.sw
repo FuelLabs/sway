@@ -6,14 +6,15 @@ use ::outputs::{Output, output_count, output_type};
 use ::revert::revert;
 use ::error_signals::FAILED_SEND_MESSAGE_SIGNAL;
 
-
-/// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset
+/// Sends a message `msg_data` to `recipient` with a `coins` amount of the base asset.
+///
+/// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
 /// ### Arguments
 ///
-/// * `recipient` - The address of the message recipient
-/// * `msg_data` - Arbitrary length message data
-/// * `coins` - Amount of base asset to send
+/// * `recipient` - The address of the message recipient.
+/// * `msg_data` - Arbitrary length message data.
+/// * `coins` - Amount of base asset to send.
 pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     let mut recipient_and_msg_data_pointer = __addr_of(recipient);
     let mut size = 0;
@@ -46,15 +47,15 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     revert(FAILED_SEND_MESSAGE_SIGNAL);
 }
 
-/// Sends a message `msg_data` of type T to `recipient` with a `coins` amount of the base asset
+/// Sends a message `msg_data` of type `T` to `recipient` with a `coins` amount of the base asset.
 ///
-/// `send_typed_message` is the function to use if the message needs to be indexed
+/// Use `send_typed_message` instead of `send_message` if the message needs to be indexed.
 ///
 /// ### Arguments
 ///
-/// * `recipient` - The address of the message recipient
-/// * `msg_data` - Message data of arbitrary type `T`
-/// * `coins` - Amount of base asset to send
+/// * `recipient` - The address of the message recipient.
+/// * `msg_data` - Message data of arbitrary type `T`.
+/// * `coins` - Amount of base asset to send.
 pub fn send_typed_message<T>(recipient: b256, msg_data: T, coins: u64) {
     let mut output_index = 0;
     let outputs = output_count();

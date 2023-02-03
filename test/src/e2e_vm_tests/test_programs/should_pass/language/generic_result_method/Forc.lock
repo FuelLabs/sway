@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-D54DA94A05F8FCF5'
+
+[[package]]
+name = 'generic_result_method'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-D54DA94A05F8FCF5'
+dependencies = ['core']

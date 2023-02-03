@@ -69,7 +69,8 @@ keyword_impls! {
     TrueToken,
     FalseToken,
     BreakToken,
-    ContinueToken
+    ContinueToken,
+    ConfigurableToken
 }
 
 fn peek_token<T: Token>(peeker: Peeker<'_>) -> Option<T> {
@@ -150,7 +151,7 @@ token_impls! {
 }
 
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!
-pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
+pub const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "script",
     "contract",
     "predicate",
@@ -185,4 +186,5 @@ pub(crate) const RESERVED_KEYWORDS: phf::Set<&'static str> = phf::phf_set! {
     "false",
     "break",
     "continue",
+    "configurable",
 };

@@ -6,7 +6,7 @@ use std::{
 use sway_types::{state::StateIndex, Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationId, ReplaceDecls},
+    decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
     type_system::*,
@@ -19,11 +19,13 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclarationId,
+        function_decl_id: DeclId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
         selector: Option<ContractCallParams>,
+        /// optional binding information for the LSP
+        type_binding: Option<TypeBinding<()>>,
     },
     LazyOperator {
         op: LazyOp,
@@ -34,6 +36,7 @@ pub enum TyExpressionVariant {
         name: Ident,
         span: Span,
         mutability: VariableMutability,
+        call_path: Option<CallPath>,
     },
     Tuple {
         fields: Vec<TyExpression>,
@@ -49,6 +52,7 @@ pub enum TyExpressionVariant {
         struct_name: Ident,
         fields: Vec<TyStructExpressionField>,
         span: Span,
+        call_path_binding: TypeBinding<CallPath>,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -90,6 +94,7 @@ pub enum TyExpressionVariant {
         /// They are also used in the language server.
         enum_instantiation_span: Span,
         variant_instantiation_span: Span,
+        call_path_binding: TypeBinding<CallPath>,
     },
     AbiCast {
         abi_name: CallPath,
@@ -129,7 +134,7 @@ impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -146,10 +151,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_function_decl = declaration_engine
+                let l_function_decl = decl_engine
                     .get_function(l_function_decl_id.clone(), &Span::dummy())
                     .unwrap();
-                let r_function_decl = declaration_engine
+                let r_function_decl = decl_engine
                     .get_function(r_function_decl_id.clone(), &Span::dummy())
                     .unwrap();
                 l_name == r_name
@@ -181,11 +186,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     name: l_name,
                     span: l_span,
                     mutability: l_mutability,
+                    call_path: _,
                 },
                 Self::VariableExpression {
                     name: r_name,
                     span: r_span,
                     mutability: r_mutability,
+                    call_path: _,
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
@@ -214,11 +221,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     struct_name: l_struct_name,
                     fields: l_fields,
                     span: l_span,
+                    call_path_binding: _,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
                     span: r_span,
+                    call_path_binding: _,
                 },
             ) => {
                 l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
@@ -278,10 +287,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_field_to_access.eq(r_field_to_access, engines)
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::TupleElemAccess {
@@ -299,10 +307,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => {
                 (**l_prefix).eq(&**r_prefix, engines)
                     && l_elem_to_access_num == r_elem_to_access_num
-                    && type_engine.look_up_type_id(*l_resolved_type_of_parent).eq(
-                        &type_engine.look_up_type_id(*r_resolved_type_of_parent),
-                        engines,
-                    )
+                    && type_engine
+                        .get(*l_resolved_type_of_parent)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
             (
                 Self::EnumInstantiation {
@@ -373,8 +380,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
     }
 }
 
-impl CopyTypes for TyExpressionVariant {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyExpressionVariant {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         use TyExpressionVariant::*;
         match self {
             Literal(..) => (),
@@ -385,32 +392,32 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 arguments
                     .iter_mut()
-                    .for_each(|(_ident, expr)| expr.copy_types(type_mapping, engines));
+                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
                 let new_decl_id = function_decl_id
                     .clone()
-                    .copy_types_and_insert_new(type_mapping, engines);
+                    .subst_types_and_insert_new(type_mapping, engines);
                 function_decl_id.replace_id(*new_decl_id);
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).copy_types(type_mapping, engines);
-                (*rhs).copy_types(type_mapping, engines);
+                (*lhs).subst(type_mapping, engines);
+                (*rhs).subst(type_mapping, engines);
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             Array { contents } => contents
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             ArrayIndex { prefix, index } => {
-                (*prefix).copy_types(type_mapping, engines);
-                (*index).copy_types(type_mapping, engines);
+                (*prefix).subst(type_mapping, engines);
+                (*index).subst(type_mapping, engines);
             }
             StructExpression { fields, .. } => fields
                 .iter_mut()
-                .for_each(|x| x.copy_types(type_mapping, engines)),
+                .for_each(|x| x.subst(type_mapping, engines)),
             CodeBlock(block) => {
-                block.copy_types(type_mapping, engines);
+                block.subst(type_mapping, engines);
             }
             FunctionParameter => (),
             IfExp {
@@ -418,10 +425,10 @@ impl CopyTypes for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                condition.copy_types(type_mapping, engines);
-                then.copy_types(type_mapping, engines);
+                condition.subst(type_mapping, engines);
+                then.subst(type_mapping, engines);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.copy_types(type_mapping, engines);
+                    r#else.subst(type_mapping, engines);
                 }
             }
             AsmExpression {
@@ -430,7 +437,7 @@ impl CopyTypes for TyExpressionVariant {
             } => {
                 registers
                     .iter_mut()
-                    .for_each(|x| x.copy_types(type_mapping, engines));
+                    .for_each(|x| x.subst(type_mapping, engines));
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -440,54 +447,54 @@ impl CopyTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping, engines);
-                field_to_access.copy_types(type_mapping, engines);
-                prefix.copy_types(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, engines);
+                field_to_access.subst(type_mapping, engines);
+                prefix.subst(type_mapping, engines);
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.copy_types(type_mapping, engines);
-                prefix.copy_types(type_mapping, engines);
+                resolved_type_of_parent.subst(type_mapping, engines);
+                prefix.subst(type_mapping, engines);
             }
             EnumInstantiation {
                 enum_decl,
                 contents,
                 ..
             } => {
-                enum_decl.copy_types(type_mapping, engines);
+                enum_decl.subst(type_mapping, engines);
                 if let Some(ref mut contents) = contents {
-                    contents.copy_types(type_mapping, engines)
+                    contents.subst(type_mapping, engines)
                 };
             }
-            AbiCast { address, .. } => address.copy_types(type_mapping, engines),
+            AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
             StorageAccess { .. } => (),
             IntrinsicFunction(kind) => {
-                kind.copy_types(type_mapping, engines);
+                kind.subst(type_mapping, engines);
             }
             EnumTag { exp } => {
-                exp.copy_types(type_mapping, engines);
+                exp.subst(type_mapping, engines);
             }
             UnsafeDowncast { exp, variant } => {
-                exp.copy_types(type_mapping, engines);
-                variant.copy_types(type_mapping, engines);
+                exp.subst(type_mapping, engines);
+                variant.subst(type_mapping, engines);
             }
             AbiName(_) => (),
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.copy_types(type_mapping, engines);
-                body.copy_types(type_mapping, engines);
+                condition.subst(type_mapping, engines);
+                body.subst(type_mapping, engines);
             }
             Break => (),
             Continue => (),
-            Reassignment(reassignment) => reassignment.copy_types(type_mapping, engines),
+            Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             StorageReassignment(..) => (),
-            Return(stmt) => stmt.copy_types(type_mapping, engines),
+            Return(stmt) => stmt.subst(type_mapping, engines),
         }
     }
 }
@@ -704,7 +711,7 @@ impl ReplaceDecls for TyExpressionVariant {
 impl DisplayWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::Literal(lit) => format!("literal {}", lit),
+            TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
             } => {
@@ -720,7 +727,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                     .map(|field| engines.help_out(field).to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("tuple({})", fields)
+                format!("tuple({fields})")
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
@@ -767,7 +774,7 @@ impl DisplayWithEngines for TyExpressionVariant {
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
+                    enum_decl.call_path.suffix.as_str(),
                     variant_name.as_str(),
                     tag
                 )
@@ -776,7 +783,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("storage field {} access", access.storage_field_name())
             }
             TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
-            TyExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
                 format!("({} as tag)", engines.help_out(exp.return_type))
             }
@@ -799,14 +806,14 @@ impl DisplayWithEngines for TyExpressionVariant {
                     match index {
                         ProjectionKind::StructField { name } => place.push_str(name.as_str()),
                         ProjectionKind::TupleField { index, .. } => {
-                            write!(&mut place, "{}", index).unwrap();
+                            write!(&mut place, "{index}").unwrap();
                         }
                         ProjectionKind::ArrayIndex { index, .. } => {
-                            write!(&mut place, "{:#?}", index).unwrap();
+                            write!(&mut place, "{index:#?}").unwrap();
                         }
                     }
                 }
-                format!("reassignment to {}", place)
+                format!("reassignment to {place}")
             }
             TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 let place: String = {
@@ -816,13 +823,13 @@ impl DisplayWithEngines for TyExpressionVariant {
                         .map(|field| field.name.as_str())
                         .collect()
                 };
-                format!("storage reassignment to {}", place)
+                format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {}", engines.help_out(&**exp))
             }
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

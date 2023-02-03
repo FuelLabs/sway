@@ -1,10 +1,10 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::prelude::*;
 
-abigen!(
-    TestRegistersContract,
-    "test_projects/registers/out/debug/registers-abi.json",
-);
+abigen!(Contract(
+    name = "TestRegistersContract",
+    abi = "test_projects/registers/out/debug/registers-abi.json",
+));
 
 // Compile contract, create node and deploy contract, returning TestRegistersContract contract instance
 // TO DO :

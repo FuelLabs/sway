@@ -1,11 +1,6 @@
 use std::{fmt, sync::RwLock};
 
-use crate::{
-    declaration_engine::{declaration_id::DeclarationId, declaration_wrapper::DeclarationWrapper},
-    engine_threading::*,
-    type_system::TypeId,
-    TypeInfo,
-};
+use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
@@ -55,7 +50,7 @@ where
             .clone()
             .into_iter()
             .enumerate()
-            .map(|(i, value)| format!("{:<10}\t->\t{}", i, value))
+            .map(|(i, value)| format!("{i:<10}\t->\t{value}"))
             .collect::<Vec<_>>();
         write!(f, "{}", fmt_elems.join("\n"))
     }
@@ -111,12 +106,8 @@ impl ConcurrentSlab<TypeInfo> {
     }
 }
 
-impl ConcurrentSlab<DeclarationWrapper> {
-    pub fn replace(
-        &self,
-        index: DeclarationId,
-        new_value: DeclarationWrapper,
-    ) -> Option<DeclarationWrapper> {
+impl ConcurrentSlab<DeclWrapper> {
+    pub fn replace(&self, index: DeclId, new_value: DeclWrapper) -> Option<DeclWrapper> {
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None

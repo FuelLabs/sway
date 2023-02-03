@@ -1,12 +1,14 @@
+use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
             Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
             ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            TraitFn,
+            Supertrait, TraitFn,
         },
         ty,
     },
+    transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
     TypeArgument, TypeEngine,
 };
@@ -31,6 +33,8 @@ pub enum AstToken {
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),
+    Intrinsic(Intrinsic),
+    Attribute(Attribute),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -43,6 +47,7 @@ pub enum TypedAstToken {
     TypedStructField(ty::TyStructField),
     TypedEnumVariant(ty::TyEnumVariant),
     TypedTraitFn(ty::TyTraitFn),
+    TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
@@ -67,6 +72,7 @@ pub enum SymbolKind {
     NumericLiteral,
     Variable,
     BuiltinType,
+    DeriveHelper,
     Module,
     TypeParameter,
     Keyword,
@@ -141,11 +147,11 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
 pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
-    match type_engine.look_up_type_id(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. }
-        | TypeInfo::Enum { name, .. }
-        | TypeInfo::Struct { name, .. }
-        | TypeInfo::Custom { name, .. } => Some(name),
+    match type_engine.get(*type_id) {
+        TypeInfo::UnknownGeneric { name, .. } | TypeInfo::Custom { name, .. } => Some(name),
+        TypeInfo::Enum { call_path, .. } | TypeInfo::Struct { call_path, .. } => {
+            Some(call_path.suffix)
+        }
         _ => None,
     }
 }
@@ -161,7 +167,7 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
         TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
-            let type_info = type_engine.look_up_type_id(elem_ty.type_id);
+            let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info)
         }
         _ => SymbolKind::Unknown,

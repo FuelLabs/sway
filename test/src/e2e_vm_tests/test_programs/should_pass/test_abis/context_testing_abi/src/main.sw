@@ -1,5 +1,4 @@
 library context_testing_abi;
-use std::contract_id::ContractId;
 
 abi ContextTesting {
     fn get_id() -> ContractId;

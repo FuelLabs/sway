@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -55,9 +55,12 @@ impl ty::TyEnumDeclaration {
             ));
         }
 
+        let mut call_path: CallPath = name.into();
+        call_path = call_path.to_fullpath(ctx.namespace);
+
         // create the enum decl
         let decl = ty::TyEnumDeclaration {
-            name,
+            call_path,
             type_parameters: new_type_parameters,
             variants: variants_buf,
             span,
@@ -76,8 +79,8 @@ impl ty::TyEnumVariant {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
-        let initial_type_id = type_engine.insert_type(declaration_engine, variant.type_info);
+        let decl_engine = ctx.decl_engine;
+        let initial_type_id = type_engine.insert(decl_engine, variant.type_info);
         let enum_variant_type = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -85,7 +88,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

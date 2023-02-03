@@ -1,7 +1,5 @@
 script;
 
-use std::{address::Address, assert::assert, identity::Identity};
-
 enum Result<T, E> {
     Ok: T,
     Err: E,
@@ -12,6 +10,10 @@ const B1 = Address {
 };
 
 fn main() -> u64 {
+    let a = Result::Ok::<u64, u64>(100);
+    let b = if let Result::Ok(y) = a { y + 10 } else { 1 };
+    assert(b == 110);
+
     let sender = Identity::Address(B1);
     if let Identity::Address(addr1) = sender {
         match sender {

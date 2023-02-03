@@ -65,7 +65,7 @@ impl Indent {
                 writeln!(indent)?;
             }
             for _ in 0..num_tabs {
-                write!(indent, "{}", HARD_TAB)?;
+                write!(indent, "{HARD_TAB}")?;
             }
             for _ in 0..num_spaces {
                 write!(indent, " ")?;

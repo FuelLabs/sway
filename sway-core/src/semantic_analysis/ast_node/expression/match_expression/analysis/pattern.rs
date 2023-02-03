@@ -185,7 +185,7 @@ impl Pattern {
         }
     }
 
-    /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of lenth 1,
+    /// Converts a `PatStack` to a `Pattern`. If the `PatStack` is of length 1,
     /// this function returns the single element, if it is of length > 1, this
     /// function wraps the provided `PatStack` in a `Pattern::Or(..)`.
     pub(crate) fn from_pat_stack(pat_stack: PatStack, span: &Span) -> CompileResult<Pattern> {
@@ -306,7 +306,16 @@ impl Pattern {
         let mut warnings = vec![];
         let mut errors = vec![];
         let pat = match c {
-            Pattern::Wildcard => unreachable!(),
+            Pattern::Wildcard => {
+                if !args.is_empty() {
+                    errors.push(CompileError::Internal(
+                        "malformed constructor request",
+                        span.clone(),
+                    ));
+                    return err(warnings, errors);
+                }
+                Pattern::Wildcard
+            }
             Pattern::U8(range) => {
                 if !args.is_empty() {
                     errors.push(CompileError::Internal(
@@ -508,8 +517,8 @@ impl Pattern {
             Pattern::Struct(StructPattern { fields, .. }) => fields.len(),
             Pattern::Enum(_) => 1,
             Pattern::Tuple(elems) => elems.len(),
-            Pattern::Wildcard => unreachable!(),
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Wildcard => 0,
+            Pattern::Or(elems) => elems.len(),
         }
     }
 
@@ -628,13 +637,40 @@ impl Pattern {
         ok(pats, warnings, errors)
     }
 
-    /// Flattens a `Pattern` into a `PatStack`. If the pattern is an
-    /// "or-pattern", return its contents, otherwise return the pattern as a
-    /// `PatStack`
+    /// Performs a one-layer-deep flattening of a `Pattern` into a `PatStack`.
+    /// If the pattern is an "or-pattern", return its contents, otherwise
+    /// return the pattern as a `PatStack`.
     pub(crate) fn flatten(&self) -> PatStack {
         match self {
             Pattern::Or(pats) => pats.to_owned(),
             pat => PatStack::from_pattern(pat.to_owned()),
+        }
+    }
+
+    /// Transforms this [Pattern] into a new [Pattern] that is a "root
+    /// constructor" of the given pattern. A root constructor [Pattern] is
+    /// defined as a pattern containing only wildcards as the subpatterns.
+    pub(super) fn into_root_constructor(self) -> Pattern {
+        match self {
+            Pattern::Wildcard => Pattern::Wildcard,
+            Pattern::U8(n) => Pattern::U8(n),
+            Pattern::U16(n) => Pattern::U16(n),
+            Pattern::U32(n) => Pattern::U32(n),
+            Pattern::U64(n) => Pattern::U64(n),
+            Pattern::B256(n) => Pattern::B256(n),
+            Pattern::Boolean(b) => Pattern::Boolean(b),
+            Pattern::Numeric(n) => Pattern::Numeric(n),
+            Pattern::String(s) => Pattern::String(s),
+            Pattern::Struct(pat) => Pattern::Struct(pat.into_root_constructor()),
+            Pattern::Enum(pat) => Pattern::Enum(pat.into_root_constructor()),
+            Pattern::Tuple(elems) => Pattern::Tuple(PatStack::fill_wildcards(elems.len())),
+            Pattern::Or(elems) => {
+                let mut pat_stack = PatStack::empty();
+                for elem in elems.into_iter() {
+                    pat_stack.push(elem.into_root_constructor());
+                }
+                Pattern::Or(pat_stack)
+            }
         }
     }
 
@@ -647,12 +683,12 @@ impl Pattern {
                     ..
                 }),
                 TypeInfo::Enum {
-                    name: r_enum_name,
+                    call_path: r_enum_call_path,
                     variant_types,
                     ..
                 },
             ) => {
-                l_enum_name.as_str() == r_enum_name.as_str()
+                l_enum_name.as_str() == r_enum_call_path.suffix.as_str()
                     && variant_types
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
@@ -685,26 +721,30 @@ impl fmt::Display for Pattern {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Pattern::Wildcard => "_".to_string(),
-            Pattern::U8(range) => format!("{}", range),
-            Pattern::U16(range) => format!("{}", range),
-            Pattern::U32(range) => format!("{}", range),
-            Pattern::U64(range) => format!("{}", range),
-            Pattern::Numeric(range) => format!("{}", range),
-            Pattern::B256(n) => format!("{:#?}", n),
-            Pattern::Boolean(b) => format!("{}", b),
+            Pattern::U8(range) => format!("{range}"),
+            Pattern::U16(range) => format!("{range}"),
+            Pattern::U32(range) => format!("{range}"),
+            Pattern::U64(range) => format!("{range}"),
+            Pattern::Numeric(range) => format!("{range}"),
+            Pattern::B256(n) => format!("{n:#?}"),
+            Pattern::Boolean(b) => format!("{b}"),
             Pattern::String(s) => s.clone(),
-            Pattern::Struct(struct_pattern) => format!("{}", struct_pattern),
-            Pattern::Enum(enum_pattern) => format!("{}", enum_pattern),
+            Pattern::Struct(struct_pattern) => format!("{struct_pattern}"),
+            Pattern::Enum(enum_pattern) => format!("{enum_pattern}"),
             Pattern::Tuple(elems) => {
                 let mut builder = String::new();
                 builder.push('(');
-                write!(builder, "{}", elems)?;
+                write!(builder, "{elems}")?;
                 builder.push(')');
                 builder
             }
-            Pattern::Or(_) => unreachable!(),
+            Pattern::Or(elems) => elems
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(" | "),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -758,6 +798,20 @@ impl StructPattern {
     pub(crate) fn fields(&self) -> &Vec<(String, Pattern)> {
         &self.fields
     }
+
+    pub(super) fn into_root_constructor(self) -> StructPattern {
+        let StructPattern {
+            struct_name,
+            fields,
+        } = self;
+        StructPattern {
+            struct_name,
+            fields: fields
+                .into_iter()
+                .map(|(name, _)| (name, Pattern::Wildcard))
+                .collect(),
+        }
+    }
 }
 
 impl fmt::Display for StructPattern {
@@ -782,7 +836,7 @@ impl fmt::Display for StructPattern {
                         let mut inner_builder = String::new();
                         inner_builder.push_str(name);
                         inner_builder.push_str(": ");
-                        write!(inner_builder, "{}", field)?;
+                        write!(inner_builder, "{field}")?;
                         Ok(inner_builder)
                     })
                     .collect::<Result<Vec<_>, _>>()?
@@ -799,7 +853,7 @@ impl fmt::Display for StructPattern {
                     let mut inner_builder = String::new();
                     inner_builder.push_str(name);
                     inner_builder.push_str(": ");
-                    write!(inner_builder, "{}", field)?;
+                    write!(inner_builder, "{field}")?;
                     Ok(inner_builder)
                 })
                 .collect::<Result<Vec<_>, _>>()?
@@ -807,7 +861,7 @@ impl fmt::Display for StructPattern {
         };
         builder.push_str(&s);
         builder.push_str(" }");
-        write!(f, "{}", builder)
+        write!(f, "{builder}")
     }
 }
 
@@ -833,6 +887,21 @@ pub(crate) struct EnumPattern {
     pub(crate) enum_name: String,
     pub(crate) variant_name: String,
     pub(crate) value: Box<Pattern>,
+}
+
+impl EnumPattern {
+    pub(super) fn into_root_constructor(self) -> EnumPattern {
+        let EnumPattern {
+            enum_name,
+            variant_name,
+            value: _,
+        } = self;
+        EnumPattern {
+            enum_name,
+            variant_name,
+            value: Box::new(Pattern::Wildcard),
+        }
+    }
 }
 
 impl std::cmp::Ord for EnumPattern {
@@ -875,6 +944,6 @@ impl fmt::Display for EnumPattern {
         builder.push('(');
         builder.push_str(&self.value.to_string());
         builder.push(')');
-        write!(f, "{}", builder)
+        write!(f, "{builder}")
     }
 }

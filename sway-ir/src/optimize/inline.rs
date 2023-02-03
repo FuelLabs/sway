@@ -17,8 +17,30 @@ use crate::{
     local_var::LocalVar,
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
-    BlockArgument,
+    BlockArgument, NamedPass,
 };
+
+pub struct InlinePass;
+
+impl NamedPass for InlinePass {
+    fn name() -> &'static str {
+        "inline"
+    }
+
+    fn descr() -> &'static str {
+        "inline function calls."
+    }
+
+    fn run(ir: &mut Context) -> Result<bool, IrError> {
+        // For now we inline everything into `main()`.  Eventually we can be more selective.
+        let main_fn = ir
+            .module_iter()
+            .flat_map(|module| module.function_iter(ir))
+            .find(|f| f.get_name(ir) == "main")
+            .unwrap();
+        inline_all_function_calls(ir, &main_fn)
+    }
+}
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
 ///
@@ -89,28 +111,22 @@ pub fn is_small_fn(
 ) -> impl Fn(&Context, &Function, &Value) -> bool {
     fn count_type_elements(context: &Context, ty: &Type) -> usize {
         // This is meant to just be a heuristic rather than be super accurate.
-        match ty {
-            Type::Unit
-            | Type::Bool
-            | Type::Uint(_)
-            | Type::B256
-            | Type::String(_)
-            | Type::Slice => 1,
-            Type::Array(aggregate) => {
-                let (ty, sz) = context.aggregates[aggregate.0].array_type();
-                count_type_elements(context, ty) * *sz as usize
-            }
-            Type::Union(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+        if ty.is_array(context) {
+            count_type_elements(context, &ty.get_array_elem_type(context).unwrap())
+                * ty.get_array_len(context).unwrap() as usize
+        } else if ty.is_union(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
                 .max()
-                .unwrap_or(1),
-            Type::Struct(aggregate) => context.aggregates[aggregate.0]
-                .field_types()
+                .unwrap_or(1)
+        } else if ty.is_struct(context) {
+            ty.get_field_types(context)
                 .iter()
                 .map(|ty| count_type_elements(context, ty))
-                .sum(),
+                .sum()
+        } else {
+            1
         }
     }
 
@@ -125,7 +141,7 @@ pub fn is_small_fn(
                 .map(|max_stack_size_count| {
                     function
                         .locals_iter(context)
-                        .map(|(_name, ptr)| count_type_elements(context, ptr.get_type(context)))
+                        .map(|(_name, ptr)| count_type_elements(context, &ptr.get_type(context)))
                         .sum::<usize>()
                         <= max_stack_size_count
                 })
@@ -227,7 +243,7 @@ pub fn inline_function_call(
             .create_block_before(
                 context,
                 &post_block,
-                Some(format!("{}_{}", inlined_fn_name, inlined_block_label)),
+                Some(format!("{inlined_fn_name}_{inlined_block_label}")),
             )
             .unwrap();
         block_map.insert(inlined_block, new_block);
@@ -415,6 +431,12 @@ fn inline_instruction(
                     map_value(output_index),
                     map_value(coins),
                 ),
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => new_block
+                    .ins(context)
+                    .state_clear(map_value(key), map_value(number_of_slots)),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,

@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 use crate::core::token::{get_range_from_span, Token};
-use sway_core::language::Literal;
+use sway_core::{
+    decl_engine::DeclEngine,
+    language::{ty, Literal},
+};
 use sway_types::{Ident, Spanned};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
@@ -53,4 +56,69 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::Boolean(_) => "bool".into(),
         Literal::B256(_) => "b256".into(),
     }
+}
+
+/// Print the AST nodes in a human readable format
+/// by getting the types from the declaration engine
+/// and formatting them into a String.
+pub(crate) fn print_decl_engine_types(
+    all_nodes: &[ty::TyAstNode],
+    decl_engine: &DeclEngine,
+) -> String {
+    all_nodes
+        .iter()
+        .map(|n| match &n.content {
+            ty::TyAstNodeContent::Declaration(declaration) => match declaration {
+                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
+                    let const_decl = decl_engine
+                        .get_constant(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{const_decl:#?}")
+                }
+                ty::TyDeclaration::FunctionDeclaration(decl_id) => {
+                    let func_decl = decl_engine
+                        .get_function(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{func_decl:#?}")
+                }
+                ty::TyDeclaration::TraitDeclaration(decl_id) => {
+                    let trait_decl = decl_engine
+                        .get_trait(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{trait_decl:#?}")
+                }
+                ty::TyDeclaration::StructDeclaration(decl_id) => {
+                    let struct_decl = decl_engine
+                        .get_struct(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{struct_decl:#?}")
+                }
+                ty::TyDeclaration::EnumDeclaration(decl_id) => {
+                    let enum_decl = decl_engine
+                        .get_enum(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{enum_decl:#?}")
+                }
+                ty::TyDeclaration::AbiDeclaration(decl_id) => {
+                    let abi_decl = decl_engine
+                        .get_abi(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{abi_decl:#?}")
+                }
+                ty::TyDeclaration::StorageDeclaration(decl_id) => {
+                    let storage_decl = decl_engine
+                        .get_storage(decl_id.clone(), &decl_id.span())
+                        .unwrap();
+                    format!("{storage_decl:#?}")
+                }
+                _ => format!("{declaration:#?}"),
+            },
+            ty::TyAstNodeContent::Expression(expression)
+            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
+                format!("{expression:#?}")
+            }
+            ty::TyAstNodeContent::SideEffect => "".to_string(),
+        })
+        .map(|s| format!("{s}\n"))
+        .collect()
 }

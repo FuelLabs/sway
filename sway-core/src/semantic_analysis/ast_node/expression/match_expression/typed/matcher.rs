@@ -74,12 +74,12 @@ pub(crate) fn matcher(
     } = scrutinee;
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
     // unify the type of the scrutinee with the type of the expression
     check!(
         CompileResult::from(type_engine.unify(
-            declaration_engine,
+            decl_engine,
             type_id,
             exp.return_type,
             &span,
@@ -143,6 +143,7 @@ fn match_constant(
                 name: scrutinee_name,
                 span: span.clone(),
                 mutability: ty::VariableMutability::Immutable,
+                call_path: None,
             },
             return_type: scrutinee_type_id,
             span,

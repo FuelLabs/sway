@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use sway_error::error::CompileError;
+use sway_error::error::{CompileError, InterfaceName};
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    declaration_engine::{declaration_engine::*, DeclMapping, DeclarationId, ReplaceDecls},
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{parsed::*, ty, *},
@@ -31,7 +31,7 @@ impl ty::TyImplTrait {
         } = impl_trait;
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // create a namespace for the impl
@@ -68,7 +68,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(declaration_engine, type_implementing_for),
+                type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -80,7 +80,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -105,7 +105,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
         let impl_trait = match ctx
             .namespace
@@ -115,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(declaration_engine.get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -156,6 +156,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -169,14 +170,14 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(declaration_engine.get_abi(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
 
                 if !type_engine
-                    .look_up_type_id(implementing_for_type_id)
+                    .get(implementing_for_type_id)
                     .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
@@ -209,6 +210,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -236,24 +238,24 @@ impl ty::TyImplTrait {
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            decl_engine: &DeclEngine,
             x: &ty::TyAstNodeContent,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match x {
                 ty::TyAstNodeContent::Expression(expr)
                 | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-                    expr_contains_get_storage_index(declaration_engine, expr, access_span)
+                    expr_contains_get_storage_index(decl_engine, expr, access_span)
                 }
                 ty::TyAstNodeContent::Declaration(decl) => {
-                    decl_contains_get_storage_index(declaration_engine, decl, access_span)
+                    decl_contains_get_storage_index(decl_engine, decl, access_span)
                 }
                 ty::TyAstNodeContent::SideEffect => Ok(false),
             }
         }
 
         fn expr_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            decl_engine: &DeclEngine,
             expr: &ty::TyExpression,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
@@ -268,8 +270,7 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiName(_) => false,
                 ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for f in arguments.iter() {
-                        let b =
-                            expr_contains_get_storage_index(declaration_engine, &f.1, access_span)?;
+                        let b = expr_contains_get_storage_index(decl_engine, &f.1, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -285,14 +286,13 @@ impl ty::TyImplTrait {
                     prefix: expr1,
                     index: expr2,
                 } => {
-                    expr_contains_get_storage_index(declaration_engine, expr1, access_span)?
-                        || expr_contains_get_storage_index(declaration_engine, expr2, access_span)?
+                    expr_contains_get_storage_index(decl_engine, expr1, access_span)?
+                        || expr_contains_get_storage_index(decl_engine, expr2, access_span)?
                 }
                 ty::TyExpressionVariant::Tuple { fields: exprvec }
                 | ty::TyExpressionVariant::Array { contents: exprvec } => {
                     for f in exprvec.iter() {
-                        let b =
-                            expr_contains_get_storage_index(declaration_engine, f, access_span)?;
+                        let b = expr_contains_get_storage_index(decl_engine, f, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -302,11 +302,8 @@ impl ty::TyImplTrait {
 
                 ty::TyExpressionVariant::StructExpression { fields, .. } => {
                     for f in fields.iter() {
-                        let b = expr_contains_get_storage_index(
-                            declaration_engine,
-                            &f.value,
-                            access_span,
-                        )?;
+                        let b =
+                            expr_contains_get_storage_index(decl_engine, &f.value, access_span)?;
                         if b {
                             return Ok(true);
                         }
@@ -314,17 +311,17 @@ impl ty::TyImplTrait {
                     false
                 }
                 ty::TyExpressionVariant::CodeBlock(cb) => {
-                    codeblock_contains_get_storage_index(declaration_engine, cb, access_span)?
+                    codeblock_contains_get_storage_index(decl_engine, cb, access_span)?
                 }
                 ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
-                        || expr_contains_get_storage_index(declaration_engine, then, access_span)?
+                    expr_contains_get_storage_index(decl_engine, condition, access_span)?
+                        || expr_contains_get_storage_index(decl_engine, then, access_span)?
                         || r#else.as_ref().map_or(Ok(false), |r#else| {
-                            expr_contains_get_storage_index(declaration_engine, r#else, access_span)
+                            expr_contains_get_storage_index(decl_engine, r#else, access_span)
                         })?
                 }
                 ty::TyExpressionVariant::StructFieldAccess { prefix: exp, .. }
@@ -332,11 +329,11 @@ impl ty::TyImplTrait {
                 | ty::TyExpressionVariant::AbiCast { address: exp, .. }
                 | ty::TyExpressionVariant::EnumTag { exp }
                 | ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
+                    expr_contains_get_storage_index(decl_engine, exp, access_span)?
                 }
                 ty::TyExpressionVariant::EnumInstantiation { contents, .. } => {
                     contents.as_ref().map_or(Ok(false), |f| {
-                        expr_contains_get_storage_index(declaration_engine, f, access_span)
+                        expr_contains_get_storage_index(decl_engine, f, access_span)
                     })?
                 }
 
@@ -345,47 +342,39 @@ impl ty::TyImplTrait {
                     ..
                 }) => matches!(kind, sway_ast::intrinsics::Intrinsic::GetStorageKey),
                 ty::TyExpressionVariant::WhileLoop { condition, body } => {
-                    expr_contains_get_storage_index(declaration_engine, condition, access_span)?
-                        || codeblock_contains_get_storage_index(
-                            declaration_engine,
-                            body,
-                            access_span,
-                        )?
+                    expr_contains_get_storage_index(decl_engine, condition, access_span)?
+                        || codeblock_contains_get_storage_index(decl_engine, body, access_span)?
                 }
                 ty::TyExpressionVariant::Reassignment(reassignment) => {
-                    expr_contains_get_storage_index(
-                        declaration_engine,
-                        &reassignment.rhs,
-                        access_span,
-                    )?
+                    expr_contains_get_storage_index(decl_engine, &reassignment.rhs, access_span)?
                 }
                 ty::TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                     expr_contains_get_storage_index(
-                        declaration_engine,
+                        decl_engine,
                         &storage_reassignment.rhs,
                         access_span,
                     )?
                 }
                 ty::TyExpressionVariant::Return(exp) => {
-                    expr_contains_get_storage_index(declaration_engine, exp, access_span)?
+                    expr_contains_get_storage_index(decl_engine, exp, access_span)?
                 }
             };
             Ok(res)
         }
 
         fn decl_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            decl_engine: &DeclEngine,
             decl: &ty::TyDeclaration,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             match decl {
                 ty::TyDeclaration::VariableDeclaration(decl) => {
-                    expr_contains_get_storage_index(declaration_engine, &decl.body, access_span)
+                    expr_contains_get_storage_index(decl_engine, &decl.body, access_span)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        declaration_engine.get_constant(decl_id.clone(), access_span)?;
-                    expr_contains_get_storage_index(declaration_engine, &expr, access_span)
+                        decl_engine.get_constant(decl_id.clone(), access_span)?;
+                    expr_contains_get_storage_index(decl_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
@@ -402,13 +391,13 @@ impl ty::TyImplTrait {
         }
 
         fn codeblock_contains_get_storage_index(
-            declaration_engine: &DeclarationEngine,
+            decl_engine: &DeclEngine,
             cb: &ty::TyCodeBlock,
             access_span: &Span,
         ) -> Result<bool, CompileError> {
             for content in cb.contents.iter() {
                 let b = ast_node_contains_get_storage_index(
-                    declaration_engine,
+                    decl_engine,
                     &content.content,
                     access_span,
                 )?;
@@ -420,14 +409,11 @@ impl ty::TyImplTrait {
         }
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
 
         for method in methods.iter() {
-            let contains_get_storage_index = codeblock_contains_get_storage_index(
-                declaration_engine,
-                &method.body,
-                access_span,
-            )?;
+            let contains_get_storage_index =
+                codeblock_contains_get_storage_index(decl_engine, &method.body, access_span)?;
             if contains_get_storage_index {
                 type_engine.set_type_as_storage_only(impl_typ);
                 return Ok(());
@@ -453,7 +439,7 @@ impl ty::TyImplTrait {
         } = impl_self;
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // create the namespace for the impl
@@ -493,7 +479,7 @@ impl ty::TyImplTrait {
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
             ctx.resolve_type_without_self(
-                type_engine.insert_type(declaration_engine, type_implementing_for),
+                type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
                 None
             ),
@@ -505,7 +491,7 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .look_up_type_id(implementing_for_type_id)
+                .get(implementing_for_type_id)
                 .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
             return err(warnings, errors),
             warnings,
@@ -529,7 +515,7 @@ impl ty::TyImplTrait {
         let mut ctx = ctx
             .with_self_type(implementing_for_type_id)
             .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
@@ -559,13 +545,14 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| declaration_engine.insert_function(d.clone()))
+            .map(|d| decl_engine.insert(d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
             trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+            trait_decl_id: None,
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
@@ -582,30 +569,19 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    trait_interface_surface: &[DeclarationId],
-    trait_methods: &[DeclarationId],
+    trait_interface_surface: &[DeclId],
+    trait_methods: &[DeclId],
     impl_methods: &[FunctionDeclaration],
     trait_name: &CallPath,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<DeclarationId>> {
-    use sway_error::error::InterfaceName;
-
+) -> CompileResult<Vec<DeclId>> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
-    let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
-
-    let interface_name = || -> InterfaceName {
-        if is_contract {
-            InterfaceName::Abi(trait_name.suffix.clone())
-        } else {
-            InterfaceName::Trait(trait_name.suffix.clone())
-        }
-    };
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
@@ -626,8 +602,8 @@ fn type_check_trait_implementation(
         errors
     );
 
-    // Gather the supertrait "original_method_ids" and "impld_method_ids".
-    let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+    // Gather the supertrait "stub_method_ids" and "impld_method_ids".
+    let (supertrait_stub_method_ids, supertrait_impld_method_ids) = check!(
         handle_supertraits(ctx.by_ref(), trait_supertraits),
         return err(warnings, errors),
         warnings,
@@ -656,246 +632,64 @@ fn type_check_trait_implementation(
     // that still need to be implemented for the trait to be fully implemented.
     let mut method_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
 
-    // This map keeps track of the original declaration id's of the original
-    // interface surface.
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    // This map keeps track of the stub declaration id's of the trait
+    // definition.
+    let mut stub_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
 
     // This map keeps track of the new declaration ids of the implemented
     // interface surface.
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
-            CompileResult::from(declaration_engine.get_trait_fn(decl_id.clone(), block_span)),
+            CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
         );
         let name = method.name.clone();
+
+        // Add this method to the checklist.
         method_checklist.insert(name.clone(), method);
-        original_method_ids.insert(name, decl_id.clone());
+
+        // Add this method to the "stub methods".
+        stub_method_ids.insert(name, decl_id.clone());
     }
 
     for impl_method in impl_methods {
-        let mut ctx = ctx
-            .by_ref()
-            .with_help_text("")
-            .with_type_annotation(type_engine.insert_type(declaration_engine, TypeInfo::Unknown));
-
-        // type check the function declaration
-        let mut impl_method = check!(
-            ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
-            continue,
+        let impl_method = check!(
+            type_check_impl_method(
+                ctx.by_ref(),
+                impl_type_parameters,
+                impl_method,
+                trait_name,
+                is_contract,
+                &impld_method_ids,
+                &method_checklist
+            ),
+            ty::TyFunctionDeclaration::error(impl_method.clone(), engines),
             warnings,
             errors
         );
-
-        // Ensure that there aren't multiple definitions of this function impl'd
-        if impld_method_ids.contains_key(&impl_method.name.clone()) {
-            errors.push(CompileError::MultipleDefinitionsOfFunction {
-                name: impl_method.name.clone(),
-            });
-            continue;
-        }
-
-        // remove this function from the "checklist"
-        let mut impl_method_signature = match method_checklist.remove(&impl_method.name) {
-            Some(trait_fn) => trait_fn,
-            None => {
-                errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
-                    name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    span: impl_method.name.span(),
-                });
-                continue;
-            }
-        };
-
-        // replace instances of `TypeInfo::SelfType` with a fresh
-        // `TypeInfo::SelfType` to avoid replacing types in the original trait
-        // declaration
-        impl_method_signature.replace_self_type(engines, self_type);
-
-        // ensure this fn decl's parameters and signature lines up with the one
-        // in the trait
-        if impl_method.parameters.len() != impl_method_signature.parameters.len() {
-            errors.push(
-                CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
-                    span: impl_method.parameters_span(),
-                    fn_name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    num_parameters: impl_method_signature.parameters.len(),
-                    provided_parameters: impl_method.parameters.len(),
-                },
-            );
-            continue;
-        }
-
-        // unify the types from the parameters of the function declaration
-        // with the parameters of the function signature
-        for (impl_method_signature_param, impl_method_param) in impl_method_signature
-            .parameters
-            .iter_mut()
-            .zip(&mut impl_method.parameters)
-        {
-            // TODO use trait constraints as part of the type here to
-            // implement trait constraint solver */
-            // Check if we have a non-ref mutable argument. That's not allowed.
-            if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
-                errors.push(CompileError::MutableParameterNotSupported {
-                    param_name: impl_method_signature.name.clone(),
-                })
-            }
-
-            // check if reference / mutability of the parameters is incompatible
-            if impl_method_param.is_mutable != impl_method_signature_param.is_mutable
-                || impl_method_param.is_reference != impl_method_signature_param.is_reference
-            {
-                errors.push(CompileError::ParameterRefMutabilityMismatch {
-                    span: impl_method_param.mutability_span.clone(),
-                });
-            }
-
-            impl_method_param
-                .type_id
-                .replace_self_type(engines, self_type);
-            if !type_engine.look_up_type_id(impl_method_param.type_id).eq(
-                &type_engine.look_up_type_id(impl_method_signature_param.type_id),
-                engines,
-            ) {
-                errors.push(CompileError::MismatchedTypeInInterfaceSurface {
-                    interface_name: interface_name(),
-                    span: impl_method_param.type_span.clone(),
-                    given: engines.help_out(impl_method_param.type_id).to_string(),
-                    expected: engines
-                        .help_out(impl_method_signature_param.type_id)
-                        .to_string(),
-                });
-                continue;
-            }
-        }
-
-        // check to see if the purity of the function declaration is the same
-        // as the purity of the function signature
-        if impl_method.purity != impl_method_signature.purity {
-            errors.push(if impl_method_signature.purity == Purity::Pure {
-                CompileError::TraitDeclPureImplImpure {
-                    fn_name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    attrs: impl_method.purity.to_attribute_syntax(),
-                    span: impl_method.span.clone(),
-                }
-            } else {
-                CompileError::TraitImplPurityMismatch {
-                    fn_name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    attrs: impl_method_signature.purity.to_attribute_syntax(),
-                    span: impl_method.span.clone(),
-                }
-            });
-        }
-
-        // check there is no mismatch of payability attributes
-        // between the method signature and the method implementation
-        use crate::transform::AttributeKind::Payable;
-        let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
-        let impl_method_payable = impl_method.attributes.contains_key(&Payable);
-        match (impl_method_signature_payable, impl_method_payable) {
-            (true, false) =>
-            // implementation does not have payable attribute
-            {
-                errors.push(CompileError::TraitImplPayabilityMismatch {
-                    fn_name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    missing_impl_attribute: true,
-                    span: impl_method.span.clone(),
-                })
-            }
-            (false, true) =>
-            // implementation has extra payable attribute, not mentioned by signature
-            {
-                errors.push(CompileError::TraitImplPayabilityMismatch {
-                    fn_name: impl_method.name.clone(),
-                    interface_name: interface_name(),
-                    missing_impl_attribute: false,
-                    span: impl_method.span.clone(),
-                })
-            }
-            (true, true) | (false, false) => (), // no payability mismatch
-        }
-
-        impl_method
-            .return_type
-            .replace_self_type(engines, self_type);
-        if !type_engine.look_up_type_id(impl_method.return_type).eq(
-            &type_engine.look_up_type_id(impl_method_signature.return_type),
-            engines,
-        ) {
-            errors.push(CompileError::MismatchedTypeInInterfaceSurface {
-                interface_name: interface_name(),
-                span: impl_method.return_type_span.clone(),
-                expected: engines
-                    .help_out(impl_method_signature.return_type)
-                    .to_string(),
-                given: engines.help_out(impl_method.return_type).to_string(),
-            });
-            continue;
-        }
-
-        // if this method uses a type parameter from its parent's impl type
-        // parameters that is not constrained by the type that we are
-        // implementing for, then we need to add that type parameter to the
-        // method's type parameters so that in-line monomorphization can
-        // complete.
-        //
-        // NOTE: this is a semi-hack that is used to force monomorphization of
-        // trait methods that contain a generic defined in the parent impl...
-        // without stuffing the generic into the method's type parameters, its
-        // not currently possible to monomorphize on that generic at function
-        // application time.
-        //
-        // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
-        // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-        let unconstrained_type_parameters_in_this_function: HashSet<
-            WithEngines<'_, TypeParameter>,
-        > = impl_method
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect();
-        let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
-            ctx.self_type()
-                .unconstrained_type_parameters(engines, impl_type_parameters)
-                .into_iter()
-                .cloned()
-                .map(|x| WithEngines::new(x, engines))
-                .collect::<HashSet<_>>();
-        let mut unconstrained_type_parameters_to_be_added =
-            unconstrained_type_parameters_in_this_function
-                .difference(&unconstrained_type_parameters_in_the_type)
-                .cloned()
-                .into_iter()
-                .map(|x| x.thing)
-                .collect::<Vec<_>>();
-        impl_method
-            .type_parameters
-            .append(&mut unconstrained_type_parameters_to_be_added);
-
         let name = impl_method.name.clone();
-        let decl_id = declaration_engine.insert_function(impl_method);
+        let decl_id = decl_engine.insert(impl_method);
+
+        // Remove this method from the checklist.
+        method_checklist.remove(&name);
+
+        // Add this method to the "impld methods".
         impld_method_ids.insert(name, decl_id);
     }
 
-    let mut all_method_ids: Vec<DeclarationId> = impld_method_ids.values().cloned().collect();
+    let mut all_method_ids: Vec<DeclId> = impld_method_ids.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
     // parameters from the original trait declaration and the type arguments of
     // the trait name in the current impl block that we are type checking and
-    // using the original decl ids from the interface surface and the new
+    // using the stub decl ids from the interface surface and the new
     // decl ids from the newly implemented methods.
-    let type_mapping = TypeMapping::from_type_parameters_and_type_arguments(
+    let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
         trait_type_parameters
             .iter()
             .map(|type_param| type_param.type_id)
@@ -905,24 +699,23 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    original_method_ids.extend(supertrait_original_method_ids);
+    stub_method_ids.extend(supertrait_stub_method_ids);
     impld_method_ids.extend(supertrait_impld_method_ids);
-    let decl_mapping =
-        DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
+    let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids(stub_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
-            CompileResult::from(declaration_engine.get_function(decl_id.clone(), block_span)),
+            CompileResult::from(decl_engine.get_function(decl_id.clone(), block_span)),
             return err(warnings, errors),
             warnings,
             errors
         );
         method.replace_decls(&decl_mapping, engines);
-        method.copy_types(&type_mapping, engines);
+        method.subst(&type_mapping, engines);
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
-            declaration_engine
-                .insert_function(method)
-                .with_parent(declaration_engine, decl_id.clone()),
+            decl_engine
+                .insert(method)
+                .with_parent(decl_engine, decl_id.clone()),
         );
     }
 
@@ -940,6 +733,238 @@ fn type_check_trait_implementation(
 
     if errors.is_empty() {
         ok(all_method_ids, warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
+fn type_check_impl_method(
+    mut ctx: TypeCheckContext,
+    impl_type_parameters: &[TypeParameter],
+    impl_method: &FunctionDeclaration,
+    trait_name: &CallPath,
+    is_contract: bool,
+    impld_method_ids: &BTreeMap<Ident, DeclId>,
+    method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
+) -> CompileResult<ty::TyFunctionDeclaration> {
+    let mut warnings = vec![];
+    let mut errors = vec![];
+
+    let type_engine = ctx.type_engine;
+    let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
+    let self_type = ctx.self_type();
+
+    let mut ctx = ctx
+        .by_ref()
+        .with_help_text("")
+        .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
+
+    let interface_name = || -> InterfaceName {
+        if is_contract {
+            InterfaceName::Abi(trait_name.suffix.clone())
+        } else {
+            InterfaceName::Trait(trait_name.suffix.clone())
+        }
+    };
+
+    // type check the function declaration
+    let mut impl_method = check!(
+        ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+
+    // Ensure that there aren't multiple definitions of this function impl'd
+    if impld_method_ids.contains_key(&impl_method.name.clone()) {
+        errors.push(CompileError::MultipleDefinitionsOfFunction {
+            name: impl_method.name.clone(),
+            span: impl_method.name.span(),
+        });
+        return err(warnings, errors);
+    }
+
+    // Ensure that the method checklist contains this function.
+    let mut impl_method_signature = match method_checklist.get(&impl_method.name) {
+        Some(trait_fn) => trait_fn.clone(),
+        None => {
+            errors.push(CompileError::FunctionNotAPartOfInterfaceSurface {
+                name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                span: impl_method.name.span(),
+            });
+            return err(warnings, errors);
+        }
+    };
+
+    // replace instances of `TypeInfo::SelfType` with a fresh
+    // `TypeInfo::SelfType` to avoid replacing types in the stub trait
+    // declaration
+    impl_method_signature.replace_self_type(engines, self_type);
+
+    // ensure this fn decl's parameters and signature lines up with the one
+    // in the trait
+    if impl_method.parameters.len() != impl_method_signature.parameters.len() {
+        errors.push(
+            CompileError::IncorrectNumberOfInterfaceSurfaceFunctionParameters {
+                span: impl_method.parameters_span(),
+                fn_name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                num_parameters: impl_method_signature.parameters.len(),
+                provided_parameters: impl_method.parameters.len(),
+            },
+        );
+        return err(warnings, errors);
+    }
+
+    // unify the types from the parameters of the function declaration
+    // with the parameters of the function signature
+    for (impl_method_signature_param, impl_method_param) in impl_method_signature
+        .parameters
+        .iter_mut()
+        .zip(&mut impl_method.parameters)
+    {
+        // TODO use trait constraints as part of the type here to
+        // implement trait constraint solver */
+        // Check if we have a non-ref mutable argument. That's not allowed.
+        if impl_method_signature_param.is_mutable && !impl_method_signature_param.is_reference {
+            errors.push(CompileError::MutableParameterNotSupported {
+                param_name: impl_method_signature.name.clone(),
+                span: impl_method_signature.name.span(),
+            });
+        }
+
+        // check if reference / mutability of the parameters is incompatible
+        if impl_method_param.is_mutable != impl_method_signature_param.is_mutable
+            || impl_method_param.is_reference != impl_method_signature_param.is_reference
+        {
+            errors.push(CompileError::ParameterRefMutabilityMismatch {
+                span: impl_method_param.mutability_span.clone(),
+            });
+        }
+
+        if !type_engine.get(impl_method_param.type_id).eq(
+            &type_engine.get(impl_method_signature_param.type_id),
+            engines,
+        ) {
+            errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+                interface_name: interface_name(),
+                span: impl_method_param.type_span.clone(),
+                given: engines.help_out(impl_method_param.type_id).to_string(),
+                expected: engines
+                    .help_out(impl_method_signature_param.type_id)
+                    .to_string(),
+            });
+            continue;
+        }
+    }
+
+    // check to see if the purity of the function declaration is the same
+    // as the purity of the function signature
+    if impl_method.purity != impl_method_signature.purity {
+        errors.push(if impl_method_signature.purity == Purity::Pure {
+            CompileError::TraitDeclPureImplImpure {
+                fn_name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                attrs: impl_method.purity.to_attribute_syntax(),
+                span: impl_method.span.clone(),
+            }
+        } else {
+            CompileError::TraitImplPurityMismatch {
+                fn_name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                attrs: impl_method_signature.purity.to_attribute_syntax(),
+                span: impl_method.span.clone(),
+            }
+        });
+    }
+
+    // check there is no mismatch of payability attributes
+    // between the method signature and the method implementation
+    use crate::transform::AttributeKind::Payable;
+    let impl_method_signature_payable = impl_method_signature.attributes.contains_key(&Payable);
+    let impl_method_payable = impl_method.attributes.contains_key(&Payable);
+    match (impl_method_signature_payable, impl_method_payable) {
+        (true, false) =>
+        // implementation does not have payable attribute
+        {
+            errors.push(CompileError::TraitImplPayabilityMismatch {
+                fn_name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                missing_impl_attribute: true,
+                span: impl_method.span.clone(),
+            });
+        }
+        (false, true) =>
+        // implementation has extra payable attribute, not mentioned by signature
+        {
+            errors.push(CompileError::TraitImplPayabilityMismatch {
+                fn_name: impl_method.name.clone(),
+                interface_name: interface_name(),
+                missing_impl_attribute: false,
+                span: impl_method.span.clone(),
+            });
+        }
+        (true, true) | (false, false) => (), // no payability mismatch
+    }
+
+    if !type_engine
+        .get(impl_method.return_type)
+        .eq(&type_engine.get(impl_method_signature.return_type), engines)
+    {
+        errors.push(CompileError::MismatchedTypeInInterfaceSurface {
+            interface_name: interface_name(),
+            span: impl_method.return_type_span.clone(),
+            expected: engines
+                .help_out(impl_method_signature.return_type)
+                .to_string(),
+            given: engines.help_out(impl_method.return_type).to_string(),
+        });
+        return err(warnings, errors);
+    }
+
+    // if this method uses a type parameter from its parent's impl type
+    // parameters that is not constrained by the type that we are
+    // implementing for, then we need to add that type parameter to the
+    // method's type parameters so that in-line monomorphization can
+    // complete.
+    //
+    // NOTE: this is a semi-hack that is used to force monomorphization of
+    // trait methods that contain a generic defined in the parent impl...
+    // without stuffing the generic into the method's type parameters, its
+    // not currently possible to monomorphize on that generic at function
+    // application time.
+    //
+    // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
+    // or https://github.com/FuelLabs/sway/issues/2814 goes in.
+    let unconstrained_type_parameters_in_this_function: HashSet<WithEngines<'_, TypeParameter>> =
+        impl_method
+            .unconstrained_type_parameters(engines, impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .map(|x| WithEngines::new(x, engines))
+            .collect();
+    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
+        self_type
+            .unconstrained_type_parameters(engines, impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .map(|x| WithEngines::new(x, engines))
+            .collect::<HashSet<_>>();
+    let mut unconstrained_type_parameters_to_be_added =
+        unconstrained_type_parameters_in_this_function
+            .difference(&unconstrained_type_parameters_in_the_type)
+            .cloned()
+            .into_iter()
+            .map(|x| x.thing)
+            .collect::<Vec<_>>();
+    impl_method
+        .type_parameters
+        .append(&mut unconstrained_type_parameters_to_be_added);
+
+    if errors.is_empty() {
+        ok(impl_method, warnings, errors)
     } else {
         err(warnings, errors)
     }
@@ -993,7 +1018,7 @@ fn check_for_unconstrained_type_parameters(
     let mut defined_generics: HashMap<_, _> = HashMap::from_iter(
         type_parameters
             .iter()
-            .map(|x| (engines.te().look_up_type_id(x.type_id), x.span()))
+            .map(|x| (engines.te().get(x.type_id), x.span()))
             .map(|(thing, sp)| (WithEngines::new(thing, engines), sp)),
     );
 
@@ -1003,7 +1028,7 @@ fn check_for_unconstrained_type_parameters(
         generics_in_use.extend(check!(
             engines
                 .te()
-                .look_up_type_id(type_arg.type_id)
+                .get(type_arg.type_id)
                 .extract_nested_generics(engines, &type_arg.span),
             HashSet::new(),
             warnings,
@@ -1013,7 +1038,7 @@ fn check_for_unconstrained_type_parameters(
     generics_in_use.extend(check!(
         engines
             .te()
-            .look_up_type_id(self_type)
+            .get(self_type)
             .extract_nested_generics(engines, self_type_span),
         HashSet::new(),
         warnings,
@@ -1031,7 +1056,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", k),
+            ty: format!("{k}"),
             span: v,
         });
     }
@@ -1046,17 +1071,14 @@ fn check_for_unconstrained_type_parameters(
 fn handle_supertraits(
     mut ctx: TypeCheckContext,
     supertraits: &[Supertrait],
-) -> CompileResult<(
-    BTreeMap<Ident, DeclarationId>,
-    BTreeMap<Ident, DeclarationId>,
-)> {
+) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
-    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
@@ -1080,9 +1102,7 @@ fn handle_supertraits(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let trait_decl = check!(
-                    CompileResult::from(
-                        declaration_engine.get_trait(decl_id.clone(), &supertrait.span())
-                    ),
+                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &supertrait.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1115,13 +1135,13 @@ fn handle_supertraits(
 
                 // Retrieve the interface surfaces and implemented methods for
                 // the supertraits of this type.
-                let (next_original_supertrait_decl_ids, next_these_supertrait_decl_ids) = check!(
+                let (next_stub_supertrait_decl_ids, next_these_supertrait_decl_ids) = check!(
                     handle_supertraits(ctx.by_ref(), &trait_decl.supertraits),
                     continue,
                     warnings,
                     errors
                 );
-                interface_surface_methods_ids.extend(next_original_supertrait_decl_ids);
+                interface_surface_methods_ids.extend(next_stub_supertrait_decl_ids);
                 impld_method_ids.extend(next_these_supertrait_decl_ids);
             }
             Some(ty::TyDeclaration::AbiDeclaration(_)) => {

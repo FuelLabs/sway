@@ -4,9 +4,13 @@ use sway_error::{
     type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Span, Spanned};
 
-use crate::{engine_threading::*, language::ty, type_system::*, Engines};
+use crate::{
+    engine_threading::*,
+    language::{ty, CallPath},
+    type_system::*,
+};
 
 /// Helper struct to aid in type unification.
 pub(super) struct Unifier<'a> {
@@ -107,12 +111,12 @@ impl<'a> Unifier<'a> {
             }
             (
                 Struct {
-                    name: rn,
+                    call_path: rn,
                     type_parameters: rpts,
                     fields: rfs,
                 },
                 Struct {
-                    name: en,
+                    call_path: en,
                     type_parameters: etps,
                     fields: efs,
                 },
@@ -126,12 +130,12 @@ impl<'a> Unifier<'a> {
             ) if rvs.is_empty() => (vec![], vec![]),
             (
                 Enum {
-                    name: rn,
+                    call_path: rn,
                     type_parameters: rtps,
                     variant_types: rvs,
                 },
                 Enum {
-                    name: en,
+                    call_path: en,
                     type_parameters: etps,
                     variant_types: evs,
                 },
@@ -225,17 +229,11 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => {
-                self.engines.te().insert_unified_type(received, expected);
-                self.engines.te().insert_unified_type(expected, received);
-                (vec![], vec![])
-            }
-            (r @ UnknownGeneric { .. }, e) => {
-                self.engines.te().insert_unified_type(expected, received);
+            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (vec![], vec![]),
+            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e, span) => {
                 self.replace_received_with_expected(received, expected, &r, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) => {
-                self.engines.te().insert_unified_type(received, expected);
+            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r, span) => {
                 self.replace_expected_with_received(received, expected, r, &e, span)
             }
 
@@ -253,6 +251,13 @@ impl<'a> Unifier<'a> {
                 (vec![], errors)
             }
         }
+    }
+
+    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo, span: &Span) -> bool {
+        OccursCheck::new(self.engines)
+            .check(generic, other, span)
+            .value
+            .unwrap_or(true)
     }
 
     fn unify_strs(
@@ -334,8 +339,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -383,8 +388,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];

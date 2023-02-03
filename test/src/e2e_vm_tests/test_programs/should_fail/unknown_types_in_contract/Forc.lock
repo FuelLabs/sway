@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-CE177D4837B24FBB'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-CE177D4837B24FBB'
+dependencies = ['core']
+
+[[package]]
+name = 'unknown_types_in_contract'
+source = 'member'
+dependencies = ['std']

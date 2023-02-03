@@ -13,6 +13,7 @@ mod exponentiation;
 mod generics_in_abi;
 mod hashing;
 mod logging;
+mod low_level_call;
 mod messages;
 mod methods;
 mod option_field_order;

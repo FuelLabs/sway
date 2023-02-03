@@ -1,16 +1,15 @@
 use sway_types::Span;
 
-use crate::{
-    declaration_engine::DeclarationId, engine_threading::*, language::CallPath, type_system::*,
-};
+use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub methods: Vec<DeclarationId>,
+    pub methods: Vec<DeclId>,
     pub implementing_for_type_id: TypeId,
+    pub trait_decl_id: Option<DeclId>,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }
@@ -31,16 +30,15 @@ impl PartialEqWithEngines for TyImplTrait {
     }
 }
 
-impl CopyTypes for TyImplTrait {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl SubstTypes for TyImplTrait {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.impl_type_parameters
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
-        self.implementing_for_type_id
-            .copy_types(type_mapping, engines);
+            .for_each(|x| x.subst(type_mapping, engines));
+        self.implementing_for_type_id.subst(type_mapping, engines);
         self.methods
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 

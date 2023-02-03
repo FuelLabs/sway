@@ -2,7 +2,7 @@ use sway_error::error::CompileError;
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -58,9 +58,12 @@ impl ty::TyStructDeclaration {
             ));
         }
 
+        let mut path: CallPath = name.into();
+        path = path.to_fullpath(ctx.namespace);
+
         // create the struct decl
         let decl = ty::TyStructDeclaration {
-            name,
+            call_path: path,
             type_parameters: new_type_parameters,
             fields: new_fields,
             visibility,
@@ -77,8 +80,8 @@ impl ty::TyStructField {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
-        let initial_type_id = type_engine.insert_type(declaration_engine, field.type_info);
+        let decl_engine = ctx.decl_engine;
+        let initial_type_id = type_engine.insert(decl_engine, field.type_info);
         let r#type = check!(
             ctx.resolve_type_with_self(
                 initial_type_id,
@@ -86,7 +89,7 @@ impl ty::TyStructField {
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );

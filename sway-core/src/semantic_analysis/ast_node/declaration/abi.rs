@@ -1,4 +1,5 @@
 use sway_error::error::CompileError;
+use sway_types::Spanned;
 
 use crate::{
     error::*,
@@ -45,10 +46,11 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }
-            new_interface_surface.push(ctx.declaration_engine.insert_trait_fn(method));
+            new_interface_surface.push(ctx.decl_engine.insert(method));
         }
 
         // Type check the methods.
@@ -64,10 +66,11 @@ impl ty::TyAbiDeclaration {
                 if param.is_reference || param.is_mutable {
                     errors.push(CompileError::RefMutableNotAllowedInContractAbi {
                         param_name: param.name.clone(),
+                        span: param.name.span(),
                     })
                 }
             }
-            new_methods.push(ctx.declaration_engine.insert_function(method));
+            new_methods.push(ctx.decl_engine.insert(method));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

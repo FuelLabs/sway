@@ -1,12 +1,13 @@
 use crate::{engine_threading::*, type_system::*};
 use std::{fmt, hash::Hasher};
-use sway_types::{Span, Spanned};
+use sway_types::{Span, SpanTree, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
+    pub name_spans: Option<SpanTree>,
 }
 
 impl Spanned for TypeArgument {
@@ -20,9 +21,7 @@ impl Spanned for TypeArgument {
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeArgument {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, type_engine);
     }
 }
 
@@ -34,8 +33,8 @@ impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
     }
 }
 impl OrdWithEngines for TypeArgument {
@@ -48,11 +47,7 @@ impl OrdWithEngines for TypeArgument {
 
 impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            engines.help_out(engines.te().look_up_type_id(self.type_id))
-        )
+        write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
     }
 }
 
@@ -62,15 +57,8 @@ impl From<&TypeParameter> for TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,
             span: type_param.name_ident.span(),
+            name_spans: None,
         }
-    }
-}
-
-impl TypeArgument {
-    pub fn json_abi_str(&self, type_engine: &TypeEngine) -> String {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .json_abi_str(type_engine)
     }
 }
 
@@ -80,8 +68,8 @@ impl ReplaceSelfType for TypeArgument {
     }
 }
 
-impl CopyTypes for TypeArgument {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl SubstTypes for TypeArgument {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
     }
 }

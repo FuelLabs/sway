@@ -24,8 +24,8 @@ fn print_welcome_message() {
 
     let join_the_community = format!(
         "Join the Community:\n- Follow us {}
-- Ask questions in dev-chat on {}",
-        "@SwayLang: https://twitter.com/SwayLang", "Discord: https://discord.com/invite/xfpK4Pe"
+- Ask questions on {}",
+        "@SwayLang: https://twitter.com/SwayLang", "Discourse: https://forum.fuel.network/"
     );
 
     let report_bugs = format!(

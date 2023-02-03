@@ -1,13 +1,13 @@
 library std;
 
-dep convert;
-dep intrinsics;
 dep error_signals;
 dep logging;
 dep revert;
-dep assert;
 dep result;
 dep option;
+dep convert;
+dep intrinsics;
+dep assert;
 dep alloc;
 dep contract_id;
 dep constants;
@@ -20,6 +20,9 @@ dep r#storage;
 dep b512;
 dep address;
 dep identity;
+dep vec;
+dep bytes;
+dep b256;
 dep tx;
 dep inputs;
 dep outputs;
@@ -32,9 +35,8 @@ dep vm/mod;
 dep flags;
 dep u128;
 dep u256;
-dep vec;
-dep bytes;
 dep message;
 dep prelude;
+dep low_level_call;
 
 use core::*;

@@ -1,7 +1,7 @@
 use crate::ops::forc_check;
 use anyhow::Result;
 use clap::Parser;
-use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
+use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 
 /// Check the current or target project and all of its dependencies for errors.
 ///
@@ -9,6 +9,9 @@ use sway_core::{declaration_engine::DeclarationEngine, Engines, TypeEngine};
 /// which is faster than running forc build.
 #[derive(Debug, Default, Parser)]
 pub struct Command {
+    /// Build target to use for code generation.
+    #[clap(value_enum, default_value_t=BuildTarget::default(), alias="target")]
+    pub build_target: BuildTarget,
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
@@ -23,12 +26,15 @@ pub struct Command {
     /// Terse mode. Limited warning and error output.
     #[clap(long = "terse", short = 't')]
     pub terse_mode: bool,
+    /// Disable checking unit tests.
+    #[clap(long = "disable-tests")]
+    pub disable_tests: bool,
 }
 
 pub(crate) fn exec(command: Command) -> Result<()> {
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
     let res = forc_check::check(command, engines)?;
     if !res.is_ok() {
         anyhow::bail!("unable to type check");

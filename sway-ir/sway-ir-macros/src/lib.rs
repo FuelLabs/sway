@@ -48,7 +48,7 @@ pub fn derive_debug_with_context(input: TokenStream) -> TokenStream {
                         fields,
                         ..
                     } = variant;
-                    let type_variant_name = format!("{}::{}", type_name, variant_ident);
+                    let type_variant_name = format!("{type_name}::{variant_ident}");
                     match fields {
                         Fields::Named(fields_named) => {
                             let (field_names, fmt_fields) =

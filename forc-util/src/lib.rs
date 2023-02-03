@@ -19,6 +19,37 @@ pub mod restricted;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 
+/// Format `Log` and `LogData` receipts.
+pub fn format_log_receipts(receipts: &[fuel_tx::Receipt], pretty_print: bool) -> Result<String> {
+    let mut receipt_to_json_array = serde_json::to_value(receipts)?;
+    for (rec_index, receipt) in receipts.iter().enumerate() {
+        let rec_value = receipt_to_json_array.get_mut(rec_index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Serialized receipts does not contain {} th index",
+                rec_index
+            )
+        })?;
+        match receipt {
+            fuel_tx::Receipt::LogData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/LogData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            fuel_tx::Receipt::ReturnData { data, .. } => {
+                if let Some(v) = rec_value.pointer_mut("/ReturnData/data") {
+                    *v = hex::encode(data).into();
+                }
+            }
+            _ => {}
+        }
+    }
+    if pretty_print {
+        Ok(serde_json::to_string_pretty(&receipt_to_json_array)?)
+    } else {
+        Ok(serde_json::to_string(&receipt_to_json_array)?)
+    }
+}
+
 /// Continually go up in the file tree until a specified file is found.
 #[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
@@ -39,6 +70,24 @@ pub fn find_parent_dir_with_file(starter_path: &Path, file_name: &str) -> Option
 /// Continually go up in the file tree until a Forc manifest file is found.
 pub fn find_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
+}
+
+/// Continually go up in the file tree until a Forc manifest file is found and given predicate
+/// returns true.
+pub fn find_manifest_dir_with_check<F>(starter_path: &Path, f: F) -> Option<PathBuf>
+where
+    F: Fn(&Path) -> bool,
+{
+    find_manifest_dir(starter_path).and_then(|manifest_dir| {
+        // If given check satisifies return current dir otherwise start searching from the parent.
+        if f(&manifest_dir) {
+            Some(manifest_dir)
+        } else if let Some(parent_dir) = manifest_dir.parent() {
+            find_manifest_dir_with_check(parent_dir, f)
+        } else {
+            None
+        }
+    })
 }
 
 pub fn is_sway_file(file: &Path) -> bool {
@@ -143,7 +192,7 @@ pub fn print_on_success(
     }
 
     if warnings.is_empty() {
-        println_green_err(&format!("  Compiled {} {:?}.", type_str, proj_name));
+        println_green_err(&format!("  Compiled {type_str} {proj_name:?}."));
     } else {
         println_yellow_err(&format!(
             "  Compiled {} {:?} with {} {}.",
@@ -165,7 +214,7 @@ pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[C
     }
 
     if warnings.is_empty() {
-        println_green_err(&format!("  Compiled library {:?}.", proj_name));
+        println_green_err(&format!("  Compiled library {proj_name:?}."));
     } else {
         println_yellow_err(&format!(
             "  Compiled library {:?} with {} {}.",
@@ -203,7 +252,7 @@ fn format_err(err: &CompileError) {
     let mut start_pos = span.start();
     let mut end_pos = span.end();
 
-    let friendly_str = maybe_uwuify(&format!("{}", err));
+    let friendly_str = maybe_uwuify(&format!("{err}"));
     let (snippet_title, snippet_slices) = if start_pos < end_pos {
         let title = Some(Annotation {
             label: None,
