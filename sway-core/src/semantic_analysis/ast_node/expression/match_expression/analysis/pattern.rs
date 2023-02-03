@@ -683,12 +683,12 @@ impl Pattern {
                     ..
                 }),
                 TypeInfo::Enum {
-                    name: r_enum_name,
+                    call_path: r_enum_call_path,
                     variant_types,
                     ..
                 },
             ) => {
-                l_enum_name.as_str() == r_enum_name.as_str()
+                l_enum_name.as_str() == r_enum_call_path.suffix.as_str()
                     && variant_types
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
