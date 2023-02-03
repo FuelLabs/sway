@@ -3,11 +3,17 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    error::*,
+    language::{CallPath, Visibility},
+    transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
-    pub name: Ident,
+    pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
@@ -21,7 +27,7 @@ pub struct TyEnumDeclaration {
 impl EqWithEngines for TyEnumDeclaration {}
 impl PartialEqWithEngines for TyEnumDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        self.call_path.suffix == other.call_path.suffix
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
@@ -57,7 +63,7 @@ impl CreateTypeId for TyEnumDeclaration {
         type_engine.insert(
             decl_engine,
             TypeInfo::Enum {
-                name: self.name.clone(),
+                call_path: self.call_path.clone(),
                 variant_types: self.variants.clone(),
                 type_parameters: self.type_parameters.clone(),
             },
@@ -77,7 +83,7 @@ impl MonomorphizeHelper for TyEnumDeclaration {
     }
 
     fn name(&self) -> &Ident {
-        &self.name
+        &self.call_path.suffix
     }
 }
 
@@ -96,7 +102,7 @@ impl TyEnumDeclaration {
             Some(variant) => ok(variant, warnings, errors),
             None => {
                 errors.push(CompileError::UnknownEnumVariant {
-                    enum_name: self.name.clone(),
+                    enum_name: self.call_path.suffix.clone(),
                     variant_name: variant_name.clone(),
                     span: variant_name.span(),
                 });

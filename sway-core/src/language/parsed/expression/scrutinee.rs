@@ -23,7 +23,7 @@ pub enum Scrutinee {
         span: Span,
     },
     StructScrutinee {
-        struct_name: Ident,
+        struct_name: CallPath,
         fields: Vec<StructScrutineeField>,
         span: Span,
     },
@@ -131,7 +131,7 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    name: struct_name.clone(),
+                    name: struct_name.clone().suffix,
                     type_arguments: None,
                 }];
                 let fields = fields

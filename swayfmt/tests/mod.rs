@@ -1,82 +1,90 @@
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 
-/// Checks if the formatter is producing the same output when given it's output.
-fn test_stability(formatted_input: String, formatter: Formatter) -> bool {
-    let mut formatter = formatter;
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(formatted_input.clone()), None).unwrap();
-    formatted_input == formatted_sway_code
+#[macro_use]
+mod macros;
+
+/// Takes a configured formatter as input and formats a given input and checks the actual output against an
+/// expected output. There are two format passes to ensure that the received output does not change on a second pass.
+fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
+    let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
+    assert_eq_pretty!(first_formatted, expected);
+
+    let second_formatted =
+        Formatter::format(formatter, Arc::from(first_formatted.clone()), None).unwrap();
+    assert_eq_pretty!(second_formatted, first_formatted);
 }
 
-#[test]
-fn test_const() {
-    let sway_code_to_format = r#"contract;
-pub const TEST:u16=10;"#;
-    let correct_sway_code = r#"contract;
-pub const TEST: u16 = 10;
-"#;
+/// Formats a given input and checks the actual output against an expected
+/// output by calling check_with_formatter() with a default Formatter as input.
+fn check(unformatted: &str, expected: &str) {
     let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+    check_with_formatter(unformatted, expected, &mut formatter);
 }
 
 #[test]
-fn test_struct_alignment() {
-    let sway_code_to_format = r#"contract;
+fn const_spacing() {
+    check(
+        r#"contract;
+pub const TEST:u16=10;
+"#,
+        r#"contract;
+pub const TEST: u16 = 10;
+"#,
+    )
+}
+
+#[test]
+fn struct_alignment() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
+
+    check_with_formatter(
+        r#"contract;
 pub struct Foo<T, P> {
    barbazfoo: u64,
    baz  : bool,
 }
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 pub struct Foo<T, P> {
     barbazfoo : u64,
     baz       : bool,
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+        &mut formatter,
+    );
 }
 #[test]
-fn test_struct() {
-    let sway_code_to_format = r#"contract;
+fn struct_ending_comma() {
+    check(
+        r#"contract;
 pub struct Foo {
     bar: u64,
     baz: bool
 }
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 pub struct Foo {
     bar: u64,
     baz: bool,
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_enum_without_variant_alignment() {
-    let sway_code_to_format = r#"contract;
+fn enum_without_variant_alignment() {
+    check(
+        r#"contract;
 
 enum Color {
     Blue: (), Green: (),
             Red: (),
     Silver: (),
                     Grey: () }
-        "#;
-    let correct_sway_code = r#"contract;
+        "#,
+        r#"contract;
 
 enum Color {
     Blue: (),
@@ -85,24 +93,24 @@ enum Color {
     Silver: (),
     Grey: (),
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_enum_with_variant_alignment() {
-    let sway_code_to_format = r#"contract;
+fn enum_with_variant_alignment() {
+    // Creating a config with enum_variant_align_threshold that exceeds longest variant length
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
+    check_with_formatter(
+        r#"contract;
 
 enum Color {
     Blue: (), Green: (),
             Red: (),
     Silver: (),
                     Grey: (), }
-        "#;
-    let correct_sway_code = r#"contract;
+        "#,
+        r#"contract;
 
 enum Color {
     Blue   : (),
@@ -111,27 +119,21 @@ enum Color {
     Silver : (),
     Grey   : (),
 }
-"#;
-
-    // Creating a config with enum_variant_align_threshold that exceeds longest variant length
-    let mut formatter = Formatter::default();
-    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(20);
-
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+        &mut formatter,
+    );
 }
 #[test]
-fn test_item_abi_with_generics_and_attributes() {
-    let sway_code_to_format = r#"contract;
+fn item_abi_with_generics_and_attributes() {
+    check(
+        r#"contract;
 
 abi StorageMapExample {
     #[storage(write)]fn insert_into_map1(key: u64, value: u64);
 
 fn hello(key: u64, value: u64);
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 abi StorageMapExample {
     #[storage(write)]
@@ -139,35 +141,28 @@ abi StorageMapExample {
 
     fn hello(key: u64, value: u64);
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_multi_items() {
-    let sway_code_to_format = r#"contract;
+fn multi_items() {
+    check(
+        r#"contract;
 
 pub const TEST: u16 = 10;
-pub const TEST1: u16 = 10;"#;
-    let correct_sway_code = r#"contract;
+pub const TEST1: u16 = 10;"#,
+        r#"contract;
 
 pub const TEST: u16 = 10;
 pub const TEST1: u16 = 10;
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_ty_formatting() {
-    let sway_code_to_format = r#"contract;
+fn ty_formatting() {
+    check(
+        r#"contract;
 
 enum TestTy {
     Infer:
@@ -184,8 +179,8 @@ example::
     Tuple: (   u64,
         u32
     ),
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 enum TestTy {
     Infer: _,
@@ -195,16 +190,14 @@ enum TestTy {
     TupleNil: (),
     Tuple: (u64, u32),
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_storage_without_alignment() {
-    let sway_code_to_format = r#"contract;
+fn storage_without_alignment() {
+    check(
+        r#"contract;
+
         struct Type1 {
             foo: u64,
         }
@@ -217,8 +210,9 @@ fn test_storage_without_alignment() {
          var1: Type1=Type1{ foo: 8 },
               var2: Type2=Type2{ bar: 9 },
         }
-        "#;
-    let correct_sway_code = r#"contract;
+        "#,
+        r#"contract;
+
 struct Type1 {
     foo: u64,
 }
@@ -231,17 +225,16 @@ storage {
     var1: Type1 = Type1 { foo: 8 },
     var2: Type2 = Type2 { bar: 9 },
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_storage_with_alignment() {
-    let sway_code_to_format = r#"contract;
+fn storage_with_alignment() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
+    check_with_formatter(
+        r#"contract;
+
 struct Type1 {
     foo: u64,
 }
@@ -254,8 +247,9 @@ storage {
  long_var_name: Type1=Type1{ foo: 8 },
       var2: Type2=Type2{ bar: 9 },
 }
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
+
 struct Type1 {
     foo : u64,
 }
@@ -268,18 +262,14 @@ storage {
     long_var_name : Type1 = Type1 { foo: 8 },
     var2          : Type2 = Type2 { bar: 9 },
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(50);
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+        &mut formatter,
+    );
 }
 #[test]
-fn test_storage_initializer() {
-    let sway_code_to_format = r#"contract;
+fn storage_initializer() {
+    check(
+        r#"contract;
 
 struct Type1 {
     x: u64,
@@ -294,8 +284,6 @@ struct Type2 {
 storage {
     var1: Type1 = Type1 {
 
-
-
         x: 0,
 
         y:
@@ -303,8 +291,8 @@ storage {
         },
     var2: Type2 = Type2 { w: 0x0000000000000000000000000000000000000000000000000000000000000000,z: false,
     },
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 struct Type1 {
     x: u64,
@@ -323,20 +311,17 @@ storage {
         z: false,
     },
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_item_fn() {
-    let sway_code_to_format = r#"contract;
+fn item_fn() {
+    check(
+        r#"contract;
 
 pub fn hello( person: String ) -> String {let greeting = 42;greeting.to_string()}
-fn goodbye() -> usize {let farewell: usize = 5; farewell }"#;
-    let correct_sway_code = r#"contract;
+fn goodbye() -> usize {let farewell: usize = 5; farewell }"#,
+        r#"contract;
 
 pub fn hello(person: String) -> String {
     let greeting = 42;
@@ -346,19 +331,16 @@ fn goodbye() -> usize {
     let farewell: usize = 5;
     farewell
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_same_line_where() {
-    let sway_code_to_format = r#"contract;
+fn same_line_where() {
+    check(
+        r#"contract;
 
-pub fn hello( person: String ) -> String where T: Eq,{let greeting = 42;greeting.to_string()}"#;
-    let correct_sway_code = r#"contract;
+pub fn hello( person: String ) -> String where T: Eq,{let greeting = 42;greeting.to_string()}"#,
+        r#"contract;
 
 pub fn hello(person: String) -> String
 where
@@ -367,23 +349,20 @@ where
     let greeting = 42;
     greeting.to_string()
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_trait_and_super_trait() {
-    let sway_code_to_format = r#"library traits;
+fn trait_and_super_trait() {
+    check(
+        r#"library traits;
 
 trait Person{ fn name( self )->String;fn age( self )->usize; }
 trait Student:Person {fn university(self) -> String;}
 trait Programmer {fn fav_language(self) -> String;}
 trait CompSciStudent: Programmer+Student {fn git_username(self) -> String;}
-trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#;
-    let correct_sway_code = r#"library traits;
+trait TraitWithGenerics<T> where T: String {fn from(b: T) -> Self;}"#,
+        r#"library traits;
 
 trait Person {
     fn name(self) -> String;
@@ -404,16 +383,16 @@ where
 {
     fn from(b: T) -> Self;
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_method_calls() {
-    let sway_code_to_format = r#"script;
+fn method_calls() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.small_structures_single_line = true;
+    formatter.config.whitespace.max_width = 220;
+    check_with_formatter(
+        r#"script;
 
 struct Opts {
     gas: u64,
@@ -458,9 +437,8 @@ fn  main(       ) -> bool{
     assert(balance_test_contract_balance == 3);
 
     true
-}"#;
-
-    let correct_sway_code = r#"script;
+}"#,
+        r#"script;
 
 struct Opts {
     gas: u64,
@@ -497,19 +475,15 @@ fn main() -> bool {
 
     true
 }
-"#;
-    let mut formatter = Formatter::default();
-    formatter.config.structures.small_structures_single_line = true;
-    formatter.config.whitespace.max_width = 220;
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+        &mut formatter,
+    );
 }
 
 #[test]
-fn test_struct_comments() {
-    let sway_code_to_format = r#"contract;
+fn struct_comments() {
+    check(
+        r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
 
@@ -533,8 +507,8 @@ pub struct Foo { // Here is a comment
              //                                                                                  \|_________|
 }
 // This is a comment
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
     // Trying some ASCII art
@@ -550,69 +524,56 @@ pub struct Foo { // Here is a comment
              //                                                                                  \|_________|
 }
 // This is a comment
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
 fn comments_empty_struct() {
-    let sway_code_to_format = r#"contract;
+    check(
+        r#"contract;
 
 struct AlignMyComments {
     // Align here please
         // Overindented comment
 // Underindented comment
-}"#;
-
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 struct AlignMyComments {
     // Align here please
     // Overindented comment
     // Underindented comment
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
 fn comments_empty_traits() {
-    let sway_code_to_format = r#"contract;
+    check(
+        r#"contract;
 
 trait AlignMyComments {
     // Align here please
         // Overindented comment
 // Underindented comment
-}"#;
-
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 trait AlignMyComments {
     // Align here please
     // Overindented comment
     // Underindented comment
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_enum_comments() {
-    let sway_code_to_format = r#"contract;
+fn enum_comments() {
+    check(
+        r#"contract;
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
@@ -625,8 +586,8 @@ pub enum Bazz { // Here is a comment
               //--D--
               //-----
 }
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
@@ -634,48 +595,43 @@ pub enum Bazz { // Here is a comment
               //--D--
               //-----
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_fn_comments() {
-    let sway_code_to_format = r#"contract;
+fn fn_comments() {
+    check(
+        r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world( baz: /* this is a comment */ u64) { let x = 5; // This is a comment inside the block
 }
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 // This is a comment before a fn
 // This is another comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) {
     let x = 5; // This is a comment inside the block
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_abi_comments() {
-    let sway_code_to_format = r#"contract;
+fn abi_comments() {
+    check(
+        r#"contract;
+
 // This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
+
 // This is an abi
 abi StorageMapExample {
     // insert_into_map is blah blah
@@ -683,30 +639,24 @@ abi StorageMapExample {
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_const_comments() {
-    let sway_code_to_format = r#"contract;
-pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#;
-    let correct_sway_code = r#"contract;
+fn const_comments() {
+    check(
+        r#"contract;
+pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const"#,
+        r#"contract;
 pub const /* TEST: blah blah tests */ TEST: u16 = 10; // This is a comment next to a const
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_storage_comments() {
-    let sway_code_to_format = r#"contract;
+fn storage_comments() {
+    check(
+        r#"contract;
 
 struct Type1 {
     foo: u64,
@@ -719,8 +669,8 @@ storage {
     long_var_name: Type1=Type1{ foo: 8},
     // Testing another comment
     var2: Type2 = Type2{bar:9} // This is the last comment
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 struct Type1 {
     foo: u64,
@@ -734,43 +684,36 @@ storage {
     // Testing another comment
     var2: Type2 = Type2 { bar: 9 }, // This is the last comment
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_trait_comments() {
-    let sway_code_to_format = r#"contract;
+fn trait_comments() {
+    check(
+        r#"contract;
 // This is the programmer trait
 trait Programmer {
     // Returns fav languages of this Programmer.
     fn fav_language(self) -> String;
-}"#;
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 // This is the programmer trait
 trait Programmer {
     // Returns fav languages of this Programmer.
     fn fav_language(self) -> String;
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_where_comment() {
-    let sway_code_to_format = r#"contract;
+fn where_comment() {
+    check(
+        r#"contract;
 
-pub fn hello( person: String ) -> String where /* This is next to where */ T: Eq, /*Here is a comment*/{let greeting = 42;greeting.to_string()}"#;
-    let correct_sway_code = r#"contract;
+pub fn hello( person: String ) -> String where /* This is next to where */ T: Eq, /*Here is a comment*/{let greeting = 42;greeting.to_string()}"#,
+        r#"contract;
 
 pub fn hello(person: String) -> String
 where /* This is next to where */
@@ -779,16 +722,13 @@ where /* This is next to where */
     let greeting = 42;
     greeting.to_string()
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_impl() {
-    let sway_code_to_format = r#"script;
+fn impl_spacing() {
+    check(
+        r#"script;
 
 struct Foo {
     bar: u64,
@@ -806,8 +746,8 @@ where
     B: Qux    ,
 {fn is_baz_true(self) -> bool {
         self.baz
-    }}"#;
-    let correct_sway_code = r#"script;
+    }}"#,
+        r#"script;
 
 struct Foo {
     bar: u64,
@@ -826,17 +766,14 @@ impl<A, B> Qux<A, B> for Foo where
         self.baz
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_impl_without_generics() {
-    let sway_code_to_format = r#"script;
+fn impl_without_generics() {
+    check(
+        r#"script;
 
 struct Foo {
     bar: u64,
@@ -851,8 +788,8 @@ impl   Qux for
 Foo
 {fn is_baz_true(self) -> bool {
         self.baz
-    }}"#;
-    let correct_sway_code = r#"script;
+    }}"#,
+        r#"script;
 
 struct Foo {
     bar: u64,
@@ -868,17 +805,14 @@ impl Qux for Foo {
         self.baz
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_newline_sequence_formatting() {
-    let sway_code_to_format = r#"script;
+fn newline_sequence_formatting() {
+    check(
+        r#"script;
 
 fn main() {
     let number: u64 = 10;
@@ -891,9 +825,8 @@ fn main() {
 
 
 
-}"#;
-
-    let correct_sway_code = r#"script;
+}"#,
+        r#"script;
 
 fn main() {
     let number: u64 = 10;
@@ -902,18 +835,14 @@ fn main() {
 
     let number3: u64 = 30;
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_doc_comments() {
-    let sway_code_to_format = r#"script;
+fn doc_comments() {
+    check(
+        r#"script;
 
 enum Color {
     /// Blue color
@@ -923,9 +852,8 @@ enum Color {
 }
 /// This is the main function
 fn main() {
-}"#;
-
-    let correct_sway_code = r#"script;
+}"#,
+        r#"script;
 
 enum Color {
     /// Blue color
@@ -935,18 +863,14 @@ enum Color {
 }
 /// This is the main function
 fn main() {}
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_newline_comment_handler_interaction() {
-    let sway_code_to_format = r#"script;
+fn newline_comment_handler_interaction() {
+    check(
+        r#"script;
 
 // use statements
 use std::*;
@@ -960,9 +884,8 @@ let array_of_integers: [u8;
     // Array of strings
     let array_of_strings = [ "Bob", "Jan", "Ron"];
 }
-"#;
-
-    let correct_sway_code = r#"script;
+"#,
+        r#"script;
 
 // use statements
 use std::*;
@@ -974,50 +897,40 @@ fn main() {
     // Array of strings
     let array_of_strings = ["Bob", "Jan", "Ron"];
 }
-"#;
-
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
 fn comments_before_module_kind() {
-    let sway_code_to_format = r#"// something about module kind
+    check(
+        r#"// something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#;
-    let correct_sway_code = r#"// something about module kind
+library test_module_kind_with_comments;"#,
+        r#"// something about module kind
 // something else about module kind
 library test_module_kind_with_comments;
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
 fn newline_before_comments() {
-    let sway_code_to_format = r#"
+    check(
+        r#"
 
 
 // something about module kind
 // something else about module kind
-library test_module_kind_with_comments;"#;
-    let correct_sway_code = r#"// something about module kind
+library test_module_kind_with_comments;"#,
+        r#"// something about module kind
 // something else about module kind
 library test_module_kind_with_comments;
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_destructure_structs() {
-    let sway_code_to_format = r#"library test_destructure_structs;
+fn destructure_structs() {
+    check(
+        r#"library test_destructure_structs;
 
 struct Point {
     x: u64,
@@ -1041,8 +954,8 @@ fn struct_destructuring() {
         nested_tuple: (a, (b, (c, d))),
     } = tuple_in_struct;
 }
-"#;
-    let correct_sway_code = r#"library test_destructure_structs;
+"#,
+        r#"library test_destructure_structs;
 
 struct Point {
     x: u64,
@@ -1069,38 +982,32 @@ fn struct_destructuring() {
         nested_tuple: (a, (b, (c, d))),
     } = tuple_in_struct;
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_multiline_collections() {
-    let sway_code_to_format = r#"library test_multiline_collections;
+fn multiline_collections() {
+    check(
+        r#"library test_multiline_collections;
 fn func_with_multiline_collections() {
     let x = (
         "hello",
         "world",
     );
 }
-"#;
-    let correct_sway_code = r#"library test_multiline_collections;
+"#,
+        r#"library test_multiline_collections;
 fn func_with_multiline_collections() {
     let x = ("hello", "world");
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
 fn comments_between_if_else() {
-    let sway_code_to_format = r#"script;
+    check(
+        r#"script;
 
 fn main() {
     if pledge_history_index != 0 {
@@ -1118,9 +1025,8 @@ fn main() {
         storage.pledge_count.insert(user, pledge_count + 1);
     }
 }
-"#;
-
-    let correct_sway_code = r#"script;
+"#,
+        r#"script;
 
 fn main() {
     if pledge_history_index != 0 {
@@ -1138,39 +1044,33 @@ fn main() {
         storage.pledge_count.insert(user, pledge_count + 1);
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 #[test]
-fn test_parameterless_attributes() {
-    let sway_code_to_format = r#"library my_lib;
+fn parameterless_attributes() {
+    check(
+        r#"library my_lib;
 
 abi MyContract {
     #[test]
     fn foo();
 }
-"#;
-    let correct_sway_code = r#"library my_lib;
+"#,
+        r#"library my_lib;
 
 abi MyContract {
     #[test]
     fn foo();
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_traits_with_def_block() {
-    let sway_code_to_format = r#"script;
+fn traits_with_def_block() {
+    check(
+        r#"script;
 
 pub trait Foo {
     fn foo(self, other: Self);
@@ -1179,8 +1079,8 @@ pub trait Foo {
 }
 
 fn main() {}
-"#;
-    let correct_sway_code = r#"script;
+"#,
+        r#"script;
 
 pub trait Foo {
     fn foo(self, other: Self);
@@ -1189,17 +1089,14 @@ pub trait Foo {
 }
 
 fn main() {}
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_if_else_multiline_to_inline() {
-    let sway_code_to_format = r#"script;
+fn if_else_multiline_to_inline() {
+    check(
+        r#"script;
 
 fn main() {
     if foo    {
@@ -1208,24 +1105,21 @@ fn main() {
         bar(y)   ;
     }
 }
-"#;
-    let correct_sway_code = r#"script;
+"#,
+        r#"script;
 
 fn main() {
     if foo { let x = 1; } else { bar(y); }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    println!("formatted: {formatted_sway_code}");
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_if_else_retain_multiline() {
-    let sway_code_to_format = r#"script;
+fn if_else_retain_multiline() {
+    check(
+        r#"script;
+
 
 fn main() {
     if foo    {
@@ -1234,8 +1128,8 @@ fn main() {
         bar(y)   ;
     }
 }
-"#;
-    let correct_sway_code = r#"script;
+"#,
+        r#"script;
 
 fn main() {
     if foo {
@@ -1244,59 +1138,50 @@ fn main() {
         bar(y);
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_multiple_comma_separated_attributes() {
-    let sway_code_to_format = r#"library my_lib;
+fn multiple_comma_separated_attributes() {
+    check(
+        r#"library my_lib;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
-"#;
-    let correct_sway_code = r#"library my_lib;
+"#,
+        r#"library my_lib;
 
 #[test, inline(always), storage(read, write), payable]
 fn foo() {}
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_stack_of_comma_separated_attributes1() {
-    let sway_code_to_format = r#"library my_lib;
+fn stack_of_comma_separated_attributes1() {
+    check(
+        r#"library my_lib;
 
 /// this is a doc comment
 #[storage(read, write), payable]
 #[test, inline(always)]
 fn foo() {}
-"#;
-    let correct_sway_code = r#"library my_lib;
+"#,
+        r#"library my_lib;
 
 /// this is a doc comment
 #[storage(read, write), payable]
 #[test, inline(always)]
 fn foo() {}
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_stack_of_comma_separated_attributes2() {
-    let sway_code_to_format = r#"library my_lib;
+fn stack_of_comma_separated_attributes2() {
+    check(
+        r#"library my_lib;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1304,8 +1189,8 @@ fn test_stack_of_comma_separated_attributes2() {
 #[test]
 #[inline(always)]
 fn foo() {}
-"#;
-    let correct_sway_code = r#"library my_lib;
+"#,
+        r#"library my_lib;
 
 /// this is a doc comment
 #[storage(read, write)]
@@ -1313,17 +1198,14 @@ fn foo() {}
 #[test]
 #[inline(always)]
 fn foo() {}
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_comment_between_closing_brace_and_else() {
-    let sway_code_to_format = r#"contract;
+fn comment_between_closing_brace_and_else() {
+    check(
+        r#"contract;
 
 impl MyContract for Contract {
     fn is_blue() -> bool {
@@ -1340,9 +1222,8 @@ impl MyContract for Contract {
             false
         }
     }
-}"#;
-
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 impl MyContract for Contract {
     fn is_blue() -> bool {
@@ -1361,17 +1242,14 @@ impl MyContract for Contract {
         }
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_comment_between_if_else_inline_to_multiline() {
-    let sway_code_to_format = r#"contract;
+fn comment_between_if_else_inline_to_multiline() {
+    check(
+        r#"contract;
 
 impl MyContract for Contract {
     fn is_blue() -> bool {
@@ -1379,9 +1257,8 @@ impl MyContract for Contract {
         // TODO remove this else when exhaustive ifs are checked for
     else { false }
     }
-}"#;
-
-    let correct_sway_code = r#"contract;
+}"#,
+        r#"contract;
 
 impl MyContract for Contract {
     fn is_blue() -> bool {
@@ -1394,17 +1271,14 @@ impl MyContract for Contract {
         }
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
 
 #[test]
-fn test_asm_block() {
-    let sway_code_to_format = r#"library my_lib;
+fn asm_block() {
+    check(
+        r#"library my_lib;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
@@ -1413,8 +1287,8 @@ fn foo() {
         r4: bool
     }
 }
-"#;
-    let correct_sway_code = r#"library my_lib;
+"#,
+        r#"library my_lib;
 
 fn foo() {
     asm(r1: self, r2: other, r3, r4) {
@@ -1423,17 +1297,15 @@ fn foo() {
         r4: bool
     }
 }
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
+
 #[test]
-fn test_empty_blocks() {
-    let sway_code_to_format = r#"contract;
-        
+fn empty_blocks() {
+    check(
+        r#"contract;
+
 fn contents() {
     let i = {    };
     match i {
@@ -1441,8 +1313,8 @@ fn contents() {
     if true {    }
 }
 fn empty() {}
-"#;
-    let correct_sway_code = r#"contract;
+"#,
+        r#"contract;
 
 fn contents() {
     let i = {};
@@ -1450,10 +1322,6 @@ fn contents() {
     if true {}
 }
 fn empty() {}
-"#;
-    let mut formatter = Formatter::default();
-    let formatted_sway_code =
-        Formatter::format(&mut formatter, Arc::from(sway_code_to_format), None).unwrap();
-    assert_eq!(correct_sway_code, formatted_sway_code);
-    assert!(test_stability(formatted_sway_code, formatter));
+"#,
+    );
 }
