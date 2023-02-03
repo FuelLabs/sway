@@ -409,37 +409,118 @@ pub fn swap<T>(
 pub fn sort<T>(
     value0: T,
     value1: T,
+    value2: T,
+    value3: T,
+    value4: T,
+    value5: T,
+    value6: T,
+    value7: T,
+    value8: T,
 ) where T: Ord + Eq {
-    // create new vector
-    let mut vector = Vec::with_capacity(2);
+    // create full vector and sort if not sorted
+    let mut full_vector = Vec::with_capacity(32);
+    full_vector.push(value1);
+    full_vector.push(value2);
+    full_vector.push(value3);
+    full_vector.push(value4);
+    full_vector.push(value5);
+    full_vector.push(value6);
+    full_vector.push(value7);
+    full_vector.push(value8);
+    full_vector.push(value1);
+    full_vector.push(value2);
+    full_vector.push(value3);
+    full_vector.push(value4);
+    full_vector.push(value5);
+    full_vector.push(value6);
+    full_vector.push(value7);
+    full_vector.push(value8);
+    full_vector.push(value1);
+    full_vector.push(value2);
+    full_vector.push(value3);
+    full_vector.push(value4);
+    full_vector.push(value5);
+    full_vector.push(value6);
+    full_vector.push(value7);
+    full_vector.push(value8);
+    full_vector.push(value1);
+    full_vector.push(value2);
+    full_vector.push(value3);
+    full_vector.push(value4);
+    full_vector.push(value5);
+    full_vector.push(value6);
+    full_vector.push(value7);
+    full_vector.push(value8);
+    assert_bounds(full_vector, 32, 32);
 
-    // push 2
-    vector.push(value0);
-    vector.push(value1);
+    // test empty vector
+    let mut empty_vector = Vec::with_capacity(0);
+    Vec::sort(empty_vector);
 
-    // reverse if sorted
-    if vector.is_sorted() {
-        vector.reverse();
-    }
+    assert_bounds(empty_vector, 0, 0);
+    assert(Vec::is_sorted(empty_vector));
+    assert(empty_vector.get(0).is_none());
 
-    // sort
+    // test vector of length one
+    let mut vector = Vec::with_capacity(3);
+    vector.push(full_vector.first().unwrap());
+
     Vec::sort(vector);
 
-    // assert sorted
-    assert(vector.is_sorted());
+    assert_bounds(vector, 1, 3);
+    assert(Vec::is_sorted(vector));
+    assert(vector.get(0).unwrap() == full_vector.first().unwrap());
+    assert(vector.get(1).is_none());
 
-    // push 1
-    vector.push(value3);
+    // test vector of length two
+    vector.push(full_vector.get(full_vector.len() / 2).unwrap());
 
-    // swap if sorted
-    if vector.is_sorted() {
-        vector.swap(0, 2);
-    }
-
+    // sort pre-sorted vector
     Vec::sort(vector);
+    assert_bounds(vector, 2, 3);
+    assert(Vec::is_sorted(vector));
+    assert(vector.get(0).unwrap() == full_vector.first().unwrap());
+    assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
+    assert(vector.get(2).is_none());
 
-    // assert sorted
-    assert(vector.is_sorted());
+    // sort reversed
+    vector.reverse();
+    Vec::sort(vector);
+    assert(Vec::is_sorted(vector));
+
+    // test vector of length 3
+    vector.push(full_vector.last().unwrap());
+
+    assert_bounds(vector, 3, 3);
+
+    // sort pre-sorted vector
+    Vec::sort(vector);
+    assert_bounds(vector, 3, 3);
+    assert(vector.get(0).unwrap() == full_vector.first().unwrap());
+    assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
+    assert(vector.get(2).unwrap() == full_vector.last().unwrap());
+    assert(vector.get(3).is_none());
+
+    // swap and sort
+    vector.swap(0, 2);
+    Vec::sort(vector);
+    assert_bounds(vector, 3, 3);
+    assert(vector.get(0).unwrap() == full_vector.first().unwrap());
+    assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
+    assert(vector.get(2).unwrap() == full_vector.last().unwrap());
+    assert(vector.get(3).is_none());
+
+    // swap and sort
+    vector.swap(1, 2);
+    Vec::sort(vector);
+    assert_bounds(vector, 3, 3);
+    assert(vector.get(0).unwrap() == full_vector.first().unwrap());
+    assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
+    assert(vector.get(2).unwrap() == full_vector.last().unwrap());
+    assert(vector.get(3).is_none());
+
+    // TODO: test full length vector
+    shuffle_32_in_place(full_vector);
 }
 
 fn assert_bounds<T>(ref mut vector: Vec<T>, expected_len: u64, expected_cap: u64) {
@@ -448,30 +529,38 @@ fn assert_bounds<T>(ref mut vector: Vec<T>, expected_len: u64, expected_cap: u64
     assert(!vector.is_empty() || expected_len == 0);
 }
 
-// TODO: implement this as `Vec::is_sorted`.
-fn is_sorted<T>(ref mut vector: Vec<T>) -> bool where T: Ord {
-    let len_sub_one = vector.len() - 1;
-    let mut i = 0;
-    while i < len_sub_one {
-        if vector.get(i).unwrap() > vector.get(i + 1).unwrap() {
-            return false;
-        }
-        i += 2;
-    }
-    true
-}
-
-fn shuffle(ref mut vector: Vec<T>, seed: Option<u64>) -> Vec<T> {
-    let hash = std::hash::sha256(seed.unwrap_or(1));
-    let len = vector.len();
-    let mut i = 0;
-    while i < 31 {
-        let src_index = __addr_of(hash).add::<b256>(i).read_byte() % len;
-        let mut dest_index = _addr_of(hash).add::<b256>(i + 1).read_byte() % len;
-        if src_index == dest_index {
-            dest_index = (dest_index + 1) % len;
-        }
-        vector.swap(src_index, dest_index);
-        i += 2;
-    }
+fn shuffle_32_in_place<T>(ref mut vector: Vec<T>) {
+    // randomly generated swaps
+    // source: haha trust me bro
+	vector.swap(12, 28);
+	vector.swap(2, 5);
+	vector.swap(5, 10);
+	vector.swap(17, 27);
+	vector.swap(3, 6);
+	vector.swap(0, 6);
+	vector.swap(27, 14);
+	vector.swap(13, 28);
+	vector.swap(22, 20);
+	vector.swap(13, 19);
+	vector.swap(10, 0);
+	vector.swap(27, 11);
+	vector.swap(13, 27);
+	vector.swap(21, 19);
+	vector.swap(20, 17);
+	vector.swap(10, 25);
+	vector.swap(24, 9);
+	vector.swap(5, 4);
+	vector.swap(14, 15);
+	vector.swap(14, 4);
+	vector.swap(22, 15);
+	vector.swap(8, 2);
+	vector.swap(3, 4);
+	vector.swap(20, 12);
+	vector.swap(19, 0);
+	vector.swap(29, 19);
+	vector.swap(8, 25);
+	vector.swap(29, 3);
+	vector.swap(8, 12);
+	vector.swap(27, 26);
+	vector.swap(7, 26);
 }
