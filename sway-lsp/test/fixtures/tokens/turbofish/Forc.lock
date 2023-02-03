@@ -1,13 +1,13 @@
 [[package]]
 name = 'core'
-source = 'path+from-root-C35A83477D5B662F'
+source = 'path+from-root-70DB58A2053CC06C'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-70DB58A2053CC06C'
+dependencies = ['core']
 
 [[package]]
 name = 'turbofish'
 source = 'member'
 dependencies = ['std']
-
-[[package]]
-name = 'std'
-source = 'path+from-root-C35A83477D5B662F'
-dependencies = ['core']

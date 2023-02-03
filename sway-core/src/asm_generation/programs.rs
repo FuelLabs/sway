@@ -13,10 +13,6 @@ use crate::{
     decl_engine::DeclId,
 };
 
-mod ethabi {
-    pub use fuel_ethabi::*;
-}
-
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;
 type ImmOffset = u64;

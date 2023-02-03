@@ -184,7 +184,7 @@ pub fn compute_dom_fronts(context: &Context, dom_tree: &DomTree) -> DomFronts {
 
 /// Print dominator tree in the graphviz dot format.
 pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> String {
-    let mut res = format!("digraph {} {{\n", func_name);
+    let mut res = format!("digraph {func_name} {{\n");
     for (b, idom) in dom_tree.iter() {
         if let Some(idom) = idom.parent {
             let _ = writeln!(
@@ -201,7 +201,7 @@ pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> Stri
 
 /// Print dominator frontiers information.
 pub fn print_dom_fronts(context: &Context, func_name: &str, dom_fronts: &DomFronts) -> String {
-    let mut res = format!("Dominance frontiers set for {}:\n", func_name);
+    let mut res = format!("Dominance frontiers set for {func_name}:\n");
     for (b, dfs) in dom_fronts.iter() {
         res += &("\t".to_string() + &b.get_label(context) + ": ");
         for f in dfs {

@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -711,30 +711,11 @@ impl TraitMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
-        let required_traits: BTreeSet<Ident> = constraints
+        let all_impld_traits: BTreeMap<Ident, TypeId> = self
+            .trait_impls
             .iter()
-            .cloned()
-            .map(|constraint| constraint.trait_name.suffix)
-            .collect();
-        let mut found_traits: BTreeSet<Ident> = BTreeSet::new();
-
-        for constraint in constraints.iter() {
-            let TraitConstraint {
-                trait_name: constraint_trait_name,
-                type_arguments: constraint_type_arguments,
-            } = constraint;
-            let constraint_type_id = type_engine.insert(
-                decl_engine,
-                TypeInfo::Custom {
-                    name: constraint_trait_name.suffix.clone(),
-                    type_arguments: if constraint_type_arguments.is_empty() {
-                        None
-                    } else {
-                        Some(constraint_type_arguments.clone())
-                    },
-                },
-            );
-            for key in self.trait_impls.iter().map(|e| &e.key) {
+            .filter_map(|e| {
+                let key = &e.key;
                 let suffix = &key.name.suffix;
                 let map_trait_type_id = type_engine.insert(
                     decl_engine,
@@ -747,15 +728,55 @@ impl TraitMap {
                         },
                     },
                 );
-                if are_equal_minus_dynamic_types(engines, type_id, key.type_id)
-                    && are_equal_minus_dynamic_types(engines, constraint_type_id, map_trait_type_id)
-                {
-                    found_traits.insert(constraint_trait_name.suffix.clone());
+                if are_equal_minus_dynamic_types(engines, type_id, key.type_id) {
+                    Some((suffix.name.clone(), map_trait_type_id))
+                } else {
+                    None
                 }
-            }
-        }
+            })
+            .collect();
 
-        for trait_name in required_traits.difference(&found_traits) {
+        let required_traits: BTreeMap<Ident, TypeId> = constraints
+            .iter()
+            .map(|c| {
+                let TraitConstraint {
+                    trait_name: constraint_trait_name,
+                    type_arguments: constraint_type_arguments,
+                } = c;
+                let constraint_type_id = type_engine.insert(
+                    decl_engine,
+                    TypeInfo::Custom {
+                        name: constraint_trait_name.suffix.clone(),
+                        type_arguments: if constraint_type_arguments.is_empty() {
+                            None
+                        } else {
+                            Some(constraint_type_arguments.clone())
+                        },
+                    },
+                );
+                (c.trait_name.suffix.clone(), constraint_type_id)
+            })
+            .collect();
+
+        let relevant_impld_traits: BTreeMap<Ident, TypeId> = all_impld_traits
+            .into_iter()
+            .filter(|(impld_trait_name, impld_trait_type_id)| {
+                match required_traits.get(impld_trait_name) {
+                    Some(constraint_type_id) => are_equal_minus_dynamic_types(
+                        engines,
+                        *constraint_type_id,
+                        *impld_trait_type_id,
+                    ),
+                    _ => false,
+                }
+            })
+            .collect();
+
+        let required_traits_names: BTreeSet<Ident> = required_traits.keys().cloned().collect();
+        let relevant_impld_traits_names: BTreeSet<Ident> =
+            relevant_impld_traits.keys().cloned().collect();
+
+        for trait_name in required_traits_names.difference(&relevant_impld_traits_names) {
             // TODO: use a better span
             errors.push(CompileError::TraitConstraintNotSatisfied {
                 ty: engines.help_out(type_id).to_string(),

@@ -1,6 +1,6 @@
 script;
 
-use std::{alloc::alloc, assert::assert, hash::sha256, intrinsics::{size_of, size_of_val}};
+use std::{alloc::alloc, hash::sha256, intrinsics::{size_of, size_of_val}};
 
 struct TestStruct {
     boo: bool,

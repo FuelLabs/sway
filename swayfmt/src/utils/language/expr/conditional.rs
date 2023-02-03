@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -8,7 +9,10 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{fmt::Write, ops::ControlFlow};
+use std::{
+    fmt::Write,
+    ops::{ControlFlow, Range},
+};
 use sway_ast::{token::Delimiter, IfCondition, IfExpr, MatchBranch, MatchBranchKind};
 use sway_types::Spanned;
 
@@ -23,8 +27,14 @@ impl Format for IfExpr {
                 .shape
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
+                let range: Range<usize> = self.span().into();
+                let comments = formatter.comment_map.comments_between(&range);
                 // check if the entire expression could fit into a single line
-                let full_width_line_style = get_full_width_line_style(self, formatter)?;
+                let full_width_line_style = if comments.peekable().peek().is_some() {
+                    LineStyle::Multiline
+                } else {
+                    get_full_width_line_style(self, formatter)?
+                };
                 if full_width_line_style == LineStyle::Inline && self.else_opt.is_some() {
                     formatter
                         .shape
@@ -135,10 +145,16 @@ fn format_then_block(
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
 ) -> Result<(), FormatterError> {
-    IfExpr::open_curly_brace(formatted_code, formatter)?;
-    if_expr.then_block.get().format(formatted_code, formatter)?;
-    if if_expr.else_opt.is_none() {
-        IfExpr::close_curly_brace(formatted_code, formatter)?;
+    if !if_expr.then_block.get().statements.is_empty()
+        || if_expr.then_block.get().final_expr_opt.is_some()
+    {
+        IfExpr::open_curly_brace(formatted_code, formatter)?;
+        if_expr.then_block.get().format(formatted_code, formatter)?;
+        if if_expr.else_opt.is_none() {
+            IfExpr::close_curly_brace(formatted_code, formatter)?;
+        }
+    } else {
+        write!(formatted_code, " {{}}")?;
     }
 
     Ok(())
@@ -153,7 +169,25 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
-        write!(else_if_str, " {}", else_token.span().as_str())?;
+        let comments_written = maybe_write_comments_from_map(
+            &mut else_if_str,
+            Range {
+                start: if_expr.then_block.span().end(),
+                end: else_token.span().start(),
+            },
+            formatter,
+        )?;
+
+        if comments_written {
+            write!(
+                else_if_str,
+                "{}",
+                formatter.shape.indent.to_string(&formatter.config)?,
+            )?;
+        } else {
+            write!(else_if_str, " ")?;
+        }
+        write!(else_if_str, "{}", else_token.span().as_str())?;
         match &control_flow {
             ControlFlow::Continue(if_expr) => {
                 write!(else_if_str, " ")?;

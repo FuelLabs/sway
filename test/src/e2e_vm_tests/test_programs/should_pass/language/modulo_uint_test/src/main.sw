@@ -1,7 +1,5 @@
 script;
 
-use std::assert::assert;
-
 fn main() -> bool {
     let uint64_test1: u64 = 100000000000;
     let uint32_test1: u32 = 1000000000;

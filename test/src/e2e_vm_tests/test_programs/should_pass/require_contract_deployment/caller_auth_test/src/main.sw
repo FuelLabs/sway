@@ -1,6 +1,6 @@
 script;
+
 use auth_testing_abi::AuthTesting;
-use std::assert::assert;
 
 // should be false in the case of a script
 fn main() -> bool {

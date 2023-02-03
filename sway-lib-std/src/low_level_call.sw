@@ -26,7 +26,6 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 
 /// Represent a raw pointer as a `Bytes`, so it can be concatenated with a payload.
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
-
     let mut bytes = Bytes::with_capacity(8);
     bytes.len = 8;
 
@@ -63,12 +62,15 @@ fn create_payload(
     */
     require(function_selector.len() == 8, "function selector must be 8 bytes");
 
-    let mut payload = Bytes::new().join(contract_id_to_bytes(target)).join(function_selector);
+    // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
+    let mut payload = Bytes::new();
+    payload.append(contract_id_to_bytes(target));
+    payload.append(function_selector);
 
     if (single_value_type_arg) {
-        payload = payload.join(calldata); // When calldata is copy type, just pass calldata
+        payload.append(calldata); // When calldata is copy type, just pass calldata
     } else {
-        payload = payload.join(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
+        payload.append(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
     };
 
     payload
@@ -91,7 +93,6 @@ pub fn call_with_function_selector(
     call_with_raw_payload(payload, call_params);
 }
 
-
 // TO DO: Deprecate when SDK supports Bytes
 /// Call a target contract with a function selector and calldata, provided as `Vec<u8>`.
 pub fn call_with_function_selector_vec(
@@ -99,7 +100,7 @@ pub fn call_with_function_selector_vec(
     function_selector: Vec<u8>,
     calldata: Vec<u8>,
     single_value_type_arg: bool,
-    call_params: CallParams
+    call_params: CallParams,
 ) {
     let mut function_selector = function_selector;
     let mut calldata = calldata;

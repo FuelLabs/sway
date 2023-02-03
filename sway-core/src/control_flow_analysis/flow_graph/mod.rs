@@ -129,9 +129,9 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
             ControlFlowGraphNode::OrganizationalDominator(s) => s.to_string(),
-            ControlFlowGraphNode::ProgramNode(node) => format!("{:?}", node),
+            ControlFlowGraphNode::ProgramNode(node) => format!("{node:?}"),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => {
-                format!("Enum variant {}", variant_name)
+                format!("Enum variant {variant_name}")
             }
             ControlFlowGraphNode::MethodDeclaration {
                 method_name,

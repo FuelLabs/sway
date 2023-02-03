@@ -46,7 +46,7 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// `TransactionScript` if they all share the same owner.
 fn inputs_owner() -> Result<Identity, AuthError> {
     let inputs = input_count();
-    let mut candidate = Option::None::<Address>;
+    let mut candidate = Option::None;
     let mut i = 0u8;
 
     // Note: `inputs_count` is guaranteed to be at least 1 for any valid tx.
