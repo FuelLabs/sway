@@ -818,15 +818,17 @@ impl<T> Vec<T> {
     /// Space complexity O(n) auxillary
     // TODO: replace `v` with `self` when trait constraints are merged
     fn quick_sort<O>(ref mut v: Vec<O>) where O: Ord + Eq {
-        if 2 > v.len {
+        let len = v.len;
+
+        if 2 > len {
             return;
         }
 
         let mut low = 0;
-        let mut high = v.len - 1;
+        let mut high = len - 1;
 
         // Allocate auxillary stack.
-        let mut stack = Vec::with_capacity(v.len);
+        let mut stack = Vec::with_capacity(len);
 
         // Push low and high to stack.
         stack.push(low);
@@ -885,6 +887,10 @@ impl<T> Vec<T> {
         const MAX_INSERTION: u64 = 21;
 
         let len = v.len;
+
+        if len < 2 {
+            return;
+        }
 
         // If length is 20 or less, use insertion sort instead.
         if len < MAX_INSERTION {
