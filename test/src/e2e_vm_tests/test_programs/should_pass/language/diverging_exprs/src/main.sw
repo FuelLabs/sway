@@ -261,6 +261,71 @@ fn diverge_in_gt() -> u64 {
     123
 }
 
+#[inline(never)]
+fn diverge_in_if_with_std_revert(cond: bool) -> (u64, u64) {
+    let result1 = if cond == true {
+        revert(0)
+    } else {
+        5
+    };
+
+    let result2 = if cond == false {
+        5
+    } else {
+        revert(0)
+    };
+
+    (result1, result2)
+}
+
+#[inline(never)]
+fn diverge_in_if_with_revert_intrinsic(cond: bool) -> (u64, u64) {
+    let result1 = if cond == true {
+        __revert(0)
+    } else {
+        5
+    };
+
+    let result2 = if cond == false {
+        5
+    } else {
+        __revert(0)
+    };
+
+    (result1, result2)
+}
+
+#[inline(never)]
+fn diverge_in_match_with_std_revert(cond: bool) -> (u64, u64) {
+    let result1 = match cond {
+        true => revert(0),
+        false => 5,
+    };
+
+    let result2 = match cond {
+        false => 5,
+        true => revert(0),
+    };
+
+    (result1, result2)
+}
+
+#[inline(never)]
+fn diverge_in_match_with_revert_intrinsic(cond: bool) -> (u64, u64) {
+    let result1 = match cond {
+        true => __revert(0),
+        false => 5,
+    };
+
+    let result2 = match cond {
+        false => 5,
+        true => __revert(0),
+    };
+
+    (result1, result2)
+}
+
+
 fn main() -> u64 {
     assert(5 == diverge_in_let_body());
     assert(5 == diverge_in_struct_0());
@@ -293,6 +358,22 @@ fn main() -> u64 {
     assert(5 == diverge_in_eq());
     assert(5 == diverge_in_lt());
     assert(5 == diverge_in_gt());
+
+    let result = diverge_in_if_with_std_revert(false);
+    assert(result.0 == 5);
+    assert(result.1 == 5);
+
+    let result = diverge_in_if_with_revert_intrinsic(false);
+    assert(result.0 == 5);
+    assert(result.1 == 5);
+
+    let result = diverge_in_match_with_std_revert(false);
+    assert(result.0 == 5);
+    assert(result.1 == 5);
+
+    let result = diverge_in_match_with_revert_intrinsic(false);
+    assert(result.0 == 5);
+    assert(result.1 == 5);
 
     42
 }
