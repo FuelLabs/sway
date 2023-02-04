@@ -208,24 +208,63 @@ pre {
 pre > .buttons {
     position: absolute;
     z-index: 100;
-    right: 5px;
-    top: 5px;
+    right: 0px;
+    top: 2px;
+    margin: 0px;
+    padding: 2px 0px;
 
     color: var(--sidebar-fg);
     cursor: pointer;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0.1s linear, opacity 0.1s linear;
+}
+pre:hover > .buttons {
+    visibility: visible;
+    opacity: 1
 }
 pre > .buttons :hover {
     color: var(--sidebar-active);
+    border-color: var(--icons-hover);
+    background-color: var(--theme-hover);
 }
 pre > .buttons i {
     margin-left: 8px;
 }
 pre > .buttons button {
-    color: inherit;
-    background: transparent;
-    border: none;
     cursor: inherit;
+    margin: 0px 5px;
+    padding: 3px 5px;
+    font-size: 14px;
+
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 4px;
+    border-color: var(--icons);
+    background-color: var(--theme-popup-bg);
+    transition: 100ms;
+    transition-property: color,border-color,background-color;
+    color: var(--icons);
 }
+@media (pointer: coarse) {
+    pre > .buttons button {
+        /* On mobile, make it easier to tap buttons. */
+        padding: 0.3rem 1rem;
+    }
+}
+pre > code {
+    padding: 1rem;
+}
+
+/* FIXME: ACE editors overlap their buttons because ACE does absolute
+   positioning within the code block which breaks padding. The only solution I
+   can think of is to move the padding to the outer pre tag (or insert a div
+   wrapper), but that would require fixing a whole bunch of CSS rules.
+*/
+.hljs.ace_editor {
+  padding: 0rem 0rem;
+}
+
 pre > .result {
     margin-top: 10px;
 }
@@ -468,6 +507,8 @@ ul#searchresults span.teaser em {
     padding: 0;
     list-style: none;
     display: none;
+    /* Don't let the children's background extend past the rounded corners. */
+    overflow: hidden;
 }
 .theme-popup .default {
     color: var(--icons);
@@ -476,7 +517,7 @@ ul#searchresults span.teaser em {
     width: 100%;
     border: 0;
     margin: 0;
-    padding: 2px 10px;
+    padding: 2px 20px;
     line-height: 25px;
     white-space: nowrap;
     text-align: left;
@@ -488,8 +529,10 @@ ul#searchresults span.teaser em {
 .theme-popup .theme:hover {
     background-color: var(--theme-hover);
 }
-.theme-popup .theme:hover:first-child,
-.theme-popup .theme:hover:last-child {
-    border-top-left-radius: inherit;
-    border-top-right-radius: inherit;
+
+.theme-selected::before {
+    display: inline-block;
+    content: "✓";
+    margin-left: -14px;
+    width: 14px;
 }
