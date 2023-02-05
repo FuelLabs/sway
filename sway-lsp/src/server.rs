@@ -1723,6 +1723,12 @@ mod tests {
         go_to.def_end_char = 17;
         definition_check_with_req_offset(&mut service, &mut go_to, 53, 29, 9).await;
 
+        // Variable type ascriptions
+        go_to.def_line = 6;
+        go_to.def_start_char = 5;
+        go_to.def_end_char = 16;
+        definition_check_with_req_offset(&mut service, &mut go_to, 56, 21, 10).await;
+
         shutdown_and_exit(&mut service).await;
     }
 
