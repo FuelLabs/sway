@@ -1733,6 +1733,72 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn go_to_definition_for_consts() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/consts/src/main.sw"),
+        )
+        .await;
+
+        // value: TyExpression
+        let mut contract_go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 9,
+            req_char: 24,
+            def_line: 18,
+            def_start_char: 5,
+            def_end_char: 9,
+            def_path: "sway-lib-std/src/contract_id.sw",
+        };
+        let _ = definition_check(&mut service, &contract_go_to, 1).await;
+
+        contract_go_to.req_char = 34;
+        contract_go_to.def_line = 19;
+        contract_go_to.def_start_char = 7;
+        contract_go_to.def_end_char = 11;
+        let _ = definition_check(&mut service, &contract_go_to, 2).await;
+
+        // Constants defined in the same module
+        let mut go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 19,
+            req_char: 34,
+            def_line: 6,
+            def_start_char: 6,
+            def_end_char: 16,
+            def_path: uri.as_str(),
+        };
+        let _ = definition_check(&mut service, &contract_go_to, 3).await;
+
+        go_to.def_line = 9;
+        definition_check_with_req_offset(&mut service, &mut go_to, 20, 29, 4).await;
+
+        // Constants defined in a different module
+        go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 23,
+            req_char: 73,
+            def_line: 12,
+            def_start_char: 10,
+            def_end_char: 20,
+            def_path: "consts/src/more_consts.sw",
+        };
+        let _ = definition_check(&mut service, &go_to, 5).await;
+
+        go_to.def_line = 13;
+        go_to.def_start_char = 10;
+        go_to.def_end_char = 18;
+        definition_check_with_req_offset(&mut service, &mut go_to, 24, 31, 6).await;
+
+        // Constants with type ascriptions
+        go_to.def_line = 6;
+        go_to.def_start_char = 5;
+        go_to.def_end_char = 9;
+        definition_check_with_req_offset(&mut service, &mut go_to, 10, 17, 7).await;
+    }
+
+    #[tokio::test]
     async fn publish_diagnostics_dead_code_warning() {
         let (mut service, socket) = LspService::new(Backend::new);
         let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
