@@ -353,6 +353,16 @@ impl<'a> ParsedTree<'a> {
                     self.collect_trait_fn(trait_fn);
                 }
 
+                for supertrait in &abi_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
+                }
+
                 abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {

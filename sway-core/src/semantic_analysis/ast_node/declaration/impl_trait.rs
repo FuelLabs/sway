@@ -194,7 +194,7 @@ impl ty::TyImplTrait {
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
-                        &[], // this is empty because abi definitions don't support supertraits,
+                        &abi.supertraits,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,

@@ -311,6 +311,19 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
+                // save decl_ids for the LSP
+                for supertrait in abi_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
+                                supertrait_decl
+                            {
+                                supertrait.decl_id = Some(supertrait_decl_id);
+                            }
+                        });
+                }
                 let decl = ty::TyDeclaration::AbiDeclaration(decl_engine.insert(abi_decl.clone()));
                 abi_decl
                     .methods

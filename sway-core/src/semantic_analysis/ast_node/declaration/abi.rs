@@ -19,6 +19,7 @@ impl ty::TyAbiDeclaration {
         let AbiDeclaration {
             name,
             interface_surface,
+            supertraits,
             methods,
             span,
             attributes,
@@ -53,6 +54,24 @@ impl ty::TyAbiDeclaration {
             new_interface_surface.push(ctx.decl_engine.insert(method));
         }
 
+        // Insert the implemented methods for the supertraits into this namespace
+        // so that the methods defined in the impl block can use them.
+        //
+        // We purposefully do not check for errors here because this is a temporary
+        // namespace and not a real impl block defined by the user.
+        // ctx.namespace.insert_trait_implementation(
+        //     name.clone(),
+        //     vec![], // no type arguments for ABIs
+        //     self_type,
+        //     &supertrait_impld_method_ids
+        //         .values()
+        //         .cloned()
+        //         .collect::<Vec<_>>(),
+        //     &trait_name.span(),
+        //     false,
+        //     engines,
+        // );
+
         // Type check the methods.
         let mut new_methods = vec![];
         for method in methods.into_iter() {
@@ -73,8 +92,12 @@ impl ty::TyAbiDeclaration {
             new_methods.push(ctx.decl_engine.insert(method));
         }
 
+        // Compared to regular traits, we do not insert recursively methods of ABI supertraits
+        // into the interface surface, we do not want supertrait methods to be available to
+        // the ABI user, only the contract methods can use supertrait methods
         let abi_decl = ty::TyAbiDeclaration {
             interface_surface: new_interface_surface,
+            supertraits,
             methods: new_methods,
             name,
             span,
