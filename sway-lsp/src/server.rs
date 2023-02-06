@@ -1377,7 +1377,7 @@ mod tests {
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 8,
+            req_line: 10,
             req_char: 13,
             def_line: 0,
             def_start_char: 8,
@@ -1386,13 +1386,14 @@ mod tests {
         };
         // std
         let _ = definition_check(&mut service, &go_to, 1).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 10, 14, 2).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 16, 5, 3).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 22, 13, 4).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 12, 14, 2).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 18, 5, 3).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 24, 13, 4).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 7, 5, 5).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 8,
+            req_line: 10,
             req_char: 19,
             def_line: 74,
             def_start_char: 8,
@@ -1400,11 +1401,11 @@ mod tests {
             def_path: "sway-lib-std/src/option.sw",
         };
         // option
-        let _ = definition_check(&mut service, &go_to, 5).await;
+        let _ = definition_check(&mut service, &go_to, 6).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 8,
+            req_line: 10,
             req_char: 27,
             def_line: 80,
             def_start_char: 9,
@@ -1412,12 +1413,12 @@ mod tests {
             def_path: "sway-lib-std/src/option.sw",
         };
         // Option
-        let _ = definition_check(&mut service, &go_to, 6).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 9, 14, 7).await;
+        let _ = definition_check(&mut service, &go_to, 7).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 11, 14, 8).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 10,
+            req_line: 12,
             req_char: 17,
             def_line: 0,
             def_start_char: 8,
@@ -1425,11 +1426,11 @@ mod tests {
             def_path: "sway-lib-std/src/vm/mod.sw",
         };
         // vm
-        let _ = definition_check(&mut service, &go_to, 8).await;
+        let _ = definition_check(&mut service, &go_to, 9).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 10,
+            req_line: 12,
             req_char: 22,
             def_line: 0,
             def_start_char: 8,
@@ -1437,11 +1438,11 @@ mod tests {
             def_path: "sway-lib-std/src/vm/evm/mod.sw",
         };
         // evm
-        let _ = definition_check(&mut service, &go_to, 9).await;
+        let _ = definition_check(&mut service, &go_to, 10).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 10,
+            req_line: 12,
             req_char: 27,
             def_line: 1,
             def_start_char: 8,
@@ -1449,11 +1450,11 @@ mod tests {
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
         };
         // evm_address
-        let _ = definition_check(&mut service, &go_to, 10).await;
+        let _ = definition_check(&mut service, &go_to, 11).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 10,
+            req_line: 12,
             req_char: 42,
             def_line: 7,
             def_start_char: 11,
@@ -1461,11 +1462,11 @@ mod tests {
             def_path: "sway-lib-std/src/vm/evm/evm_address.sw",
         };
         // EvmAddress
-        let _ = definition_check(&mut service, &go_to, 11).await;
+        let _ = definition_check(&mut service, &go_to, 12).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 14,
+            req_line: 16,
             req_char: 6,
             def_line: 0,
             def_start_char: 8,
@@ -1473,12 +1474,13 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
         };
         // test_mod
-        let _ = definition_check(&mut service, &go_to, 12).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 20, 7, 13).await;
+        let _ = definition_check(&mut service, &go_to, 13).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 22, 7, 14).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 5, 5, 15).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 14,
+            req_line: 16,
             req_char: 16,
             def_line: 2,
             def_start_char: 7,
@@ -1486,11 +1488,11 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
         };
         // test_fun
-        let _ = definition_check(&mut service, &go_to, 14).await;
+        let _ = definition_check(&mut service, &go_to, 16).await;
 
-        let go_to = GotoDefintion {
+        let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 15,
+            req_line: 17,
             req_char: 8,
             def_line: 0,
             def_start_char: 8,
@@ -1498,11 +1500,12 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod.sw",
         };
         // deep_mod
-        let _ = definition_check(&mut service, &go_to, 15).await;
+        let _ = definition_check(&mut service, &go_to, 17).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 6, 6, 18).await;
 
-        let go_to = GotoDefintion {
+        let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 15,
+            req_line: 17,
             req_char: 18,
             def_line: 0,
             def_start_char: 8,
@@ -1510,11 +1513,12 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
         };
         // deeper_mod
-        let _ = definition_check(&mut service, &go_to, 16).await;
+        let _ = definition_check(&mut service, &go_to, 19).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 6, 16, 20).await;
 
-        let go_to = GotoDefintion {
+        let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 15,
+            req_line: 17,
             req_char: 29,
             def_line: 2,
             def_start_char: 7,
@@ -1522,11 +1526,12 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
         };
         // deep_fun
-        let _ = definition_check(&mut service, &go_to, 17).await;
+        let _ = definition_check(&mut service, &go_to, 21).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 6, 28, 22).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 16,
+            req_line: 18,
             req_char: 11,
             def_line: 0,
             def_start_char: 8,
@@ -1534,11 +1539,11 @@ mod tests {
             def_path: "sway-lib-std/src/assert.sw",
         };
         // assert
-        let _ = definition_check(&mut service, &go_to, 18).await;
+        let _ = definition_check(&mut service, &go_to, 23).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 19,
             req_char: 13,
             def_line: 0,
             def_start_char: 8,
@@ -1546,11 +1551,11 @@ mod tests {
             def_path: "sway-lib-core/src/lib.sw",
         };
         // core
-        let _ = definition_check(&mut service, &go_to, 19).await;
+        let _ = definition_check(&mut service, &go_to, 24).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 19,
             req_char: 21,
             def_line: 0,
             def_start_char: 8,
@@ -1558,25 +1563,37 @@ mod tests {
             def_path: "sway-lib-core/src/primitives.sw",
         };
         // primitives
-        let _ = definition_check(&mut service, &go_to, 20).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 23, 20, 21).await;
+        let _ = definition_check(&mut service, &go_to, 25).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 25, 20, 26).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 5,
+            req_char: 14,
+            def_line: 4,
+            def_start_char: 11,
+            def_end_char: 12,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        };
+        // A def
+        let _ = definition_check(&mut service, &go_to, 27).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 19,
+            req_line: 21,
             req_char: 4,
             def_line: 6,
             def_start_char: 5,
             def_end_char: 6,
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
         };
-        // A
-        let _ = definition_check(&mut service, &go_to, 22).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 20, 14, 23).await;
+        // A impl
+        let _ = definition_check(&mut service, &go_to, 28).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 22, 14, 29).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 19,
+            req_line: 21,
             req_char: 7,
             def_line: 7,
             def_start_char: 11,
@@ -1584,12 +1601,12 @@ mod tests {
             def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
         };
         // fun
-        let _ = definition_check(&mut service, &go_to, 24).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 20, 18, 25).await;
+        let _ = definition_check(&mut service, &go_to, 30).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 22, 18, 31).await;
 
-        let go_to = GotoDefintion {
+        let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 22,
+            req_line: 24,
             req_char: 20,
             def_line: 0,
             def_start_char: 8,
@@ -1597,11 +1614,13 @@ mod tests {
             def_path: "sway-lib-std/src/constants.sw",
         };
         // constants
-        let _ = definition_check(&mut service, &go_to, 26).await;
+        let _ = definition_check(&mut service, &go_to, 32).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 7, 11, 33).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 7, 23, 34).await;
 
-        let go_to = GotoDefintion {
+        let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 22,
+            req_line: 24,
             req_char: 31,
             def_line: 5,
             def_start_char: 10,
@@ -1609,11 +1628,12 @@ mod tests {
             def_path: "sway-lib-std/src/constants.sw",
         };
         // ZERO_B256
-        let _ = definition_check(&mut service, &go_to, 27).await;
+        let _ = definition_check(&mut service, &go_to, 35).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 7, 31, 36).await;
 
         let go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 17,
+            req_line: 19,
             req_char: 31,
             def_line: 2,
             def_start_char: 5,
@@ -1621,11 +1641,11 @@ mod tests {
             def_path: "sway-lib-core/src/primitives.sw",
         };
         // u64
-        let _ = definition_check(&mut service, &go_to, 28).await;
+        let _ = definition_check(&mut service, &go_to, 37).await;
 
         let mut go_to = GotoDefintion {
             req_uri: &uri,
-            req_line: 11,
+            req_line: 13,
             req_char: 17,
             def_line: 74,
             def_start_char: 5,
@@ -1633,8 +1653,20 @@ mod tests {
             def_path: "sway-lib-core/src/primitives.sw",
         };
         // b256
-        let _ = definition_check(&mut service, &go_to, 29).await;
-        definition_check_with_req_offset(&mut service, &mut go_to, 23, 31, 30).await;
+        let _ = definition_check(&mut service, &go_to, 38).await;
+        definition_check_with_req_offset(&mut service, &mut go_to, 25, 31, 39).await;
+
+        let go_to = GotoDefintion {
+            req_uri: &uri,
+            req_line: 6,
+            req_char: 39,
+            def_line: 6,
+            def_start_char: 38,
+            def_end_char: 42,
+            def_path: "sway-lsp/test/fixtures/tokens/paths/src/main.sw",
+        };
+        // dfun
+        let _ = definition_check(&mut service, &go_to, 40).await;
 
         shutdown_and_exit(&mut service).await;
     }
