@@ -16,3 +16,4 @@ fuel-vm = { version = "0.22", features = ["random"] }
 rand = "0.8"
 sway-core = { version = "0.34.0", path = "../sway-core" }
 sway-types = { version = "0.34.0", path = "../sway-types" }
+thiserror = "1"

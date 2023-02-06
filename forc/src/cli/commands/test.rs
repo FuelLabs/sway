@@ -77,7 +77,7 @@ pub(crate) fn exec(cmd: Command) -> Result<()> {
 fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Result<()> {
     let succeeded = pkg.tests.iter().filter(|t| t.passed()).count();
     let failed = pkg.tests.len() - succeeded;
-    let mut failed_test_details = Vec::new();
+    let mut failed_tests = Vec::new();
     for test in &pkg.tests {
         let test_passed = test.passed();
         let (state, color) = match test_passed {
@@ -98,10 +98,9 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             info!("{}", formatted_logs);
         }
 
-        // If the test is failing, save details.
+        // If the test is failing, save the test result for printing the details later on.
         if !test_passed {
-            let details = test.details()?;
-            failed_test_details.push((test.name.clone(), details));
+            failed_tests.push(test);
         }
     }
     let (state, color) = match succeeded == pkg.tests.len() {
@@ -110,13 +109,18 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
     };
     if failed != 0 {
         info!("\n   failures:");
-        for (failed_test_name, failed_test_detail) in failed_test_details {
-            let path = &*failed_test_detail.file_path;
-            let line_number = failed_test_detail.line_number;
+        for failed_test in failed_tests{
+            let failed_test_name = &failed_test.name; 
+            let failed_test_details = failed_test.details()?;
+            let path = &*failed_test_details.file_path;
+            let line_number = failed_test_details.line_number;
+            let revert_code = failed_test.revert_code().ok_or_else(|| anyhow::anyhow!("missing revert code for failed test"))?;
+            let error_signal= failed_test.error_signal().ok_or_else(|| anyhow::anyhow!("missing error signal for failed test"))?;
             info!(
                 "      - test {}, {:?}:{} ",
                 failed_test_name, path, line_number
             );
+            info!("      reverted with: {} -- {}", revert_code, error_signal);
         }
         info!("\n");
     }

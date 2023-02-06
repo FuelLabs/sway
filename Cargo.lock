@@ -1704,6 +1704,7 @@ dependencies = [
  "rand",
  "sway-core",
  "sway-types",
+ "thiserror",
 ]
 
 [[package]]
