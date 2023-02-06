@@ -21,14 +21,22 @@ pub struct Config {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 struct TraceConfig {}
 
-// Options for debugging various parts of the server
+// Options for debugging various parts of the server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugConfig {
     pub show_collected_tokens_as_warnings: Warnings,
 }
 
-// Options for displaying compiler diagnostics
+impl Default for DebugConfig {
+    fn default() -> Self {
+        Self {
+            show_collected_tokens_as_warnings: Warnings::Default,
+        }
+    }
+}
+
+// Options for displaying compiler diagnostics.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticConfig {
@@ -45,6 +53,7 @@ impl Default for DiagnosticConfig {
     }
 }
 
+// Options for confguring server logging.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LoggingConfig {
     #[serde(with = "LevelFilterDef")]
@@ -82,6 +91,7 @@ pub enum Warnings {
     Typed,
 }
 
+// Options for configuring inlay hints.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintsConfig {
@@ -91,14 +101,6 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     /// Maximum length for inlay hints. Set to null to have an unlimited length.
     pub max_length: Option<usize>,
-}
-
-impl Default for DebugConfig {
-    fn default() -> Self {
-        Self {
-            show_collected_tokens_as_warnings: Warnings::Default,
-        }
-    }
 }
 
 impl Default for InlayHintsConfig {
@@ -111,6 +113,7 @@ impl Default for InlayHintsConfig {
     }
 }
 
+// Options for additional behavior when the user presses enter.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OnEnterConfig {
