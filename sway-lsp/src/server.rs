@@ -653,6 +653,14 @@ mod tests {
         def_path: &'a str,
     }
 
+    /// Contains data required to evaluate a hover request response.
+    struct HoverDocumentation<'a> {
+        req_uri: &'a Url,
+        req_line: i32,
+        req_char: i32,
+        documentation: &'a str,
+    }
+
     fn load_sway_example(src_path: PathBuf) -> (Url, String) {
         let mut file = fs::File::open(&src_path).unwrap();
         let mut sway_program = String::new();
@@ -861,38 +869,30 @@ mod tests {
         definition
     }
 
-    async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
+    async fn hover_request<'a>(
+        service: &mut LspService<Backend>,
+        hover_docs: &'a HoverDocumentation<'a>,
+        id: i64,
+    ) -> Request {
         let params = json!({
             "textDocument": {
-                "uri": uri,
+                "uri": hover_docs.req_uri,
             },
             "position": {
-                "line": 44,
-                "character": 24
+                "line": hover_docs.req_line,
+                "character": hover_docs.req_char
             }
         });
-        let hover = build_request_with_id("textDocument/hover", params, 1);
-        let response = call_request(service, hover.clone()).await;
-        let expected = Response::from_ok(
-            1.into(),
-            json!({
-                "contents": {
-                    "kind": "markdown",
-                    "value": "```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"
-                },
-                "range": {
-                    "end": {
-                        "character": 27,
-                        "line": 44
-                    },
-                    "start": {
-                        "character": 23,
-                        "line": 44
-                    }
-                }
-            }),
-        );
-        assert_json_eq!(expected, response.ok().unwrap());
+        let hover = build_request_with_id("textDocument/hover", params, id);
+        let response = call_request(service, hover.clone()).await.unwrap().unwrap();
+        let value = response.result().unwrap().clone();
+        let hover_res: Hover = serde_json::from_value(value).unwrap();
+
+        if let HoverContents::Markup(markup_content) = hover_res.contents {
+            assert_eq!(hover_docs.documentation, markup_content.value);
+        } else {
+            panic!("Expected HoverContents::Markup");
+        }
         hover
     }
 
@@ -1799,6 +1799,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn hover_docs_for_consts() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens/consts/src/main.sw"),
+        )
+        .await;
+
+        let mut hover = HoverDocumentation {
+            req_uri: &uri,
+            req_line: 19,
+            req_char: 33,
+            documentation: " documentation for CONSTANT_1",
+        };
+
+        let _ = hover_request(&mut service, &hover, 1).await;
+        hover.req_char = 49;
+        hover.documentation = " CONSTANT_2 has a value of 200";
+        let _ = hover_request(&mut service, &hover, 2).await;
+    }
+
+    #[tokio::test]
+    async fn hover_docs_with_code_examples() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+
+        let hover = HoverDocumentation {
+            req_uri: &uri,
+            req_line: 44,
+            req_char: 24,
+            documentation: "```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`",
+        };
+        let _ = hover_request(&mut service, &hover, 1).await;
+    }
+
+    #[tokio::test]
     async fn publish_diagnostics_dead_code_warning() {
         let (mut service, socket) = LspService::new(Backend::new);
         let fixture = get_fixture(test_fixtures_dir().join("diagnostics/dead_code/expected.json"));
@@ -1854,7 +1890,6 @@ mod tests {
         format_request,
         doc_comments_dir().join("src/main.sw")
     );
-    lsp_capability_test!(hover, hover_request, doc_comments_dir().join("src/main.sw"));
     lsp_capability_test!(
         highlight,
         highlight_request,
