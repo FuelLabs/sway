@@ -5,7 +5,6 @@ use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
 use ::bytes::Bytes;
-use ::convert::From;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -644,13 +643,35 @@ impl<V> StorageVec<V> {
 pub struct StorageBytes {}
 
 impl StorageBytes {
+    /// Takes a `Bytes` type and stores the underlying collection of tightly packed bytes.
+    ///
+    /// ### Arguments
+    ///
+    /// * `bytes` - The bytes which will be stored.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///
+    ///     storage.stored_bytes.write_bytes(bytes);
+    /// }
+    /// ```
     #[storage(write)]
     pub fn write_bytes(self, mut bytes: Bytes) {
         // Get the number of storage slots needed based on the size of bytes.
         let number_of_slots = (bytes.len() + 31) >> 5;
 
         // The bytes capacity needs to be greater than or a multiple of 32 bytes so we can 
-        // make the 'quad' storage instruction store without reading unallocated heap memory.
+        // make the 'quad' storage instruction store without accessing unallocated heap memory.
         if bytes.buf.cap < number_of_slots * 32 {
             bytes.buf.ptr = realloc_bytes(bytes.buf.ptr, bytes.buf.cap, number_of_slots * 32);
         }
@@ -663,6 +684,26 @@ impl StorageBytes {
         store(__get_storage_key(), bytes.len());
     }
 
+    /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     storage.stored_bytes.write_bytes(bytes);
+    ///
+    ///     let retrieved_bytes = storage.stored_bytes.into_bytes(key);
+    ///     assert(bytes == retrieved_bytes);
+    /// }
+    /// ```
     #[storage(read)]
     pub fn into_bytes(self) -> Bytes {
         // Get the length of the bytes and create a new `Bytes` type on the heap.
