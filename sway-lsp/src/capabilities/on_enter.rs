@@ -1,5 +1,8 @@
+use crate::{
+    config::OnEnterConfig,
+    core::{document::TextDocument, session::Session},
+};
 use std::sync::Arc;
-
 use tower_lsp::{
     lsp_types::{
         DidChangeTextDocumentParams, DocumentChanges, OneOf,
@@ -7,11 +10,6 @@ use tower_lsp::{
         WorkspaceEdit,
     },
     Client,
-};
-
-use crate::{
-    config::OnEnterConfig,
-    core::{document::TextDocument, session::Session},
 };
 
 const NEWLINE: &str = "\n";
@@ -58,12 +56,12 @@ fn get_comment_workspace_edit(
     let range = change_params.content_changes[0]
         .range
         .expect("change is missing range");
-    let line = text_document.get_line(range.start.line.try_into().unwrap());
+    let line = text_document.get_line(range.start.line.try_into().expect("failed to get line"));
     if line.trim().starts_with(start_pattern) {
         let uri = change_params.text_document.uri.clone();
         let text = change_params.content_changes[0].text.clone();
 
-        let indentation = &line[..line.find(start_pattern).unwrap()];
+        let indentation = &line[..line.find(start_pattern).expect("failed to get indentation")];
         let mut edits = vec![];
 
         // To support pasting multiple lines in a comment, we need to add the comment start pattern after each newline,
@@ -71,10 +69,8 @@ fn get_comment_workspace_edit(
         let lines: Vec<_> = text.split(NEWLINE).collect();
         lines.iter().enumerate().for_each(|(i, _)| {
             if i < lines.len() - 1 {
-                let position = Position::new(
-                    range.start.line + (i as u32) + 1,
-                    indentation.len().try_into().unwrap(),
-                );
+                let position =
+                    Position::new(range.start.line + (i as u32) + 1, indentation.len() as u32);
                 edits.push(OneOf::Left(TextEdit {
                     new_text: format!("{start_pattern} "),
                     range: Range::new(position, position),
@@ -100,13 +96,11 @@ fn get_comment_workspace_edit(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::utils::test::get_absolute_path;
     use tower_lsp::lsp_types::{
         AnnotatedTextEdit, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier,
     };
-
-    use crate::utils::test::get_absolute_path;
-
-    use super::*;
 
     fn assert_text_edit(
         actual: &OneOf<TextEdit, AnnotatedTextEdit>,

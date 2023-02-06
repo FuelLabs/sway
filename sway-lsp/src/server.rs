@@ -256,7 +256,7 @@ impl LanguageServer for Backend {
                     .await;
 
                 // update this file with the new changes and write to disk
-                match session.write_changes_to_file(&uri, params.content_changes.clone()) {
+                match session.write_changes_to_file(&uri, params.content_changes) {
                     Ok(_) => {
                         self.parse_project(uri, params.text_document.uri.clone(), session.clone())
                             .await;
@@ -286,7 +286,7 @@ impl LanguageServer for Backend {
                             sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
                         }
                     });
-                self.parse_project(uri, params.text_document.uri, session.clone())
+                self.parse_project(uri, params.text_document.uri, session)
                     .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
