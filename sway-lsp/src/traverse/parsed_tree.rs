@@ -18,11 +18,11 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
-            ReassignmentTarget, Scrutinee, StorageAccessExpression, StructExpression,
-            StructScrutineeField, SubfieldExpression, TraitFn, TreeType, TupleIndexExpression,
-            WhileLoopExpression,
+            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
+            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
+            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
+            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
+            TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
         Literal,
     },
@@ -53,9 +53,9 @@ impl<'a> ParsedTree<'a> {
             | AstNodeContent::ImplicitReturnExpression(expression) => {
                 self.handle_expression(expression)
             }
-            // TODO
-            // handle other content types
-            _ => {}
+            AstNodeContent::UseStatement(use_statement) => self.handle_use_statement(use_statement),
+            // include statements are handled throught [`collect_module_spans`]
+            AstNodeContent::IncludeStatement(_) => {}
         };
     }
 
@@ -393,6 +393,58 @@ impl<'a> ParsedTree<'a> {
                 }
                 storage_decl.attributes.parse(self.tokens);
             }
+        }
+    }
+
+    fn handle_use_statement(
+        &self,
+        use_statement @ UseStatement {
+            alias,
+            call_path,
+            is_absolute: _,
+            import_type,
+        }: &UseStatement,
+    ) {
+        if let Some(alias) = alias {
+            self.tokens.insert(
+                to_ident_key(alias),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Unknown,
+                ),
+            );
+        }
+
+        for prefix in call_path {
+            self.tokens.insert(
+                to_ident_key(prefix),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Module,
+                ),
+            );
+        }
+
+        match &import_type {
+            ImportType::Item(item) => {
+                self.tokens.insert(
+                    to_ident_key(item),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::SelfImport(span) => {
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(span.clone())),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::Star => {}
         }
     }
 

@@ -251,7 +251,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Name { name } => {
             let import_type = if name.as_str() == "self" {
-                ImportType::SelfImport
+                ImportType::SelfImport(name.span())
             } else {
                 ImportType::Item(name)
             };
@@ -264,7 +264,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Rename { name, alias, .. } => {
             let import_type = if name.as_str() == "self" {
-                ImportType::SelfImport
+                ImportType::SelfImport(name.span())
             } else {
                 ImportType::Item(name)
             };
