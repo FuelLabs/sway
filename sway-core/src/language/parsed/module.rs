@@ -1,7 +1,7 @@
 use crate::language::DepName;
 
 use super::ParseTree;
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 /// A module and its submodules in the form of a tree.
 #[derive(Debug, Clone)]
@@ -20,4 +20,5 @@ pub struct ParseSubmodule {
     /// The name of a submodule, parsed from the `library` declaration within the module itself.
     pub library_name: Ident,
     pub module: ParseModule,
+    pub dependency_path_span: Span,
 }
