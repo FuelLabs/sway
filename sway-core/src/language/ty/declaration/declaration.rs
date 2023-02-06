@@ -484,7 +484,8 @@ impl TyDeclaration {
         }
     }
 
-    /// friendly type name string used for error reporting.
+    /// friendly name string used for error reporting,
+    /// which consists of the the identifier for the declaration.
     pub fn friendly_name(&self, engines: &Engines) -> String {
         use TyDeclaration::*;
         let decl_engine = engines.de();
@@ -508,7 +509,8 @@ impl TyDeclaration {
         }
     }
 
-    /// friendly type name string used for error reporting.
+    /// friendly type name string used for error reporting,
+    /// which consists of the type name of the declaration AST node.
     pub fn friendly_type_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
