@@ -519,7 +519,7 @@ impl Built {
         }
     }
 
-    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    /// Tries to retrieve the `Built` as a `BuiltPackage`.
     pub fn expect_pkg(self) -> Result<BuiltPackage> {
         match self {
             Built::Package(built_pkg) => Ok(*built_pkg),
