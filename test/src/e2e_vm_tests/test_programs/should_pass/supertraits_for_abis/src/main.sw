@@ -14,5 +14,5 @@ impl MyTrait for Contract {
 
 // The implementation of MyAbi for Contract should also implement MyTrait.
 impl MyAbi for Contract {
-    fn bar() { }
+    fn bar() { Self::foo() }
 }
