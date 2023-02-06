@@ -4,6 +4,8 @@ dep test_mod;
 dep deep_mod;
 
 use test_mod::A;
+use deep_mod::deeper_mod::deep_fun as dfun;
+use std::constants::{self, ZERO_B256};
 
 pub fn fun() {
     let _ = std::option::Option::None;
