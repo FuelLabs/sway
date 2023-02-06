@@ -58,12 +58,12 @@ fn get_comment_workspace_edit(
     let range = change_params.content_changes[0]
         .range
         .expect("change is missing range");
-    let line = text_document.get_line(range.start.line.try_into().expect("failed to get line"));
+    let line = text_document.get_line(range.start.line as usize);
     if line.trim().starts_with(start_pattern) {
         let uri = change_params.text_document.uri.clone();
         let text = change_params.content_changes[0].text.clone();
 
-        let indentation = &line[..line.find(start_pattern).expect("failed to get indentation")];
+        let indentation = &line[..line.find(start_pattern).unwrap_or(0)];
         let mut edits = vec![];
 
         // To support pasting multiple lines in a comment, we need to add the comment start pattern after each newline,
