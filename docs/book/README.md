@@ -30,19 +30,19 @@ cargo install --path ./forc-plugins/forc-doc
 To build book:
 
 ```sh
-mdbook build # path to book.toml
+mdbook build docs/book
 ```
 
 To build the book on strict mode to check if pages should be removed or added within the Forc Reference:
 
 ```sh
-MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build # path to book.toml
+MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
 ```
 
 To serve locally:
 
 ```sh
-mdbook serve # path to book.toml
+mdbook serve docs/book
 ```
 
 ## Generating documentation for Forc commands/plugins
