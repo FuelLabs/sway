@@ -1,7 +1,15 @@
 mod error_codes;
-use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::PathBuf,
+    sync::Arc,
+};
 
-use error_codes::{ErrorSignal, FAILED_REQUIRE_SIGNAL, FAILED_TRANSFER_TO_ADDRESS_SIGNAL, FAILED_SEND_MESSAGE_SIGNAL, FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_SIGNAL};
+use error_codes::{
+    ErrorSignal, FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_SIGNAL, FAILED_REQUIRE_SIGNAL,
+    FAILED_SEND_MESSAGE_SIGNAL, FAILED_TRANSFER_TO_ADDRESS_SIGNAL,
+};
 use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
@@ -282,12 +290,11 @@ impl TestResult {
         }
     }
 
-
     /// Return the revert code for this `TestResult` if the test is reverted.
     pub fn revert_code(&self) -> Option<u64> {
         match self.state {
             vm::state::ProgramState::Revert(revert_code) => Some(revert_code),
-            _=> None
+            _ => None,
         }
     }
 
@@ -297,21 +304,19 @@ impl TestResult {
         revert_code.map(|code| {
             if code == FAILED_REQUIRE_SIGNAL {
                 ErrorSignal::Require
-            }else if code == FAILED_TRANSFER_TO_ADDRESS_SIGNAL {
+            } else if code == FAILED_TRANSFER_TO_ADDRESS_SIGNAL {
                 ErrorSignal::TransferToAddress
-            }else if code == FAILED_SEND_MESSAGE_SIGNAL {
+            } else if code == FAILED_SEND_MESSAGE_SIGNAL {
                 ErrorSignal::SendMessage
-            }else if code == FAILED_ASSERT_EQ_SIGNAL {
+            } else if code == FAILED_ASSERT_EQ_SIGNAL {
                 ErrorSignal::AssertEq
-            }else if code == FAILED_ASSERT_SIGNAL {
+            } else if code == FAILED_ASSERT_SIGNAL {
                 ErrorSignal::Assert
-            }else {
+            } else {
                 ErrorSignal::Unknown
             }
         })
-
     }
-
 
     /// Return `TestDetails` from the span of the function declaring this test.
     pub fn details(&self) -> anyhow::Result<TestDetails> {

@@ -109,13 +109,17 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
     };
     if failed != 0 {
         info!("\n   failures:");
-        for failed_test in failed_tests{
-            let failed_test_name = &failed_test.name; 
+        for failed_test in failed_tests {
+            let failed_test_name = &failed_test.name;
             let failed_test_details = failed_test.details()?;
             let path = &*failed_test_details.file_path;
             let line_number = failed_test_details.line_number;
-            let revert_code = failed_test.revert_code().ok_or_else(|| anyhow::anyhow!("missing revert code for failed test"))?;
-            let error_signal= failed_test.error_signal().ok_or_else(|| anyhow::anyhow!("missing error signal for failed test"))?;
+            let revert_code = failed_test
+                .revert_code()
+                .ok_or_else(|| anyhow::anyhow!("missing revert code for failed test"))?;
+            let error_signal = failed_test
+                .error_signal()
+                .ok_or_else(|| anyhow::anyhow!("missing error signal for failed test"))?;
             let logs = &failed_test.logs;
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!(

@@ -15,7 +15,6 @@ pub const FAILED_ASSERT_EQ_SIGNAL: u64 = 18446744073709486083;
 /// Revert with this value for a failing call to `std::assert::assert`.
 pub const FAILED_ASSERT_SIGNAL: u64 = 18446744073709486084;
 
-
 #[derive(Error, Debug)]
 pub enum ErrorSignal {
     #[error("Failing call to `std::revert::require`")]
@@ -31,6 +30,3 @@ pub enum ErrorSignal {
     #[error("Unknown error signal")]
     Unknown,
 }
-
-
-
