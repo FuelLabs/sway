@@ -23,30 +23,30 @@ You must also install forc plugins that are already documented within the book. 
 ```sh
 cargo install --path ./forc-plugins/forc-fmt
 cargo install --path ./forc-plugins/forc-lsp
-cargo install --path ./forc-plugins/forc-explore
+cargo install forc-explore
 cargo install --path ./forc-plugins/forc-doc
 ```
 
 To build book:
 
 ```sh
-mdbook build
+mdbook build docs/book
 ```
 
 To build the book on strict mode to check if pages should be removed or added within the Forc Reference:
 
 ```sh
-MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs
+MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
 ```
 
 To serve locally:
 
 ```sh
-mdbook serve
+mdbook serve docs/book
 ```
 
 ## Generating documentation for Forc commands/plugins
 
-The `mdbook-forc-documenter` [preprocessor](https://rust-lang.github.io/mdBook/for_developers/preprocessors.html) now automatically handles documenting forc commands and plugins, but some actions have to be taken for the preprocessor to work. Please read the [mdbook-forc-documenter README](../scripts/mdbook-forc-documenter/README.md) before making changes to Forc commands or plugins.
+The `mdbook-forc-documenter` [preprocessor](https://rust-lang.github.io/mdBook/for_developers/preprocessors.html) now automatically handles documenting forc commands and plugins, but some actions have to be taken for the preprocessor to work. Please read the [mdbook-forc-documenter README](../../scripts/mdbook-forc-documenter/README.md) before making changes to Forc commands or plugins.
 
 **It is important to note that changing the chapter names `Commands` and `Plugins` will affect the behavior of the preprocessor**. When renaming the chapters, please make the same change [here](https://github.com/FuelLabs/sway/blob/a19681c2165402d289bc6bae7a46a580ef3be5b5/scripts/mdbook-forc-documenter/src/lib.rs#L45,L56).
