@@ -181,12 +181,14 @@ impl Session {
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                parsed_tree.collect_module_spans(&parsed);
                 self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);
+                typed_tree.collect_module_spans(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
                     typed_tree.traverse_node(node, namespace)
                 });
