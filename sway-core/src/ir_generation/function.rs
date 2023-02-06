@@ -287,7 +287,14 @@ impl<'eng> FnCompiler<'eng> {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, md_mgr, condition, then, r#else.as_deref()),
+            } => self.compile_if(
+                context,
+                md_mgr,
+                condition,
+                then,
+                r#else.as_deref(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -1334,6 +1341,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_condition: &ty::TyExpression,
         ast_then: &ty::TyExpression,
         ast_else: Option<&ty::TyExpression>,
+        return_type: TypeId,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1381,17 +1389,12 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)
+            .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
-        let merge_val_arg_idx = merge_block.new_arg(
-            context,
-            true_value.get_type(context).unwrap_or_else(|| {
-                false_value
-                    .get_type(context)
-                    .unwrap_or_else(|| Type::get_unit(context))
-            }),
-            false,
-        );
+        // Rely on the type of the ast node when creating that argument
+        let merge_val_arg_idx = merge_block.new_arg(context, return_type, false);
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)

@@ -19,9 +19,10 @@ use sway_core::{
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
             IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-            TraitFn, TupleIndexExpression, WhileLoopExpression,
+            MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
+            ReassignmentTarget, Scrutinee, StorageAccessExpression, StructExpression,
+            StructScrutineeField, SubfieldExpression, TraitFn, TreeType, TupleIndexExpression,
+            WhileLoopExpression,
         },
         Literal,
     },
@@ -56,6 +57,53 @@ impl<'a> ParsedTree<'a> {
             // handle other content types
             _ => {}
         };
+    }
+
+    pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
+        self.collect_tree_type(&parse_program.kind);
+        self.collect_parse_module(&parse_program.root);
+    }
+
+    fn collect_parse_module(&self, parse_module: &ParseModule) {
+        for (
+            _,
+            ParseSubmodule {
+                library_name,
+                module,
+                dependency_path_span,
+            },
+        ) in &parse_module.submodules
+        {
+            self.tokens.insert(
+                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
+            );
+
+            self.tokens.insert(
+                to_ident_key(library_name),
+                Token::from_parsed(
+                    AstToken::TreeType(TreeType::Library {
+                        name: library_name.clone(),
+                    }),
+                    SymbolKind::Module,
+                ),
+            );
+
+            self.collect_parse_module(module);
+        }
+    }
+
+    fn collect_tree_type(&self, tree_type: &TreeType) {
+        use TreeType::*;
+        match tree_type {
+            Library { name } => {
+                self.tokens.insert(
+                    to_ident_key(name),
+                    Token::from_parsed(AstToken::TreeType(tree_type.clone()), SymbolKind::Module),
+                );
+            }
+            Script | Contract | Predicate => {}
+        }
     }
 
     fn handle_function_declation(&self, func: &FunctionDeclaration) {
@@ -538,8 +586,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Expression(expression.clone()),
                         SymbolKind::Struct,
                     );
-                    let (type_info, span) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
+                    let (type_info, ident) = &call_path_binding.inner.suffix;
+                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
                 }
 
                 let token = Token::from_parsed(

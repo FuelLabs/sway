@@ -150,8 +150,7 @@ impl Module {
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, mut submodule: Module) {
-        submodule.name = Some(Ident::new_no_span(Box::leak(name.clone().into_boxed_str())));
+    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
         self.submodules.insert(name, submodule);
     }
 
