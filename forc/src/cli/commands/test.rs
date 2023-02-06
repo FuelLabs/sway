@@ -116,11 +116,14 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             let line_number = failed_test_details.line_number;
             let revert_code = failed_test.revert_code().ok_or_else(|| anyhow::anyhow!("missing revert code for failed test"))?;
             let error_signal= failed_test.error_signal().ok_or_else(|| anyhow::anyhow!("missing error signal for failed test"))?;
+            let logs = &failed_test.logs;
+            let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!(
                 "      - test {}, {:?}:{} ",
                 failed_test_name, path, line_number
             );
-            info!("      reverted with: {} -- {}", revert_code, error_signal);
+            info!("        revert code: {} -- {}", revert_code, error_signal);
+            info!("        Logs: {}", formatted_logs);
         }
         info!("\n");
     }
