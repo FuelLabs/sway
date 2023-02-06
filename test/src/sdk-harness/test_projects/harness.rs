@@ -26,6 +26,7 @@ mod registers;
 mod result_in_abi;
 mod script_data;
 mod storage;
+mod storage_bytes;
 mod storage_map;
 mod storage_vec;
 mod token_ops;
