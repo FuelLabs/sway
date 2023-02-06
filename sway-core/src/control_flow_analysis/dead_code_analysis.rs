@@ -323,7 +323,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 exit_node,
             )
         }
-        ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
+        ty::TyAstNodeContent::SideEffect(_) => (leaves.to_vec(), exit_node),
         ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let cfg_node: ControlFlowGraphNode = node.into();
@@ -1753,7 +1753,7 @@ fn construct_dead_code_warning_from_node(
             content:
                 ty::TyAstNodeContent::ImplicitReturnExpression(_)
                 | ty::TyAstNodeContent::Expression(_)
-                | ty::TyAstNodeContent::SideEffect,
+                | ty::TyAstNodeContent::SideEffect(_),
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
