@@ -36,7 +36,9 @@ pub(crate) async fn on_enter(
 
     if config.continue_doc_comments.unwrap_or(false) {
         workspace_edit = get_comment_workspace_edit(DOC_COMMENT_START, params, &text_document);
-    } else if config.continue_comments.unwrap_or(false) {
+    }
+
+    if config.continue_comments.unwrap_or(false) && workspace_edit.is_none() {
         workspace_edit = get_comment_workspace_edit(COMMENT_START, params, &text_document);
     }
 
