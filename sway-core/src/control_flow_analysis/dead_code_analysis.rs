@@ -1735,6 +1735,11 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
+        // If there is already an error for the declaration, we don't need to emit a dead code warning.
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ErrorRecovery(..)),
+            ..
+        } => return None,
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(..),
             span,
