@@ -1112,21 +1112,15 @@ impl ty::TyExpression {
         let mut function_probe_warnings = Vec::new();
         let mut function_probe_errors = Vec::new();
 
-        let maybe_function_decl = {
+        let maybe_function = {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                .map(|func_decl| (func_decl, call_path_binding))
-        };
-
-        let maybe_function = {
-            maybe_function_decl.clone().and_then(|f| {
-                let (fn_decl, call_path_binding) = f;
-                fn_decl
-                    .expect_function(decl_engine, &span)
-                    .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                    .map(|func_decl| (func_decl, call_path_binding))
-            })
+                .and_then(|decl| {
+                    decl.expect_function(decl_engine, &span)
+                        .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                        .map(|_s| (decl.get_decl_id().unwrap(), call_path_binding))
+                })
         };
 
         // Check if this could be an enum
@@ -1183,10 +1177,9 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some((_func_decl, call_path_binding)), None, None) => {
+            (false, Some((decl_id, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
-                let decl_id = maybe_function_decl.and_then(|d| d.0.get_decl_id()).unwrap();
                 check!(
                     instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
                     return err(warnings, errors),
