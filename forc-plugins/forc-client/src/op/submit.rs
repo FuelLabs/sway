@@ -27,9 +27,12 @@ pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
 pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
     let file = std::fs::File::open(path)?;
     let reader = std::io::BufReader::new(file);
-    let tx: fuel_tx::Transaction = if path.ends_with("json") {
+    fn has_extension(path: &std::path::Path, ext: &str) -> bool {
+        path.extension().and_then(|ex| ex.to_str()) == Some(ext)
+    }
+    let tx: fuel_tx::Transaction = if has_extension(path, "json") {
         serde_json::from_reader(reader)?
-    } else if path.ends_with("bin") {
+    } else if has_extension(path, "bin") {
         let tx_bytes = std::fs::read(path)?;
         let (_bytes, tx) = fuel_tx::Transaction::try_from_bytes(&tx_bytes)?;
         tx
