@@ -1046,7 +1046,7 @@ impl<'a> TypedTree<'a> {
             }
             TypeInfo::Custom {
                 type_arguments,
-                name,
+                call_path: name,
             } => {
                 if let Some(token) = self
                     .tokens

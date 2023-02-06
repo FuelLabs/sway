@@ -450,7 +450,7 @@ impl ty::TyImplTrait {
         let trait_name = CallPath {
             prefixes: vec![],
             suffix: match &type_implementing_for {
-                TypeInfo::Custom { name, .. } => name.clone(),
+                TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
                 _ => Ident::new_with_override("r#Self", type_implementing_for_span.clone()),
             },
             is_absolute: false,

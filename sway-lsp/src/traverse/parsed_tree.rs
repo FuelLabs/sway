@@ -313,7 +313,7 @@ impl<'a> ParsedTree<'a> {
             }
             Declaration::ImplSelf(impl_self) => {
                 if let TypeInfo::Custom {
-                    name,
+                    call_path,
                     type_arguments,
                 } = &impl_self.type_implementing_for
                 {
@@ -321,7 +321,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Declaration(declaration.clone()),
                         SymbolKind::Struct,
                     );
-                    self.tokens.insert(to_ident_key(name), token.clone());
+                    self.tokens
+                        .insert(to_ident_key(&call_path.suffix), token.clone());
                     if let Some(type_arguments) = type_arguments {
                         for type_arg in type_arguments {
                             self.collect_type_arg(type_arg, &token);
@@ -856,7 +857,7 @@ impl<'a> ParsedTree<'a> {
                 }
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
                 if let Some(type_args) = type_arguments {
@@ -869,7 +870,7 @@ impl<'a> ParsedTree<'a> {
                 token.kind = symbol_kind;
                 token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
                 self.tokens
-                    .insert(to_ident_key(&Ident::new(name.span())), token);
+                    .insert(to_ident_key(&Ident::new(call_path.suffix.span())), token);
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
@@ -983,11 +984,12 @@ impl<'a> ParsedTree<'a> {
                 }
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                token.type_def = Some(TypeDefinition::Ident(name.clone()));
-                self.tokens.insert(to_ident_key(name), token.clone());
+                token.type_def = Some(TypeDefinition::Ident(call_path.suffix.clone()));
+                self.tokens
+                    .insert(to_ident_key(&call_path.suffix), token.clone());
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
                         self.collect_type_arg(type_arg, &token);

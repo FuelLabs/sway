@@ -223,8 +223,13 @@ fn type_check_enum(
 
     let decl_engine = ctx.decl_engine;
 
-    let enum_name = match call_path.prefixes.last() {
-        Some(enum_name) => enum_name,
+    let mut prefixes = call_path.prefixes.clone();
+    let enum_callpath = match prefixes.pop() {
+        Some(enum_name) => CallPath {
+            suffix: enum_name,
+            prefixes,
+            is_absolute: call_path.is_absolute,
+        },
         None => {
             errors.push(CompileError::EnumNotFound {
                 name: call_path.suffix.clone(),
@@ -237,13 +242,13 @@ fn type_check_enum(
 
     // find the enum definition from the name
     let unknown_decl = check!(
-        ctx.namespace.resolve_symbol(enum_name).cloned(),
+        ctx.namespace.resolve_call_path(&enum_callpath).cloned(),
         return err(warnings, errors),
         warnings,
         errors
     );
     let mut enum_decl = check!(
-        unknown_decl.expect_enum(decl_engine, &enum_name.span()),
+        unknown_decl.expect_enum(decl_engine, &enum_callpath.span()),
         return err(warnings, errors),
         warnings,
         errors
@@ -255,7 +260,7 @@ fn type_check_enum(
             &mut enum_decl,
             &mut [],
             EnforceTypeArguments::No,
-            &enum_name.span()
+            &enum_callpath.span()
         ),
         return err(warnings, errors),
         warnings,

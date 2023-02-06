@@ -1012,7 +1012,7 @@ impl ty::TyExpression {
             let before_span = before.span();
             let type_name = before.inner;
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                name: type_name.clone(),
+                call_path: type_name.clone().into(),
                 type_arguments: None,
             });
 
