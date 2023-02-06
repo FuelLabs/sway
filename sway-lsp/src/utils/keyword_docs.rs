@@ -843,7 +843,7 @@ async fn keywords_in_sync() {
     for keyword in &compiler_keywords {
         assert!(
             lsp_keywords.contains(&keyword),
-            "Error: Documention for the `{keyword}` keyword is not implemented in LSP"
+            "Error: Documentation for the `{keyword}` keyword is not implemented in LSP"
         );
     }
 }
