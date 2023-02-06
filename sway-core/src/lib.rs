@@ -171,6 +171,7 @@ fn parse_submodules(
             let parse_submodule = parsed::ParseSubmodule {
                 library_name: library_name.clone(),
                 module: parse_module,
+                dependency_path_span: dep.path.span(),
             };
             let lexed_submodule = lexed::LexedSubmodule {
                 library_name,

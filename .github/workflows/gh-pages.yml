@@ -39,7 +39,7 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.15"
+          mdbook-version: "0.4.25"
 
       - name: Build Sway book
         run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
