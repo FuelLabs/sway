@@ -78,7 +78,7 @@ fn main() {
 
 A common attack vector for smart contracts is [re-entrancy](https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy). Similar to the EVM, the FuelVM allows for re-entrancy.
 
-A _stateless_ re-entrancy guard is included in the Sway-libs library. The guard will panic (revert) at run time if re-entrancy is detected.
+A _stateless_ re-entrancy guard is included in the [sway-libs](https://github.com/FuelLabs/sway-libs) library. The guard will panic (revert) at run time if re-entrancy is detected.
 
 ```sway
 contract;
