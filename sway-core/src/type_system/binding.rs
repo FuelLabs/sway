@@ -7,7 +7,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     type_system::EnforceTypeArguments,
     type_system::*,
-    CreateTypeId, TypeInfo,
+    CreateTypeId, Ident, TypeInfo,
 };
 
 use super::{TypeArgument, TypeId};
@@ -103,7 +103,7 @@ impl<T> TypeBinding<T> {
     }
 }
 
-impl TypeBinding<CallPath<(TypeInfo, Span)>> {
+impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
     pub(crate) fn type_check_with_type_info(
         &self,
         ctx: &mut TypeCheckContext,
@@ -114,7 +114,8 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
-        let (type_info, type_info_span) = self.inner.suffix.clone();
+        let (type_info, type_ident) = self.inner.suffix.clone();
+        let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
         let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);

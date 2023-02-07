@@ -1,4 +1,4 @@
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
     decl_engine::{DeclEngine, DeclId},
@@ -18,6 +18,7 @@ pub struct TyModule {
 pub struct TySubmodule {
     pub library_name: Ident,
     pub module: TyModule,
+    pub dependency_path_span: Span,
 }
 
 /// Iterator type for iterating over submodules.

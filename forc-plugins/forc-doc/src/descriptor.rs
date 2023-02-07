@@ -49,7 +49,7 @@ impl Descriptor {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = struct_decl.name;
+                    let item_name = struct_decl.call_path.suffix;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
                     let context = (!struct_decl.fields.is_empty())
@@ -59,7 +59,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -81,7 +81,7 @@ impl Descriptor {
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = enum_decl.name;
+                    let item_name = enum_decl.call_path.suffix;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
                     let context = (!enum_decl.variants.is_empty())
@@ -91,7 +91,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -126,7 +126,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -158,7 +158,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -186,7 +186,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -243,7 +243,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -273,7 +273,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {

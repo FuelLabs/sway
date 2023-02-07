@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent};
 
 use crate::error::DocumentError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TextDocument {
     #[allow(dead_code)]
     language_id: String,
@@ -28,6 +28,10 @@ impl TextDocument {
 
     pub fn get_uri(&self) -> &str {
         &self.uri
+    }
+
+    pub fn get_line(&self, line: usize) -> String {
+        self.content.line(line).to_string()
     }
 
     pub fn apply_change(&mut self, change: &TextDocumentContentChangeEvent) {

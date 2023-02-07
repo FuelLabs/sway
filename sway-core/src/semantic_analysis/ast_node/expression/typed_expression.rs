@@ -19,7 +19,11 @@ pub(crate) use self::{
 use crate::{
     asm_lang::{virtual_ops::VirtualOp, virtual_register::VirtualRegister},
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, GetDeclId},
+        *,
+    },
     semantic_analysis::*,
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
@@ -403,6 +407,7 @@ impl ty::TyExpression {
                         name: decl_name.clone(),
                         span: name.span(),
                         mutability: *mutability,
+                        call_path: None,
                     },
                     span,
                 }
@@ -426,6 +431,7 @@ impl ty::TyExpression {
                         name: decl_name,
                         span: name.span(),
                         mutability: ty::VariableMutability::Immutable,
+                        call_path: None,
                     },
                     span,
                 }
@@ -446,7 +452,7 @@ impl ty::TyExpression {
             Some(a) => {
                 errors.push(CompileError::NotAVariable {
                     name: name.clone(),
-                    what_it_is: a.friendly_name(),
+                    what_it_is: a.friendly_type_name(),
                     span,
                 });
                 ty::TyExpression::error(name.span(), engines)
@@ -482,7 +488,7 @@ impl ty::TyExpression {
         );
 
         // check that the decl is a function decl
-        let function_decl = check!(
+        let _ = check!(
             unknown_decl.expect_function(decl_engine, &span),
             return err(warnings, errors),
             warnings,
@@ -491,7 +497,7 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            function_decl,
+            unknown_decl.get_decl_id().unwrap(),
             call_path_binding,
             Some(arguments),
             span,
@@ -1005,9 +1011,8 @@ impl ty::TyExpression {
         if is_associated_call {
             let before_span = before.span();
             let type_name = before.inner;
-            let type_info_span = type_name.span();
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                name: type_name,
+                name: type_name.clone(),
                 type_arguments: None,
             });
 
@@ -1018,7 +1023,7 @@ impl ty::TyExpression {
                         type_arguments: before.type_arguments,
                         inner: CallPath {
                             prefixes,
-                            suffix: (type_info, type_info_span),
+                            suffix: (type_info, type_name),
                             is_absolute,
                         },
                     },
@@ -1106,12 +1111,16 @@ impl ty::TyExpression {
         // Check if this could be a function
         let mut function_probe_warnings = Vec::new();
         let mut function_probe_errors = Vec::new();
+
         let maybe_function = {
             let mut call_path_binding = unknown_call_path_binding.clone();
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| unknown_decl.expect_function(decl_engine, &span))
                 .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                .map(|func_decl| (func_decl, call_path_binding))
+                .and_then(|decl| {
+                    decl.expect_function(decl_engine, &span)
+                        .ok(&mut function_probe_warnings, &mut function_probe_errors)
+                        .map(|_s| (decl.get_decl_id().unwrap(), call_path_binding))
+                })
         };
 
         // Check if this could be an enum
@@ -1145,7 +1154,7 @@ impl ty::TyExpression {
                     unknown_decl.expect_const(decl_engine, &call_path_binding.span())
                 })
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)
-                .map(|const_decl| (const_decl, call_path_binding.span()))
+                .map(|const_decl| (const_decl, call_path_binding))
         };
 
         // compare the results of the checks
@@ -1160,7 +1169,7 @@ impl ty::TyExpression {
                         enum_name,
                         variant_name,
                         args,
-                        call_path_binding.strip_inner(),
+                        call_path_binding,
                         &span
                     ),
                     return err(warnings, errors),
@@ -1168,11 +1177,11 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some((func_decl, call_path_binding)), None, None) => {
+            (false, Some((decl_id, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding, args, span),
+                    instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1185,11 +1194,11 @@ impl ty::TyExpression {
                 ));
                 return err(module_probe_warnings, module_probe_errors);
             }
-            (false, None, None, Some((const_decl, span))) => {
+            (false, None, None, Some((const_decl, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
                 check!(
-                    instantiate_constant_decl(const_decl, span),
+                    instantiate_constant_decl(const_decl, call_path_binding),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1271,7 +1280,7 @@ impl ty::TyExpression {
                     _ => {
                         errors.push(CompileError::NotAnAbi {
                             span: abi_name.span(),
-                            actually_is: abi.friendly_name(),
+                            actually_is: abi.friendly_type_name(),
                         });
                         return err(warnings, errors);
                     }
@@ -1314,7 +1323,7 @@ impl ty::TyExpression {
             a => {
                 errors.push(CompileError::NotAnAbi {
                     span: abi_name.span(),
-                    actually_is: a.friendly_name(),
+                    actually_is: a.friendly_type_name(),
                 });
                 return err(warnings, errors);
             }

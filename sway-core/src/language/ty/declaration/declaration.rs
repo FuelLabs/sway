@@ -123,7 +123,7 @@ impl DisplayWithEngines for TyDeclaration {
         write!(
             f,
             "{} declaration ({})",
-            self.friendly_name(),
+            self.friendly_type_name(),
             match self {
                 TyDeclaration::VariableDeclaration(decl) => {
                     let TyVariableDeclaration {
@@ -164,13 +164,15 @@ impl DisplayWithEngines for TyDeclaration {
                 }
                 TyDeclaration::StructDeclaration(decl_id) => {
                     match decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyStructDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyStructDeclaration { call_path, .. }) => {
+                            call_path.suffix.as_str().into()
+                        }
                         Err(_) => "unknown struct".into(),
                     }
                 }
                 TyDeclaration::EnumDeclaration(decl_id) => {
                     match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
+                        Ok(TyEnumDeclaration { call_path, .. }) => call_path.suffix.as_str().into(),
                         Err(_) => "unknown enum".into(),
                     }
                 }
@@ -281,13 +283,15 @@ impl GetDeclIdent for TyDeclaration {
                 decl_engine
                     .get_struct(decl.clone(), &decl.span())
                     .unwrap()
-                    .name,
+                    .call_path
+                    .suffix,
             ),
             TyDeclaration::EnumDeclaration(decl) => Some(
                 decl_engine
                     .get_enum(decl.clone(), &decl.span())
                     .unwrap()
-                    .name,
+                    .call_path
+                    .suffix,
             ),
             TyDeclaration::ImplTrait(decl) => Some(
                 decl_engine
@@ -303,6 +307,24 @@ impl GetDeclIdent for TyDeclaration {
                     .name,
             ),
             TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
+            TyDeclaration::ErrorRecovery(_) => None,
+            TyDeclaration::StorageDeclaration(_decl) => None,
+        }
+    }
+}
+
+impl GetDeclId for TyDeclaration {
+    fn get_decl_id(&self) -> Option<DeclId> {
+        match self {
+            TyDeclaration::VariableDeclaration(_) => todo!("not a declaration id yet"),
+            TyDeclaration::ConstantDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::FunctionDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::TraitDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::StructDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::EnumDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::ImplTrait(decl) => Some(decl.clone()),
+            TyDeclaration::AbiDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::GenericTypeForFunctionScope { .. } => None,
             TyDeclaration::ErrorRecovery(_) => None,
             TyDeclaration::StorageDeclaration(_decl) => None,
         }
@@ -326,7 +348,7 @@ impl TyDeclaration {
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnEnum {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 }],
             ),
@@ -356,7 +378,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAStruct {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -387,7 +409,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAFunction {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -406,7 +428,7 @@ impl TyDeclaration {
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
                 errors.push(CompileError::DeclIsNotAVariable {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 });
                 err(warnings, errors)
@@ -430,7 +452,7 @@ impl TyDeclaration {
             decl => err(
                 vec![],
                 vec![CompileError::DeclIsNotAnAbi {
-                    actually: decl.friendly_name().to_string(),
+                    actually: decl.friendly_type_name().to_string(),
                     span: decl.span(),
                 }],
             ),
@@ -453,7 +475,7 @@ impl TyDeclaration {
             decl => {
                 let errors = vec![
                     (CompileError::DeclIsNotAConstant {
-                        actually: decl.friendly_name().to_string(),
+                        actually: decl.friendly_type_name().to_string(),
                         span: decl.span(),
                     }),
                 ];
@@ -462,8 +484,34 @@ impl TyDeclaration {
         }
     }
 
-    /// friendly name string used for error reporting.
-    pub fn friendly_name(&self) -> &'static str {
+    /// friendly name string used for error reporting,
+    /// which consists of the the identifier for the declaration.
+    pub fn friendly_name(&self, engines: &Engines) -> String {
+        use TyDeclaration::*;
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
+        match self {
+            ImplTrait(decl_id) => {
+                let decl = decl_engine
+                    .get_impl_trait(decl_id.clone(), &Span::dummy())
+                    .unwrap();
+                let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
+                format!(
+                    "{} for {}",
+                    self.get_decl_ident(decl_engine)
+                        .map_or(String::from(""), |f| f.as_str().to_string()),
+                    implementing_for_type_id.json_abi_str(type_engine)
+                )
+            }
+            _ => self
+                .get_decl_ident(decl_engine)
+                .map_or(String::from(""), |f| f.as_str().to_string()),
+        }
+    }
+
+    /// friendly type name string used for error reporting,
+    /// which consists of the type name of the declaration AST node.
+    pub fn friendly_type_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
@@ -553,7 +601,7 @@ impl TyDeclaration {
                 errors.push(CompileError::NotAType {
                     span: decl.span(),
                     name: engines.help_out(decl).to_string(),
-                    actually_is: decl.friendly_name(),
+                    actually_is: decl.friendly_type_name(),
                 });
                 return err(warnings, errors);
             }

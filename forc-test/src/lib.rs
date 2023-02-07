@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
@@ -5,11 +6,9 @@ use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
-use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
+use rand::{Rng, SeedableRng};
 use sway_core::{language::parsed::TreeType, BuildTarget};
 use sway_types::{ConfigTimeConstant, Span};
-use tx::{AssetId, TxPointer, UtxoId};
-use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -50,6 +49,8 @@ pub struct TestResult {
     /// Emitted `Recipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
 }
+
+const TEST_METADATA_SEED: u64 = 0x7E57u64;
 
 /// A package or a workspace that has been built, ready for test execution.
 pub enum BuiltTests {
@@ -105,18 +106,6 @@ pub struct Opts {
 pub struct TestPrintOpts {
     pub pretty_print: bool,
     pub print_logs: bool,
-}
-
-/// The required common metadata for building a transaction to deploy a contract or run a test.
-#[derive(Debug)]
-struct TxMetadata {
-    secret_key: SecretKey,
-    utxo_id: UtxoId,
-    amount: u64,
-    asset_id: AssetId,
-    tx_pointer: TxPointer,
-    maturity: u64,
-    block_height: tx::Word,
 }
 
 /// The storage and the contract id (if a contract is being tested) for a test.
@@ -189,12 +178,15 @@ impl<'a> PackageTests {
 
     /// Run all tests for this package and collect their results.
     pub(crate) fn run_tests(&self) -> anyhow::Result<TestedPackage> {
+        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
+        let mut visited_tests = HashSet::new();
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
             .entries
             .iter()
             .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+            .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
             .map(|(entry, test_entry)| {
                 let offset = u32::try_from(entry.finalized.imm)
                     .expect("test instruction offset out of range");
@@ -250,23 +242,6 @@ impl<'a> PackageTests {
     }
 }
 
-impl Distribution<TxMetadata> for Standard {
-    /// Samples a random sample for `TxMetadata` which contains both random and constant variables.
-    /// For random variables a random sampling is done. For constant fields a constant value that
-    /// can be used directly with `TransactionBuilder` (for test transactions) is set.
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TxMetadata {
-        TxMetadata {
-            secret_key: rng.gen(),
-            utxo_id: rng.gen(),
-            amount: 1,
-            asset_id: rng.gen(),
-            tx_pointer: rng.gen(),
-            maturity: 1,
-            block_height: (u32::MAX >> 1) as u64,
-        }
-    }
-}
-
 impl Opts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
@@ -287,12 +262,9 @@ impl Opts {
     }
 
     /// Patch this set of test options, so that it will build the package at the given `path`.
-    pub(crate) fn patch_opts(self, path: &std::path::Path) -> Opts {
-        let mut opts = self;
-        let mut pkg_opts = opts.pkg;
-        pkg_opts.path = path.to_str().map(|path_str| path_str.to_string());
-        opts.pkg = pkg_opts;
-        opts
+    pub(crate) fn with_path(&mut self, path: &std::path::Path) -> Opts {
+        self.pkg.path = path.to_str().map(ToString::to_string);
+        self.clone()
     }
 }
 
@@ -373,7 +345,7 @@ fn build_contracts_without_tests(
             let pkg_path = pkg_manifest.dir();
             let build_opts_without_tests = opts
                 .clone()
-                .patch_opts(pkg_path)
+                .with_path(pkg_path)
                 .into_build_opts()
                 .include_tests(false);
             let built_pkg =
@@ -436,21 +408,22 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
 
     // Create the deployment transaction.
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
-    let metadata: TxMetadata = rng.gen();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+    // Prepare the transaction metadata.
+    let secret_key = rng.gen();
+    let utxo_id = rng.gen();
+    let amount = 1;
+    let maturity = 1;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let block_height = (u32::MAX >> 1) as u64;
 
     let tx = tx::TransactionBuilder::create(bytecode.into(), salt, storage_slots)
-        .add_unsigned_coin_input(
-            metadata.secret_key,
-            metadata.utxo_id,
-            metadata.amount,
-            metadata.asset_id,
-            metadata.tx_pointer,
-            metadata.maturity,
-        )
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
-        .maturity(metadata.maturity)
-        .finalize_checked(metadata.block_height, &params);
+        .maturity(maturity)
+        .finalize_checked(block_height, &params);
 
     // Deploy the contract.
     interpreter.transact(tx)?;
@@ -533,20 +506,22 @@ fn exec_test(
 
     // Create a transaction to execute the test function.
     let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
-    let metadata: TxMetadata = rng.gen();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+    // Prepare the transaction metadata.
+    let secret_key = rng.gen();
+    let utxo_id = rng.gen();
+    let amount = 1;
+    let maturity = 1;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let block_height = (u32::MAX >> 1) as u64;
+
     let params = tx::ConsensusParameters::default();
     let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(
-            metadata.secret_key,
-            metadata.utxo_id,
-            metadata.amount,
-            metadata.asset_id,
-            metadata.tx_pointer,
-            0,
-        )
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, 0)
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(metadata.maturity)
+        .maturity(maturity)
         .clone();
     if let Some(contract_id) = contract_id {
         tx.add_input(tx::Input::Contract {
@@ -562,7 +537,7 @@ fn exec_test(
             state_root: tx::Bytes32::zeroed(),
         });
     }
-    let tx = tx.finalize_checked(metadata.block_height, &params);
+    let tx = tx.finalize_checked(block_height, &params);
 
     let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
 
