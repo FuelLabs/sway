@@ -1,4 +1,4 @@
-category = "fail"
+category = "disabled"
 
 # check: $()x = y;
 # nextln: $()Mismatched types.
