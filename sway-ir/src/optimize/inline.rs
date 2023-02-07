@@ -125,7 +125,7 @@ pub fn inline_in_non_predicate_module(
             .function_iter(context)
             .fold(HashMap::new(), |mut counts, func| {
                 for (_block, ins) in func.instruction_iter(context) {
-                    if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(&context) {
+                    if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(context) {
                         counts
                             .entry(*callee)
                             .and_modify(|count| *count += 1)

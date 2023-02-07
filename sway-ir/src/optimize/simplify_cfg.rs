@@ -23,11 +23,15 @@ pub fn create_simplify_cfg_pass() -> Pass {
     }
 }
 
-pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn simplify_cfg(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let mut modified = false;
-    modified |= remove_dead_blocks(context, function)?;
+    modified |= remove_dead_blocks(context, &function)?;
     modified |= merge_blocks(context, &function)?;
-    modified |= unlink_empty_blocks(context, function)?;
+    modified |= unlink_empty_blocks(context, &function)?;
     Ok(modified)
 }
 

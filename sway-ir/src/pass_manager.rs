@@ -72,12 +72,14 @@ impl AnalysisResults {
                 TypeId::of::<T>(),
                 (TypeId::of::<S>(), scope.get_arena_idx()),
             ))
-            .expect(&format!(
-                "Internal error. Analysis result {} unavailable for {} with idx {:?}",
-                type_name::<T>(),
-                type_name::<S>(),
-                scope.get_arena_idx()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "Internal error. Analysis result {} unavailable for {} with idx {:?}",
+                    type_name::<T>(),
+                    type_name::<S>(),
+                    scope.get_arena_idx()
+                )
+            })
             .downcast_ref()
             .unwrap()
     }
@@ -86,7 +88,7 @@ impl AnalysisResults {
     pub fn add_result<S: PassScope + 'static>(&mut self, scope: S, result: AnalysisResult) {
         self.results.insert(
             (
-                (&*result).type_id(),
+                (*result).type_id(),
                 (TypeId::of::<S>(), scope.get_arena_idx()),
             ),
             result,
@@ -112,7 +114,7 @@ impl PassManager {
                 entry.insert(pass);
             }
         }
-        return pass_name;
+        pass_name
     }
 
     /// Run the passes specified in `config`.
