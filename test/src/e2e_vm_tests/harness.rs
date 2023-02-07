@@ -206,6 +206,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             ..Default::default()
         },
+        build_filter: forc_pkg::BuildFilter::all(),
         ..Default::default()
     };
     let result = forc_pkg::build_with_options(build_opts);
