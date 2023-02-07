@@ -164,7 +164,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             }
             Ok(NodeConnection::NextStep(vec![entry]))
         }
-        ty::TyAstNodeContent::SideEffect => Ok(NodeConnection::NextStep(leaves.to_vec())),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(NodeConnection::NextStep(leaves.to_vec())),
         ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
             connect_declaration(engines, node, decl, graph, span, leaves)?,
         )),

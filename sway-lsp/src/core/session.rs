@@ -300,6 +300,17 @@ impl Session {
         Ok(())
     }
 
+    /// Get the document at the given [Url].
+    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|document| document.clone())
+    }
+
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
         &self,

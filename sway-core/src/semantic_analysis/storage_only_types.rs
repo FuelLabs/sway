@@ -11,7 +11,7 @@ fn ast_node_validate(engines: Engines<'_>, x: &ty::TyAstNodeContent) -> CompileR
         ty::TyAstNodeContent::Expression(expr)
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(engines, expr),
         ty::TyAstNodeContent::Declaration(decl) => decl_validate(engines, decl),
-        ty::TyAstNodeContent::SideEffect => ok((), warnings, errors),
+        ty::TyAstNodeContent::SideEffect(_) => ok((), warnings, errors),
     }
 }
 
