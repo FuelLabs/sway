@@ -1825,9 +1825,8 @@ dependencies = [
 
 [[package]]
 name = "fuel-asm"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f56306747294a7ec2da07e9be050783cf6adbfd3d73bf820a66bde16336a309"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "fuel-types",
  "serde",
@@ -1842,7 +1841,7 @@ dependencies = [
  "anyhow",
  "bech32 0.9.1",
  "fuel-core-storage",
- "fuel-core-types",
+ "fuel-core-types 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex",
  "itertools",
  "postcard",
@@ -1856,14 +1855,13 @@ dependencies = [
 [[package]]
 name = "fuel-core-client"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e30353fd185786c82486aeff551b903e811060eeecdbb766e46fb236e6deadd"
+source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"
 dependencies = [
  "anyhow",
  "cynic",
  "derive_more",
  "eventsource-client",
- "fuel-core-types",
+ "fuel-core-types 0.16.1 (git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor)",
  "futures",
  "hex",
  "hyper-rustls 0.22.1",
@@ -1882,7 +1880,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66f31e83c3377c33aa9a49e00fc3fa48003f6e1d26344d503ee3342dbdc83ba3"
 dependencies = [
  "anyhow",
- "fuel-core-types",
+ "fuel-core-types 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fuel-vm",
  "thiserror",
 ]
@@ -1904,10 +1902,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-core-types"
+version = "0.16.1"
+source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"
+dependencies = [
+ "anyhow",
+ "derive_more",
+ "fuel-vm",
+ "secrecy",
+ "serde",
+ "tai64",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
 name = "fuel-crypto"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eedf87b364293690782968202c247fd08470e3e17d2e2f42489b46d3f5c966e7"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "borrown",
  "coins-bip32",
@@ -1995,9 +2007,8 @@ dependencies = [
 
 [[package]]
 name = "fuel-merkle"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9878202ea2f874de70e66b0349af8b1ad8300dcd2dec216920bb44850c5000ba"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "digest 0.10.6",
  "fuel-storage",
@@ -2009,15 +2020,13 @@ dependencies = [
 
 [[package]]
 name = "fuel-storage"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d076e82c7c5d1d15cd983f744edd0bcb2552fab3428bde403c32fca07884212"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 
 [[package]]
 name = "fuel-tx"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f692bcc2f6bfaf2cdadef553462fb23936865af5c646acf3fedfd6e0c136df3d"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "derivative",
  "fuel-asm",
@@ -2033,9 +2042,8 @@ dependencies = [
 
 [[package]]
 name = "fuel-types"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7910fa716d6092210481a386ad29eeb6193fd911f0c6785af3c8b033817b05b"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "rand",
  "serde",
@@ -2043,9 +2051,8 @@ dependencies = [
 
 [[package]]
 name = "fuel-vm"
-version = "0.25.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0be0f72a67691df7f0929dee984eafbc47ded6b58d2c7d15dc85d4f2612e2b92"
+version = "0.25.3"
+source = "git+https://github.com/fuellabs/fuel-vm?branch=mitchmindtree/monorepo-fuel-asm-refactor#dd41273fc05c0effc80e6959089681e4125f6072"
 dependencies = [
  "bitflags",
  "fuel-asm",
@@ -5971,3 +5978,8 @@ dependencies = [
  "syn",
  "synstructure",
 ]
+
+[[patch.unused]]
+name = "fuel-core"
+version = "0.16.1"
+source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"
