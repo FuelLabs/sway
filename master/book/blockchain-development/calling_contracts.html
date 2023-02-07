@@ -209,10 +209,10 @@ fn main() {
 </code></pre>
 <h2 id="handling-re-entrancy"><a class="header" href="#handling-re-entrancy">Handling Re-entrancy</a></h2>
 <p>A common attack vector for smart contracts is <a href="https://docs.soliditylang.org/en/v0.8.4/security-considerations.html#re-entrancy">re-entrancy</a>. Similar to the EVM, the FuelVM allows for re-entrancy.</p>
-<p>A <em>stateless</em> re-entrancy guard is included in the Sway standard library. The guard will panic (revert) at run time if re-entrancy is detected.</p>
+<p>A <em>stateless</em> re-entrancy guard is included in the <a href="https://github.com/FuelLabs/sway-libs">sway-libs</a> library. The guard will panic (revert) at run time if re-entrancy is detected.</p>
 <pre><code class="language-sway">contract;
 
-use std::reentrancy::reentrancy_guard;
+use reentrancy::reentrancy_guard;
 
 abi MyContract {
     fn some_method();
