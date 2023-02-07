@@ -567,11 +567,11 @@ impl TypeInfo {
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),
             ErrorRecovery => "unknown due to error".into(),
-            Enum { name, .. } => {
-                format!("enum {name}")
+            Enum { call_path, .. } => {
+                format!("enum {}", call_path.suffix)
             }
-            Struct { name, .. } => {
-                format!("struct {name}")
+            Struct { call_path, .. } => {
+                format!("struct {}", call_path.suffix)
             }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {abi_name}")

@@ -251,7 +251,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Name { name } => {
             let import_type = if name.as_str() == "self" {
-                ImportType::SelfImport
+                ImportType::SelfImport(name.span())
             } else {
                 ImportType::Item(name)
             };
@@ -264,7 +264,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Rename { name, alias, .. } => {
             let import_type = if name.as_str() == "self" {
-                ImportType::SelfImport
+                ImportType::SelfImport(name.span())
             } else {
                 ImportType::Item(name)
             };
@@ -801,8 +801,6 @@ fn item_configurable_to_constant_declarations(
     _attributes: AttributesMap,
 ) -> Result<Vec<ConstantDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
-
-    dbg!(context.module_has_configurable_block());
 
     if context.module_has_configurable_block() {
         errors.push(ConvertParseTreeError::MultipleConfigurableBlocksInModule {
@@ -2262,6 +2260,7 @@ fn path_type_to_supertrait(
     */
     let supertrait = Supertrait {
         name,
+        decl_id: None,
         //type_parameters,
     };
     Ok(supertrait)
@@ -3187,7 +3186,7 @@ fn pattern_to_scrutinee(
                 .collect::<Result<_, _>>()?;
 
             Scrutinee::StructScrutinee {
-                struct_name: path_expr_to_ident(context, handler, path)?,
+                struct_name: path_expr_to_ident(context, handler, path)?.into(),
                 fields: { scrutinee_fields },
                 span,
             }

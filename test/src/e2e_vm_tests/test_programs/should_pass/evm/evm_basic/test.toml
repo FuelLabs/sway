@@ -1,0 +1,2 @@
+category = "compile"
+supported-targets = ["evm"]

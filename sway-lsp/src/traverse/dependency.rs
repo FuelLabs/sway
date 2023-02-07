@@ -52,7 +52,7 @@ impl<'a> Dependency<'a> {
                 ty::TyDeclaration::VariableDeclaration(variable) => Ok(variable.name.clone()),
                 ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
                     .get_struct(decl_id.clone(), &declaration.span())
-                    .map(|decl| decl.name),
+                    .map(|decl| decl.call_path.suffix),
                 ty::TyDeclaration::TraitDeclaration(decl_id) => decl_engine
                     .get_trait(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
@@ -64,7 +64,7 @@ impl<'a> Dependency<'a> {
                     .map(|decl| decl.name),
                 ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
                     .get_enum(decl_id.clone(), &declaration.span())
-                    .map(|decl| decl.name),
+                    .map(|decl| decl.call_path.suffix),
                 _ => return,
             } {
                 let ident = token::to_ident_key(&ident);

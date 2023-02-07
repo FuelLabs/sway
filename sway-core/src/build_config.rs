@@ -2,7 +2,9 @@ use std::{path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, clap::ValueEnum)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize, clap::ValueEnum,
+)]
 pub enum BuildTarget {
     #[default]
     Fuel,

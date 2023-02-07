@@ -13,6 +13,7 @@ use core::fmt;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
+use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
 use std::{
@@ -20,6 +21,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_core::BuildTarget;
 use tokio::sync::Mutex;
 use tracing::Instrument;
 
@@ -62,6 +64,7 @@ struct TestDescription {
     contract_paths: Vec<String>,
     validate_abi: bool,
     validate_storage_slots: bool,
+    supported_targets: HashSet<BuildTarget>,
     checker: filecheck::Checker,
 }
 
@@ -96,6 +99,7 @@ impl TestContext {
             validate_abi,
             validate_storage_slots,
             checker,
+            ..
         } = test;
 
         match category {
@@ -380,6 +384,12 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         stdout().flush().unwrap();
 
         let mut output = String::new();
+
+        // Skip the test if its not compatible with the current build target.
+        if !test.supported_targets.contains(&run_config.build_target) {
+            continue;
+        }
+
         let result = if !filter_config.first_only {
             context
                 .run(test, &mut output)
@@ -632,6 +642,23 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         .map(|s| s.to_owned())
         .unwrap();
 
+    // Check for supported build target for each test. For now we assume that the
+    // the default is that only Fuel VM target is supported. Once the other targets
+    // get to a fully usable state, we should update this.
+    let supported_targets = toml_content
+        .get("supported_targets")
+        .map(|v| v.as_array().cloned().unwrap_or_default())
+        .unwrap_or_default()
+        .iter()
+        .map(get_test_abi_from_value)
+        .collect::<Result<Vec<BuildTarget>>>()?;
+
+    let supported_targets = HashSet::from_iter(if supported_targets.is_empty() {
+        vec![BuildTarget::Fuel]
+    } else {
+        supported_targets
+    });
+
     Ok(TestDescription {
         name,
         category,
@@ -640,8 +667,20 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         contract_paths,
         validate_abi,
         validate_storage_slots,
+        supported_targets,
         checker,
     })
+}
+
+fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
+    match value.as_str() {
+        Some(target) => match target {
+            "fuel" => Ok(BuildTarget::Fuel),
+            "evm" => Ok(BuildTarget::EVM),
+            _ => Err(anyhow!(format!("Unknown build target: {target}"))),
+        },
+        None => Err(anyhow!("Invalid TOML value")),
+    }
 }
 
 fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {

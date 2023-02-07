@@ -160,10 +160,10 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = enum_decl.name.clone();
+                let call_path = enum_decl.call_path.clone();
                 let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -194,8 +194,24 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = trait_decl.name.clone();
+
+                // save decl_ids for the LSP
+                for supertrait in trait_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
+                                supertrait_decl
+                            {
+                                supertrait.decl_id = Some(supertrait_decl_id);
+                            }
+                        });
+                }
+
                 let decl_id = decl_engine.insert(trait_decl.clone());
                 let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+
                 trait_decl
                     .methods
                     .iter_mut()
@@ -274,12 +290,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let name = decl.name.clone();
+                let call_path = decl.call_path.clone();
                 let decl_id = decl_engine.insert(decl);
                 let decl = ty::TyDeclaration::StructDeclaration(decl_id);
                 // insert the struct decl into namespace
                 check!(
-                    ctx.namespace.insert_symbol(name, decl.clone()),
+                    ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors

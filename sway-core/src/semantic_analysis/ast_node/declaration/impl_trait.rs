@@ -115,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -156,6 +156,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -169,7 +170,7 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -209,6 +210,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
+                    trait_decl_id: Some(decl_id),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -248,7 +250,7 @@ impl ty::TyImplTrait {
                 ty::TyAstNodeContent::Declaration(decl) => {
                     decl_contains_get_storage_index(decl_engine, decl, access_span)
                 }
-                ty::TyAstNodeContent::SideEffect => Ok(false),
+                ty::TyAstNodeContent::SideEffect(_) => Ok(false),
             }
         }
 
@@ -550,6 +552,7 @@ impl ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
             trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+            trait_decl_id: None,
             span: block_span,
             methods: methods_ids,
             implementing_for_type_id,
