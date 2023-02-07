@@ -82,7 +82,7 @@ impl Backend {
     }
 }
 
-/// This function returns the capabilities of the server to the client,
+/// Returns the capabilities of the server to the client,
 /// indicating its support for various language server protocol features.
 pub fn capabilities() -> ServerCapabilities {
     ServerCapabilities {
