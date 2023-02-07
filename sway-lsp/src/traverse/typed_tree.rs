@@ -10,7 +10,7 @@ use dashmap::mapref::one::RefMut;
 use sway_core::{
     decl_engine::DeclId,
     language::{
-        parsed::Supertrait,
+        parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
         CallPath,
     },
@@ -39,7 +39,9 @@ impl<'a> TypedTree<'a> {
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
                 self.handle_expression(expression, namespace)
             }
-            ty::TyAstNodeContent::SideEffect => (),
+            ty::TyAstNodeContent::SideEffect(side_effect) => {
+                self.handle_side_effect(side_effect, namespace)
+            }
         };
     }
 
@@ -355,6 +357,84 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
+        }
+    }
+
+    fn handle_side_effect(&self, side_effect: &ty::TySideEffect, namespace: &namespace::Module) {
+        use ty::TySideEffectVariant::*;
+        match &side_effect.side_effect {
+            UseStatement(
+                use_statement @ ty::TyUseStatement {
+                    call_path,
+                    import_type,
+                    alias,
+                    is_absolute: _,
+                },
+            ) => {
+                if let Some(alias) = alias {
+                    if let Some(mut token) =
+                        self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+                        token.type_def = Some(TypeDefinition::Ident(alias.clone()));
+                    }
+                }
+
+                for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
+                    if let Some(mut token) =
+                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+
+                        if let Some(name) = namespace
+                            .submodule(mod_path)
+                            .and_then(|tgt_submod| tgt_submod.name.clone())
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(name));
+                        }
+                    }
+                }
+
+                match &import_type {
+                    ImportType::Item(item) => {
+                        if let Some(mut token) =
+                            self.tokens.try_get_mut(&to_ident_key(item)).try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+
+                            let decl_engine = self.engines.de();
+
+                            if let Some(decl_ident) = namespace
+                                .submodule(call_path)
+                                .and_then(|module| module.symbols().get(item))
+                                .and_then(|decl| decl.get_decl_ident(decl_engine))
+                            {
+                                token.type_def = Some(TypeDefinition::Ident(decl_ident));
+                            }
+                        }
+                    }
+                    ImportType::SelfImport(span) => {
+                        if let Some(mut token) = self
+                            .tokens
+                            .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
+
+                            if let Some(name) = namespace
+                                .submodule(call_path)
+                                .and_then(|tgt_submod| tgt_submod.name.clone())
+                            {
+                                token.type_def = Some(TypeDefinition::Ident(name));
+                            }
+                        }
+                    }
+                    ImportType::Star => {}
+                }
+            }
+            IncludeStatement => {}
         }
     }
 
@@ -757,10 +837,6 @@ impl<'a> TypedTree<'a> {
             .and_then(|function_decl| function_decl.implementing_type)
             .and_then(|impl_type| impl_type.get_decl_ident(decl_engine));
 
-        pub fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
-            (1..=slice.len()).map(move |len| &slice[..len])
-        }
-
         let prefixes = if let Some(impl_type_name) = implementing_type_name {
             // the last prefix of the call path is not a module but a type
             if let Some((last, prefixes)) = call_path.prefixes.split_last() {
@@ -1088,4 +1164,8 @@ fn assign_type_to_token(
     token.kind = symbol_kind;
     token.typed = Some(typed_token);
     token.type_def = Some(TypeDefinition::TypeId(type_id));
+}
+
+fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
+    (1..=slice.len()).map(move |len| &slice[..len])
 }

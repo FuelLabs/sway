@@ -250,7 +250,7 @@ impl ty::TyImplTrait {
                 ty::TyAstNodeContent::Declaration(decl) => {
                     decl_contains_get_storage_index(decl_engine, decl, access_span)
                 }
-                ty::TyAstNodeContent::SideEffect => Ok(false),
+                ty::TyAstNodeContent::SideEffect(_) => Ok(false),
             }
         }
 
