@@ -27,7 +27,7 @@ impl Format for ItemAbi {
         // add pre fn_signature comments
         let end = if abi_items.is_empty() {
             self.span().end()
-        } else if abi_items.first().unwrap().0.attribute_list.len() > 0 {
+        } else if !abi_items.first().unwrap().0.attribute_list.is_empty() {
             abi_items
                 .first()
                 .unwrap()
@@ -93,7 +93,7 @@ impl Format for ItemAbi {
 
         let start = if abi_items.is_empty() {
             self.span().start()
-        } else if abi_items.last().unwrap().0.attribute_list.len() == 0 {
+        } else if abi_items.last().unwrap().0.attribute_list.is_empty() {
             abi_items.last().unwrap().0.value.span().end()
         } else {
             abi_items

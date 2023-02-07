@@ -28,7 +28,7 @@ impl Format for Module {
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
 
         // Format comments between module kind declaration and rest of items
-        if self.items.len() > 0 {
+        if !self.items.is_empty() {
             maybe_write_comments_from_map(
                 formatted_code,
                 std::ops::Range {
