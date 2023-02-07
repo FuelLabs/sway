@@ -466,10 +466,31 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
-pub(crate) struct Context<S: Renderable> {
+pub(crate) struct Context<T: Renderable> {
     module_info: ModuleInfo,
-    context: Vec<S>,
+    context: T,
 }
+// macro_rules! define_context {
+//     ($ty_context:ident) => {
+//         #[derive(Clone)]
+//         pub(crate) struct $ty_context<T> {
+//             module_info: ModuleInfo,
+//             context: T,
+//         }
+//         impl<T> $ty_context<T> {
+//             pub(crate) fn from(module_info: ModuleInfo, context: T) -> $ty_context<T> {
+//                 $ty_context {
+//                     module_info,
+//                     context,
+//                 }
+//             }
+//         }
+//     };
+// }
+// define_context!(StructFields);
+// define_context!(StorageFields);
+// define_context!(EnumVariants);
+// define_context!(RequiredMethods);
 #[derive(Clone)]
 pub(crate) struct ItemContext {
     pub(crate) context: Option<ContextType>,
