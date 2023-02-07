@@ -16,6 +16,7 @@ use include_dir::{include_dir, Dir};
 use pkg::manifest::ManifestFile;
 use std::{
     process::Command as Process,
+    sync::Arc,
     {fs, path::PathBuf},
 };
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
@@ -76,6 +77,7 @@ pub fn main() -> Result<()> {
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
+        &type_engine,
         &decl_engine,
         project_name,
         &typed_program,
@@ -88,7 +90,8 @@ pub fn main() -> Result<()> {
         .forc_version
         .as_ref()
         .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
-    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version)?;
+    let rendered_docs =
+        RenderedDocumentation::from(raw_docs, Arc::from(type_engine), forc_version)?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {

@@ -4,11 +4,12 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use std::option::Option;
 use std::path::PathBuf;
+use std::{option::Option, sync::Arc};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
+    TypeEngine,
 };
 
 pub(crate) type Documentation = Vec<Document>;
@@ -82,6 +83,7 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
+        type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
@@ -93,6 +95,7 @@ impl Document {
         for ast_node in &typed_program.root.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
+                    type_engine,
                     decl_engine,
                     decl,
                     ModuleInfo::from_vec(vec![project_name.to_owned()]),
@@ -110,6 +113,7 @@ impl Document {
             for (_, ref typed_submodule) in &typed_program.root.submodules {
                 let module_prefix = ModuleInfo::from_vec(vec![project_name.to_owned()]);
                 Document::from_ty_submodule(
+                    type_engine,
                     decl_engine,
                     typed_submodule,
                     &mut docs,
@@ -122,6 +126,7 @@ impl Document {
         Ok(docs)
     }
     fn from_ty_submodule(
+        type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         typed_submodule: &TySubmodule,
         docs: &mut Documentation,
@@ -135,6 +140,7 @@ impl Document {
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
                 let desc = Descriptor::from_typed_decl(
+                    type_engine,
                     decl_engine,
                     decl,
                     new_submodule_prefix.clone(),
@@ -149,6 +155,7 @@ impl Document {
         // if there is another submodule we need to go a level deeper
         if let Some((_, submodule)) = typed_submodule.module.submodules.first() {
             Document::from_ty_submodule(
+                type_engine,
                 decl_engine,
                 submodule,
                 docs,
@@ -161,9 +168,9 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let header = self.item_header.render()?;
-        let body = self.item_body.render()?;
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render(type_engine.clone())?;
+        let body = self.item_body.render(type_engine)?;
         Ok(box_html! {
             : header;
             : body;
@@ -238,7 +245,7 @@ impl ModuleInfo {
     /// used in navigation between pages.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
-    pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> Result<String> {
+    pub(crate) fn file_path_at_location(&self, file_name: &str, location: &str) -> Result<String> {
         let mut iter = self.0.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
@@ -252,6 +259,20 @@ impl ModuleInfo {
             .to_str()
             .map(|file_path_str| file_path_str.to_string())
             .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
+    }
+    /// Takes the current `module_info` to determine how many directories to go back to make
+    /// the next file path valid, and returns that path as a string.
+    ///
+    /// Example:
+    /// ```
+    /// current_location = "project_root/module/submodule/struct.Name.html";
+    /// next_location = "module/other_submodule/enum.Name.html";
+    /// ```
+    pub(crate) fn file_path_from_location(
+        &self,
+        file_name: &str,
+        module_info: &ModuleInfo,
+    ) -> Result<String> {
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///

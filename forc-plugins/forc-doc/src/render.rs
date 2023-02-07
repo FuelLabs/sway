@@ -2,13 +2,15 @@ use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
 use anyhow::Result;
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::collections::BTreeMap;
-use std::fmt::Write;
-use sway_core::language::ty::{
-    TyDeclaration::{self, *},
-    TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
+use std::{collections::BTreeMap, fmt::Write, sync::Arc};
+use sway_core::{
+    language::ty::{
+        TyDeclaration::{self, *},
+        TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
+    },
+    transform::{AttributeKind, AttributesMap},
+    TypeEngine,
 };
-use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
 use sway_types::BaseIdent;
 
@@ -16,7 +18,7 @@ pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) const INDEX_FILENAME: &str = "index.html";
 pub(crate) const IDENTITY: &str = "#";
 pub(crate) trait Renderable {
-    fn render(self) -> Result<Box<dyn RenderBox>>;
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -29,7 +31,11 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: Documentation, forc_version: Option<String>) -> Result<RenderedDocumentation> {
+    pub fn from(
+        raw: Documentation,
+        type_engine: Arc<TypeEngine>,
+        forc_version: Option<String>,
+    ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let root_module = match raw.first() {
             Some(doc) => ModuleInfo::from_vec(vec![doc.module_info.project_name().to_owned()]),
@@ -45,7 +51,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
-                file_contents: HTMLString::from(doc.clone().render()?),
+                file_contents: HTMLString::from(doc.clone().render(type_engine.clone())?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
             let location = doc.module_info.location().to_string();
@@ -222,7 +228,7 @@ impl RenderedDocumentation {
                             links: doc_links.to_owned(),
                         },
                     }
-                    .render()?,
+                    .render(type_engine.clone())?,
                 ),
             }),
             None => panic!("Project does not contain a root module."),
@@ -252,7 +258,7 @@ impl RenderedDocumentation {
                                     links: doc_links.to_owned(),
                                 },
                             }
-                            .render()?,
+                            .render(type_engine.clone())?,
                         ),
                     })
                 }
@@ -267,7 +273,7 @@ impl RenderedDocumentation {
                     project_name: root_module,
                     all_docs,
                 }
-                .render()?,
+                .render(type_engine)?,
             ),
         });
 
@@ -300,7 +306,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let ItemHeader {
             module_info,
             friendly_name,
@@ -363,7 +369,7 @@ impl SidebarNav for ItemBody {
 }
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info: _,
@@ -376,9 +382,9 @@ impl Renderable for ItemBody {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
-        let sidebar = sidebar.render()?;
+        let sidebar = sidebar.render(type_engine.clone())?;
         let item_context = (item_context.context.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render() });
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(type_engine) });
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -460,6 +466,10 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
+pub(crate) struct Context<S: Renderable> {
+    module_info: ModuleInfo,
+    context: Vec<S>,
+}
 #[derive(Clone)]
 pub(crate) struct ItemContext {
     pub(crate) context: Option<ContextType>,
@@ -540,28 +550,37 @@ impl ItemContext {
     }
 }
 impl Renderable for ItemContext {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         match self.context.unwrap() {
-            ContextType::StructFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
-            ContextType::StorageFields(fields) => Ok(context_section(fields, BlockTitle::Fields)?),
-            ContextType::EnumVariants(variants) => {
-                Ok(context_section(variants, BlockTitle::Variants)?)
+            ContextType::StructFields(fields) => {
+                Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
             }
-            ContextType::RequiredMethods(methods) => {
-                Ok(context_section(methods, BlockTitle::RequiredMethods)?)
+            ContextType::StorageFields(fields) => {
+                Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
             }
+            ContextType::EnumVariants(variants) => Ok(context_section(
+                type_engine,
+                variants,
+                BlockTitle::Variants,
+            )?),
+            ContextType::RequiredMethods(methods) => Ok(context_section(
+                type_engine,
+                methods,
+                BlockTitle::RequiredMethods,
+            )?),
         }
     }
 }
 /// Dynamically creates the context section of an item.
 fn context_section<'title, S: Renderable + 'static>(
+    type_engine: Arc<TypeEngine>,
     list: Vec<S>,
     title: BlockTitle,
 ) -> Result<Box<dyn RenderBox + 'title>> {
     let lct = title.html_title_string();
     let mut rendered_list: Vec<_> = Vec::new();
     for item in list {
-        rendered_list.push(item.render()?)
+        rendered_list.push(item.render(type_engine.clone())?)
     }
     Ok(box_html! {
         h2(id=&lct, class=format!("{} small-section-header", &lct)) {
@@ -574,8 +593,76 @@ fn context_section<'title, S: Renderable + 'static>(
         }
     })
 }
+/// Type anchors can be very complex, this should handle instances of nested types that
+/// should have links eg. (here I'm using [] to represent types with links)
+///
+/// ```sway
+/// struct Foo {
+///     foo: ([Foo], (u32, [Foo], ([Foo], [Foo])))
+/// }
+/// ```
+// fn render_type_anchor(
+//     type_info: TypeInfo,
+//     type_engine: Arc<TypeEngine>,
+// ) -> Option<Box<dyn RenderBox>> {
+//     match type_info {
+//         TypeInfo::Array(ty_arg, len) => Some(box_html! {
+//             : "[";
+//             : render_type_anchor(type_engine.get(ty_arg.type_id), type_engine).unwrap();
+//             : format!("; {}]", len.val());
+//         }),
+//         TypeInfo::Enum {
+//             call_path,
+//             type_parameters,
+//             variant_types,
+//         } => {
+//             let module_info = ModuleInfo::from_vec(
+//                 call_path
+//                     .prefixes
+//                     .iter()
+//                     .map(|p| p.as_str().to_string())
+//                     .collect::<Vec<String>>(),
+//             );
+//             Some(box_html! {
+//                 a(class="enum", href=module_info.) {
+//                     : call_path.suffix.as_str();
+//                 }
+//             })
+//         }
+//         TypeInfo::Struct {
+//             call_path,
+//             type_parameters,
+//             fields,
+//         } => {}
+//         TypeInfo::Tuple(inner) => {}
+//         TypeInfo::UnknownGeneric {
+//             name,
+//             trait_constraints: _,
+//         } => {}
+//         TypeInfo::Str(len) => {}
+//         TypeInfo::UnsignedInteger(int_bits) => {}
+//         TypeInfo::Boolean => {}
+//         TypeInfo::ContractCaller { abi_name, address } => {}
+//         TypeInfo::Custom {
+//             name,
+//             type_arguments,
+//         } => {}
+//         TypeInfo::SelfType => {}
+//         TypeInfo::B256 => {}
+//         _ => None,
+//     }
+// }
+// fn is_anchorable(type_info: TypeInfo) -> bool {
+//     match type_info {
+//         TypeInfo::Array(..)
+//         | TypeInfo::Enum { .. }
+//         | TypeInfo::Struct { .. }
+//         | TypeInfo::Tuple(_) => true,
+//         _ => false,
+//     }
+// }
 impl Renderable for TyStructField {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let struct_field_id = format!("structfield.{}", self.name.as_str());
         Ok(box_html! {
             span(id=&struct_field_id, class="structfield small-section-header") {
@@ -595,7 +682,7 @@ impl Renderable for TyStructField {
     }
 }
 impl Renderable for TyStorageField {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let storage_field_id = format!("storagefield.{}", self.name.as_str());
         Ok(box_html! {
             span(id=&storage_field_id, class="storagefield small-section-header") {
@@ -616,7 +703,7 @@ impl Renderable for TyStorageField {
 }
 
 impl Renderable for TyEnumVariant {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let enum_variant_id = format!("variant.{}", self.name.as_str());
         Ok(box_html! {
             h3(id=&enum_variant_id, class="variant small-section-header") {
@@ -635,7 +722,7 @@ impl Renderable for TyEnumVariant {
     }
 }
 impl Renderable for TyTraitFn {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         // there is likely a better way we can do this while simultaneously storing the
         // string slices we need like "&mut "
         let mut fn_sig = format!("fn {}(", self.name.as_str());
@@ -738,7 +825,7 @@ struct DocLinks {
     links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
             DocStyle::AllDoc => box_html! {
                 @ for (title, list_items) in self.links {
@@ -748,7 +835,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.project_name()
@@ -776,7 +863,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.project_name())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())) {
                                             @ if title == BlockTitle::Modules {
                                                 : item.name;
                                             } else {
@@ -808,7 +895,7 @@ impl Renderable for DocLinks {
                             @ for item in list_items {
                                 div(class="item-row") {
                                     div(class=format!("item-left {}-item", title.item_title_str())) {
-                                        a(href=item.module_info.to_file_path_string(&item.html_filename, item.module_info.location())) {
+                                        a(href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.location())) {
                                             : item.module_info.to_path_literal_string(
                                                 &item.name,
                                                 item.module_info.location()
@@ -913,9 +1000,9 @@ impl SidebarNav for AllDocIndex {
     }
 }
 impl Renderable for AllDocIndex {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.all_docs.clone().render()?;
-        let sidebar = self.sidebar().render()?;
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.all_docs.clone().render(type_engine.clone())?;
+        let sidebar = self.sidebar().render(type_engine)?;
         Ok(box_html! {
             head {
                 meta(charset="utf-8");
@@ -993,9 +1080,9 @@ impl SidebarNav for ModuleIndex {
     }
 }
 impl Renderable for ModuleIndex {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.module_docs.clone().render()?;
-        let sidebar = self.sidebar().render()?;
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.module_docs.clone().render(type_engine.clone())?;
+        let sidebar = self.sidebar().render(type_engine)?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex => "Project ",
             DocStyle::ModuleIndex => "Module ",
@@ -1101,7 +1188,7 @@ struct Sidebar {
     nav: DocLinks,
 }
 impl Renderable for Sidebar {
-    fn render(self) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");

@@ -7,6 +7,7 @@ use anyhow::Result;
 use sway_core::{
     decl_engine::*,
     language::ty::{TyDeclaration, TyTraitFn},
+    TypeEngine, TypeInfo,
 };
 use sway_types::Spanned;
 
@@ -34,6 +35,7 @@ pub(crate) enum Descriptor {
 impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
+        type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         ty_decl: &TyDeclaration,
         module_info: ModuleInfo,
