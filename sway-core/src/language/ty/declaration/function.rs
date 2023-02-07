@@ -372,3 +372,22 @@ impl TyFunctionParameter {
         self.name.as_str() == "self"
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TyFunctionSig {
+    pub return_type: TypeId,
+    pub parameters: Vec<TypeId>,
+}
+
+impl TyFunctionSig {
+    pub fn from_fn_decl(fn_decl: &TyFunctionDeclaration) -> Self {
+        Self {
+            return_type: fn_decl.return_type,
+            parameters: fn_decl
+                .parameters
+                .iter()
+                .map(|p| p.type_id)
+                .collect::<Vec<_>>(),
+        }
+    }
+}
