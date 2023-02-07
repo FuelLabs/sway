@@ -629,7 +629,22 @@ abi StorageMapExample {
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
-}"#,
+}
+
+// This is another abi
+abi AnotherAbi {
+    // insert_into_map is blah blah
+    #[storage(write)]
+    fn update_map(key: u64, value: u64);
+        // this is some other comment
+    fn read(key: u64);
+}
+
+// This is another abi
+abi Empty {
+    // Empty abi
+}
+"#,
         r#"contract;
 
 // This is an abi
@@ -638,6 +653,20 @@ abi StorageMapExample {
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
+}
+
+// This is another abi
+abi AnotherAbi {
+    // insert_into_map is blah blah
+    #[storage(write)]
+    fn update_map(key: u64, value: u64);
+    // this is some other comment
+    fn read(key: u64);
+}
+
+// This is another abi
+abi Empty {
+    // Empty abi
 }
 "#,
     );
