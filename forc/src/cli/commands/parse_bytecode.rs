@@ -57,8 +57,8 @@ pub(crate) fn exec(command: Command) -> Result<()> {
             TableCell::new_with_alignment(word_ix, 1, Alignment::Right),
             TableCell::new(word_ix * 4),
             TableCell::new(match result {
-                Ok(inst) => format!("{:?}", inst),
-                Err(err) => format!("{:?}", err),
+                Ok(inst) => format!("{inst:?}"),
+                Err(err) => format!("{err:?}"),
             }),
             TableCell::new(format!(
                 "{:02x} {:02x} {:02x} {:02x}",
