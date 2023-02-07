@@ -717,7 +717,7 @@ impl StorageBytes {
             let mut bytes = Bytes::with_capacity(number_of_slots * 32);
             bytes.len = len;
 
-            // // Load the stores bytes into the `Bytes` type pointer.
+            // Load the stores bytes into the `Bytes` type pointer.
             let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
 
             bytes
