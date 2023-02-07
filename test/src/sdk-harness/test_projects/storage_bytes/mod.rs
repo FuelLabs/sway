@@ -5,7 +5,7 @@ abigen!(Contract(
     abi = "test_projects/storage_bytes/out/debug/storage_bytes-abi.json",
 ));
 
-async fn test_storage_bytes_instance() -> TestStorageBytesContract {
+async fn setup() -> TestStorageBytesContract {
     let wallet = launch_provider_and_get_wallet().await;
     let id = Contract::deploy(
         "test_projects/storage_bytes/out/debug/storage_bytes.bin",
@@ -18,27 +18,28 @@ async fn test_storage_bytes_instance() -> TestStorageBytesContract {
     .await
     .unwrap();
 
-    TestStorageBytesContract::new(id.clone(), wallet)
+    TestStorageBytesContract::new(id, wallet)
 }
 
 #[tokio::test]
 async fn returns_empty_bytes() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input = vec![];
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let _ = instance
+    instance
         .methods()
-        .assert_stored_bytes(input.clone())
+        .assert_stored_bytes(input)
         .call()
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn stores_byte() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input = vec![1u8];
 
@@ -46,33 +47,34 @@ async fn stores_byte() {
 
     let _ = instance.methods().store_bytes(input.clone()).call().await;
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, 1);
+    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
 
-    let _ = instance
+    instance
         .methods()
-        .assert_stored_bytes(input.clone())
+        .assert_stored_bytes(input)
         .call()
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn stores_8_bytes() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input = vec![1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8];
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let _ = instance.methods().store_bytes(input.clone()).call().await;
+    instance.methods().store_bytes(input.clone()).call().await.unwrap();
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, 8);
+    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
 
-    let _ = instance.methods().assert_stored_bytes(input).call().await;
+    instance.methods().assert_stored_bytes(input).call().await.unwrap();
 }
 
 #[tokio::test]
 async fn stores_32_bytes() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input = vec![
         1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 1u8, 2u8, 3u8, 4u8, 5u8, 6u8, 7u8, 8u8, 1u8, 2u8,
@@ -81,42 +83,44 @@ async fn stores_32_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let _ = instance.methods().store_bytes(input.clone()).call().await;
+    instance.methods().store_bytes(input.clone()).call().await.unwrap();
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, 32);
+    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
 
-    let _ = instance.methods().assert_stored_bytes(input).call().await;
+    instance.methods().assert_stored_bytes(input).call().await.unwrap();
 }
 
 #[tokio::test]
 async fn stores_string_as_bytes() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input = String::from("Fuel is blazingly fast!");
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let _ = instance
+    instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
         input.clone().as_bytes().len() as u64
     );
 
-    let _ = instance
+    instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn stores_long_string_as_bytes() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     // 2060 bytes
     let input = String::from("Nam quis nulla. Integer malesuada. In in enim a arcu imperdiet malesuada. Sed vel lectus. Donec odio urna, tempus molestie, porttitor ut, iaculis quis, sem. Phasellus rhoncus. Aenean id metus id velit ullamcorper pulvinar. Vestibulum fermentum tortor id mi. Pellentesque ipsum. Nulla non arcu lacinia neque faucibus fringilla. Nulla non lectus sed nisl molestie malesuada. Proin in tellus sit amet nibh dignissim sagittis. Vivamus luctus egestas leo. Maecenas sollicitudin. Nullam rhoncus aliquam metus. Etiam egestas wisi a erat.
@@ -128,63 +132,71 @@ async fn stores_long_string_as_bytes() {
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
     let tx_params = TxParameters::new(None, Some(12_000_000), None);
-    let _ = instance
+    instance
         .methods()
         .store_bytes(input.clone().as_bytes().into())
         .tx_params(tx_params)
         .call()
-        .await;
+        .await
+        .unwrap();
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
         input.clone().as_bytes().len() as u64
     );
 
-    let _ = instance
+    let tx_params = TxParameters::new(None, Some(12_000_000), None);
+    instance
         .methods()
         .assert_stored_bytes(input.as_bytes().into())
+        .tx_params(tx_params)
         .call()
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn stores_string_twice() {
-    let instance = test_storage_bytes_instance().await;
+    let instance = setup().await;
 
     let input1 = String::from("Fuel is the fastest modular execution layer");
     let input2 = String::from("Fuel is blazingly fast!");
 
-    let _ = instance
+    instance
         .methods()
         .store_bytes(input1.clone().as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
         input1.clone().as_bytes().len() as u64
     );
 
-    let _ = instance
+    instance
         .methods()
         .assert_stored_bytes(input1.as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 
-    let _ = instance
+    instance
         .methods()
         .store_bytes(input2.clone().as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 
     assert_eq!(
         instance.methods().len().call().await.unwrap().value,
         input2.clone().as_bytes().len() as u64
     );
 
-    let _ = instance
+    instance
         .methods()
         .assert_stored_bytes(input2.as_bytes().into())
         .call()
-        .await;
+        .await
+        .unwrap();
 }
