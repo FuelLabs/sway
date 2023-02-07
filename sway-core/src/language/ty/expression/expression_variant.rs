@@ -362,7 +362,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
                 l_exp.eq(&**r_exp, engines)
             }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(l_exp, engines),
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -381,7 +381,6 @@ impl PartialEqWithEngines for TyExpressionVariant {
 impl HashWithEngines for TyExpressionVariant {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         match self {
             Self::Literal(lit) => {
                 state.write_u8(self.discriminant_value());
