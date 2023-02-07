@@ -6,7 +6,7 @@ use std::{
 use anyhow::anyhow;
 use sway_ir::{
     create_const_combine_pass, create_dce_pass, create_inline_pass, create_mem2reg_pass,
-    create_simplify_cfg_pass, PMConfig, PassManager,
+    create_simplify_cfg_pass, PassManager, PassManagerConfig,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ fn main() -> Result<(), anyhow::Error> {
     let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
-    let pm_config = PMConfig {
+    let pm_config = PassManagerConfig {
         to_run: config.passes.iter().map(|pass| pass.name.clone()).collect(),
     };
     pass_mgr.run(&mut ir, &pm_config)?;

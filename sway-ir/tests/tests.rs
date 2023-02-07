@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use sway_ir::{
     create_const_combine_pass, create_dce_pass, create_mem2reg_pass, create_simplify_cfg_pass,
-    optimize as opt, Context, PMConfig, PassManager,
+    optimize as opt, Context, PassManager, PassManagerConfig,
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ fn inline() {
 fn constants() {
     run_tests("constants", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
-        let mut pmgr_config = PMConfig { to_run: vec![] };
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
         let pass = pass_mgr.register(create_const_combine_pass());
         pmgr_config.to_run.push(pass.to_string());
         pass_mgr.run(ir, &pmgr_config).unwrap()
@@ -135,7 +135,7 @@ fn constants() {
 fn simplify_cfg() {
     run_tests("simplify_cfg", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
-        let mut pmgr_config = PMConfig { to_run: vec![] };
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
         let pass = pass_mgr.register(create_simplify_cfg_pass());
         pmgr_config.to_run.push(pass.to_string());
         pass_mgr.run(ir, &pmgr_config).unwrap()
@@ -149,7 +149,7 @@ fn simplify_cfg() {
 fn dce() {
     run_tests("dce", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
-        let mut pmgr_config = PMConfig { to_run: vec![] };
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
         let pass = pass_mgr.register(create_dce_pass());
         pmgr_config.to_run.push(pass.to_string());
         pass_mgr.run(ir, &pmgr_config).unwrap()
@@ -163,7 +163,7 @@ fn dce() {
 fn mem2reg() {
     run_tests("mem2reg", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
-        let mut pmgr_config = PMConfig { to_run: vec![] };
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
         let pass = pass_mgr.register(create_mem2reg_pass());
         pmgr_config.to_run.push(pass.to_string());
         pass_mgr.run(ir, &pmgr_config).unwrap()

@@ -118,7 +118,7 @@ impl PassManager {
     }
 
     /// Run the passes specified in `config`.
-    pub fn run(&mut self, ir: &mut Context, config: &PMConfig) -> Result<bool, IrError> {
+    pub fn run(&mut self, ir: &mut Context, config: &PassManagerConfig) -> Result<bool, IrError> {
         let mut modified = false;
         for pass in &config.to_run {
             let pass_t = self.passes.get(pass.as_str()).expect("Unregistered pass");
@@ -170,6 +170,6 @@ impl PassManager {
 }
 
 /// Configuration for the pass manager to run passes.
-pub struct PMConfig {
+pub struct PassManagerConfig {
     pub to_run: Vec<String>,
 }

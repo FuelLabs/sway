@@ -11,7 +11,8 @@ use sway_core::{
     language::parsed::TreeType, namespace, BuildTarget, Engines, TypeEngine,
 };
 use sway_ir::{
-    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, PMConfig, PassManager,
+    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, PassManager,
+    PassManagerConfig,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
@@ -185,7 +186,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                 if optimisation_inline {
                     let mut pass_mgr = PassManager::default();
-                    let mut pmgr_config = PMConfig { to_run: vec![] };
+                    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
                     let inline = if matches!(tree_type, TreeType::Predicate) {
                         pass_mgr.register(create_inline_in_predicate_pass())
                     } else {

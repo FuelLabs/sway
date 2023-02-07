@@ -33,7 +33,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_const_combine_pass, create_dce_pass, create_func_dce_pass,
     create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, create_mem2reg_pass,
-    create_simplify_cfg_pass, Context, Kind, Module, PMConfig, PassManager,
+    create_simplify_cfg_pass, Context, Kind, Module, PassManager, PassManagerConfig,
 };
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -473,7 +473,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Initialize the pass manager and a config for it.
     let mut pass_mgr = PassManager::default();
-    let mut pmgr_config = PMConfig { to_run: vec![] };
+    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
 
     // Register required passes.
     let mem2reg = pass_mgr.register(create_mem2reg_pass());
