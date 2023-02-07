@@ -18,7 +18,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::language::Inline;
+use crate::language::parsed::TreeType;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -30,7 +30,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{
+    create_const_combine_pass, create_dce_pass, create_func_dce_pass,
+    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, create_mem2reg_pass,
+    create_simplify_cfg_pass, Context, Kind, Module, PassManager, PassManagerConfig,
+};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -467,41 +471,42 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors.extend(e);
     }
 
-    // Now we're working with all functions in the module.
-    let all_functions = ir
-        .module_iter()
-        .flat_map(|module| module.function_iter(&ir))
-        .collect::<Vec<_>>();
+    // Initialize the pass manager and a config for it.
+    let mut pass_mgr = PassManager::default();
+    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
 
-    // Promote local values to registers.
-    check!(
-        promote_to_registers(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    // Register required passes.
+    let mem2reg = pass_mgr.register(create_mem2reg_pass());
+    let inline = if matches!(tree_type, TreeType::Predicate) {
+        pass_mgr.register(create_inline_in_predicate_pass())
+    } else {
+        pass_mgr.register(create_inline_in_non_predicate_pass())
+    };
+    let const_combine = pass_mgr.register(create_const_combine_pass());
+    let simplify_cfg = pass_mgr.register(create_simplify_cfg_pass());
+    let func_dce = pass_mgr.register(create_func_dce_pass());
+    let dce = pass_mgr.register(create_dce_pass());
 
-    // Inline function calls.
-    check!(
-        inline_function_calls(&mut ir, &all_functions, &tree_type),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    // Configure to run our passes.
+    pmgr_config.to_run.push(mem2reg.to_string());
+    pmgr_config.to_run.push(inline.to_string());
+    pmgr_config.to_run.push(const_combine.to_string());
+    pmgr_config.to_run.push(simplify_cfg.to_string());
+    pmgr_config.to_run.push(const_combine.to_string());
+    pmgr_config.to_run.push(simplify_cfg.to_string());
+    pmgr_config.to_run.push(func_dce.to_string());
+    pmgr_config.to_run.push(dce.to_string());
 
+    // Run the passes.
     let res = CompileResult::with_handler(|handler| {
-        // TODO: Experiment with putting combine-constants and simplify-cfg
-        // in a loop, but per function.
-        combine_constants(handler, &mut ir, &all_functions)?;
-        simplify_cfg(handler, &mut ir, &all_functions)?;
-        // Simplify-CFG helps combine constants.
-        combine_constants(handler, &mut ir, &all_functions)?;
-        // And that in-turn enables more simplify-cfg.
-        simplify_cfg(handler, &mut ir, &all_functions)?;
-
-        // Remove dead definitions based on the entry points root set.
-        dce(handler, &mut ir, &entry_point_functions)?;
-        Ok(())
+        if let Err(ir_error) = pass_mgr.run(&mut ir, &pmgr_config) {
+            Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )))
+        } else {
+            Ok(())
+        }
     });
     check!(res, return err(warnings, errors), warnings, errors);
 
@@ -517,180 +522,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     ok(final_asm, warnings, errors)
-}
-
-fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::promote_to_registers(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
-        }
-    }
-    ok((), Vec::new(), Vec::new())
-}
-
-/// Inline function calls based on two conditions:
-/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
-///    restriction and not a heuristic.
-/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-///    in the `inline_heuristc` closure.
-///
-pub fn inline_function_calls(
-    ir: &mut Context,
-    functions: &[Function],
-    tree_type: &parsed::TreeType,
-) -> CompileResult<()> {
-    // Inspect ALL calls and count how often each function is called.
-    // This is not required for predicates because we don't inline their function calls
-    let call_counts: HashMap<Function, u64> = match tree_type {
-        parsed::TreeType::Predicate => HashMap::new(),
-        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
-            for (_block, ins) in func.instruction_iter(ir) {
-                if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
-                    counts
-                        .entry(*callee)
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
-                }
-            }
-            counts
-        }),
-    };
-
-    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
-        let mut md_mgr = metadata::MetadataManager::default();
-        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
-
-        match attributed_inline {
-            Some(Inline::Always) => {
-                // TODO: check if inlining of function is possible
-                // return true;
-            }
-            Some(Inline::Never) => {
-                return false;
-            }
-            None => {}
-        }
-
-        // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // too many args.
-        if func.args_iter(ctx).count() as u8
-            > crate::asm_generation::fuel::compiler_constants::NUM_ARG_REGISTERS
-        {
-            return true;
-        }
-
-        // If the function is called only once then definitely inline it.
-        if call_counts.get(func).copied().unwrap_or(0) == 1 {
-            return true;
-        }
-
-        // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 4;
-        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
-            return true;
-        }
-
-        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
-        // argument is used as a pointer (probably because it has a ref type) although it actually
-        // isn't one.  Ref type args which aren't pointers need to be inlined.
-        if func.args_iter(ctx).any(|(_name, arg_val)| {
-            arg_val
-                .get_argument_type_and_byref(ctx)
-                .map(|(ty, by_ref)| {
-                    by_ref || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
-                })
-                .unwrap_or(false)
-        }) {
-            return true;
-        }
-
-        false
-    };
-
-    let cg = call_graph::build_call_graph(ir, functions);
-    let functions = call_graph::callee_first_order(&cg);
-
-    for function in functions {
-        if let Err(ir_error) = match tree_type {
-            parsed::TreeType::Predicate => {
-                // Inline everything for predicates
-                sway_ir::optimize::inline_all_function_calls(ir, &function)
-            }
-            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
-        } {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
-        }
-    }
-    ok((), Vec::new(), Vec::new())
-}
-
-fn combine_constants(
-    handler: &Handler,
-    ir: &mut Context,
-    functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
-            return Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn dce(
-    handler: &Handler,
-    ir: &mut Context,
-    entry_functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    // Remove entire dead functions first.
-    for module in ir.module_iter() {
-        sway_ir::optimize::func_dce(ir, &module, entry_functions);
-    }
-
-    // Then DCE all the remaining functions.
-    for module in ir.module_iter() {
-        for function in module.function_iter(ir) {
-            if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
-                return Err(handler.emit_err(CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn simplify_cfg(
-    handler: &Handler,
-    ir: &mut Context,
-    functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
-            return Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )));
-        }
-    }
-    Ok(())
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.

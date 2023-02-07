@@ -10,6 +10,7 @@ description = "Sway intermediate representation."
 
 [dependencies]
 anyhow = "1.0"
+downcast-rs = "1.2.0"
 filecheck = "0.5"
 generational-arena = "0.2"
 peg = "0.7"

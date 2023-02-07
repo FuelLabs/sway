@@ -140,6 +140,12 @@ impl MetadataManager {
     }
 
     /// Gets Inline information from metadata index.
+    /// TODO: We temporarily allow this because we need this
+    /// in the sway-ir inliner, but cannot access it. So the code
+    /// itself has been (modified and) copied there. When we decide
+    /// on the right place for Metadata to be
+    /// (and how it can be accessed form sway-ir), this will be fixed.
+    #[allow(dead_code)]
     pub(crate) fn md_to_inline(
         &mut self,
         context: &Context,
