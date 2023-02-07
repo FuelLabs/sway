@@ -1,7 +1,7 @@
 //! Determine whether a [Declaration] is documentable.
 use crate::{
     doc::{Document, ModuleInfo},
-    render::{trim_fn_body, ContextType, DocStrings, ItemBody, ItemContext, ItemHeader},
+    render::{trim_fn_body, Context, ContextType, DocStrings, ItemBody, ItemContext, ItemHeader},
 };
 use anyhow::Result;
 use sway_core::{
@@ -35,7 +35,6 @@ pub(crate) enum Descriptor {
 impl Descriptor {
     /// Decides whether a [TyDeclaration] is [Descriptor::Documentable].
     pub(crate) fn from_typed_decl(
-        type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         ty_decl: &TyDeclaration,
         module_info: ModuleInfo,
@@ -54,8 +53,10 @@ impl Descriptor {
                     let item_name = struct_decl.call_path.suffix;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
-                    let context = (!struct_decl.fields.is_empty())
-                        .then_some(ContextType::StructFields(struct_decl.fields));
+                    let context = (!struct_decl.fields.is_empty()).then_some(Context::new(
+                        module_info.clone(),
+                        ContextType::StructFields(struct_decl.fields),
+                    ));
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -86,8 +87,10 @@ impl Descriptor {
                     let item_name = enum_decl.call_path.suffix;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
-                    let context = (!enum_decl.variants.is_empty())
-                        .then_some(ContextType::EnumVariants(enum_decl.variants));
+                    let context = (!enum_decl.variants.is_empty()).then_some(Context {
+                        module_info: module_info.clone(),
+                        context_type: ContextType::EnumVariants(enum_decl.variants),
+                    });
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -118,11 +121,12 @@ impl Descriptor {
                     let item_name = trait_decl.name;
                     let attrs_opt = (!trait_decl.attributes.is_empty())
                         .then(|| trait_decl.attributes.to_html_string());
-                    let context = (!trait_decl.interface_surface.is_empty()).then_some(
-                        ContextType::RequiredMethods(
+                    let context = (!trait_decl.interface_surface.is_empty()).then_some(Context {
+                        module_info: module_info.clone(),
+                        context_type: ContextType::RequiredMethods(
                             trait_decl.interface_surface.to_methods(decl_engine)?,
                         ),
-                    );
+                    });
 
                     Ok(Descriptor::Documentable(Document {
                         module_info: module_info.clone(),
@@ -150,11 +154,12 @@ impl Descriptor {
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
-                let context = (!abi_decl.interface_surface.is_empty()).then_some(
-                    ContextType::RequiredMethods(
+                let context = (!abi_decl.interface_surface.is_empty()).then_some(Context {
+                    module_info: module_info.clone(),
+                    context_type: ContextType::RequiredMethods(
                         abi_decl.interface_surface.to_methods(decl_engine)?,
                     ),
-                );
+                });
 
                 Ok(Descriptor::Documentable(Document {
                     module_info: module_info.clone(),
@@ -181,8 +186,10 @@ impl Descriptor {
                 );
                 let attrs_opt = (!storage_decl.attributes.is_empty())
                     .then(|| storage_decl.attributes.to_html_string());
-                let context = (!storage_decl.fields.is_empty())
-                    .then_some(ContextType::StorageFields(storage_decl.fields));
+                let context = (!storage_decl.fields.is_empty()).then_some(Context {
+                    module_info: module_info.clone(),
+                    context_type: ContextType::StorageFields(storage_decl.fields),
+                });
 
                 Ok(Descriptor::Documentable(Document {
                     module_info: module_info.clone(),

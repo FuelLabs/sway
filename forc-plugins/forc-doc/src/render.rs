@@ -466,34 +466,22 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
-pub(crate) struct Context<T> {
+#[derive(Clone)]
+pub(crate) struct Context {
     module_info: ModuleInfo,
-    context: T,
+    context_type: ContextType,
 }
-// macro_rules! define_context {
-//     ($ty_context:ident) => {
-//         #[derive(Clone)]
-//         pub(crate) struct $ty_context<T> {
-//             module_info: ModuleInfo,
-//             context: T,
-//         }
-//         impl<T> $ty_context<T> {
-//             pub(crate) fn from(module_info: ModuleInfo, context: T) -> $ty_context<T> {
-//                 $ty_context {
-//                     module_info,
-//                     context,
-//                 }
-//             }
-//         }
-//     };
-// }
-// define_context!(StructFields);
-// define_context!(StorageFields);
-// define_context!(EnumVariants);
-// define_context!(RequiredMethods);
+impl Context {
+    pub(crate) fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
+        Self {
+            module_info,
+            context_type,
+        }
+    }
+}
 #[derive(Clone)]
 pub(crate) struct ItemContext {
-    pub(crate) context: Option<ContextType>,
+    pub(crate) context: Option<Context>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
@@ -501,7 +489,7 @@ impl ItemContext {
     fn to_doclinks(&self) -> DocLinks {
         let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
         if let Some(context) = &self.context {
-            match context {
+            match context.context_type.clone() {
                 ContextType::StructFields(fields) => {
                     let doc_links = fields
                         .iter()
@@ -572,23 +560,27 @@ impl ItemContext {
 }
 impl Renderable for ItemContext {
     fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        match self.context.unwrap() {
-            ContextType::StructFields(fields) => {
-                Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
+        if let Some(context) = self.context {
+            match context.context_type {
+                ContextType::StructFields(fields) => {
+                    Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
+                }
+                ContextType::StorageFields(fields) => {
+                    Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
+                }
+                ContextType::EnumVariants(variants) => Ok(context_section(
+                    type_engine,
+                    variants,
+                    BlockTitle::Variants,
+                )?),
+                ContextType::RequiredMethods(methods) => Ok(context_section(
+                    type_engine,
+                    methods,
+                    BlockTitle::RequiredMethods,
+                )?),
             }
-            ContextType::StorageFields(fields) => {
-                Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
-            }
-            ContextType::EnumVariants(variants) => Ok(context_section(
-                type_engine,
-                variants,
-                BlockTitle::Variants,
-            )?),
-            ContextType::RequiredMethods(methods) => Ok(context_section(
-                type_engine,
-                methods,
-                BlockTitle::RequiredMethods,
-            )?),
+        } else {
+            Ok(box_html! {})
         }
     }
 }
