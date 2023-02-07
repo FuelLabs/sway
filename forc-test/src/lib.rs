@@ -4,7 +4,7 @@ use forc_pkg as pkg;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::gas::GasCosts;
-use fuel_vm::{self as vm, prelude::Opcode};
+use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
 use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
@@ -501,7 +501,7 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // TODO: Standardize this or add metadata to bytecode.
     const PROGRAM_START_INST_OFFSET: u32 = 6;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Opcode::LEN;
+    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
 
     // If our desired entry point is the program start, no need to jump.
     if test_offset == PROGRAM_START_INST_OFFSET {
@@ -509,7 +509,7 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
     }
 
     // Create the jump instruction and splice it into the bytecode.
-    let ji = Opcode::JI(test_offset);
+    let ji = fuel_asm::op::ji(test_offset);
     let ji_bytes = ji.to_bytes();
     let start = PROGRAM_START_BYTE_OFFSET;
     let end = start + ji_bytes.len();
