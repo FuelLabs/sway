@@ -1,9 +1,9 @@
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
-pub struct Annotated<T> {
+pub struct Annotated<ItemKind> {
     pub attribute_list: Vec<AttributeDecl>,
-    pub value: T,
+    pub value: ItemKind,
 }
 
 // Attributes can have any number of arguments:

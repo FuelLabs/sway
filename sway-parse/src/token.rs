@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
-    DocStyle, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
+    DocComment, DocStyle, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -130,7 +130,18 @@ pub fn lex_commented(
         if character == '/' {
             match l.stream.peek() {
                 Some((_, '/')) => {
-                    token_trees.push(lex_line_comment(&mut l, end, index));
+                    let mut comment_kind = CommentKind::Trailing;
+                    for c in src[..index].chars().rev() {
+                        if c.is_whitespace() {
+                            if c == '\n' {
+                                comment_kind = CommentKind::Newlined;
+                            }
+                            continue;
+                        } else {
+                            break;
+                        }
+                    }
+                    token_trees.push(lex_line_comment(&mut l, end, index, comment_kind));
                     continue;
                 }
                 Some((_, '*')) => {
@@ -286,7 +297,12 @@ fn lex_close_delimiter(
     parent
 }
 
-fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTokenTree {
+fn lex_line_comment(
+    l: &mut Lexer<'_>,
+    end: usize,
+    index: usize,
+    comment_kind: CommentKind,
+) -> CommentedTokenTree {
     let _ = l.stream.next();
 
     // Find end; either at EOF or at `\n`.
@@ -318,7 +334,11 @@ fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTok
         };
         CommentedTokenTree::Tree(doc_comment.into())
     } else {
-        Comment { span: sp }.into()
+        Comment {
+            span: sp,
+            comment_kind,
+        }
+        .into()
     }
 }
 
@@ -348,7 +368,13 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTok
                         // We could represent them as several ones, but that's unnecessary.
                         let end = slash_ix + '/'.len_utf8();
                         let span = span(l, start, end);
-                        return Some(Comment { span }.into());
+                        return Some(
+                            Comment {
+                                span,
+                                comment_kind: CommentKind::Newlined,
+                            }
+                            .into(),
+                        );
                     }
                 }
                 Some(_) => {}

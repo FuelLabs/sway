@@ -107,8 +107,15 @@ impl Delimiter {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
+pub enum CommentKind {
+    Newlined,
+    Trailing,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub struct Comment {
     pub span: Span,
+    pub comment_kind: CommentKind,
 }
 
 impl Spanned for Comment {
