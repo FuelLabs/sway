@@ -738,7 +738,10 @@ mod tests {
     use std::sync::Arc;
     use sway_ast::{
         literal::{LitChar, Literal},
-        token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle, TokenTree},
+        token::{
+            Comment, CommentKind, CommentedTokenTree, CommentedTree, DocComment, DocStyle,
+            TokenTree,
+        },
     };
     use sway_error::handler::Handler;
 
@@ -806,13 +809,15 @@ mod tests {
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
-                span
+                span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//none"
         );
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
-                span
+                span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "////none"
         );
         // TODO: Add support for inner line doc comments.
@@ -827,7 +832,8 @@ mod tests {
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
-                span
+                span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//!inner"
         );
         assert_matches!(
