@@ -248,12 +248,17 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
+        let config = self.config.read().on_enter.clone();
         match self.get_uri_and_session(&params.text_document.uri) {
             Ok((uri, session)) => {
+                // handle on_enter capabilities if they are enabled
+                capabilities::on_enter(&config, &self.client, &session, &uri.clone(), &params)
+                    .await;
+
                 // update this file with the new changes and write to disk
                 match session.write_changes_to_file(&uri, params.content_changes) {
                     Ok(_) => {
-                        self.parse_project(uri, params.text_document.uri, session.clone())
+                        self.parse_project(uri, params.text_document.uri.clone(), session.clone())
                             .await;
                     }
                     Err(err) => tracing::error!("{}", err.to_string()),
@@ -281,7 +286,7 @@ impl LanguageServer for Backend {
                             sync::edit_manifest_dependency_paths(&manifest, temp_manifest_path)
                         }
                     });
-                self.parse_project(uri, params.text_document.uri, session.clone())
+                self.parse_project(uri, params.text_document.uri, session)
                     .await;
             }
             Err(err) => tracing::error!("{}", err.to_string()),
