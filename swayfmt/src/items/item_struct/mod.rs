@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -47,7 +47,7 @@ impl Format for ItemStruct {
 
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
                     let range: Range<usize> = self.span().into();
-                    maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                    write_comments(formatted_code, range, formatter)?;
                 }
 
                 // Determine alignment tactic

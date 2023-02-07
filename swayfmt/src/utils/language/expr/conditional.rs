@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -169,7 +169,7 @@ fn format_else_opt(
         let mut else_if_str = FormattedCode::new();
 
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
-        let comments_written = maybe_write_comments_from_map(
+        let comments_written = write_comments(
             &mut else_if_str,
             Range {
                 start: if_expr.then_block.span().end(),

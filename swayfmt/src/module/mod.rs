@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     formatter::*,
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
@@ -16,7 +16,7 @@ impl Format for Module {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        maybe_write_comments_from_map(
+        write_comments(
             formatted_code,
             std::ops::Range {
                 start: 0,
@@ -29,7 +29,7 @@ impl Format for Module {
 
         // Format comments between module kind declaration and rest of items
         if !self.items.is_empty() {
-            maybe_write_comments_from_map(
+            write_comments(
                 formatted_code,
                 std::ops::Range {
                     start: 0,

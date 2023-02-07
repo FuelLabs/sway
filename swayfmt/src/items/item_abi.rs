@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -42,7 +42,7 @@ impl Format for ItemAbi {
             abi_items.first().unwrap().0.value.span().start()
         };
 
-        maybe_write_comments_from_map(
+        write_comments(
             formatted_code,
             std::ops::Range {
                 start: self.name.span().end(),
@@ -60,7 +60,7 @@ impl Format for ItemAbi {
                     end: fn_signature.value.span().start(),
                 };
 
-                maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                write_comments(formatted_code, range, formatter)?;
             }
             // add indent + format item
             write!(
@@ -114,7 +114,7 @@ impl Format for ItemAbi {
         };
 
         // insert_missing_trailing_comment(formatted_code, range.clone(), formatter)?;
-        maybe_write_comments_from_map(formatted_code, range, formatter)?;
+        write_comments(formatted_code, range, formatter)?;
 
         Self::close_curly_brace(formatted_code, formatter)?;
 

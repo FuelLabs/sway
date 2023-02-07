@@ -15,7 +15,7 @@ pub fn has_comments<I: Iterator>(comments: I) -> bool {
 /// `Ok(true)` on successful execution with comments written,
 /// `Ok(false)` on successful execution and if there are no comments within the given range,
 /// `Err` if a FormatterError was encountered.
-pub fn maybe_write_comments_from_map(
+pub fn write_comments(
     formatted_code: &mut FormattedCode,
     range: Range<usize>,
     formatter: &mut Formatter,

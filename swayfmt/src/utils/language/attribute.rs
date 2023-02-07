@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -29,7 +29,7 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
                     end: attr.span().start(),
                 };
 
-                maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                write_comments(formatted_code, range, formatter)?;
             };
             attr.format(formatted_code, formatter)?;
             write!(
@@ -46,7 +46,7 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
                 end: self.value.span().start(),
             };
 
-            maybe_write_comments_from_map(formatted_code, range, formatter)?;
+            write_comments(formatted_code, range, formatter)?;
         };
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;
