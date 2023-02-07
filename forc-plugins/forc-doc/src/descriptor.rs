@@ -59,7 +59,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -91,7 +91,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -126,7 +126,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -158,7 +158,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -186,7 +186,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -243,7 +243,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -273,7 +273,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
