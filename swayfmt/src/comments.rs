@@ -1,4 +1,5 @@
 use std::{fmt::Write, ops::Range};
+use sway_ast::token::CommentKind;
 use sway_types::Spanned;
 
 use crate::{formatter::FormattedCode, Formatter, FormatterError};
@@ -32,15 +33,39 @@ pub fn maybe_write_comments_from_map(
             writeln!(formatted_code)?;
         }
 
-        for comment in comments_iter {
+        while let Some(comment) = comments_iter.next() {
             // Write comments on a newline (for now). New behavior might be required
             // to support trailing comments.
-            writeln!(
-                formatted_code,
-                "{}{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
-                comment.span().as_str(),
-            )?;
+            if formatted_code.trim_end().ends_with(&[']', ';']) {
+                match comment.comment_kind {
+                    CommentKind::Newlined => {
+                        writeln!(
+                            formatted_code,
+                            "{}{}",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                            comment.span().as_str()
+                        )?;
+                    }
+                    CommentKind::Trailing => {
+                        formatted_code.truncate(formatted_code.trim_end().len());
+                        writeln!(formatted_code, " {}", comment.span().as_str().trim_end())?;
+                        if comments_iter.peek().is_none() {
+                            write!(
+                                formatted_code,
+                                "{}",
+                                formatter.shape.indent.to_string(&formatter.config)?,
+                            )?;
+                        }
+                    }
+                }
+            } else {
+                writeln!(
+                    formatted_code,
+                    "{}{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                    comment.span().as_str(),
+                )?;
+            }
         }
     }
 

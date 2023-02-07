@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -21,20 +22,60 @@ impl Format for ItemAbi {
         self.name.format(formatted_code, formatter)?;
         Self::open_curly_brace(formatted_code, formatter)?;
 
+        let abi_items = self.abi_items.get();
+
+        // add pre fn_signature comments
+        let end = if abi_items.is_empty() {
+            self.span().end()
+        } else if abi_items.first().unwrap().0.attribute_list.len() > 0 {
+            abi_items
+                .first()
+                .unwrap()
+                .0
+                .attribute_list
+                .first()
+                .unwrap()
+                .hash_token
+                .span()
+                .start()
+        } else {
+            abi_items.first().unwrap().0.value.span().start()
+        };
+
+        maybe_write_comments_from_map(
+            formatted_code,
+            std::ops::Range {
+                start: self.name.span().end(),
+                end,
+            },
+            formatter,
+        )?;
+
+        let mut prev_end = None;
         // abi_items
         for (fn_signature, semicolon) in self.abi_items.get().iter() {
+            if let Some(end) = prev_end {
+                let range = std::ops::Range {
+                    start: end,
+                    end: fn_signature.value.span().start(),
+                };
+
+                maybe_write_comments_from_map(formatted_code, range, formatter)?;
+            }
+            // add indent + format item
             write!(
                 formatted_code,
                 "{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            // add indent + format item
             fn_signature.format(formatted_code, formatter)?;
             writeln!(
                 formatted_code,
                 "{}",
                 semicolon.ident().as_str() // SemicolonToken
             )?;
+
+            prev_end = Some(fn_signature.value.span().end());
         }
 
         // abi_defs_opt
@@ -49,6 +90,32 @@ impl Format for ItemAbi {
                 item.format(formatted_code, formatter)?;
             }
         }
+
+        let start = if abi_items.is_empty() {
+            self.span().start()
+        } else if abi_items.last().unwrap().0.attribute_list.len() == 0 {
+            abi_items.last().unwrap().0.value.span().end()
+        } else {
+            abi_items
+                .last()
+                .unwrap()
+                .0
+                .attribute_list
+                .last()
+                .unwrap()
+                .hash_token
+                .span()
+                .start()
+        };
+
+        let range = std::ops::Range {
+            start,
+            end: self.span().end(),
+        };
+
+        // insert_missing_trailing_comment(formatted_code, range.clone(), formatter)?;
+        maybe_write_comments_from_map(formatted_code, range, formatter)?;
+
         Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())

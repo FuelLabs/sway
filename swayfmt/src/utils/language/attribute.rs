@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -12,21 +13,41 @@ use sway_ast::{
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
-impl<T: Format> Format for Annotated<T> {
+impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let mut attr_end = None;
+
         // format each `Attribute`
         for attr in &self.attribute_list {
+            if let Some(end) = attr_end {
+                let range = std::ops::Range {
+                    start: end,
+                    end: attr.span().start(),
+                };
+
+                maybe_write_comments_from_map(formatted_code, range, formatter)?;
+            };
             attr.format(formatted_code, formatter)?;
             write!(
                 formatted_code,
                 "{}",
                 &formatter.shape.indent.to_string(&formatter.config)?,
             )?;
+            attr_end = Some(attr.span().end());
         }
+
+        if let Some(end) = attr_end {
+            let range = std::ops::Range {
+                start: end,
+                end: self.value.span().start(),
+            };
+
+            maybe_write_comments_from_map(formatted_code, range, formatter)?;
+        };
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;
 

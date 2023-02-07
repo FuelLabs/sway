@@ -41,9 +41,9 @@ impl ByteSpan {
     }
 
     /// Checks that the ByteSpan referenced by Self is encapsulated
-    /// by a given Range<usize>.
+    /// by a given Range<usize>, where 'start' is inclusive.
     pub fn contained_within(&self, range: &Range<usize>) -> bool {
-        range.start < self.start && self.end < range.end
+        range.start <= self.start && self.end < range.end
     }
 }
 
