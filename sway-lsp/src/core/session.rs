@@ -465,7 +465,7 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{get_absolute_path, get_url};
+    use crate::tests::utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {

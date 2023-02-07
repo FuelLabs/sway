@@ -99,7 +99,7 @@ fn get_comment_workspace_edit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::get_absolute_path;
+    use crate::tests::utils::get_absolute_path;
     use tower_lsp::lsp_types::{
         AnnotatedTextEdit, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier,
     };

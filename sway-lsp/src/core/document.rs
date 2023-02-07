@@ -113,9 +113,8 @@ struct EditText<'text> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::test::get_absolute_path;
-
     use super::*;
+    use crate::tests::utils::get_absolute_path;
 
     #[test]
     fn build_from_path_returns_text_document() {

@@ -1,13 +1,17 @@
 mod lsp;
+pub(crate) mod utils;
 
 #[cfg(test)]
 mod tests {
     use crate::{
         server::Backend,
-        tests::lsp,
-        utils::test::{
-            assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-            e2e_test_dir, get_fixture, runnables_test_dir, sway_workspace_dir, test_fixtures_dir,
+        tests::{
+            lsp,
+            utils::{
+                assert_server_requests, dir_contains_forc_manifest, doc_comments_dir,
+                e2e_language_dir, e2e_test_dir, get_fixture, runnables_test_dir,
+                sway_workspace_dir, test_fixtures_dir,
+            },
         },
     };
     use assert_json_diff::assert_json_eq;
