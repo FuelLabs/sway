@@ -34,11 +34,10 @@ pub(crate) fn struct_instantiation(
         span: inner_span,
     } = call_path_binding.clone();
 
-    let type_arguments_span = type_arguments.span();
     if let TypeArgs::Prefix(_) = type_arguments {
         errors.push(CompileError::DoesNotTakeTypeArgumentsAsPrefix {
             name: suffix,
-            span: type_arguments_span,
+            span: type_arguments.span(),
         });
         return err(warnings, errors);
     }

@@ -1193,7 +1193,7 @@ impl ty::TyExpression {
             (false, None, None, Some((const_decl, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
-                if !unknown_call_path_binding.type_arguments.to_vec().is_empty() {
+                if !call_path_binding.type_arguments.to_vec().is_empty() {
                     // In case `foo::bar::CONST::<TyArgs>` throw an error.
                     // In case `foo::bar::<TyArgs>::CONST` throw an error.
                     errors.push(

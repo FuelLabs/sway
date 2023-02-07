@@ -78,7 +78,7 @@ pub struct TypeBinding<T> {
     pub span: Span,
 }
 
-/// A `TypeArgs` contains a `Vec<TypeArgument>` either in the variant `Regular`
+/// A [TypeArgs] contains a `Vec<TypeArgument>` either in the variant `Regular`
 /// or in the variant `Prefix`.
 ///
 /// `Regular` variant indicates the type arguments are located after the suffix.
@@ -94,6 +94,8 @@ pub struct TypeBinding<T> {
 /// ```ignore
 /// let z = Option::<u32>::Some(10);
 /// ```
+/// So we can have type parameters in the `Prefix` or `Regular` variant but not
+/// in both.
 #[derive(Debug, Clone)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
