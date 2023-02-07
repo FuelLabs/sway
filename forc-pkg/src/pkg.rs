@@ -2571,8 +2571,13 @@ pub fn compile(
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
-                for (config, offset) in config_offsets {
-                    if let Some(ref mut configurables) = json_abi_program.configurables {
+                if let Some(ref mut configurables) = json_abi_program.configurables {
+                    // Filter out all dead configurables (i.e. ones without offsets in the
+                    // bytecode)
+                    configurables.retain(|c| config_offsets.contains_key(&c.name));
+
+                    // Set the actual offsets in the JSON object
+                    for (config, offset) in config_offsets {
                         if let Some(idx) = configurables.iter().position(|c| c.name == config) {
                             configurables[idx].offset = offset
                         }
