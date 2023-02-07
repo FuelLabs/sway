@@ -53,7 +53,9 @@ enum Inline {
     Never,
 }
 /// This is a copy of sway_core::asm_generation::compiler_constants.
-/// TODO: How to reuse?
+/// TODO: Once we have a target specific IR generator / legalizer,
+///       use that to mark related functions as ALWAYS_INLINE.
+///       Then we no longer depend on this const value below.
 const NUM_ARG_REGISTERS: u8 = 6;
 
 fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
