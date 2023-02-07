@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -31,6 +33,17 @@ impl PartialEqWithEngines for TyTraitDeclaration {
             && self.visibility == other.visibility
             && self.attributes == other.attributes
             && self.span == other.span
+    }
+}
+
+impl HashWithEngines for TyTraitDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.name.hash(state);
+        self.type_parameters.hash(state, engines);
+        self.interface_surface.hash(state, engines);
+        self.methods.hash(state, engines);
+        self.supertraits.hash(state, engines);
+        self.visibility.hash(state);
     }
 }
 

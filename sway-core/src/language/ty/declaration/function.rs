@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -34,9 +36,6 @@ pub struct TyFunctionDeclaration {
     pub purity: Purity,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyFunctionDeclaration {}
 impl PartialEqWithEngines for TyFunctionDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -51,6 +50,20 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
+    }
+}
+
+impl HashWithEngines for TyFunctionDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.name.hash(state);
+        self.body.hash(state, engines);
+        self.parameters.hash(state, engines);
+        type_engine.get(self.return_type).hash(state, engines);
+        self.type_parameters.hash(state, engines);
+        self.visibility.hash(state);
+        self.is_contract_call.hash(state);
+        self.purity.hash(state);
     }
 }
 
@@ -340,9 +353,6 @@ pub struct TyFunctionParameter {
     pub type_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -352,6 +362,15 @@ impl PartialEqWithEngines for TyFunctionParameter {
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
             && self.is_mutable == other.is_mutable
+    }
+}
+
+impl HashWithEngines for TyFunctionParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.name.hash(state);
+        type_engine.get(self.type_id).hash(state, engines);
+        self.is_mutable.hash(state);
     }
 }
 

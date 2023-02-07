@@ -1,4 +1,7 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -17,10 +20,23 @@ pub struct TyReassignment {
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.lhs_base_name == other.lhs_base_name
-            && self.lhs_type == other.lhs_type
+            && type_engine
+                .get(self.lhs_type)
+                .eq(&type_engine.get(other.lhs_type), engines)
             && self.lhs_indices.eq(&other.lhs_indices, engines)
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.lhs_base_name.hash(state);
+        type_engine.get(self.lhs_type).hash(state, engines);
+        self.lhs_indices.hash(state, engines);
+        self.rhs.hash(state, engines);
     }
 }
 
@@ -92,6 +108,25 @@ impl PartialEqWithEngines for ProjectionKind {
     }
 }
 
+impl HashWithEngines for ProjectionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        match self {
+            ProjectionKind::StructField { name } => {
+                state.write_u8(self.discriminant_value());
+                name.hash(state)
+            }
+            ProjectionKind::TupleField { index, .. } => {
+                state.write_u8(self.discriminant_value());
+                index.hash(state)
+            }
+            ProjectionKind::ArrayIndex { index, .. } => {
+                state.write_u8(self.discriminant_value());
+                index.hash(state, engines);
+            }
+        }
+    }
+}
+
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
@@ -103,6 +138,14 @@ impl Spanned for ProjectionKind {
 }
 
 impl ProjectionKind {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            ProjectionKind::StructField { .. } => 0,
+            ProjectionKind::TupleField { .. } => 1,
+            ProjectionKind::ArrayIndex { .. } => 2,
+        }
+    }
+
     pub(crate) fn pretty_print(&self) -> Cow<str> {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
@@ -126,6 +169,14 @@ impl PartialEqWithEngines for TyStorageReassignment {
         self.fields.eq(&other.fields, engines)
             && self.ix == other.ix
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.fields.hash(state, engines);
+        self.ix.hash(state);
+        self.rhs.hash(state, engines);
     }
 }
 
@@ -157,9 +208,6 @@ pub struct TyStorageReassignDescriptor {
     pub(crate) span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageReassignDescriptor {}
 impl PartialEqWithEngines for TyStorageReassignDescriptor {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -168,5 +216,13 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
             && type_engine
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.name.hash(state);
+        type_engine.get(self.type_id).hash(state, engines);
     }
 }

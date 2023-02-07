@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -31,6 +34,7 @@ pub enum TyDeclaration {
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
             (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, engines),
@@ -50,9 +54,61 @@ impl PartialEqWithEngines for TyDeclaration {
                     name: yn,
                     type_id: yti,
                 },
-            ) => xn == yn && xti == yti,
+            ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), engines),
             (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        match self {
+            TyDeclaration::VariableDeclaration(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            TyDeclaration::ConstantDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::TraitDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::StructDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::EnumDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::ImplTrait(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::AbiDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
+            TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
+                state.write_u8(self.discriminant_value());
+                name.hash(state);
+                type_engine.get(*type_id).hash(state, engines);
+            }
+            TyDeclaration::ErrorRecovery(_) => {
+                state.write_u8(self.discriminant_value());
+            }
+            TyDeclaration::StorageDeclaration(decl_id) => {
+                state.write_u8(self.discriminant_value());
+                decl_id.hash(state, engines);
+            }
         }
     }
 }
@@ -332,6 +388,22 @@ impl GetDeclId for TyDeclaration {
 }
 
 impl TyDeclaration {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            TyDeclaration::VariableDeclaration(_) => 0,
+            TyDeclaration::ConstantDeclaration(_) => 1,
+            TyDeclaration::FunctionDeclaration(_) => 2,
+            TyDeclaration::TraitDeclaration(_) => 3,
+            TyDeclaration::StructDeclaration(_) => 4,
+            TyDeclaration::EnumDeclaration(_) => 5,
+            TyDeclaration::ImplTrait(_) => 6,
+            TyDeclaration::AbiDeclaration(_) => 7,
+            TyDeclaration::GenericTypeForFunctionScope { .. } => 8,
+            TyDeclaration::ErrorRecovery(_) => 9,
+            TyDeclaration::StorageDeclaration(_) => 10,
+        }
+    }
+
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a [TyEnumDeclaration].

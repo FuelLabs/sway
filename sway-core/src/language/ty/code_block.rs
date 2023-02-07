@@ -1,3 +1,5 @@
+use std::hash::Hasher;
+
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, type_system::*,
     types::DeterministicallyAborts,
@@ -12,6 +14,12 @@ impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.contents.eq(&other.contents, engines)
+    }
+}
+
+impl HashWithEngines for TyCodeBlock {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.contents.hash(state, engines);
     }
 }
 

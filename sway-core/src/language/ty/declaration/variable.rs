@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span};
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
@@ -12,9 +14,6 @@ pub struct TyVariableDeclaration {
     pub type_ascription_span: Option<Span>,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyVariableDeclaration {}
 impl PartialEqWithEngines for TyVariableDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -28,6 +27,17 @@ impl PartialEqWithEngines for TyVariableDeclaration {
             && type_engine
                 .get(self.type_ascription)
                 .eq(&type_engine.get(other.type_ascription), engines)
+    }
+}
+
+impl HashWithEngines for TyVariableDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.name.hash(state);
+        self.body.hash(state, engines);
+        type_engine.get(self.return_type).hash(state, engines);
+        type_engine.get(self.type_ascription).hash(state, engines);
+        self.mutability.hash(state);
     }
 }
 

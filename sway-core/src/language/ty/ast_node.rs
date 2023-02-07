@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -31,6 +34,12 @@ impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.content.eq(&other.content, engines)
+    }
+}
+
+impl HashWithEngines for TyAstNode {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.content.hash(state, engines);
     }
 }
 
@@ -291,6 +300,17 @@ pub enum TyAstNodeContent {
     SideEffect(TySideEffect),
 }
 
+impl TyAstNodeContent {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            TyAstNodeContent::Declaration(_) => 0,
+            TyAstNodeContent::Expression(_) => 1,
+            TyAstNodeContent::ImplicitReturnExpression(_) => 2,
+            TyAstNodeContent::SideEffect(_) => 3,
+        }
+    }
+}
+
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -302,6 +322,29 @@ impl PartialEqWithEngines for TyAstNodeContent {
             }
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyAstNodeContent {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        match self {
+            TyAstNodeContent::Declaration(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            TyAstNodeContent::Expression(exp) => {
+                state.write_u8(self.discriminant_value());
+                exp.hash(state, engines);
+            }
+            TyAstNodeContent::ImplicitReturnExpression(exp) => {
+                state.write_u8(self.discriminant_value());
+                exp.hash(state, engines);
+            }
+            TyAstNodeContent::SideEffect(effect) => {
+                state.write_u8(self.discriminant_value());
+                effect.hash(state);
+            }
         }
     }
 }

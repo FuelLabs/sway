@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
@@ -35,9 +35,6 @@ impl Default for DeclWrapper {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for DeclWrapper {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
@@ -52,6 +49,52 @@ impl PartialEqWithEngines for DeclWrapper {
             (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, engines),
             (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, engines),
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for DeclWrapper {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        match self {
+            DeclWrapper::Unknown => {
+                state.write_u8(self.discriminant_value());
+            }
+            DeclWrapper::Function(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Trait(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::TraitFn(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::ImplTrait(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Struct(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Storage(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Abi(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Constant(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
+            DeclWrapper::Enum(decl) => {
+                state.write_u8(self.discriminant_value());
+                decl.hash(state, engines);
+            }
         }
     }
 }
@@ -189,6 +232,21 @@ impl From<ty::TyEnumDeclaration> for (DeclWrapper, Span) {
 }
 
 impl DeclWrapper {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            DeclWrapper::Unknown => 0,
+            DeclWrapper::Function(_) => 1,
+            DeclWrapper::Trait(_) => 2,
+            DeclWrapper::TraitFn(_) => 3,
+            DeclWrapper::ImplTrait(_) => 4,
+            DeclWrapper::Struct(_) => 5,
+            DeclWrapper::Storage(_) => 6,
+            DeclWrapper::Abi(_) => 7,
+            DeclWrapper::Constant(_) => 8,
+            DeclWrapper::Enum(_) => 9,
+        }
+    }
+
     /// friendly name string used for error reporting.
     fn friendly_name(&self) -> &'static str {
         match self {

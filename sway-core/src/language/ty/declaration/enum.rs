@@ -21,9 +21,6 @@ pub struct TyEnumDeclaration {
     pub visibility: Visibility,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyEnumDeclaration {}
 impl PartialEqWithEngines for TyEnumDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -31,6 +28,15 @@ impl PartialEqWithEngines for TyEnumDeclaration {
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
+    }
+}
+
+impl HashWithEngines for TyEnumDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        self.call_path.suffix.hash(state);
+        self.variants.hash(state, engines);
+        self.type_parameters.hash(state, engines);
+        self.visibility.hash(state);
     }
 }
 
@@ -123,20 +129,15 @@ pub struct TyEnumVariant {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TyEnumVariant {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
         self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, type_engine);
+        type_engine.get(self.type_id).hash(state, engines);
         self.tag.hash(state);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {

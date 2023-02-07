@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -29,7 +31,15 @@ impl PartialEqWithEngines for TyConstantDeclaration {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), engines)
-            && self.attributes == other.attributes
-            && self.span == other.span
+    }
+}
+
+impl HashWithEngines for TyConstantDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        self.name.hash(state);
+        self.value.hash(state, engines);
+        self.visibility.hash(state);
+        type_engine.get(self.return_type).hash(state, engines);
     }
 }
