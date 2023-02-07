@@ -152,9 +152,9 @@
 <li><a href="#checks-effects-interactions-pattern">Defensive programming</a>: perform calls after all state changes have been made</li>
 </ul>
 <h2 id="re-entrancy-guard"><a class="header" href="#re-entrancy-guard">Re-entrancy Guard</a></h2>
-<p>Sway provides a stateless <a href="https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/reentrancy.sw">re-entrancy</a> guard in the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">standard library</a> which reverts at run-time when re-entrancy is detected.</p>
+<p>Sway provides a stateless <a href="https://github.com/FuelLabs/sway-libs/blob/master/libs/reentrancy/src/lib.sw">re-entrancy</a> guard, which reverts at run-time when re-entrancy is detected.</p>
 <p>To use the guard we must import it.</p>
-<pre><code class="language-sway">use std::reentrancy::reentrancy_guard;
+<pre><code class="language-sway">use reentrancy::reentrancy_guard;
 </code></pre>
 <p>Then call it in a contract function.</p>
 <pre><code class="language-sway">    fn deposit() {

@@ -5,3 +5,4 @@ license = "Apache-2.0"
 name = "re_entrency"
 
 [dependencies]
+reentrancy = { git = "https://github.com/FuelLabs/sway-libs", tag = "v0.6.0" }
