@@ -1835,13 +1835,12 @@ dependencies = [
 [[package]]
 name = "fuel-core-chain-config"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0da777465f1d427d52b5e0873fbc79f393229088cf96dc0cf98fb4cbb9d41243"
+source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"
 dependencies = [
  "anyhow",
  "bech32 0.9.1",
  "fuel-core-storage",
- "fuel-core-types 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-core-types",
  "hex",
  "itertools",
  "postcard",
@@ -1861,7 +1860,7 @@ dependencies = [
  "cynic",
  "derive_more",
  "eventsource-client",
- "fuel-core-types 0.16.1 (git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor)",
+ "fuel-core-types",
  "futures",
  "hex",
  "hyper-rustls 0.22.1",
@@ -1876,29 +1875,12 @@ dependencies = [
 [[package]]
 name = "fuel-core-storage"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66f31e83c3377c33aa9a49e00fc3fa48003f6e1d26344d503ee3342dbdc83ba3"
+source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"
 dependencies = [
  "anyhow",
- "fuel-core-types 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-core-types",
  "fuel-vm",
  "thiserror",
-]
-
-[[package]]
-name = "fuel-core-types"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53a4cdc283d3905cb537cb6500d9e38edee8338ecce1447f9a9742cb77fade6e"
-dependencies = [
- "anyhow",
- "derive_more",
- "fuel-vm",
- "secrecy",
- "serde",
- "tai64",
- "thiserror",
- "zeroize",
 ]
 
 [[package]]
@@ -2071,9 +2053,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuels-code-gen"
+version = "0.35.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#c1be1d03a723b961eac10c44650914787a01ae03"
+dependencies = [
+ "Inflector",
+ "fuel-abi-types 0.2.0",
+ "itertools",
+ "lazy_static",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "serde_json",
+ "syn",
+]
+
+[[package]]
 name = "fuels-core"
-version = "0.34.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=Voxelot/fuel-core-0.16#b7cb1b17c07e014c7fb656a5f0f3dcb4b99e9a39"
+version = "0.35.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#c1be1d03a723b961eac10c44650914787a01ae03"
 dependencies = [
  "fuel-tx",
  "fuel-types",
@@ -2086,11 +2084,12 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.34.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=Voxelot/fuel-core-0.16#b7cb1b17c07e014c7fb656a5f0f3dcb4b99e9a39"
+version = "0.35.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#c1be1d03a723b961eac10c44650914787a01ae03"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.2.0",
+ "fuels-code-gen",
  "itertools",
  "lazy_static",
  "proc-macro2",
@@ -2103,8 +2102,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.34.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=Voxelot/fuel-core-0.16#b7cb1b17c07e014c7fb656a5f0f3dcb4b99e9a39"
+version = "0.35.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#c1be1d03a723b961eac10c44650914787a01ae03"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2130,8 +2129,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.34.0"
-source = "git+https://github.com/FuelLabs/fuels-rs.git?branch=Voxelot/fuel-core-0.16#b7cb1b17c07e014c7fb656a5f0f3dcb4b99e9a39"
+version = "0.35.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#c1be1d03a723b961eac10c44650914787a01ae03"
 dependencies = [
  "bech32 0.9.1",
  "chrono",
@@ -5978,8 +5977,3 @@ dependencies = [
  "syn",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "fuel-core"
-version = "0.16.1"
-source = "git+https://github.com/fuellabs/fuel-core?branch=fuel-asm-refactor#90ffdd583657cc48f989666c80db62a47e1a5360"

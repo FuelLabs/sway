@@ -38,16 +38,18 @@ fuel-crypto = "0.25"
 fuel-tx = "0.25"
 fuel-core-client = "0.16"
 fuel-vm = "0.25"
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels-types = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
+fuels-core = "0.35.1"
+fuels-signers = "0.35.1"
+fuels-types = "0.35.1"
 
 [patch.crates-io]
+fuel-core-chain-config = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
+fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
 fuel-asm = { git = "https://github.com/fuellabs/fuel-vm", branch = "mitchmindtree/monorepo-fuel-asm-refactor" }
 fuel-crypto = { git = "https://github.com/fuellabs/fuel-vm", branch = "mitchmindtree/monorepo-fuel-asm-refactor" }
 fuel-tx = { git = "https://github.com/fuellabs/fuel-vm", branch = "mitchmindtree/monorepo-fuel-asm-refactor" }
 fuel-types = { git = "https://github.com/fuellabs/fuel-vm", branch = "mitchmindtree/monorepo-fuel-asm-refactor" }
 fuel-vm = { git = "https://github.com/fuellabs/fuel-vm", branch = "mitchmindtree/monorepo-fuel-asm-refactor" }
-fuel-core = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
-fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
+fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
+fuels-types = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
