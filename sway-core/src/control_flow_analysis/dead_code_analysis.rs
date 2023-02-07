@@ -135,7 +135,16 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         let decl_engine = engines.de();
         let mut leaves = vec![];
         let exit_node = Some(graph.add_node(engines, ("Program exit".to_string()).into()));
+        let mut entry_points = vec![];
+        let mut non_entry_points = vec![];
         for ast_entrypoint in module_nodes {
+            if ast_entrypoint.is_entry_point(decl_engine, tree_type)? {
+                entry_points.push(ast_entrypoint);
+            } else {
+                non_entry_points.push(ast_entrypoint);
+            }
+        }
+        for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (l_leaves, _new_exit_node) = connect_node(
                 engines,
                 ast_entrypoint,
@@ -143,113 +152,41 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 &leaves,
                 exit_node,
                 tree_type,
-                NodeConnectionOptions {
-                    force_struct_fields_connection: false,
-                },
+                NodeConnectionOptions::default(),
             )?;
 
             leaves = l_leaves;
         }
-        graph.entry_points = entry_points(decl_engine, tree_type, &graph.graph)?;
+        graph.entry_points = collect_entry_points(decl_engine, tree_type, &graph.graph)?;
         Ok(())
     }
 }
 
 /// Collect all entry points into the graph based on the tree type.
-fn entry_points(
+fn collect_entry_points(
     decl_engine: &DeclEngine,
     tree_type: &TreeType,
     graph: &flow_graph::Graph,
 ) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
     let mut entry_points = vec![];
-    match tree_type {
-        TreeType::Predicate | TreeType::Script => {
-            // Predicates and scripts have main and test functions as entry points.
-            for i in graph.node_indices() {
-                match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        span,
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), span)?;
-                        if !decl.is_entry() {
-                            continue;
-                        }
-                    }
-                    _ => continue,
-                };
-                entry_points.push(i);
+    for i in graph.node_indices() {
+        let is_entry = match &graph[i] {
+            ControlFlowGraphNode::ProgramNode(node) => {
+                node.is_entry_point(decl_engine, tree_type)?
             }
-        }
-        TreeType::Contract | TreeType::Library { .. } => {
-            for i in graph.node_indices() {
-                let is_entry = match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility == Visibility::Public || decl.is_test()
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => decl_engine
-                        .get_trait(decl_id.clone(), &decl_id.span())?
-                        .visibility
-                        .is_public(),
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let struct_decl =
-                            decl_engine.get_struct(decl_id.clone(), &decl_id.span())?;
-                        struct_decl.visibility == Visibility::Public
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_constant(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility.is_public()
-                    }
-                    _ => continue,
-                };
-                if is_entry {
-                    entry_points.push(i);
-                }
-            }
+            _ => false,
+        };
+        if is_entry {
+            entry_points.push(i);
         }
     }
+
     Ok(entry_points)
 }
 
 /// This struct is used to pass node connection further down the tree as
 /// we are processing AST nodes.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct NodeConnectionOptions {
     /// When this is enabled, connect struct fields to the struct itself,
     /// thus making all struct fields considered as being used in the graph.
@@ -323,7 +260,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 exit_node,
             )
         }
-        ty::TyAstNodeContent::SideEffect => (leaves.to_vec(), exit_node),
+        ty::TyAstNodeContent::SideEffect(_) => (leaves.to_vec(), exit_node),
         ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let cfg_node: ControlFlowGraphNode = node.into();
@@ -750,9 +687,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         return_type: ty,
     };
 
-    graph
-        .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+    graph.namespace.insert_function(fn_decl, namespace_entry);
 
     connect_fn_params_struct_enums(engines, fn_decl, graph, entry_node)?;
     Ok(())
@@ -888,11 +823,45 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         } => {
             let fn_decl = decl_engine.get_function(function_decl_id.clone(), &expression_span)?;
             let mut is_external = false;
+
+            // in the case of monomorphized functions, first check if we already have a node for
+            // it in the namespace. if not then we need to check to see if the namespace contains
+            // the decl id parents (the original generic non monomorphized decl id).
+            let mut exists = false;
+            let parents = decl_engine.find_all_parents(engines, function_decl_id.clone());
+            for parent in parents {
+                if let Ok(parent) = decl_engine.get_function(parent.clone(), &expression_span) {
+                    exists |= graph.namespace.get_function(&parent).is_some();
+                }
+            }
+
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) = graph
-                .namespace
-                .get_function(&fn_decl.name)
-                .cloned()
+            let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
+
+            let mut leaves = leaves.to_vec();
+
+            // if the parent node exists in this module, then add the monomorphized version
+            // to the graph.
+            if fn_namespace_entry.is_none() && exists {
+                let (l_leaves, _new_exit_node) = connect_node(
+                    engines,
+                    &ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Declaration(
+                            ty::TyDeclaration::FunctionDeclaration(function_decl_id.clone()),
+                        ),
+                        span: expression_span.clone(),
+                    },
+                    graph,
+                    &leaves,
+                    exit_node,
+                    tree_type,
+                    NodeConnectionOptions::default(),
+                )?;
+
+                leaves = l_leaves;
+            }
+
+            let (fn_entrypoint, fn_exit_point) = fn_namespace_entry
                 .map(
                     |FunctionNamespaceEntry {
                          entry_point,
@@ -924,7 +893,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             for leaf in leaves {
-                graph.add_edge(*leaf, fn_entrypoint, label.into());
+                graph.add_edge(leaf, fn_entrypoint, label.into());
             }
 
             // save the existing options value to restore after handling the arguments
@@ -1735,6 +1704,11 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
+        // If there is already an error for the declaration, we don't need to emit a dead code warning.
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ErrorRecovery(..)),
+            ..
+        } => return None,
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(..),
             span,
@@ -1748,7 +1722,7 @@ fn construct_dead_code_warning_from_node(
             content:
                 ty::TyAstNodeContent::ImplicitReturnExpression(_)
                 | ty::TyAstNodeContent::Expression(_)
-                | ty::TyAstNodeContent::SideEffect,
+                | ty::TyAstNodeContent::SideEffect(_),
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,

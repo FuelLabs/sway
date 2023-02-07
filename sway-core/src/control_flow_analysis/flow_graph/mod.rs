@@ -146,9 +146,7 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
                 if let Some(implementing_type) = method.implementing_type {
                     format!(
                         "Method {}.{}",
-                        implementing_type
-                            .get_decl_ident(decl_engines)
-                            .map_or(String::from(""), |f| f.as_str().to_string()),
+                        implementing_type.friendly_name(engines),
                         method_name.as_str()
                     )
                 } else {

@@ -143,7 +143,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                     .map(|struct_decl| {
                         format_visibility_hover(
                             struct_decl.visibility,
-                            decl.friendly_name(),
+                            decl.friendly_type_name(),
                             &token_name,
                         )
                     })
@@ -153,7 +153,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                     .map(|trait_decl| {
                         format_visibility_hover(
                             trait_decl.visibility,
-                            decl.friendly_name(),
+                            decl.friendly_type_name(),
                             &token_name,
                         )
                     })
@@ -163,7 +163,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                     .map(|enum_decl| {
                         format_visibility_hover(
                             enum_decl.visibility,
-                            decl.friendly_name(),
+                            decl.friendly_type_name(),
                             &token_name,
                         )
                     })

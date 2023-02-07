@@ -117,7 +117,7 @@ pub(crate) fn print_decl_engine_types(
             | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
                 format!("{expression:#?}")
             }
-            ty::TyAstNodeContent::SideEffect => "".to_string(),
+            ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
         })
         .map(|s| format!("{s}\n"))
         .collect()
