@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: let b = foo::<Option>();
-# nextln: $()"Option" needs type arguments
+# nextln: $()Cannot infer type for type parameter "T". Insufficient type information provided. Try annotating its type.

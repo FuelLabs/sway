@@ -7,8 +7,12 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, inline_function_calls,
-    ir_generation::compile_program, namespace, BuildTarget, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
+    language::parsed::TreeType, namespace, BuildTarget, Engines, TypeEngine,
+};
+use sway_ir::{
+    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, PassManager,
+    PassManagerConfig,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
@@ -180,15 +184,17 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     _ => (),
                 };
 
-                // Now we're working with all functions in the module.
-                let all_functions = ir
-                    .module_iter()
-                    .flat_map(|module| module.function_iter(&ir))
-                    .collect::<Vec<_>>();
-
                 if optimisation_inline {
-                    let inline_res = inline_function_calls(&mut ir, &all_functions, &tree_type);
-                    if !inline_res.errors.is_empty() {
+                    let mut pass_mgr = PassManager::default();
+                    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
+                    let inline = if matches!(tree_type, TreeType::Predicate) {
+                        pass_mgr.register(create_inline_in_predicate_pass())
+                    } else {
+                        pass_mgr.register(create_inline_in_non_predicate_pass())
+                    };
+                    pmgr_config.to_run.push(inline.to_string());
+                    let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
+                    if inline_res.is_err() {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
