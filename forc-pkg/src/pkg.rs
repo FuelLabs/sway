@@ -373,6 +373,75 @@ pub struct BuildOpts {
     pub tests: bool,
     /// List of constants to inject for each package.
     pub const_inject_map: ConstInjectionMap,
+    /// The set of options to filter by member project kind.
+    pub build_filter: BuildFilter,
+}
+
+/// The set of options to filter type of projects to build in a workspace.
+#[derive(Default)]
+pub struct BuildFilter {
+    pub build_contracts: bool,
+    pub build_scripts: bool,
+    pub build_predicates: bool,
+    pub build_libraries: bool,
+}
+
+impl BuildFilter {
+    /// Returns a new `BuildFilter` that only builds scripts.
+    pub fn only_scripts() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: true,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Returns a new `BuildFilter` that only builds contracts.
+    pub fn only_contracts() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: false,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Returns a new `BuildFilter` that builds all types of projects.
+    pub fn all() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: true,
+            build_predicates: true,
+            build_libraries: true,
+        }
+    }
+
+    /// Filter given target of output nodes according to the this `BuildFilter`.
+    pub fn filter_outputs(
+        &self,
+        build_plan: &BuildPlan,
+        outputs: HashSet<NodeIx>,
+    ) -> HashSet<NodeIx> {
+        let graph = build_plan.graph();
+        let manifest_map = build_plan.manifest_map();
+        outputs
+            .into_iter()
+            .filter(|&node_ix| {
+                let pkg = &graph[node_ix];
+                let pkg_manifest = &manifest_map[&pkg.id()];
+                let program_type = pkg_manifest
+                    .program_type()
+                    .expect("cannot retrieve program type for filtering");
+                match program_type {
+                    TreeType::Predicate => self.build_predicates,
+                    TreeType::Script => self.build_scripts,
+                    TreeType::Contract => self.build_contracts,
+                    TreeType::Library { .. } => self.build_libraries,
+                }
+            })
+            .collect()
+    }
 }
 
 impl BuildOpts {
@@ -2742,6 +2811,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         const_inject_map,
         build_target,
+        build_filter,
         ..
     } = &build_options;
 
@@ -2775,6 +2845,8 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .collect(),
         None => build_plan.member_nodes().collect(),
     };
+
+    let outputs = build_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
     let mut built_workspace = HashMap::new();
