@@ -5,6 +5,7 @@ use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
 use ::bytes::Bytes;
+use ::convert::From;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -662,11 +663,11 @@ impl StorageBytes {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     storage.stored_bytes.write_bytes(bytes);
+    ///     storage.stored_bytes.store_bytes(bytes);
     /// }
     /// ```
     #[storage(write)]
-    pub fn write_bytes(self, mut bytes: Bytes) {
+    pub fn store_bytes(self, mut bytes: Bytes) {
         // Get the number of storage slots needed based on the size of bytes.
         let number_of_slots = (bytes.len() + 31) >> 5;
 
@@ -705,11 +706,12 @@ impl StorageBytes {
     /// }
     /// ```
     #[storage(read)]
-    pub fn into_bytes(self) -> Bytes {
+    pub fn into_bytes(self) -> Option<Bytes> {
         // Get the length of the bytes and create a new `Bytes` type on the heap.
         let len = get::<u64>(__get_storage_key()).unwrap_or(0);
 
         if len > 0 {
+            // Get the number of storage slots needed based on the size of bytes.
             let number_of_slots = (len + 31) >> 5;
 
             // Create a new bytes type with a capacity that is a multiple of 32 bytes so we can 
@@ -720,10 +722,9 @@ impl StorageBytes {
             // Load the stores bytes into the `Bytes` type pointer.
             let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
 
-            bytes
+            Option::Some(bytes)
         } else {
-            // Nothing has been stored, return an empty `Bytes` type
-            Bytes::new()
+            Option::None
         }
     }
 }

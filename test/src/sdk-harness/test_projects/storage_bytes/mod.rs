@@ -22,22 +22,6 @@ async fn setup() -> TestStorageBytesContract {
 }
 
 #[tokio::test]
-async fn returns_empty_bytes() {
-    let instance = setup().await;
-
-    let input = vec![];
-
-    assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
-
-    instance
-        .methods()
-        .assert_stored_bytes(input)
-        .call()
-        .await
-        .unwrap();
-}
-
-#[tokio::test]
 async fn stores_byte() {
     let instance = setup().await;
 
