@@ -466,7 +466,7 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
-pub(crate) struct Context<T: Renderable> {
+pub(crate) struct Context<T> {
     module_info: ModuleInfo,
     context: T,
 }
