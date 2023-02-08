@@ -276,7 +276,7 @@ impl ModuleInfo {
         while let Some((index, prefix)) = next_location_iter.peek() {
             for (count, module) in current_module_info.0.iter().rev().enumerate() {
                 if module == *prefix {
-                    offset = count + 1;
+                    offset = count;
                     mid = self.0.len() - index;
                     break;
                 }
@@ -285,7 +285,7 @@ impl ModuleInfo {
         }
         let mut new_path = (0..offset).map(|_| "../").collect::<String>();
         new_path.push_str(self.0.split_at(mid).1.join("/").as_str());
-        new_path.push_str(file_name);
+        new_path.push_str(format!("/{}", file_name).as_str());
         Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.

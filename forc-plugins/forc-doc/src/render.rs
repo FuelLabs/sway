@@ -671,7 +671,7 @@ impl Renderable for Context {
         };
         Ok(box_html! {
             @ for item in rendered_list {
-                : item;
+                : Raw(item);
             }
         })
     }
