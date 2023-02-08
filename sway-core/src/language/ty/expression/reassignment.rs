@@ -110,17 +110,12 @@ impl PartialEqWithEngines for ProjectionKind {
 
 impl HashWithEngines for ProjectionKind {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use ProjectionKind::*;
+        std::mem::discriminant(self).hash(state);
         match self {
-            ProjectionKind::StructField { name } => {
-                state.write_u8(self.discriminant_value());
-                name.hash(state)
-            }
-            ProjectionKind::TupleField { index, .. } => {
-                state.write_u8(self.discriminant_value());
-                index.hash(state)
-            }
-            ProjectionKind::ArrayIndex { index, .. } => {
-                state.write_u8(self.discriminant_value());
+            StructField { name } => name.hash(state),
+            TupleField { index, .. } => index.hash(state),
+            ArrayIndex { index, .. } => {
                 index.hash(state, engines);
             }
         }
@@ -138,14 +133,6 @@ impl Spanned for ProjectionKind {
 }
 
 impl ProjectionKind {
-    fn discriminant_value(&self) -> u8 {
-        match self {
-            ProjectionKind::StructField { .. } => 0,
-            ProjectionKind::TupleField { .. } => 1,
-            ProjectionKind::ArrayIndex { .. } => 2,
-        }
-    }
-
     pub(crate) fn pretty_print(&self) -> Cow<str> {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),

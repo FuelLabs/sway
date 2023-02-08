@@ -63,52 +63,28 @@ impl PartialEqWithEngines for TyDeclaration {
 
 impl HashWithEngines for TyDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyDeclaration::*;
         let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
         match self {
-            TyDeclaration::VariableDeclaration(decl) => {
-                state.write_u8(self.discriminant_value());
+            VariableDeclaration(decl) => {
                 decl.hash(state, engines);
             }
-            TyDeclaration::ConstantDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
+            ConstantDeclaration(decl_id)
+            | FunctionDeclaration(decl_id)
+            | TraitDeclaration(decl_id)
+            | StructDeclaration(decl_id)
+            | EnumDeclaration(decl_id)
+            | ImplTrait(decl_id)
+            | AbiDeclaration(decl_id)
+            | StorageDeclaration(decl_id) => {
                 decl_id.hash(state, engines);
             }
-            TyDeclaration::FunctionDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::TraitDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::StructDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::EnumDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::ImplTrait(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::AbiDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
-            TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
-                state.write_u8(self.discriminant_value());
+            GenericTypeForFunctionScope { name, type_id } => {
                 name.hash(state);
                 type_engine.get(*type_id).hash(state, engines);
             }
-            TyDeclaration::ErrorRecovery(_) => {
-                state.write_u8(self.discriminant_value());
-            }
-            TyDeclaration::StorageDeclaration(decl_id) => {
-                state.write_u8(self.discriminant_value());
-                decl_id.hash(state, engines);
-            }
+            ErrorRecovery(_) => {}
         }
     }
 }
@@ -388,22 +364,6 @@ impl GetDeclId for TyDeclaration {
 }
 
 impl TyDeclaration {
-    fn discriminant_value(&self) -> u8 {
-        match self {
-            TyDeclaration::VariableDeclaration(_) => 0,
-            TyDeclaration::ConstantDeclaration(_) => 1,
-            TyDeclaration::FunctionDeclaration(_) => 2,
-            TyDeclaration::TraitDeclaration(_) => 3,
-            TyDeclaration::StructDeclaration(_) => 4,
-            TyDeclaration::EnumDeclaration(_) => 5,
-            TyDeclaration::ImplTrait(_) => 6,
-            TyDeclaration::AbiDeclaration(_) => 7,
-            TyDeclaration::GenericTypeForFunctionScope { .. } => 8,
-            TyDeclaration::ErrorRecovery(_) => 9,
-            TyDeclaration::StorageDeclaration(_) => 10,
-        }
-    }
-
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a [TyEnumDeclaration].

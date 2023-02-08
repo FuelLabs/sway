@@ -300,17 +300,6 @@ pub enum TyAstNodeContent {
     SideEffect(TySideEffect),
 }
 
-impl TyAstNodeContent {
-    fn discriminant_value(&self) -> u8 {
-        match self {
-            TyAstNodeContent::Declaration(_) => 0,
-            TyAstNodeContent::Expression(_) => 1,
-            TyAstNodeContent::ImplicitReturnExpression(_) => 2,
-            TyAstNodeContent::SideEffect(_) => 3,
-        }
-    }
-}
-
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -328,21 +317,16 @@ impl PartialEqWithEngines for TyAstNodeContent {
 
 impl HashWithEngines for TyAstNodeContent {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyAstNodeContent::*;
+        std::mem::discriminant(self).hash(state);
         match self {
-            TyAstNodeContent::Declaration(decl) => {
-                state.write_u8(self.discriminant_value());
+            Declaration(decl) => {
                 decl.hash(state, engines);
             }
-            TyAstNodeContent::Expression(exp) => {
-                state.write_u8(self.discriminant_value());
+            Expression(exp) | ImplicitReturnExpression(exp) => {
                 exp.hash(state, engines);
             }
-            TyAstNodeContent::ImplicitReturnExpression(exp) => {
-                state.write_u8(self.discriminant_value());
-                exp.hash(state, engines);
-            }
-            TyAstNodeContent::SideEffect(effect) => {
-                state.write_u8(self.discriminant_value());
+            SideEffect(effect) => {
                 effect.hash(state);
             }
         }

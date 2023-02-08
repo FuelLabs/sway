@@ -146,34 +146,22 @@ pub enum TypeInfo {
 
 impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        std::mem::discriminant(self).hash(state);
         match self {
             TypeInfo::Str(len) => {
-                state.write_u8(self.discriminant_value());
                 len.hash(state);
             }
             TypeInfo::UnsignedInteger(bits) => {
-                state.write_u8(self.discriminant_value());
                 bits.hash(state);
             }
-            TypeInfo::Numeric => {
-                state.write_u8(self.discriminant_value());
-            }
-            TypeInfo::Boolean => {
-                state.write_u8(self.discriminant_value());
-            }
             TypeInfo::Tuple(fields) => {
-                state.write_u8(self.discriminant_value());
                 fields.hash(state, engines);
-            }
-            TypeInfo::B256 => {
-                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Enum {
                 call_path,
                 variant_types,
                 type_parameters,
             } => {
-                state.write_u8(self.discriminant_value());
                 call_path.hash(state);
                 variant_types.hash(state, engines);
                 type_parameters.hash(state, engines);
@@ -183,13 +171,11 @@ impl HashWithEngines for TypeInfo {
                 fields,
                 type_parameters,
             } => {
-                state.write_u8(self.discriminant_value());
                 call_path.hash(state);
                 fields.hash(state, engines);
                 type_parameters.hash(state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
-                state.write_u8(self.discriminant_value());
                 abi_name.hash(state);
                 let address = address
                     .as_ref()
@@ -197,23 +183,10 @@ impl HashWithEngines for TypeInfo {
                     .unwrap_or_default();
                 address.hash(state);
             }
-            TypeInfo::Contract => {
-                state.write_u8(self.discriminant_value());
-            }
-            TypeInfo::ErrorRecovery => {
-                state.write_u8(self.discriminant_value());
-            }
-            TypeInfo::Unknown => {
-                state.write_u8(self.discriminant_value());
-            }
-            TypeInfo::SelfType => {
-                state.write_u8(self.discriminant_value());
-            }
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints,
             } => {
-                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 trait_constraints.hash(state, engines);
             }
@@ -221,29 +194,28 @@ impl HashWithEngines for TypeInfo {
                 name,
                 type_arguments,
             } => {
-                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 type_arguments.as_deref().hash(state, engines);
             }
             TypeInfo::Storage { fields } => {
-                state.write_u8(self.discriminant_value());
                 fields.hash(state, engines);
             }
             TypeInfo::Array(elem_ty, count) => {
-                state.write_u8(self.discriminant_value());
                 elem_ty.hash(state, engines);
                 count.hash(state);
             }
-            TypeInfo::RawUntypedPtr => {
-                state.write_u8(self.discriminant_value());
-            }
-            TypeInfo::RawUntypedSlice => {
-                state.write_u8(self.discriminant_value());
-            }
             TypeInfo::Placeholder(ty) => {
-                state.write_u8(self.discriminant_value());
                 ty.hash(state, engines);
             }
+            TypeInfo::Numeric
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Unknown
+            | TypeInfo::SelfType
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice => {}
         }
     }
 }
@@ -338,7 +310,7 @@ impl PartialEqWithEngines for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
-            (l, r) => l.discriminant_value() == r.discriminant_value(),
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
         }
     }
 }
@@ -526,31 +498,6 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
-    fn discriminant_value(&self) -> u8 {
-        match self {
-            TypeInfo::Unknown => 0,
-            TypeInfo::UnknownGeneric { .. } => 1,
-            TypeInfo::Placeholder(_) => 2,
-            TypeInfo::Str(_) => 3,
-            TypeInfo::UnsignedInteger(_) => 4,
-            TypeInfo::Enum { .. } => 5,
-            TypeInfo::Struct { .. } => 6,
-            TypeInfo::Boolean => 7,
-            TypeInfo::Tuple(_) => 8,
-            TypeInfo::ContractCaller { .. } => 9,
-            TypeInfo::Custom { .. } => 10,
-            TypeInfo::SelfType => 11,
-            TypeInfo::B256 => 12,
-            TypeInfo::Numeric => 13,
-            TypeInfo::Contract => 14,
-            TypeInfo::ErrorRecovery => 15,
-            TypeInfo::Array(_, _) => 16,
-            TypeInfo::Storage { .. } => 17,
-            TypeInfo::RawUntypedPtr => 18,
-            TypeInfo::RawUntypedSlice => 19,
-        }
-    }
-
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,

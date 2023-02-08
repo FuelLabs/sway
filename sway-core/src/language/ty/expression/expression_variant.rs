@@ -373,7 +373,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     condition: r_condition,
                 },
             ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
-            (l, r) => l.discriminant_value() == r.discriminant_value(),
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
         }
     }
 }
@@ -381,9 +381,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
 impl HashWithEngines for TyExpressionVariant {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
         match self {
             Self::Literal(lit) => {
-                state.write_u8(self.discriminant_value());
                 lit.hash(state);
             }
             Self::FunctionApplication {
@@ -392,7 +392,6 @@ impl HashWithEngines for TyExpressionVariant {
                 function_decl_id,
                 ..
             } => {
-                state.write_u8(self.discriminant_value());
                 call_path.hash(state);
                 function_decl_id.hash(state, engines);
                 arguments.iter().for_each(|(name, arg)| {
@@ -401,7 +400,6 @@ impl HashWithEngines for TyExpressionVariant {
                 });
             }
             Self::LazyOperator { op, lhs, rhs } => {
-                state.write_u8(self.discriminant_value());
                 op.hash(state);
                 lhs.hash(state, engines);
                 rhs.hash(state, engines);
@@ -409,20 +407,16 @@ impl HashWithEngines for TyExpressionVariant {
             Self::VariableExpression {
                 name, mutability, ..
             } => {
-                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 mutability.hash(state);
             }
             Self::Tuple { fields } => {
-                state.write_u8(self.discriminant_value());
                 fields.hash(state, engines);
             }
             Self::Array { contents } => {
-                state.write_u8(self.discriminant_value());
                 contents.hash(state, engines);
             }
             Self::ArrayIndex { prefix, index } => {
-                state.write_u8(self.discriminant_value());
                 prefix.hash(state, engines);
                 index.hash(state, engines);
             }
@@ -431,23 +425,17 @@ impl HashWithEngines for TyExpressionVariant {
                 fields,
                 ..
             } => {
-                state.write_u8(self.discriminant_value());
                 struct_name.hash(state);
                 fields.hash(state, engines);
             }
             Self::CodeBlock(contents) => {
-                state.write_u8(self.discriminant_value());
                 contents.hash(state, engines);
-            }
-            Self::FunctionParameter => {
-                state.write_u8(self.discriminant_value());
             }
             Self::IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                state.write_u8(self.discriminant_value());
                 condition.hash(state, engines);
                 then.hash(state, engines);
                 if let Some(x) = r#else.as_ref() {
@@ -460,7 +448,6 @@ impl HashWithEngines for TyExpressionVariant {
                 returns,
                 ..
             } => {
-                state.write_u8(self.discriminant_value());
                 registers.hash(state, engines);
                 body.hash(state);
                 returns.hash(state);
@@ -471,7 +458,6 @@ impl HashWithEngines for TyExpressionVariant {
                 resolved_type_of_parent,
                 ..
             } => {
-                state.write_u8(self.discriminant_value());
                 prefix.hash(state, engines);
                 field_to_access.hash(state, engines);
                 type_engine
@@ -484,70 +470,60 @@ impl HashWithEngines for TyExpressionVariant {
                 resolved_type_of_parent,
                 ..
             } => {
-                state.write_u8(self.discriminant_value());
                 prefix.hash(state, engines);
                 elem_to_access_num.hash(state);
                 type_engine
                     .get(*resolved_type_of_parent)
                     .hash(state, engines);
             }
-            Self::EnumInstantiation { .. } => {
-                todo!();
-                // state.write_u8(self.discriminant_value());
-                // enum_decl.hash(state, engines);
-                // variant_name.hash(state);
-                // tag.hash(state);
-                // contents.map(|x| x.hash(state, engines));
+            Self::EnumInstantiation {
+                enum_decl,
+                variant_name,
+                tag,
+                contents,
+                ..
+            } => {
+                enum_decl.hash(state, engines);
+                variant_name.hash(state);
+                tag.hash(state);
+                if let Some(x) = contents.as_ref() {
+                    x.hash(state, engines)
+                }
             }
             Self::AbiCast {
                 abi_name, address, ..
             } => {
-                state.write_u8(self.discriminant_value());
                 abi_name.hash(state);
                 address.hash(state, engines);
             }
             Self::StorageAccess(exp) => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
             Self::IntrinsicFunction(exp) => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
             Self::AbiName(name) => {
-                state.write_u8(self.discriminant_value());
                 name.hash(state);
             }
             Self::EnumTag { exp } => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
             Self::UnsafeDowncast { exp, variant } => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
                 variant.hash(state, engines);
             }
             Self::WhileLoop { condition, body } => {
-                state.write_u8(self.discriminant_value());
                 condition.hash(state, engines);
                 body.hash(state, engines);
             }
-            Self::Break => {
-                state.write_u8(self.discriminant_value());
-            }
-            Self::Continue => {
-                state.write_u8(self.discriminant_value());
-            }
+            Self::Break | Self::Continue | Self::FunctionParameter => {}
             Self::Reassignment(exp) => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
             Self::StorageReassignment(exp) => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
             Self::Return(exp) => {
-                state.write_u8(self.discriminant_value());
                 exp.hash(state, engines);
             }
         }
@@ -1008,38 +984,6 @@ impl DisplayWithEngines for TyExpressionVariant {
 }
 
 impl TyExpressionVariant {
-    fn discriminant_value(&self) -> u8 {
-        match self {
-            TyExpressionVariant::Literal(_) => 0,
-            TyExpressionVariant::FunctionApplication { .. } => 1,
-            TyExpressionVariant::LazyOperator { .. } => 2,
-            TyExpressionVariant::VariableExpression { .. } => 3,
-            TyExpressionVariant::Tuple { .. } => 4,
-            TyExpressionVariant::Array { .. } => 5,
-            TyExpressionVariant::ArrayIndex { .. } => 6,
-            TyExpressionVariant::StructExpression { .. } => 7,
-            TyExpressionVariant::CodeBlock(_) => 8,
-            TyExpressionVariant::FunctionParameter => 9,
-            TyExpressionVariant::IfExp { .. } => 10,
-            TyExpressionVariant::AsmExpression { .. } => 11,
-            TyExpressionVariant::StructFieldAccess { .. } => 12,
-            TyExpressionVariant::TupleElemAccess { .. } => 13,
-            TyExpressionVariant::EnumInstantiation { .. } => 14,
-            TyExpressionVariant::AbiCast { .. } => 15,
-            TyExpressionVariant::StorageAccess(_) => 16,
-            TyExpressionVariant::IntrinsicFunction(_) => 17,
-            TyExpressionVariant::AbiName(_) => 18,
-            TyExpressionVariant::EnumTag { .. } => 19,
-            TyExpressionVariant::UnsafeDowncast { .. } => 20,
-            TyExpressionVariant::WhileLoop { .. } => 21,
-            TyExpressionVariant::Break => 22,
-            TyExpressionVariant::Continue => 23,
-            TyExpressionVariant::Reassignment(_) => 24,
-            TyExpressionVariant::StorageReassignment(_) => 25,
-            TyExpressionVariant::Return(_) => 26,
-        }
-    }
-
     /// Returns `self` as a literal, if possible.
     pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         match self {

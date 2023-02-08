@@ -134,6 +134,26 @@ impl<T: HashWithEngines> HashWithEngines for [T] {
     }
 }
 
+// macro_rules! check {
+//     ($fn_expr: expr, $error_recovery: expr, $warnings: ident, $errors: ident $(,)?) => {{
+//         let mut res = $fn_expr;
+//         $warnings.append(&mut res.warnings);
+//         $errors.append(&mut res.errors);
+//         #[allow(clippy::manual_unwrap_or)]
+//         match res.value {
+//             None => $error_recovery,
+//             Some(value) => value,
+//         }
+//     }};
+// }
+
+macro_rules! hash_discriminant_and_value {
+    ($s: ident, $d: ident, $state: ident, $engines: ident $(,)?) => {{
+        std::mem::discriminant($s).hash($state);
+        $d.hash($state, $engines);
+    }};
+}
+
 pub trait EqWithEngines: PartialEqWithEngines {}
 
 pub trait PartialEqWithEngines {
