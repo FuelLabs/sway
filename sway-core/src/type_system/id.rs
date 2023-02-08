@@ -83,7 +83,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Enum {
                     type_parameters,
                     variant_types,
-                    name,
+                    call_path,
                 } => {
                     let mut need_to_create_new = false;
                     let variant_types = variant_types
@@ -112,7 +112,7 @@ impl ReplaceSelfType for TypeId {
                             TypeInfo::Enum {
                                 variant_types,
                                 type_parameters,
-                                name,
+                                call_path,
                             },
                         ))
                     } else {
@@ -122,7 +122,7 @@ impl ReplaceSelfType for TypeId {
                 TypeInfo::Struct {
                     type_parameters,
                     fields,
-                    name,
+                    call_path,
                 } => {
                     let mut need_to_create_new = false;
                     let fields = fields
@@ -150,7 +150,7 @@ impl ReplaceSelfType for TypeId {
                             decl_engine,
                             TypeInfo::Struct {
                                 fields,
-                                name,
+                                call_path,
                                 type_parameters,
                             },
                         ))
@@ -309,15 +309,17 @@ impl TypeId {
             (
                 TypeInfo::Custom { name, .. },
                 TypeInfo::Enum {
-                    name: enum_name, ..
+                    call_path: enum_call_path,
+                    ..
                 },
-            ) => name != enum_name,
+            ) => name != enum_call_path.suffix,
             (
                 TypeInfo::Custom { name, .. },
                 TypeInfo::Struct {
-                    name: struct_name, ..
+                    call_path: struct_call_path,
+                    ..
                 },
-            ) => name != struct_name,
+            ) => name != struct_call_path.suffix,
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use crate::{Ident, Namespace};
 
@@ -45,13 +45,21 @@ impl<T: Spanned> Spanned for CallPath<T> {
         if self.prefixes.is_empty() {
             self.suffix.span()
         } else {
-            let prefixes_spans = self
+            let mut prefixes_spans = self
                 .prefixes
                 .iter()
                 .map(|x| x.span())
                 //LOC below should be removed when #21 goes in
-                .filter(|x| x.path() == self.suffix.span().path());
-            Span::join(Span::join_all(prefixes_spans), self.suffix.span())
+                .filter(|x| {
+                    Arc::ptr_eq(x.src(), self.suffix.span().src())
+                        && x.path() == self.suffix.span().path()
+                })
+                .peekable();
+            if prefixes_spans.peek().is_some() {
+                Span::join(Span::join_all(prefixes_spans), self.suffix.span())
+            } else {
+                self.suffix.span()
+            }
         }
     }
 }

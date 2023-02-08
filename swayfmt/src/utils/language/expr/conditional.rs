@@ -1,5 +1,5 @@
 use crate::{
-    comments::{comments_between, maybe_write_comments_from_map},
+    comments::maybe_write_comments_from_map,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -28,7 +28,7 @@ impl Format for IfExpr {
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
                 let range: Range<usize> = self.span().into();
-                let comments = comments_between(&range, formatter);
+                let comments = formatter.comment_map.comments_between(&range);
                 // check if the entire expression could fit into a single line
                 let full_width_line_style = if comments.peekable().peek().is_some() {
                     LineStyle::Multiline

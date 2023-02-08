@@ -1,10 +1,13 @@
 use fuel_tx::ContractId;
-use fuels_abigen_macro::abigen;
 use fuels::prelude::*;
 use fuels::test_helpers;
+use fuels_abigen_macro::abigen;
 
 // Load abi from json
-abigen!(MyContract, "out/debug/multi_impl_self-abi.json");
+abigen!(Contract(
+    name = "MyContract",
+    abi = "out/debug/multi_impl_self-abi.json"
+));
 
 async fn get_contract_instance() -> (MyContract, ContractId) {
     // Deploy the compiled contract

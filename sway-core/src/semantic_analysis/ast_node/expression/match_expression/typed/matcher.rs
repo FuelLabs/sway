@@ -143,6 +143,7 @@ fn match_constant(
                 name: scrutinee_name,
                 span: span.clone(),
                 mutability: ty::VariableMutability::Immutable,
+                call_path: None,
             },
             return_type: scrutinee_type_id,
             span,

@@ -17,6 +17,7 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
+use sway_types::Ident;
 
 /// A summary of the adopted calling convention:
 ///
@@ -150,7 +151,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let span = self.md_mgr.md_to_span(self.context, md);
         let test_decl_index = self.md_mgr.md_to_test_decl_index(self.context, md);
         let test_decl_id = match (&span, &test_decl_index) {
-            (Some(span), Some(decl_index)) => Some(DeclId::new(*decl_index, span.clone())),
+            (Some(span), Some(decl_index)) => Some(DeclId::new(
+                Ident::new(span.clone()),
+                *decl_index,
+                span.clone(),
+            )),
             _ => None,
         };
         let comment = format!(
@@ -205,8 +210,12 @@ impl<'ir> FuelAsmBuilder<'ir> {
         // Compile instructions.
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
-        for block in function.block_iter(self.context) {
-            self.insert_block_label(block);
+
+        // Traverse the IR blocks in reverse post order. This guarantees that each block is
+        // processed after all its CFG predecessors have been processed.
+        let po = sway_ir::dominator::compute_post_order(self.context, &function);
+        for block in po.po_to_block.iter().rev() {
+            self.insert_block_label(*block);
             for instr_val in block.instruction_iter(self.context) {
                 check!(
                     self.compile_instruction(&instr_val, func_is_entry),

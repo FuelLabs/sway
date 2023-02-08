@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use dashmap::DashMap;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
@@ -27,7 +27,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    BuildTarget, CompileResult, Engines, TypeEngine,
+    namespace, BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -181,13 +181,17 @@ impl Session {
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
+                parsed_tree.collect_module_spans(&parsed);
                 self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);
-                self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
+                typed_tree.collect_module_spans(typed_program);
+                self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
+                    typed_tree.traverse_node(node, namespace)
+                });
 
                 self.save_lexed_program(lexed.to_owned().clone());
                 self.save_parsed_program(parsed.to_owned().clone());
@@ -199,8 +203,8 @@ impl Session {
                 let dependency = Dependency::new(&self.token_map);
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
-                self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(decl_engine, an)
+                self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
+                    dependency.collect_typed_declaration(node)
                 });
             }
         }
@@ -296,6 +300,17 @@ impl Session {
         Ok(())
     }
 
+    /// Get the document at the given [Url].
+    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|document| document.clone())
+    }
+
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
         &self,
@@ -346,15 +361,31 @@ impl Session {
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
-        let root_nodes = typed_program.root.all_nodes.iter();
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &namespace::Module),
+    ) {
+        let root_nodes = typed_program
+            .root
+            .all_nodes
+            .iter()
+            .map(|node| (node, &typed_program.root.namespace));
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+            .flat_map(|(_, submodule)| {
+                submodule
+                    .module
+                    .all_nodes
+                    .iter()
+                    .map(|node| (node, &submodule.module.namespace))
+            });
 
-        root_nodes.chain(sub_nodes).for_each(f);
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|(node, namespace)| f(node, namespace));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
@@ -434,12 +465,12 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{get_absolute_path, get_url};
+    use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         let result = Session::store_document(&session, document);
         assert!(result.is_ok());
@@ -448,7 +479,7 @@ mod tests {
     #[test]
     fn store_document_returns_document_already_stored_error() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         Session::store_document(&session, document).expect("expected successfully stored");
         let document = TextDocument::build_from_path(&path).unwrap();
@@ -460,7 +491,7 @@ mod tests {
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
         let session = Session::new();
-        let dir = get_absolute_path("sway-lsp/test/fixtures");
+        let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let result =
             Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");

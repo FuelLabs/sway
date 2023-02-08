@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::core::B512};
+use fuels::{prelude::*, types::B512};
 
 abigen!(
     Predicate(
@@ -8,7 +8,7 @@ abigen!(
 );
 
 #[tokio::test]
-async fn ec_recover_and_match_predicate_test() -> Result<(), Error> {
+async fn ec_recover_and_match_predicate_test() -> Result<()> {
     use fuels::signers::fuel_crypto::SecretKey;
 
     let secret_key1: SecretKey =

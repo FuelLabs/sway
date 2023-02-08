@@ -18,10 +18,11 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-            TraitFn, TupleIndexExpression, WhileLoopExpression,
+            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
+            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
+            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
+            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
+            TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
         Literal,
     },
@@ -52,10 +53,57 @@ impl<'a> ParsedTree<'a> {
             | AstNodeContent::ImplicitReturnExpression(expression) => {
                 self.handle_expression(expression)
             }
-            // TODO
-            // handle other content types
-            _ => {}
+            AstNodeContent::UseStatement(use_statement) => self.handle_use_statement(use_statement),
+            // include statements are handled throught [`collect_module_spans`]
+            AstNodeContent::IncludeStatement(_) => {}
         };
+    }
+
+    pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
+        self.collect_tree_type(&parse_program.kind);
+        self.collect_parse_module(&parse_program.root);
+    }
+
+    fn collect_parse_module(&self, parse_module: &ParseModule) {
+        for (
+            _,
+            ParseSubmodule {
+                library_name,
+                module,
+                dependency_path_span,
+            },
+        ) in &parse_module.submodules
+        {
+            self.tokens.insert(
+                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
+            );
+
+            self.tokens.insert(
+                to_ident_key(library_name),
+                Token::from_parsed(
+                    AstToken::TreeType(TreeType::Library {
+                        name: library_name.clone(),
+                    }),
+                    SymbolKind::Module,
+                ),
+            );
+
+            self.collect_parse_module(module);
+        }
+    }
+
+    fn collect_tree_type(&self, tree_type: &TreeType) {
+        use TreeType::*;
+        match tree_type {
+            Library { name } => {
+                self.tokens.insert(
+                    to_ident_key(name),
+                    Token::from_parsed(AstToken::TreeType(tree_type.clone()), SymbolKind::Module),
+                );
+            }
+            Script | Contract | Predicate => {}
+        }
     }
 
     fn handle_function_declation(&self, func: &FunctionDeclaration) {
@@ -348,6 +396,58 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
+    fn handle_use_statement(
+        &self,
+        use_statement @ UseStatement {
+            alias,
+            call_path,
+            is_absolute: _,
+            import_type,
+        }: &UseStatement,
+    ) {
+        if let Some(alias) = alias {
+            self.tokens.insert(
+                to_ident_key(alias),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Unknown,
+                ),
+            );
+        }
+
+        for prefix in call_path {
+            self.tokens.insert(
+                to_ident_key(prefix),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Module,
+                ),
+            );
+        }
+
+        match &import_type {
+            ImportType::Item(item) => {
+                self.tokens.insert(
+                    to_ident_key(item),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::SelfImport(span) => {
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(span.clone())),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::Star => {}
+        }
+    }
+
     fn handle_expression(&self, expression: &Expression) {
         let span = &expression.span;
         match &expression.kind {
@@ -538,8 +638,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Expression(expression.clone()),
                         SymbolKind::Struct,
                     );
-                    let (type_info, span) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
+                    let (type_info, ident) = &call_path_binding.inner.suffix;
+                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
                 }
 
                 let token = Token::from_parsed(
@@ -806,7 +906,7 @@ impl<'a> ParsedTree<'a> {
             } => {
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
-                self.tokens.insert(to_ident_key(struct_name), token);
+                self.tokens.insert(to_ident_key(&struct_name.suffix), token);
 
                 for field in fields {
                     let token = Token::from_parsed(

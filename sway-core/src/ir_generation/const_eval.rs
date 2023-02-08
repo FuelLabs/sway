@@ -458,6 +458,6 @@ fn const_eval_typed_ast_node(
         ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        ty::TyAstNodeContent::SideEffect => Ok(None),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(None),
     }
 }
