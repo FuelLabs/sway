@@ -9,7 +9,7 @@ pub mod error;
 pub mod server;
 mod traverse;
 pub mod utils;
-pub use server::Backend;
+use server::Backend;
 
 pub async fn start() {
     let stdin = tokio::io::stdin();

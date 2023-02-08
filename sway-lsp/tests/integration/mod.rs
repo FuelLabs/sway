@@ -1,1 +1,1 @@
-pub mod lsp;
+pub(crate) mod lsp;
