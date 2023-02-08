@@ -235,7 +235,7 @@ impl CollectTypesMetadata for TyDeclaration {
 }
 
 impl GetDeclIdent for TyDeclaration {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
+    fn get_decl_ident(&self) -> Option<Ident> {
         match self {
             TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
             TyDeclaration::ConstantDeclaration(decl_id) => Some(decl_id.name.clone()),
@@ -437,13 +437,13 @@ impl TyDeclaration {
                 let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
                 format!(
                     "{} for {}",
-                    self.get_decl_ident(decl_engine)
+                    self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     implementing_for_type_id.json_abi_str(type_engine)
                 )
             }
             _ => self
-                .get_decl_ident(decl_engine)
+                .get_decl_ident()
                 .map_or(String::from(""), |f| f.as_str().to_string()),
         }
     }

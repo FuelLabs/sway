@@ -1120,16 +1120,12 @@ fn handle_supertraits(
 
                 // Retrieve the interface surface and implemented method ids for
                 // this trait.
-                let (trait_interface_surface_methods_ids, trait_impld_method_ids) = check!(
-                    trait_decl.retrieve_interface_surface_and_implemented_methods_for_type(
+                let (trait_interface_surface_methods_ids, trait_impld_method_ids) = trait_decl
+                    .retrieve_interface_surface_and_implemented_methods_for_type(
                         ctx.by_ref(),
                         self_type,
-                        &supertrait.name
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                );
+                        &supertrait.name,
+                    );
                 interface_surface_methods_ids.extend(trait_interface_surface_methods_ids);
                 impld_method_ids.extend(trait_impld_method_ids);
 

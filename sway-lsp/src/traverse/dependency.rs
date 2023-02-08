@@ -2,14 +2,10 @@ use crate::core::{
     token::{self, AstToken, SymbolKind, Token, TypeDefinition, TypedAstToken},
     token_map::TokenMap,
 };
-use sway_core::{
-    decl_engine as de,
-    language::{
-        parsed::{AstNode, AstNodeContent, Declaration},
-        ty,
-    },
+use sway_core::language::{
+    parsed::{AstNode, AstNodeContent, Declaration},
+    ty,
 };
-use sway_types::Spanned;
 
 pub struct Dependency<'a> {
     tokens: &'a TokenMap,
@@ -44,7 +40,7 @@ impl<'a> Dependency<'a> {
     }
 
     /// Insert TypedDeclaration tokens into the TokenMap.
-    pub fn collect_typed_declaration(&self, decl_engine: &de::DeclEngine, node: &ty::TyAstNode) {
+    pub fn collect_typed_declaration(&self, node: &ty::TyAstNode) {
         if let ty::TyAstNodeContent::Declaration(declaration) = &node.content {
             let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 

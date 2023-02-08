@@ -103,7 +103,7 @@ impl TraitMap {
         is_impl_self: bool,
         engines: Engines<'_>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();

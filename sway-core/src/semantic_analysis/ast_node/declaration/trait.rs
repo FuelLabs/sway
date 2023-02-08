@@ -137,20 +137,14 @@ impl ty::TyTraitDeclaration {
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-    ) -> CompileResult<(MethodMap, MethodMap)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> (MethodMap, MethodMap) {
         let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
         let mut impld_method_ids: MethodMap = BTreeMap::new();
 
         let ty::TyTraitDeclaration {
-            interface_surface,
-            name,
-            ..
+            interface_surface, ..
         } = self;
 
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
@@ -167,11 +161,7 @@ impl ty::TyTraitDeclaration {
             impld_method_ids.insert(decl_id.name.clone(), decl_id);
         }
 
-        ok(
-            (interface_surface_method_ids, impld_method_ids),
-            warnings,
-            errors,
-        )
+        (interface_surface_method_ids, impld_method_ids)
     }
 
     /// Retrieves the interface surface, methods, and implemented methods for
