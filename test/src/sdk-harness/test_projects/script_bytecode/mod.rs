@@ -1,7 +1,9 @@
 use fuel_core::service::{Config, FuelService};
+use fuel_core_client::{
+    client::FuelClient,
+    fuel_tx::{Bytes32, Receipt, Transaction},
+};
 use fuel_crypto::Hasher;
-use fuel_gql_client::{client::FuelClient,
-fuel_tx::{Bytes32, Receipt, Transaction}};
 use fuels::prelude::*;
 use fuels_contract::script::Script;
 

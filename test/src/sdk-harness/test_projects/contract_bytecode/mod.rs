@@ -1,4 +1,4 @@
-use fuels::{prelude::*, tx::Contract as FuelsTxContract, types::core::Bits256};
+use fuels::{prelude::*, tx::Contract as FuelsTxContract, types::Bits256};
 
 abigen!(Contract(
     name = "ContractBytecodeTest",

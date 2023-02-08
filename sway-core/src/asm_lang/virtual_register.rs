@@ -72,40 +72,37 @@ pub enum ConstantRegister {
 use crate::asm_generation::fuel::compiler_constants;
 
 impl ConstantRegister {
-    pub(crate) fn to_register_id(self) -> fuel_asm::RegisterId {
-        use fuel_vm::consts::*;
+    pub(crate) fn to_reg_id(self) -> fuel_asm::RegId {
         use ConstantRegister::*;
         match self {
-            Zero => REG_ZERO,
-            One => REG_ONE,
-            Overflow => REG_OF,
-            ProgramCounter => REG_PC,
-            StackStartPointer => REG_SSP,
-            StackPointer => REG_SP,
-            FramePointer => REG_FP,
-            HeapPointer => REG_HP,
-            Error => REG_ERR,
-            GlobalGas => REG_GGAS,
-            ContextGas => REG_CGAS,
-            Balance => REG_BAL,
-            InstructionStart => REG_IS,
-            ReturnValue => REG_RET,
-            ReturnLength => REG_RETL,
-            Flags => REG_FLAG,
+            Zero => fuel_asm::RegId::ZERO,
+            One => fuel_asm::RegId::ONE,
+            Overflow => fuel_asm::RegId::OF,
+            ProgramCounter => fuel_asm::RegId::PC,
+            StackStartPointer => fuel_asm::RegId::SSP,
+            StackPointer => fuel_asm::RegId::SP,
+            FramePointer => fuel_asm::RegId::FP,
+            HeapPointer => fuel_asm::RegId::HP,
+            Error => fuel_asm::RegId::ERR,
+            GlobalGas => fuel_asm::RegId::GGAS,
+            ContextGas => fuel_asm::RegId::CGAS,
+            Balance => fuel_asm::RegId::BAL,
+            InstructionStart => fuel_asm::RegId::IS,
+            ReturnValue => fuel_asm::RegId::RET,
+            ReturnLength => fuel_asm::RegId::RETL,
+            Flags => fuel_asm::RegId::FLAG,
 
-            DataSectionStart => (compiler_constants::DATA_SECTION_REGISTER) as fuel_asm::RegisterId,
-            CallReturnAddress => {
-                (compiler_constants::RETURN_ADDRESS_REGISTER) as fuel_asm::RegisterId
-            }
-            CallReturnValue => (compiler_constants::RETURN_VALUE_REGISTER) as fuel_asm::RegisterId,
-            Scratch => (compiler_constants::SCRATCH_REGISTER) as fuel_asm::RegisterId,
+            DataSectionStart => fuel_asm::RegId::new(compiler_constants::DATA_SECTION_REGISTER),
+            CallReturnAddress => fuel_asm::RegId::new(compiler_constants::RETURN_ADDRESS_REGISTER),
+            CallReturnValue => fuel_asm::RegId::new(compiler_constants::RETURN_VALUE_REGISTER),
+            Scratch => fuel_asm::RegId::new(compiler_constants::SCRATCH_REGISTER),
 
-            FuncArg0 => compiler_constants::ARG_REG0 as fuel_asm::RegisterId,
-            FuncArg1 => compiler_constants::ARG_REG1 as fuel_asm::RegisterId,
-            FuncArg2 => compiler_constants::ARG_REG2 as fuel_asm::RegisterId,
-            FuncArg3 => compiler_constants::ARG_REG3 as fuel_asm::RegisterId,
-            FuncArg4 => compiler_constants::ARG_REG4 as fuel_asm::RegisterId,
-            FuncArg5 => compiler_constants::ARG_REG5 as fuel_asm::RegisterId,
+            FuncArg0 => fuel_asm::RegId::new(compiler_constants::ARG_REG0),
+            FuncArg1 => fuel_asm::RegId::new(compiler_constants::ARG_REG1),
+            FuncArg2 => fuel_asm::RegId::new(compiler_constants::ARG_REG2),
+            FuncArg3 => fuel_asm::RegId::new(compiler_constants::ARG_REG3),
+            FuncArg4 => fuel_asm::RegId::new(compiler_constants::ARG_REG4),
+            FuncArg5 => fuel_asm::RegId::new(compiler_constants::ARG_REG5),
         }
     }
 
