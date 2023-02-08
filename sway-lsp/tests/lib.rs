@@ -788,7 +788,6 @@ async fn go_to_definition_for_functions() {
     )
     .await;
 
-    // value: TyExpression
     let mut go_to = GotoDefintion {
         req_uri: &uri,
         req_line: 8,
@@ -801,8 +800,12 @@ async fn go_to_definition_for_functions() {
     // Return type
     let _ = lsp::definition_check(&mut service, &go_to, 1).await;
 
+    // TODO: @IGI-111 add test for generic return type
+
     // Function parameter
     definition_check_with_req_offset(&mut service, &mut go_to, 13, 16, 2).await;
+
+    // TODO: @IGI-111 add test for generic function parameter
 
     // Functions expression
     go_to.def_line = 8;
