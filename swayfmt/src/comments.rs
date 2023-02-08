@@ -8,6 +8,13 @@ pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
 }
 
+pub fn gather_newlines(src: &str) -> String {
+    src.chars()
+        .take_while(|&c| c.is_whitespace())
+        .filter(|&c| c == '\n')
+        .collect()
+}
+
 /// Given a range, writes comments contained within the range. This function
 /// removes comments that are written here from the CommentMap for later use.
 ///
@@ -34,16 +41,19 @@ pub fn write_comments(
         }
 
         while let Some(comment) = comments_iter.next() {
+            let newlines = gather_newlines(&formatter.src[comment.span().end()..]);
+
             // Write comments on a newline (for now). New behavior might be required
             // to support trailing comments.
             if formatted_code.trim_end().ends_with(&[']', ';']) {
                 match comment.comment_kind {
                     CommentKind::Newlined => {
-                        writeln!(
+                        write!(
                             formatted_code,
-                            "{}{}",
+                            "{}{}{}",
                             formatter.shape.indent.to_string(&formatter.config)?,
-                            comment.span().as_str()
+                            comment.span().as_str(),
+                            newlines
                         )?;
                     }
                     CommentKind::Trailing => {
