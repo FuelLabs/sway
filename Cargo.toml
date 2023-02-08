@@ -38,11 +38,6 @@ fuel-crypto = "0.26"
 fuel-tx = "0.26"
 fuel-core-client = "0.17"
 fuel-vm = "0.26"
-fuels-core = "0.35.1"
-fuels-signers = "0.35.1"
-fuels-types = "0.35.1"
-
-[patch.crates-io]
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
-fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
-fuels-types = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
+fuels-core = "0.36.0"
+fuels-signers = "0.36.0"
+fuels-types = "0.36.0"

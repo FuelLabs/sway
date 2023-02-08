@@ -2066,8 +2066,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.35.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#fb75c0ae5e8f18c63c01423122e120a0b541fe43"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f4dc5d3c341dc45798913c8d5334d13f05cc62b4cb7fb9c5e05c33cc160546"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.2.0",
@@ -2082,8 +2083,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.35.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#fb75c0ae5e8f18c63c01423122e120a0b541fe43"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "954598e797e94f530af81ecb2bc5fcf93a1d787abd355823580f941f193c6b76"
 dependencies = [
  "fuel-tx",
  "fuel-types",
@@ -2096,8 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.35.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#fb75c0ae5e8f18c63c01423122e120a0b541fe43"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75383dfdb605a98c7d18a610a97d002c25157004d41387c67d9ae61d8d4d9bb2"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.2.0",
@@ -2114,8 +2117,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-signers"
-version = "0.35.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#fb75c0ae5e8f18c63c01423122e120a0b541fe43"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f192607ddd1a138228a9984822c6b5b77841ce2427b6f04b91ccb96c8f297e8"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2141,8 +2145,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-types"
-version = "0.35.1"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=mitchmindtree/fuel-asm-refactor#fb75c0ae5e8f18c63c01423122e120a0b541fe43"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a522e7a3cbe922d80d15e1495aa74fa19aa7a8d6ece325f1701db7ac261ff820"
 dependencies = [
  "bech32 0.9.1",
  "chrono",
