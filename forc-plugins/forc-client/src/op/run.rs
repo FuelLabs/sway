@@ -172,6 +172,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         const_inject_map,
-        build_filter: pkg::BuildFilter::only_scripts(),
+        member_filter: pkg::MemberFilter::only_scripts(),
     }
 }

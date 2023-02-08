@@ -37,6 +37,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         build_target: cmd.build.build_target,
         tests: cmd.tests,
         const_inject_map,
-        build_filter: pkg::BuildFilter::all(),
+        member_filter: Default::default()
     }
 }

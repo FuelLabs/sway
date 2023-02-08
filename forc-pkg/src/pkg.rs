@@ -374,19 +374,29 @@ pub struct BuildOpts {
     /// List of constants to inject for each package.
     pub const_inject_map: ConstInjectionMap,
     /// The set of options to filter by member project kind.
-    pub build_filter: BuildFilter,
+    pub member_filter: MemberFilter,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
-#[derive(Default)]
-pub struct BuildFilter {
+pub struct MemberFilter {
     pub build_contracts: bool,
     pub build_scripts: bool,
     pub build_predicates: bool,
     pub build_libraries: bool,
 }
 
-impl BuildFilter {
+impl Default for MemberFilter {
+    fn default() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: true,
+            build_predicates: true,
+            build_libraries: true,
+        }
+    }
+}
+
+impl MemberFilter {
     /// Returns a new `BuildFilter` that only builds scripts.
     pub fn only_scripts() -> Self {
         Self {
@@ -407,16 +417,6 @@ impl BuildFilter {
         }
     }
 
-    /// Returns a new `BuildFilter` that builds all types of projects.
-    pub fn all() -> Self {
-        Self {
-            build_contracts: true,
-            build_scripts: true,
-            build_predicates: true,
-            build_libraries: true,
-        }
-    }
-
     /// Filter given target of output nodes according to the this `BuildFilter`.
     pub fn filter_outputs(
         &self,
@@ -431,13 +431,26 @@ impl BuildFilter {
                 let pkg = &graph[node_ix];
                 let pkg_manifest = &manifest_map[&pkg.id()];
                 let program_type = pkg_manifest
-                    .program_type()
-                    .expect("cannot retrieve program type for filtering");
+                    .program_type();
+                // Since parser cannot recover for program type detection, for the scenerios that
+                // parser fails to parse the code, program type detection is not possible. So in
+                // failing to parse cases we should try to build at least until
+                // https://github.com/FuelLabs/sway/issues/3017 is fixed. Until then we should
+                // build those members because of two reasons:
+                //
+                // 1. The member could already be from the desired member type
+                // 2. If we do not try to build there is no way users can know there is a code
+                //    piece failing to be parsed in their workspace.
                 match program_type {
-                    TreeType::Predicate => self.build_predicates,
-                    TreeType::Script => self.build_scripts,
-                    TreeType::Contract => self.build_contracts,
-                    TreeType::Library { .. } => self.build_libraries,
+                    Ok(program_type) => {
+                        match program_type {
+                        TreeType::Predicate => self.build_predicates,
+                        TreeType::Script => self.build_scripts,
+                        TreeType::Contract => self.build_contracts,
+                        TreeType::Library { .. } => self.build_libraries,
+                        }
+                    },
+                    Err(_) => true 
                 }
             })
             .collect()
@@ -2811,7 +2824,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         const_inject_map,
         build_target,
-        build_filter,
+        member_filter,
         ..
     } = &build_options;
 
@@ -2846,7 +2859,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         None => build_plan.member_nodes().collect(),
     };
 
-    let outputs = build_filter.filter_outputs(&build_plan, outputs);
+    let outputs = member_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
     let mut built_workspace = HashMap::new();

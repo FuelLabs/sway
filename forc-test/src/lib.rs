@@ -258,7 +258,7 @@ impl Opts {
             time_phases: self.time_phases,
             tests: true,
             const_inject_map,
-            build_filter: pkg::BuildFilter::all(),
+            member_filter: Default::default() 
         }
     }
 

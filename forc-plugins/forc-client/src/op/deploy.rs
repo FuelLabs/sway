@@ -151,6 +151,6 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         const_inject_map,
-        build_filter: pkg::BuildFilter::only_contracts(),
+        member_filter: pkg::MemberFilter::only_contracts(),
     }
 }
