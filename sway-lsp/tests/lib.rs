@@ -1,15 +1,13 @@
-mod lsp;
-pub(crate) mod utils;
+pub mod integration;
+use integration::lsp;
+use sway_lsp::server::Backend;
 
-use crate::{
-    server::Backend,
-    tests::utils::{
-        assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-        e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
-        test_fixtures_dir,
-    },
-};
 use std::{fs, path::PathBuf};
+use sway_lsp_test_utils::{
+    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
+    e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
+    test_fixtures_dir,
+};
 use tower_lsp::{
     jsonrpc::{self, Response},
     lsp_types::*,
@@ -290,7 +288,7 @@ async fn go_to_definition_for_modules() {
         def_line: 0,
         def_start_char: 8,
         def_end_char: 16,
-        def_path: "sway-lsp/test/fixtures/tokens/modules/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/modules/src/test_mod.sw",
     };
     // dep test_mod;
     let _ = lsp::definition_check(&mut service, &opt_go_to, 2).await;
@@ -302,7 +300,7 @@ async fn go_to_definition_for_modules() {
         def_line: 0,
         def_start_char: 8,
         def_end_char: 15,
-        def_path: "sway-lsp/test/fixtures/tokens/modules/src/dir_mod/mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/modules/src/dir_mod/mod.sw",
     };
     // dep dir_mod/mod;
     let _ = lsp::definition_check(&mut service, &opt_go_to, 3).await;
@@ -415,7 +413,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 8,
         def_end_char: 16,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_mod
     let _ = lsp::definition_check(&mut service, &go_to, 13).await;
@@ -429,7 +427,7 @@ async fn go_to_definition_for_paths() {
         def_line: 2,
         def_start_char: 7,
         def_end_char: 15,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // test_fun
     let _ = lsp::definition_check(&mut service, &go_to, 16).await;
@@ -441,7 +439,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 8,
         def_end_char: 16,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod.sw",
     };
     // deep_mod
     let _ = lsp::definition_check(&mut service, &go_to, 17).await;
@@ -454,7 +452,7 @@ async fn go_to_definition_for_paths() {
         def_line: 0,
         def_start_char: 8,
         def_end_char: 18,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deeper_mod
     let _ = lsp::definition_check(&mut service, &go_to, 19).await;
@@ -467,7 +465,7 @@ async fn go_to_definition_for_paths() {
         def_line: 2,
         def_start_char: 7,
         def_end_char: 15,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // deep_fun
     let _ = lsp::definition_check(&mut service, &go_to, 21).await;
@@ -517,7 +515,7 @@ async fn go_to_definition_for_paths() {
         def_line: 4,
         def_start_char: 11,
         def_end_char: 12,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A def
     let _ = lsp::definition_check(&mut service, &go_to, 27).await;
@@ -529,7 +527,7 @@ async fn go_to_definition_for_paths() {
         def_line: 6,
         def_start_char: 5,
         def_end_char: 6,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // A impl
     let _ = lsp::definition_check(&mut service, &go_to, 28).await;
@@ -542,7 +540,7 @@ async fn go_to_definition_for_paths() {
         def_line: 7,
         def_start_char: 11,
         def_end_char: 14,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/test_mod.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/test_mod.sw",
     };
     // fun
     let _ = lsp::definition_check(&mut service, &go_to, 30).await;
@@ -607,7 +605,7 @@ async fn go_to_definition_for_paths() {
         def_line: 6,
         def_start_char: 38,
         def_end_char: 42,
-        def_path: "sway-lsp/test/fixtures/tokens/paths/src/main.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/main.sw",
     };
     // dfun
     let _ = lsp::definition_check(&mut service, &go_to, 40).await;
@@ -631,7 +629,7 @@ async fn go_to_definition_for_traits() {
         def_line: 2,
         def_start_char: 10,
         def_end_char: 15,
-        def_path: "sway-lsp/test/fixtures/tokens/traits/src/traits.sw",
+        def_path: "sway-lsp/tests/fixtures/tokens/traits/src/traits.sw",
     };
 
     let _ = lsp::definition_check(&mut service, &trait_go_to, 1).await;

@@ -114,11 +114,11 @@ struct EditText<'text> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::utils::get_absolute_path;
+    use sway_lsp_test_utils::get_absolute_path;
 
     #[test]
     fn build_from_path_returns_text_document() {
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let result = TextDocument::build_from_path(&path);
         assert!(result.is_ok(), "result = {result:?}");
     }
