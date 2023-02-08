@@ -430,8 +430,7 @@ impl MemberFilter {
             .filter(|&node_ix| {
                 let pkg = &graph[node_ix];
                 let pkg_manifest = &manifest_map[&pkg.id()];
-                let program_type = pkg_manifest
-                    .program_type();
+                let program_type = pkg_manifest.program_type();
                 // Since parser cannot recover for program type detection, for the scenerios that
                 // parser fails to parse the code, program type detection is not possible. So in
                 // failing to parse cases we should try to build at least until
@@ -442,15 +441,13 @@ impl MemberFilter {
                 // 2. If we do not try to build there is no way users can know there is a code
                 //    piece failing to be parsed in their workspace.
                 match program_type {
-                    Ok(program_type) => {
-                        match program_type {
+                    Ok(program_type) => match program_type {
                         TreeType::Predicate => self.build_predicates,
                         TreeType::Script => self.build_scripts,
                         TreeType::Contract => self.build_contracts,
                         TreeType::Library { .. } => self.build_libraries,
-                        }
                     },
-                    Err(_) => true 
+                    Err(_) => true,
                 }
             })
             .collect()
