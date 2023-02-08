@@ -18,7 +18,7 @@ pub trait GetDeclIdent {
 }
 
 pub trait GetDeclId {
-    fn get_decl_id(&self) -> Option<DeclRef>;
+    fn get_decl_id(&self) -> Option<DeclId>;
 }
 
 #[derive(Clone, Debug)]

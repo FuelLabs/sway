@@ -1,24 +1,21 @@
-use sway_types::{Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::ty,
-    type_system::{SubstTypes, TypeSubstMap},
-    ReplaceSelfType, TypeId,
-};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 use super::{DeclEngine, DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
 #[derive(Debug)]
-pub struct DeclRef {
+pub struct DeclId {
+    pub name: Ident,
     id: usize,
     decl_span: Span,
 }
 
-impl Clone for DeclRef {
-    fn clone(&self) -> DeclRef {
-        DeclRef {
+impl Clone for DeclId {
+    fn clone(&self) -> DeclId {
+        DeclId {
+            name: self.name.clone(),
             id: self.id,
             decl_span: self.decl_span.clone(),
         }
@@ -28,8 +25,8 @@ impl Clone for DeclRef {
 // NOTE: Hash and PartialEq must uphold the invariant:
 // k1 == k2 -> hash(k1) == hash(k2)
 // https://doc.rust-lang.org/std/collections/struct.HashMap.html
-impl EqWithEngines for DeclRef {}
-impl PartialEqWithEngines for DeclRef {
+impl EqWithEngines for DeclId {}
+impl PartialEqWithEngines for DeclId {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let decl_engine = engines.de();
         let left = decl_engine.get(self.clone());
@@ -38,7 +35,7 @@ impl PartialEqWithEngines for DeclRef {
     }
 }
 
-impl std::ops::Deref for DeclRef {
+impl std::ops::Deref for DeclId {
     type Target = usize;
     fn deref(&self) -> &Self::Target {
         &self.id
@@ -46,19 +43,19 @@ impl std::ops::Deref for DeclRef {
 }
 
 #[allow(clippy::from_over_into)]
-impl Into<usize> for DeclRef {
+impl Into<usize> for DeclId {
     fn into(self) -> usize {
         self.id
     }
 }
 
-impl Spanned for DeclRef {
+impl Spanned for DeclId {
     fn span(&self) -> Span {
         self.decl_span.clone()
     }
 }
 
-impl SubstTypes for DeclRef {
+impl SubstTypes for DeclId {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
@@ -67,7 +64,7 @@ impl SubstTypes for DeclRef {
     }
 }
 
-impl ReplaceSelfType for DeclRef {
+impl ReplaceSelfType for DeclId {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
@@ -76,7 +73,7 @@ impl ReplaceSelfType for DeclRef {
     }
 }
 
-impl ReplaceDecls for DeclRef {
+impl ReplaceDecls for DeclId {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_id) = decl_mapping.find_match(self) {
@@ -93,7 +90,7 @@ impl ReplaceDecls for DeclRef {
     }
 }
 
-impl ReplaceFunctionImplementingType for DeclRef {
+impl ReplaceFunctionImplementingType for DeclId {
     fn replace_implementing_type(
         &mut self,
         engines: Engines<'_>,
@@ -106,12 +103,16 @@ impl ReplaceFunctionImplementingType for DeclRef {
     }
 }
 
-impl DeclRef {
-    pub(crate) fn new(id: usize, decl_span: Span) -> DeclRef {
-        DeclRef { id, decl_span }
+impl DeclId {
+    pub(crate) fn new(name: Ident, id: usize, decl_span: Span) -> DeclId {
+        DeclId {
+            name,
+            id,
+            decl_span,
+        }
     }
 
-    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: DeclRef) -> DeclRef {
+    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: DeclId) -> DeclId {
         decl_engine.register_parent(&self, parent);
         self
     }
@@ -124,12 +125,12 @@ impl DeclRef {
         &self,
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
-    ) -> DeclRef {
+    ) -> DeclId {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.subst(type_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.decl_span.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -137,12 +138,12 @@ impl DeclRef {
         &self,
         engines: Engines<'_>,
         self_type: TypeId,
-    ) -> DeclRef {
+    ) -> DeclId {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         decl_engine
-            .insert_wrapper(decl, self.decl_span.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -150,12 +151,12 @@ impl DeclRef {
         &self,
         decl_mapping: &DeclMapping,
         engines: Engines<'_>,
-    ) -> DeclRef {
+    ) -> DeclId {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.replace_decls(decl_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.decl_span.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 }

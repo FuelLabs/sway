@@ -569,13 +569,13 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    trait_interface_surface: &[DeclRef],
-    trait_methods: &[DeclRef],
+    trait_interface_surface: &[DeclId],
+    trait_methods: &[DeclId],
     impl_methods: &[FunctionDeclaration],
     trait_name: &CallPath,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<DeclRef>> {
+) -> CompileResult<Vec<DeclId>> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -634,11 +634,11 @@ fn type_check_trait_implementation(
 
     // This map keeps track of the stub declaration id's of the trait
     // definition.
-    let mut stub_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
+    let mut stub_method_ids: MethodMap = BTreeMap::new();
 
     // This map keeps track of the new declaration ids of the implemented
     // interface surface.
-    let mut impld_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
+    let mut impld_method_ids: MethodMap = BTreeMap::new();
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
@@ -681,7 +681,7 @@ fn type_check_trait_implementation(
         impld_method_ids.insert(name, decl_id);
     }
 
-    let mut all_method_ids: Vec<DeclRef> = impld_method_ids.values().cloned().collect();
+    let mut all_method_ids: Vec<DeclId> = impld_method_ids.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -744,7 +744,7 @@ fn type_check_impl_method(
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
-    impld_method_ids: &BTreeMap<Ident, DeclRef>,
+    impld_method_ids: &MethodMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
 ) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
@@ -1071,14 +1071,14 @@ fn check_for_unconstrained_type_parameters(
 fn handle_supertraits(
     mut ctx: TypeCheckContext,
     supertraits: &[Supertrait],
-) -> CompileResult<(BTreeMap<Ident, DeclRef>, BTreeMap<Ident, DeclRef>)> {
+) -> CompileResult<(MethodMap, MethodMap)> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
     let decl_engine = ctx.decl_engine;
 
-    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
+    let mut interface_surface_methods_ids: MethodMap = BTreeMap::new();
+    let mut impld_method_ids: MethodMap = BTreeMap::new();
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {

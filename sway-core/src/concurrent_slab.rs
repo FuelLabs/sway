@@ -107,7 +107,7 @@ impl ConcurrentSlab<TypeInfo> {
 }
 
 impl ConcurrentSlab<DeclWrapper> {
-    pub fn replace(&self, index: DeclRef, new_value: DeclWrapper) -> Option<DeclWrapper> {
+    pub fn replace(&self, index: DeclId, new_value: DeclWrapper) -> Option<DeclWrapper> {
         let mut inner = self.inner.write().unwrap();
         inner[*index] = new_value;
         None

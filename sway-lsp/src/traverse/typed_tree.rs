@@ -8,7 +8,7 @@ use crate::core::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
-    decl_engine::DeclRef,
+    decl_engine::DeclId,
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
@@ -819,7 +819,7 @@ impl<'a> TypedTree<'a> {
         &self,
         call_path: &CallPath,
         expression: &ty::TyExpression,
-        function_decl_id: Option<&DeclRef>,
+        function_decl_id: Option<&DeclId>,
         namespace: &namespace::Module,
     ) {
         let decl_engine = self.engines.de();

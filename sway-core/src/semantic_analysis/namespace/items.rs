@@ -37,7 +37,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclRef>,
+    pub(crate) declared_storage: Option<DeclId>,
 }
 
 impl Items {
@@ -76,7 +76,7 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclRef) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_id: DeclId) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
@@ -166,7 +166,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<DeclId> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }

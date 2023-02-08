@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclRef, ReplaceDecls},
+    decl_engine::{DeclId, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,7 +11,7 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl_id: DeclRef,
+    function_decl_id: DeclId,
     call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,

@@ -1,7 +1,7 @@
 use std::fmt;
 
 use sway_error::error::CompileError;
-use sway_types::{Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -125,66 +125,86 @@ impl ReplaceFunctionImplementingType for DeclWrapper {
     }
 }
 
-impl From<ty::TyFunctionDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyFunctionDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyFunctionDeclaration) -> Self {
         let span = value.span();
-        (DeclWrapper::Function(value), span)
+        (value.name.clone(), DeclWrapper::Function(value), span)
     }
 }
 
-impl From<ty::TyTraitDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyTraitDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyTraitDeclaration) -> Self {
         let span = value.name.span();
-        (DeclWrapper::Trait(value), span)
+        (value.name.clone(), DeclWrapper::Trait(value), span)
     }
 }
 
-impl From<ty::TyTraitFn> for (DeclWrapper, Span) {
+impl From<ty::TyTraitFn> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyTraitFn) -> Self {
         let span = value.name.span();
-        (DeclWrapper::TraitFn(value), span)
+        (value.name.clone(), DeclWrapper::TraitFn(value), span)
     }
 }
 
-impl From<ty::TyImplTrait> for (DeclWrapper, Span) {
+impl From<ty::TyImplTrait> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyImplTrait) -> Self {
         let span = value.span.clone();
-        (DeclWrapper::ImplTrait(value), span)
+        (
+            value.trait_name.suffix.clone(),
+            DeclWrapper::ImplTrait(value),
+            span,
+        )
     }
 }
 
-impl From<ty::TyStructDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyStructDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyStructDeclaration) -> Self {
         let span = value.span();
-        (DeclWrapper::Struct(value), span)
+        (
+            value.call_path.suffix.clone(),
+            DeclWrapper::Struct(value),
+            span,
+        )
     }
 }
 
-impl From<ty::TyStorageDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyStorageDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyStorageDeclaration) -> Self {
         let span = value.span();
-        (DeclWrapper::Storage(value), span)
+        (
+            Ident::new_with_override("storage", span.clone()),
+            DeclWrapper::Storage(value),
+            span,
+        )
     }
 }
 
-impl From<ty::TyAbiDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyAbiDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyAbiDeclaration) -> Self {
         let span = value.span.clone();
-        (DeclWrapper::Abi(value), span)
+        (value.name.clone(), DeclWrapper::Abi(value), span)
     }
 }
 
-impl From<ty::TyConstantDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyConstantDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyConstantDeclaration) -> Self {
         let span = value.name.span();
-        (DeclWrapper::Constant(Box::new(value)), span)
+        (
+            value.name.clone(),
+            DeclWrapper::Constant(Box::new(value)),
+            span,
+        )
     }
 }
 
-impl From<ty::TyEnumDeclaration> for (DeclWrapper, Span) {
+impl From<ty::TyEnumDeclaration> for (Ident, DeclWrapper, Span) {
     fn from(value: ty::TyEnumDeclaration) -> Self {
         let span = value.span();
-        (DeclWrapper::Enum(value), span)
+        (
+            value.call_path.suffix.clone(),
+            DeclWrapper::Enum(value),
+            span,
+        )
     }
 }
 

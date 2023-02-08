@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::DeclId,
     engine_threading::*,
     language::{parsed, Visibility},
     transform,
@@ -12,8 +12,8 @@ use crate::{
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub interface_surface: Vec<DeclRef>,
-    pub methods: Vec<DeclRef>,
+    pub interface_surface: Vec<DeclId>,
+    pub methods: Vec<DeclId>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,

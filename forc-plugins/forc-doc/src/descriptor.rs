@@ -13,7 +13,7 @@ use sway_types::Spanned;
 trait RequiredMethods {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>>;
 }
-impl RequiredMethods for Vec<sway_core::decl_engine::DeclRef> {
+impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
         self.iter()
             .map(|decl_id| {

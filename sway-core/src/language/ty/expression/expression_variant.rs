@@ -19,7 +19,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclRef,
+        function_decl_id: DeclId,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,

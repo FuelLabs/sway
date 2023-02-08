@@ -431,7 +431,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclRef],
+    methods: &[DeclId],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -755,7 +755,7 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
 
 fn get_trait_fn_node_index<'a>(
     engines: Engines<'_>,
-    function_decl_id: DeclRef,
+    function_decl_id: DeclId,
     expression_span: Span,
     graph: &'a ControlFlowGraph,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {
@@ -1600,71 +1600,41 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_function(decl_id.clone(), span) {
-                Ok(ty::TyFunctionDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadFunctionDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadFunctionDeclaration,
+        },
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_struct(decl_id.clone(), span) {
-                Ok(ty::TyStructDeclaration { call_path, .. }) => call_path.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadStructDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadStructDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
-                Ok(ty::TyEnumDeclaration { call_path, .. }) => call_path.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadEnumDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadEnumDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_trait(decl_id.clone(), span) {
-                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadTrait,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadTrait,
+        },
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_constant(decl_id.clone(), span) {
-                Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
             span,

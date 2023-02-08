@@ -3,7 +3,7 @@
 
 use crate::{
     control_flow_analysis::*,
-    decl_engine::DeclRef,
+    decl_engine::DeclId,
     language::{ty, CallPath},
     type_system::*,
     Engines,
@@ -231,7 +231,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclRef],
+    methods: &[DeclId],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
