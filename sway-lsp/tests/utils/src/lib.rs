@@ -11,7 +11,7 @@ use std::{
 use tokio::task::JoinHandle;
 use tower_lsp::{lsp_types::Url, ClientSocket};
 
-pub(crate) fn load_sway_example(src_path: PathBuf) -> (Url, String) {
+pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     let mut file = fs::File::open(&src_path).unwrap();
     let mut sway_program = String::new();
     file.read_to_string(&mut sway_program).unwrap();
@@ -21,59 +21,59 @@ pub(crate) fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     (uri, sway_program)
 }
 
-pub(crate) fn sway_workspace_dir() -> PathBuf {
+pub fn sway_workspace_dir() -> PathBuf {
     env::current_dir().unwrap().parent().unwrap().to_path_buf()
 }
 
-pub(crate) fn e2e_language_dir() -> PathBuf {
+pub fn e2e_language_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/language")
 }
 
-pub(crate) fn e2e_unit_dir() -> PathBuf {
+pub fn e2e_unit_dir() -> PathBuf {
     PathBuf::from("test/src/e2e_vm_tests/test_programs/should_pass/unit_tests")
 }
 
-pub(crate) fn e2e_test_dir() -> PathBuf {
+pub fn e2e_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
         .join("struct_field_access")
 }
 
-pub(crate) fn runnables_test_dir() -> PathBuf {
+pub fn runnables_test_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_unit_dir())
         .join("script_multi_test")
 }
 
-pub(crate) fn test_fixtures_dir() -> PathBuf {
-    sway_workspace_dir().join("sway-lsp/test/fixtures")
+pub fn test_fixtures_dir() -> PathBuf {
+    sway_workspace_dir().join("sway-lsp/tests/fixtures")
 }
 
-pub(crate) fn doc_comments_dir() -> PathBuf {
+pub fn doc_comments_dir() -> PathBuf {
     sway_workspace_dir()
         .join(e2e_language_dir())
         .join("doc_comments")
 }
 
-pub(crate) fn get_absolute_path(path: &str) -> String {
+pub fn get_absolute_path(path: &str) -> String {
     sway_workspace_dir().join(path).to_str().unwrap().into()
 }
 
-pub(crate) fn get_url(absolute_path: &str) -> Url {
+pub fn get_url(absolute_path: &str) -> Url {
     Url::parse(&format!("file://{}", &absolute_path)).expect("expected URL")
 }
 
-pub(crate) fn get_fixture(path: PathBuf) -> Value {
+pub fn get_fixture(path: PathBuf) -> Value {
     let text = std::fs::read_to_string(path).expect("Failed to read file");
     serde_json::from_str::<Value>(&text).expect("Failed to parse JSON")
 }
 
-pub(crate) fn sway_example_dir() -> PathBuf {
+pub fn sway_example_dir() -> PathBuf {
     sway_workspace_dir().join("examples/storage_variables")
 }
 
 // Check if the given directory contains `Forc.toml` at its root.
-pub(crate) fn dir_contains_forc_manifest(path: &Path) -> bool {
+pub fn dir_contains_forc_manifest(path: &Path) -> bool {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             if entry.path().file_name().and_then(|s| s.to_str()) == Some("Forc.toml") {
@@ -84,7 +84,7 @@ pub(crate) fn dir_contains_forc_manifest(path: &Path) -> bool {
     false
 }
 
-pub(crate) async fn assert_server_requests(
+pub async fn assert_server_requests(
     socket: ClientSocket,
     expected_requests: Vec<Value>,
     timeout: Option<Duration>,

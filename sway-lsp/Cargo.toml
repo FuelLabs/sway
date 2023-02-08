@@ -42,3 +42,4 @@ async-trait = "0.1"
 dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 tower = { version = "0.4.12", default-features = false, features = ["util"] }
+sway-lsp-test-utils = { path = "tests/utils" }
