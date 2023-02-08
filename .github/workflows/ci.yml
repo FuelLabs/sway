@@ -199,6 +199,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Check Clippy Linter
         run: cargo clippy --all-features --all-targets -- -D warnings
@@ -227,6 +228,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
       - name: Check Formatting
         run: cargo fmt --all -- --check
 
