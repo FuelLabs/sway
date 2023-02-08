@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 
 #[macro_use]
@@ -7,11 +6,10 @@ mod macros;
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
-    let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
+    let first_formatted = Formatter::format(formatter, unformatted, None).unwrap();
     assert_eq_pretty!(first_formatted, expected);
 
-    let second_formatted =
-        Formatter::format(formatter, Arc::from(first_formatted.clone()), None).unwrap();
+    let second_formatted = Formatter::format(formatter, &first_formatted, None).unwrap();
     assert_eq_pretty!(second_formatted, first_formatted);
 }
 
@@ -640,6 +638,14 @@ abi AnotherAbi {
     fn read(key: u64);
 }
 
+abi CommentsInBetween {
+    fn foo();
+    // This should not collapse below
+
+    // this is a comment
+    fn bar();
+}
+
 // This is another abi
 abi Empty {
     // Empty abi
@@ -662,6 +668,14 @@ abi AnotherAbi {
     fn update_map(key: u64, value: u64);
     // this is some other comment
     fn read(key: u64);
+}
+
+abi CommentsInBetween {
+    fn foo();
+    // This should not collapse below
+
+    // this is a comment
+    fn bar();
 }
 
 // This is another abi
