@@ -29,7 +29,7 @@ async fn stores_byte() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    let _ = instance.methods().store_bytes(input.clone()).call().await;
+    instance.methods().store_bytes(input.clone()).call().await.unwrap();
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
 
