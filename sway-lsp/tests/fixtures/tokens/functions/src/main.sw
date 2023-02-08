@@ -10,7 +10,7 @@ fn foo() -> Point {
     Point { x: 1, y: 2 }
 }
 
-/// A function declaration with struct as parameters
+/// A function declaration with struct as a function parameter
 pub fn bar(p: Point) -> Point {
     Point { x: p.x, y: p.y }
 }
@@ -19,4 +19,18 @@ pub fn bar(p: Point) -> Point {
 fn test() {
     let p = foo();
     let p2 = bar(p);
+}
+
+pub enum Rezult<T, E> {
+    Ok: T,
+    Err: E,
+}
+
+pub enum DumbError {
+    Error: (),
+}
+
+// Function with generic types
+pub fn func(r: Rezult<u8, DumbError>) -> Rezult<u8, DumbError> {
+    Rezult::Ok(1u8)
 }
