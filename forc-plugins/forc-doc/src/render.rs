@@ -1,5 +1,5 @@
 use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::{collections::BTreeMap, fmt::Write, sync::Arc};
@@ -9,7 +9,7 @@ use sway_core::{
         TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
     },
     transform::{AttributeKind, AttributesMap},
-    TypeEngine,
+    TypeEngine, TypeInfo,
 };
 use sway_lsp::utils::markdown::format_docs;
 use sway_types::BaseIdent;
@@ -383,7 +383,7 @@ impl Renderable for ItemBody {
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_name();
         let sidebar = sidebar.render(type_engine.clone())?;
-        let item_context = (item_context.context.is_some())
+        let item_context = (item_context.context_opt.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(type_engine) });
 
         Ok(box_html! {
@@ -466,6 +466,16 @@ pub(crate) enum ContextType {
     /// at a later date if need be
     RequiredMethods(Vec<TyTraitFn>),
 }
+impl ContextType {
+    fn as_block_title(&self) -> BlockTitle {
+        match self {
+            ContextType::StructFields(_) => BlockTitle::Fields,
+            ContextType::StorageFields(_) => BlockTitle::Fields,
+            ContextType::EnumVariants(_) => BlockTitle::Variants,
+            ContextType::RequiredMethods(_) => BlockTitle::RequiredMethods,
+        }
+    }
+}
 #[derive(Clone)]
 pub(crate) struct Context {
     module_info: ModuleInfo,
@@ -479,16 +489,177 @@ impl Context {
         }
     }
 }
+impl Renderable for Context {
+    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+        let mut rendered_list: Vec<String> = Vec::new();
+        match self.context_type {
+            ContextType::StructFields(fields) => {
+                for field in fields {
+                    let struct_field_id = format!("structfield.{}", field.name.as_str());
+                    rendered_list.push(box_html! {
+                        span(id=&struct_field_id, class="structfield small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
+                            code {
+                                : format!("{}: ", field.name.as_str());
+                                // TODO: Add links to types based on visibility
+                                : field.type_span.as_str();
+                            }
+                        }
+                        @ if !field.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(field.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::StorageFields(fields) => {
+                for field in fields {
+                    let storage_field_id = format!("storagefield.{}", field.name.as_str());
+                    rendered_list.push(box_html! {
+                        span(id=&storage_field_id, class="storagefield small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
+                            code {
+                                : format!("{}: ", field.name.as_str());
+                                // TODO: Add links to types based on visibility
+                                : field.type_span.as_str();
+                            }
+                        }
+                        @ if !field.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(field.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::EnumVariants(variants) => {
+                for variant in variants {
+                    let enum_variant_id = format!("variant.{}", variant.name.as_str());
+                    rendered_list.push(box_html! {
+                        h3(id=&enum_variant_id, class="variant small-section-header") {
+                            a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
+                            code {
+                                : format!("{}: ", variant.name.as_str());
+                                : variant.type_span.as_str();
+                            }
+                        }
+                        @ if !variant.attributes.is_empty() {
+                            div(class="docblock") {
+                                : Raw(variant.attributes.to_html_string());
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+            ContextType::RequiredMethods(methods) => {
+                for method in methods {
+                    // there is likely a better way we can do this while simultaneously storing the
+                    // string slices we need like "&mut "
+                    let mut fn_sig = format!("fn {}(", method.name.as_str());
+                    for param in &method.parameters {
+                        let mut param_str = String::new();
+                        if param.is_reference {
+                            write!(param_str, "&")?;
+                        }
+                        if param.is_mutable {
+                            write!(param_str, "mut ")?;
+                        }
+                        if param.is_self() {
+                            write!(param_str, "self,")?;
+                        } else {
+                            write!(
+                                fn_sig,
+                                "{} {},",
+                                param.name.as_str(),
+                                param.type_span.as_str()
+                            )?;
+                        }
+                    }
+                    write!(fn_sig, ") -> {}", method.return_type_span.as_str())?;
+                    let multiline = fn_sig.chars().count() >= 60;
+
+                    let method_id = format!("tymethod.{}", method.name.as_str());
+                    rendered_list.push(box_html! {
+                        div(class="methods") {
+                            div(id=&method_id, class="method has-srclink") {
+                                h4(class="code-header") {
+                                    : "fn ";
+                                    a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                                        : method.name.as_str();
+                                    }
+                                    : "(";
+                                    @ if multiline {
+                                        @ for param in &method.parameters {
+                                            br;
+                                            : "    ";
+                                            @ if param.is_reference {
+                                                : "&";
+                                            }
+                                            @ if param.is_mutable {
+                                                : "mut ";
+                                            }
+                                            @ if param.is_self() {
+                                                : "self,"
+                                            } else {
+                                                : param.name.as_str();
+                                                : ": ";
+                                                : param.type_span.as_str();
+                                                : ","
+                                            }
+                                        }
+                                        br;
+                                        : ")";
+                                    } else {
+                                        @ for param in &method.parameters {
+                                            @ if param.is_reference {
+                                                : "&";
+                                            }
+                                            @ if param.is_mutable {
+                                                : "mut ";
+                                            }
+                                            @ if param.is_self() {
+                                                : "self"
+                                            } else {
+                                                : param.name.as_str();
+                                                : ": ";
+                                                : param.type_span.as_str();
+                                            }
+                                            @ if param.name.as_str()
+                                                != method.parameters.last()
+                                                .expect("no last element in trait method parameters list")
+                                                .name.as_str() {
+                                                : ", ";
+                                            }
+                                        }
+                                        : ") -> ";
+                                    }
+                                    : method.return_type_span.as_str();
+                                }
+                            }
+                        }
+                    }.into_string()?);
+                }
+            }
+        };
+        Ok(box_html! {
+            @ for item in rendered_list {
+                : item;
+            }
+        })
+    }
+}
 #[derive(Clone)]
+/// The context of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
-    pub(crate) context: Option<Context>,
+    pub(crate) context_opt: Option<Context>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
 impl ItemContext {
     fn to_doclinks(&self) -> DocLinks {
         let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
-        if let Some(context) = &self.context {
+        if let Some(context) = &self.context_opt {
             match context.context_type.clone() {
                 ContextType::StructFields(fields) => {
                     let doc_links = fields
@@ -560,269 +731,98 @@ impl ItemContext {
 }
 impl Renderable for ItemContext {
     fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        if let Some(context) = self.context {
-            match context.context_type {
-                ContextType::StructFields(fields) => {
-                    Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
-                }
-                ContextType::StorageFields(fields) => {
-                    Ok(context_section(type_engine, fields, BlockTitle::Fields)?)
-                }
-                ContextType::EnumVariants(variants) => Ok(context_section(
-                    type_engine,
-                    variants,
-                    BlockTitle::Variants,
-                )?),
-                ContextType::RequiredMethods(methods) => Ok(context_section(
-                    type_engine,
-                    methods,
-                    BlockTitle::RequiredMethods,
-                )?),
+        let (title, rendered_list) = match self.context_opt {
+            Some(context) => {
+                let title = context.context_type.as_block_title();
+                let rendered_list = context.render(type_engine)?;
+                Ok((title, rendered_list))
             }
-        } else {
-            Ok(box_html! {})
-        }
+            None => Err(anyhow!(
+                "Safeguard against render call on empty context failed."
+            )),
+        }?;
+        let lct = title.html_title_string();
+        Ok(box_html! {
+            h2(id=&lct, class=format!("{} small-section-header", &lct)) {
+                : title.as_str();
+                a(class="anchor", href=format!("{IDENTITY}{lct}"));
+            }
+            : rendered_list;
+        })
     }
 }
-/// Dynamically creates the context section of an item.
-fn context_section<'title, S: Renderable + 'static>(
-    type_engine: Arc<TypeEngine>,
-    list: Vec<S>,
-    title: BlockTitle,
-) -> Result<Box<dyn RenderBox + 'title>> {
-    let lct = title.html_title_string();
-    let mut rendered_list: Vec<_> = Vec::new();
-    for item in list {
-        rendered_list.push(item.render(type_engine.clone())?)
-    }
-    Ok(box_html! {
-        h2(id=&lct, class=format!("{} small-section-header", &lct)) {
-            : title.as_str();
-            a(class="anchor", href=format!("{IDENTITY}{lct}"));
-        }
-        @ for item in rendered_list {
-            // TODO: Check for visibility of the field itself
-            : item;
-        }
-    })
-}
-/// Type anchors can be very complex, this should handle instances of nested types that
-/// should have links eg. (here I'm using [] to represent types with links)
+/// Handles types & nested types that should have links
+/// eg. (`[]` represent types with links).
 ///
 /// ```sway
 /// struct Foo {
 ///     foo: ([Foo], (u32, [Foo], ([Foo], [Foo])))
 /// }
 /// ```
-// fn render_type_anchor(
-//     type_info: TypeInfo,
-//     type_engine: Arc<TypeEngine>,
-// ) -> Option<Box<dyn RenderBox>> {
-//     match type_info {
-//         TypeInfo::Array(ty_arg, len) => Some(box_html! {
-//             : "[";
-//             : render_type_anchor(type_engine.get(ty_arg.type_id), type_engine).unwrap();
-//             : format!("; {}]", len.val());
-//         }),
-//         TypeInfo::Enum {
-//             call_path,
-//             type_parameters,
-//             variant_types,
-//         } => {
-//             let module_info = ModuleInfo::from_vec(
-//                 call_path
-//                     .prefixes
-//                     .iter()
-//                     .map(|p| p.as_str().to_string())
-//                     .collect::<Vec<String>>(),
-//             );
-//             Some(box_html! {
-//                 a(class="enum", href=module_info.) {
-//                     : call_path.suffix.as_str();
-//                 }
-//             })
-//         }
-//         TypeInfo::Struct {
-//             call_path,
-//             type_parameters,
-//             fields,
-//         } => {}
-//         TypeInfo::Tuple(inner) => {}
-//         TypeInfo::UnknownGeneric {
-//             name,
-//             trait_constraints: _,
-//         } => {}
-//         TypeInfo::Str(len) => {}
-//         TypeInfo::UnsignedInteger(int_bits) => {}
-//         TypeInfo::Boolean => {}
-//         TypeInfo::ContractCaller { abi_name, address } => {}
-//         TypeInfo::Custom {
-//             name,
-//             type_arguments,
-//         } => {}
-//         TypeInfo::SelfType => {}
-//         TypeInfo::B256 => {}
-//         _ => None,
-//     }
-// }
-// fn is_anchorable(type_info: TypeInfo) -> bool {
-//     match type_info {
-//         TypeInfo::Array(..)
-//         | TypeInfo::Enum { .. }
-//         | TypeInfo::Struct { .. }
-//         | TypeInfo::Tuple(_) => true,
-//         _ => false,
-//     }
-// }
-impl Renderable for TyStructField {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let struct_field_id = format!("structfield.{}", self.name.as_str());
-        Ok(box_html! {
-            span(id=&struct_field_id, class="structfield small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
-                }
-            }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
-        })
-    }
-}
-impl Renderable for TyStorageField {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let storage_field_id = format!("storagefield.{}", self.name.as_str());
-        Ok(box_html! {
-            span(id=&storage_field_id, class="storagefield small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
-                }
-            }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
-        })
-    }
-}
-
-impl Renderable for TyEnumVariant {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let enum_variant_id = format!("variant.{}", self.name.as_str());
-        Ok(box_html! {
-            h3(id=&enum_variant_id, class="variant small-section-header") {
-                a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
-                code {
-                    : format!("{}: ", self.name.as_str());
-                    : self.type_span.as_str();
-                }
-            }
-            @ if !self.attributes.is_empty() {
-                div(class="docblock") {
-                    : Raw(self.attributes.to_html_string());
-                }
-            }
-        })
-    }
-}
-impl Renderable for TyTraitFn {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        // there is likely a better way we can do this while simultaneously storing the
-        // string slices we need like "&mut "
-        let mut fn_sig = format!("fn {}(", self.name.as_str());
-        for param in &self.parameters {
-            let mut param_str = String::new();
-            if param.is_reference {
-                write!(param_str, "&")?;
-            }
-            if param.is_mutable {
-                write!(param_str, "mut ")?;
-            }
-            if param.is_self() {
-                write!(param_str, "self,")?;
-            } else {
-                write!(
-                    fn_sig,
-                    "{} {},",
-                    param.name.as_str(),
-                    param.type_span.as_str()
-                )?;
-            }
+fn render_type_anchor(
+    type_info: TypeInfo,
+    type_engine: Arc<TypeEngine>,
+    current_module_info: &ModuleInfo,
+) -> Result<Box<dyn RenderBox>> {
+    match type_info {
+        TypeInfo::Array(ty_arg, len) => {
+            let inner = render_type_anchor(
+                type_engine.get(ty_arg.type_id),
+                type_engine,
+                current_module_info,
+            )?;
+            Ok(box_html! {
+                : "[";
+                : inner;
+                : format!("; {}]", len.val());
+            })
         }
-        write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
-        let multiline = fn_sig.chars().count() >= 60;
-
-        let method_id = format!("tymethod.{}", self.name.as_str());
-        Ok(box_html! {
-            div(class="methods") {
-                div(id=&method_id, class="method has-srclink") {
-                    h4(class="code-header") {
-                        : "fn ";
-                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
-                            : self.name.as_str();
-                        }
-                        : "(";
-                        @ if multiline {
-                            @ for param in &self.parameters {
-                                br;
-                                : "    ";
-                                @ if param.is_reference {
-                                    : "&";
-                                }
-                                @ if param.is_mutable {
-                                    : "mut ";
-                                }
-                                @ if param.is_self() {
-                                    : "self,"
-                                } else {
-                                    : param.name.as_str();
-                                    : ": ";
-                                    : param.type_span.as_str();
-                                    : ","
-                                }
-                            }
-                            br;
-                            : ")";
-                        } else {
-                            @ for param in &self.parameters {
-                                @ if param.is_reference {
-                                    : "&";
-                                }
-                                @ if param.is_mutable {
-                                    : "mut ";
-                                }
-                                @ if param.is_self() {
-                                    : "self"
-                                } else {
-                                    : param.name.as_str();
-                                    : ": ";
-                                    : param.type_span.as_str();
-                                }
-                                @ if param.name.as_str()
-                                    != self.parameters.last()
-                                    .expect("no last element in trait method parameters list")
-                                    .name.as_str() {
-                                    : ", ";
-                                }
-                            }
-                            : ") -> ";
-                        }
-                        : self.return_type_span.as_str();
-                    }
+        TypeInfo::Tuple(ty_args) => {}
+        TypeInfo::Enum { call_path, .. } => {
+            let module_info = ModuleInfo::from_vec(
+                call_path
+                    .prefixes
+                    .iter()
+                    .map(|p| p.as_str().to_string())
+                    .collect::<Vec<String>>(),
+            );
+            let file_name = format!("enum.{}.html", call_path.suffix.as_str());
+            let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+            Ok(box_html! {
+                a(class="enum", href=href) {
+                    : call_path.suffix.as_str();
                 }
-            }
-        })
+            })
+        }
+        TypeInfo::Struct { call_path, .. } => {
+            let module_info = ModuleInfo::from_vec(
+                call_path
+                    .prefixes
+                    .iter()
+                    .map(|p| p.as_str().to_string())
+                    .collect::<Vec<String>>(),
+            );
+            let file_name = format!("struct.{}.html", call_path.suffix.as_str());
+            let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+            Ok(box_html! {
+                a(class="struct", href=href) {
+                    : call_path.suffix.as_str();
+                }
+            })
+        }
+
+        TypeInfo::UnknownGeneric { name, .. } => {}
+        TypeInfo::Str(len) => {}
+        TypeInfo::UnsignedInteger(int_bits) => {}
+        TypeInfo::Boolean => {}
+        TypeInfo::ContractCaller { abi_name, address } => {}
+        TypeInfo::Custom { name, .. } => {}
+        TypeInfo::SelfType => {}
+        TypeInfo::B256 => {}
+        _ => Err(anyhow!("Undetermined or unusable TypeInfo")),
     }
 }
+
 /// Used for creating links between docs.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct DocLink {

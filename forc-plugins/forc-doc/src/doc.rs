@@ -83,7 +83,6 @@ impl Document {
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        type_engine: &TypeEngine,
         decl_engine: &DeclEngine,
         project_name: &str,
         typed_program: &TyProgram,
@@ -237,7 +236,7 @@ impl ModuleInfo {
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
     }
     /// Creates a String version of the path to an item,
-    /// used in navigation between pages.
+    /// used in navigation between pages. The location given is the break point.
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
     pub(crate) fn file_path_at_location(&self, file_name: &str, location: &str) -> Result<String> {
@@ -255,21 +254,38 @@ impl ModuleInfo {
             .map(|file_path_str| file_path_str.to_string())
             .ok_or_else(|| anyhow::anyhow!("There will always be at least the item name"))
     }
-    /// Takes the current `module_info` to determine how many directories to go back to make
-    /// the next file path valid, and returns that path as a string.
+    /// Compares the current `module_info` to the next `module_info` to determine how many directories to go back to make
+    /// the next file path valid, and returns that path as a `String`.
     ///
     /// Example:
     /// ```
-    /// current_location = "project_root/module/submodule/struct.Name.html";
-    /// next_location = "module/other_submodule/enum.Name.html";
-    /// result = "../../other_submodule/enum.Name.html";
+    /// // number of dirs:               [match][    2    ][    1    ]
+    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// next_location    =              "module/other_submodule/enum.Name.html";
+    /// result           =               "../../other_submodule/enum.Name.html";
     /// ```
+    /// In this case the first module to match is "module", so we have no need to go back further than that.
     pub(crate) fn file_path_from_location(
         &self,
         file_name: &str,
-        module_info: &ModuleInfo,
+        current_module_info: &ModuleInfo,
     ) -> Result<String> {
-        todo!("add logic")
+        let mut mid = 0; // the index to split the module_info from call_path at
+        let mut offset = 0; // the number of directories to go back
+        let next_location_iter = self.0.clone().iter().rev().enumerate().peekable();
+        while let Some((index, prefix)) = next_location_iter.peek() {
+            for (count, module) in current_module_info.0.iter().rev().enumerate() {
+                if module == *prefix {
+                    offset == count + 1;
+                    mid == self.0.len() - index;
+                    break;
+                }
+            }
+            next_location_iter.next();
+        }
+        let new_path = (0..offset).map(|_| "../").collect::<String>();
+        new_path.push_str(self.0.split_at(mid).1.join("/").as_str());
+        Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
     ///

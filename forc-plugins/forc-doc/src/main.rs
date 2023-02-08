@@ -77,7 +77,6 @@ pub fn main() -> Result<()> {
         _ => bail!("CompileResult returned None"),
     };
     let raw_docs: Documentation = Document::from_ty_program(
-        &type_engine,
         &decl_engine,
         project_name,
         &typed_program,
