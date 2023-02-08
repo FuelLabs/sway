@@ -4788,7 +4788,6 @@ name = "sway-lsp-test-utils"
 version = "0.1.0"
 dependencies = [
  "assert-json-diff",
- "dirs 4.0.0",
  "futures",
  "serde",
  "serde_json",
