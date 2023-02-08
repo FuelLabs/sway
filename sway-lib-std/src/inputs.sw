@@ -51,13 +51,13 @@ pub const GTF_INPUT_MESSAGE_NONCE = 0x118;
 // https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
 // currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
 // eventually be updated.
-pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x11A;
-pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11B;
-pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11C;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11D;
-pub const GTF_INPUT_MESSAGE_DATA = 0x11E;
-pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11F;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x120;
+pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
+pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
+pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
+pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
+pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
 
 pub enum Input {
     Coin: (),

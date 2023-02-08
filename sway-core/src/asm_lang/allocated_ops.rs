@@ -15,7 +15,7 @@ use crate::{
         compiler_constants::DATA_SECTION_REGISTER,
         data_section::{DataId, DataSection},
     },
-    fuel_prelude::fuel_asm::{self, Opcode as VmOp},
+    fuel_prelude::fuel_asm::{self, op},
 };
 use either::Either;
 use std::fmt::{self, Write};
@@ -43,10 +43,10 @@ impl fmt::Display for AllocatedRegister {
 }
 
 impl AllocatedRegister {
-    fn to_register_id(&self) -> fuel_asm::RegisterId {
+    fn to_reg_id(&self) -> fuel_asm::RegId {
         match self {
-            AllocatedRegister::Allocated(a) => (a + 16) as fuel_asm::RegisterId,
-            AllocatedRegister::Constant(constant) => constant.to_register_id(),
+            AllocatedRegister::Allocated(a) => fuel_asm::RegId::new(a + 16),
+            AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
     }
 }
@@ -453,149 +453,122 @@ impl AllocatedOp {
         &self,
         offset_to_data_section: u64,
         data_section: &mut DataSection,
-    ) -> Either<Vec<fuel_asm::Opcode>, DoubleWideData> {
+    ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
         use AllocatedOpcode::*;
         Either::Left(vec![match &self.opcode {
             /* Arithmetic/Logic (ALU) Instructions */
-            ADD(a, b, c) => VmOp::ADD(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            ADDI(a, b, c) => VmOp::ADDI(a.to_register_id(), b.to_register_id(), c.value),
-            AND(a, b, c) => VmOp::AND(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            ANDI(a, b, c) => VmOp::ANDI(a.to_register_id(), b.to_register_id(), c.value),
-            DIV(a, b, c) => VmOp::DIV(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            DIVI(a, b, c) => VmOp::DIVI(a.to_register_id(), b.to_register_id(), c.value),
-            EQ(a, b, c) => VmOp::EQ(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            EXP(a, b, c) => VmOp::EXP(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            EXPI(a, b, c) => VmOp::EXPI(a.to_register_id(), b.to_register_id(), c.value),
-            GT(a, b, c) => VmOp::GT(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            LT(a, b, c) => VmOp::LT(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MLOG(a, b, c) => VmOp::MLOG(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MOD(a, b, c) => VmOp::MOD(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MODI(a, b, c) => VmOp::MODI(a.to_register_id(), b.to_register_id(), c.value),
-            MOVE(a, b) => VmOp::MOVE(a.to_register_id(), b.to_register_id()),
-            MOVI(a, b) => VmOp::MOVI(a.to_register_id(), b.value),
-            MROO(a, b, c) => VmOp::MROO(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MUL(a, b, c) => VmOp::MUL(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MULI(a, b, c) => VmOp::MULI(a.to_register_id(), b.to_register_id(), c.value),
-            NOOP => VmOp::NOOP,
-            NOT(a, b) => VmOp::NOT(a.to_register_id(), b.to_register_id()),
-            OR(a, b, c) => VmOp::OR(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            ORI(a, b, c) => VmOp::ORI(a.to_register_id(), b.to_register_id(), c.value),
-            SLL(a, b, c) => VmOp::SLL(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SLLI(a, b, c) => VmOp::SLLI(a.to_register_id(), b.to_register_id(), c.value),
-            SRL(a, b, c) => VmOp::SRL(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SRLI(a, b, c) => VmOp::SRLI(a.to_register_id(), b.to_register_id(), c.value),
-            SUB(a, b, c) => VmOp::SUB(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SUBI(a, b, c) => VmOp::SUBI(a.to_register_id(), b.to_register_id(), c.value),
-            XOR(a, b, c) => VmOp::XOR(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            XORI(a, b, c) => VmOp::XORI(a.to_register_id(), b.to_register_id(), c.value),
+            ADD(a, b, c) => op::ADD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ADDI(a, b, c) => op::ADDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            AND(a, b, c) => op::AND::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ANDI(a, b, c) => op::ANDI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            DIV(a, b, c) => op::DIV::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            DIVI(a, b, c) => op::DIVI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            EQ(a, b, c) => op::EQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            EXP(a, b, c) => op::EXP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            EXPI(a, b, c) => op::EXPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            GT(a, b, c) => op::GT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            LT(a, b, c) => op::LT::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MLOG(a, b, c) => op::MLOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MOD(a, b, c) => op::MOD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MODI(a, b, c) => op::MODI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MOVE(a, b) => op::MOVE::new(a.to_reg_id(), b.to_reg_id()).into(),
+            MOVI(a, b) => op::MOVI::new(a.to_reg_id(), b.value.into()).into(),
+            MROO(a, b, c) => op::MROO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MUL(a, b, c) => op::MUL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MULI(a, b, c) => op::MULI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            NOOP => op::NOOP::new().into(),
+            NOT(a, b) => op::NOT::new(a.to_reg_id(), b.to_reg_id()).into(),
+            OR(a, b, c) => op::OR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            ORI(a, b, c) => op::ORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SLL(a, b, c) => op::SLL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SLLI(a, b, c) => op::SLLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SRL(a, b, c) => op::SRL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SRLI(a, b, c) => op::SRLI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SUB(a, b, c) => op::SUB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SUBI(a, b, c) => op::SUBI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            XOR(a, b, c) => op::XOR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            XORI(a, b, c) => op::XORI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
 
             /* Control Flow Instructions */
-            JMP(a) => VmOp::JMP(a.to_register_id()),
-            JI(a) => VmOp::JI(a.value),
-            JNE(a, b, c) => VmOp::JNE(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            JNEI(a, b, c) => VmOp::JNEI(a.to_register_id(), b.to_register_id(), c.value),
-            JNZI(a, b) => VmOp::JNZI(a.to_register_id(), b.value),
-            RET(a) => VmOp::RET(a.to_register_id()),
+            JMP(a) => op::JMP::new(a.to_reg_id()).into(),
+            JI(a) => op::JI::new(a.value.into()).into(),
+            JNE(a, b, c) => op::JNE::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            JNEI(a, b, c) => op::JNEI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            JNZI(a, b) => op::JNZI::new(a.to_reg_id(), b.value.into()).into(),
+            RET(a) => op::RET::new(a.to_reg_id()).into(),
 
             /* Memory Instructions */
-            ALOC(a) => VmOp::ALOC(a.to_register_id()),
-            CFEI(a) => VmOp::CFEI(a.value),
-            CFSI(a) => VmOp::CFSI(a.value),
-            LB(a, b, c) => VmOp::LB(a.to_register_id(), b.to_register_id(), c.value),
-            LW(a, b, c) => VmOp::LW(a.to_register_id(), b.to_register_id(), c.value),
-            MCL(a, b) => VmOp::MCL(a.to_register_id(), b.to_register_id()),
-            MCLI(a, b) => VmOp::MCLI(a.to_register_id(), b.value),
-            MCP(a, b, c) => VmOp::MCP(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            MCPI(a, b, c) => VmOp::MCPI(a.to_register_id(), b.to_register_id(), c.value),
-            MEQ(a, b, c, d) => VmOp::MEQ(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            SB(a, b, c) => VmOp::SB(a.to_register_id(), b.to_register_id(), c.value),
-            SW(a, b, c) => VmOp::SW(a.to_register_id(), b.to_register_id(), c.value),
+            ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
+            CFEI(a) => op::CFEI::new(a.value.into()).into(),
+            CFSI(a) => op::CFSI::new(a.value.into()).into(),
+            LB(a, b, c) => op::LB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            LW(a, b, c) => op::LW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MCL(a, b) => op::MCL::new(a.to_reg_id(), b.to_reg_id()).into(),
+            MCLI(a, b) => op::MCLI::new(a.to_reg_id(), b.value.into()).into(),
+            MCP(a, b, c) => op::MCP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            MCPI(a, b, c) => op::MCPI::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            MEQ(a, b, c, d) => {
+                op::MEQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
+            SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
 
             /* Contract Instructions */
-            BAL(a, b, c) => VmOp::BAL(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            BHEI(a) => VmOp::BHEI(a.to_register_id()),
-            BHSH(a, b) => VmOp::BHSH(a.to_register_id(), b.to_register_id()),
-            BURN(a) => VmOp::BURN(a.to_register_id()),
-            CALL(a, b, c, d) => VmOp::CALL(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            CB(a) => VmOp::CB(a.to_register_id()),
-            CCP(a, b, c, d) => VmOp::CCP(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            CROO(a, b) => VmOp::CROO(a.to_register_id(), b.to_register_id()),
-            CSIZ(a, b) => VmOp::CSIZ(a.to_register_id(), b.to_register_id()),
-            LDC(a, b, c) => VmOp::LDC(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            LOG(a, b, c, d) => VmOp::LOG(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            LOGD(a, b, c, d) => VmOp::LOGD(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            MINT(a) => VmOp::MINT(a.to_register_id()),
-            RETD(a, b) => VmOp::RETD(a.to_register_id(), b.to_register_id()),
-            RVRT(a) => VmOp::RVRT(a.to_register_id()),
-            SMO(a, b, c, d) => VmOp::SMO(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            SCWQ(a, b, c) => VmOp::SCWQ(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SRW(a, b, c) => VmOp::SRW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SRWQ(a, b, c, d) => VmOp::SRWQ(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            SWW(a, b, c) => VmOp::SWW(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            SWWQ(a, b, c, d) => VmOp::SWWQ(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
-            TIME(a, b) => VmOp::TIME(a.to_register_id(), b.to_register_id()),
-            TR(a, b, c) => VmOp::TR(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            TRO(a, b, c, d) => VmOp::TRO(
-                a.to_register_id(),
-                b.to_register_id(),
-                c.to_register_id(),
-                d.to_register_id(),
-            ),
+            BAL(a, b, c) => op::BAL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            BHEI(a) => op::BHEI::new(a.to_reg_id()).into(),
+            BHSH(a, b) => op::BHSH::new(a.to_reg_id(), b.to_reg_id()).into(),
+            BURN(a) => op::BURN::new(a.to_reg_id()).into(),
+            CALL(a, b, c, d) => {
+                op::CALL::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            CB(a) => op::CB::new(a.to_reg_id()).into(),
+            CCP(a, b, c, d) => {
+                op::CCP::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
+            CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
+            LDC(a, b, c) => op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            LOG(a, b, c, d) => {
+                op::LOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            LOGD(a, b, c, d) => {
+                op::LOGD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            MINT(a) => op::MINT::new(a.to_reg_id()).into(),
+            RETD(a, b) => op::RETD::new(a.to_reg_id(), b.to_reg_id()).into(),
+            RVRT(a) => op::RVRT::new(a.to_reg_id()).into(),
+            SMO(a, b, c, d) => {
+                op::SMO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            SCWQ(a, b, c) => op::SCWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SRW(a, b, c) => op::SRW::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SRWQ(a, b, c, d) => {
+                op::SRWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            SWW(a, b, c) => op::SWW::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SWWQ(a, b, c, d) => {
+                op::SWWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            TIME(a, b) => op::TIME::new(a.to_reg_id(), b.to_reg_id()).into(),
+            TR(a, b, c) => op::TR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            TRO(a, b, c, d) => {
+                op::TRO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
 
             /* Cryptographic Instructions */
-            ECR(a, b, c) => VmOp::ECR(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            K256(a, b, c) => VmOp::K256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
-            S256(a, b, c) => VmOp::S256(a.to_register_id(), b.to_register_id(), c.to_register_id()),
+            ECR(a, b, c) => op::ECR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            K256(a, b, c) => op::K256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            S256(a, b, c) => op::S256::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
 
             /* Other Instructions */
-            FLAG(a) => VmOp::FLAG(a.to_register_id()),
-            GM(a, b) => VmOp::GM(a.to_register_id(), b.value),
-            GTF(a, b, c) => VmOp::GTF(a.to_register_id(), b.to_register_id(), c.value),
+            FLAG(a) => op::FLAG::new(a.to_reg_id()).into(),
+            GM(a, b) => op::GM::new(a.to_reg_id(), b.value.into()).into(),
+            GTF(a, b, c) => op::GTF::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
 
             /* Non-VM Instructions */
             BLOB(a) => {
                 return Either::Left(
-                    std::iter::repeat(VmOp::NOOP)
+                    std::iter::repeat(op::NOOP::new().into())
                         .take(a.value as usize)
                         .collect(),
                 )
@@ -603,15 +576,16 @@ impl AllocatedOp {
             DataSectionOffsetPlaceholder => {
                 return Either::Right(offset_to_data_section.to_be_bytes())
             }
-            DataSectionRegisterLoadPlaceholder => VmOp::LW(
-                DATA_SECTION_REGISTER as fuel_asm::RegisterId,
-                ConstantRegister::InstructionStart.to_register_id(),
-                1,
-            ),
+            DataSectionRegisterLoadPlaceholder => op::LW::new(
+                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                ConstantRegister::InstructionStart.to_reg_id(),
+                1.into(),
+            )
+            .into(),
             LWDataId(a, b) => {
                 return Either::Left(realize_lw(a, b, data_section, offset_to_data_section))
             }
-            Undefined => VmOp::Undefined,
+            Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
     }
 }
@@ -625,7 +599,7 @@ fn realize_lw(
     data_id: &DataId,
     data_section: &mut DataSection,
     offset_to_data_section: u64,
-) -> Vec<VmOp> {
+) -> Vec<fuel_asm::Instruction> {
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
     let offset_words = offset_bytes / 8;
@@ -656,17 +630,21 @@ fn realize_lw(
             offset_to_data_section,
         ));
         // add $is to the pointer since it is relative to the data section
-        buf.push(VmOp::ADD(
-            dest.to_register_id(),
-            dest.to_register_id(),
-            ConstantRegister::InstructionStart.to_register_id(),
-        ));
+        buf.push(
+            fuel_asm::op::ADD::new(
+                dest.to_reg_id(),
+                dest.to_reg_id(),
+                ConstantRegister::InstructionStart.to_reg_id(),
+            )
+            .into(),
+        );
         buf
     } else {
-        vec![VmOp::LW(
-            dest.to_register_id(),
-            DATA_SECTION_REGISTER as usize,
-            offset.value,
-        )]
+        vec![fuel_asm::op::LW::new(
+            dest.to_reg_id(),
+            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+            offset.value.into(),
+        )
+        .into()]
     }
 }
