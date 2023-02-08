@@ -4752,7 +4752,6 @@ version = "0.34.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
- "async-trait",
  "dashmap",
  "dirs 4.0.0",
  "forc-pkg",
@@ -4769,6 +4768,7 @@ dependencies = [
  "sway-ast",
  "sway-core",
  "sway-error",
+ "sway-lsp-test-utils",
  "sway-parse",
  "sway-types",
  "sway-utils",
@@ -4781,6 +4781,19 @@ dependencies = [
  "tower",
  "tower-lsp",
  "tracing",
+]
+
+[[package]]
+name = "sway-lsp-test-utils"
+version = "0.1.0"
+dependencies = [
+ "assert-json-diff",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-lsp",
 ]
 
 [[package]]

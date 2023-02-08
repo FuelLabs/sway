@@ -99,7 +99,7 @@ fn get_comment_workspace_edit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::get_absolute_path;
+    use sway_lsp_test_utils::get_absolute_path;
     use tower_lsp::lsp_types::{
         AnnotatedTextEdit, TextDocumentContentChangeEvent, VersionedTextDocumentIdentifier,
     };
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn get_comment_workspace_edit_double_slash_indented() {
-        let path = get_absolute_path("sway-lsp/test/fixtures/diagnostics/dead_code/src/main.sw");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
         let text_document =
             TextDocument::build_from_path(path.as_str()).expect("failed to build document");
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn get_comment_workspace_edit_triple_slash_paste() {
-        let path = get_absolute_path("sway-lsp/test/fixtures/diagnostics/dead_code/src/main.sw");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
         let text_document =
             TextDocument::build_from_path(path.as_str()).expect("failed to build document");
