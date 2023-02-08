@@ -18,7 +18,7 @@ etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = ["backtr
 etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
 etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 fuel-abi-types = "0.1" 
-fuel-vm = { version = "0.22", features = ["serde"] }
+fuel-vm = { workspace = true, features = ["serde"] }
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
 im = "15.0"

@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::core::Bits256};
+use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "GenericsInAbiTestContract",
@@ -24,7 +24,7 @@ async fn get_generics_in_abi_instance() -> (GenericsInAbiTestContract, ContractI
 }
 
 #[tokio::test]
-async fn generics_bool() -> Result<(), Error> {
+async fn generics_bool() -> Result<()> {
     let (instance, _id) = get_generics_in_abi_instance().await;
     let contract_methods = instance.methods();
 

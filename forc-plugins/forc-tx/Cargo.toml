@@ -19,6 +19,6 @@ path = "src/main.rs"
 anyhow = "1"
 clap = { version = "3", features = ["derive", "env"] }
 devault = "0.1"
-fuel-tx = { version = "0.23", features = ["serde"] }
+fuel-tx = { workspace = true, features = ["serde"] }
 serde = "1.0"
 serde_json = { version = "1" }

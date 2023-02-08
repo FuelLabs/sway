@@ -7,10 +7,13 @@ version = "0.0.0"
 
 [dependencies]
 assert_matches = "1.5.0"
-fuel-core = { version = "0.15", default-features = false }
-fuel-gql-client = { version = "0.15", default-features = false }
-fuel-vm = "0.22"
-fuels = { version = "0.34", features = ["fuel-core-lib"] }
+fuel-core = { version = "0.16", default-features = false }
+fuel-core-client = { version = "0.16", default-features = false }
+fuel-types = "0.25"
+fuel-vm = "0.25"
+# TODO: Return back `0.34` after merge of the https://github.com/FuelLabs/fuels-rs/pull/813
+# fuels = { version = "0.34", features = ["fuel-core-lib"] }
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "Voxelot/fuel-core-0.16", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
 sha2 = "0.10"
