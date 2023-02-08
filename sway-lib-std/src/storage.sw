@@ -5,7 +5,6 @@ use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
 use ::bytes::Bytes;
-use ::convert::From;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
