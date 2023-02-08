@@ -33,12 +33,11 @@ exclude = [
 debug = 2
 
 [workspace.dependencies]
-fuel-asm = "0.25"
-fuel-crypto = "0.25"
-fuel-tx = "0.25"
-fuel-core-client = "0.16"
-fuel-vm = "0.25"
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels-types = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
-fuels = { git = "https://github.com/FuelLabs/fuels-rs.git", branch = "Voxelot/fuel-core-0.16" }
+fuel-asm = "0.26"
+fuel-crypto = "0.26"
+fuel-tx = "0.26"
+fuel-core-client = "0.17"
+fuel-vm = "0.26"
+fuels-core = "0.36.0"
+fuels-signers = "0.36.0"
+fuels-types = "0.36.0"
