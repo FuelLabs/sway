@@ -11,7 +11,6 @@ publish = false
 
 [dependencies]
 assert-json-diff = "2.0"
-async-trait = "0.1"
 dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 serde = { version = "1.0", features = ["derive"] }
