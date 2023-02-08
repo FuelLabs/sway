@@ -130,17 +130,18 @@ pub fn lex_commented(
         if character == '/' {
             match l.stream.peek() {
                 Some((_, '/')) => {
-                    let mut comment_kind = CommentKind::Trailing;
-                    for c in src[..index].chars().rev() {
-                        if c.is_whitespace() {
-                            if c == '\n' {
-                                comment_kind = CommentKind::Newlined;
-                            }
-                            continue;
-                        } else {
-                            break;
-                        }
-                    }
+                    let has_newline = src[..index]
+                        .chars()
+                        .rev()
+                        .take_while(|c| c.is_whitespace())
+                        .filter(|&c| c == '\n')
+                        .count()
+                        > 0;
+                    let comment_kind = if has_newline {
+                        CommentKind::Newlined
+                    } else {
+                        CommentKind::Trailing
+                    };
                     token_trees.push(lex_line_comment(&mut l, end, index, comment_kind));
                     continue;
                 }
