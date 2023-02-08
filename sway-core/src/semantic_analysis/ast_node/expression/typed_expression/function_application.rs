@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::ReplaceDecls,
+    decl_engine::{DeclId, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,7 +11,7 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: ty::TyFunctionDeclaration,
+    function_decl_id: DeclId,
     call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
@@ -21,6 +21,10 @@ pub(crate) fn instantiate_function_application(
 
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+
+    let mut function_decl = decl_engine
+        .get_function(function_decl_id.clone(), &span)
+        .unwrap();
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
@@ -86,7 +90,9 @@ pub(crate) fn instantiate_function_application(
     );
     function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
-    let new_decl_id = decl_engine.insert(function_decl);
+    let new_decl_id = decl_engine
+        .insert(function_decl)
+        .with_parent(decl_engine, function_decl_id);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

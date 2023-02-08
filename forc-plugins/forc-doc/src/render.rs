@@ -381,7 +381,7 @@ impl Renderable for ItemBody {
         } = self;
 
         let decl_ty = ty_decl.doc_name();
-        let friendly_name = ty_decl.friendly_name();
+        let friendly_name = ty_decl.friendly_type_name();
         let sidebar = sidebar.render(type_engine.clone())?;
         let item_context = (item_context.context_opt.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(type_engine) });

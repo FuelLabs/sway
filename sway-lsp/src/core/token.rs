@@ -4,7 +4,7 @@ use sway_core::{
         parsed::{
             Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
             ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            Supertrait, TraitFn, TreeType,
+            Supertrait, TraitFn, TreeType, UseStatement,
         },
         ty,
     },
@@ -37,6 +37,7 @@ pub enum AstToken {
     Attribute(Attribute),
     TreeType(TreeType),
     IncludeStatement,
+    UseStatement(UseStatement),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -58,6 +59,7 @@ pub enum TypedAstToken {
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,
+    TypedUseStatement(ty::TyUseStatement),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
