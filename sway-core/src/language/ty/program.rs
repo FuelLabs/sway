@@ -156,15 +156,9 @@ impl TyProgram {
                 .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration(_)));
 
             if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
-                let TyStorageDeclaration { span, .. } = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), &decl_id.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span,
+                    span: decl_id.span(),
                 });
             }
         }
