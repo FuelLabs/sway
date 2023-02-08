@@ -11,8 +11,8 @@ fuel-core = { version = "0.16", default-features = false }
 fuel-core-client = { version = "0.16", default-features = false }
 fuel-types = "0.25"
 fuel-vm = "0.25"
-# TODO: Return back `0.34` after merge of the https://github.com/FuelLabs/fuels-rs/pull/813
-# fuels = { version = "0.34", features = ["fuel-core-lib"] }
+# TODO: Return back `0.35` after merge of the https://github.com/FuelLabs/fuels-rs/pull/813
+# fuels = { version = "0.35", features = ["fuel-core-lib"] }
 fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "Voxelot/fuel-core-0.16", features = ["fuel-core-lib"] }
 hex = "0.4.3"
 rand = "0.8"
