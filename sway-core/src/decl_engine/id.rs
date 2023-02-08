@@ -7,8 +7,14 @@ use super::{DeclEngine, DeclMapping, ReplaceDecls, ReplaceFunctionImplementingTy
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
 #[derive(Debug)]
 pub struct DeclId {
+    /// The name of the declaration.
+    // NOTE: In the case of storage, the name is "storage".
     pub name: Ident,
+
+    /// The low-level index into the [DeclEngine].
     id: usize,
+
+    /// The [Span] of the entire declaration.
     decl_span: Span,
 }
 
