@@ -1,48 +1,31 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
 use sway_core::{
     language::ty::{TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
     Engines,
 };
 use sway_types::Spanned;
-use tower_lsp::lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit, Url, WorkspaceEdit,
-};
+use tower_lsp::lsp_types::{CodeActionOrCommand, TextEdit, Url};
+
+use crate::capabilities::code_actions::{build_code_action, range_after_last_line, TAB};
 
 const CODE_ACTION_DESCRIPTION: &str = "Generate impl for contract";
-const TAB: &str = "    ";
 
-pub(crate) fn abi_impl_code_action(
+pub(crate) fn code_action(
     engines: Engines<'_>,
-    abi_decl: TyAbiDeclaration,
-    uri: Url,
+    decl: &TyAbiDeclaration,
+    uri: &Url,
 ) -> CodeActionOrCommand {
-    let (last_line, _) = abi_decl.span.end_pos().line_col();
-    let insertion_position = Position {
-        line: last_line as u32,
-        character: 0,
-    };
     let text_edit = TextEdit {
-        range: Range {
-            start: insertion_position,
-            end: insertion_position,
-        },
-        new_text: get_contract_impl_string(engines, abi_decl),
+        range: range_after_last_line(&decl.span),
+        new_text: get_contract_impl_string(engines, decl),
     };
-    let mut text_edit_map = HashMap::new();
-    text_edit_map.insert(uri.clone(), vec![text_edit]);
 
-    CodeActionOrCommand::CodeAction(CodeAction {
-        title: String::from(CODE_ACTION_DESCRIPTION),
-        kind: Some(CodeActionKind::REFACTOR),
-        edit: Some(WorkspaceEdit {
-            changes: Some(text_edit_map),
-            ..Default::default()
-        }),
-        data: Some(Value::String(uri.to_string())),
-        ..Default::default()
-    })
+    build_code_action(
+        CODE_ACTION_DESCRIPTION.to_string(),
+        HashMap::from([(uri.clone(), vec![text_edit])]),
+        &uri,
+    )
 }
 
 fn get_param_string(param: &TyFunctionParameter) -> String {
@@ -59,7 +42,7 @@ fn get_return_type_string(engines: Engines<'_>, function_decl: TyTraitFn) -> Str
     }
 }
 
-fn get_function_signatures(engines: Engines<'_>, abi_decl: TyAbiDeclaration) -> String {
+fn get_function_signatures(engines: Engines<'_>, abi_decl: &TyAbiDeclaration) -> String {
     let decl_engine = engines.de();
     abi_decl
         .interface_surface
@@ -106,7 +89,7 @@ fn get_function_signatures(engines: Engines<'_>, abi_decl: TyAbiDeclaration) -> 
         .join("\n")
 }
 
-fn get_contract_impl_string(engines: Engines<'_>, abi_decl: TyAbiDeclaration) -> String {
+fn get_contract_impl_string(engines: Engines<'_>, abi_decl: &TyAbiDeclaration) -> String {
     let contract_name = abi_decl.name.to_string();
     format!(
         "\nimpl {} for Contract {{{}\n}}\n",

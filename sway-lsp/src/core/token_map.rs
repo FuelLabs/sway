@@ -73,6 +73,7 @@ impl TokenMap {
     /// Check if the code editor's cursor is currently over one of our collected tokens.
     pub fn token_at_position(&self, uri: &Url, position: Position) -> Option<(Ident, Token)> {
         let tokens = self.tokens_for_file(uri);
+
         self.ident_at_position(position, tokens).and_then(|ident| {
             self.try_get(&token::to_ident_key(&ident))
                 .try_unwrap()
