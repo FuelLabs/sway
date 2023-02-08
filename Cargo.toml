@@ -33,23 +33,16 @@ exclude = [
 debug = 2
 
 [workspace.dependencies]
-fuel-asm = "0.25"
-fuel-crypto = "0.25"
-fuel-tx = "0.25"
-fuel-core-client = "0.16"
-fuel-vm = "0.25"
+fuel-asm = "0.26"
+fuel-crypto = "0.26"
+fuel-tx = "0.26"
+fuel-core-client = "0.17"
+fuel-vm = "0.26"
 fuels-core = "0.35.1"
 fuels-signers = "0.35.1"
 fuels-types = "0.35.1"
 
 [patch.crates-io]
-fuel-core-chain-config = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
-fuel-core-client = { git = "https://github.com/fuellabs/fuel-core", branch = "fuel-asm-refactor" }
-fuel-asm = { git = "https://github.com/fuellabs/fuel-vm" }
-fuel-crypto = { git = "https://github.com/fuellabs/fuel-vm" }
-fuel-tx = { git = "https://github.com/fuellabs/fuel-vm" }
-fuel-types = { git = "https://github.com/fuellabs/fuel-vm" }
-fuel-vm = { git = "https://github.com/fuellabs/fuel-vm" }
 fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
 fuels-signers = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
 fuels-types = { git = "https://github.com/FuelLabs/fuels-rs", branch = "mitchmindtree/fuel-asm-refactor" }
