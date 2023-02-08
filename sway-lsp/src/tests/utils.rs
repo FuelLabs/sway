@@ -4,11 +4,22 @@ use futures::StreamExt;
 use serde_json::Value;
 use std::{
     env, fs,
+    io::Read,
     path::{Path, PathBuf},
     time::Duration,
 };
 use tokio::task::JoinHandle;
 use tower_lsp::{lsp_types::Url, ClientSocket};
+
+pub(crate) fn load_sway_example(src_path: PathBuf) -> (Url, String) {
+    let mut file = fs::File::open(&src_path).unwrap();
+    let mut sway_program = String::new();
+    file.read_to_string(&mut sway_program).unwrap();
+
+    let uri = Url::from_file_path(src_path).unwrap();
+
+    (uri, sway_program)
+}
 
 pub(crate) fn sway_workspace_dir() -> PathBuf {
     env::current_dir().unwrap().parent().unwrap().to_path_buf()

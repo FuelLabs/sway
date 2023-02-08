@@ -2,7 +2,12 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::server::{self, Backend};
+use crate::{
+    server::{self, Backend},
+    tests::{
+        lsp, {GotoDefintion, HoverDocumentation},
+    },
+};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
@@ -373,4 +378,70 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
         );
     }
     code_lens
+}
+
+pub(crate) async fn definition_check<'a>(
+    service: &mut LspService<Backend>,
+    go_to: &'a GotoDefintion<'a>,
+    id: i64,
+) -> Request {
+    let definition = lsp::definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+    let response = lsp::call_request(service, definition.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    if let GotoDefinitionResponse::Scalar(response) = serde_json::from_value(value).unwrap() {
+        let uri = response.uri.as_str();
+        let range = json!({
+            "end": {
+                "character": go_to.def_end_char,
+                "line": go_to.def_line,
+            },
+            "start": {
+                "character": go_to.def_start_char,
+                "line": go_to.def_line,
+            }
+        });
+        assert_json_eq!(response.range, range);
+        assert!(
+            uri.ends_with(go_to.def_path),
+            "{} doesn't end with {}",
+            uri,
+            go_to.def_path,
+        );
+    } else {
+        panic!("Expected GotoDefinitionResponse::Scalar");
+    }
+    definition
+}
+
+pub(crate) async fn hover_request<'a>(
+    service: &mut LspService<Backend>,
+    hover_docs: &'a HoverDocumentation<'a>,
+    id: i64,
+) -> Request {
+    let params = json!({
+        "textDocument": {
+            "uri": hover_docs.req_uri,
+        },
+        "position": {
+            "line": hover_docs.req_line,
+            "character": hover_docs.req_char
+        }
+    });
+    let hover = lsp::build_request_with_id("textDocument/hover", params, id);
+    let response = lsp::call_request(service, hover.clone())
+        .await
+        .unwrap()
+        .unwrap();
+    let value = response.result().unwrap().clone();
+    let hover_res: Hover = serde_json::from_value(value).unwrap();
+
+    if let HoverContents::Markup(markup_content) = hover_res.contents {
+        assert_eq!(hover_docs.documentation, markup_content.value);
+    } else {
+        panic!("Expected HoverContents::Markup");
+    }
+    hover
 }
