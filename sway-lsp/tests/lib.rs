@@ -197,6 +197,8 @@ async fn show_ast() {
     shutdown_and_exit(&mut service).await;
 }
 
+//------------------- GO TO DEFINITION -------------------//
+
 #[tokio::test]
 async fn go_to_definition() {
     let (mut service, _) = LspService::new(Backend::new);
@@ -777,6 +779,8 @@ async fn go_to_definition_for_consts() {
     definition_check_with_req_offset(&mut service, &mut go_to, 10, 17, 7).await;
 }
 
+//------------------- HOVER DOCUMENTATION -------------------//
+
 #[tokio::test]
 async fn hover_docs_for_consts() {
     let (mut service, _) = LspService::new(Backend::new);
@@ -797,6 +801,24 @@ async fn hover_docs_for_consts() {
     hover.req_char = 49;
     hover.documentation = " CONSTANT_2 has a value of 200";
     let _ = lsp::hover_request(&mut service, &hover, 2).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_functions() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/functions/src/main.sw"),
+    )
+    .await;
+
+    let hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 20,
+        req_char: 14,
+        documentation: "```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as parameters",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, 1).await;
 }
 
 #[tokio::test]

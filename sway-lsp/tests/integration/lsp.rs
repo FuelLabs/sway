@@ -171,7 +171,7 @@ pub(crate) async fn document_symbol_request(
         },
     });
     let document_symbol = build_request_with_id("textDocument/documentSymbol", params, 1);
-    let _response = call_request(service, document_symbol.clone()).await;
+    let response = call_request(service, document_symbol.clone()).await;
     document_symbol
 }
 
