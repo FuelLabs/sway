@@ -1,5 +1,5 @@
 use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
 use std::{collections::BTreeMap, fmt::Write, sync::Arc};
@@ -9,10 +9,10 @@ use sway_core::{
         TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
     },
     transform::{AttributeKind, AttributesMap},
-    TypeEngine, TypeInfo,
+    AbiName, TypeEngine, TypeInfo,
 };
 use sway_lsp::utils::markdown::format_docs;
-use sway_types::BaseIdent;
+use sway_types::{BaseIdent, Spanned};
 
 pub(crate) const ALL_DOC_FILENAME: &str = "all.html";
 pub(crate) const INDEX_FILENAME: &str = "index.html";
@@ -496,13 +496,22 @@ impl Renderable for Context {
             ContextType::StructFields(fields) => {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        type_engine.get(field.type_id),
+                        &type_engine,
+                        &self.module_info,
+                    );
                     rendered_list.push(box_html! {
                         span(id=&struct_field_id, class="structfield small-section-header") {
                             a(class="anchor field", href=format!("{IDENTITY}{struct_field_id}"));
                             code {
                                 : format!("{}: ", field.name.as_str());
                                 // TODO: Add links to types based on visibility
-                                : field.type_span.as_str();
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : field.type_span.as_str();
+                                }
                             }
                         }
                         @ if !field.attributes.is_empty() {
@@ -516,13 +525,22 @@ impl Renderable for Context {
             ContextType::StorageFields(fields) => {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        type_engine.get(field.type_id),
+                        &type_engine,
+                        &self.module_info,
+                    );
                     rendered_list.push(box_html! {
                         span(id=&storage_field_id, class="storagefield small-section-header") {
                             a(class="anchor field", href=format!("{IDENTITY}{storage_field_id}"));
                             code {
                                 : format!("{}: ", field.name.as_str());
                                 // TODO: Add links to types based on visibility
-                                : field.type_span.as_str();
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : field.type_span.as_str();
+                                }
                             }
                         }
                         @ if !field.attributes.is_empty() {
@@ -536,12 +554,21 @@ impl Renderable for Context {
             ContextType::EnumVariants(variants) => {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
+                    let type_anchor = render_type_anchor(
+                        type_engine.get(variant.type_id),
+                        &type_engine,
+                        &self.module_info,
+                    );
                     rendered_list.push(box_html! {
                         h3(id=&enum_variant_id, class="variant small-section-header") {
                             a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                             code {
                                 : format!("{}: ", variant.name.as_str());
-                                : variant.type_span.as_str();
+                                @ if let Ok(type_anchor) = type_anchor {
+                                    : type_anchor;
+                                } else {
+                                    : variant.type_span.as_str();
+                                }
                             }
                         }
                         @ if !variant.attributes.is_empty() {
@@ -759,9 +786,11 @@ impl Renderable for ItemContext {
 ///     foo: ([Foo], (u32, [Foo], ([Foo], [Foo])))
 /// }
 /// ```
+//
+// TODO: Add checks for multiline types
 fn render_type_anchor(
     type_info: TypeInfo,
-    type_engine: Arc<TypeEngine>,
+    type_engine: &Arc<TypeEngine>,
     current_module_info: &ModuleInfo,
 ) -> Result<Box<dyn RenderBox>> {
     match type_info {
@@ -777,7 +806,23 @@ fn render_type_anchor(
                 : format!("; {}]", len.val());
             })
         }
-        TypeInfo::Tuple(ty_args) => {}
+        TypeInfo::Tuple(ty_args) => {
+            let mut rendered_args: Vec<_> = Vec::new();
+            for ty_arg in ty_args {
+                rendered_args.push(render_type_anchor(
+                    type_engine.get(ty_arg.type_id),
+                    type_engine,
+                    current_module_info,
+                )?)
+            }
+            Ok(box_html! {
+                : "(";
+                @ for arg in rendered_args {
+                    : arg;
+                }
+                : ")";
+            })
+        }
         TypeInfo::Enum { call_path, .. } => {
             let module_info = ModuleInfo::from_vec(
                 call_path
@@ -810,15 +855,46 @@ fn render_type_anchor(
                 }
             })
         }
-
-        TypeInfo::UnknownGeneric { name, .. } => {}
-        TypeInfo::Str(len) => {}
-        TypeInfo::UnsignedInteger(int_bits) => {}
-        TypeInfo::Boolean => {}
-        TypeInfo::ContractCaller { abi_name, address } => {}
-        TypeInfo::Custom { name, .. } => {}
-        TypeInfo::SelfType => {}
-        TypeInfo::B256 => {}
+        TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
+            : name.as_str();
+        }),
+        TypeInfo::Str(len) => Ok(box_html! {
+            : len.span().as_str();
+        }),
+        TypeInfo::UnsignedInteger(int_bits) => {
+            use sway_types::integer_bits::IntegerBits;
+            let uint = match int_bits {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+            };
+            Ok(box_html! {
+                : uint;
+            })
+        }
+        TypeInfo::Boolean => Ok(box_html! {
+            : "bool";
+        }),
+        TypeInfo::ContractCaller { abi_name, .. } => {
+            // TODO: determine whether we should give a link to this
+            if let AbiName::Known(name) = abi_name {
+                Ok(box_html! {
+                    : name.suffix.as_str();
+                })
+            } else {
+                Err(anyhow!("Deferred AbiName is unhandled"))
+            }
+        }
+        TypeInfo::Custom { name, .. } => Ok(box_html! {
+            : name.as_str();
+        }),
+        TypeInfo::SelfType => Ok(box_html! {
+            : "Self";
+        }),
+        TypeInfo::B256 => Ok(box_html! {
+            : "b256";
+        }),
         _ => Err(anyhow!("Undetermined or unusable TypeInfo")),
     }
 }
@@ -838,7 +914,7 @@ struct DocLinks {
     links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
             DocStyle::AllDoc => box_html! {
                 @ for (title, list_items) in self.links {

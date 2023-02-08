@@ -272,19 +272,20 @@ impl ModuleInfo {
     ) -> Result<String> {
         let mut mid = 0; // the index to split the module_info from call_path at
         let mut offset = 0; // the number of directories to go back
-        let next_location_iter = self.0.clone().iter().rev().enumerate().peekable();
+        let mut next_location_iter = self.0.iter().rev().enumerate().peekable();
         while let Some((index, prefix)) = next_location_iter.peek() {
             for (count, module) in current_module_info.0.iter().rev().enumerate() {
                 if module == *prefix {
-                    offset == count + 1;
-                    mid == self.0.len() - index;
+                    offset = count + 1;
+                    mid = self.0.len() - index;
                     break;
                 }
             }
             next_location_iter.next();
         }
-        let new_path = (0..offset).map(|_| "../").collect::<String>();
+        let mut new_path = (0..offset).map(|_| "../").collect::<String>();
         new_path.push_str(self.0.split_at(mid).1.join("/").as_str());
+        new_path.push_str(file_name);
         Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
