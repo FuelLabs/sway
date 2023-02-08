@@ -4,8 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use std::path::PathBuf;
-use std::{option::Option, sync::Arc};
+use std::{fmt::Write, option::Option, path::PathBuf, sync::Arc};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
@@ -284,8 +283,12 @@ impl ModuleInfo {
             next_location_iter.next();
         }
         let mut new_path = (0..offset).map(|_| "../").collect::<String>();
-        new_path.push_str(self.0.split_at(mid).1.join("/").as_str());
-        new_path.push_str(format!("/{}", file_name).as_str());
+        write!(
+            new_path,
+            "{}/{}",
+            self.0.split_at(mid).1.join("/"),
+            file_name
+        )?;
         Ok(new_path)
     }
     /// Create a path `&str` for navigation from the `module.depth()` & `file_name`.
