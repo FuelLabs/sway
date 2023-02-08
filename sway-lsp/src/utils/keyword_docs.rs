@@ -11,7 +11,7 @@ use syn::{parse_quote, ItemMod};
 /// Primarily used for showing documentation on LSP hover requests.
 /// Key = keyword
 /// Value = documentation
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KeywordDocs(HashMap<String, String>);
 
 impl KeywordDocs {
@@ -376,7 +376,7 @@ impl KeywordDocs {
         };
 
         let const_keyword: ItemMod = parse_quote! {
-            /// ## Compile-time constants.
+            /// Compile-time constants.
             ///
             /// Sometimes a certain value is used many times throughout a program, and it can become
             /// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
@@ -841,10 +841,9 @@ async fn keywords_in_sync() {
         .collect();
 
     for keyword in &compiler_keywords {
-        if !lsp_keywords.contains(&keyword) {
-            let err =
-                format!("Error: Documention for the `{keyword}` keyword is not implemented in LSP");
-            panic!("{err}");
-        }
+        assert!(
+            lsp_keywords.contains(&keyword),
+            "Error: Documentation for the `{keyword}` keyword is not implemented in LSP"
+        );
     }
 }

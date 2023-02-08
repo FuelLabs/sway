@@ -187,7 +187,9 @@ impl TypeBinding<CallPath> {
         }
 
         if !errors.is_empty() {
-            return err(warnings, errors);
+            // Returns ok with error, this allows functions which call this to
+            // also access the returned TyDeclaration and throw more suitable errors.
+            return ok(unknown_decl, warnings, errors);
         }
 
         // monomorphize the declaration, if needed

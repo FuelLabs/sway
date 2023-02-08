@@ -1,5 +1,5 @@
 use clap::Parser;
-use fuel_gql_client::fuel_crypto::SecretKey;
+use fuel_crypto::SecretKey;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::Gas;
