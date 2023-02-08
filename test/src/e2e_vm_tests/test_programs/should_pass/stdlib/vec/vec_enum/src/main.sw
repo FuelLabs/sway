@@ -19,6 +19,31 @@ impl Eq for SimpleEnum {
         }
     }
 }
+
+impl Ord for SimpleEnum {
+    fn gt(self, other: Self) -> bool {
+        // X > Y > Z
+        match (self, other) {
+            (_, SimpleEnum::X) => false,
+            (SimpleEnum::Y(y0), SimpleEnum::Y(y1)) => y0 > y1,
+            (SimpleEnum::Z(z0), SimpleEnum::Z(z1)) => z0.0 > z1.0,
+            (SimpleEnum::Z(_), _) => false,
+            _ => true,
+        }
+    }
+
+    fn lt(self, other: Self) -> bool {
+        // Z < Y < X
+        match (self, other) {
+            (SimpleEnum::X, _) => false,
+            (SimpleEnum::Y(y0), SimpleEnum::Y(y1)) => y0 < y1,
+            (SimpleEnum::Y(_), SimpleEnum::Z(_)) => false,
+            (SimpleEnum::Z(z0), SimpleEnum::Z(z1)) => z0.0 < z1.0,
+            _ => true,
+        }
+    }
+}
+
 const B256_0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 const B256_1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 const B256_2 = 0x0000000000000000000000000000000000000000000000000000000000000002;

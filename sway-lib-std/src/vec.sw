@@ -460,7 +460,7 @@ impl<T> Vec<T> {
         }
 
         // write to buffer
-        self.buf.ptr.add::<T>(self.len).write::<Vec<T>>(other);
+        other.buf.ptr.copy_to::<T>(self.buf.ptr.add::<T>(self.len), other.len);
 
         // set lengths and capacity
         self.len = combined_len;
@@ -619,7 +619,7 @@ impl<T> Vec<T> {
 
         if len >= 2 {
             let mut i = 0;
-            while i < len {
+            while i < len / 2 {
                 let element1_ptr = self.buf.ptr.add::<T>(i);
                 let element2_ptr = self.buf.ptr.add::<T>(len - i - 1);
 
@@ -835,39 +835,38 @@ impl<T> Vec<T> {
         stack.push(high);
 
         // Loop while stack not empty.
-        while stack.len >= 0 {
+        while stack.len() > 0 {
             // Pop high and low.
             high = stack.pop().unwrap();
             low = stack.pop().unwrap();
 
             // Partition step.
-            let pivot = v.get(high).unwrap();
-            let mut i = low - 1;
-            let mut j = low;
-            while j <= high {
-                let j_element = v.get(j).unwrap();
+            let mut pivot = v.get(high).unwrap();
+            let mut partition_index = low;
+            let mut i = low;
+            while i < high {
+                let i_element = v.get(i).unwrap();
                 // TODO: refactor when OrdEq is exposed.
-                if j_element < pivot || j_element == pivot {
-                    i += 1;
-                    v.buf.ptr().add::<O>(j).write::<O>(v.get(i).unwrap());
-                    v.buf.ptr().add::<O>(i).write::<O>(j_element);
+                if i_element < pivot || i_element == pivot {
+                    v.buf.ptr().add::<O>(i).write::<O>(v.get(partition_index).unwrap());
+                    v.buf.ptr().add::<O>(partition_index).write::<O>(i_element);
+                    partition_index += 1;
                 }
+                i += 1;
             }
-            let temp = v.get(i + 1).unwrap();
-            v.buf.ptr().add::<O>(i + 1).write::<O>(pivot);
+            let temp = v.get(partition_index).unwrap();
+            v.buf.ptr().add::<O>(partition_index).write::<O>(pivot);
             v.buf.ptr().add::<O>(high).write::<O>(temp);
 
-            let p = i + 1;
-
             // If elements to the left of the pivot, push the left side.
-            if p - 1 > low {
+            if partition_index > low + 1 {
                 stack.push(low);
-                stack.push(p - 1);
+                stack.push(partition_index - 1);
             }
 
             // If elements to the right of the pivot, push the right side.
-            if p + 1 < high {
-                stack.push(p + 1);
+            if partition_index + 1 < high {
+                stack.push(partition_index + 1);
                 stack.push(high);
             }
         }

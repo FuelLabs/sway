@@ -13,10 +13,11 @@ pub fn test_all<T>(
     value6: T,
     value7: T,
     value8: T,
-) where T: Eq {
+) where T: Eq + Ord {
     without_capacity(value0, value1, value2, value3, value4, value5, value6, value7, value8);
     with_capacity(value0, value1, value2, value3, value4, value5, value6, value7, value8);
     swap(value0, value1, value2, value3);
+    sort(value0, value1, value2, value3, value4, value5, value6, value7, value8);
 }
 
 pub fn without_capacity<T>(
@@ -228,9 +229,9 @@ pub fn without_capacity<T>(
     assert(vector.get(0).unwrap() == value3);
     assert(vector.get(1).unwrap() == value4);
     assert(vector.get(2).unwrap() == value5);
-    assert(other_vector.get(3).unwrap() == value0);
-    assert(other_vector.get(4).unwrap() == value1);
-    assert(other_vector.get(5).unwrap() == value2);
+    assert(other_vector.get(0).unwrap() == value0);
+    assert(other_vector.get(1).unwrap() == value1);
+    assert(other_vector.get(2).unwrap() == value2);
 
     // append other vector to vector
     vector.append(other_vector);
@@ -253,9 +254,9 @@ pub fn without_capacity<T>(
     assert(vector.get(0).unwrap() == value3);
     assert(vector.get(1).unwrap() == value4);
     assert(vector.get(2).unwrap() == value5);
-    assert(other_vector.get(3).unwrap() == value0);
-    assert(other_vector.get(4).unwrap() == value1);
-    assert(other_vector.get(5).unwrap() == value2);
+    assert(other_vector.get(0).unwrap() == value0);
+    assert(other_vector.get(1).unwrap() == value1);
+    assert(other_vector.get(2).unwrap() == value2);
 
     // append other vector to vector
     vector.append(other_vector);
@@ -286,6 +287,17 @@ pub fn without_capacity<T>(
     assert(vector.get(3).unwrap() == value5);
     assert(vector.get(4).unwrap() == value4);
     assert(vector.get(5).unwrap() == value3);
+
+    // reverse vector of odd length
+    let (mut vector_odd_len, _) = vector.split_at(vector.len() - 1);
+    vector_odd_len.reverse();
+
+    assert_bounds(vector_odd_len, 5, 5);
+    assert(vector_odd_len.get(0).unwrap() == value4);
+    assert(vector_odd_len.get(1).unwrap() == value5);
+    assert(vector_odd_len.get(2).unwrap() == value0);
+    assert(vector_odd_len.get(3).unwrap() == value1);
+    assert(vector_odd_len.get(4).unwrap() == value2);
 
     // fill vector with first value
     vector.fill(value0);
@@ -455,20 +467,20 @@ pub fn sort<T>(
 
     // test empty vector
     let mut empty_vector = Vec::with_capacity(0);
-    Vec::sort(empty_vector);
+    Vec::sort::<T>(empty_vector);
 
     assert_bounds(empty_vector, 0, 0);
-    assert(Vec::is_sorted(empty_vector));
+    assert(Vec::is_sorted::<T>(empty_vector));
     assert(empty_vector.get(0).is_none());
 
     // test vector of length one
     let mut vector = Vec::with_capacity(3);
     vector.push(full_vector.first().unwrap());
 
-    Vec::sort(vector);
+    Vec::sort::<T>(vector);
 
     assert_bounds(vector, 1, 3);
-    assert(Vec::is_sorted(vector));
+    assert(Vec::is_sorted::<T>(vector));
     assert(vector.get(0).unwrap() == full_vector.first().unwrap());
     assert(vector.get(1).is_none());
 
@@ -476,17 +488,17 @@ pub fn sort<T>(
     vector.push(full_vector.get(full_vector.len() / 2).unwrap());
 
     // sort pre-sorted vector
-    Vec::sort(vector);
+    Vec::sort::<T>(vector);
     assert_bounds(vector, 2, 3);
-    assert(Vec::is_sorted(vector));
+    assert(Vec::is_sorted::<T>(vector));
     assert(vector.get(0).unwrap() == full_vector.first().unwrap());
     assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
     assert(vector.get(2).is_none());
 
     // sort reversed
     vector.reverse();
-    Vec::sort(vector);
-    assert(Vec::is_sorted(vector));
+    Vec::sort::<T>(vector);
+    assert(Vec::is_sorted::<T>(vector));
 
     // test vector of length 3
     vector.push(full_vector.last().unwrap());
@@ -494,7 +506,7 @@ pub fn sort<T>(
     assert_bounds(vector, 3, 3);
 
     // sort pre-sorted vector
-    Vec::sort(vector);
+    Vec::sort::<T>(vector);
     assert_bounds(vector, 3, 3);
     assert(vector.get(0).unwrap() == full_vector.first().unwrap());
     assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
@@ -503,7 +515,7 @@ pub fn sort<T>(
 
     // swap and sort
     vector.swap(0, 2);
-    Vec::sort(vector);
+    Vec::sort::<T>(vector);
     assert_bounds(vector, 3, 3);
     assert(vector.get(0).unwrap() == full_vector.first().unwrap());
     assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
@@ -512,18 +524,33 @@ pub fn sort<T>(
 
     // swap and sort
     vector.swap(1, 2);
-    Vec::sort(vector);
+    Vec::sort::<T>(vector);
     assert_bounds(vector, 3, 3);
     assert(vector.get(0).unwrap() == full_vector.first().unwrap());
     assert(vector.get(1).unwrap() == full_vector.get(full_vector.len() / 2).unwrap());
     assert(vector.get(2).unwrap() == full_vector.last().unwrap());
     assert(vector.get(3).is_none());
 
-    // TODO: test full length vector
     shuffle_32_in_place(full_vector);
+
+    assert(!Vec::is_sorted::<T>(full_vector));
+
+    Vec::sort::<T>(full_vector);
+
+    assert_bounds(full_vector, 32, 32);
+    assert(Vec::is_sorted::<T>(full_vector));
+
+    shuffle_32_in_place(full_vector);
+
+    assert(!Vec::is_sorted::<T>(full_vector));
+
+    Vec::sort_unstable::<T>(full_vector);
+
+    assert_bounds(full_vector, 32, 32);
+    assert(Vec::is_sorted::<T>(full_vector));
 }
 
-fn assert_bounds<T>(ref mut vector: Vec<T>, expected_len: u64, expected_cap: u64) {
+fn assert_bounds<T>(vector: Vec<T>, expected_len: u64, expected_cap: u64) {
     assert(vector.len() == expected_len);
     assert(vector.capacity() == expected_cap);
     assert(!vector.is_empty() || expected_len == 0);

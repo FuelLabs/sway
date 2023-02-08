@@ -14,6 +14,16 @@ impl Eq for SimpleStruct {
     }
 }
 
+impl Ord for SimpleStruct {
+    fn gt(self, other: Self) -> bool {
+        self.x > other.x
+    }
+
+    fn lt(self, other: Self) -> bool {
+        self.x < other.x
+    }
+}
+
 const B256_0 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 const B256_1 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 const B256_2 = 0x0000000000000000000000000000000000000000000000000000000000000002;

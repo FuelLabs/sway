@@ -10,6 +10,17 @@ impl Eq for str[4] {
     }
 }
 
+// hacky way to impl Ord but all we need is a deterministic answer for the test
+impl Ord for str[4] {
+    fn gt(self, other: Self) -> bool {
+        sha256(self) > sha256(other)
+    }
+
+    fn lt(self, other: Self) -> bool {
+        sha256(self) < sha256(other)
+    }
+}
+
 fn main() -> bool {
     test_all::<str[4]>(
         "fuel",
@@ -25,4 +36,3 @@ fn main() -> bool {
 
     true
 }
-

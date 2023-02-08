@@ -9,6 +9,16 @@ impl Eq for [u64; 3] {
     }
 }
 
+impl Ord for [u64; 3] {
+    fn gt(self, other: Self) -> bool {
+        self[0] > other[0]
+    }
+
+    fn lt(self, other: Self) -> bool {
+        self[0] < other[0]
+    }
+}
+
 fn main() -> bool {
     test_all::<[u64; 3]>(
         [0, 1, 2],
