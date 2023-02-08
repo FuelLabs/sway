@@ -6,7 +6,7 @@ mod capabilities;
 pub mod config;
 mod core;
 pub mod error;
-mod server;
+pub mod server;
 mod traverse;
 pub mod utils;
 use server::Backend;

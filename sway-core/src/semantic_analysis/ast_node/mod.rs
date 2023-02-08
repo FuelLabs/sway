@@ -37,18 +37,30 @@ impl ty::TyAstNode {
                     };
                     let mut res = match a.import_type {
                         ImportType::Star => ctx.namespace.star_import(&path, engines),
-                        ImportType::SelfImport => {
-                            ctx.namespace.self_import(engines, &path, a.alias)
+                        ImportType::SelfImport(_) => {
+                            ctx.namespace.self_import(engines, &path, a.alias.clone())
                         }
-                        ImportType::Item(s) => {
-                            ctx.namespace.item_import(engines, &path, &s, a.alias)
+                        ImportType::Item(ref s) => {
+                            ctx.namespace
+                                .item_import(engines, &path, s, a.alias.clone())
                         }
                     };
                     warnings.append(&mut res.warnings);
                     errors.append(&mut res.errors);
-                    ty::TyAstNodeContent::SideEffect
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
+                        side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
+                            alias: a.alias,
+                            call_path: a.call_path,
+                            is_absolute: a.is_absolute,
+                            import_type: a.import_type,
+                        }),
+                    })
                 }
-                AstNodeContent::IncludeStatement(_) => ty::TyAstNodeContent::SideEffect,
+                AstNodeContent::IncludeStatement(_) => {
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
+                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                    })
+                }
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(check!(
                     ty::TyDeclaration::type_check(ctx, decl),
                     return err(warnings, errors),

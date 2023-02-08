@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -6,7 +7,7 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::fmt::Write;
+use std::{fmt::Write, ops::Range};
 use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
 
@@ -58,15 +59,22 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
         }
         Self::open_curly_brace(formatted_code, formatter)?;
-        for (fn_signature, semicolon_token) in self.trait_items.get() {
-            // format `Annotated<FnSignature>`
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
-            fn_signature.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+        let trait_items = self.trait_items.get();
+
+        if trait_items.is_empty() {
+            let range: Range<usize> = self.trait_items.span().into();
+            maybe_write_comments_from_map(formatted_code, range, formatter)?;
+        } else {
+            for (fn_signature, semicolon_token) in trait_items {
+                // format `Annotated<FnSignature>`
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                )?;
+                fn_signature.format(formatted_code, formatter)?;
+                writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+            }
         }
         formatted_code.pop(); // pop last ending newline
         Self::close_curly_brace(formatted_code, formatter)?;

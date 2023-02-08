@@ -20,22 +20,21 @@ pub fn maybe_write_comments_from_map(
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
     {
-        let mut comments_iter = formatter
-            .comment_map
-            .comments_between(&range)
-            .enumerate()
-            .peekable();
+        let mut comments_iter = formatter.comment_map.comments_between(&range).peekable();
 
         if comments_iter.peek().is_none() {
             return Ok(false);
         };
 
-        for (i, comment) in comments_iter {
+        // If the already formatted code ends with some pattern and doesn't already end with a newline,
+        // we want to add a newline here.
+        if formatted_code.ends_with(&['{', '}']) && !formatted_code.ends_with('\n') {
+            writeln!(formatted_code)?;
+        }
+
+        for comment in comments_iter {
             // Write comments on a newline (for now). New behavior might be required
             // to support trailing comments.
-            if i == 0 {
-                writeln!(formatted_code)?;
-            }
             writeln!(
                 formatted_code,
                 "{}{}",

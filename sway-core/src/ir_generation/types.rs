@@ -79,10 +79,12 @@ pub(super) fn get_struct_name_field_index_and_type(
         .ok()?;
     match (ty_info, field_kind) {
         (
-            TypeInfo::Struct { name, fields, .. },
+            TypeInfo::Struct {
+                call_path, fields, ..
+            },
             ty::ProjectionKind::StructField { name: field_name },
         ) => Some((
-            name.as_str().to_owned(),
+            call_path.suffix.as_str().to_owned(),
             fields
                 .iter()
                 .enumerate()
@@ -149,7 +151,9 @@ pub(super) fn get_indices_for_struct_access(
                 // Get the field index and also its type for the next iteration.
                 match (ty_info, &field_kind) {
                     (
-                        TypeInfo::Struct { name, fields, .. },
+                        TypeInfo::Struct {
+                            call_path, fields, ..
+                        },
                         ty::ProjectionKind::StructField { name: field_name },
                     ) => {
                         let field_idx_and_type_opt = fields
@@ -163,7 +167,7 @@ pub(super) fn get_indices_for_struct_access(
                                     format!(
                                         "Unknown field '{}' for struct {} in reassignment.",
                                         field_kind.pretty_print(),
-                                        name,
+                                        call_path,
                                     ),
                                     field_kind.span(),
                                 ));

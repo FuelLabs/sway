@@ -25,8 +25,6 @@ pub(crate) fn struct_instantiation(
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
     let _ = TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref());
-    // strip the CallPath as we're only really interested in the type arguments for the LSP
-    let type_binding = call_path_binding.clone().strip_inner();
 
     let TypeBinding {
         inner: CallPath {
@@ -34,7 +32,7 @@ pub(crate) fn struct_instantiation(
         },
         type_arguments,
         span: inner_span,
-    } = call_path_binding;
+    } = call_path_binding.clone();
 
     let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
         ("Self", true) => TypeInfo::SelfType,
@@ -122,7 +120,7 @@ pub(crate) fn struct_instantiation(
             struct_name: struct_name.clone(),
             fields: typed_fields,
             span: inner_span,
-            type_binding,
+            call_path_binding,
         },
         return_type: type_id,
         span,

@@ -183,7 +183,7 @@ fn analyze_code_block_entry(
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
-        ty::TyAstNodeContent::SideEffect => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
     }
 }
 
@@ -488,7 +488,7 @@ fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) ->
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             effects_of_expression(engines, expr)
         }
-        ty::TyAstNodeContent::SideEffect => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
     }
 }
 

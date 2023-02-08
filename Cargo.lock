@@ -1254,6 +1254,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
+name = "downcast-rs"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
 name = "ecdsa"
 version = "0.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2335,9 +2341,9 @@ checksum = "221996f774192f0f718773def8201c4ae31f02616a54ccfc2d358bb0e5cefdec"
 
 [[package]]
 name = "git2"
-version = "0.14.4"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0155506aab710a86160ddb504a480d2964d7ab5b9e62419be69e0032bc5931c"
+checksum = "ccf7f68c2995f392c49fffb4f95ae2c873297830eb25c6bc4c114ce8f4562acc"
 dependencies = [
  "bitflags",
  "libc",
@@ -2905,9 +2911,9 @@ checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
 
 [[package]]
 name = "libgit2-sys"
-version = "0.13.5+1.4.5"
+version = "0.14.2+1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e5ea06c26926f1002dd553fded6cfcdc9784c1f60feeb58368b4d9b07b6dba"
+checksum = "7f3d95f6b51075fe9810a7ae22c7095f12b98005ab364d8544797a825ce946a4"
 dependencies = [
  "cc",
  "libc",
@@ -4831,6 +4837,7 @@ name = "sway-ir"
 version = "0.34.0"
 dependencies = [
  "anyhow",
+ "downcast-rs",
  "filecheck",
  "generational-arena",
  "peg",
@@ -4856,7 +4863,6 @@ version = "0.34.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
- "async-trait",
  "dashmap",
  "dirs 4.0.0",
  "forc-pkg",
@@ -4865,16 +4871,20 @@ dependencies = [
  "notify",
  "notify-debouncer-mini",
  "parking_lot 0.12.1",
+ "proc-macro2",
+ "quote",
  "ropey",
  "serde",
  "serde_json",
  "sway-ast",
  "sway-core",
  "sway-error",
+ "sway-lsp-test-utils",
  "sway-parse",
  "sway-types",
  "sway-utils",
  "swayfmt",
+ "syn",
  "tempfile",
  "thiserror",
  "tokio",
@@ -4882,6 +4892,19 @@ dependencies = [
  "tower",
  "tower-lsp",
  "tracing",
+]
+
+[[package]]
+name = "sway-lsp-test-utils"
+version = "0.1.0"
+dependencies = [
+ "assert-json-diff",
+ "futures",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "tower-lsp",
 ]
 
 [[package]]

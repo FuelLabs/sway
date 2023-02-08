@@ -245,7 +245,7 @@ impl Items {
             match (resolved_type, projection) {
                 (
                     TypeInfo::Struct {
-                        name: struct_name,
+                        call_path: struct_name,
                         fields,
                         ..
                     },
@@ -277,7 +277,7 @@ impl Items {
 
                             errors.push(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name,
+                                struct_name: struct_name.suffix,
                                 available_fields: available_fields.join(", "),
                                 span: field_name.span(),
                             });

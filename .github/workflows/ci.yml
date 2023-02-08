@@ -121,6 +121,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
           cargo install --locked --debug --path ./forc-plugins/forc-tx
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         uses: actions-rs/cargo@v1
@@ -130,10 +131,8 @@ jobs:
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.15"
-      - name: Build the Sway Book
-        run: MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book
-      - name: Emit Sway Book logs to tmp.txt, fail if build logs contain 'ERROR'
+          mdbook-version: "0.4.25"
+      - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book &> tmp.txt
           if cat tmp.txt | grep 'ERROR'
@@ -143,8 +142,38 @@ jobs:
           else
             rm tmp.txt && exit 0
           fi
-      - name: Build the Sway Reference
-        run: mdbook build docs/reference
+
+      - name: Emit reference logs to tmp.txt, fail if build logs contain 'ERROR'
+        run: |
+          mdbook build docs/reference
+          mdbook build docs/reference &> tmp.txt
+          if cat tmp.txt | grep 'ERROR'
+          then
+            cat tmp.txt
+            rm tmp.txt && exit 1
+          else
+            rm tmp.txt && exit 0
+          fi
+
+  build-forc-doc-sway-lib-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install Forc
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --locked --debug --path ./forc
+      - name: Install Forc plugins
+        run: |
+          cargo install --locked --debug --path ./forc-plugins/forc-doc
+      - name: Build sway-lib-std docs
+        run: forc doc --manifest-path ./sway-lib-std
 
   build-forc-test-project:
     runs-on: ubuntu-latest

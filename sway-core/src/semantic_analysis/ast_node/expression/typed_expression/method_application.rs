@@ -266,12 +266,12 @@ pub(crate) fn type_check_method_application(
             call_path_binding,
             method_name,
         } => {
-            let prefixes =
-                if let (TypeInfo::Custom { name, .. }, ..) = &call_path_binding.inner.suffix {
-                    vec![name.clone()]
-                } else {
-                    call_path_binding.inner.prefixes
-                };
+            let mut prefixes = call_path_binding.inner.prefixes;
+            prefixes.push(match &call_path_binding.inner.suffix {
+                (TypeInfo::Custom { name, .. }, ..) => name.clone(),
+                (_, ident) => ident.clone(),
+            });
+
             CallPath {
                 prefixes,
                 suffix: method_name,

@@ -38,7 +38,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn analyze_return_paths(&self, engines: Engines<'_>) -> Vec<CompileError> {
         let mut errors = vec![];
         for (
-            name,
+            (name, _sig),
             FunctionNamespaceEntry {
                 entry_point,
                 exit_point,
@@ -164,7 +164,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             }
             Ok(NodeConnection::NextStep(vec![entry]))
         }
-        ty::TyAstNodeContent::SideEffect => Ok(NodeConnection::NextStep(leaves.to_vec())),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(NodeConnection::NextStep(leaves.to_vec())),
         ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
             connect_declaration(engines, node, decl, graph, span, leaves)?,
         )),
@@ -305,9 +305,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             .to_typeinfo(fn_decl.return_type, &fn_decl.return_type_span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
-    graph
-        .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+    graph.namespace.insert_function(fn_decl, namespace_entry);
     Ok(())
 }
 
