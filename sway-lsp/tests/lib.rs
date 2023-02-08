@@ -1,13 +1,12 @@
-mod lsp;
-pub(crate) mod utils;
+pub mod integration;
+pub mod utils;
+use integration::lsp;
+use sway_lsp::server::Backend;
 
-use crate::{
-    server::Backend,
-    tests::utils::{
-        assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-        e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
-        test_fixtures_dir,
-    },
+use crate::utils::{
+    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
+    e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
+    test_fixtures_dir,
 };
 use std::{fs, path::PathBuf};
 use tower_lsp::{
@@ -17,7 +16,7 @@ use tower_lsp::{
 };
 
 /// Holds the information needed to check the response of a goto definition request.
-pub(crate) struct GotoDefintion<'a> {
+pub struct GotoDefintion<'a> {
     req_uri: &'a Url,
     req_line: i32,
     req_char: i32,

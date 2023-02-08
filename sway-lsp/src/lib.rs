@@ -6,12 +6,10 @@ mod capabilities;
 pub mod config;
 mod core;
 pub mod error;
-mod server;
-#[cfg(test)]
-mod tests;
+pub mod server;
 mod traverse;
 pub mod utils;
-use server::Backend;
+pub use server::Backend;
 
 pub async fn start() {
     let stdin = tokio::io::stdin();

@@ -2,12 +2,6 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::{
-    server::{self, Backend},
-    tests::{
-        lsp, {GotoDefintion, HoverDocumentation},
-    },
-};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
@@ -17,6 +11,10 @@ use tower_lsp::{
     lsp_types::*,
     ExitedError, LspService,
 };
+
+use sway_lsp::server::{self, Backend};
+
+use crate::{GotoDefintion, HoverDocumentation};
 
 pub(crate) fn build_request_with_id(
     method: impl Into<Cow<'static, str>>,
@@ -385,8 +383,8 @@ pub(crate) async fn definition_check<'a>(
     go_to: &'a GotoDefintion<'a>,
     id: i64,
 ) -> Request {
-    let definition = lsp::definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
-    let response = lsp::call_request(service, definition.clone())
+    let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+    let response = call_request(service, definition.clone())
         .await
         .unwrap()
         .unwrap();
@@ -430,11 +428,8 @@ pub(crate) async fn hover_request<'a>(
             "character": hover_docs.req_char
         }
     });
-    let hover = lsp::build_request_with_id("textDocument/hover", params, id);
-    let response = lsp::call_request(service, hover.clone())
-        .await
-        .unwrap()
-        .unwrap();
+    let hover = build_request_with_id("textDocument/hover", params, id);
+    let response = call_request(service, hover.clone()).await.unwrap().unwrap();
     let value = response.result().unwrap().clone();
     let hover_res: Hover = serde_json::from_value(value).unwrap();
 
