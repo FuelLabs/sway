@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -28,7 +28,7 @@ pub(super) fn compile_script(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclId)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -74,7 +74,7 @@ pub(super) fn compile_predicate(
     declarations: &[ty::TyDeclaration],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclId)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -119,7 +119,7 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclId)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
     engines: Engines<'_>,
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Contract);
@@ -165,7 +165,7 @@ pub(super) fn compile_library(
     declarations: &[ty::TyDeclaration],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclId)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
 ) -> Result<Module, CompileError> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -301,7 +301,7 @@ pub(super) fn compile_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
-    test_decl_id: Option<DeclId>,
+    test_decl_id: Option<DeclRef>,
 ) -> Result<Option<Function>, CompileError> {
     let type_engine = engines.te();
     // Currently monomorphization of generics is inlined into main() and the functions with generic
@@ -341,7 +341,7 @@ pub(super) fn compile_entry_function(
     ast_fn_decl: &ty::TyFunctionDeclaration,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_decl_id: Option<DeclId>,
+    test_decl_id: Option<DeclRef>,
 ) -> Result<Function, CompileError> {
     let is_entry = true;
     compile_function(
@@ -365,7 +365,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDeclaration, DeclId)],
+    test_fns: &[(ty::TyFunctionDeclaration, DeclRef)],
 ) -> Result<Vec<Function>, CompileError> {
     test_fns
         .iter()
@@ -407,7 +407,7 @@ fn compile_fn_with_args(
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_decl_id: Option<DeclId>,
+    test_decl_id: Option<DeclRef>,
 ) -> Result<Function, CompileError> {
     let type_engine = engines.te();
 

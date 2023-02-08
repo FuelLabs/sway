@@ -111,7 +111,7 @@ fn contract_entry_points(
 
 fn decl_id_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclId,
+    decl_id: &DeclRef,
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
     decl_engine
@@ -121,7 +121,7 @@ fn decl_id_to_fn_decls(
 
 fn impl_trait_methods<'a>(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &'a DeclId,
+    impl_trait_decl_id: &'a DeclRef,
     span: &'a Span,
 ) -> Vec<ty::TyFunctionDeclaration> {
     match decl_engine.get_impl_trait(impl_trait_decl_id.clone(), span) {

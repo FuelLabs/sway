@@ -165,8 +165,8 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+        let mut original_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
+        let mut impld_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -222,14 +222,14 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
+) -> CompileResult<(BTreeMap<Ident, DeclRef>, BTreeMap<Ident, DeclRef>)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let decl_engine = ctx.decl_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut original_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
+    let mut impld_method_ids: BTreeMap<Ident, DeclRef> = BTreeMap::new();
 
     match ctx
         .namespace

@@ -1,15 +1,15 @@
 use sway_types::Span;
 
-use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub methods: Vec<DeclId>,
+    pub methods: Vec<DeclRef>,
     pub implementing_for_type_id: TypeId,
-    pub trait_decl_id: Option<DeclId>,
+    pub trait_decl_id: Option<DeclRef>,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }

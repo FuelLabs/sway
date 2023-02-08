@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-type MethodMap = BTreeMap<Ident, DeclId>;
+type MethodMap = BTreeMap<Ident, DeclRef>;
 
 impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(

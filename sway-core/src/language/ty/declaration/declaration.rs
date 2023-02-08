@@ -14,18 +14,18 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum TyDeclaration {
     VariableDeclaration(Box<TyVariableDeclaration>),
-    ConstantDeclaration(DeclId),
-    FunctionDeclaration(DeclId),
-    TraitDeclaration(DeclId),
-    StructDeclaration(DeclId),
-    EnumDeclaration(DeclId),
-    ImplTrait(DeclId),
-    AbiDeclaration(DeclId),
+    ConstantDeclaration(DeclRef),
+    FunctionDeclaration(DeclRef),
+    TraitDeclaration(DeclRef),
+    StructDeclaration(DeclRef),
+    EnumDeclaration(DeclRef),
+    ImplTrait(DeclRef),
+    AbiDeclaration(DeclRef),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
     GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
     ErrorRecovery(Span),
-    StorageDeclaration(DeclId),
+    StorageDeclaration(DeclRef),
 }
 
 impl EqWithEngines for TyDeclaration {}
@@ -314,7 +314,7 @@ impl GetDeclIdent for TyDeclaration {
 }
 
 impl GetDeclId for TyDeclaration {
-    fn get_decl_id(&self) -> Option<DeclId> {
+    fn get_decl_id(&self) -> Option<DeclRef> {
         match self {
             TyDeclaration::VariableDeclaration(_) => todo!("not a declaration id yet"),
             TyDeclaration::ConstantDeclaration(decl) => Some(decl.clone()),

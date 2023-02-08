@@ -18,7 +18,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
-    parents: RwLock<HashMap<usize, Vec<DeclId>>>,
+    parents: RwLock<HashMap<usize, Vec<DeclRef>>>,
 }
 
 impl fmt::Display for DeclEngine {
@@ -31,24 +31,24 @@ impl fmt::Display for DeclEngine {
 }
 
 impl DeclEngine {
-    pub(crate) fn get(&self, index: DeclId) -> DeclWrapper {
+    pub(crate) fn get(&self, index: DeclRef) -> DeclWrapper {
         self.slab.get(*index)
     }
 
-    pub(super) fn replace(&self, index: DeclId, wrapper: DeclWrapper) {
+    pub(super) fn replace(&self, index: DeclRef, wrapper: DeclWrapper) {
         self.slab.replace(index, wrapper);
     }
 
-    pub(crate) fn insert<T>(&self, decl: T) -> DeclId
+    pub(crate) fn insert<T>(&self, decl: T) -> DeclRef
     where
         T: Into<(DeclWrapper, Span)>,
     {
         let (decl_wrapper, span) = decl.into();
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+        DeclRef::new(self.slab.insert(decl_wrapper), span)
     }
 
-    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclId {
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclRef {
+        DeclRef::new(self.slab.insert(decl_wrapper), span)
     }
 
     /// Given a [DeclId] `index`, finds all the parents of `index` and all the
@@ -56,11 +56,11 @@ impl DeclEngine {
     /// duplicated computation---if the parents of a [DeclId] have already been
     /// found, we do not find them again.
     #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents(&self, engines: Engines<'_>, index: DeclId) -> Vec<DeclId> {
+    pub(crate) fn find_all_parents(&self, engines: Engines<'_>, index: DeclRef) -> Vec<DeclRef> {
         let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<usize, DeclId> = HashMap::new();
+        let mut acc_parents: HashMap<usize, DeclRef> = HashMap::new();
         let mut already_checked: HashSet<usize> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([index]);
+        let mut left_to_check: VecDeque<DeclRef> = VecDeque::from([index]);
         while let Some(curr) = left_to_check.pop_front() {
             if !already_checked.insert(*curr) {
                 continue;
@@ -79,7 +79,7 @@ impl DeclEngine {
         acc_parents.values().cloned().collect()
     }
 
-    pub(crate) fn register_parent(&self, index: &DeclId, parent: DeclId) {
+    pub(crate) fn register_parent(&self, index: &DeclRef, parent: DeclRef) {
         let mut parents = self.parents.write().unwrap();
         parents
             .entry(**index)
@@ -89,7 +89,7 @@ impl DeclEngine {
 
     pub fn get_function(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyFunctionDeclaration, CompileError> {
         self.slab.get(*index).expect_function(span)
@@ -97,19 +97,19 @@ impl DeclEngine {
 
     pub fn get_trait(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyTraitDeclaration, CompileError> {
         self.slab.get(*index).expect_trait(span)
     }
 
-    pub fn get_trait_fn(&self, index: DeclId, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
+    pub fn get_trait_fn(&self, index: DeclRef, span: &Span) -> Result<ty::TyTraitFn, CompileError> {
         self.slab.get(*index).expect_trait_fn(span)
     }
 
     pub fn get_impl_trait(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyImplTrait, CompileError> {
         self.slab.get(*index).expect_impl_trait(span)
@@ -117,7 +117,7 @@ impl DeclEngine {
 
     pub fn get_struct(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyStructDeclaration, CompileError> {
         self.slab.get(*index).expect_struct(span)
@@ -125,7 +125,7 @@ impl DeclEngine {
 
     pub fn get_storage(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyStorageDeclaration, CompileError> {
         self.slab.get(*index).expect_storage(span)
@@ -133,7 +133,7 @@ impl DeclEngine {
 
     pub fn get_abi(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyAbiDeclaration, CompileError> {
         self.slab.get(*index).expect_abi(span)
@@ -141,7 +141,7 @@ impl DeclEngine {
 
     pub fn get_constant(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyConstantDeclaration, CompileError> {
         self.slab.get(*index).expect_constant(span)
@@ -149,7 +149,7 @@ impl DeclEngine {
 
     pub fn get_enum(
         &self,
-        index: DeclId,
+        index: DeclRef,
         span: &Span,
     ) -> Result<ty::TyEnumDeclaration, CompileError> {
         self.slab.get(*index).expect_enum(span)

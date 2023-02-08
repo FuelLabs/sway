@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -414,7 +414,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclId> {
+) -> CompileResult<DeclRef> {
     let mut warnings = vec![];
     let mut errors = vec![];
 

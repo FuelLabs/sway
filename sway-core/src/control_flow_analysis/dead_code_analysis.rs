@@ -431,7 +431,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclId],
+    methods: &[DeclRef],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -755,7 +755,7 @@ fn depth_first_insertion_code_block<'eng: 'cfg, 'cfg>(
 
 fn get_trait_fn_node_index<'a>(
     engines: Engines<'_>,
-    function_decl_id: DeclId,
+    function_decl_id: DeclRef,
     expression_span: Span,
     graph: &'a ControlFlowGraph,
 ) -> Result<Option<&'a NodeIndex>, CompileError> {

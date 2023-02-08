@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -163,7 +163,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclId> {
+    ) -> CompileResult<DeclRef> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -220,7 +220,7 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        let mut matching_method_decl_ids: Vec<DeclId> = vec![];
+        let mut matching_method_decl_ids: Vec<DeclRef> = vec![];
 
         for decl_id in methods.into_iter() {
             let method = check!(
@@ -240,7 +240,7 @@ impl Namespace {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_id: Option<DeclId> = Option::None;
+                let mut maybe_method_decl_id: Option<DeclRef> = Option::None;
                 for decl_id in matching_method_decl_ids.clone().into_iter() {
                     let method = check!(
                         CompileResult::from(
@@ -345,7 +345,7 @@ impl Namespace {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclId],
+        methods: &[DeclRef],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -370,7 +370,7 @@ impl Namespace {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclId> {
+    ) -> Vec<DeclRef> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);
