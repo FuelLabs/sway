@@ -197,6 +197,8 @@ async fn show_ast() {
     shutdown_and_exit(&mut service).await;
 }
 
+//------------------- GO TO DEFINITION -------------------//
+
 #[tokio::test]
 async fn go_to_definition() {
     let (mut service, _) = LspService::new(Backend::new);
@@ -778,6 +780,43 @@ async fn go_to_definition_for_consts() {
 }
 
 #[tokio::test]
+async fn go_to_definition_for_functions() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/functions/src/main.sw"),
+    )
+    .await;
+
+    let mut go_to = GotoDefintion {
+        req_uri: &uri,
+        req_line: 8,
+        req_char: 14,
+        def_line: 2,
+        def_start_char: 7,
+        def_end_char: 12,
+        def_path: uri.as_str(),
+    };
+    // Return type
+    let _ = lsp::definition_check(&mut service, &go_to, 1).await;
+
+    // TODO: @IGI-111 add test for generic return type
+
+    // Function parameter
+    definition_check_with_req_offset(&mut service, &mut go_to, 13, 16, 2).await;
+
+    // TODO: @IGI-111 add test for generic function parameter
+
+    // Functions expression
+    go_to.def_line = 8;
+    go_to.def_start_char = 3;
+    go_to.def_end_char = 6;
+    definition_check_with_req_offset(&mut service, &mut go_to, 19, 13, 3).await;
+}
+
+//------------------- HOVER DOCUMENTATION -------------------//
+
+#[tokio::test]
 async fn hover_docs_for_consts() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(
@@ -797,6 +836,24 @@ async fn hover_docs_for_consts() {
     hover.req_char = 49;
     hover.documentation = " CONSTANT_2 has a value of 200";
     let _ = lsp::hover_request(&mut service, &hover, 2).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_functions() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/functions/src/main.sw"),
+    )
+    .await;
+
+    let hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 20,
+        req_char: 14,
+        documentation: "```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, 1).await;
 }
 
 #[tokio::test]
