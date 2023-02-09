@@ -223,13 +223,7 @@ impl Namespace {
         let mut matching_method_decl_ids: Vec<DeclId> = vec![];
 
         for decl_id in methods.into_iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if &method.name == method_name {
+            if &decl_id.name == method_name {
                 matching_method_decl_ids.push(decl_id);
             }
         }

@@ -204,7 +204,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
                 self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
-                    dependency.collect_typed_declaration(decl_engine, node)
+                    dependency.collect_typed_declaration(node)
                 });
             }
         }

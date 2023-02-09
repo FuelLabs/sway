@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident>;
+    fn get_decl_ident(&self) -> Option<Ident>;
 }
 
 pub trait GetDeclId {
@@ -112,8 +112,8 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
-        self.content.get_decl_ident(decl_engine)
+    fn get_decl_ident(&self) -> Option<Ident> {
+        self.content.get_decl_ident()
     }
 }
 
@@ -322,9 +322,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
+    fn get_decl_ident(&self) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(decl_engine),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect(_) => None,

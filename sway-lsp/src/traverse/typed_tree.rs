@@ -399,12 +399,10 @@ impl<'a> TypedTree<'a> {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
-                            let decl_engine = self.engines.de();
-
                             if let Some(decl_ident) = namespace
                                 .submodule(call_path)
                                 .and_then(|module| module.symbols().get(item))
-                                .and_then(|decl| decl.get_decl_ident(decl_engine))
+                                .and_then(|decl| decl.get_decl_ident())
                             {
                                 token.type_def = Some(TypeDefinition::Ident(decl_ident));
                             }
@@ -831,7 +829,7 @@ impl<'a> TypedTree<'a> {
                     .ok()
             })
             .and_then(|function_decl| function_decl.implementing_type)
-            .and_then(|impl_type| impl_type.get_decl_ident(decl_engine));
+            .and_then(|impl_type| impl_type.get_decl_ident());
 
         let prefixes = if let Some(impl_type_name) = implementing_type_name {
             // the last prefix of the call path is not a module but a type
