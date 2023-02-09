@@ -1,5 +1,5 @@
 use std::{fmt::Write, ops::Range};
-use sway_ast::token::CommentKind;
+use sway_ast::token::{Comment, CommentKind};
 use sway_types::Spanned;
 
 use crate::{
@@ -34,6 +34,18 @@ pub fn collect_newlines_after_comment_span(unformatted_code: &str) -> String {
         .take_while(|&c| c.is_whitespace())
         .filter(|&c| c == '\n')
         .collect()
+}
+
+/// Writes a trailing newline using potentially destructive 'truncate()' to strip the end
+/// of whitespaces.
+fn write_trailing_comment(
+    formatted_code: &mut FormattedCode,
+    comment: &Comment,
+) -> Result<(), FormatterError> {
+    formatted_code.truncate(formatted_code.trim_end().len());
+    writeln!(formatted_code, " {}", comment.span().as_str().trim_end())?;
+
+    Ok(())
 }
 
 /// Given a range, writes comments contained within the range. This function
@@ -82,8 +94,7 @@ pub fn write_comments(
                         )?;
                     }
                     CommentKind::Trailing => {
-                        formatted_code.truncate(formatted_code.trim_end().len());
-                        writeln!(formatted_code, " {}", comment.span().as_str().trim_end())?;
+                        write_trailing_comment(formatted_code, comment)?;
                         if comments_iter.peek().is_none() {
                             write!(
                                 formatted_code,
