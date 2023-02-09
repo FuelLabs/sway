@@ -152,7 +152,7 @@ pub(crate) async fn code_action_struct_request(
     code_action
 }
 
-pub(crate) async fn code_action_struct_with_type_params_request(
+pub(crate) async fn code_action_struct_type_params_request(
     service: &mut LspService<Backend>,
     uri: &Url,
 ) -> Request {
@@ -223,6 +223,89 @@ pub(crate) async fn code_action_struct_with_type_params_request(
                       "start": {
                         "character": 0,
                         "line": 9
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate `new`"
+          }
+        ]),
+    );
+    assert_json_eq!(expected, response.ok().unwrap());
+    code_action
+}
+
+pub(crate) async fn code_action_struct_existing_impl_request(
+    service: &mut LspService<Backend>,
+    uri: &Url,
+) -> Request {
+    let params = json!({
+      "textDocument": {
+        "uri": uri
+      },
+      "range": {
+        "start": {
+          "line": 2,
+          "character": 7
+        },
+        "end": {
+          "line": 2,
+          "character": 7
+        }
+      },
+      "context": {
+        "diagnostics": [],
+        "triggerKind": 2
+      }
+    });
+    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
+    let response = call_request(service, code_action.clone()).await;
+    let uri_string = uri.to_string();
+    let expected = Response::from_ok(
+        1.into(),
+        json!([
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string.clone(): [
+                  {
+                    "newText": "\nimpl A {\n    \n}\n",
+                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 6
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 6
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "kind": "refactor",
+            "title": "Generate impl for `A`"
+          },
+          {
+            "data": uri,
+            "edit": {
+              "changes": {
+                uri_string: [
+                  {
+                    "newText": "    fn new(a: u64, b: u64) -> Self { Self { a, b } }\n",
+                    "range": {
+                      "end": {
+                        "character": 0,
+                        "line": 8
+                      },
+                      "start": {
+                        "character": 0,
+                        "line": 8
                       }
                     }
                   }

@@ -61,6 +61,12 @@ pub fn generic_impl_self_dir() -> PathBuf {
         .join("generic_impl_self")
 }
 
+pub fn self_impl_reassignment_dir() -> PathBuf {
+    sway_workspace_dir()
+        .join(e2e_language_dir())
+        .join("self_impl_reassignment")
+}
+
 pub fn get_absolute_path(path: &str) -> String {
     sway_workspace_dir().join(path).to_str().unwrap().into()
 }

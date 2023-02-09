@@ -6,7 +6,7 @@ use sway_lsp::server::Backend;
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
     e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
-    sway_workspace_dir, test_fixtures_dir,
+    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
 };
 use tower_lsp::{
     jsonrpc::{self, Response},
@@ -885,9 +885,14 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
-    code_action_struct_with_type_params,
-    code_actions::code_action_struct_with_type_params_request,
+    code_action_struct_type_params,
+    code_actions::code_action_struct_type_params_request,
     generic_impl_self_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_existing_impl,
+    code_actions::code_action_struct_existing_impl_request,
+    self_impl_reassignment_dir().join("src/main.sw")
 );
 lsp_capability_test!(
     code_lens,
