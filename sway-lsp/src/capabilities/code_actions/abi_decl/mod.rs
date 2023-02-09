@@ -17,6 +17,5 @@ pub(crate) fn code_actions(
         .de()
         .get_abi(decl_id.clone(), &decl_id.span())
         .unwrap();
-    // Some(vec![abi_impl::code_action(engines, &decl, uri)])
     Some(vec![AbiImplCodeAction::new(ctx, &decl).code_action()])
 }
