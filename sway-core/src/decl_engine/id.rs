@@ -1,3 +1,5 @@
+use std::hash::Hasher;
+
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{engine_threading::*, language::ty, type_system::*};
@@ -28,9 +30,6 @@ impl Clone for DeclId {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for DeclId {}
 impl PartialEqWithEngines for DeclId {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -38,6 +37,14 @@ impl PartialEqWithEngines for DeclId {
         let left = decl_engine.get(self.clone());
         let right = decl_engine.get(other.clone());
         left.eq(&right, engines)
+    }
+}
+
+impl HashWithEngines for DeclId {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let decl_engine = engines.de();
+        let decl = decl_engine.get(self.clone());
+        decl.hash(state, engines);
     }
 }
 

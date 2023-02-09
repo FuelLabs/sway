@@ -1,7 +1,7 @@
 use crate::language::parsed;
 use sway_types::ident::Ident;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyUseStatement {
     pub call_path: Vec<Ident>,
     pub import_type: parsed::ImportType,

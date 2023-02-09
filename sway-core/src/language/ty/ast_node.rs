@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -31,6 +34,18 @@ impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.content.eq(&other.content, engines)
+    }
+}
+
+impl HashWithEngines for TyAstNode {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyAstNode {
+            content,
+            // the span is not hashed because it isn't relevant/a reliable
+            // source of obj v. obj distinction
+            span: _,
+        } = self;
+        content.hash(state, engines);
     }
 }
 
@@ -302,6 +317,24 @@ impl PartialEqWithEngines for TyAstNodeContent {
             }
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyAstNodeContent {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyAstNodeContent::*;
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Declaration(decl) => {
+                decl.hash(state, engines);
+            }
+            Expression(exp) | ImplicitReturnExpression(exp) => {
+                exp.hash(state, engines);
+            }
+            SideEffect(effect) => {
+                effect.hash(state);
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
+    hash::{Hash, Hasher},
 };
 
 use sway_types::{state::StateIndex, Ident, Span};
@@ -127,9 +128,6 @@ pub enum TyExpressionVariant {
     Return(Box<TyExpression>),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -364,7 +362,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
                 l_exp.eq(&**r_exp, engines)
             }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -375,7 +373,186 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     condition: r_condition,
                 },
             ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
-            _ => false,
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
+        }
+    }
+}
+
+impl HashWithEngines for TyExpressionVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Self::Literal(lit) => {
+                lit.hash(state);
+            }
+            Self::FunctionApplication {
+                call_path,
+                arguments,
+                function_decl_id,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                contract_call_params: _,
+                self_state_idx: _,
+                selector: _,
+                type_binding: _,
+            } => {
+                call_path.hash(state);
+                function_decl_id.hash(state, engines);
+                arguments.iter().for_each(|(name, arg)| {
+                    name.hash(state);
+                    arg.hash(state, engines);
+                });
+            }
+            Self::LazyOperator { op, lhs, rhs } => {
+                op.hash(state);
+                lhs.hash(state, engines);
+                rhs.hash(state, engines);
+            }
+            Self::VariableExpression {
+                name,
+                mutability,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                call_path: _,
+                span: _,
+            } => {
+                name.hash(state);
+                mutability.hash(state);
+            }
+            Self::Tuple { fields } => {
+                fields.hash(state, engines);
+            }
+            Self::Array { contents } => {
+                contents.hash(state, engines);
+            }
+            Self::ArrayIndex { prefix, index } => {
+                prefix.hash(state, engines);
+                index.hash(state, engines);
+            }
+            Self::StructExpression {
+                struct_name,
+                fields,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+                call_path_binding: _,
+            } => {
+                struct_name.hash(state);
+                fields.hash(state, engines);
+            }
+            Self::CodeBlock(contents) => {
+                contents.hash(state, engines);
+            }
+            Self::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.hash(state, engines);
+                then.hash(state, engines);
+                if let Some(x) = r#else.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AsmExpression {
+                registers,
+                body,
+                returns,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                whole_block_span: _,
+            } => {
+                registers.hash(state, engines);
+                body.hash(state);
+                returns.hash(state);
+            }
+            Self::StructFieldAccess {
+                prefix,
+                field_to_access,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                field_instantiation_span: _,
+            } => {
+                prefix.hash(state, engines);
+                field_to_access.hash(state, engines);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::TupleElemAccess {
+                prefix,
+                elem_to_access_num,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                elem_to_access_span: _,
+            } => {
+                prefix.hash(state, engines);
+                elem_to_access_num.hash(state);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::EnumInstantiation {
+                enum_decl,
+                variant_name,
+                tag,
+                contents,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                enum_instantiation_span: _,
+                variant_instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                enum_decl.hash(state, engines);
+                variant_name.hash(state);
+                tag.hash(state);
+                if let Some(x) = contents.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AbiCast {
+                abi_name,
+                address,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+            } => {
+                abi_name.hash(state);
+                address.hash(state, engines);
+            }
+            Self::StorageAccess(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::IntrinsicFunction(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::AbiName(name) => {
+                name.hash(state);
+            }
+            Self::EnumTag { exp } => {
+                exp.hash(state, engines);
+            }
+            Self::UnsafeDowncast { exp, variant } => {
+                exp.hash(state, engines);
+                variant.hash(state, engines);
+            }
+            Self::WhileLoop { condition, body } => {
+                condition.hash(state, engines);
+                body.hash(state, engines);
+            }
+            Self::Break | Self::Continue | Self::FunctionParameter => {}
+            Self::Reassignment(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::StorageReassignment(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::Return(exp) => {
+                exp.hash(state, engines);
+            }
         }
     }
 }
