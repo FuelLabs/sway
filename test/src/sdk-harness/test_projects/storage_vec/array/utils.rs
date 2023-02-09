@@ -106,4 +106,36 @@ pub mod wrappers {
     pub async fn clear(instance: &MyContract) {
         instance.methods().array_clear().call().await.unwrap();
     }
+
+    pub async fn swap(instance: &MyContract, index_0: u64, index_1: u64) {
+        instance.methods().array_swap(index_0, index_1).call().await.unwrap();
+    }
+
+    pub async fn first(instance: &MyContract) -> [u8; 3] {
+        instance.methods().array_first().call().await.unwrap().value
+    }
+
+    pub async fn last(instance: &MyContract) -> [u8; 3] {
+        instance.methods().array_last().call().await.unwrap().value
+    }
+
+    pub async fn reverse(instance: &MyContract) {
+        instance.methods().array_reverse().call().await.unwrap();
+    }
+
+    pub async fn fill(instance: &MyContract, value: [u8; 3]) {
+        instance.methods().array_fill(value).call().await.unwrap();
+    }
+
+    pub async fn resize(instance: &MyContract, new_len: u64, value: [u8; 3]) {
+        instance.methods().array_resize(new_len, value).call().await.unwrap();
+    }
+
+    pub async fn append(instance: &MyContract) {
+        instance.methods.array_append().call().await.unwrap();
+    }
+
+    pub async fn push_other_vec(instance: &MyContract, value: [u8; 3]) {
+        instance.methods().arrau_push_other_vec(value).call().await.unwrap();
+    }
 }

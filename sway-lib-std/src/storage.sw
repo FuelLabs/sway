@@ -308,7 +308,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        clear::<u64>(__get_storage_key(), 0);
+        let _ = clear::<u64>(sha256((__get_storage_key(), 0)));
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -743,59 +743,6 @@ impl<V> StorageVec<V> {
         store::<V>(key, value);
     }
 
-    /// Copies all elements of `other` into `self`.
-    ///
-    /// > NOTE: While `Vec` clears `other`, `StorageVec` does not clear `other` to reduce storage
-    /// > operations.
-    ///
-    /// ### Arguments
-    ///
-    /// * other - The vector to append to `self`.
-    ///
-    /// ### Storage Access
-    ///
-    /// * Reads - `1 + (2 * N)` where `N` is `other.len()`
-    /// * Writes - `1 + N` where `N` is `other.len()`
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {},
-    ///     vec2: StorageVec<u64> = StorageVec {},
-    /// }
-    ///
-    /// fn foo() {
-    ///     storage.vec.push(5);
-    ///     storage.vec.push(10);
-    ///
-    ///     storage.vec2.push(15);
-    ///     storage.vec2.push(20);
-    ///
-    ///     storage.vec.append(storage.vec2);
-    ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
-    ///     assert(20 == storage.vec.get(3).unwrap());
-    ///
-    ///     assert(15 == storage.vec2.get(0).unwrap());
-    ///     assert(20 == storage.vec2.get(1).unwrap());
-    /// }
-    /// ```
-    #[storage(read, write)]
-    pub fn append(self, other: StorageVec<V>) {
-        let len = get::<u64>(__get_storage_key());
-        let combined_len = len + other.len();
-
-        let mut i_self = len;
-        while i < combined_len {
-            store::<V>(sha256((i, __get_storage_key())), other.get(i - len).unwrap());
-        }
-
-        store::<u64>(sha256(__get_storage_key()), combined_len);
-    }
-
     /// Returns the first element of the vector, or `None` if it is empty.
     ///
     /// ### Storage Access
@@ -999,6 +946,61 @@ impl<V> StorageVec<V> {
         }
         // TODO: should we clear the old slots if new_len < len?
         store::<u64>(__get_storage_key(), new_len);
+    }
+}
+
+impl<V> StorageVec<V> {
+    /// Copies all elements of `other` into `self`.
+    ///
+    /// > NOTE: While `Vec` clears `other`, `StorageVec` does not clear `other` to reduce storage
+    /// > operations.
+    ///
+    /// ### Arguments
+    ///
+    /// * other - The vector to append to `self`.
+    ///
+    /// ### Storage Access
+    ///
+    /// * Reads - `1 + (2 * N)` where `N` is `other.len()`
+    /// * Writes - `1 + N` where `N` is `other.len()`
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {},
+    ///     vec2: StorageVec<u64> = StorageVec {},
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(5);
+    ///     storage.vec.push(10);
+    ///
+    ///     storage.vec2.push(15);
+    ///     storage.vec2.push(20);
+    ///
+    ///     storage.vec.append(storage.vec2);
+    ///
+    ///     assert(5 == storage.vec.get(0).unwrap());
+    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///
+    ///     assert(15 == storage.vec2.get(0).unwrap());
+    ///     assert(20 == storage.vec2.get(1).unwrap());
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn append(self, other: StorageVec<V>) {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+        let combined_len = len + other.len();
+
+        let mut i = len;
+        while i < combined_len {
+            store::<V>(sha256((i, __get_storage_key())), other.get(i - len).unwrap());
+        }
+
+        store::<u64>(sha256(__get_storage_key()), combined_len);
     }
 }
 

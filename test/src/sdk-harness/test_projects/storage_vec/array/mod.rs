@@ -2,7 +2,26 @@ mod utils;
 
 use utils::{
     setup::get_contract_instance,
-    wrappers::{clear, get, insert, is_empty, len, pop, push, remove, set, swap_remove},
+    wrappers::{
+        clear,
+        get,
+        insert,
+        is_empty,
+        len,
+        pop,
+        push,
+        remove,
+        set,
+        swap_remove,
+        swap,
+        first,
+        last,
+        reverse,
+        fill,
+        resize,
+        append,
+        push_other_vec,
+    },
 };
 
 // TODO: Replace many of the get calls with direct storage values
@@ -230,6 +249,174 @@ mod success {
         assert_eq!([3; 3], get(&instance, 1).await);
         assert_eq!([2; 3], get(&instance, 2).await);
         assert_eq!([1; 3], get(&instance, 3).await);
+    }
+
+    #[tokio::test]
+    async fn can_swap() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        swap(&instance, 0, 3);
+        swap(&instance, 1, 2);
+
+        assert_eq!([4; 3], get(&instance, 0).await);
+        assert_eq!([3; 3], get(&instance, 1).await);
+        assert_eq!([2; 3], get(&instance, 2).await);
+        assert_eq!([1; 3], get(&instance, 3).await);
+    }
+
+    #[tokio::test]
+    async fn can_first() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [1; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 0).await);
+
+        assert_eq!([1; 3], first(&instance).await);
+    }
+
+    #[tokio::test]
+    async fn can_last() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [1; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 0).await);
+
+        assert_eq!([2; 3], last(&instance).await);
+    }
+
+    #[tokio::test]
+    async fn can_reverse() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        reverse(&instance).await;
+
+        assert_eq!([4; 3], get(&instance, 0).await);
+        assert_eq!([3; 3], get(&instance, 1).await);
+        assert_eq!([2; 3], get(&instance, 2).await);
+        assert_eq!([1; 3], get(&instance, 3).await);
+    }
+
+    #[tokio::test]
+    async fn can_fill() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        fill(&instance, [5; 3]).await;
+
+        assert_eq!([5; 3], get(&instance, 0).await);
+        assert_eq!([5; 3], get(&instance, 1).await);
+        assert_eq!([5; 3], get(&instance, 2).await);
+        assert_eq!([5; 3], get(&instance, 3).await);
+    }
+
+    #[tokio::test]
+    async fn can_resize_bigger() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        resize(&instance, 6, [5; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+        assert_eq!([5; 3], get(&instance, 4).await);
+        assert_eq!([5; 3], get(&instance, 5).await);
+    }
+
+    #[tokio::test]
+    async fn can_resize_smaller() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        resize(&instance, 2, [5; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+    }
+
+    #[tokio::test]
+    async fn can_append() {
+        let (instance, _id) = get_contract_instance().await;
+
+        push(&instance, [1; 3]).await;
+        push(&instance, [2; 3]).await;
+        push(&instance, [3; 3]).await;
+        push(&instance, [4; 3]).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+
+        push_other_vec(&instance, [1; 3]).await;
+        push_other_vec(&instance, [2; 3]).await;
+        push_other_vec(&instance, [3; 3]).await;
+        push_other_vec(&instance, [4; 3]).await;
+
+        append(&instance).await;
+
+        assert_eq!([1; 3], get(&instance, 0).await);
+        assert_eq!([2; 3], get(&instance, 1).await);
+        assert_eq!([3; 3], get(&instance, 2).await);
+        assert_eq!([4; 3], get(&instance, 3).await);
+        assert_eq!([1; 3], get(&instance, 4).await);
+        assert_eq!([2; 3], get(&instance, 5).await);
+        assert_eq!([3; 3], get(&instance, 6).await);
+        assert_eq!([4; 3], get(&instance, 7).await);
     }
 }
 

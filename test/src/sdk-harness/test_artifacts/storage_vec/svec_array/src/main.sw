@@ -23,10 +23,25 @@ abi MyContract {
     fn array_is_empty() -> bool;
     #[storage(write)]
     fn array_clear();
+    #[storgae(read, write)]
+    fn swap(index_0: u64, index_1: u64);
+    #[storage(read)]
+    fn first() -> [u8; 3];
+    #[storage(read)]
+    fn last() -> [u8; 3];
+    #[storage(read, write)]
+    fn reverse();
+    #[storage(read, write)]
+    fn fill(value: [u8; 3]);
+    #[storage(read, write)]
+    fn resize(new_len: u64, value: [u8; 3]);
+    #[storage(read, write)]
+    fn append();
 }
 
 storage {
     my_vec: StorageVec<[u8; 3]> = StorageVec {},
+    my_other_vec: Storage<[u8; 3]> = StorageVec {},
 }
 
 impl MyContract for Contract {
@@ -69,5 +84,37 @@ impl MyContract for Contract {
     #[storage(write)]
     fn array_clear() {
         storage.my_vec.clear();
+    }
+    #[storage(read, write)]
+    fn array_swap(index_0: u64, index_1: u64) {
+        storage.my_vec.swap(index_0, index_1);
+    }
+    #[storage(read)]
+    fn array_first() -> [u8; 3] {
+        storage.my_vec.first().unwrap()
+    }
+    #[storage(read)]
+    fn array_last() -> [u8; 3] {
+        storage.my_vec.last().unwrap()
+    }
+    #[storage(read, write)]
+    fn array_reverse() {
+        storage.my_vec.reverse();
+    }
+    #[storage(read, write)]
+    fn array_fill(value: [u8; 3]) {
+        storage.my_vec.fill(value);
+    }
+    #[storage(read, write)]
+    fn array_resize(new_len: u64, value: [u8; 3]) {
+        storage.my_vec.resize(new_len, value);
+    }
+    #[storage(read, write)]
+    fn array_append() {
+        storage.my_vec.append(storage.my_other_vec);
+    }
+    #[storage(read, write)]
+    fn array_push_other_vec(value: [u8; 3]) {
+        storage.my_other_vec.push(value);
     }
 }
