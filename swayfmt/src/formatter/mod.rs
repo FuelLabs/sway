@@ -47,7 +47,7 @@ impl Formatter {
 
     pub fn format(
         &mut self,
-        src: &str,
+        src: Arc<str>,
         build_config: Option<&BuildConfig>,
     ) -> Result<FormattedCode, FormatterError> {
         // apply the width heuristics settings from the `Config`

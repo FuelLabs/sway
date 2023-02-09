@@ -81,7 +81,7 @@ fn run() -> Result<()> {
 fn format_single_file(path: &Path) -> Result<()> {
     let mut formatter = Formatter::default();
     if let Ok(file_content) = fs::read_to_string(path) {
-        match Formatter::format(&mut formatter, &file_content, None) {
+        match Formatter::format(&mut formatter, file_content.into(), None) {
             Ok(formatted_content) => {
                 format_file(path, &formatted_content)?;
             }
@@ -111,7 +111,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
                         manifest_path.clone(),
                         BuildTarget::default(),
                     );
-                    match Formatter::format(formatter, &file_content, Some(&build_config)) {
+                    match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
                         Ok(formatted_content) => {
                             if app.check {
                                 if *file_content != formatted_content {
