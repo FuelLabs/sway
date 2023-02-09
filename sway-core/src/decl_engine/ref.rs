@@ -52,7 +52,7 @@ impl DeclRef {
         self_type: TypeId,
     ) -> DeclRef {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self);
+        let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
         decl_engine
             .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
@@ -77,8 +77,8 @@ impl EqWithEngines for DeclRef {}
 impl PartialEqWithEngines for DeclRef {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let decl_engine = engines.de();
-        let left = decl_engine.get(&self);
-        let right = decl_engine.get(&other);
+        let left = decl_engine.get(self);
+        let right = decl_engine.get(other);
         self.name == other.name && left.eq(&right, engines)
     }
 }
@@ -101,9 +101,9 @@ impl SubstTypes for DeclRef {
 impl ReplaceSelfType for DeclRef {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self);
+        let mut decl = decl_engine.get(self);
         decl.replace_self_type(engines, self_type);
-        decl_engine.replace(&self, decl);
+        decl_engine.replace(self, decl);
     }
 }
 
@@ -114,7 +114,7 @@ impl ReplaceDecls for DeclRef {
             self.id = new_decl_ref.id;
             return;
         }
-        let all_parents = decl_engine.find_all_parents(engines, &self);
+        let all_parents = decl_engine.find_all_parents(engines, self);
         for parent in all_parents.into_iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(&parent) {
                 self.id = new_decl_ref.id;
@@ -131,8 +131,8 @@ impl ReplaceFunctionImplementingType for DeclRef {
         implementing_type: ty::TyDeclaration,
     ) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self);
+        let mut decl = decl_engine.get(self);
         decl.replace_implementing_type(engines, implementing_type);
-        decl_engine.replace(&self, decl);
+        decl_engine.replace(self, decl);
     }
 }

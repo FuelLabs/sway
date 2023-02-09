@@ -67,7 +67,7 @@ impl TyProgram {
             match &node.content {
                 TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
                     let func = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_id, &node.span)),
+                        CompileResult::from(decl_engine.get_function(decl_id, &node.span)),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -87,7 +87,7 @@ impl TyProgram {
                     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
                 }
                 TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
-                    match decl_engine.get_constant(&decl_id, &node.span) {
+                    match decl_engine.get_constant(decl_id, &node.span) {
                         Ok(config_decl) if config_decl.is_configurable => {
                             configurables.push(config_decl)
                         }
@@ -103,7 +103,7 @@ impl TyProgram {
                         span,
                         ..
                     } = check!(
-                        CompileResult::from(decl_engine.get_impl_trait(&decl_id, &node.span)),
+                        CompileResult::from(decl_engine.get_impl_trait(decl_id, &node.span)),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -167,7 +167,7 @@ impl TyProgram {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
                     if let TyDeclaration::StorageDeclaration(decl_id) = decl {
-                        if let Ok(storage_decl) = decl_engine.get_storage(&decl_id, &decl_id.span())
+                        if let Ok(storage_decl) = decl_engine.get_storage(decl_id, &decl_id.span())
                         {
                             for field in storage_decl.fields.iter() {
                                 let type_info = ty_engine.get(field.type_id);
@@ -461,7 +461,7 @@ fn disallow_impure_functions(
         .iter()
         .filter_map(|decl| match decl {
             TyDeclaration::FunctionDeclaration(decl_id) => {
-                match decl_engine.get_function(&decl_id, &decl.span()) {
+                match decl_engine.get_function(decl_id, &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {
                         errs.push(err);

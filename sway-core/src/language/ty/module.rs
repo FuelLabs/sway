@@ -51,7 +51,7 @@ impl TyModule {
                 node.content
             {
                 let fn_decl = decl_engine
-                    .get_function(&decl_id, &node.span)
+                    .get_function(decl_id, &node.span)
                     .expect("no function declaration for ID");
                 if fn_decl.is_test() {
                     return Some((fn_decl, decl_id.clone()));

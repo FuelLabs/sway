@@ -115,7 +115,7 @@ fn decl_id_to_fn_decls(
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
     decl_engine
-        .get_function(&decl_id, span)
+        .get_function(decl_id, span)
         .map_or(vec![], |fn_decl| vec![fn_decl])
 }
 
@@ -124,7 +124,7 @@ fn impl_trait_methods<'a>(
     impl_trait_decl_id: &'a DeclRef,
     span: &'a Span,
 ) -> Vec<ty::TyFunctionDeclaration> {
-    match decl_engine.get_impl_trait(&impl_trait_decl_id, span) {
+    match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
         Ok(impl_trait) => impl_trait
             .methods
             .iter()
@@ -253,7 +253,7 @@ fn analyze_expression(
             ..
         } => {
             let func = decl_engine
-                .get_function(&function_decl_id, &expr.span)
+                .get_function(function_decl_id, &expr.span)
                 .unwrap();
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
@@ -585,7 +585,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             ..
         } => {
             let fn_body = decl_engine
-                .get_function(&function_decl_id, &expr.span)
+                .get_function(function_decl_id, &expr.span)
                 .unwrap()
                 .body;
             let mut effs = effects_of_codeblock(engines, &fn_body);

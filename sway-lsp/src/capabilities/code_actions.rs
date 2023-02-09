@@ -25,12 +25,9 @@ pub(crate) fn code_actions(
 
         maybe_decl
             .and_then(|decl| match decl {
-                TyDeclaration::AbiDeclaration(ref decl_id) => Some(
-                    session
-                        .decl_engine
-                        .read()
-                        .get_abi(&decl_id, &decl_id.span()),
-                ),
+                TyDeclaration::AbiDeclaration(ref decl_id) => {
+                    Some(session.decl_engine.read().get_abi(decl_id, &decl_id.span()))
+                }
                 // Add code actions for other declaration types here
                 _ => None,
             })

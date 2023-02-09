@@ -416,7 +416,7 @@ impl ty::TyExpression {
                     return_type,
                     ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_constant(&decl_id, &span)),
+                    CompileResult::from(decl_engine.get_constant(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -436,7 +436,7 @@ impl ty::TyExpression {
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
+                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors

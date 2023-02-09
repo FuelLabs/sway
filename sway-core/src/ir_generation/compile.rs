@@ -244,7 +244,7 @@ fn compile_declarations(
     for declaration in declarations {
         match declaration {
             ty::TyDeclaration::ConstantDeclaration(ref decl_id) => {
-                let decl = decl_engine.get_constant(&decl_id, &declaration.span())?;
+                let decl = decl_engine.get_constant(decl_id, &declaration.span())?;
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,

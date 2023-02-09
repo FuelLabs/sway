@@ -313,7 +313,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ConstantDeclaration(decl_id) => {
             let ty::TyConstantDeclaration { name, value, .. } =
-                decl_engine.get_constant(&decl_id, &span)?;
+                decl_engine.get_constant(decl_id, &span)?;
             graph.namespace.insert_constant(name, entry_node);
             connect_expression(
                 engines,
@@ -328,29 +328,29 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             )
         }
         FunctionDeclaration(decl_id) => {
-            let fn_decl = decl_engine.get_function(&decl_id, &decl.span())?;
+            let fn_decl = decl_engine.get_function(decl_id, &decl.span())?;
             connect_typed_fn_decl(
                 engines, &fn_decl, graph, entry_node, span, exit_node, tree_type, options,
             )?;
             Ok(leaves.to_vec())
         }
         TraitDeclaration(decl_id) => {
-            let trait_decl = decl_engine.get_trait(&decl_id, &span)?;
+            let trait_decl = decl_engine.get_trait(decl_id, &span)?;
             connect_trait_declaration(&trait_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         AbiDeclaration(decl_id) => {
-            let abi_decl = decl_engine.get_abi(&decl_id, &span)?;
+            let abi_decl = decl_engine.get_abi(decl_id, &span)?;
             connect_abi_declaration(engines, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
         StructDeclaration(decl_id) => {
-            let struct_decl = decl_engine.get_struct(&decl_id, &span)?;
+            let struct_decl = decl_engine.get_struct(decl_id, &span)?;
             connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         EnumDeclaration(decl_id) => {
-            let enum_decl = decl_engine.get_enum(&decl_id, &span)?;
+            let enum_decl = decl_engine.get_enum(decl_id, &span)?;
             connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
@@ -359,7 +359,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 trait_name,
                 methods,
                 ..
-            } = decl_engine.get_impl_trait(&decl_id, &span)?;
+            } = decl_engine.get_impl_trait(decl_id, &span)?;
 
             connect_impl_trait(
                 engines,
@@ -373,7 +373,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(leaves.to_vec())
         }
         StorageDeclaration(decl_id) => {
-            let storage = decl_engine.get_storage(&decl_id, &span)?;
+            let storage = decl_engine.get_storage(decl_id, &span)?;
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
@@ -450,7 +450,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for method_decl_id in methods {
-        let fn_decl = decl_engine.get_function(&method_decl_id, &trait_name.span())?;
+        let fn_decl = decl_engine.get_function(method_decl_id, &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
@@ -535,7 +535,7 @@ fn connect_abi_declaration(
     // of the contract, then assume that any fields inside the struct can
     // be used outside of the contract.
     for fn_decl_id in decl.interface_surface.iter() {
-        let fn_decl = decl_engine.get_trait_fn(&fn_decl_id, &decl.span)?;
+        let fn_decl = decl_engine.get_trait_fn(fn_decl_id, &decl.span)?;
         if let Some(TypeInfo::Struct { call_path, .. }) =
             get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
         {
@@ -806,14 +806,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             function_decl_id,
             ..
         } => {
-            let fn_decl = decl_engine.get_function(&function_decl_id, &expression_span)?;
+            let fn_decl = decl_engine.get_function(function_decl_id, &expression_span)?;
             let mut is_external = false;
 
             // in the case of monomorphized functions, first check if we already have a node for
             // it in the namespace. if not then we need to check to see if the namespace contains
             // the decl id parents (the original generic non monomorphized decl id).
             let mut exists = false;
-            let parents = decl_engine.find_all_parents(engines, &function_decl_id);
+            let parents = decl_engine.find_all_parents(engines, function_decl_id);
             for parent in parents {
                 if let Ok(parent) = decl_engine.get_function(&parent, &expression_span) {
                     exists |= graph.namespace.get_function(&parent).is_some();
@@ -1630,7 +1630,7 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait(decl_id)),
             span,
-        } => match decl_engine.get_impl_trait(&decl_id, span) {
+        } => match decl_engine.get_impl_trait(decl_id, span) {
             Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
             _ => CompileWarning {
                 span: span.clone(),

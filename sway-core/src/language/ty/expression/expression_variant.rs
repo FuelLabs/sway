@@ -152,10 +152,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => {
                 let l_function_decl = decl_engine
-                    .get_function(&l_function_decl_id, &Span::dummy())
+                    .get_function(l_function_decl_id, &Span::dummy())
                     .unwrap();
                 let r_function_decl = decl_engine
-                    .get_function(&r_function_decl_id, &Span::dummy())
+                    .get_function(r_function_decl_id, &Span::dummy())
                     .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()

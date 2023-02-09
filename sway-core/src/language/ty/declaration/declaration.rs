@@ -186,7 +186,7 @@ impl CollectTypesMetadata for TyDeclaration {
                 body
             }
             FunctionDeclaration(decl_id) => {
-                match decl_engine.get_function(&decl_id, &decl_id.span()) {
+                match decl_engine.get_function(decl_id, &decl_id.span()) {
                     Ok(decl) => {
                         check!(
                             decl.collect_types_metadata(ctx),
@@ -202,7 +202,7 @@ impl CollectTypesMetadata for TyDeclaration {
                 }
             }
             ConstantDeclaration(decl_id) => {
-                match decl_engine.get_constant(&decl_id, &decl_id.span()) {
+                match decl_engine.get_constant(decl_id, &decl_id.span()) {
                     Ok(TyConstantDeclaration { value, .. }) => {
                         check!(
                             value.collect_types_metadata(ctx),
@@ -281,7 +281,7 @@ impl TyDeclaration {
     ) -> CompileResult<TyEnumDeclaration> {
         match self {
             TyDeclaration::EnumDeclaration(decl_id) => {
-                CompileResult::from(decl_engine.get_enum(&decl_id, access_span))
+                CompileResult::from(decl_engine.get_enum(decl_id, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
@@ -307,7 +307,7 @@ impl TyDeclaration {
         match self {
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(&decl_id, access_span)),
+                    CompileResult::from(decl_engine.get_struct(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -338,7 +338,7 @@ impl TyDeclaration {
         match self {
             TyDeclaration::FunctionDeclaration(decl_id) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_function(&decl_id, access_span)),
+                    CompileResult::from(decl_engine.get_function(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors,
@@ -385,7 +385,7 @@ impl TyDeclaration {
     ) -> CompileResult<TyAbiDeclaration> {
         match self {
             TyDeclaration::AbiDeclaration(decl_id) => {
-                CompileResult::from(decl_engine.get_abi(&decl_id, access_span))
+                CompileResult::from(decl_engine.get_abi(decl_id, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
@@ -408,7 +408,7 @@ impl TyDeclaration {
     ) -> CompileResult<TyConstantDeclaration> {
         match self {
             TyDeclaration::ConstantDeclaration(decl) => {
-                CompileResult::from(decl_engine.get_constant(&decl, access_span))
+                CompileResult::from(decl_engine.get_constant(decl, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
@@ -431,9 +431,7 @@ impl TyDeclaration {
         let type_engine = engines.te();
         match self {
             ImplTrait(decl_id) => {
-                let decl = decl_engine
-                    .get_impl_trait(&decl_id, &Span::dummy())
-                    .unwrap();
+                let decl = decl_engine.get_impl_trait(decl_id, &Span::dummy()).unwrap();
                 let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
                 format!(
                     "{} for {}",
@@ -496,7 +494,7 @@ impl TyDeclaration {
             TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
             TyDeclaration::FunctionDeclaration(decl_id) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_function(&decl_id, &self.span())),
+                    CompileResult::from(decl_engine.get_function(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -505,7 +503,7 @@ impl TyDeclaration {
             }
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(&decl_id, &self.span())),
+                    CompileResult::from(decl_engine.get_struct(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -514,7 +512,7 @@ impl TyDeclaration {
             }
             TyDeclaration::EnumDeclaration(decl_id) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_enum(&decl_id, access_span)),
+                    CompileResult::from(decl_engine.get_enum(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -523,7 +521,7 @@ impl TyDeclaration {
             }
             TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
-                    CompileResult::from(decl_engine.get_storage(&decl_id, &self.span())),
+                    CompileResult::from(decl_engine.get_storage(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -555,7 +553,7 @@ impl TyDeclaration {
         let visibility = match self {
             TraitDeclaration(decl_id) => {
                 let TyTraitDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &decl_id.span())),
+                    CompileResult::from(decl_engine.get_trait(decl_id, &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -564,7 +562,7 @@ impl TyDeclaration {
             }
             ConstantDeclaration(decl_id) => {
                 let TyConstantDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_constant(&decl_id, &decl_id.span())),
+                    CompileResult::from(decl_engine.get_constant(decl_id, &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -573,7 +571,7 @@ impl TyDeclaration {
             }
             StructDeclaration(decl_id) => {
                 let TyStructDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_struct(&decl_id, &decl_id.span())),
+                    CompileResult::from(decl_engine.get_struct(decl_id, &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -582,7 +580,7 @@ impl TyDeclaration {
             }
             EnumDeclaration(decl_id) => {
                 let TyEnumDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_enum(&decl_id, &decl_id.span())),
+                    CompileResult::from(decl_engine.get_enum(decl_id, &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -591,7 +589,7 @@ impl TyDeclaration {
             }
             FunctionDeclaration(decl_id) => {
                 let TyFunctionDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_function(&decl_id, &decl_id.span())),
+                    CompileResult::from(decl_engine.get_function(decl_id, &decl_id.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

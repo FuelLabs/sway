@@ -76,7 +76,7 @@ impl DeclEngine {
                         acc_parents.insert(DeclId::from(curr_parent), curr_parent);
                     }
                     if !left_to_check.iter().any(|x| x.eq(&curr_parent, engines)) {
-                        left_to_check.push_back(&curr_parent);
+                        left_to_check.push_back(curr_parent);
                     }
                 }
             }

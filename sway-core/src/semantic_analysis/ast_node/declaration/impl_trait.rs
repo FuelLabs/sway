@@ -373,7 +373,7 @@ impl ty::TyImplTrait {
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(&decl_id, access_span)?;
+                        decl_engine.get_constant(decl_id, access_span)?;
                     expr_contains_get_storage_index(decl_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
@@ -642,7 +642,7 @@ fn type_check_trait_implementation(
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
-            CompileResult::from(decl_engine.get_trait_fn(&decl_id, block_span)),
+            CompileResult::from(decl_engine.get_trait_fn(decl_id, block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -704,7 +704,7 @@ fn type_check_trait_implementation(
     let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids(stub_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
-            CompileResult::from(decl_engine.get_function(&decl_id, block_span)),
+            CompileResult::from(decl_engine.get_function(decl_id, block_span)),
             return err(warnings, errors),
             warnings,
             errors

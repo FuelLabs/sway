@@ -140,7 +140,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = self.decl_engine.get_constant(&decl_id, &ast_node.span)?;
+                    let tcd = self.decl_engine.get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -252,7 +252,7 @@ impl<'eng> FnCompiler<'eng> {
                 } else {
                     let function_decl = self
                         .decl_engine
-                        .get_function(&function_decl_id, &ast_expr.span)?;
+                        .get_function(function_decl_id, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
