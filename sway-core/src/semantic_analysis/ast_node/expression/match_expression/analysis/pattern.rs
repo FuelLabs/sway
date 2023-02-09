@@ -120,7 +120,11 @@ impl Pattern {
             ty::TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
             ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
-            ty::TyScrutineeVariant::StructScrutinee(struct_name, fields) => {
+            ty::TyScrutineeVariant::StructScrutinee {
+                struct_name,
+                fields,
+                ..
+            } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
                     let f = match field.scrutinee {

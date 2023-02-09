@@ -984,6 +984,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
+        MatchExp { desugared, .. } => connect_expression(
+            engines,
+            &desugared.expression,
+            graph,
+            leaves,
+            exit_node,
+            label,
+            tree_type,
+            expression_span,
+            options,
+        ),
         IfExp {
             condition,
             then,

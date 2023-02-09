@@ -313,6 +313,9 @@ impl ty::TyImplTrait {
                 ty::TyExpressionVariant::CodeBlock(cb) => {
                     codeblock_contains_get_storage_index(decl_engine, cb, access_span)?
                 }
+                ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+                    expr_contains_get_storage_index(decl_engine, desugared, access_span)?
+                }
                 ty::TyExpressionVariant::IfExp {
                     condition,
                     then,

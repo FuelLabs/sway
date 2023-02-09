@@ -683,7 +683,12 @@ impl ty::TyExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(engines, type_id, typed_scrutinees, span.clone()),
+            check_match_expression_usefulness(
+                engines,
+                type_id,
+                typed_scrutinees.clone(),
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -712,7 +717,16 @@ impl ty::TyExpression {
             errors
         );
 
-        ok(typed_if_exp, warnings, errors)
+        let match_exp = ty::TyExpression {
+            span: typed_if_exp.span.clone(),
+            return_type: typed_if_exp.return_type,
+            expression: ty::TyExpressionVariant::MatchExp {
+                desugared: Box::new(typed_if_exp),
+                scrutinees: typed_scrutinees,
+            },
+        };
+
+        ok(match_exp, warnings, errors)
     }
 
     #[allow(clippy::too_many_arguments)]
