@@ -7,93 +7,106 @@ use sway_core::{
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionOrCommand, TextEdit, Url};
 
-use crate::capabilities::code_actions::{build_code_action, range_after_last_line, TAB};
+use crate::capabilities::code_actions::{CodeActionTrait, CODE_ACTION_IMPL_TITLE, CONTRACT, TAB};
 
-const CODE_ACTION_DESCRIPTION: &str = "Generate impl for contract";
-
-pub(crate) fn code_action(
-    engines: Engines<'_>,
-    decl: &TyAbiDeclaration,
-    uri: &Url,
-) -> CodeActionOrCommand {
-    let text_edit = TextEdit {
-        range: range_after_last_line(&decl.span),
-        new_text: get_contract_impl_string(engines, decl),
-    };
-
-    build_code_action(
-        CODE_ACTION_DESCRIPTION.to_string(),
-        HashMap::from([(uri.clone(), vec![text_edit])]),
-        &uri,
-    )
+pub(crate) struct AbiImplCodeAction<'a> {
+    engines: Engines<'a>,
+    decl: &'a TyAbiDeclaration,
+    uri: &'a Url,
 }
 
-fn get_param_string(param: &TyFunctionParameter) -> String {
-    format!("{}: {}", param.name, param.type_span.as_str())
-}
+impl<'a> CodeActionTrait<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
+    fn new(engines: Engines<'a>, decl: &'a TyAbiDeclaration, uri: &'a Url) -> Self {
+        Self { engines, decl, uri }
+    }
 
-fn get_return_type_string(engines: Engines<'_>, function_decl: TyTraitFn) -> String {
-    let type_engine = engines.te();
-    // Unit is the implicit return type for ABI functions.
-    if type_engine.get(function_decl.return_type).is_unit() {
-        String::from("")
-    } else {
-        format!(" -> {}", function_decl.return_type_span.as_str())
+    fn code_action(&self) -> CodeActionOrCommand {
+        let text_edit = TextEdit {
+            range: Self::range_after_last_line(&self.decl.span),
+            new_text: self.new_text(),
+        };
+
+        self.build_code_action(
+            self.title(),
+            HashMap::from([(self.uri.clone(), vec![text_edit])]),
+            self.uri,
+        )
+    }
+
+    fn new_text(&self) -> String {
+        self.impl_string(self.fn_signatures_string(), Some(CONTRACT.to_string()))
+    }
+
+    fn title(&self) -> String {
+        format!("{} `{}`", CODE_ACTION_IMPL_TITLE, self.decl_name())
+    }
+
+    fn decl_name(&self) -> String {
+        self.decl.name.to_string()
     }
 }
 
-fn get_function_signatures(engines: Engines<'_>, abi_decl: &TyAbiDeclaration) -> String {
-    let decl_engine = engines.de();
-    abi_decl
-        .interface_surface
-        .iter()
-        .filter_map(|function_decl_id| {
-            decl_engine
-                .get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
-                .ok()
-                .map(|function_decl| {
-                    let param_string: String = function_decl
-                        .parameters
-                        .iter()
-                        .map(get_param_string)
-                        .collect::<Vec<String>>()
-                        .join(", ");
-                    let attribute_string = function_decl
-                        .attributes
-                        .iter()
-                        .map(|(_, attrs)| {
-                            attrs
-                                .iter()
-                                .map(|attr| format!("{}{}", TAB, attr.span.as_str()))
-                                .collect::<Vec<String>>()
-                                .join("\n")
-                        })
-                        .collect::<Vec<String>>()
-                        .join("\n");
-                    let attribute_prefix = match attribute_string.len() > 1 {
-                        true => "\n",
-                        false => "",
-                    };
-                    format!(
-                        "{}{}\n{}fn {}({}){} {{}}",
-                        attribute_prefix,
-                        attribute_string,
-                        TAB,
-                        function_decl.name.clone(),
-                        param_string,
-                        get_return_type_string(engines, function_decl)
-                    )
-                })
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
-}
+impl AbiImplCodeAction<'_> {
+    fn param_string(&self, param: &TyFunctionParameter) -> String {
+        format!("{}: {}", param.name, param.type_span.as_str())
+    }
 
-fn get_contract_impl_string(engines: Engines<'_>, abi_decl: &TyAbiDeclaration) -> String {
-    let contract_name = abi_decl.name.to_string();
-    format!(
-        "\nimpl {} for Contract {{{}\n}}\n",
-        contract_name,
-        get_function_signatures(engines, abi_decl).as_str()
-    )
+    fn return_type_string(&self, function_decl: TyTraitFn) -> String {
+        let type_engine = self.engines.te();
+        // Unit is the implicit return type for ABI functions.
+        if type_engine.get(function_decl.return_type).is_unit() {
+            String::from("")
+        } else {
+            format!(" -> {}", function_decl.return_type_span.as_str())
+        }
+    }
+
+    fn fn_signature_string(&self, function_decl: TyTraitFn) -> String {
+        let param_string: String = function_decl
+            .parameters
+            .iter()
+            .map(|param| self.param_string(param))
+            .collect::<Vec<String>>()
+            .join(", ");
+        let attribute_string = function_decl
+            .attributes
+            .iter()
+            .map(|(_, attrs)| {
+                attrs
+                    .iter()
+                    .map(|attr| format!("{}{}", TAB, attr.span.as_str()))
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        let attribute_prefix = match attribute_string.len() > 1 {
+            true => "\n",
+            false => "",
+        };
+        format!(
+            "{}{}\n{}fn {}({}){} {{}}",
+            attribute_prefix,
+            attribute_string,
+            TAB,
+            function_decl.name.clone(),
+            param_string,
+            self.return_type_string(function_decl)
+        )
+    }
+
+    fn fn_signatures_string(&self) -> String {
+        let decl_engine = self.engines.de();
+        self.decl
+            .interface_surface
+            .iter()
+            .filter_map(|function_decl_id| {
+                decl_engine
+                    .get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
+                    .ok()
+                    .map(|function_decl| self.fn_signature_string(function_decl))
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
 }

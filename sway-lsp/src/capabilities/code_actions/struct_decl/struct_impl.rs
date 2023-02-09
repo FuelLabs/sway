@@ -1,26 +1,67 @@
 use std::collections::HashMap;
 
-use sway_core::language::ty::TyStructDeclaration;
-use tower_lsp::lsp_types::{CodeActionOrCommand, TextEdit, Url};
+use serde_json::Value;
+use sway_core::{language::ty::TyStructDeclaration, Engines};
+use sway_types::Span;
+use tower_lsp::lsp_types::{
+    CodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit, Url, WorkspaceEdit,
+};
 
-use crate::capabilities::code_actions::{build_code_action, range_after_last_line, TAB};
+use crate::capabilities::code_actions::{CodeActionTrait, CODE_ACTION_IMPL_TITLE, TAB};
 
-const CODE_ACTION_DESCRIPTION: &str = "Generate impl for struct";
-
-pub(crate) fn code_action(decl: &TyStructDeclaration, uri: &Url) -> CodeActionOrCommand {
-    let text_edit = TextEdit {
-        range: range_after_last_line(&decl.span),
-        new_text: get_impl_string(decl),
-    };
-
-    build_code_action(
-        CODE_ACTION_DESCRIPTION.to_string(),
-        HashMap::from([(uri.clone(), vec![text_edit])]),
-        &uri,
-    )
+pub(crate) struct StructImplCodeAction<'a> {
+    engines: Engines<'a>,
+    decl: &'a TyStructDeclaration,
+    uri: &'a Url,
 }
 
-fn get_impl_string(struct_decl: &TyStructDeclaration) -> String {
-    let struct_name = struct_decl.call_path.suffix.as_str();
-    format!("\nimpl {} {{\n{}\n}}\n", struct_name, TAB)
+impl<'a> CodeActionTrait<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
+    fn new(engines: Engines<'a>, decl: &'a TyStructDeclaration, uri: &'a Url) -> Self {
+        Self { engines, decl, uri }
+    }
+
+    fn code_action(&self) -> CodeActionOrCommand {
+        let text_edit = TextEdit {
+            range: Self::range_after_last_line(&self.decl.span),
+            new_text: self.new_text(),
+        };
+
+        self.build_code_action(
+            self.title(),
+            HashMap::from([(self.uri.clone(), vec![text_edit])]),
+            self.uri,
+        )
+    }
+
+    fn new_text(&self) -> String {
+        self.impl_string(format!("\n{}", TAB), None)
+    }
+
+    fn title(&self) -> String {
+        format!("{} `{}`", CODE_ACTION_IMPL_TITLE, self.decl_name())
+    }
+
+    fn decl_name(&self) -> String {
+        self.decl.call_path.suffix.to_string()
+    }
 }
+
+// const CODE_ACTION_DESCRIPTION: &str = "Generate impl for struct";
+
+// pub(crate) fn code_action(decl: &TyStructDeclaration, uri: &Url) -> CodeActionOrCommand {
+//     let text_edit = TextEdit {
+//         range: range_after_last_line(&decl.span),
+//         new_text: get_impl_string(decl),
+//     };
+
+//     build_code_action(
+//         CODE_ACTION_DESCRIPTION.to_string(),
+//         HashMap::from([(uri.clone(), vec![text_edit])]),
+//         &uri,
+//     )
+// }
+
+// fn get_impl_string(struct_decl: &TyStructDeclaration) -> String {
+//     let decl_name = struct_decl.call_path.suffix.as_str();
+//     format!("\nimpl {} {{\n{}\n}}\n", decl_name, TAB)
+// }
