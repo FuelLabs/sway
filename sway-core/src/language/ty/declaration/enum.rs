@@ -33,10 +33,20 @@ impl PartialEqWithEngines for TyEnumDeclaration {
 
 impl HashWithEngines for TyEnumDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.call_path.suffix.hash(state);
-        self.variants.hash(state, engines);
-        self.type_parameters.hash(state, engines);
-        self.visibility.hash(state);
+        let TyEnumDeclaration {
+            call_path,
+            type_parameters,
+            variants,
+            visibility,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        call_path.suffix.hash(state);
+        variants.hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
     }
 }
 

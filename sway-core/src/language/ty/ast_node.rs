@@ -39,7 +39,13 @@ impl PartialEqWithEngines for TyAstNode {
 
 impl HashWithEngines for TyAstNode {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.content.hash(state, engines);
+        let TyAstNode {
+            content,
+            // the span is not hashed because it isn't relevant/a reliable
+            // source of obj v. obj distinction
+            span: _,
+        } = self;
+        content.hash(state, engines);
     }
 }
 

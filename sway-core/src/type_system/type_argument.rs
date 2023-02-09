@@ -18,8 +18,16 @@ impl Spanned for TypeArgument {
 
 impl HashWithEngines for TypeArgument {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TypeArgument {
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            name_spans: _,
+        } = self;
         let type_engine = engines.te();
-        type_engine.get(self.type_id).hash(state, engines);
+        type_engine.get(*type_id).hash(state, engines);
     }
 }
 

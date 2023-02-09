@@ -27,10 +27,19 @@ pub struct TypeParameter {
 
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TypeParameter {
+            type_id,
+            name_ident,
+            trait_constraints,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
         let type_engine = engines.te();
-        type_engine.get(self.type_id).hash(state, engines);
-        self.name_ident.hash(state);
-        self.trait_constraints.hash(state, engines);
+        type_engine.get(*type_id).hash(state, engines);
+        name_ident.hash(state);
+        trait_constraints.hash(state, engines);
     }
 }
 

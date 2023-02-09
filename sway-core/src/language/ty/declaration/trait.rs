@@ -31,19 +31,29 @@ impl PartialEqWithEngines for TyTraitDeclaration {
             && self.methods.eq(&other.methods, engines)
             && self.supertraits.eq(&other.supertraits, engines)
             && self.visibility == other.visibility
-            && self.attributes == other.attributes
-            && self.span == other.span
     }
 }
 
 impl HashWithEngines for TyTraitDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.name.hash(state);
-        self.type_parameters.hash(state, engines);
-        self.interface_surface.hash(state, engines);
-        self.methods.hash(state, engines);
-        self.supertraits.hash(state, engines);
-        self.visibility.hash(state);
+        let TyTraitDeclaration {
+            name,
+            type_parameters,
+            interface_surface,
+            methods,
+            supertraits,
+            visibility,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = self;
+        name.hash(state);
+        type_parameters.hash(state, engines);
+        interface_surface.hash(state, engines);
+        methods.hash(state, engines);
+        supertraits.hash(state, engines);
+        visibility.hash(state);
     }
 }
 

@@ -19,8 +19,9 @@ impl PartialEqWithEngines for TyStructExpressionField {
 
 impl HashWithEngines for TyStructExpressionField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.name.hash(state);
-        self.value.hash(state, engines);
+        let TyStructExpressionField { name, value } = self;
+        name.hash(state);
+        value.hash(state, engines);
     }
 }
 

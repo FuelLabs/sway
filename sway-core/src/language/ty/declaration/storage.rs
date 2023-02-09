@@ -21,7 +21,14 @@ impl PartialEqWithEngines for TyStorageDeclaration {
 
 impl HashWithEngines for TyStorageDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.fields.hash(state, engines);
+        let TyStorageDeclaration {
+            fields,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        fields.hash(state, engines);
     }
 }
 
@@ -188,9 +195,19 @@ impl PartialEqWithEngines for TyStorageField {
 
 impl HashWithEngines for TyStorageField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageField {
+            name,
+            type_id,
+            initializer,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+            type_span: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, engines);
-        self.initializer.hash(state, engines);
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
+        initializer.hash(state, engines);
     }
 }

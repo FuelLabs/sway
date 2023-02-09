@@ -31,9 +31,16 @@ impl PartialEqWithEngines for TyExpression {
 
 impl HashWithEngines for TyExpression {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyExpression {
+            expression,
+            return_type,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
         let type_engine = engines.te();
-        self.expression.hash(state, engines);
-        type_engine.get(self.return_type).hash(state, engines);
+        expression.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
     }
 }
 

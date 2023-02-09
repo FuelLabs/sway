@@ -30,9 +30,17 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
 
 impl HashWithEngines for TyIntrinsicFunctionKind {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.kind.hash(state);
-        self.arguments.hash(state, engines);
-        self.type_arguments.hash(state, engines);
+        let TyIntrinsicFunctionKind {
+            kind,
+            arguments,
+            type_arguments,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        kind.hash(state);
+        arguments.hash(state, engines);
+        type_arguments.hash(state, engines);
     }
 }
 

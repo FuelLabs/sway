@@ -55,15 +55,32 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
 
 impl HashWithEngines for TyFunctionDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyFunctionDeclaration {
+            name,
+            body,
+            parameters,
+            return_type,
+            type_parameters,
+            visibility,
+            is_contract_call,
+            purity,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+            initial_return_type: _,
+            return_type_span: _,
+            implementing_type: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        self.body.hash(state, engines);
-        self.parameters.hash(state, engines);
-        type_engine.get(self.return_type).hash(state, engines);
-        self.type_parameters.hash(state, engines);
-        self.visibility.hash(state);
-        self.is_contract_call.hash(state);
-        self.purity.hash(state);
+        name.hash(state);
+        body.hash(state, engines);
+        parameters.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
+        is_contract_call.hash(state);
+        purity.hash(state);
     }
 }
 
@@ -361,16 +378,29 @@ impl PartialEqWithEngines for TyFunctionParameter {
             && type_engine
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
+            && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
     }
 }
 
 impl HashWithEngines for TyFunctionParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyFunctionParameter {
+            name,
+            is_reference,
+            is_mutable,
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            type_span: _,
+            mutability_span: _,
+            initial_type_id: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, engines);
-        self.is_mutable.hash(state);
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
+        is_reference.hash(state);
+        is_mutable.hash(state);
     }
 }
 

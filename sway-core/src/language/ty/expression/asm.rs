@@ -23,8 +23,9 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 
 impl HashWithEngines for TyAsmRegisterDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.name.hash(state);
-        if let Some(x) = self.initializer.as_ref() {
+        let TyAsmRegisterDeclaration { initializer, name } = self;
+        name.hash(state);
+        if let Some(x) = initializer.as_ref() {
             x.hash(state, engines)
         }
     }

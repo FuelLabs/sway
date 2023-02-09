@@ -38,8 +38,9 @@ impl PartialEqWithEngines for Supertrait {
 
 impl HashWithEngines for Supertrait {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.name.hash(state);
-        self.decl_id.hash(state, engines);
+        let Supertrait { name, decl_id } = self;
+        name.hash(state);
+        decl_id.hash(state, engines);
     }
 }
 

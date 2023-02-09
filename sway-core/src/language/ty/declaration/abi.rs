@@ -27,9 +27,18 @@ impl PartialEqWithEngines for TyAbiDeclaration {
 
 impl HashWithEngines for TyAbiDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.name.hash(state);
-        self.interface_surface.hash(state, engines);
-        self.methods.hash(state, engines);
+        let TyAbiDeclaration {
+            name,
+            interface_surface,
+            methods,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            attributes: _,
+            span: _,
+        } = self;
+        name.hash(state);
+        interface_surface.hash(state, engines);
+        methods.hash(state, engines);
     }
 }
 

@@ -32,11 +32,17 @@ impl PartialEqWithEngines for TyReassignment {
 
 impl HashWithEngines for TyReassignment {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyReassignment {
+            lhs_base_name,
+            lhs_type,
+            lhs_indices,
+            rhs,
+        } = self;
         let type_engine = engines.te();
-        self.lhs_base_name.hash(state);
-        type_engine.get(self.lhs_type).hash(state, engines);
-        self.lhs_indices.hash(state, engines);
-        self.rhs.hash(state, engines);
+        lhs_base_name.hash(state);
+        type_engine.get(*lhs_type).hash(state, engines);
+        lhs_indices.hash(state, engines);
+        rhs.hash(state, engines);
     }
 }
 
@@ -114,8 +120,18 @@ impl HashWithEngines for ProjectionKind {
         std::mem::discriminant(self).hash(state);
         match self {
             StructField { name } => name.hash(state),
-            TupleField { index, .. } => index.hash(state),
-            ArrayIndex { index, .. } => {
+            TupleField {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => index.hash(state),
+            ArrayIndex {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => {
                 index.hash(state, engines);
             }
         }
@@ -161,9 +177,10 @@ impl PartialEqWithEngines for TyStorageReassignment {
 
 impl HashWithEngines for TyStorageReassignment {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.fields.hash(state, engines);
-        self.ix.hash(state);
-        self.rhs.hash(state, engines);
+        let TyStorageReassignment { fields, ix, rhs } = self;
+        fields.hash(state, engines);
+        ix.hash(state);
+        rhs.hash(state, engines);
     }
 }
 
@@ -208,8 +225,15 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
 
 impl HashWithEngines for TyStorageReassignDescriptor {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageReassignDescriptor {
+            name,
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, engines);
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
     }
 }

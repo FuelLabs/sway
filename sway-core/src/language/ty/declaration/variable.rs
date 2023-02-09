@@ -32,12 +32,22 @@ impl PartialEqWithEngines for TyVariableDeclaration {
 
 impl HashWithEngines for TyVariableDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyVariableDeclaration {
+            name,
+            body,
+            mutability,
+            return_type,
+            type_ascription,
+            // this field is not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            type_ascription_span: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        self.body.hash(state, engines);
-        type_engine.get(self.return_type).hash(state, engines);
-        type_engine.get(self.type_ascription).hash(state, engines);
-        self.mutability.hash(state);
+        name.hash(state);
+        body.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
+        type_engine.get(*type_ascription).hash(state, engines);
+        mutability.hash(state);
     }
 }
 

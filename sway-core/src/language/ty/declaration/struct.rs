@@ -33,10 +33,20 @@ impl PartialEqWithEngines for TyStructDeclaration {
 
 impl HashWithEngines for TyStructDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        self.call_path.suffix.hash(state);
-        self.fields.hash(state, engines);
-        self.type_parameters.hash(state, engines);
-        self.visibility.hash(state);
+        let TyStructDeclaration {
+            call_path,
+            fields,
+            type_parameters,
+            visibility,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        call_path.suffix.hash(state);
+        fields.hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
     }
 }
 
@@ -133,9 +143,19 @@ pub struct TyStructField {
 
 impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStructField {
+            name,
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            type_span: _,
+            attributes: _,
+        } = self;
         let type_engine = engines.te();
-        self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, engines);
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
     }
 }
 

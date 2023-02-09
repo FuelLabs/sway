@@ -390,7 +390,12 @@ impl HashWithEngines for TyExpressionVariant {
                 call_path,
                 arguments,
                 function_decl_id,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                contract_call_params: _,
+                self_state_idx: _,
+                selector: _,
+                type_binding: _,
             } => {
                 call_path.hash(state);
                 function_decl_id.hash(state, engines);
@@ -405,7 +410,12 @@ impl HashWithEngines for TyExpressionVariant {
                 rhs.hash(state, engines);
             }
             Self::VariableExpression {
-                name, mutability, ..
+                name,
+                mutability,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                call_path: _,
+                span: _,
             } => {
                 name.hash(state);
                 mutability.hash(state);
@@ -423,7 +433,10 @@ impl HashWithEngines for TyExpressionVariant {
             Self::StructExpression {
                 struct_name,
                 fields,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+                call_path_binding: _,
             } => {
                 struct_name.hash(state);
                 fields.hash(state, engines);
@@ -446,7 +459,9 @@ impl HashWithEngines for TyExpressionVariant {
                 registers,
                 body,
                 returns,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                whole_block_span: _,
             } => {
                 registers.hash(state, engines);
                 body.hash(state);
@@ -456,7 +471,9 @@ impl HashWithEngines for TyExpressionVariant {
                 prefix,
                 field_to_access,
                 resolved_type_of_parent,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                field_instantiation_span: _,
             } => {
                 prefix.hash(state, engines);
                 field_to_access.hash(state, engines);
@@ -468,7 +485,9 @@ impl HashWithEngines for TyExpressionVariant {
                 prefix,
                 elem_to_access_num,
                 resolved_type_of_parent,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                elem_to_access_span: _,
             } => {
                 prefix.hash(state, engines);
                 elem_to_access_num.hash(state);
@@ -481,7 +500,11 @@ impl HashWithEngines for TyExpressionVariant {
                 variant_name,
                 tag,
                 contents,
-                ..
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                enum_instantiation_span: _,
+                variant_instantiation_span: _,
+                call_path_binding: _,
             } => {
                 enum_decl.hash(state, engines);
                 variant_name.hash(state);
@@ -491,7 +514,11 @@ impl HashWithEngines for TyExpressionVariant {
                 }
             }
             Self::AbiCast {
-                abi_name, address, ..
+                abi_name,
+                address,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
             } => {
                 abi_name.hash(state);
                 address.hash(state, engines);
