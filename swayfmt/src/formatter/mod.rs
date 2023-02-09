@@ -15,13 +15,13 @@ pub(crate) mod shape;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
-    pub src: UnformattedCode,
+    src: UnformattedCode,
     pub shape: Shape,
     pub config: Config,
     pub comment_map: CommentMap,
 }
 
-pub type UnformattedCode = Arc<String>;
+pub type UnformattedCode = String;
 pub type FormattedCode = String;
 
 pub trait Format {
@@ -45,6 +45,11 @@ impl Formatter {
             ..Default::default()
         })
     }
+
+    pub fn src(&self) -> &String {
+        &self.src
+    }
+
     pub fn format(
         &mut self,
         src: &str,
@@ -57,7 +62,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        self.src = Arc::from(src.trim().to_string());
+        self.src = src.trim().to_string();
 
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         // Formatted code will be pushed here with raw newline stlye.

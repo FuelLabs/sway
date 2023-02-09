@@ -41,7 +41,7 @@ pub fn write_comments(
         }
 
         while let Some(comment) = comments_iter.next() {
-            let newlines = gather_newlines(&formatter.src[comment.span().end()..]);
+            let newlines = gather_newlines(&formatter.src()[comment.span().end()..]);
 
             // Write comments on a newline (for now). New behavior might be required
             // to support trailing comments.
