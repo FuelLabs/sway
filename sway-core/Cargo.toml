@@ -1,6 +1,6 @@
 [package]
 name = "sway-core"
-version = "0.34.0"
+version = "0.35.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -18,7 +18,7 @@ etk-asm = { package = "fuel-etk-asm", version = "0.3.1-dev", features = ["backtr
 etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
 etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 fuel-abi-types = "0.1" 
-fuel-vm = { version = "0.22", features = ["serde"] }
+fuel-vm = { workspace = true, features = ["serde"] }
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
 im = "15.0"
@@ -32,12 +32,12 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.91"
 sha2 = "0.9"
 smallvec = "1.7"
-sway-ast = { version = "0.34.0", path = "../sway-ast" }
-sway-error = { version = "0.34.0", path = "../sway-error" }
-sway-ir = { version = "0.34.0", path = "../sway-ir" }
-sway-parse = { version = "0.34.0", path = "../sway-parse" }
-sway-types = { version = "0.34.0", path = "../sway-types" }
-sway-utils = { version = "0.34.0", path = "../sway-utils" }
+sway-ast = { version = "0.35.0", path = "../sway-ast" }
+sway-error = { version = "0.35.0", path = "../sway-error" }
+sway-ir = { version = "0.35.0", path = "../sway-ir" }
+sway-parse = { version = "0.35.0", path = "../sway-parse" }
+sway-types = { version = "0.35.0", path = "../sway-types" }
+sway-utils = { version = "0.35.0", path = "../sway-utils" }
 thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"

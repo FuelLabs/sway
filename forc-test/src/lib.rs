@@ -3,7 +3,9 @@ use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
-use fuel_vm::{self as vm, prelude::Opcode};
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
+use fuel_vm::gas::GasCosts;
+use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
 use rand::{Rng, SeedableRng};
@@ -406,7 +408,8 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     // Setup the interpreter for deployment.
     let params = tx::ConsensusParameters::default();
     let storage = vm::storage::MemoryStorage::default();
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Create the deployment transaction.
     let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
@@ -424,7 +427,7 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
-        .finalize_checked(block_height, &params);
+        .finalize_checked(block_height, &params, &GasCosts::default());
 
     // Deploy the contract.
     interpreter.transact(tx)?;
@@ -472,7 +475,7 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // TODO: Standardize this or add metadata to bytecode.
     const PROGRAM_START_INST_OFFSET: u32 = 6;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Opcode::LEN;
+    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
 
     // If our desired entry point is the program start, no need to jump.
     if test_offset == PROGRAM_START_INST_OFFSET {
@@ -480,7 +483,7 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
     }
 
     // Create the jump instruction and splice it into the bytecode.
-    let ji = Opcode::JI(test_offset);
+    let ji = fuel_asm::op::ji(test_offset);
     let ji_bytes = ji.to_bytes();
     let start = PROGRAM_START_BYTE_OFFSET;
     let end = start + ji_bytes.len();
@@ -538,9 +541,10 @@ fn exec_test(
             state_root: tx::Bytes32::zeroed(),
         });
     }
-    let tx = tx.finalize_checked(block_height, &params);
+    let tx = tx.finalize_checked(block_height, &params, &GasCosts::default());
 
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Execute and return the result.
     let start = std::time::Instant::now();

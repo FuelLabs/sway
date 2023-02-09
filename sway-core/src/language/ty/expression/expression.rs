@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_types::{Span, Spanned};
 
@@ -18,9 +18,6 @@ pub struct TyExpression {
     pub span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -29,6 +26,21 @@ impl PartialEqWithEngines for TyExpression {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), engines)
+    }
+}
+
+impl HashWithEngines for TyExpression {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyExpression {
+            expression,
+            return_type,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        let type_engine = engines.te();
+        expression.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
     }
 }
 

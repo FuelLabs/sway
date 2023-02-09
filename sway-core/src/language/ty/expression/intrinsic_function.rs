@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use crate::{
     decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, type_system::*,
@@ -22,6 +25,22 @@ impl PartialEqWithEngines for TyIntrinsicFunctionKind {
         self.kind == other.kind
             && self.arguments.eq(&other.arguments, engines)
             && self.type_arguments.eq(&other.type_arguments, engines)
+    }
+}
+
+impl HashWithEngines for TyIntrinsicFunctionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyIntrinsicFunctionKind {
+            kind,
+            arguments,
+            type_arguments,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        kind.hash(state);
+        arguments.hash(state, engines);
+        type_arguments.hash(state, engines);
     }
 }
 

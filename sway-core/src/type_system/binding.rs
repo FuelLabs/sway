@@ -84,9 +84,6 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for TypeBinding<()> {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
@@ -187,7 +184,9 @@ impl TypeBinding<CallPath> {
         }
 
         if !errors.is_empty() {
-            return err(warnings, errors);
+            // Returns ok with error, this allows functions which call this to
+            // also access the returned TyDeclaration and throw more suitable errors.
+            return ok(unknown_decl, warnings, errors);
         }
 
         // monomorphize the declaration, if needed

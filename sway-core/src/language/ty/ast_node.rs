@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -14,7 +17,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident>;
+    fn get_decl_ident(&self) -> Option<Ident>;
 }
 
 pub trait GetDeclId {
@@ -31,6 +34,18 @@ impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.content.eq(&other.content, engines)
+    }
+}
+
+impl HashWithEngines for TyAstNode {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyAstNode {
+            content,
+            // the span is not hashed because it isn't relevant/a reliable
+            // source of obj v. obj distinction
+            span: _,
+        } = self;
+        content.hash(state, engines);
     }
 }
 
@@ -112,8 +127,8 @@ impl DeterministicallyAborts for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
-        self.content.get_decl_ident(decl_engine)
+    fn get_decl_ident(&self) -> Option<Ident> {
+        self.content.get_decl_ident()
     }
 }
 
@@ -306,6 +321,24 @@ impl PartialEqWithEngines for TyAstNodeContent {
     }
 }
 
+impl HashWithEngines for TyAstNodeContent {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyAstNodeContent::*;
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Declaration(decl) => {
+                decl.hash(state, engines);
+            }
+            Expression(exp) | ImplicitReturnExpression(exp) => {
+                exp.hash(state, engines);
+            }
+            SideEffect(effect) => {
+                effect.hash(state);
+            }
+        }
+    }
+}
+
 impl CollectTypesMetadata for TyAstNodeContent {
     fn collect_types_metadata(
         &self,
@@ -322,9 +355,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
+    fn get_decl_ident(&self) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(decl_engine),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::ImplicitReturnExpression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect(_) => None,
