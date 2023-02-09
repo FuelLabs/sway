@@ -2260,7 +2260,7 @@ fn path_type_to_supertrait(
     */
     let supertrait = Supertrait {
         name,
-        decl_id: None,
+        decl_ref: None,
         //type_parameters,
     };
     Ok(supertrait)

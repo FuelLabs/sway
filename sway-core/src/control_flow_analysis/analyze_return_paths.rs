@@ -195,8 +195,8 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(decl_id) => {
-            let fn_decl = decl_engine.get_function(decl_id, &decl.span())?;
+        FunctionDeclaration(decl_ref) => {
+            let fn_decl = decl_engine.get_function(decl_ref, &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -204,12 +204,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait(decl_id) => {
+        ImplTrait(decl_ref) => {
             let ty::TyImplTrait {
                 trait_name,
                 methods,
                 ..
-            } = decl_engine.get_impl_trait(decl_id, &span)?;
+            } = decl_engine.get_impl_trait(decl_ref, &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -237,12 +237,12 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for method_decl_id in methods {
-        let fn_decl = decl_engine.get_function(method_decl_id, &trait_name.span())?;
+    for method_decl_ref in methods {
+        let fn_decl = decl_engine.get_function(method_decl_ref, &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),
-            method_decl_id: method_decl_id.clone(),
+            method_decl_ref: method_decl_ref.clone(),
             engines,
         });
         graph.add_edge(entry_node, fn_decl_entry_node, "".into());

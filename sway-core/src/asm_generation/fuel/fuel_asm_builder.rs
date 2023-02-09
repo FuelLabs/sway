@@ -140,8 +140,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             self.entries
                 .clone()
                 .into_iter()
-                .map(|(f, l, ops, test_decl_id)| {
-                    (f, l, AbstractInstructionSet { ops }, test_decl_id)
+                .map(|(f, l, ops, test_decl_ref)| {
+                    (f, l, AbstractInstructionSet { ops }, test_decl_ref)
                 })
                 .collect(),
             self.non_entries

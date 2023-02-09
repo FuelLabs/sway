@@ -60,9 +60,11 @@ impl ty::TyProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
+                    Some(ty::TyDeclaration::StorageDeclaration(decl_ref)) => {
                         let decl = check!(
-                            CompileResult::from(decl_engine.get_storage(decl_id, &decl_id.span())),
+                            CompileResult::from(
+                                decl_engine.get_storage(decl_ref, &decl_ref.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors

@@ -47,14 +47,14 @@ impl TyModule {
         decl_engine: &'a DeclEngine,
     ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRef)> {
         self.all_nodes.iter().filter_map(|node| {
-            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
+            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_ref)) =
                 node.content
             {
                 let fn_decl = decl_engine
-                    .get_function(decl_id, &node.span)
+                    .get_function(decl_ref, &node.span)
                     .expect("no function declaration for ID");
                 if fn_decl.is_test() {
-                    return Some((fn_decl, decl_id.clone()));
+                    return Some((fn_decl, decl_ref.clone()));
                 }
             }
             None

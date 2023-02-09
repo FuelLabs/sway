@@ -98,37 +98,37 @@ fn contract_entry_points(
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)) => {
-                decl_id_to_fn_decls(decl_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_ref)) => {
+                decl_ref_to_fn_decls(decl_engine, decl_ref, &ast_node.span)
             }
-            Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
-                impl_trait_methods(decl_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDeclaration::ImplTrait(decl_ref)) => {
+                impl_trait_methods(decl_engine, decl_ref, &ast_node.span)
             }
             _ => vec![],
         })
         .collect()
 }
 
-fn decl_id_to_fn_decls(
+fn decl_ref_to_fn_decls(
     decl_engine: &DeclEngine,
-    decl_id: &DeclRef,
+    decl_ref: &DeclRef,
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
     decl_engine
-        .get_function(decl_id, span)
+        .get_function(decl_ref, span)
         .map_or(vec![], |fn_decl| vec![fn_decl])
 }
 
 fn impl_trait_methods<'a>(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &'a DeclRef,
+    impl_trait_decl_ref: &'a DeclRef,
     span: &'a Span,
 ) -> Vec<ty::TyFunctionDeclaration> {
-    match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
+    match decl_engine.get_impl_trait(impl_trait_decl_ref, span) {
         Ok(impl_trait) => impl_trait
             .methods
             .iter()
-            .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, fn_decl, span))
+            .flat_map(|fn_decl| decl_ref_to_fn_decls(decl_engine, fn_decl, span))
             .collect(),
         Err(_) => vec![],
     }
@@ -247,13 +247,13 @@ fn analyze_expression(
         } => analyze_two_expressions(engines, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
-            function_decl_id,
+            function_decl_ref,
             selector,
             call_path,
             ..
         } => {
             let func = decl_engine
-                .get_function(function_decl_id, &expr.span)
+                .get_function(function_decl_ref, &expr.span)
                 .unwrap();
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
@@ -579,13 +579,13 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             .cloned()
             .collect(),
         FunctionApplication {
-            function_decl_id,
+            function_decl_ref,
             arguments,
             selector,
             ..
         } => {
             let fn_body = decl_engine
-                .get_function(function_decl_id, &expr.span)
+                .get_function(function_decl_ref, &expr.span)
                 .unwrap()
                 .body;
             let mut effs = effects_of_codeblock(engines, &fn_body);

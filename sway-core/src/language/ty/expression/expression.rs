@@ -81,7 +81,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 call_path,
                 ..
             } => {
@@ -93,7 +93,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl = match decl_engine.get_function(function_decl_id, &self.span) {
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
                     Ok(decl) => decl,
                     Err(e) => return err(vec![], vec![e]),
                 };
@@ -401,14 +401,14 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_id,
+                function_decl_ref,
                 arguments,
                 ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl = match decl_engine.get_function(function_decl_id, &self.span) {
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
                     Ok(decl) => decl,
                     Err(_e) => panic!("failed to get function"),
                 };

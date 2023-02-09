@@ -150,7 +150,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let md = function.get_metadata(self.context);
         let span = self.md_mgr.md_to_span(self.context, md);
         let test_decl_index = self.md_mgr.md_to_test_decl_index(self.context, md);
-        let test_decl_id = match (&span, &test_decl_index) {
+        let test_decl_ref = match (&span, &test_decl_index) {
             (Some(span), Some(decl_index)) => Some(DeclRef::new(
                 Ident::new(span.clone()),
                 *decl_index,
@@ -265,7 +265,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         ops.append(&mut self.cur_bytecode);
         if func_is_entry {
             self.entries
-                .push((function, start_label, ops, test_decl_id));
+                .push((function, start_label, ops, test_decl_ref));
         } else {
             self.non_entries.push(ops);
         }

@@ -17,8 +17,8 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-pub trait GetDeclId {
-    fn get_decl_id(&self) -> Option<DeclRef>;
+pub trait GetDeclRef {
+    fn get_decl_ref(&self) -> Option<DeclRef>;
 }
 
 #[derive(Clone, Debug)]
@@ -162,13 +162,13 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span,
-                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_ref)),
                 ..
             } => {
                 let TyFunctionDeclaration {
                     type_parameters, ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
+                    CompileResult::from(decl_engine.get_function(decl_ref, span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -186,11 +186,11 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span,
-                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_ref)),
                 ..
             } => {
                 let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
+                    CompileResult::from(decl_engine.get_function(decl_ref, span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -217,10 +217,10 @@ impl TyAstNode {
                     TyAstNode {
                         span,
                         content:
-                            TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                            TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_ref)),
                         ..
                     } => {
-                        let decl = decl_engine.get_function(decl_id, span)?;
+                        let decl = decl_engine.get_function(decl_ref, span)?;
                         Ok(decl.is_entry())
                     }
                     _ => Ok(false),
@@ -229,25 +229,26 @@ impl TyAstNode {
             TreeType::Contract | TreeType::Library { .. } => match self {
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                        TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_ref)),
                     ..
                 } => {
-                    let decl = decl_engine.get_function(decl_id, &decl_id.span())?;
+                    let decl = decl_engine.get_function(decl_ref, &decl_ref.span())?;
                     Ok(decl.visibility == Visibility::Public || decl.is_test())
                 }
                 TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration(decl_id)),
+                    content:
+                        TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration(decl_ref)),
                     ..
                 } => Ok(decl_engine
-                    .get_trait(&decl_id.clone(), &decl_id.span())?
+                    .get_trait(&decl_ref.clone(), &decl_ref.span())?
                     .visibility
                     .is_public()),
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_id)),
+                        TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration(decl_ref)),
                     ..
                 } => {
-                    let struct_decl = decl_engine.get_struct(decl_id, &decl_id.span())?;
+                    let struct_decl = decl_engine.get_struct(decl_ref, &decl_ref.span())?;
                     Ok(struct_decl.visibility == Visibility::Public)
                 }
                 TyAstNode {
@@ -256,10 +257,10 @@ impl TyAstNode {
                 } => Ok(true),
                 TyAstNode {
                     content:
-                        TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)),
+                        TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_ref)),
                     ..
                 } => {
-                    let decl = decl_engine.get_constant(decl_id, &decl_id.span())?;
+                    let decl = decl_engine.get_constant(decl_ref, &decl_ref.span())?;
                     Ok(decl.visibility.is_public())
                 }
                 _ => Ok(false),

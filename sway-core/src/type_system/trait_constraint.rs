@@ -170,9 +170,9 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_ref, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

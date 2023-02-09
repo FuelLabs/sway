@@ -18,7 +18,7 @@ pub struct TraitDeclaration {
 #[derive(Debug, Clone)]
 pub struct Supertrait {
     pub name: CallPath,
-    pub decl_id: Option<DeclRef>,
+    pub decl_ref: Option<DeclRef>,
 }
 
 impl Spanned for Supertrait {
@@ -33,7 +33,7 @@ impl Spanned for Supertrait {
 impl EqWithEngines for Supertrait {}
 impl PartialEqWithEngines for Supertrait {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name && self.decl_id.eq(&other.decl_id, engines)
+        self.name == other.name && self.decl_ref.eq(&other.decl_ref, engines)
     }
 }
 

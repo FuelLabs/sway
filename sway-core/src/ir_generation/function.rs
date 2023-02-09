@@ -139,8 +139,8 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = self.decl_engine.get_constant(decl_id, &ast_node.span)?;
+                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                    let tcd = self.decl_engine.get_constant(decl_ref, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -162,10 +162,10 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
                     let ted = self
                         .decl_engine
-                        .get_enum(&decl_id.clone(), &ast_node.span)?;
+                        .get_enum(&decl_ref.clone(), &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
@@ -233,7 +233,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -252,7 +252,7 @@ impl<'eng> FnCompiler<'eng> {
                 } else {
                     let function_decl = self
                         .decl_engine
-                        .get_function(function_decl_id, &ast_expr.span)?;
+                        .get_function(function_decl_ref, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,

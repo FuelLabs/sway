@@ -661,13 +661,13 @@ impl Renderable for TyTraitFn {
         write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
-        let method_id = format!("tymethod.{}", self.name.as_str());
+        let method_ref = format!("tymethod.{}", self.name.as_str());
         Ok(box_html! {
             div(class="methods") {
-                div(id=&method_id, class="method has-srclink") {
+                div(id=&method_ref, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_ref}")) {
                             : self.name.as_str();
                         }
                         : "(";

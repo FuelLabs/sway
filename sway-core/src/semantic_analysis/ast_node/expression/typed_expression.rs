@@ -21,7 +21,7 @@ use crate::{
     error::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclId},
+        ty::{self, GetDeclRef},
         *,
     },
     semantic_analysis::*,
@@ -74,14 +74,14 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let decl_id = check!(
+        let decl_ref = check!(
             resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
         let method = check!(
-            CompileResult::from(decl_engine.get_function(&decl_id, &method_name_binding.span())),
+            CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
             return err(warnings, errors),
             warnings,
             errors
@@ -105,7 +105,7 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_id: decl_id,
+                function_decl_ref: decl_ref,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
@@ -410,13 +410,13 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration(decl_ref)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
                     return_type,
                     ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_id, &span)),
+                    CompileResult::from(decl_engine.get_constant(decl_ref, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -434,9 +434,9 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration(decl_ref)) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
+                    CompileResult::from(decl_engine.get_abi(decl_ref, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -495,7 +495,7 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            unknown_decl.get_decl_id().unwrap(),
+            unknown_decl.get_decl_ref().unwrap(),
             call_path_binding,
             Some(arguments),
             span,
@@ -1117,7 +1117,7 @@ impl ty::TyExpression {
                 .and_then(|decl| {
                     decl.expect_function(decl_engine, &span)
                         .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                        .map(|_s| (decl.get_decl_id().unwrap(), call_path_binding))
+                        .map(|_s| (decl.get_decl_ref().unwrap(), call_path_binding))
                 })
         };
 
@@ -1175,11 +1175,11 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some((decl_id, call_path_binding)), None, None) => {
+            (false, Some((decl_ref, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
+                    instantiate_function_application(ctx, decl_ref, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1262,9 +1262,9 @@ impl ty::TyExpression {
             span,
             ..
         } = match abi {
-            ty::TyDeclaration::AbiDeclaration(decl_id) => {
+            ty::TyDeclaration::AbiDeclaration(decl_ref) => {
                 check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
+                    CompileResult::from(decl_engine.get_abi(&decl_ref, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1337,9 +1337,9 @@ impl ty::TyExpression {
 
         // Retrieve the interface surface for this abi.
         let mut abi_methods = vec![];
-        for decl_id in interface_surface.into_iter() {
+        for decl_ref in interface_surface.into_iter() {
             let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(&decl_id, &name.span())),
+                CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1347,7 +1347,7 @@ impl ty::TyExpression {
             abi_methods.push(
                 decl_engine
                     .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, decl_id),
+                    .with_parent(decl_engine, decl_ref),
             );
         }
 

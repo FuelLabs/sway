@@ -39,9 +39,9 @@ pub(crate) fn insert_supertraits_into_namespace(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_ref, &supertrait.span())),
                     break,
                     warnings,
                     errors

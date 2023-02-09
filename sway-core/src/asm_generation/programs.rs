@@ -44,7 +44,7 @@ pub(super) struct AbstractEntry {
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
     pub(super) name: FnName,
-    pub(super) test_decl_id: Option<DeclRef>,
+    pub(super) test_decl_ref: Option<DeclRef>,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract

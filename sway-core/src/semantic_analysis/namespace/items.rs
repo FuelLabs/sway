@@ -58,9 +58,9 @@ impl Items {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match self.declared_storage {
-            Some(ref decl_id) => {
+            Some(ref decl_ref) => {
                 let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id, access_span)),
+                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -76,16 +76,16 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclRef) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_ref: DeclRef) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
                 vec![CompileError::MultipleStorageDeclarations {
-                    span: decl_id.span(),
+                    span: decl_ref.span(),
                 }],
             );
         }
-        self.declared_storage = Some(decl_id);
+        self.declared_storage = Some(decl_ref);
         ok((), vec![], vec![])
     }
 
@@ -183,9 +183,9 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
-            Some(ref decl_id) => {
+            Some(ref decl_ref) => {
                 let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id, access_span)),
+                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors

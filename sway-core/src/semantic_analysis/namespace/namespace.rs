@@ -220,24 +220,24 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        let mut matching_method_decl_ids: Vec<DeclRef> = vec![];
+        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
 
-        for decl_id in methods.into_iter() {
-            if &decl_id.name == method_name {
-                matching_method_decl_ids.push(decl_id);
+        for decl_ref in methods.into_iter() {
+            if &decl_ref.name == method_name {
+                matching_method_decl_refs.push(decl_ref);
             }
         }
 
-        let matching_method_decl_id = match matching_method_decl_ids.len().cmp(&1) {
-            Ordering::Equal => matching_method_decl_ids.get(0).cloned(),
+        let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
+            Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
             Ordering::Greater => {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_id: Option<DeclRef> = Option::None;
-                for decl_id in matching_method_decl_ids.clone().into_iter() {
+                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                for decl_ref in matching_method_decl_refs.clone().into_iter() {
                     let method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_id, &decl_id.span())),
+                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -247,24 +247,24 @@ impl Namespace {
                             !are_equal_minus_dynamic_types(engines, p.type_id, a.return_type)
                         })
                     {
-                        maybe_method_decl_id = Some(decl_id);
+                        maybe_method_decl_ref = Some(decl_ref);
                         break;
                     }
                 }
-                if let Some(matching_method_decl_id) = maybe_method_decl_id {
+                if let Some(matching_method_decl_ref) = maybe_method_decl_ref {
                     // In case one or more methods match the parameter types we return the first match.
-                    Some(matching_method_decl_id)
+                    Some(matching_method_decl_ref)
                 } else {
                     // When we can't match any method with parameter types we still return the first method found
                     // This was the behavior before introducing the parameter type matching
-                    matching_method_decl_ids.get(0).cloned()
+                    matching_method_decl_refs.get(0).cloned()
                 }
             }
             Ordering::Less => None,
         };
 
-        if let Some(method_decl_id) = matching_method_decl_id {
-            return ok(method_decl_id, warnings, errors);
+        if let Some(method_decl_ref) = matching_method_decl_ref {
+            return ok(method_decl_ref, warnings, errors);
         }
 
         if !args_buf

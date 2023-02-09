@@ -2617,9 +2617,9 @@ impl PkgEntry {
         finalized_entry: &FinalizedEntry,
         decl_engine: &DeclEngine,
     ) -> Result<Self> {
-        let pkg_entry_kind = match &finalized_entry.test_decl_id {
-            Some(test_decl_id) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+        let pkg_entry_kind = match &finalized_entry.test_decl_ref {
+            Some(test_decl_ref) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), decl_engine)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -2643,9 +2643,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_id: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
-        let span = decl_id.span();
-        let test_function_decl = decl_engine.get_function(&decl_id, &span)?;
+    fn from_decl(decl_ref: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_ref.span();
+        let test_function_decl = decl_engine.get_function(&decl_ref, &span)?;
 
         let test_args: HashSet<String> = test_function_decl
             .attributes

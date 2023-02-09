@@ -9,7 +9,7 @@ pub struct TyImplTrait {
     pub trait_type_arguments: Vec<TypeArgument>,
     pub methods: Vec<DeclRef>,
     pub implementing_for_type_id: TypeId,
-    pub trait_decl_id: Option<DeclRef>,
+    pub trait_decl_ref: Option<DeclRef>,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }

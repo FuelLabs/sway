@@ -19,7 +19,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclRef,
+        function_decl_ref: DeclRef,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -141,21 +141,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl_id: l_function_decl_id,
+                    function_decl_ref: l_function_decl_ref,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl_id: r_function_decl_id,
+                    function_decl_ref: r_function_decl_ref,
                     ..
                 },
             ) => {
                 let l_function_decl = decl_engine
-                    .get_function(l_function_decl_id, &Span::dummy())
+                    .get_function(l_function_decl_ref, &Span::dummy())
                     .unwrap();
                 let r_function_decl = decl_engine
-                    .get_function(r_function_decl_id, &Span::dummy())
+                    .get_function(r_function_decl_ref, &Span::dummy())
                     .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
@@ -387,16 +387,16 @@ impl SubstTypes for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id((&new_decl_id).into());
+                function_decl_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -506,16 +506,16 @@ impl ReplaceSelfType for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id((&new_decl_id).into());
+                function_decl_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
@@ -618,15 +618,15 @@ impl ReplaceDecls for TyExpressionVariant {
         match self {
             Literal(..) => (),
             FunctionApplication {
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ref mut arguments,
                 ..
             } => {
-                function_decl_id.replace_decls(decl_mapping, engines);
-                let new_decl_id = function_decl_id
+                function_decl_ref.replace_decls(decl_mapping, engines);
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_id.replace_id((&new_decl_id).into());
+                function_decl_ref.replace_id((&new_decl_ref).into());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }

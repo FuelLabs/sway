@@ -195,22 +195,22 @@ impl ty::TyDeclaration {
                 );
                 let name = trait_decl.name.clone();
 
-                // save decl_ids for the LSP
+                // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     ctx.namespace
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
+                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_ref) =
                                 supertrait_decl
                             {
-                                supertrait.decl_id = Some(supertrait_decl_id);
+                                supertrait.decl_ref = Some(supertrait_decl_ref);
                             }
                         });
                 }
 
-                let decl_id = decl_engine.insert(trait_decl.clone());
-                let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+                let decl_ref = decl_engine.insert(trait_decl.clone());
+                let decl = ty::TyDeclaration::TraitDeclaration(decl_ref);
 
                 trait_decl
                     .methods
@@ -291,8 +291,8 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = decl.call_path.clone();
-                let decl_id = decl_engine.insert(decl);
-                let decl = ty::TyDeclaration::StructDeclaration(decl_id);
+                let decl_ref = decl_engine.insert(decl);
+                let decl = ty::TyDeclaration::StructDeclaration(decl_ref);
                 // insert the struct decl into namespace
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
@@ -370,18 +370,18 @@ impl ty::TyDeclaration {
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_id = decl_engine.insert(decl);
+                let decl_ref = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
                 check!(
-                    ctx.namespace.set_storage_declaration(decl_id.clone()),
+                    ctx.namespace.set_storage_declaration(decl_ref.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::StorageDeclaration(decl_id)
+                ty::TyDeclaration::StorageDeclaration(decl_ref)
             }
         };
 

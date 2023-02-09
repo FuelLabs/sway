@@ -41,11 +41,11 @@ impl SubstTypes for TyTraitDeclaration {
             .for_each(|x| x.subst(type_mapping, engines));
         self.interface_surface
             .iter_mut()
-            .for_each(|function_decl_id| {
-                let new_decl_id = function_decl_id
+            .for_each(|function_decl_ref| {
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id((&new_decl_id).into());
+                function_decl_ref.replace_id((&new_decl_ref).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }
@@ -58,11 +58,11 @@ impl ReplaceSelfType for TyTraitDeclaration {
             .for_each(|x| x.replace_self_type(engines, self_type));
         self.interface_surface
             .iter_mut()
-            .for_each(|function_decl_id| {
-                let new_decl_id = function_decl_id
+            .for_each(|function_decl_ref| {
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id((&new_decl_id).into());
+                function_decl_ref.replace_id((&new_decl_ref).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }

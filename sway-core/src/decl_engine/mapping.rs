@@ -50,23 +50,23 @@ impl DeclMapping {
         self.mapping.is_empty()
     }
 
-    pub(crate) fn from_stub_and_impld_decl_ids(
-        stub_decl_ids: MethodMap,
-        impld_decl_ids: MethodMap,
+    pub(crate) fn from_stub_and_impld_decl_refs(
+        stub_decl_refs: MethodMap,
+        impld_decl_refs: MethodMap,
     ) -> DeclMapping {
         let mut mapping = vec![];
-        for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {
-            if let Some(new_decl_id) = impld_decl_ids.get(&stub_decl_name) {
-                mapping.push((stub_decl_id, new_decl_id.clone()));
+        for (stub_decl_name, stub_decl_ref) in stub_decl_refs.into_iter() {
+            if let Some(new_decl_ref) = impld_decl_refs.get(&stub_decl_name) {
+                mapping.push((stub_decl_ref, new_decl_ref.clone()));
             }
         }
         DeclMapping { mapping }
     }
 
-    pub(crate) fn find_match(&self, decl_id: &SourceDecl) -> Option<DestinationDecl> {
-        for (source_decl_id, dest_decl_id) in self.mapping.iter() {
-            if *DeclId::from(source_decl_id) == *DeclId::from(decl_id) {
-                return Some(dest_decl_id.clone());
+    pub(crate) fn find_match(&self, decl_ref: &SourceDecl) -> Option<DestinationDecl> {
+        for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
+            if *DeclId::from(source_decl_ref) == *DeclId::from(decl_ref) {
+                return Some(dest_decl_ref.clone());
             }
         }
         None
