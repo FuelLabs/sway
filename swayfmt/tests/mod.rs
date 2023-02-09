@@ -1,5 +1,4 @@
 use std::sync::Arc;
-
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 
 #[macro_use]

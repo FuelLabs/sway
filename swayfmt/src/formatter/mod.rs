@@ -44,7 +44,6 @@ impl Formatter {
             ..Default::default()
         })
     }
-
     pub fn format(
         &mut self,
         src: Arc<str>,
@@ -67,10 +66,8 @@ impl Formatter {
         let mut raw_formatted_code = String::with_capacity(src.len());
 
         // Collect Span -> Comment mapping from unformatted input.
-        self.comments_context = CommentsContext {
-            map: CommentMap::from_src(Arc::from(src))?,
-            unformatted_code: src.to_string(),
-        };
+        self.comments_context =
+            CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
 
         let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
