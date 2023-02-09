@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::core::Bits256};
+use fuels::{prelude::*, types::Bits256};
 use std::str::FromStr;
 
 abigen!(Contract(
@@ -24,7 +24,7 @@ async fn get_vec_in_abi_instance() -> (VecInAbiTestContract, ContractId) {
 }
 
 #[tokio::test]
-async fn test_bool() -> Result<(), Error> {
+async fn test_bool() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -36,7 +36,7 @@ async fn test_bool() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u8() -> Result<(), Error> {
+async fn test_u8() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -48,7 +48,7 @@ async fn test_u8() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u16() -> Result<(), Error> {
+async fn test_u16() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -60,7 +60,7 @@ async fn test_u16() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u32() -> Result<(), Error> {
+async fn test_u32() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -72,7 +72,7 @@ async fn test_u32() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_u64() -> Result<(), Error> {
+async fn test_u64() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -84,7 +84,7 @@ async fn test_u64() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_b256() -> Result<(), Error> {
+async fn test_b256() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -96,7 +96,7 @@ async fn test_b256() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_struct() -> Result<(), Error> {
+async fn test_struct() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -131,7 +131,7 @@ async fn test_struct() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_enum() -> Result<(), Error> {
+async fn test_enum() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -150,7 +150,7 @@ async fn test_enum() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_array() -> Result<(), Error> {
+async fn test_array() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -181,7 +181,7 @@ async fn test_array() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_string() -> Result<(), Error> {
+async fn test_string() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 
@@ -197,7 +197,7 @@ async fn test_string() -> Result<(), Error> {
 }
 
 #[tokio::test]
-async fn test_vec_in_vec() -> Result<(), Error> {
+async fn test_vec_in_vec() -> Result<()> {
     let (instance, _id) = get_vec_in_abi_instance().await;
     let contract_methods = instance.methods();
 

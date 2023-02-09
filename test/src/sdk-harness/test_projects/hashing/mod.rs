@@ -1,7 +1,7 @@
 use fuels::{
     prelude::*,
     tx::ContractId,
-    types::core::{Bits256, SizedAsciiString},
+    types::{Bits256, SizedAsciiString},
 };
 use sha2::{Digest, Sha256};
 use sha3::Keccak256;

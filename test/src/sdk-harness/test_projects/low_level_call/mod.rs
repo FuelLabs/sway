@@ -1,17 +1,17 @@
 use fuels::{
     prelude::*,
     tx::{Bytes32, ContractId, Input, Output, TxPointer, UtxoId},
-    types::core::{Bits256, SizedAsciiString},
+    types::{Bits256, SizedAsciiString},
 };
 
 macro_rules! fn_selector {
     ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
-         ::fuels::core::code_gen::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::traits::Parameterize>::param_type() ),*]).to_vec()
+         ::fuels::core::function_selector::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::types::traits::Parameterize>::param_type() ),*]).to_vec()
     }
 }
 macro_rules! calldata {
     ( $($arg: expr),* ) => {
-        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+        ::fuels::core::abi_encoder::ABIEncoder::encode(&[$(::fuels::types::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
     }
 }
 

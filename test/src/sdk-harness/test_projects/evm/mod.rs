@@ -1,7 +1,7 @@
 use fuels::{
     prelude::*,
     tx::ContractId,
-    types::core::{Bits256, EvmAddress},
+    types::{Bits256, EvmAddress},
 };
 
 abigen!(Contract(

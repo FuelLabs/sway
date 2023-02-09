@@ -31,6 +31,7 @@ configurable {
     C5: MyEnum = MyEnum::B(true),
     C6: str[4] = "fuel",
     C7: [u64; 4] = [1, 2, 3, 4],
+    C8: u64 = 0, // Unused - should not show up in the JSON file
 }
 
 #[inline(never)]

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{style::is_upper_camel_case, Ident, Spanned};
+use sway_types::{style::is_upper_camel_case, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -10,8 +10,6 @@ use crate::{
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     type_system::*,
 };
-
-type MethodMap = BTreeMap<Ident, DeclId>;
 
 impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
@@ -139,31 +137,19 @@ impl ty::TyTraitDeclaration {
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-    ) -> CompileResult<(MethodMap, MethodMap)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> (MethodMap, MethodMap) {
         let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
         let mut impld_method_ids: MethodMap = BTreeMap::new();
 
         let ty::TyTraitDeclaration {
-            interface_surface,
-            name,
-            ..
+            interface_surface, ..
         } = self;
 
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
         for decl_id in interface_surface.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+            interface_surface_method_ids.insert(decl_id.name.clone(), decl_id.clone());
         }
 
         // Retrieve the implemented methods for this type.
@@ -172,20 +158,10 @@ impl ty::TyTraitDeclaration {
             .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &name.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            impld_method_ids.insert(method.name, decl_id);
+            impld_method_ids.insert(decl_id.name.clone(), decl_id);
         }
 
-        ok(
-            (interface_surface_method_ids, impld_method_ids),
-            warnings,
-            errors,
-        )
+        (interface_surface_method_ids, impld_method_ids)
     }
 
     /// Retrieves the interface surface, methods, and implemented methods for
@@ -216,24 +192,12 @@ impl ty::TyTraitDeclaration {
 
         // Retrieve the interface surface for this trait.
         for decl_id in interface_surface.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+            interface_surface_method_ids.insert(decl_id.name.clone(), decl_id.clone());
         }
 
         // Retrieve the trait methods for this trait.
         for decl_id in methods.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            method_ids.insert(method.name, decl_id.clone());
+            method_ids.insert(decl_id.name.clone(), decl_id.clone());
         }
 
         // Retrieve the implemented methods for this type.

@@ -134,8 +134,17 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         // do a depth first traversal and cover individual inner ast nodes
         let decl_engine = engines.de();
         let mut leaves = vec![];
-        let exit_node = Some(graph.add_node(engines, ("Program exit".to_string()).into()));
+        let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
+        let mut entry_points = vec![];
+        let mut non_entry_points = vec![];
         for ast_entrypoint in module_nodes {
+            if ast_entrypoint.is_entry_point(decl_engine, tree_type)? {
+                entry_points.push(ast_entrypoint);
+            } else {
+                non_entry_points.push(ast_entrypoint);
+            }
+        }
+        for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (l_leaves, _new_exit_node) = connect_node(
                 engines,
                 ast_entrypoint,
@@ -143,113 +152,41 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 &leaves,
                 exit_node,
                 tree_type,
-                NodeConnectionOptions {
-                    force_struct_fields_connection: false,
-                },
+                NodeConnectionOptions::default(),
             )?;
 
             leaves = l_leaves;
         }
-        graph.entry_points = entry_points(decl_engine, tree_type, &graph.graph)?;
+        graph.entry_points = collect_entry_points(decl_engine, tree_type, &graph.graph)?;
         Ok(())
     }
 }
 
 /// Collect all entry points into the graph based on the tree type.
-fn entry_points(
+fn collect_entry_points(
     decl_engine: &DeclEngine,
     tree_type: &TreeType,
     graph: &flow_graph::Graph,
 ) -> Result<Vec<flow_graph::EntryPoint>, CompileError> {
     let mut entry_points = vec![];
-    match tree_type {
-        TreeType::Predicate | TreeType::Script => {
-            // Predicates and scripts have main and test functions as entry points.
-            for i in graph.node_indices() {
-                match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        span,
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), span)?;
-                        if !decl.is_entry() {
-                            continue;
-                        }
-                    }
-                    _ => continue,
-                };
-                entry_points.push(i);
+    for i in graph.node_indices() {
+        let is_entry = match &graph[i] {
+            ControlFlowGraphNode::ProgramNode(node) => {
+                node.is_entry_point(decl_engine, tree_type)?
             }
-        }
-        TreeType::Contract | TreeType::Library { .. } => {
-            for i in graph.node_indices() {
-                let is_entry = match &graph[i] {
-                    ControlFlowGraphNode::OrganizationalDominator(_) => continue,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility == Visibility::Public || decl.is_test()
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => decl_engine
-                        .get_trait(decl_id.clone(), &decl_id.span())?
-                        .visibility
-                        .is_public(),
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let struct_decl =
-                            decl_engine.get_struct(decl_id.clone(), &decl_id.span())?;
-                        struct_decl.visibility == Visibility::Public
-                    }
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { .. }),
-                        ..
-                    }) => true,
-                    ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
-                        content:
-                            ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(
-                                decl_id,
-                            )),
-                        ..
-                    }) => {
-                        let decl = decl_engine.get_constant(decl_id.clone(), &decl_id.span())?;
-                        decl.visibility.is_public()
-                    }
-                    _ => continue,
-                };
-                if is_entry {
-                    entry_points.push(i);
-                }
-            }
+            _ => false,
+        };
+        if is_entry {
+            entry_points.push(i);
         }
     }
+
     Ok(entry_points)
 }
 
 /// This struct is used to pass node connection further down the tree as
 /// we are processing AST nodes.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 struct NodeConnectionOptions {
     /// When this is enabled, connect struct fields to the struct itself,
     /// thus making all struct fields considered as being used in the graph.
@@ -269,7 +206,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     let span = node.span.clone();
     Ok(match &node.content {
         ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            let this_index = graph.add_node(engines, node.into());
+            let this_index = graph.add_node(node.into());
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
@@ -301,7 +238,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             span,
             ..
         }) => {
-            let entry = graph.add_node(engines, node.into());
+            let entry = graph.add_node(node.into());
             // insert organizational dominator node
             // connected to all current leaves
             for leaf in leaves {
@@ -328,9 +265,9 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             // all leaves connect to this node, then this node is the singular leaf
             let cfg_node: ControlFlowGraphNode = node.into();
             // check if node for this decl already exists
-            let decl_node = match graph.get_node_from_decl(engines, &cfg_node) {
+            let decl_node = match graph.get_node_from_decl(&cfg_node) {
                 Some(node) => node,
-                None => graph.add_node(engines, cfg_node),
+                None => graph.add_node(cfg_node),
             };
             for leaf in leaves {
                 graph.add_edge(*leaf, decl_node, "".into());
@@ -409,12 +346,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         StructDeclaration(decl_id) => {
             let struct_decl = decl_engine.get_struct(decl_id.clone(), &span)?;
-            connect_struct_declaration(engines, &struct_decl, graph, entry_node, tree_type);
+            connect_struct_declaration(&struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         EnumDeclaration(decl_id) => {
             let enum_decl = decl_engine.get_enum(decl_id.clone(), &span)?;
-            connect_enum_declaration(engines, &enum_decl, graph, entry_node);
+            connect_enum_declaration(&enum_decl, graph, entry_node);
             Ok(leaves.to_vec())
         }
         ImplTrait(decl_id) => {
@@ -437,7 +374,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         StorageDeclaration(decl_id) => {
             let storage = decl_engine.get_storage(decl_id.clone(), &span)?;
-            connect_storage_declaration(engines, &storage, graph, entry_node, tree_type);
+            connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
         ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
@@ -447,7 +384,6 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
 /// Connect each individual struct field, and when that field is accessed in a subfield expression,
 /// connect that field.
 fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
     struct_decl: &ty::TyStructDeclaration,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -461,7 +397,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     } = struct_decl;
     let field_nodes = fields
         .iter()
-        .map(|field| (field.name.clone(), graph.add_node(engines, field.into())))
+        .map(|field| (field.name.clone(), graph.add_node(field.into())))
         .collect::<Vec<_>>();
     // If this is a library or smart contract, and if this is public, then we want to connect the
     // declaration node itself to the individual fields.
@@ -503,7 +439,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     let trait_decl_node = graph.namespace.find_trait(trait_name).cloned();
     match trait_decl_node {
         None => {
-            let node_ix = graph.add_node(engines, "External trait".into());
+            let node_ix = graph.add_node("External trait".into());
             graph.add_edge(entry_node, node_ix, "".into());
         }
         Some(trait_decl_node) => {
@@ -515,15 +451,12 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     // insert method declarations into the graph
     for method_decl_id in methods {
         let fn_decl = decl_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
-        let fn_decl_entry_node = graph.add_node(
+        let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
+            span: fn_decl.span.clone(),
+            method_name: fn_decl.name.clone(),
+            method_decl_id: method_decl_id.clone(),
             engines,
-            ControlFlowGraphNode::MethodDeclaration {
-                span: fn_decl.span.clone(),
-                method_name: fn_decl.name.clone(),
-                method_decl_id: method_decl_id.clone(),
-                engines,
-            },
-        );
+        });
         if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
             graph.add_edge(entry_node, fn_decl_entry_node, "".into());
         }
@@ -678,7 +611,6 @@ fn get_struct_type_info_from_type_id(
 /// variant. When a variant is constructed, we can point an edge at that variant. This way,
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
 fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
     enum_decl: &ty::TyEnumDeclaration,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
@@ -689,13 +621,10 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
 
     // keep a mapping of each variant
     for variant in enum_decl.variants.iter() {
-        let variant_index = graph.add_node(
-            engines,
-            ControlFlowGraphNode::from_enum_variant(
-                variant.name.clone(),
-                enum_decl.visibility != Visibility::Private,
-            ),
-        );
+        let variant_index = graph.add_node(ControlFlowGraphNode::from_enum_variant(
+            variant.name.clone(),
+            enum_decl.visibility != Visibility::Private,
+        ));
 
         graph.namespace.insert_enum_variant(
             enum_decl.call_path.suffix.clone(),
@@ -721,10 +650,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
-    let fn_exit_node = graph.add_node(
-        engines,
-        format!("\"{}\" fn exit", fn_decl.name.as_str()).into(),
-    );
+    let fn_exit_node = graph.add_node(format!("\"{}\" fn exit", fn_decl.name.as_str()).into());
     let (_exit_nodes, _exit_node) = depth_first_insertion_code_block(
         engines,
         &fn_decl.body,
@@ -750,9 +676,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         return_type: ty,
     };
 
-    graph
-        .namespace
-        .insert_function(fn_decl.name.clone(), namespace_entry);
+    graph.namespace.insert_function(fn_decl, namespace_entry);
 
     connect_fn_params_struct_enums(engines, fn_decl, graph, entry_node)?;
     Ok(())
@@ -775,20 +699,16 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
             TypeInfo::Enum { call_path, .. } => {
                 let ty_index = match graph.namespace.find_enum(&call_path.suffix) {
                     Some(ix) => *ix,
-                    None => graph.add_node(
-                        engines,
-                        format!("External enum  {}", call_path.suffix.as_str()).into(),
-                    ),
+                    None => graph
+                        .add_node(format!("External enum  {}", call_path.suffix.as_str()).into()),
                 };
                 graph.add_edge(fn_decl_entry_node, ty_index, "".into());
             }
             TypeInfo::Struct { call_path, .. } => {
                 let ty_index = match graph.namespace.find_struct_decl(call_path.suffix.as_str()) {
                     Some(ix) => *ix,
-                    None => graph.add_node(
-                        engines,
-                        format!("External struct  {}", call_path.suffix.as_str()).into(),
-                    ),
+                    None => graph
+                        .add_node(format!("External struct  {}", call_path.suffix.as_str()).into()),
                 };
                 graph.add_edge(fn_decl_entry_node, ty_index, "".into());
             }
@@ -888,11 +808,45 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         } => {
             let fn_decl = decl_engine.get_function(function_decl_id.clone(), &expression_span)?;
             let mut is_external = false;
+
+            // in the case of monomorphized functions, first check if we already have a node for
+            // it in the namespace. if not then we need to check to see if the namespace contains
+            // the decl id parents (the original generic non monomorphized decl id).
+            let mut exists = false;
+            let parents = decl_engine.find_all_parents(engines, function_decl_id.clone());
+            for parent in parents {
+                if let Ok(parent) = decl_engine.get_function(parent.clone(), &expression_span) {
+                    exists |= graph.namespace.get_function(&parent).is_some();
+                }
+            }
+
             // find the function in the namespace
-            let (fn_entrypoint, fn_exit_point) = graph
-                .namespace
-                .get_function(&fn_decl.name)
-                .cloned()
+            let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
+
+            let mut leaves = leaves.to_vec();
+
+            // if the parent node exists in this module, then add the monomorphized version
+            // to the graph.
+            if fn_namespace_entry.is_none() && exists {
+                let (l_leaves, _new_exit_node) = connect_node(
+                    engines,
+                    &ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Declaration(
+                            ty::TyDeclaration::FunctionDeclaration(function_decl_id.clone()),
+                        ),
+                        span: expression_span.clone(),
+                    },
+                    graph,
+                    &leaves,
+                    exit_node,
+                    tree_type,
+                    NodeConnectionOptions::default(),
+                )?;
+
+                leaves = l_leaves;
+            }
+
+            let (fn_entrypoint, fn_exit_point) = fn_namespace_entry
                 .map(
                     |FunctionNamespaceEntry {
                          entry_point,
@@ -901,17 +855,12 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                      }| (entry_point, exit_point),
                 )
                 .unwrap_or_else(|| {
-                    let node_idx = graph.add_node(
-                        engines,
-                        format!("extern fn {}()", name.suffix.as_str()).into(),
-                    );
+                    let node_idx =
+                        graph.add_node(format!("extern fn {}()", name.suffix.as_str()).into());
                     is_external = true;
                     (
                         node_idx,
-                        graph.add_node(
-                            engines,
-                            format!("extern fn {} exit", name.suffix.as_str()).into(),
-                        ),
+                        graph.add_node(format!("extern fn {} exit", name.suffix.as_str()).into()),
                     )
                 });
 
@@ -924,7 +873,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             for leaf in leaves {
-                graph.add_edge(*leaf, fn_entrypoint, label.into());
+                graph.add_edge(leaf, fn_entrypoint, label.into());
             }
 
             // save the existing options value to restore after handling the arguments
@@ -996,7 +945,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok([lhs_expr, rhs_expr].concat())
         }
         Literal(_) => {
-            let node = graph.add_node(engines, "Literal value".into());
+            let node = graph.add_node("Literal value".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }
@@ -1091,13 +1040,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         } => {
             let decl = match graph.namespace.find_struct_decl(struct_name.as_str()) {
                 Some(ix) => *ix,
-                None => graph.add_node(
-                    engines,
-                    format!("External struct  {}", struct_name.as_str()).into(),
-                ),
+                None => graph.add_node(format!("External struct  {}", struct_name.as_str()).into()),
             };
-            let entry = graph.add_node(engines, "Struct declaration entry".into());
-            let exit = graph.add_node(engines, "Struct declaration exit".into());
+            let entry = graph.add_node("Struct declaration entry".into());
+            let exit = graph.add_node("Struct declaration exit".into());
             // connect current leaves to the beginning of this expr
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, label.into());
@@ -1171,11 +1117,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .find_struct_field_idx(resolved_type_of_parent.suffix.as_str(), field_name.as_str())
             {
                 Some(ix) => *ix,
-                None => graph.add_node(engines, "external struct".into()),
+                None => graph.add_node("external struct".into()),
             };
 
             let this_ix = graph.add_node(
-                engines,
                 format!("Struct field access: {resolved_type_of_parent}.{field_name}").into(),
             );
             for leaf in leaves {
@@ -1185,8 +1130,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![this_ix])
         }
         AsmExpression { registers, .. } => {
-            let asm_node_entry = graph.add_node(engines, "Inline asm entry".into());
-            let asm_node_exit = graph.add_node(engines, "Inline asm exit".into());
+            let asm_node_entry = graph.add_node("Inline asm entry".into());
+            let asm_node_exit = graph.add_node("Inline asm exit".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, asm_node_entry, "".into());
             }
@@ -1217,8 +1162,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![asm_node_exit])
         }
         Tuple { fields } => {
-            let entry = graph.add_node(engines, "tuple entry".into());
-            let exit = graph.add_node(engines, "tuple exit".into());
+            let entry = graph.add_node("tuple entry".into());
+            let exit = graph.add_node("tuple exit".into());
             // connect current leaves to the beginning of this expr
             for leaf in leaves {
                 graph.add_edge(*leaf, entry, label.into());
@@ -1321,10 +1266,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .storage
                 .get(&fields.storage_field_name())
                 .cloned();
-            let this_ix = graph.add_node(
-                engines,
-                format!("storage field access: {}", fields.storage_field_name()).into(),
-            );
+            let this_ix = graph
+                .add_node(format!("storage field access: {}", fields.storage_field_name()).into());
             for leaf in leaves {
                 storage_node.map(|x| graph.add_edge(*leaf, x, "".into()));
                 graph.add_edge(*leaf, this_ix, "".into());
@@ -1381,7 +1324,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let entry = leaves[0];
 
-            let while_loop_exit = graph.add_node(engines, "while loop exit".to_string().into());
+            let while_loop_exit = graph.add_node("while loop exit".to_string().into());
 
             // it is possible for a whole while loop to be skipped so add edge from
             // beginning of while loop straight to exit
@@ -1420,14 +1363,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![while_loop_exit])
         }
         Break => {
-            let break_node = graph.add_node(engines, "break".to_string().into());
+            let break_node = graph.add_node("break".to_string().into());
             for leaf in leaves {
                 graph.add_edge(*leaf, break_node, "".into());
             }
             Ok(vec![])
         }
         Continue => {
-            let continue_node = graph.add_node(engines, "continue".to_string().into());
+            let continue_node = graph.add_node("continue".to_string().into());
             for leaf in leaves {
                 graph.add_edge(*leaf, continue_node, "".into());
             }
@@ -1456,7 +1399,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             options,
         ),
         Return(exp) => {
-            let this_index = graph.add_node(engines, "return entry".into());
+            let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
             }
@@ -1494,7 +1437,7 @@ fn connect_intrinsic_function<'eng: 'cfg, 'cfg>(
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let node = graph.add_node(engines, format!("Intrinsic {kind}").into());
+    let node = graph.add_node(format!("Intrinsic {kind}").into());
     for leaf in leaves {
         graph.add_edge(*leaf, node, "".into());
     }
@@ -1529,7 +1472,7 @@ fn connect_code_block<'eng: 'cfg, 'cfg>(
     options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
     let contents = &block.contents;
-    let block_entry = graph.add_node(engines, "Code block entry".into());
+    let block_entry = graph.add_node("Code block entry".into());
     for leaf in leaves {
         graph.add_edge(*leaf, block_entry, "".into());
     }
@@ -1547,7 +1490,7 @@ fn connect_code_block<'eng: 'cfg, 'cfg>(
         .0;
     }
 
-    let block_exit = graph.add_node(engines, "Code block exit".into());
+    let block_exit = graph.add_node("Code block exit".into());
     for leaf in current_leaf {
         graph.add_edge(leaf, block_exit, "".into());
     }
@@ -1572,7 +1515,6 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
         .find_enum_variant_index(&enum_call_path.suffix, variant_name)
         .unwrap_or_else(|| {
             let node_idx = graph.add_node(
-                engines,
                 format!(
                     "extern enum {}::{}",
                     enum_call_path.suffix.as_str(),
@@ -1584,8 +1526,8 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
         });
 
     // insert organizational nodes for instantiation of enum
-    let enum_instantiation_entry_idx = graph.add_node(engines, "enum instantiation entry".into());
-    let enum_instantiation_exit_idx = graph.add_node(engines, "enum instantiation exit".into());
+    let enum_instantiation_entry_idx = graph.add_node("enum instantiation entry".into());
+    let enum_instantiation_exit_idx = graph.add_node("enum instantiation exit".into());
 
     // connect to declaration node itself to show that the declaration is used
     graph.add_edge(enum_instantiation_entry_idx, decl_ix, "".into());
@@ -1631,71 +1573,41 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_function(decl_id.clone(), span) {
-                Ok(ty::TyFunctionDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadFunctionDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadFunctionDeclaration,
+        },
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_struct(decl_id.clone(), span) {
-                Ok(ty::TyStructDeclaration { call_path, .. }) => call_path.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadStructDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadStructDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
-                Ok(ty::TyEnumDeclaration { call_path, .. }) => call_path.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadEnumDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadEnumDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_trait(decl_id.clone(), span) {
-                Ok(ty::TyTraitDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadTrait,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadTrait,
+        },
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ConstantDeclaration(decl_id)),
-            span,
-        } => {
-            let warning_span = match decl_engine.get_constant(decl_id.clone(), span) {
-                Ok(ty::TyConstantDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadDeclaration,
-            }
-        }
+            ..
+        } => CompileWarning {
+            span: decl_id.name.span(),
+            warning_content: Warning::DeadDeclaration,
+        },
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::VariableDeclaration(decl)),
             span,
@@ -1735,6 +1647,11 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StorageDeclaration { .. }),
             ..
         } => return None,
+        // If there is already an error for the declaration, we don't need to emit a dead code warning.
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ErrorRecovery(..)),
+            ..
+        } => return None,
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(..),
             span,
@@ -1757,7 +1674,6 @@ fn construct_dead_code_warning_from_node(
 }
 
 fn connect_storage_declaration<'eng: 'cfg, 'cfg>(
-    engines: Engines<'eng>,
     decl: &ty::TyStorageDeclaration,
     graph: &mut ControlFlowGraph<'cfg>,
     _entry_node: NodeIndex,
@@ -1766,7 +1682,7 @@ fn connect_storage_declaration<'eng: 'cfg, 'cfg>(
     let ty::TyStorageDeclaration { fields, .. } = decl;
     let field_nodes = fields
         .iter()
-        .map(|field| (field.clone(), graph.add_node(engines, field.into())))
+        .map(|field| (field.clone(), graph.add_node(field.into())))
         .collect::<Vec<_>>();
 
     graph.namespace.insert_storage(field_nodes);

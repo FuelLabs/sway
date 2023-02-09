@@ -7,12 +7,10 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use fuel_gql_client::client::types::TransactionStatus;
-use fuel_gql_client::{
-    client::FuelClient,
-    fuel_tx::{Output, Salt, TransactionBuilder},
-    fuel_vm::prelude::*,
-};
+use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::FuelClient;
+use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
 use std::path::PathBuf;
