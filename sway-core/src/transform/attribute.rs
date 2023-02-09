@@ -22,7 +22,7 @@
 
 use sway_types::{Ident, Span};
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
@@ -70,6 +70,10 @@ impl AttributesMap {
             }
         }
         first
+    }
+
+    pub fn inner(&self) -> &HashMap<AttributeKind, Vec<Attribute>> {
+        &self.0
     }
 }
 
