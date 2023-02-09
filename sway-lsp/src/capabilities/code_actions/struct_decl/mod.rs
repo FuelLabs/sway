@@ -1,10 +1,11 @@
 pub(crate) mod struct_impl;
+pub(crate) mod struct_new;
 
 use sway_core::{decl_engine::DeclId, Engines};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionOrCommand, Url};
 
-use self::struct_impl::StructImplCodeAction;
+use self::{struct_impl::StructImplCodeAction, struct_new::StructNewCodeAction};
 
 use super::CodeActionTrait;
 
@@ -18,6 +19,7 @@ pub(crate) fn code_actions(
         .get_struct(decl_id.clone(), &decl_id.span())
         .unwrap();
     Some(vec![
-        StructImplCodeAction::new(engines, &decl, uri).code_action()
+        StructImplCodeAction::new(engines, &decl, uri).code_action(),
+        StructNewCodeAction::new(engines, &decl, uri).code_action(),
     ])
 }

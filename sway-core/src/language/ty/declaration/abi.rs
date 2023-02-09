@@ -1,4 +1,4 @@
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::DeclId, engine_threading::*, transform, type_system::*};
 
@@ -34,5 +34,11 @@ impl CreateTypeId for TyAbiDeclaration {
             address: None,
         };
         type_engine.insert(decl_engine, ty)
+    }
+}
+
+impl Spanned for TyAbiDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
