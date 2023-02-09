@@ -17,6 +17,7 @@ use crate::{
 use sway_ir::*;
 
 use either::Either;
+use sway_types::Ident;
 
 /// A summary of the adopted calling convention:
 ///
@@ -150,7 +151,11 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let span = self.md_mgr.md_to_span(self.context, md);
         let test_decl_index = self.md_mgr.md_to_test_decl_index(self.context, md);
         let test_decl_id = match (&span, &test_decl_index) {
-            (Some(span), Some(decl_index)) => Some(DeclId::new(*decl_index, span.clone())),
+            (Some(span), Some(decl_index)) => Some(DeclId::new(
+                Ident::new(span.clone()),
+                *decl_index,
+                span.clone(),
+            )),
             _ => None,
         };
         let comment = format!(

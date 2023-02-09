@@ -151,7 +151,6 @@ impl Spanned for TyDeclaration {
 impl DisplayWithEngines for TyDeclaration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
         let type_engine = engines.te();
-        let decl_engine = engines.de();
         write!(
             f,
             "{} declaration ({})",
@@ -182,32 +181,10 @@ impl DisplayWithEngines for TyDeclaration {
                     builder.push_str(&engines.help_out(body).to_string());
                     builder
                 }
-                TyDeclaration::FunctionDeclaration(decl_id) => {
-                    match decl_engine.get_function(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyFunctionDeclaration { name, .. }) => name.as_str().into(),
-                        Err(_) => "unknown function".into(),
-                    }
-                }
-                TyDeclaration::TraitDeclaration(decl_id) => {
-                    match decl_engine.get_trait(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyTraitDeclaration { name, .. }) => name.as_str().into(),
-                        Err(_) => "unknown trait".into(),
-                    }
-                }
-                TyDeclaration::StructDeclaration(decl_id) => {
-                    match decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyStructDeclaration { call_path, .. }) => {
-                            call_path.suffix.as_str().into()
-                        }
-                        Err(_) => "unknown struct".into(),
-                    }
-                }
-                TyDeclaration::EnumDeclaration(decl_id) => {
-                    match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyEnumDeclaration { call_path, .. }) => call_path.suffix.as_str().into(),
-                        Err(_) => "unknown enum".into(),
-                    }
-                }
+                TyDeclaration::FunctionDeclaration(decl_id) => decl_id.name.as_str().into(),
+                TyDeclaration::TraitDeclaration(decl_id) => decl_id.name.as_str().into(),
+                TyDeclaration::StructDeclaration(decl_id) => decl_id.name.as_str().into(),
+                TyDeclaration::EnumDeclaration(decl_id) => decl_id.name.as_str().into(),
                 _ => String::new(),
             }
         )
@@ -290,54 +267,16 @@ impl CollectTypesMetadata for TyDeclaration {
 }
 
 impl GetDeclIdent for TyDeclaration {
-    fn get_decl_ident(&self, decl_engine: &DeclEngine) -> Option<Ident> {
+    fn get_decl_ident(&self) -> Option<Ident> {
         match self {
             TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
-            TyDeclaration::ConstantDeclaration(decl) => Some(
-                decl_engine
-                    .get_constant(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
-            TyDeclaration::FunctionDeclaration(decl) => Some(
-                decl_engine
-                    .get_function(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
-            TyDeclaration::TraitDeclaration(decl) => Some(
-                decl_engine
-                    .get_trait(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
-            TyDeclaration::StructDeclaration(decl) => Some(
-                decl_engine
-                    .get_struct(decl.clone(), &decl.span())
-                    .unwrap()
-                    .call_path
-                    .suffix,
-            ),
-            TyDeclaration::EnumDeclaration(decl) => Some(
-                decl_engine
-                    .get_enum(decl.clone(), &decl.span())
-                    .unwrap()
-                    .call_path
-                    .suffix,
-            ),
-            TyDeclaration::ImplTrait(decl) => Some(
-                decl_engine
-                    .get_impl_trait(decl.clone(), &decl.span())
-                    .unwrap()
-                    .trait_name
-                    .suffix,
-            ),
-            TyDeclaration::AbiDeclaration(decl) => Some(
-                decl_engine
-                    .get_abi(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
+            TyDeclaration::ConstantDeclaration(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::FunctionDeclaration(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::TraitDeclaration(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::StructDeclaration(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::EnumDeclaration(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::ImplTrait(decl_id) => Some(decl_id.name.clone()),
+            TyDeclaration::AbiDeclaration(decl_id) => Some(decl_id.name.clone()),
             TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
             TyDeclaration::ErrorRecovery(_) => None,
             TyDeclaration::StorageDeclaration(_decl) => None,
@@ -530,13 +469,13 @@ impl TyDeclaration {
                 let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
                 format!(
                     "{} for {}",
-                    self.get_decl_ident(decl_engine)
+                    self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     implementing_for_type_id.json_abi_str(type_engine)
                 )
             }
             _ => self
-                .get_decl_ident(decl_engine)
+                .get_decl_ident()
                 .map_or(String::from(""), |f| f.as_str().to_string()),
         }
     }

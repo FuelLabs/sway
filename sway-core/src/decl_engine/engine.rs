@@ -5,7 +5,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::Span;
+use sway_types::{Ident, Span};
 
 use crate::{
     concurrent_slab::{ConcurrentSlab, ListDisplay},
@@ -41,14 +41,19 @@ impl DeclEngine {
 
     pub(crate) fn insert<T>(&self, decl: T) -> DeclId
     where
-        T: Into<(DeclWrapper, Span)>,
+        T: Into<(Ident, DeclWrapper, Span)>,
     {
-        let (decl_wrapper, span) = decl.into();
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+        let (ident, decl_wrapper, span) = decl.into();
+        DeclId::new(ident, self.slab.insert(decl_wrapper), span)
     }
 
-    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclId {
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+    pub(crate) fn insert_wrapper(
+        &self,
+        ident: Ident,
+        decl_wrapper: DeclWrapper,
+        span: Span,
+    ) -> DeclId {
+        DeclId::new(ident, self.slab.insert(decl_wrapper), span)
     }
 
     /// Given a [DeclId] `index`, finds all the parents of `index` and all the

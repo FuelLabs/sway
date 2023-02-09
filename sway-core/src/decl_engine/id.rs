@@ -1,23 +1,32 @@
 use std::hash::Hasher;
 
-use sway_types::{Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::ty,
-    type_system::{SubstTypes, TypeSubstMap},
-    ReplaceSelfType, TypeId,
-};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 use super::{DeclEngine, DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
-/// An ID used to refer to an item in the [DeclarationEngine](super::decl_engine::DeclarationEngine)
+/// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
 #[derive(Debug)]
-pub struct DeclId(usize, Span);
+pub struct DeclId {
+    /// The name of the declaration.
+    // NOTE: In the case of storage, the name is "storage".
+    pub name: Ident,
+
+    /// The low-level index into the [DeclEngine].
+    id: usize,
+
+    /// The [Span] of the entire declaration.
+    decl_span: Span,
+}
 
 impl Clone for DeclId {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1.clone())
+    fn clone(&self) -> DeclId {
+        DeclId {
+            name: self.name.clone(),
+            id: self.id,
+            decl_span: self.decl_span.clone(),
+        }
     }
 }
 
@@ -42,20 +51,20 @@ impl HashWithEngines for DeclId {
 impl std::ops::Deref for DeclId {
     type Target = usize;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.id
     }
 }
 
 #[allow(clippy::from_over_into)]
 impl Into<usize> for DeclId {
     fn into(self) -> usize {
-        self.0
+        self.id
     }
 }
 
 impl Spanned for DeclId {
     fn span(&self) -> Span {
-        self.1.clone()
+        self.decl_span.clone()
     }
 }
 
@@ -81,13 +90,13 @@ impl ReplaceDecls for DeclId {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_id) = decl_mapping.find_match(self) {
-            self.0 = *new_decl_id;
+            self.id = *new_decl_id;
             return;
         }
         let all_parents = decl_engine.find_all_parents(engines, self.clone());
         for parent in all_parents.into_iter() {
             if let Some(new_decl_id) = decl_mapping.find_match(&parent) {
-                self.0 = *new_decl_id;
+                self.id = *new_decl_id;
                 return;
             }
         }
@@ -108,8 +117,12 @@ impl ReplaceFunctionImplementingType for DeclId {
 }
 
 impl DeclId {
-    pub(crate) fn new(index: usize, span: Span) -> DeclId {
-        DeclId(index, span)
+    pub(crate) fn new(name: Ident, id: usize, decl_span: Span) -> DeclId {
+        DeclId {
+            name,
+            id,
+            decl_span,
+        }
     }
 
     pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: DeclId) -> DeclId {
@@ -118,7 +131,7 @@ impl DeclId {
     }
 
     pub(crate) fn replace_id(&mut self, index: usize) {
-        self.0 = index;
+        self.id = index;
     }
 
     pub(crate) fn subst_types_and_insert_new(
@@ -130,7 +143,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.subst(type_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -143,7 +156,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -156,7 +169,7 @@ impl DeclId {
         let mut decl = decl_engine.get(self.clone());
         decl.replace_decls(decl_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
             .with_parent(decl_engine, self.clone())
     }
 }
