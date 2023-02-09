@@ -130,11 +130,27 @@ pub(crate) trait CodeActionTrait<'a, T> {
 
     /// Returns a [String] of a generated impl with the optional `for <for_name>` signature.
     /// Can be used for both ABI and Struct impls.
-    fn impl_string(&self, body: String, for_name: Option<String>) -> String {
+    fn impl_string(
+        &self,
+        type_params: Option<String>,
+        body: String,
+        for_name: Option<String>,
+    ) -> String {
         let for_string = match for_name {
             Some(name) => format!(" for {}", name),
             None => "".to_string(),
         };
-        format!("\nimpl {}{} {{{}\n}}\n", self.decl_name(), for_string, body)
+        let type_param_string = match type_params {
+            Some(params) => format!("<{}>", params),
+            None => "".to_string(),
+        };
+        format!(
+            "\nimpl{} {}{}{} {{{}}}\n",
+            type_param_string,
+            self.decl_name(),
+            type_param_string,
+            for_string,
+            body
+        )
     }
 }

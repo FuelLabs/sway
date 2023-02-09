@@ -34,7 +34,11 @@ impl<'a> CodeActionTrait<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
     }
 
     fn new_text(&self) -> String {
-        self.impl_string(self.fn_signatures_string(), Some(CONTRACT.to_string()))
+        self.impl_string(
+            None,
+            self.fn_signatures_string(),
+            Some(CONTRACT.to_string()),
+        )
     }
 
     fn title(&self) -> String {
