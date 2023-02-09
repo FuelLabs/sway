@@ -14,10 +14,16 @@ pub struct CommentsContext {
     pub map: CommentMap,
     /// Original unformatted code that the formatter tries to format.
     /// The Formatter requires this to preserve newlines between comments.
-    pub unformatted_code: UnformattedCode,
+    unformatted_code: UnformattedCode,
 }
 
 impl CommentsContext {
+    pub fn new(map: CommentMap, unformatted_code: UnformattedCode) -> Self {
+        Self {
+            map,
+            unformatted_code,
+        }
+    }
     pub fn unformatted_code(&self) -> &str {
         &self.unformatted_code
     }
