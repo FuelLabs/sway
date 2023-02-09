@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 
 #[macro_use]
@@ -6,10 +8,11 @@ mod macros;
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
 fn check_with_formatter(unformatted: &str, expected: &str, formatter: &mut Formatter) {
-    let first_formatted = Formatter::format(formatter, unformatted, None).unwrap();
+    let first_formatted = Formatter::format(formatter, Arc::from(unformatted), None).unwrap();
     assert_eq_pretty!(first_formatted, expected);
 
-    let second_formatted = Formatter::format(formatter, &first_formatted, None).unwrap();
+    let second_formatted =
+        Formatter::format(formatter, Arc::from(first_formatted.clone()), None).unwrap();
     assert_eq_pretty!(second_formatted, first_formatted);
 }
 
