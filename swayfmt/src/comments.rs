@@ -27,8 +27,10 @@ pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
 }
 
-pub fn gather_newlines(src: &str) -> String {
-    src.chars()
+/// This function collects newlines to insert after the comment span to preserve them.
+pub fn collect_newlines_after_comment_span(unformatted_code: &str) -> String {
+    unformatted_code
+        .chars()
         .take_while(|&c| c.is_whitespace())
         .filter(|&c| c == '\n')
         .collect()
@@ -64,12 +66,10 @@ pub fn write_comments(
         }
 
         while let Some(comment) = comments_iter.next() {
-            let newlines = gather_newlines(
+            let newlines = collect_newlines_after_comment_span(
                 &formatter.comments_context.unformatted_code()[comment.span().end()..],
             );
 
-            // Write comments on a newline (for now). New behavior might be required
-            // to support trailing comments.
             if formatted_code.trim_end().ends_with(&[']', ';']) {
                 match comment.comment_kind {
                     CommentKind::Newlined => {
