@@ -55,6 +55,12 @@ pub fn doc_comments_dir() -> PathBuf {
         .join("doc_comments")
 }
 
+pub fn generic_impl_self_dir() -> PathBuf {
+    sway_workspace_dir()
+        .join(e2e_language_dir())
+        .join("generic_impl_self")
+}
+
 pub fn get_absolute_path(path: &str) -> String {
     sway_workspace_dir().join(path).to_str().unwrap().into()
 }
