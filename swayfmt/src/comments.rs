@@ -2,7 +2,26 @@ use std::{fmt::Write, ops::Range};
 use sway_ast::token::CommentKind;
 use sway_types::Spanned;
 
-use crate::{formatter::FormattedCode, Formatter, FormatterError};
+use crate::{
+    formatter::FormattedCode, utils::map::comments::CommentMap, Formatter, FormatterError,
+};
+
+pub type UnformattedCode = String;
+
+#[derive(Debug, Default, Clone)]
+pub struct CommentsContext {
+    /// A BTreeMap of the mapping ByteSpan->Comment for inserting comments.
+    pub map: CommentMap,
+    /// Original unformatted code that the formatter tries to format.
+    /// The Formatter requires this to preserve newlines between comments.
+    pub unformatted_code: UnformattedCode,
+}
+
+impl CommentsContext {
+    pub fn unformatted_code(&self) -> &str {
+        &self.unformatted_code
+    }
+}
 
 pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
@@ -28,7 +47,11 @@ pub fn write_comments(
     formatter: &mut Formatter,
 ) -> Result<bool, FormatterError> {
     {
-        let mut comments_iter = formatter.comment_map.comments_between(&range).peekable();
+        let mut comments_iter = formatter
+            .comments_context
+            .map
+            .comments_between(&range)
+            .peekable();
 
         if comments_iter.peek().is_none() {
             return Ok(false);
@@ -41,7 +64,9 @@ pub fn write_comments(
         }
 
         while let Some(comment) = comments_iter.next() {
-            let newlines = gather_newlines(&formatter.src()[comment.span().end()..]);
+            let newlines = gather_newlines(
+                &formatter.comments_context.unformatted_code()[comment.span().end()..],
+            );
 
             // Write comments on a newline (for now). New behavior might be required
             // to support trailing comments.
@@ -83,7 +108,8 @@ pub fn write_comments(
     // This is destructive behavior for comments since if any steps above fail
     // and comments were not written, `retains()` will still delete these comments.
     formatter
-        .comment_map
+        .comments_context
+        .map
         .retain(|bs, _| !bs.contained_within(&range));
 
     Ok(true)

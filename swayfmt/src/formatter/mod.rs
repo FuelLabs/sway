@@ -1,4 +1,5 @@
 use self::shape::Shape;
+use crate::comments::CommentsContext;
 use crate::parse::parse_file;
 use crate::utils::map::comments::CommentMap;
 use crate::utils::map::{
@@ -15,13 +16,11 @@ pub(crate) mod shape;
 
 #[derive(Debug, Default, Clone)]
 pub struct Formatter {
-    src: UnformattedCode,
     pub shape: Shape,
     pub config: Config,
-    pub comment_map: CommentMap,
+    pub comments_context: CommentsContext,
 }
 
-pub type UnformattedCode = String;
 pub type FormattedCode = String;
 
 pub trait Format {
@@ -46,10 +45,6 @@ impl Formatter {
         })
     }
 
-    pub fn src(&self) -> &String {
-        &self.src
-    }
-
     pub fn format(
         &mut self,
         src: &str,
@@ -62,7 +57,7 @@ impl Formatter {
                 .heuristics_pref
                 .to_width_heuristics(self.config.whitespace.max_width),
         );
-        self.src = src.trim().to_string();
+        let src = src.trim();
 
         let path = build_config.map(|build_config| build_config.canonical_root_module());
         // Formatted code will be pushed here with raw newline stlye.
@@ -72,7 +67,10 @@ impl Formatter {
         let mut raw_formatted_code = String::with_capacity(src.len());
 
         // Collect Span -> Comment mapping from unformatted input.
-        self.comment_map = CommentMap::from_src(Arc::from(src))?;
+        self.comments_context = CommentsContext {
+            map: CommentMap::from_src(Arc::from(src))?,
+            unformatted_code: src.to_string(),
+        };
 
         let module = parse_file(Arc::from(src), path.clone())?;
         module.format(&mut raw_formatted_code, self)?;
@@ -86,7 +84,7 @@ impl Formatter {
             Arc::from(formatted_code.clone()),
             path.clone(),
             &mut formatted_code,
-            &mut self.comment_map,
+            &mut self.comments_context.map,
         )?;
         // Add newline sequences
         handle_newlines(

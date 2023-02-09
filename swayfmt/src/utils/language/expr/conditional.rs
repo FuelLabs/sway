@@ -28,7 +28,7 @@ impl Format for IfExpr {
                 .with_code_line_from(LineStyle::default(), ExprKind::Conditional),
             |formatter| -> Result<(), FormatterError> {
                 let range: Range<usize> = self.span().into();
-                let comments = formatter.comment_map.comments_between(&range);
+                let comments = formatter.comments_context.map.comments_between(&range);
                 // check if the entire expression could fit into a single line
                 let full_width_line_style = if comments.peekable().peek().is_some() {
                     LineStyle::Multiline
