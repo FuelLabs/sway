@@ -63,7 +63,7 @@ impl AbiImplCodeAction<'_> {
     fn fn_signatures_string(&self) -> String {
         let decl_engine = self.engines.de();
         format!(
-            "\n{}\n",
+            "{}\n",
             self.decl
                 .interface_surface
                 .iter()

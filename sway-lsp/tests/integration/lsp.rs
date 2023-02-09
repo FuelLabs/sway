@@ -282,7 +282,7 @@ pub(crate) async fn code_action_request(service: &mut LspService<Backend>, uri: 
               }
             },
             "kind": "refactor",
-            "title": "Generate impl for contract"
+            "title": "Generate impl for `FooABI`"
         }]),
     );
     assert_json_eq!(expected, response.ok().unwrap());
