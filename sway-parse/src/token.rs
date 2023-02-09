@@ -792,6 +792,70 @@ mod tests {
     }
 
     #[test]
+    fn lex_comments_check_comment_kind() {
+        let input = r#"
+        // CommentKind::Newlined
+        abi Foo {
+            // CommentKind::Newlined
+            fn bar(); // CommentKind::Trailing
+            // CommentKind::Newlined
+        }
+        "#;
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        assert!(handler.consume().0.is_empty());
+        let mut tts = stream.token_trees().iter();
+
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Comment(Comment {
+                span,
+                comment_kind: CommentKind::Newlined,
+            })) if span.as_str() ==  "// CommentKind::Newlined"
+        );
+        assert_eq!(tts.next().unwrap().span().as_str(), "abi");
+        assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
+
+        {
+            let group = match tts.next() {
+                Some(CommentedTokenTree::Tree(CommentedTree::Group(group))) => group,
+                _ => panic!("expected group"),
+            };
+            let mut tts = group.token_stream.token_trees().iter();
+
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Newlined,
+                })) if span.as_str() ==  "// CommentKind::Newlined"
+            );
+            assert_eq!(tts.next().unwrap().span().as_str(), "fn");
+            assert_eq!(tts.next().unwrap().span().as_str(), "bar");
+            assert_eq!(tts.next().unwrap().span().as_str(), "()");
+            assert_eq!(tts.next().unwrap().span().as_str(), ";");
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Trailing,
+                })) if span.as_str() ==  "// CommentKind::Trailing"
+            );
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Newlined,
+                })) if span.as_str() ==  "// CommentKind::Newlined"
+            );
+            assert!(tts.next().is_none());
+        }
+    }
+
+    #[test]
     fn lex_doc_comments() {
         let input = r#"
         //none
