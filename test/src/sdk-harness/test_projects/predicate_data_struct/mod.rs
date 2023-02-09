@@ -1,4 +1,4 @@
-use fuel_vm::{consts::*, prelude::Opcode};
+use fuel_vm::fuel_asm::{op, RegId};
 use fuels::{
     core::abi_encoder::ABIEncoder,
     prelude::*,
@@ -60,7 +60,7 @@ async fn create_predicate(
         1,
         1000000,
         0,
-        Opcode::RET(REG_ONE).to_bytes().to_vec(),
+        op::ret(RegId::ONE).to_bytes().to_vec(),
         vec![],
         wallet_coins,
         vec![output_coin, output_change],
