@@ -755,7 +755,7 @@ mod tests {
             /* multi-
              * line-
              * comment */
-            bar: i32,
+            bar: i32, // trailing comment
         }
         "#;
         let start = 0;
@@ -786,6 +786,13 @@ mod tests {
             assert_eq!(tts.next().unwrap().span().as_str(), ":");
             assert_eq!(tts.next().unwrap().span().as_str(), "i32");
             assert_eq!(tts.next().unwrap().span().as_str(), ",");
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Trailing,
+                })) if span.as_str() ==  "// trailing comment"
+            );
             assert!(tts.next().is_none());
         }
         assert!(tts.next().is_none());
