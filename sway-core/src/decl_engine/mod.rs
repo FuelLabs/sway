@@ -13,7 +13,7 @@ pub(crate) mod engine;
 pub(crate) mod id;
 pub(crate) mod mapping;
 pub(crate) mod r#ref;
-pub(crate) mod replace_decl_id;
+pub(crate) mod replace_decls;
 pub(crate) mod wrapper;
 
 use std::collections::BTreeMap;
@@ -22,7 +22,7 @@ pub use engine::*;
 pub(crate) use id::*;
 pub(crate) use mapping::*;
 pub use r#ref::*;
-pub(crate) use replace_decl_id::*;
+pub(crate) use replace_decls::*;
 use sway_types::Ident;
 pub(crate) use wrapper::*;
 

@@ -2,6 +2,8 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty, type_system::*};
 
+/// A smart-wrapper around a [DeclId], containing additional information about
+/// a declaration.
 #[derive(Debug, Clone)]
 pub struct DeclRef {
     /// The name of the declaration.
