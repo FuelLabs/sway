@@ -5,7 +5,9 @@ use sway_core::{
 use sway_types::Spanned;
 use tower_lsp::lsp_types::Url;
 
-use crate::capabilities::code_actions::{CodeActionTrait, CODE_ACTION_IMPL_TITLE, CONTRACT};
+use crate::capabilities::code_actions::{
+    CodeActionContext, CodeActionTrait, CODE_ACTION_IMPL_TITLE, CONTRACT,
+};
 
 pub(crate) struct AbiImplCodeAction<'a> {
     engines: Engines<'a>,
@@ -14,8 +16,12 @@ pub(crate) struct AbiImplCodeAction<'a> {
 }
 
 impl<'a> CodeActionTrait<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
-    fn new(engines: Engines<'a>, decl: &'a TyAbiDeclaration, uri: &'a Url) -> Self {
-        Self { engines, decl, uri }
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDeclaration) -> Self {
+        Self {
+            engines: ctx.engines,
+            decl,
+            uri: ctx.uri,
+        }
     }
 
     fn new_text(&self) -> String {
@@ -57,7 +63,7 @@ impl AbiImplCodeAction<'_> {
     fn fn_signatures_string(&self) -> String {
         let decl_engine = self.engines.de();
         format!(
-            "{}\n",
+            "\n{}\n",
             self.decl
                 .interface_surface
                 .iter()

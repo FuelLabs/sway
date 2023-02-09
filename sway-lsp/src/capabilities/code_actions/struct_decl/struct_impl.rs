@@ -1,7 +1,9 @@
-use sway_core::{language::ty::TyStructDeclaration, Engines};
+use sway_core::language::ty::TyStructDeclaration;
 use tower_lsp::lsp_types::Url;
 
-use crate::capabilities::code_actions::{CodeActionTrait, CODE_ACTION_IMPL_TITLE, TAB};
+use crate::capabilities::code_actions::{
+    CodeActionContext, CodeActionTrait, CODE_ACTION_IMPL_TITLE, TAB,
+};
 
 pub(crate) struct StructImplCodeAction<'a> {
     decl: &'a TyStructDeclaration,
@@ -9,8 +11,8 @@ pub(crate) struct StructImplCodeAction<'a> {
 }
 
 impl<'a> CodeActionTrait<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
-    fn new(_engines: Engines<'a>, decl: &'a TyStructDeclaration, uri: &'a Url) -> Self {
-        Self { decl, uri }
+    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
+        Self { decl, uri: ctx.uri }
     }
 
     fn new_text(&self) -> String {

@@ -1,21 +1,33 @@
 pub mod abi_decl;
 pub mod struct_decl;
 
-use crate::core::{session::Session, token::TypedAstToken};
+use crate::core::{
+    session::Session,
+    token::{Token, TypedAstToken},
+    token_map::TokenMap,
+};
 pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty::TyDeclaration, transform::AttributesMap, Engines, TypeParameter};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionResponse, Position, Range,
-    TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
+    CodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand, CodeActionResponse,
+    Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
 };
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
 pub(crate) const CONTRACT: &str = "Contract";
 pub(crate) const TAB: &str = "    ";
+
+#[derive(Clone)]
+pub(crate) struct CodeActionContext<'a> {
+    engines: Engines<'a>,
+    tokens: &'a TokenMap,
+    token: &'a Token,
+    uri: &'a Url,
+}
 
 pub(crate) fn code_actions(
     session: Arc<Session>,
@@ -26,19 +38,20 @@ pub(crate) fn code_actions(
     let (_, token) = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
-
+    let type_engine = session.type_engine.read();
+    let decl_engine = session.decl_engine.read();
+    let ctx = CodeActionContext {
+        engines: Engines::new(&type_engine, &decl_engine),
+        tokens: session.token_map(),
+        token: &token.clone(),
+        uri: &text_document.uri,
+    };
     token.typed.and_then(|typed_token| match typed_token {
         TypedAstToken::TypedDeclaration(decl) => match decl {
-            TyDeclaration::AbiDeclaration(ref decl_id) => abi_decl::code_actions(
-                Engines::new(&session.type_engine.read(), &session.decl_engine.read()),
-                decl_id,
-                &text_document.uri,
-            ),
-            TyDeclaration::StructDeclaration(ref decl_id) => struct_decl::code_actions(
-                Engines::new(&session.type_engine.read(), &session.decl_engine.read()),
-                decl_id,
-                &text_document.uri,
-            ),
+            TyDeclaration::AbiDeclaration(ref decl_id) => abi_decl::code_actions(decl_id, ctx),
+            TyDeclaration::StructDeclaration(ref decl_id) => {
+                struct_decl::code_actions(decl_id, ctx)
+            }
             _ => None,
         },
         _ => None,
@@ -47,7 +60,7 @@ pub(crate) fn code_actions(
 
 pub(crate) trait CodeActionTrait<'a, T: Spanned> {
     /// Creates a new [CodeActionTrait] with the given [Engines], delcaration type, and [Url].
-    fn new(engines: Engines<'a>, decl: &'a T, uri: &'a Url) -> Self;
+    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self;
 
     /// Returns a [String] of text to insert into the document.
     fn new_text(&self) -> String;
@@ -63,6 +76,11 @@ pub(crate) trait CodeActionTrait<'a, T: Spanned> {
 
     /// Returns the declaration's [Url].
     fn uri(&self) -> &Url;
+
+    /// Returns an optional [CodeActionDisabled] indicating whether this code action should be disabled.
+    fn disabled(&self) -> Option<CodeActionDisabled> {
+        None
+    }
 
     /// Returns a [CodeActionOrCommand] for the given code action.
     fn code_action(&self) -> CodeActionOrCommand {
@@ -80,6 +98,7 @@ pub(crate) trait CodeActionTrait<'a, T: Spanned> {
                 ..Default::default()
             }),
             data: Some(Value::String(self.uri().to_string())),
+            disabled: self.disabled(),
             ..Default::default()
         })
     }
@@ -159,7 +178,7 @@ pub(crate) trait CodeActionTrait<'a, T: Spanned> {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        let attribute_prefix = match attribute_string.len() > 1 {
+        let attribute_padding = match attribute_string.len() > 1 {
             true => "\n",
             false => "",
         };
@@ -168,7 +187,7 @@ pub(crate) trait CodeActionTrait<'a, T: Spanned> {
             None => String::new(),
         };
         format!(
-            "{attribute_prefix}{attribute_string}\n{TAB}fn {fn_name}({params_string}){return_type_string} {{{body_string}}}",
+            "{attribute_padding}{attribute_string}{attribute_padding}{TAB}fn {fn_name}({params_string}){return_type_string} {{{body_string}}}",
         )
     }
 }
