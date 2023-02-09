@@ -239,7 +239,7 @@ fn handle_trait(
     {
         Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
             let trait_decl = check!(
-                CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.suffix.span())),
+                CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

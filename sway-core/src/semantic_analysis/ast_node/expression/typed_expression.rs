@@ -81,9 +81,7 @@ impl ty::TyExpression {
             errors
         );
         let method = check!(
-            CompileResult::from(
-                decl_engine.get_function(decl_id.clone(), &method_name_binding.span())
-            ),
+            CompileResult::from(decl_engine.get_function(&decl_id, &method_name_binding.span())),
             return err(warnings, errors),
             warnings,
             errors
@@ -418,7 +416,7 @@ impl ty::TyExpression {
                     return_type,
                     ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
+                    CompileResult::from(decl_engine.get_constant(&decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -438,7 +436,7 @@ impl ty::TyExpression {
             }
             Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &span)),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1266,7 +1264,7 @@ impl ty::TyExpression {
         } = match abi {
             ty::TyDeclaration::AbiDeclaration(decl_id) => {
                 check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1341,7 +1339,7 @@ impl ty::TyExpression {
         let mut abi_methods = vec![];
         for decl_id in interface_surface.into_iter() {
             let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &name.span())),
+                CompileResult::from(decl_engine.get_trait_fn(&decl_id, &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

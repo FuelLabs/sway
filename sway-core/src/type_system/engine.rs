@@ -413,7 +413,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_struct(original_id, &name.span())),
+                            CompileResult::from(decl_engine.get_struct(&original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -447,7 +447,7 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(original_id, &name.span())),
+                            CompileResult::from(decl_engine.get_enum(&original_id, &name.span())),
                             return err(warnings, errors),
                             warnings,
                             errors

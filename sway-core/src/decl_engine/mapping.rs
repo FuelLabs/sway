@@ -1,9 +1,9 @@
 use std::fmt;
 
-use super::{DeclId, MethodMap};
+use super::{DeclId, DeclRef, MethodMap};
 
-type SourceDecl = DeclId;
-type DestinationDecl = DeclId;
+type SourceDecl = DeclRef;
+type DestinationDecl = DeclRef;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
@@ -18,7 +18,13 @@ impl fmt::Display for DeclMapping {
             "DeclMapping {{ {} }}",
             self.mapping
                 .iter()
-                .map(|(source_type, dest_type)| { format!("{} -> {}", **source_type, **dest_type) })
+                .map(|(source_type, dest_type)| {
+                    format!(
+                        "{} -> {}",
+                        *DeclId::from(source_type),
+                        *DeclId::from(dest_type)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -59,7 +65,7 @@ impl DeclMapping {
 
     pub(crate) fn find_match(&self, decl_id: &SourceDecl) -> Option<DestinationDecl> {
         for (source_decl_id, dest_decl_id) in self.mapping.iter() {
-            if **source_decl_id == **decl_id {
+            if *DeclId::from(source_decl_id) == *DeclId::from(decl_id) {
                 return Some(dest_decl_id.clone());
             }
         }

@@ -217,7 +217,7 @@ impl ty::TyTraitDeclaration {
             .into_iter()
         {
             let mut method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &call_path.span())),
+                CompileResult::from(decl_engine.get_function(&decl_id, &call_path.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -273,7 +273,7 @@ impl ty::TyTraitDeclaration {
         );
         for decl_id in interface_surface.iter() {
             let mut method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &trait_name.span())),
+                CompileResult::from(decl_engine.get_trait_fn(&decl_id, &trait_name.span())),
                 continue,
                 warnings,
                 errors
@@ -288,7 +288,7 @@ impl ty::TyTraitDeclaration {
         }
         for decl_id in methods.iter() {
             let mut method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &trait_name.span())),
+                CompileResult::from(decl_engine.get_function(&decl_id, &trait_name.span())),
                 continue,
                 warnings,
                 errors

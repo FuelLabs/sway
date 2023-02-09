@@ -70,7 +70,7 @@ impl ty::TyCodeBlock {
 
                     if let Some(ty::TyDeclaration::EnumDeclaration(never_decl_id)) = never_decl_opt
                     {
-                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id.clone(), &span) {
+                        if let Ok(never_decl) = decl_engine.get_enum(&never_decl_id, &span) {
                             return never_decl.create_type_id(ctx.engines());
                         }
                     }

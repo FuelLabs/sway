@@ -115,7 +115,7 @@ impl ty::TyImplTrait {
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -170,7 +170,7 @@ impl ty::TyImplTrait {
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &trait_name.span())),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -373,7 +373,7 @@ impl ty::TyImplTrait {
                 }
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(decl_id.clone(), access_span)?;
+                        decl_engine.get_constant(&decl_id, access_span)?;
                     expr_contains_get_storage_index(decl_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
@@ -569,13 +569,13 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    trait_interface_surface: &[DeclId],
-    trait_methods: &[DeclId],
+    trait_interface_surface: &[DeclRef],
+    trait_methods: &[DeclRef],
     impl_methods: &[FunctionDeclaration],
     trait_name: &CallPath,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<DeclId>> {
+) -> CompileResult<Vec<DeclRef>> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -642,7 +642,7 @@ fn type_check_trait_implementation(
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
-            CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), block_span)),
+            CompileResult::from(decl_engine.get_trait_fn(&decl_id, block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -681,7 +681,7 @@ fn type_check_trait_implementation(
         impld_method_ids.insert(name, decl_id);
     }
 
-    let mut all_method_ids: Vec<DeclId> = impld_method_ids.values().cloned().collect();
+    let mut all_method_ids: Vec<DeclRef> = impld_method_ids.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -704,7 +704,7 @@ fn type_check_trait_implementation(
     let decl_mapping = DeclMapping::from_stub_and_impld_decl_ids(stub_method_ids, impld_method_ids);
     for decl_id in trait_methods.iter() {
         let mut method = check!(
-            CompileResult::from(decl_engine.get_function(decl_id.clone(), block_span)),
+            CompileResult::from(decl_engine.get_function(&decl_id, block_span)),
             return err(warnings, errors),
             warnings,
             errors
@@ -1102,7 +1102,7 @@ fn handle_supertraits(
         {
             Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
                 let trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_id.clone(), &supertrait.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

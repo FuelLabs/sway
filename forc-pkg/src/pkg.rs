@@ -29,7 +29,7 @@ use std::{
 use sway_core::{
     abi_generation::{evm_json_abi, fuel_json_abi},
     asm_generation::ProgramABI,
-    decl_engine::{DeclEngine, DeclId},
+    decl_engine::{DeclEngine, DeclRef},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -2643,9 +2643,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
+    fn from_decl(decl_id: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
         let span = decl_id.span();
-        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+        let test_function_decl = decl_engine.get_function(&decl_id, &span)?;
 
         let test_args: HashSet<String> = test_function_decl
             .attributes

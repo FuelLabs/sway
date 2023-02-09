@@ -3,7 +3,7 @@
 
 use crate::{
     control_flow_analysis::*,
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     language::{ty, CallPath},
     type_system::*,
     Engines,
@@ -196,7 +196,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(vec![entry_node])
         }
         FunctionDeclaration(decl_id) => {
-            let fn_decl = decl_engine.get_function(decl_id.clone(), &decl.span())?;
+            let fn_decl = decl_engine.get_function(&decl_id, &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -209,7 +209,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 trait_name,
                 methods,
                 ..
-            } = decl_engine.get_impl_trait(decl_id.clone(), &span)?;
+            } = decl_engine.get_impl_trait(&decl_id, &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -231,14 +231,14 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclId],
+    methods: &[DeclRef],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
     for method_decl_id in methods {
-        let fn_decl = decl_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
+        let fn_decl = decl_engine.get_function(&method_decl_id, &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
             span: fn_decl.span.clone(),
             method_name: fn_decl.name.clone(),

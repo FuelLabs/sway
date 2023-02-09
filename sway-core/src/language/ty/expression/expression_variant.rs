@@ -19,7 +19,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclId,
+        function_decl_id: DeclRef,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -152,10 +152,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => {
                 let l_function_decl = decl_engine
-                    .get_function(l_function_decl_id.clone(), &Span::dummy())
+                    .get_function(&l_function_decl_id, &Span::dummy())
                     .unwrap();
                 let r_function_decl = decl_engine
-                    .get_function(r_function_decl_id.clone(), &Span::dummy())
+                    .get_function(&r_function_decl_id, &Span::dummy())
                     .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
@@ -396,7 +396,7 @@ impl SubstTypes for TyExpressionVariant {
                 let new_decl_id = function_decl_id
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_id.replace_id((&new_decl_id).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -515,7 +515,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 let new_decl_id = function_decl_id
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_id.replace_id((&new_decl_id).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
@@ -626,7 +626,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 let new_decl_id = function_decl_id
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_id.replace_id((&new_decl_id).into());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }

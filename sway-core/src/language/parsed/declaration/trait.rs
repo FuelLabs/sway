@@ -1,6 +1,6 @@
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{decl_engine::DeclId, engine_threading::*, language::*, transform, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, language::*, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct TraitDeclaration {
 #[derive(Debug, Clone)]
 pub struct Supertrait {
     pub name: CallPath,
-    pub decl_id: Option<DeclId>,
+    pub decl_id: Option<DeclRef>,
 }
 
 impl Spanned for Supertrait {

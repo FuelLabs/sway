@@ -66,7 +66,7 @@ fn get_function_signatures(engines: Engines<'_>, abi_decl: TyAbiDeclaration) -> 
         .iter()
         .filter_map(|function_decl_id| {
             decl_engine
-                .get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
+                .get_trait_fn(&function_decl_id, &function_decl_id.span())
                 .ok()
                 .map(|function_decl| {
                     let param_string: String = function_decl

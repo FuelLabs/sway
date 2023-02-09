@@ -62,9 +62,7 @@ impl ty::TyProgram {
                 match storage_decl {
                     Some(ty::TyDeclaration::StorageDeclaration(decl_id)) => {
                         let decl = check!(
-                            CompileResult::from(
-                                decl_engine.get_storage(decl_id.clone(), &decl_id.span())
-                            ),
+                            CompileResult::from(decl_engine.get_storage(&decl_id, &decl_id.span())),
                             return err(warnings, errors),
                             warnings,
                             errors

@@ -29,7 +29,7 @@ pub(crate) fn code_actions(
                     session
                         .decl_engine
                         .read()
-                        .get_abi(decl_id.clone(), &decl_id.span()),
+                        .get_abi(&decl_id, &decl_id.span()),
                 ),
                 // Add code actions for other declaration types here
                 _ => None,

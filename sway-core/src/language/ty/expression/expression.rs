@@ -93,11 +93,10 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(e) => return err(vec![], vec![e]),
-                    };
+                let function_decl = match decl_engine.get_function(&function_decl_id, &self.span) {
+                    Ok(decl) => decl,
+                    Err(e) => return err(vec![], vec![e]),
+                };
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -409,11 +408,10 @@ impl DeterministicallyAborts for TyExpression {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(_e) => panic!("failed to get function"),
-                    };
+                let function_decl = match decl_engine.get_function(&function_decl_id, &self.span) {
+                    Ok(decl) => decl,
+                    Err(_e) => panic!("failed to get function"),
+                };
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)

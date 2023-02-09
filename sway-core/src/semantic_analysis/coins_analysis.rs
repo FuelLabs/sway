@@ -22,7 +22,7 @@ pub fn possibly_nonzero_u64_expression(
                             possibly_nonzero_u64_expression(namespace, decl_engine, &var_decl.body)
                         }
                         ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                            match decl_engine.get_constant(decl_id.clone(), &expr.span) {
+                            match decl_engine.get_constant(&decl_id, &expr.span) {
                                 Ok(const_decl) => possibly_nonzero_u64_expression(
                                     namespace,
                                     decl_engine,

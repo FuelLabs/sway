@@ -72,7 +72,7 @@ fn type_check_variable(
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
             let constant_decl = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
+                CompileResult::from(decl_engine.get_constant(&decl_id, &span)),
                 return err(warnings, errors),
                 warnings,
                 errors

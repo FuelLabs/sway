@@ -1,6 +1,6 @@
 use sway_types::{Ident, Span};
 
-use crate::{decl_engine::DeclId, engine_threading::*, transform, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
@@ -8,8 +8,8 @@ pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<DeclId>,
-    pub methods: Vec<DeclId>,
+    pub interface_surface: Vec<DeclRef>,
+    pub methods: Vec<DeclRef>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
 }

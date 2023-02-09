@@ -198,7 +198,7 @@ impl TypeBinding<CallPath> {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(
-                        decl_engine.get_function(original_id.clone(), &self.span())
+                        decl_engine.get_function(&original_id.clone(), &self.span())
                     ),
                     return err(warnings, errors),
                     warnings,
@@ -229,7 +229,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::EnumDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_enum(original_id, &self.span())),
+                    CompileResult::from(decl_engine.get_enum(&original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -262,7 +262,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_struct(original_id, &self.span())),
+                    CompileResult::from(decl_engine.get_struct(&original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors

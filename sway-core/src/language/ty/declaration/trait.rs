@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     engine_threading::*,
     language::{parsed, Visibility},
     transform,
@@ -12,8 +12,8 @@ use crate::{
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub interface_surface: Vec<DeclId>,
-    pub methods: Vec<DeclId>,
+    pub interface_surface: Vec<DeclRef>,
+    pub methods: Vec<DeclRef>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
@@ -45,7 +45,7 @@ impl SubstTypes for TyTraitDeclaration {
                 let new_decl_id = function_decl_id
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_id.replace_id((&new_decl_id).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }
@@ -62,7 +62,7 @@ impl ReplaceSelfType for TyTraitDeclaration {
                 let new_decl_id = function_decl_id
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_id.replace_id((&new_decl_id).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }

@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -50,7 +50,7 @@ pub(crate) fn type_check_method_application(
         errors
     );
     let method = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &method_name_binding.span())),
+        CompileResult::from(decl_engine.get_function(&decl_id, &method_name_binding.span())),
         return err(warnings, errors),
         warnings,
         errors
@@ -414,7 +414,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclId> {
+) -> CompileResult<DeclRef> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -515,7 +515,7 @@ pub(crate) fn resolve_method_name(
     };
 
     let mut func_decl = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
+        CompileResult::from(decl_engine.get_function(&decl_id, &decl_id.span())),
         return err(warnings, errors),
         warnings,
         errors
