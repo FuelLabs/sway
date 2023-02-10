@@ -17,7 +17,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
 pub struct DeployedContract {
@@ -57,12 +56,11 @@ pub async fn deploy_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<DeployedContract> {
-    let node_url = match &manifest.network {
-        Some(network) => &network.url,
-        _ => DEFAULT_NODE_URL,
-    };
-
-    let node_url = command.node_url.as_deref().unwrap_or(node_url);
+    let node_url = command
+        .node_url
+        .as_deref()
+        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
+        .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
