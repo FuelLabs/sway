@@ -29,6 +29,7 @@ impl Format for ItemAbi {
             self.span().end()
         }
         // if there are existing abi items, we want to end before the hash token
+        // This is OK to unwrap since we've checked is_empty() above.
         else if let Some(first_attr) = abi_items.first().unwrap().0.attribute_list.first() {
             first_attr.hash_token.span().start()
         } else {
