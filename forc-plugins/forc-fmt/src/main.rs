@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_pkg::manifest::ManifestFile;
+use forc_pkg::{manifest::ManifestFile, WorkspaceManifestFile};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -52,9 +52,18 @@ fn run() -> Result<()> {
     let app = App::parse();
 
     if let Some(f) = app.file.as_ref() {
+        let mut formatter = Formatter::default();
         let file_path = &PathBuf::from(f);
+
+        // If we're formatting a single file, find the nearest manifest if within a project.
+        // Otherwise, we create a faux BuildConfig.
+        let manifest_file = match find_manifest_dir(file_path) {
+            Some(path) => path.join(constants::MANIFEST_FILE_NAME),
+            None => PathBuf::from("/"),
+        };
+
         if is_sway_file(file_path) {
-            format_single_file(file_path)?;
+            format_file(&app, file_path.to_path_buf(), manifest_file, &mut formatter)?;
             return Ok(());
         }
 
@@ -73,35 +82,7 @@ fn run() -> Result<()> {
 
     match manifest_file {
         ManifestFile::Workspace(ws) => {
-            let dirs = get_sway_dirs(dir.clone());
-            let mut formatter = Formatter::from_dir(&ws.dir())?;
-            let mut members = vec![];
-
-            for member_path in ws.member_paths()? {
-                members.push(member_path)
-            }
-
-            // Format files at the root.
-            if let Ok(read_dir) = fs::read_dir(dir) {
-                for entry in read_dir.filter_map(|res| res.ok()) {
-                    let path = entry.path();
-                    if path.is_file() && is_sway_file(&path) {
-                        format_file(&app, path, ws.dir().to_path_buf(), &mut formatter)?;
-                    }
-                }
-            }
-
-            // Format subdirectories.
-            for sub_dir in dirs {
-                // Here, we cannot simply call Formatter::from_dir() and rely on defaults
-                // if there is not swayfmt.toml in the sub directory because we still want
-                // to use the swayfmt.toml at the workspace root (if any).
-                // In order of priority: member > workspace > default.
-                if members.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
-                    formatter = Formatter::from_dir(&sub_dir)?;
-                }
-                format_pkg_at_dir(&app, &sub_dir, &mut formatter)?;
-            }
+            format_workspace_at_dir(&app, &ws, &dir)?;
         }
         ManifestFile::Package(_) => {
             let mut formatter = Formatter::from_dir(&dir)?;
@@ -134,6 +115,7 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
     dirs_to_format
 }
 
+/// Format the given file, given its path.
 fn format_file(
     app: &App,
     file: PathBuf,
@@ -173,17 +155,36 @@ fn format_file(
     bail!("Could not read file")
 }
 
-fn format_single_file(path: &Path) -> Result<()> {
-    let mut formatter = Formatter::default();
-    if let Ok(file_content) = fs::read_to_string(path) {
-        match Formatter::format(&mut formatter, file_content.into(), None) {
-            Ok(formatted_content) => {
-                write_file_formatted(path, &formatted_content)?;
-            }
-            Err(err) => {
-                error!("{}\n", err);
+/// Format the workspace at the given directory.
+fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &Path) -> Result<()> {
+    let mut formatter = Formatter::from_dir(dir)?;
+    let dirs = get_sway_dirs(dir.to_path_buf());
+    let mut members = vec![];
+
+    for member_path in workspace.member_paths()? {
+        members.push(member_path)
+    }
+
+    // Format files at the root.
+    if let Ok(read_dir) = fs::read_dir(dir) {
+        for entry in read_dir.filter_map(|res| res.ok()) {
+            let path = entry.path();
+            if path.is_file() && is_sway_file(&path) {
+                format_file(app, path, workspace.dir().to_path_buf(), &mut formatter)?;
             }
         }
+    }
+
+    // Format subdirectories.
+    for sub_dir in dirs {
+        // Here, we cannot simply call Formatter::from_dir() and rely on defaults
+        // if there is not swayfmt.toml in the sub directory because we still want
+        // to use the swayfmt.toml at the workspace root (if any).
+        // In order of priority: member > workspace > default.
+        if members.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
+            formatter = Formatter::from_dir(&sub_dir)?;
+        }
+        format_pkg_at_dir(app, &sub_dir, &mut formatter)?;
     }
 
     Ok(())
