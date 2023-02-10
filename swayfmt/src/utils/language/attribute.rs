@@ -20,9 +20,9 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         let mut attr_end = None;
-
         // format each `Attribute`
         for attr in &self.attribute_list {
+            // Write trailing comments after the end of the previous attribute
             if let Some(end) = attr_end {
                 let range = std::ops::Range {
                     start: end,
@@ -40,6 +40,7 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
             attr_end = Some(attr.span().end());
         }
 
+        // Write trailing comments after the end of the last attribute
         if let Some(end) = attr_end {
             let range = std::ops::Range {
                 start: end,
