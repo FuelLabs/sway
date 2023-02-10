@@ -70,15 +70,34 @@ fn run() -> Result<()> {
     };
 
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
-    for (_, member_path) in manifest_file.member_manifests()? {
-        let member_dir = member_path.dir();
-        let mut formatter = Formatter::from_dir(member_dir)?;
-        // format_pkg_at_dir(&app, &dir, &mut formatter)?;
-    }
 
     match manifest_file {
         ManifestFile::Workspace(ws) => {
-            println!("swaydirs: {:?}", get_sway_dirs(dir));
+            let dirs = get_sway_dirs(dir.clone());
+            let mut formatter = Formatter::from_dir(&ws.dir())?;
+            let mut members = vec![];
+
+            for member_path in ws.member_paths()? {
+                members.push(member_path)
+            }
+
+            // Format files at the root.
+            if let Ok(read_dir) = fs::read_dir(dir) {
+                for entry in read_dir.filter_map(|res| res.ok()) {
+                    let path = entry.path();
+                    if path.is_file() && is_sway_file(&path) {
+                        format_file(&app, path, ws.dir().to_path_buf(), &mut formatter)?;
+                    }
+                }
+            }
+
+            // Format subdirectories.
+            for sub_dir in dirs {
+                if members.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
+                    formatter = Formatter::from_dir(&sub_dir)?;
+                }
+                format_pkg_at_dir(&app, &sub_dir, &mut formatter)?;
+            }
         }
         ManifestFile::Package(p) => {
             let mut formatter = Formatter::from_dir(&dir)?;
@@ -98,9 +117,11 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
             for entry in read_dir.filter_map(|res| res.ok()) {
                 let path = entry.path();
 
-                if path.is_dir() && path.join(constants::MANIFEST_FILE_NAME).exists() {
+                if path.is_dir() {
                     dirs_to_search.push(path.clone());
-                    dirs_to_format.push(path);
+                    if path.join(constants::MANIFEST_FILE_NAME).exists() {
+                        dirs_to_format.push(path);
+                    }
                 }
             }
         }
