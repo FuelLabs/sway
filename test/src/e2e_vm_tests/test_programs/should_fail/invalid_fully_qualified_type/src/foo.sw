@@ -1,6 +1,6 @@
 library foo;
 
-pub enum Foo {
+enum Foo {
   A: (),
   B: (),
 }

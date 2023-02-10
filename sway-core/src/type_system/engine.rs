@@ -407,7 +407,7 @@ impl TypeEngine {
             } => {
                 match namespace
                     .root()
-                    .resolve_call_path(module_path, &call_path)
+                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
