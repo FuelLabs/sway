@@ -19,8 +19,9 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
-    /// The node url to deploy, if not specified uses DEFAULT_NODE_URL.
-    /// If url is specified overrides network url in manifest file (if there is one).
+    /// The URL of the Fuel node to which we're submitting the transaction.
+    /// If unspecified, checks the manifest's `network` table, then falls back
+    /// to [`crate::default::NODE_URL`].
     #[clap(long, env = "FUEL_NODE_URL")]
     pub node_url: Option<String>,
     /// Do not sign the transaction
