@@ -2,6 +2,7 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
+use forc_pkg::manifest::ManifestFile;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -72,10 +73,79 @@ fn run() -> Result<()> {
     for (_, member_path) in manifest_file.member_manifests()? {
         let member_dir = member_path.dir();
         let mut formatter = Formatter::from_dir(member_dir)?;
-        format_pkg_at_dir(&app, &dir, &mut formatter)?;
+        // format_pkg_at_dir(&app, &dir, &mut formatter)?;
+    }
+
+    match manifest_file {
+        ManifestFile::Workspace(ws) => {
+            println!("swaydirs: {:?}", get_sway_dirs(dir));
+        }
+        ManifestFile::Package(p) => {
+            let mut formatter = Formatter::from_dir(&dir)?;
+            format_pkg_at_dir(&app, &dir, &mut formatter)?;
+        }
     }
 
     Ok(())
+}
+
+fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
+    let mut dirs_to_format = vec![];
+    let mut dirs_to_search = vec![workspace_dir];
+
+    while let Some(next_dir) = dirs_to_search.pop() {
+        if let Ok(read_dir) = fs::read_dir(next_dir) {
+            for entry in read_dir.filter_map(|res| res.ok()) {
+                let path = entry.path();
+
+                if path.is_dir() && path.join(constants::MANIFEST_FILE_NAME).exists() {
+                    dirs_to_search.push(path.clone());
+                    dirs_to_format.push(path);
+                }
+            }
+        }
+    }
+
+    dirs_to_format
+}
+
+fn format_file(
+    app: &App,
+    file: PathBuf,
+    manifest_file: PathBuf,
+    formatter: &mut Formatter,
+) -> Result<bool> {
+    if let Ok(file_content) = fs::read_to_string(&file) {
+        let mut edited = false;
+        let file_content: Arc<str> = Arc::from(file_content);
+        let build_config = BuildConfig::root_from_file_name_and_manifest_path(
+            file.clone(),
+            manifest_file,
+            BuildTarget::default(),
+        );
+        match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
+            Ok(formatted_content) => {
+                if app.check {
+                    if *file_content != formatted_content {
+                        info!("\n{:?}\n", file);
+                        display_file_diff(&file_content, &formatted_content)?;
+                        edited = true;
+                    }
+                } else {
+                    write_file_formatted(&file, &formatted_content)?;
+                }
+
+                return Ok(edited);
+            }
+            Err(err) => {
+                // there could still be Sway files that are not part of the build
+                error!("\nThis file: {:?} is not part of the build", file);
+                error!("{}\n", err);
+            }
+        }
+    }
+
+    bail!("Could not read file")
 }
 
 fn format_single_file(path: &Path) -> Result<()> {
@@ -83,7 +153,7 @@ fn format_single_file(path: &Path) -> Result<()> {
     if let Ok(file_content) = fs::read_to_string(path) {
         match Formatter::format(&mut formatter, file_content.into(), None) {
             Ok(formatted_content) => {
-                format_file(path, &formatted_content)?;
+                write_file_formatted(path, &formatted_content)?;
             }
             Err(err) => {
                 error!("{}\n", err);
@@ -104,32 +174,9 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             let mut contains_edits = false;
 
             for file in files {
-                if let Ok(file_content) = fs::read_to_string(&file) {
-                    let file_content: Arc<str> = Arc::from(file_content);
-                    let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-                        file.clone(),
-                        manifest_path.clone(),
-                        BuildTarget::default(),
-                    );
-                    match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
-                        Ok(formatted_content) => {
-                            if app.check {
-                                if *file_content != formatted_content {
-                                    contains_edits = true;
-                                    info!("\n{:?}\n", file);
-                                    display_file_diff(&file_content, &formatted_content)?;
-                                }
-                            } else {
-                                format_file(&file, &formatted_content)?;
-                            }
-                        }
-                        Err(err) => {
-                            // there could still be Sway files that are not part of the build
-                            error!("\nThis file: {:?} is not part of the build", file);
-                            error!("{}\n", err);
-                        }
-                    }
-                }
+                if let Ok(edited) = format_file(app, file, manifest_file.clone(), formatter) {
+                    contains_edits = edited;
+                };
             }
             // format manifest using taplo formatter
             if let Ok(file_content) = fs::read_to_string(&manifest_file) {
@@ -139,7 +186,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
                 };
                 let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
                 if !app.check {
-                    format_file(&manifest_file, &formatted_content)?;
+                    write_file_formatted(&manifest_file, &formatted_content)?;
                 } else if formatted_content != file_content {
                     contains_edits = true;
                     error!("\nManifest Forc.toml improperly formatted");
@@ -205,7 +252,7 @@ fn display_file_diff(file_content: &str, formatted_content: &str) -> Result<()> 
     Ok(())
 }
 
-fn format_file(file: &Path, formatted_content: &str) -> Result<()> {
+fn write_file_formatted(file: &Path, formatted_content: &str) -> Result<()> {
     fs::write(file, formatted_content)?;
 
     Ok(())

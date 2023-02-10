@@ -18,6 +18,7 @@ pub type MemberName = String;
 /// A manifest for each workspace member, or just one manifest if working with a single package
 pub type MemberManifestFiles = BTreeMap<MemberName, PackageManifestFile>;
 
+#[derive(Debug)]
 pub enum ManifestFile {
     Package(Box<PackageManifestFile>),
     Workspace(WorkspaceManifestFile),
