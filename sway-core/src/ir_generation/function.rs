@@ -283,6 +283,9 @@ impl<'eng> FnCompiler<'eng> {
                 "Unexpected function parameter declaration.",
                 ast_expr.span.clone(),
             )),
+            ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+                self.compile_expression(context, md_mgr, desugared)
+            }
             ty::TyExpressionVariant::IfExp {
                 condition,
                 then,

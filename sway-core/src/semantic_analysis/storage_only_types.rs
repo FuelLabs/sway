@@ -65,6 +65,9 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
                 errors
             );
         }
+        ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+            check!(expr_validate(engines, desugared), (), warnings, errors)
+        }
         ty::TyExpressionVariant::IfExp {
             condition,
             then,

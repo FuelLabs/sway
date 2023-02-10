@@ -11,7 +11,9 @@ description = "A `forc` plugin for interacting with a Fuel node."
 [dependencies]
 anyhow = "1"
 async-trait = "0.1.58"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 clap = { version = "3", features = ["derive", "env"] }
+devault = "0.1"
 forc = { version = "0.35.0", path = "../../forc" }
 forc-pkg = { version = "0.35.0", path = "../../forc-pkg" }
 forc-tracing = { version = "0.35.0", path = "../../forc-tracing" }
@@ -27,6 +29,7 @@ fuels-types = { workspace = true }
 futures = "0.3"
 hex = "0.4.3"
 serde = "1.0"
+serde_json = "1"
 sway-core = { version = "0.35.0", path = "../../sway-core" }
 sway-types = { version = "0.35.0", path = "../../sway-types" }
 sway-utils = { version = "0.35.0", path = "../../sway-utils" }
@@ -35,11 +38,15 @@ tracing = "0.1"
 
 [[bin]]
 name = "forc-deploy"
-path = "src/bin/deploy/main.rs"
+path = "src/bin/deploy.rs"
 
 [[bin]]
 name = "forc-run"
-path = "src/bin/run/main.rs"
+path = "src/bin/run.rs"
+
+[[bin]]
+name = "forc-submit"
+path = "src/bin/submit.rs"
 
 [lib]
 path = "src/lib.rs"

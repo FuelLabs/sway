@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B6ED335A8DAEB4A7'
+
+[[package]]
+name = 'matches'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B6ED335A8DAEB4A7'
+dependencies = ['core']

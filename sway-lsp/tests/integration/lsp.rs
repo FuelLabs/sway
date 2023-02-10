@@ -2,7 +2,7 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use crate::{GotoDefintion, HoverDocumentation};
+use crate::{GotoDefinition, HoverDocumentation};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
@@ -324,10 +324,15 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
 
 pub(crate) async fn definition_check<'a>(
     service: &mut LspService<Backend>,
-    go_to: &'a GotoDefintion<'a>,
-    id: i64,
+    go_to: &'a GotoDefinition<'a>,
+    ids: &mut impl Iterator<Item = i64>,
 ) -> Request {
-    let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+    let definition = definition_request(
+        go_to.req_uri,
+        go_to.req_line,
+        go_to.req_char,
+        ids.next().unwrap(),
+    );
     let response = call_request(service, definition.clone())
         .await
         .unwrap()
