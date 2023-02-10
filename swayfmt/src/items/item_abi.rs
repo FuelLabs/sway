@@ -27,17 +27,10 @@ impl Format for ItemAbi {
         // add pre fn_signature comments
         let end = if abi_items.is_empty() {
             self.span().end()
-        } else if !abi_items.first().unwrap().0.attribute_list.is_empty() {
-            abi_items
-                .first()
-                .unwrap()
-                .0
-                .attribute_list
-                .first()
-                .unwrap()
-                .hash_token
-                .span()
-                .start()
+        }
+        // if there are existing abi items, we want to end before the hash token
+        else if let Some(first_attr) = abi_items.first().unwrap().0.attribute_list.first() {
+            first_attr.hash_token.span().start()
         } else {
             abi_items.first().unwrap().0.value.span().start()
         };
@@ -91,21 +84,23 @@ impl Format for ItemAbi {
             }
         }
 
-        let start = if abi_items.is_empty() {
+        let last_abi_item = abi_items.last();
+        let start = if let Some(last_abi_item) = last_abi_item {
+            // If there are ABI items and attributes:
+            // we start from the hash token of the last attribute.
+            if let Some(last_attr) = last_abi_item.0.attribute_list.last() {
+                last_attr.hash_token.span().start()
+            }
+            // If there are ABI items but no attributes:
+            // we start from the last item.
+            else {
+                last_abi_item.0.value.span().end()
+            }
+        }
+        // If there are no ABI items:
+        // we write ALL comments in the span here.
+        else {
             self.span().start()
-        } else if abi_items.last().unwrap().0.attribute_list.is_empty() {
-            abi_items.last().unwrap().0.value.span().end()
-        } else {
-            abi_items
-                .last()
-                .unwrap()
-                .0
-                .attribute_list
-                .last()
-                .unwrap()
-                .hash_token
-                .span()
-                .start()
         };
 
         let range = std::ops::Range {
@@ -113,7 +108,6 @@ impl Format for ItemAbi {
             end: self.span().end(),
         };
 
-        // insert_missing_trailing_comment(formatted_code, range.clone(), formatter)?;
         write_comments(formatted_code, range, formatter)?;
 
         Self::close_curly_brace(formatted_code, formatter)?;
