@@ -56,11 +56,9 @@ fn run() -> Result<()> {
         let file_path = &PathBuf::from(f);
 
         // If we're formatting a single file, find the nearest manifest if within a project.
-        // Otherwise, we create a faux BuildConfig.
-        let manifest_file = match find_manifest_dir(file_path) {
-            Some(path) => path.join(constants::MANIFEST_FILE_NAME),
-            None => PathBuf::from("/"),
-        };
+        // Otherwise, we create a faux BuildConfig using a dummy PathBuf.
+        let manifest_file =
+            find_manifest_dir(file_path).map(|path| path.join(constants::MANIFEST_FILE_NAME));
 
         if is_sway_file(file_path) {
             format_file(&app, file_path.to_path_buf(), manifest_file, &mut formatter)?;
@@ -119,18 +117,21 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
 fn format_file(
     app: &App,
     file: PathBuf,
-    manifest_file: PathBuf,
+    manifest_file: Option<PathBuf>,
     formatter: &mut Formatter,
 ) -> Result<bool> {
+    let file = file.canonicalize()?;
     if let Ok(file_content) = fs::read_to_string(&file) {
         let mut edited = false;
         let file_content: Arc<str> = Arc::from(file_content);
-        let build_config = BuildConfig::root_from_file_name_and_manifest_path(
-            file.clone(),
-            manifest_file,
-            BuildTarget::default(),
-        );
-        match Formatter::format(formatter, file_content.clone(), Some(&build_config)) {
+        let build_config = manifest_file.map(|f| {
+            BuildConfig::root_from_file_name_and_manifest_path(
+                file.clone(),
+                f,
+                BuildTarget::default(),
+            )
+        });
+        match Formatter::format(formatter, file_content.clone(), build_config.as_ref()) {
             Ok(formatted_content) => {
                 if app.check {
                     if *file_content != formatted_content {
@@ -170,7 +171,12 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         for entry in read_dir.filter_map(|res| res.ok()) {
             let path = entry.path();
             if path.is_file() && is_sway_file(&path) {
-                format_file(app, path, workspace.dir().to_path_buf(), &mut formatter)?;
+                format_file(
+                    app,
+                    path,
+                    Some(workspace.dir().to_path_buf()),
+                    &mut formatter,
+                )?;
             }
         }
     }
@@ -200,7 +206,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             let mut contains_edits = false;
 
             for file in files {
-                if let Ok(edited) = format_file(app, file, manifest_file.clone(), formatter) {
+                if let Ok(edited) = format_file(app, file, Some(manifest_file.clone()), formatter) {
                     contains_edits = edited;
                 };
             }
