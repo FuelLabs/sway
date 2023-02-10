@@ -93,13 +93,17 @@ fn run() -> Result<()> {
 
             // Format subdirectories.
             for sub_dir in dirs {
+                // Here, we cannot simply call Formatter::from_dir() and rely on defaults
+                // if there is not swayfmt.toml in the sub directory because we still want
+                // to use the swayfmt.toml at the workspace root (if any).
+                // In order of priority: member > workspace > default.
                 if members.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
                     formatter = Formatter::from_dir(&sub_dir)?;
                 }
                 format_pkg_at_dir(&app, &sub_dir, &mut formatter)?;
             }
         }
-        ManifestFile::Package(p) => {
+        ManifestFile::Package(_) => {
             let mut formatter = Formatter::from_dir(&dir)?;
             format_pkg_at_dir(&app, &dir, &mut formatter)?;
         }
