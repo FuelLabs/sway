@@ -115,6 +115,10 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
 }
 
 /// Format a file, given its path.
+/// Returns:
+/// - Ok(true) if executed successfully and formatted,
+/// - Ok(false) if executed successfully and not formatted,
+/// - Err if it fails to execute at all.
 fn format_file(
     app: &App,
     file: PathBuf,
@@ -218,6 +222,10 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
 }
 
 /// Format the given manifest at a path.
+/// Returns:
+/// - Ok(true) if executed successfully and formatted,
+/// - Ok(false) if executed successfully and not formatted,
+/// - Err if it fails to execute at all.
 fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
     if let Ok(manifest_content) = fs::read_to_string(&manifest_file) {
         let mut edited = false;
