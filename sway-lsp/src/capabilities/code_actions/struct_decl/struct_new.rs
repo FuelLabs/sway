@@ -66,33 +66,26 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
 
     fn range(&self) -> Range {
         // If there is already an impl block for this struct, insert the new function at the top of it.
-        if self.existing_impl_decl.is_some() {
-            let (first_line, _) = self
-                .existing_impl_decl
-                .clone()
-                .unwrap()
-                .span
-                .start_pos()
-                .line_col();
-            let insertion_position = Position {
-                line: first_line as u32,
-                character: 0,
-            };
-            Range {
-                start: insertion_position,
-                end: insertion_position,
+        let insertion_position = match self.existing_impl_decl.clone() {
+            Some(decl) => {
+                let (first_line, _) = decl.span.start_pos().line_col();
+                Position {
+                    line: first_line as u32,
+                    character: 0,
+                }
             }
-        } else {
-            // If we're inserting a whole new impl block, default to the line after the struct declaration.
-            let (last_line, _) = self.decl().span().end_pos().line_col();
-            let insertion_position = Position {
-                line: last_line as u32,
-                character: 0,
-            };
-            Range {
-                start: insertion_position,
-                end: insertion_position,
+            None => {
+                // If we're inserting a whole new impl block, default to the line after the struct declaration.
+                let (last_line, _) = self.decl().span().end_pos().line_col();
+                Position {
+                    line: last_line as u32,
+                    character: 0,
+                }
             }
+        };
+        Range {
+            start: insertion_position,
+            end: insertion_position,
         }
     }
 
