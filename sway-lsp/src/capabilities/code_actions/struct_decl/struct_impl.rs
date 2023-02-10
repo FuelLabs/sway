@@ -2,7 +2,7 @@ use sway_core::language::ty::TyStructDeclaration;
 use tower_lsp::lsp_types::Url;
 
 use crate::capabilities::code_actions::{
-    CodeActionContext, CodeActionTrait, CODE_ACTION_IMPL_TITLE, TAB,
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, TAB,
 };
 
 pub(crate) struct StructImplCodeAction<'a> {
@@ -10,7 +10,7 @@ pub(crate) struct StructImplCodeAction<'a> {
     uri: &'a Url,
 }
 
-impl<'a> CodeActionTrait<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
+impl<'a> CodeAction<'a, TyStructDeclaration> for StructImplCodeAction<'a> {
     fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
         Self { decl, uri: ctx.uri }
     }

@@ -7,7 +7,7 @@ use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use self::{struct_impl::StructImplCodeAction, struct_new::StructNewCodeAction};
 
-use super::{CodeActionContext, CodeActionTrait};
+use super::{CodeAction, CodeActionContext};
 
 pub(crate) fn code_actions(
     decl_id: &DeclId,

@@ -6,7 +6,7 @@ use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use self::abi_impl::AbiImplCodeAction;
 
-use super::{CodeActionContext, CodeActionTrait};
+use super::{CodeAction, CodeActionContext};
 
 pub(crate) fn code_actions(
     decl_id: &DeclId,

@@ -3,7 +3,7 @@ use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionDisabled, Position, Range, Url};
 
 use crate::{
-    capabilities::code_actions::{CodeActionContext, CodeActionTrait, CODE_ACTION_NEW_TITLE},
+    capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_NEW_TITLE},
     core::token::TypedAstToken,
 };
 
@@ -13,7 +13,7 @@ pub(crate) struct StructNewCodeAction<'a> {
     existing_impl_decl: Option<TyImplTrait>,
 }
 
-impl<'a> CodeActionTrait<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
+impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
     fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDeclaration) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.

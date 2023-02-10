@@ -12,8 +12,8 @@ use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty::TyDeclaration, transform::AttributesMap, Engines, TypeParameter};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
-    CodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand, CodeActionResponse,
-    Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
+    CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
+    CodeActionResponse, Position, Range, TextDocumentIdentifier, TextEdit, Url, WorkspaceEdit,
 };
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
@@ -58,8 +58,8 @@ pub(crate) fn code_actions(
     })
 }
 
-pub(crate) trait CodeActionTrait<'a, T: Spanned> {
-    /// Creates a new [CodeActionTrait] with the given [Engines], delcaration type, and [Url].
+pub(crate) trait CodeAction<'a, T: Spanned> {
+    /// Creates a new [CodeAction] with the given [Engines], delcaration type, and [Url].
     fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self;
 
     /// Returns a [String] of text to insert into the document.
@@ -90,7 +90,7 @@ pub(crate) trait CodeActionTrait<'a, T: Spanned> {
         };
         let changes = HashMap::from([(self.uri().clone(), vec![text_edit])]);
 
-        CodeActionOrCommand::CodeAction(CodeAction {
+        CodeActionOrCommand::CodeAction(LspCodeAction {
             title: self.title(),
             kind: Some(CodeActionKind::REFACTOR),
             edit: Some(WorkspaceEdit {

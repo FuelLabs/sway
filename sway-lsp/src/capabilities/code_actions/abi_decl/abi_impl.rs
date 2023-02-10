@@ -6,7 +6,7 @@ use sway_types::Spanned;
 use tower_lsp::lsp_types::Url;
 
 use crate::capabilities::code_actions::{
-    CodeActionContext, CodeActionTrait, CODE_ACTION_IMPL_TITLE, CONTRACT,
+    CodeAction, CodeActionContext, CODE_ACTION_IMPL_TITLE, CONTRACT,
 };
 
 pub(crate) struct AbiImplCodeAction<'a> {
@@ -15,7 +15,7 @@ pub(crate) struct AbiImplCodeAction<'a> {
     uri: &'a Url,
 }
 
-impl<'a> CodeActionTrait<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
+impl<'a> CodeAction<'a, TyAbiDeclaration> for AbiImplCodeAction<'a> {
     fn new(ctx: CodeActionContext<'a>, decl: &'a TyAbiDeclaration) -> Self {
         Self {
             engines: ctx.engines,
