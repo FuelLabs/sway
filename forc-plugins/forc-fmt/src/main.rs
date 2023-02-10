@@ -56,7 +56,7 @@ fn run() -> Result<()> {
         let file_path = &PathBuf::from(f);
 
         // If we're formatting a single file, find the nearest manifest if within a project.
-        // Otherwise, we create a faux BuildConfig using a dummy PathBuf.
+        // Otherwise, we simply provide 'None' to format_file().
         let manifest_file =
             find_manifest_dir(file_path).map(|path| path.join(constants::MANIFEST_FILE_NAME));
 
@@ -91,6 +91,7 @@ fn run() -> Result<()> {
     Ok(())
 }
 
+/// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
 fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
     let mut dirs_to_format = vec![];
     let mut dirs_to_search = vec![workspace_dir];
@@ -113,7 +114,7 @@ fn get_sway_dirs(workspace_dir: PathBuf) -> Vec<PathBuf> {
     dirs_to_format
 }
 
-/// Format the given file, given its path.
+/// Format a file, given its path.
 fn format_file(
     app: &App,
     file: PathBuf,
@@ -158,15 +159,16 @@ fn format_file(
 
 /// Format the workspace at the given directory.
 fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &Path) -> Result<()> {
+    let mut contains_edits = false;
     let mut formatter = Formatter::from_dir(dir)?;
-    let dirs = get_sway_dirs(dir.to_path_buf());
     let mut members = vec![];
 
     for member_path in workspace.member_paths()? {
         members.push(member_path)
     }
 
-    // Format files at the root.
+    // Format files at the root - we do not want to start calling format_pkg_at_dir() here,
+    // since this would mean we format twice on each subdirectory.
     if let Ok(read_dir) = fs::read_dir(dir) {
         for entry in read_dir.filter_map(|res| res.ok()) {
             let path = entry.path();
@@ -181,8 +183,10 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         }
     }
 
-    // Format subdirectories.
-    for sub_dir in dirs {
+    // Format subdirectories. Note that we do not call format on members directly here, since
+    // in workspaces, it is perfectly valid to have subdirectories containing Sway files,
+    // yet not be a member of the workspace.
+    for sub_dir in get_sway_dirs(dir.to_path_buf()) {
         // Here, we cannot simply call Formatter::from_dir() and rely on defaults
         // if there is not swayfmt.toml in the sub directory because we still want
         // to use the swayfmt.toml at the workspace root (if any).
@@ -193,7 +197,49 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         format_pkg_at_dir(app, &sub_dir, &mut formatter)?;
     }
 
-    Ok(())
+    let manifest_file = dir.join(constants::MANIFEST_FILE_NAME);
+
+    // Finally, format the root manifest using taplo formatter
+    if let Ok(edited) = format_manifest(app, manifest_file) {
+        contains_edits = edited;
+    }
+
+    if app.check {
+        if contains_edits {
+            // One or more files are not formatted, exit with error
+            bail!("Files contain formatting violations.");
+        } else {
+            // All files are formatted, exit cleanly
+            Ok(())
+        }
+    } else {
+        Ok(())
+    }
+}
+
+/// Format the given manifest at a path.
+fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
+    if let Ok(manifest_content) = fs::read_to_string(&manifest_file) {
+        let mut edited = false;
+        let taplo_alphabetize = taplo_fmt::Options {
+            reorder_keys: true,
+            ..Default::default()
+        };
+        let formatted_content = taplo_fmt::format(&manifest_content, taplo_alphabetize);
+        if !app.check {
+            write_file_formatted(&manifest_file, &formatted_content)?;
+        } else if formatted_content != manifest_content {
+            edited = true;
+            error!("\nManifest Forc.toml improperly formatted");
+            display_file_diff(&manifest_content, &formatted_content)?;
+        } else {
+            info!("\nManifest Forc.toml properly formatted")
+        }
+
+        return Ok(edited);
+    };
+
+    bail!("failed to format manifest")
 }
 
 /// Format the package at the given directory.
@@ -211,21 +257,8 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
                 };
             }
             // format manifest using taplo formatter
-            if let Ok(file_content) = fs::read_to_string(&manifest_file) {
-                let taplo_alphabetize = taplo_fmt::Options {
-                    reorder_keys: true,
-                    ..Default::default()
-                };
-                let formatted_content = taplo_fmt::format(&file_content, taplo_alphabetize);
-                if !app.check {
-                    write_file_formatted(&manifest_file, &formatted_content)?;
-                } else if formatted_content != file_content {
-                    contains_edits = true;
-                    error!("\nManifest Forc.toml improperly formatted");
-                    display_file_diff(&file_content, &formatted_content)?;
-                } else {
-                    info!("\nManifest Forc.toml properly formatted")
-                }
+            if let Ok(edited) = format_manifest(app, manifest_file) {
+                contains_edits = edited;
             }
 
             if app.check {
