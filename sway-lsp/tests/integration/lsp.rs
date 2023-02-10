@@ -14,7 +14,7 @@ use tower_lsp::{
 
 use sway_lsp::server::{self, Backend};
 
-use crate::{GotoDefintion, HoverDocumentation};
+use crate::{GotoDefinition, HoverDocumentation};
 
 pub(crate) fn build_request_with_id(
     method: impl Into<Cow<'static, str>>,
@@ -380,10 +380,15 @@ pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &U
 
 pub(crate) async fn definition_check<'a>(
     service: &mut LspService<Backend>,
-    go_to: &'a GotoDefintion<'a>,
-    id: i64,
+    go_to: &'a GotoDefinition<'a>,
+    ids: &mut impl Iterator<Item = i64>,
 ) -> Request {
-    let definition = definition_request(go_to.req_uri, go_to.req_line, go_to.req_char, id);
+    let definition = definition_request(
+        go_to.req_uri,
+        go_to.req_line,
+        go_to.req_char,
+        ids.next().unwrap(),
+    );
     let response = call_request(service, definition.clone())
         .await
         .unwrap()
