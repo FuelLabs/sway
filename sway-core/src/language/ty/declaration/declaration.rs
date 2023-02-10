@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -31,6 +34,7 @@ pub enum TyDeclaration {
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
             (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, engines),
@@ -50,9 +54,37 @@ impl PartialEqWithEngines for TyDeclaration {
                     name: yn,
                     type_id: yti,
                 },
-            ) => xn == yn && xti == yti,
+            ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), engines),
             (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyDeclaration::*;
+        let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
+        match self {
+            VariableDeclaration(decl) => {
+                decl.hash(state, engines);
+            }
+            ConstantDeclaration(decl_id)
+            | FunctionDeclaration(decl_id)
+            | TraitDeclaration(decl_id)
+            | StructDeclaration(decl_id)
+            | EnumDeclaration(decl_id)
+            | ImplTrait(decl_id)
+            | AbiDeclaration(decl_id)
+            | StorageDeclaration(decl_id) => {
+                decl_id.hash(state, engines);
+            }
+            GenericTypeForFunctionScope { name, type_id } => {
+                name.hash(state);
+                type_engine.get(*type_id).hash(state, engines);
+            }
+            ErrorRecovery(_) => {}
         }
     }
 }

@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -35,9 +38,6 @@ impl Default for DeclWrapper {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for DeclWrapper {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
@@ -52,6 +52,43 @@ impl PartialEqWithEngines for DeclWrapper {
             (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, engines),
             (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, engines),
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for DeclWrapper {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use DeclWrapper::*;
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Unknown => {}
+            Function(decl) => {
+                decl.hash(state, engines);
+            }
+            Trait(decl) => {
+                decl.hash(state, engines);
+            }
+            TraitFn(decl) => {
+                decl.hash(state, engines);
+            }
+            ImplTrait(decl) => {
+                decl.hash(state, engines);
+            }
+            Struct(decl) => {
+                decl.hash(state, engines);
+            }
+            Storage(decl) => {
+                decl.hash(state, engines);
+            }
+            Abi(decl) => {
+                decl.hash(state, engines);
+            }
+            Constant(decl) => {
+                decl.hash(state, engines);
+            }
+            Enum(decl) => {
+                decl.hash(state, engines);
+            }
         }
     }
 }
