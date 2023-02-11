@@ -58,6 +58,39 @@ impl Ord for u64 {
 
 To require a supertrait, add a `:` after the trait name and then list the traits you would like to require and separate them with a `+`.
 
+### ABI supertraits
+
+ABIs can also have supertrait annotations:
+
+``` sway
+
+trait Ownable {
+    fn only_owner();
+}
+
+abi MyContractWithOwner : Ownable {
+    fn restricted_access_method();
+}
+```
+
+The implementation of `MyContractWithOwner` for `Contract` must also implement the `Ownable` trait. Methods in `Ownable` are not be available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods as follows:
+
+``` sway
+
+impl Ownable for Contract {
+    fn only_owner() { ... }
+}
+
+impl MyContractWithAnOwner for Contract {
+    fn restricted_access_method() {
+        Self::only_owner();  // supertrait method usage
+        ...
+    }
+}
+```
+
+ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
