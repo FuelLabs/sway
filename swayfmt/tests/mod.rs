@@ -1349,7 +1349,6 @@ impl MyAbi for Contract {
     }
 }
 "#,
-
         r#"contract;
 
 trait MyTrait {
