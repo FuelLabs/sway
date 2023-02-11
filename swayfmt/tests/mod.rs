@@ -1325,3 +1325,50 @@ fn empty() {}
 "#,
     );
 }
+
+#[test]
+fn abi_supertrait() {
+    check(
+        r#"contract;
+
+trait MyTrait {
+    fn foo();
+}
+
+abi MyAbi : MyTrait {
+    fn bar();
+}
+
+impl MyTrait for Contract {
+    fn foo() {}
+}
+
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()
+    }
+}
+"#,
+
+        r#"contract;
+
+trait MyTrait {
+    fn foo();
+}
+
+abi MyAbi : MyTrait {
+    fn bar();
+}
+
+impl MyTrait for Contract {
+    fn foo() {}
+}
+
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()
+    }
+}
+"#,
+    );
+}

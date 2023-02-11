@@ -19,6 +19,13 @@ impl Format for ItemAbi {
         // `abi name`
         write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
         self.name.format(formatted_code, formatter)?;
+
+        // ` : super_trait + super_trait`
+        if let Some((colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, " {} ", colon_token.ident().as_str())?;
+            traits.format(formatted_code, formatter)?;
+        }
+
         Self::open_curly_brace(formatted_code, formatter)?;
 
         // abi_items
