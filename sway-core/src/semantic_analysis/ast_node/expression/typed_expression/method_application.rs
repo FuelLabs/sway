@@ -345,7 +345,7 @@ pub(crate) fn type_check_method_application(
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, method.return_type);
+        .insert_trait_implementation_for_type(engines, method.return_type.type_id);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
@@ -357,7 +357,7 @@ pub(crate) fn type_check_method_application(
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
         },
-        return_type: method.return_type,
+        return_type: method.return_type.type_id,
         span,
     };
 
@@ -385,14 +385,14 @@ fn unify_arguments_and_parameters(
             CompileResult::from(type_engine.unify_with_self(
                 decl_engine,
                 arg.return_type,
-                param.type_id,
+                param.type_argument.type_id,
                 ctx.self_type(),
                 &arg.span,
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {
                     span: arg.span.clone(),
                     provided: engines.help_out(arg.return_type).to_string(),
-                    should_be: engines.help_out(param.type_id).to_string(),
+                    should_be: engines.help_out(param.type_argument.type_id).to_string(),
                 })
             )),
             continue,

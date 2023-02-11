@@ -112,7 +112,7 @@ impl ty::TyExpression {
                 selector: None,
                 type_binding: None,
             },
-            return_type,
+            return_type: return_type.type_id,
             span,
         };
         ok(exp, warnings, errors)
@@ -415,7 +415,7 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
-                    return_type,
+                    type_ascription,
                     ..
                 } = check!(
                     CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
@@ -424,7 +424,7 @@ impl ty::TyExpression {
                     errors
                 );
                 ty::TyExpression {
-                    return_type,
+                    return_type: type_ascription.type_id,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {

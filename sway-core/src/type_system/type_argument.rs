@@ -10,6 +10,16 @@ pub struct TypeArgument {
     pub name_spans: Option<SpanTree>,
 }
 
+impl TypeArgument {
+    pub fn no_spans(type_id: TypeId) -> Self {
+        TypeArgument {
+            type_id,
+            initial_type_id: type_id,
+            span: Span::dummy(),
+            name_spans: None,
+        }
+    }
+}
 impl Spanned for TypeArgument {
     fn span(&self) -> Span {
         self.span.clone()

@@ -25,15 +25,14 @@ impl ty::TyDeclaration {
         let decl = match decl {
             parsed::Declaration::VariableDeclaration(parsed::VariableDeclaration {
                 name,
-                type_ascription,
-                type_ascription_span,
+                mut type_ascription,
                 body,
                 is_mutable,
             }) => {
-                let type_ascription = check!(
+                type_ascription.type_id = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert(decl_engine, type_ascription),
-                        &type_ascription_span.clone().unwrap_or_else(|| name.span()),
+                        type_ascription.type_id,
+                        &type_ascription.span,
                         EnforceTypeArguments::Yes,
                         None
                     ),
@@ -41,10 +40,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let mut ctx = ctx.with_type_annotation(type_ascription).with_help_text(
-                    "Variable declaration's type annotation does not match up \
+                let mut ctx = ctx
+                    .with_type_annotation(type_ascription.type_id)
+                    .with_help_text(
+                        "Variable declaration's type annotation does not match up \
                         with the assigned expression's type.",
-                );
+                    );
                 let result = ty::TyExpression::type_check(ctx.by_ref(), body);
                 let body = check!(
                     result,
@@ -57,8 +58,8 @@ impl ty::TyDeclaration {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.get(type_ascription) {
-                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                let return_type = match type_engine.get(type_ascription.type_id) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
                     _ => body.return_type,
                 };
                 let typed_var_decl =
@@ -68,7 +69,6 @@ impl ty::TyDeclaration {
                         mutability: ty::VariableMutability::new_from_ref_mut(false, is_mutable),
                         return_type,
                         type_ascription,
-                        type_ascription_span,
                     }));
                 check!(
                     ctx.namespace.insert_symbol(name, typed_var_decl.clone()),
@@ -80,17 +80,16 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::ConstantDeclaration(parsed::ConstantDeclaration {
                 name,
-                type_ascription,
-                type_ascription_span,
+                mut type_ascription,
                 value,
                 visibility,
                 attributes,
                 is_configurable,
                 span,
             }) => {
-                let type_ascription = check!(
+                type_ascription.type_id = check!(
                     ctx.resolve_type_with_self(
-                        type_engine.insert(decl_engine, type_ascription),
+                        type_ascription.type_id,
                         &span,
                         EnforceTypeArguments::No,
                         None
@@ -102,7 +101,7 @@ impl ty::TyDeclaration {
 
                 let mut ctx = ctx
                     .by_ref()
-                    .with_type_annotation(type_ascription)
+                    .with_type_annotation(type_ascription.type_id)
                     .with_help_text(
                         "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
@@ -128,17 +127,16 @@ impl ty::TyDeclaration {
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
-                let return_type = match type_engine.get(type_ascription) {
-                    TypeInfo::UnsignedInteger(_) => type_ascription,
+                type_ascription.type_id = match type_engine.get(type_ascription.type_id) {
+                    TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
                     _ => value.return_type,
                 };
                 let decl = ty::TyConstantDeclaration {
                     name: name.clone(),
                     value,
                     visibility,
-                    return_type,
                     attributes,
-                    type_ascription_span,
+                    type_ascription,
                     is_configurable,
                     span,
                 };

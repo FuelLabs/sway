@@ -174,7 +174,7 @@ impl DisplayWithEngines for TyDeclaration {
                     builder.push_str(": ");
                     builder.push_str(
                         &engines
-                            .help_out(type_engine.get(*type_ascription))
+                            .help_out(type_engine.get(type_ascription.type_id))
                             .to_string(),
                     );
                     builder.push_str(" = ");
@@ -210,7 +210,7 @@ impl CollectTypesMetadata for TyDeclaration {
                     errors
                 );
                 body.append(&mut check!(
-                    decl.type_ascription.collect_types_metadata(ctx),
+                    decl.type_ascription.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -533,7 +533,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.return_type
+                decl.return_type.type_id
             }
             TyDeclaration::StructDeclaration(decl_id) => {
                 let decl = check!(

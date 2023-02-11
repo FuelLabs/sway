@@ -654,7 +654,7 @@ impl Renderable for TyTraitFn {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_span.as_str()
+                    param.type_argument.span.as_str()
                 )?;
             }
         }
@@ -686,7 +686,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                     : ","
                                 }
                             }
@@ -705,7 +705,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                 }
                                 @ if param.name.as_str()
                                     != self.parameters.last()
