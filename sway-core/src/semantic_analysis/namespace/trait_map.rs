@@ -103,7 +103,7 @@ impl TraitMap {
         is_impl_self: bool,
         engines: Engines<'_>,
     ) -> CompileResult<()> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
@@ -111,13 +111,7 @@ impl TraitMap {
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
         for decl_id in methods.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), impl_span)),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            trait_methods.insert(method.name.to_string(), decl_id.clone());
+            trait_methods.insert(decl_id.name.to_string(), decl_id.clone());
         }
 
         // check to see if adding this trait will produce a conflicting definition
@@ -193,18 +187,10 @@ impl TraitMap {
             } else if types_are_subset && (traits_are_subset || is_impl_self) {
                 for (name, decl_id) in trait_methods.iter() {
                     if map_trait_methods.get(name).is_some() {
-                        let method = check!(
-                            CompileResult::from(
-                                decl_engine.get_function(decl_id.clone(), impl_span)
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
-                            func_name: method.name.to_string(),
+                            func_name: decl_id.name.to_string(),
                             type_implementing_for: engines.help_out(type_id).to_string(),
-                            span: method.name.span(),
+                            span: decl_id.name.span(),
                         });
                     }
                 }
@@ -602,7 +588,7 @@ impl TraitMap {
                             (
                                 name,
                                 decl_engine
-                                    .insert_wrapper(decl, decl_id.span())
+                                    .insert_wrapper(decl_id.name.clone(), decl, decl_id.span())
                                     .with_parent(decl_engine, decl_id),
                             )
                         })

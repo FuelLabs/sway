@@ -4,7 +4,10 @@ use std::{
 };
 
 use anyhow::anyhow;
-use sway_ir::{ConstCombinePass, DCEPass, InlinePass, Mem2RegPass, PassManager, SimplifyCfgPass};
+use sway_ir::{
+    create_const_combine_pass, create_dce_pass, create_inline_pass, create_mem2reg_pass,
+    create_simplify_cfg_pass, PassManager, PassManagerConfig,
+};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -12,11 +15,11 @@ fn main() -> Result<(), anyhow::Error> {
     // Maintain a list of named pass functions for delegation.
     let mut pass_mgr = PassManager::default();
 
-    pass_mgr.register::<ConstCombinePass>();
-    pass_mgr.register::<InlinePass>();
-    pass_mgr.register::<SimplifyCfgPass>();
-    pass_mgr.register::<DCEPass>();
-    pass_mgr.register::<Mem2RegPass>();
+    pass_mgr.register(create_const_combine_pass());
+    pass_mgr.register(create_inline_pass());
+    pass_mgr.register(create_simplify_cfg_pass());
+    pass_mgr.register(create_dce_pass());
+    pass_mgr.register(create_mem2reg_pass());
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -28,9 +31,10 @@ fn main() -> Result<(), anyhow::Error> {
     let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
-    for pass in config.passes {
-        pass_mgr.run(pass.name.as_ref(), &mut ir)?;
-    }
+    let pm_config = PassManagerConfig {
+        to_run: config.passes.iter().map(|pass| pass.name.clone()).collect(),
+    };
+    pass_mgr.run(&mut ir, &pm_config)?;
 
     // Write the output file or standard out.
     write_to_output(ir, &config.output_path)?;
@@ -164,9 +168,8 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
     }
 
     fn build_pass(mut self, name: &str) -> Result<Config, anyhow::Error> {
-        if self.pass_mgr.contains(name) {
+        if self.pass_mgr.is_registered(name) {
             self.cfg.passes.push(name.into());
-            self.next = self.rest.next();
             self.build_root()
         } else {
             Err(anyhow!(

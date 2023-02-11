@@ -313,6 +313,9 @@ impl ty::TyImplTrait {
                 ty::TyExpressionVariant::CodeBlock(cb) => {
                     codeblock_contains_get_storage_index(decl_engine, cb, access_span)?
                 }
+                ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+                    expr_contains_get_storage_index(decl_engine, desugared, access_span)?
+                }
                 ty::TyExpressionVariant::IfExp {
                     condition,
                     then,
@@ -634,11 +637,11 @@ fn type_check_trait_implementation(
 
     // This map keeps track of the stub declaration id's of the trait
     // definition.
-    let mut stub_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut stub_method_ids: MethodMap = BTreeMap::new();
 
     // This map keeps track of the new declaration ids of the implemented
     // interface surface.
-    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut impld_method_ids: MethodMap = BTreeMap::new();
 
     for decl_id in trait_interface_surface.iter() {
         let method = check!(
@@ -744,7 +747,7 @@ fn type_check_impl_method(
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
-    impld_method_ids: &BTreeMap<Ident, DeclId>,
+    impld_method_ids: &MethodMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
 ) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
@@ -1071,14 +1074,14 @@ fn check_for_unconstrained_type_parameters(
 fn handle_supertraits(
     mut ctx: TypeCheckContext,
     supertraits: &[Supertrait],
-) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
+) -> CompileResult<(MethodMap, MethodMap)> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
     let decl_engine = ctx.decl_engine;
 
-    let mut interface_surface_methods_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut interface_surface_methods_ids: MethodMap = BTreeMap::new();
+    let mut impld_method_ids: MethodMap = BTreeMap::new();
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
@@ -1120,16 +1123,12 @@ fn handle_supertraits(
 
                 // Retrieve the interface surface and implemented method ids for
                 // this trait.
-                let (trait_interface_surface_methods_ids, trait_impld_method_ids) = check!(
-                    trait_decl.retrieve_interface_surface_and_implemented_methods_for_type(
+                let (trait_interface_surface_methods_ids, trait_impld_method_ids) = trait_decl
+                    .retrieve_interface_surface_and_implemented_methods_for_type(
                         ctx.by_ref(),
                         self_type,
-                        &supertrait.name
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                );
+                        &supertrait.name,
+                    );
                 interface_surface_methods_ids.extend(trait_interface_surface_methods_ids);
                 impld_method_ids.extend(trait_impld_method_ids);
 

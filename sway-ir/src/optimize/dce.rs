@@ -5,23 +5,26 @@
 //!   2. At the time of inspecting a definition, if it has no uses, it is removed.
 //! This pass does not do CFG transformations. That is handled by simplify_cfg.
 
-use crate::{Block, Context, Function, Instruction, IrError, Module, NamedPass, Value, ValueDatum};
+use crate::{
+    AnalysisResults, Block, Context, Function, Instruction, IrError, Module, Pass, PassMutability,
+    ScopedPass, Value, ValueDatum,
+};
 
 use std::collections::{HashMap, HashSet};
 
-pub struct DCEPass;
-
-impl NamedPass for DCEPass {
-    fn name() -> &'static str {
-        "dce"
+pub fn create_dce_pass() -> Pass {
+    Pass {
+        name: "dce",
+        descr: "Dead code elimination.",
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(dce)),
     }
+}
 
-    fn descr() -> &'static str {
-        "Dead code elimination."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, dce)
+pub fn create_func_dce_pass() -> Pass {
+    Pass {
+        name: "func_dce",
+        descr: "Dead function elimination.",
+        runner: ScopedPass::ModulePass(PassMutability::Transform(func_dce)),
     }
 }
 
@@ -31,7 +34,11 @@ fn can_eliminate_instruction(context: &Context, val: Value) -> bool {
 }
 
 /// Perform dead code (if any) elimination and return true if function modified.
-pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn dce(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     // Number of uses that an instruction has.
     let mut num_uses: HashMap<Value, (Block, u32)> = HashMap::new();
 
@@ -92,7 +99,15 @@ pub fn dce(context: &mut Context, function: &Function) -> Result<bool, IrError> 
 ///
 /// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
 /// are considered for removal.
-pub fn func_dce(context: &mut Context, module: &Module, entry_fns: &[Function]) -> bool {
+pub fn func_dce(
+    context: &mut Context,
+    _: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    let entry_fns = module
+        .function_iter(context)
+        .filter(|func| func.is_entry(context))
+        .collect::<Vec<_>>();
     // Recursively find all the functions called by an entry function.
     fn grow_called_function_set(
         context: &Context,
@@ -120,7 +135,7 @@ pub fn func_dce(context: &mut Context, module: &Module, entry_fns: &[Function]) 
     // Gather our entry functions together into a set.
     let mut called_fns: HashSet<Function> = HashSet::new();
     for entry_fn in entry_fns {
-        grow_called_function_set(context, *entry_fn, &mut called_fns);
+        grow_called_function_set(context, entry_fn, &mut called_fns);
     }
 
     // Gather the functions in the module which aren't called.  It's better to collect them
@@ -135,5 +150,5 @@ pub fn func_dce(context: &mut Context, module: &Module, entry_fns: &[Function]) 
         module.remove_function(context, &dead_fn);
     }
 
-    modified
+    Ok(modified)
 }

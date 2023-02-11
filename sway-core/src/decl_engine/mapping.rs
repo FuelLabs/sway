@@ -1,8 +1,6 @@
-use std::{collections::BTreeMap, fmt};
+use std::fmt;
 
-use sway_types::Ident;
-
-use super::DeclId;
+use super::{DeclId, MethodMap};
 
 type SourceDecl = DeclId;
 type DestinationDecl = DeclId;
@@ -47,8 +45,8 @@ impl DeclMapping {
     }
 
     pub(crate) fn from_stub_and_impld_decl_ids(
-        stub_decl_ids: BTreeMap<Ident, DeclId>,
-        impld_decl_ids: BTreeMap<Ident, DeclId>,
+        stub_decl_ids: MethodMap,
+        impld_decl_ids: MethodMap,
     ) -> DeclMapping {
         let mut mapping = vec![];
         for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {

@@ -903,20 +903,28 @@ impl<'a> ParsedTree<'a> {
                     .insert(to_ident_key(&Ident::new(span.clone())), token);
             }
             Scrutinee::Variable { name, .. } => {
-                let token = Token::from_parsed(
-                    AstToken::Scrutinee(scrutinee.clone()),
-                    SymbolKind::Variable,
+                self.tokens.insert(
+                    to_ident_key(name),
+                    // it could either be a variable or a constant
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Unknown),
                 );
-                self.tokens.insert(to_ident_key(name), token);
             }
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
                 ..
             } => {
-                let token =
-                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
-                self.tokens.insert(to_ident_key(&struct_name.suffix), token);
+                for ident in &struct_name.prefixes {
+                    let token = Token::from_parsed(
+                        AstToken::Scrutinee(scrutinee.clone()),
+                        SymbolKind::Struct,
+                    );
+                    self.tokens.insert(to_ident_key(ident), token);
+                }
+                self.tokens.insert(
+                    to_ident_key(&struct_name.suffix),
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct),
+                );
 
                 for field in fields {
                     let token = Token::from_parsed(

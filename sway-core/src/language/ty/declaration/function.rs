@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -34,9 +36,6 @@ pub struct TyFunctionDeclaration {
     pub purity: Purity,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyFunctionDeclaration {}
 impl PartialEqWithEngines for TyFunctionDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -51,6 +50,37 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
+    }
+}
+
+impl HashWithEngines for TyFunctionDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyFunctionDeclaration {
+            name,
+            body,
+            parameters,
+            return_type,
+            type_parameters,
+            visibility,
+            is_contract_call,
+            purity,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+            initial_return_type: _,
+            return_type_span: _,
+            implementing_type: _,
+        } = self;
+        let type_engine = engines.te();
+        name.hash(state);
+        body.hash(state, engines);
+        parameters.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
+        is_contract_call.hash(state);
+        purity.hash(state);
     }
 }
 
@@ -340,9 +370,6 @@ pub struct TyFunctionParameter {
     pub type_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -351,7 +378,29 @@ impl PartialEqWithEngines for TyFunctionParameter {
             && type_engine
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
+            && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
+    }
+}
+
+impl HashWithEngines for TyFunctionParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyFunctionParameter {
+            name,
+            is_reference,
+            is_mutable,
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            type_span: _,
+            mutability_span: _,
+            initial_type_id: _,
+        } = self;
+        let type_engine = engines.te();
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
+        is_reference.hash(state);
+        is_mutable.hash(state);
     }
 }
 
@@ -370,5 +419,24 @@ impl ReplaceSelfType for TyFunctionParameter {
 impl TyFunctionParameter {
     pub fn is_self(&self) -> bool {
         self.name.as_str() == "self"
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TyFunctionSig {
+    pub return_type: TypeId,
+    pub parameters: Vec<TypeId>,
+}
+
+impl TyFunctionSig {
+    pub fn from_fn_decl(fn_decl: &TyFunctionDeclaration) -> Self {
+        Self {
+            return_type: fn_decl.return_type,
+            parameters: fn_decl
+                .parameters
+                .iter()
+                .map(|p| p.type_id)
+                .collect::<Vec<_>>(),
+        }
     }
 }
