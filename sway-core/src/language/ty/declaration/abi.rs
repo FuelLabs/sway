@@ -34,6 +34,7 @@ impl HashWithEngines for TyAbiDeclaration {
             name,
             interface_surface,
             methods,
+            supertraits,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
@@ -42,6 +43,7 @@ impl HashWithEngines for TyAbiDeclaration {
         name.hash(state);
         interface_surface.hash(state, engines);
         methods.hash(state, engines);
+        supertraits.hash(state, engines);
     }
 }
 

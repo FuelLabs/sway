@@ -6,6 +6,8 @@ trait MyTrait {
 
 abi MyAbi : MyTrait {
     fn bar();
+} {
+    fn baz() { Self::foo() }
 }
 
 impl MyTrait for Contract {

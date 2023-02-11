@@ -4,7 +4,7 @@ use sway_types::Spanned;
 use crate::{
     error::*,
     language::{parsed::*, ty},
-    semantic_analysis::{Mode, TypeCheckContext},
+    semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     CompileResult,
 };
 
@@ -31,8 +31,20 @@ impl ty::TyAbiDeclaration {
         // from itself. This is by design.
 
         // A temporary namespace for checking within this scope.
+        let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+        let contract_type = type_engine.insert(decl_engine, crate::TypeInfo::Contract);
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut abi_namespace).with_mode(Mode::ImplAbiFn);
+
+        // Recursively make the interface surfaces and methods of the
+        // supertraits available to this abi.
+        check!(
+            insert_supertraits_into_namespace(ctx.by_ref(), contract_type, &supertraits),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // Type check the interface surface.
         let mut new_interface_surface = vec![];
@@ -53,24 +65,6 @@ impl ty::TyAbiDeclaration {
             }
             new_interface_surface.push(ctx.decl_engine.insert(method));
         }
-
-        // Insert the implemented methods for the supertraits into this namespace
-        // so that the methods defined in the impl block can use them.
-        //
-        // We purposefully do not check for errors here because this is a temporary
-        // namespace and not a real impl block defined by the user.
-        // ctx.namespace.insert_trait_implementation(
-        //     name.clone(),
-        //     vec![], // no type arguments for ABIs
-        //     self_type,
-        //     &supertrait_impld_method_ids
-        //         .values()
-        //         .cloned()
-        //         .collect::<Vec<_>>(),
-        //     &trait_name.span(),
-        //     false,
-        //     engines,
-        // );
 
         // Type check the methods.
         let mut new_methods = vec![];
