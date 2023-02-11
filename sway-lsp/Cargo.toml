@@ -1,6 +1,6 @@
 [package]
 name = "sway-lsp"
-version = "0.34.0"
+version = "0.35.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -11,8 +11,8 @@ description = "LSP server for Sway."
 [dependencies]
 anyhow = "1.0.41"
 dashmap = "5.4"
-forc-pkg = { version = "0.34.0", path = "../forc-pkg" }
-forc-tracing = { version = "0.34.0", path = "../forc-tracing" }
+forc-pkg = { version = "0.35.0", path = "../forc-pkg" }
+forc-tracing = { version = "0.35.0", path = "../forc-tracing" }
 notify = "5.0.0"
 notify-debouncer-mini = { version = "0.2.0" }
 parking_lot = "0.12.1"
@@ -21,13 +21,13 @@ quote = "1.0.9"
 ropey = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.60"
-sway-ast = { version = "0.34.0", path = "../sway-ast" }
-sway-core = { version = "0.34.0", path = "../sway-core" }
-sway-error = { version = "0.34.0", path = "../sway-error" }
-sway-parse = { version = "0.34.0", path = "../sway-parse" }
-sway-types = { version = "0.34.0", path = "../sway-types" }
-sway-utils = { version = "0.34.0", path = "../sway-utils" }
-swayfmt = { version = "0.34.0", path = "../swayfmt" }
+sway-ast = { version = "0.35.0", path = "../sway-ast" }
+sway-core = { version = "0.35.0", path = "../sway-core" }
+sway-error = { version = "0.35.0", path = "../sway-error" }
+sway-parse = { version = "0.35.0", path = "../sway-parse" }
+sway-types = { version = "0.35.0", path = "../sway-types" }
+sway-utils = { version = "0.35.0", path = "../sway-utils" }
+swayfmt = { version = "0.35.0", path = "../swayfmt" }
 syn = { version = "1.0.73", features = ["full"] }
 tempfile = "3"
 thiserror = "1.0.30"
@@ -38,7 +38,7 @@ tracing = "0.1"
 
 [dev-dependencies]
 assert-json-diff = "2.0"
-async-trait = "0.1"
 dirs = "4.0"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+sway-lsp-test-utils = { path = "tests/utils" }
 tower = { version = "0.4.12", default-features = false, features = ["util"] }

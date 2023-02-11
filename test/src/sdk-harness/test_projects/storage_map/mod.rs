@@ -1,6 +1,6 @@
 use fuels::{
     prelude::*,
-    types::core::{Bits256, SizedAsciiString},
+    types::{Bits256, SizedAsciiString},
 };
 
 abigen!(Contract(
