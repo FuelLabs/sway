@@ -676,7 +676,7 @@ impl Renderable for TyTraitFn {
                                 br;
                                 : "    ";
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -695,7 +695,7 @@ impl Renderable for TyTraitFn {
                         } else {
                             @ for param in &self.parameters {
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
