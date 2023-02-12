@@ -455,7 +455,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
-                    for type_arg in &type_binding.type_arguments {
+                    for type_arg in &type_binding.type_arguments.to_vec() {
                         self.collect_type_argument(type_arg);
                     }
                 }
@@ -584,7 +584,7 @@ impl<'a> TypedTree<'a> {
                     token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
                 }
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_argument(type_arg);
                 }
 
@@ -698,7 +698,7 @@ impl<'a> TypedTree<'a> {
                         Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
                 }
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_argument(type_arg);
                 }
 

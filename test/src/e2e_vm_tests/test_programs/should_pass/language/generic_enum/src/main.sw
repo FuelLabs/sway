@@ -3,7 +3,13 @@ use core::ops::Ord;
 
 fn main() -> bool {
     let x = Option::Some(10); 
-    let y = Option::Some(true); 
+    let y = Option::Some(true);
+
+    let z = Option::<u32>::Some(10);
+    let z = Option::Some::<u32>(10);
+
+    let n = Option::<u32>::None;
+    let n = Option::None::<u32>;
 
  //   x == Option::Some(10)
    true
