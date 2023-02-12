@@ -978,6 +978,43 @@ async fn go_to_definition_for_functions() {
     definition_check_with_req_offset(&mut service, &mut go_to, 19, 13, &mut i).await;
 }
 
+#[tokio::test]
+async fn go_to_definition_for_structs() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/structs/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 10,
+        req_char: 8,
+        def_line: 9,
+        def_start_char: 19,
+        def_end_char: 20,
+        def_path: uri.as_str(),
+    };
+    // Type Params
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    go_to.def_line = 3;
+    go_to.def_start_char = 5;
+    go_to.def_end_char = 9;
+    definition_check_with_req_offset(&mut service, &mut go_to, 12, 8, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 13, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 14, 9, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 15, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 15, 23, &mut i).await;
+
+    // Call Path
+    go_to.def_line = 18;
+    go_to.def_start_char = 7;
+    go_to.def_end_char = 13;
+    definition_check_with_req_offset(&mut service, &mut go_to, 23, 16, &mut i).await;
+}
+
 //------------------- HOVER DOCUMENTATION -------------------//
 
 #[tokio::test]
@@ -988,6 +1025,7 @@ async fn hover_docs_for_consts() {
         test_fixtures_dir().join("tokens/consts/src/main.sw"),
     )
     .await;
+    let mut i = 0..;
 
     let mut hover = HoverDocumentation {
         req_uri: &uri,
@@ -996,10 +1034,10 @@ async fn hover_docs_for_consts() {
         documentation: " documentation for CONSTANT_1",
     };
 
-    let _ = lsp::hover_request(&mut service, &hover, 1).await;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
     hover.req_char = 49;
     hover.documentation = " CONSTANT_2 has a value of 200";
-    let _ = lsp::hover_request(&mut service, &hover, 2).await;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 
 #[tokio::test]
@@ -1017,7 +1055,46 @@ async fn hover_docs_for_functions() {
         req_char: 14,
         documentation: "```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter",
     };
-    let _ = lsp::hover_request(&mut service, &hover, 1).await;
+    let mut i = 0..;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
+#[tokio::test]
+async fn hover_docs_for_structs() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/structs/src/main.sw"),
+    )
+    .await;
+
+    let data_documention = "```sway\nenum Data\n```\n---\n My data enum";
+
+    let mut i = 0..;
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 12,
+        req_char: 10,
+        documentation: data_documention,
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 13;
+    hover.req_char = 15;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 14;
+    hover.req_char = 10;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 15;
+    hover.req_char = 16;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+
+    hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 9,
+        req_char: 8,
+        documentation: "```sway\nstruct MyStruct\n```\n---\n My struct type",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 
 #[tokio::test]
@@ -1031,7 +1108,8 @@ async fn hover_docs_with_code_examples() {
             req_char: 24,
             documentation: "```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`",
         };
-    let _ = lsp::hover_request(&mut service, &hover, 1).await;
+    let mut i = 0..;
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 
 #[tokio::test]
