@@ -1046,18 +1046,19 @@ async fn go_to_definition_for_enums() {
     go_to.def_line = 9;
     go_to.def_start_char = 4;
     go_to.def_end_char = 7;
-    definition_check_with_req_offset(&mut service, &mut go_to, 23, 21, &mut i).await;
-    go_to.def_line = 19;
+    definition_check_with_req_offset(&mut service, &mut go_to, 24, 21, &mut i).await;
+    go_to.def_line = 20;
     go_to.def_start_char = 4;
     go_to.def_end_char = 10;
-    definition_check_with_req_offset(&mut service, &mut go_to, 24, 31, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 25, 31, &mut i).await;
 
     // Call Path
     go_to.def_line = 15;
     go_to.def_start_char = 9;
     go_to.def_end_char = 15;
-    definition_check_with_req_offset(&mut service, &mut go_to, 24, 23, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 25, 23, &mut i).await;
 }
+
 //------------------- HOVER DOCUMENTATION -------------------//
 
 #[tokio::test]
@@ -1140,6 +1141,32 @@ async fn hover_docs_for_structs() {
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 
+#[tokio::test]
+async fn hover_docs_for_enums() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/enums/src/main.sw"),
+    )
+    .await;
+
+    let mut i = 0..;
+    let mut hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 16,
+        req_char: 19,
+        documentation: "```sway\nstruct TestStruct\n```\n---\n Test Struct Docs",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 18;
+    hover.req_char = 20;
+    hover.documentation = "```sway\nenum Color\n```\n---\n Color enum with RGB variants";
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+    hover.req_line = 25;
+    hover.req_char = 29;
+    hover.documentation = " Docs for variants";
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
     let (mut service, _) = LspService::new(Backend::new);

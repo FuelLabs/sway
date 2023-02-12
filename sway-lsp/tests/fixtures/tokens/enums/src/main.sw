@@ -5,7 +5,7 @@ struct TestStruct {
     foo: u8,
 }
 
-/// Color enum with RGB variants 
+/// Color enum with RGB variants
 enum Color {
     Red: (),
     Green: (),
@@ -17,6 +17,7 @@ pub enum MyEnum {
     First: TestStruct,
     Second: Color,
     Third: (u8, Color),
+    /// Docs for variants
     Fourth: u8,
 }
 
