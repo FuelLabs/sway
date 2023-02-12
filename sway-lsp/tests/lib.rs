@@ -951,13 +951,25 @@ async fn go_to_definition_for_functions() {
     };
     // Return type
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
-
-    // TODO: @IGI-111 add test for generic return type
+    go_to.def_line = 23;
+    go_to.def_start_char = 9;
+    go_to.def_end_char = 15;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 42, &mut i).await;
+    go_to.def_line = 28;
+    go_to.def_start_char = 9;
+    go_to.def_end_char = 18;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 55, &mut i).await;
 
     // Function parameter
     definition_check_with_req_offset(&mut service, &mut go_to, 13, 16, &mut i).await;
-
-    // TODO: @IGI-111 add test for generic function parameter
+    go_to.def_line = 23;
+    go_to.def_start_char = 9;
+    go_to.def_end_char = 15;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 18, &mut i).await;
+    go_to.def_line = 28;
+    go_to.def_start_char = 9;
+    go_to.def_end_char = 18;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 28, &mut i).await;
 
     // Functions expression
     go_to.def_line = 8;
