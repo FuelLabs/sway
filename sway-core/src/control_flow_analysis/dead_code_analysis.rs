@@ -667,7 +667,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
     let ty = type_engine
-        .to_typeinfo(fn_decl.return_type, &span)
+        .to_typeinfo(fn_decl.return_type.type_id, &span)
         .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
@@ -694,7 +694,8 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
     for fn_param in &fn_decl.parameters {
-        let ty = type_engine.to_typeinfo(fn_param.type_id, &fn_param.type_span)?;
+        let ty = type_engine
+            .to_typeinfo(fn_param.type_argument.type_id, &fn_param.type_argument.span)?;
         match ty {
             TypeInfo::Enum { call_path, .. } => {
                 let ty_index = match graph.namespace.find_enum(&call_path.suffix) {

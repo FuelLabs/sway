@@ -53,11 +53,11 @@ pub(crate) fn struct_instantiation(
             return err(warnings, errors);
         }
         (_, true) => TypeInfo::Custom {
-            name: suffix,
+            call_path: suffix.into(),
             type_arguments: None,
         },
         (_, false) => TypeInfo::Custom {
-            name: suffix,
+            call_path: suffix.into(),
             type_arguments: Some(type_arguments),
         },
     };

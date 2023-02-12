@@ -297,14 +297,14 @@ impl Dependencies {
                 body,
                 ..
             }) => self
-                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_typeinfo(type_engine, &type_engine.get(type_ascription.type_id))
                 .gather_from_expr(type_engine, body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
                 type_ascription,
                 value,
                 ..
             }) => self
-                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_typeinfo(type_engine, &type_engine.get(type_ascription.type_id))
                 .gather_from_expr(type_engine, value),
             Declaration::FunctionDeclaration(fn_decl) => {
                 self.gather_from_fn_decl(type_engine, fn_decl)
@@ -338,7 +338,10 @@ impl Dependencies {
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(type_engine, &param.type_info)
+                        deps.gather_from_typeinfo(
+                            type_engine,
+                            &type_engine.get(param.type_argument.type_id),
+                        )
                     })
                     .gather_from_typeinfo(type_engine, &sig.return_type)
                 })
@@ -374,7 +377,10 @@ impl Dependencies {
             }) => self
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_typeinfo(type_engine, &param.type_info)
+                        deps.gather_from_typeinfo(
+                            type_engine,
+                            &type_engine.get(param.type_argument.type_id),
+                        )
                     })
                     .gather_from_typeinfo(type_engine, &sig.return_type)
                 })
@@ -397,9 +403,9 @@ impl Dependencies {
             ..
         } = fn_decl;
         self.gather_from_iter(parameters.iter(), |deps, param| {
-            deps.gather_from_typeinfo(type_engine, &param.type_info)
+            deps.gather_from_typeinfo(type_engine, &type_engine.get(param.type_argument.type_id))
         })
-        .gather_from_typeinfo(type_engine, return_type)
+        .gather_from_typeinfo(type_engine, &type_engine.get(return_type.type_id))
         .gather_from_block(type_engine, body)
         .gather_from_type_parameters(type_parameters)
     }
@@ -644,10 +650,11 @@ impl Dependencies {
                 ..
             } => self.gather_from_call_path(abi_name, false, false),
             TypeInfo::Custom {
-                name,
+                call_path: name,
                 type_arguments,
             } => {
-                self.deps.insert(DependentSymbol::Symbol(name.clone()));
+                self.deps
+                    .insert(DependentSymbol::Symbol(name.clone().suffix));
                 match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(type_engine, type_arguments)
@@ -801,7 +808,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name, .. } => name.as_str(),
+        TypeInfo::Custom {
+            call_path: name, ..
+        } => name.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",
