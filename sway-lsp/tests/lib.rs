@@ -1015,6 +1015,49 @@ async fn go_to_definition_for_structs() {
     definition_check_with_req_offset(&mut service, &mut go_to, 23, 16, &mut i).await;
 }
 
+#[tokio::test]
+async fn go_to_definition_for_enums() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/enums/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 16,
+        req_char: 16,
+        def_line: 3,
+        def_start_char: 7,
+        def_end_char: 17,
+        def_path: uri.as_str(),
+    };
+    // Type Params
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    go_to.def_line = 8;
+    go_to.def_start_char = 5;
+    go_to.def_end_char = 10;
+    definition_check_with_req_offset(&mut service, &mut go_to, 17, 15, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 18, 20, &mut i).await;
+
+    // Variants
+    go_to.def_line = 9;
+    go_to.def_start_char = 4;
+    go_to.def_end_char = 7;
+    definition_check_with_req_offset(&mut service, &mut go_to, 23, 21, &mut i).await;
+    go_to.def_line = 19;
+    go_to.def_start_char = 4;
+    go_to.def_end_char = 10;
+    definition_check_with_req_offset(&mut service, &mut go_to, 24, 31, &mut i).await;
+
+    // Call Path
+    go_to.def_line = 15;
+    go_to.def_start_char = 9;
+    go_to.def_end_char = 15;
+    definition_check_with_req_offset(&mut service, &mut go_to, 24, 23, &mut i).await;
+}
 //------------------- HOVER DOCUMENTATION -------------------//
 
 #[tokio::test]
