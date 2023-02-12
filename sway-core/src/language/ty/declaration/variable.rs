@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::Ident;
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
 
@@ -10,8 +10,7 @@ pub struct TyVariableDeclaration {
     pub body: TyExpression,
     pub mutability: VariableMutability,
     pub return_type: TypeId,
-    pub type_ascription: TypeId,
-    pub type_ascription_span: Option<Span>,
+    pub type_ascription: TypeArgument,
 }
 
 impl EqWithEngines for TyVariableDeclaration {}
@@ -24,9 +23,7 @@ impl PartialEqWithEngines for TyVariableDeclaration {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), engines)
-            && type_engine
-                .get(self.type_ascription)
-                .eq(&type_engine.get(other.type_ascription), engines)
+            && self.type_ascription.eq(&other.type_ascription, engines)
     }
 }
 
@@ -38,15 +35,12 @@ impl HashWithEngines for TyVariableDeclaration {
             mutability,
             return_type,
             type_ascription,
-            // this field is not hashed because they aren't relevant/a
-            // reliable source of obj v. obj distinction
-            type_ascription_span: _,
         } = self;
         let type_engine = engines.te();
         name.hash(state);
         body.hash(state, engines);
         type_engine.get(*return_type).hash(state, engines);
-        type_engine.get(*type_ascription).hash(state, engines);
+        type_ascription.hash(state, engines);
         mutability.hash(state);
     }
 }

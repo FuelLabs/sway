@@ -670,7 +670,7 @@ fn type_check_trait_implementation(
                 &impld_method_ids,
                 &method_checklist
             ),
-            ty::TyFunctionDeclaration::error(impl_method.clone(), engines),
+            ty::TyFunctionDeclaration::error(impl_method.clone()),
             warnings,
             errors
         );
@@ -847,16 +847,18 @@ fn type_check_impl_method(
             });
         }
 
-        if !type_engine.get(impl_method_param.type_id).eq(
-            &type_engine.get(impl_method_signature_param.type_id),
+        if !type_engine.get(impl_method_param.type_argument.type_id).eq(
+            &type_engine.get(impl_method_signature_param.type_argument.type_id),
             engines,
         ) {
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
-                span: impl_method_param.type_span.clone(),
-                given: engines.help_out(impl_method_param.type_id).to_string(),
+                span: impl_method_param.type_argument.span.clone(),
+                given: engines
+                    .help_out(impl_method_param.type_argument.type_id)
+                    .to_string(),
                 expected: engines
-                    .help_out(impl_method_signature_param.type_id)
+                    .help_out(impl_method_signature_param.type_argument.type_id)
                     .to_string(),
             });
             continue;
@@ -913,12 +915,12 @@ fn type_check_impl_method(
     }
 
     if !type_engine
-        .get(impl_method.return_type)
+        .get(impl_method.return_type.type_id)
         .eq(&type_engine.get(impl_method_signature.return_type), engines)
     {
         errors.push(CompileError::MismatchedTypeInInterfaceSurface {
             interface_name: interface_name(),
-            span: impl_method.return_type_span.clone(),
+            span: impl_method.return_type.span.clone(),
             expected: engines
                 .help_out(impl_method_signature.return_type)
                 .to_string(),

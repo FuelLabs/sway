@@ -103,16 +103,11 @@ impl<'a> TypedTree<'a> {
                     .try_get_mut(&to_ident_key(&variable.name))
                     .try_unwrap()
                 {
-                    token.typed = Some(typed_token.clone());
+                    token.typed = Some(typed_token);
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
-                if let Some(type_ascription_span) = &variable.type_ascription_span {
-                    self.collect_type_id(
-                        variable.type_ascription,
-                        &typed_token,
-                        type_ascription_span.clone(),
-                    );
-                }
+
+                self.collect_type_argument(&variable.type_ascription);
 
                 self.handle_expression(&variable.body, namespace);
             }
@@ -127,17 +122,7 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                     }
 
-                    if let Some(type_ascription_span) = &const_decl.type_ascription_span {
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
-                            .try_unwrap()
-                        {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(const_decl.return_type));
-                        }
-                    };
+                    self.collect_type_argument(&const_decl.type_ascription);
                     self.handle_expression(&const_decl.value, namespace);
                 }
             }
@@ -1014,11 +999,11 @@ impl<'a> TypedTree<'a> {
             .try_get_mut(&to_ident_key(&param.name))
             .try_unwrap()
         {
-            token.typed = Some(typed_token.clone());
-            token.type_def = Some(TypeDefinition::TypeId(param.type_id));
+            token.typed = Some(typed_token);
+            token.type_def = Some(TypeDefinition::TypeId(param.type_argument.type_id));
         }
 
-        self.collect_type_id(param.type_id, &typed_token, param.type_span.clone());
+        self.collect_type_argument(&param.type_argument);
     }
 
     fn collect_type_argument(&self, type_arg: &TypeArgument) {
@@ -1211,11 +1196,7 @@ impl<'a> TypedTree<'a> {
             );
         }
 
-        self.collect_type_id(
-            func_decl.return_type,
-            &typed_token,
-            func_decl.return_type_span.clone(),
-        );
+        self.collect_type_argument(&func_decl.return_type);
     }
 
     fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant) {

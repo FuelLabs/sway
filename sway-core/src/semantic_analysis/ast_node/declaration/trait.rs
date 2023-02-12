@@ -111,7 +111,7 @@ impl ty::TyTraitDeclaration {
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method, engines),
+                ty::TyFunctionDeclaration::error(method),
                 warnings,
                 errors
             );
