@@ -402,19 +402,21 @@ impl TypeEngine {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
                 match namespace
                     .root()
-                    .resolve_symbol(module_path, &name)
+                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
                     Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_struct(original_id, &name.span())),
+                            CompileResult::from(
+                                decl_engine.get_struct(original_id, &call_path.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -448,7 +450,9 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(original_id, &name.span())),
+                            CompileResult::from(
+                                decl_engine.get_enum(original_id, &call_path.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -482,8 +486,8 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
+                            name: call_path.to_string(),
+                            span: call_path.span(),
                         });
                         self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }

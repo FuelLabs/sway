@@ -322,7 +322,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&field.type_info, TypeInfo::Custom { name, ..} if name == &item_struct.name),
+        |field| matches!(&field.type_info, TypeInfo::Custom { call_path, ..} if call_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -380,7 +380,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&variant.type_info, TypeInfo::Custom { name, ..} if name == &item_enum.name)
+       matches!(&variant.type_info, TypeInfo::Custom { call_path, ..} if call_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -892,7 +892,7 @@ fn generic_params_opt_to_type_parameters(
                 let custom_type = type_engine.insert(
                     decl_engine,
                     TypeInfo::Custom {
-                        name: ident.clone(),
+                        call_path: ident.clone().into(),
                         type_arguments: None,
                     },
                 );
@@ -3278,7 +3278,7 @@ fn ty_to_type_parameter(
     let custom_type = type_engine.insert(
         decl_engine,
         TypeInfo::Custom {
-            name: name_ident.clone(),
+            call_path: name_ident.clone().into(),
             type_arguments: None,
         },
     );
@@ -3520,15 +3520,14 @@ fn path_type_to_type_info(
         root_opt,
         prefix: PathTypeSegment { name, generics_opt },
         suffix,
-    } = path_type;
-
-    if root_opt.is_some() || !suffix.is_empty() {
-        let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
-        return Err(handler.emit_err(error.into()));
-    }
+    } = path_type.clone();
 
     let type_info = match type_name_to_type_info_opt(&name) {
         Some(type_info) => {
+            if root_opt.is_some() || !suffix.is_empty() {
+                let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
+                return Err(handler.emit_err(error.into()));
+            }
             if let Some((_, generic_args)) = generics_opt {
                 let error = ConvertParseTreeError::GenericsNotSupportedHere {
                     span: generic_args.span(),
@@ -3539,6 +3538,10 @@ fn path_type_to_type_info(
         }
         None => {
             if name.as_str() == "ContractCaller" {
+                if root_opt.is_some() || !suffix.is_empty() {
+                    let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
+                    return Err(handler.emit_err(error.into()));
+                }
                 let generic_ty = match {
                     generics_opt.and_then(|(_, generic_args)| {
                         iter_to_array(generic_args.parameters.into_inner())
@@ -3567,14 +3570,11 @@ fn path_type_to_type_info(
                     address: None,
                 }
             } else {
-                let type_arguments = match generics_opt {
-                    Some((_double_colon_token, generic_args)) => {
-                        generic_args_to_type_arguments(context, handler, engines, generic_args)?
-                    }
-                    None => Vec::new(),
-                };
+                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
+                    context, handler, engines, path_type,
+                )?;
                 TypeInfo::Custom {
-                    name,
+                    call_path,
                     type_arguments: Some(type_arguments),
                 }
             }

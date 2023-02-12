@@ -156,10 +156,10 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
 pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
     match type_engine.get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } | TypeInfo::Custom { name, .. } => Some(name),
-        TypeInfo::Enum { call_path, .. } | TypeInfo::Struct { call_path, .. } => {
-            Some(call_path.suffix)
-        }
+        TypeInfo::UnknownGeneric { name, .. } => Some(name),
+        TypeInfo::Enum { call_path, .. }
+        | TypeInfo::Struct { call_path, .. }
+        | TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
         _ => None,
     }
 }

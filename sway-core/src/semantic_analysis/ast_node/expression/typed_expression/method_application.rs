@@ -268,7 +268,7 @@ pub(crate) fn type_check_method_application(
         } => {
             let mut prefixes = call_path_binding.inner.prefixes;
             prefixes.push(match &call_path_binding.inner.suffix {
-                (TypeInfo::Custom { name, .. }, ..) => name.clone(),
+                (TypeInfo::Custom { call_path, .. }, ..) => call_path.clone().suffix,
                 (_, ident) => ident.clone(),
             });
 

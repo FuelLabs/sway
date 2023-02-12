@@ -83,7 +83,7 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
         }
         .into(),
         Boolean => "bool".into(),
-        Custom { name, .. } => name.to_string(),
+        Custom { call_path, .. } => call_path.suffix.to_string(),
         Tuple(fields) => {
             let field_strs = fields
                 .iter()

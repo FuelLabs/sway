@@ -650,10 +650,11 @@ impl Dependencies {
                 ..
             } => self.gather_from_call_path(abi_name, false, false),
             TypeInfo::Custom {
-                name,
+                call_path: name,
                 type_arguments,
             } => {
-                self.deps.insert(DependentSymbol::Symbol(name.clone()));
+                self.deps
+                    .insert(DependentSymbol::Symbol(name.clone().suffix));
                 match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(type_engine, type_arguments)
@@ -807,7 +808,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
             IntegerBits::SixtyFour => "uint64",
         },
         TypeInfo::Boolean => "bool",
-        TypeInfo::Custom { name, .. } => name.as_str(),
+        TypeInfo::Custom {
+            call_path: name, ..
+        } => name.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::SelfType => "self",

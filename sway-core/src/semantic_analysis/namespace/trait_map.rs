@@ -118,7 +118,7 @@ impl TraitMap {
         let trait_type_id = type_engine.insert(
             decl_engine,
             TypeInfo::Custom {
-                name: trait_name.suffix.clone(),
+                call_path: trait_name.suffix.clone().into(),
                 type_arguments: if trait_type_args.is_empty() {
                     None
                 } else {
@@ -146,7 +146,7 @@ impl TraitMap {
             let map_trait_type_id = type_engine.insert(
                 decl_engine,
                 TypeInfo::Custom {
-                    name: map_trait_name_suffix.clone(),
+                    call_path: map_trait_name_suffix.clone().into(),
                     type_arguments: if map_trait_type_args.is_empty() {
                         None
                     } else {
@@ -706,7 +706,7 @@ impl TraitMap {
                 let map_trait_type_id = type_engine.insert(
                     decl_engine,
                     TypeInfo::Custom {
-                        name: suffix.name.clone(),
+                        call_path: suffix.name.clone().into(),
                         type_arguments: if suffix.args.is_empty() {
                             None
                         } else {
@@ -732,7 +732,7 @@ impl TraitMap {
                 let constraint_type_id = type_engine.insert(
                     decl_engine,
                     TypeInfo::Custom {
-                        name: constraint_trait_name.suffix.clone(),
+                        call_path: constraint_trait_name.suffix.clone().into(),
                         type_arguments: if constraint_type_arguments.is_empty() {
                             None
                         } else {
@@ -823,15 +823,15 @@ pub(crate) fn are_equal_minus_dynamic_types(
         // these cases may contain dynamic types
         (
             TypeInfo::Custom {
-                name: l_name,
+                call_path: l_name,
                 type_arguments: l_type_args,
             },
             TypeInfo::Custom {
-                name: r_name,
+                call_path: r_name,
                 type_arguments: r_type_args,
             },
         ) => {
-            l_name == r_name
+            l_name.suffix == r_name.suffix
                 && l_type_args
                     .unwrap_or_default()
                     .iter()
