@@ -417,7 +417,10 @@ impl Dependencies {
                     arguments,
                 } = &**function_application_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, true)
-                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_type_arguments(
+                        type_engine,
+                        &call_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(arguments.iter(), |deps, arg| {
                         deps.gather_from_expr(type_engine, arg)
                     })
@@ -458,7 +461,10 @@ impl Dependencies {
                     fields,
                 } = &**struct_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, false)
-                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_type_arguments(
+                        type_engine,
+                        &call_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(fields.iter(), |deps, field| {
                         deps.gather_from_expr(type_engine, &field.value)
                     })
@@ -480,10 +486,13 @@ impl Dependencies {
                         call_path_binding.inner.suffix.before.inner.clone(),
                     ));
                 }
-                this.gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
-                    .gather_from_iter(args.iter(), |deps, arg| {
-                        deps.gather_from_expr(type_engine, arg)
-                    })
+                this.gather_from_type_arguments(
+                    type_engine,
+                    &call_path_binding.type_arguments.to_vec(),
+                )
+                .gather_from_iter(args.iter(), |deps, arg| {
+                    deps.gather_from_expr(type_engine, arg)
+                })
             }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
@@ -495,7 +504,10 @@ impl Dependencies {
                 // variant name.
                 let args_vec = args.clone().unwrap_or_default();
                 self.gather_from_call_path(&call_path_binding.inner, true, false)
-                    .gather_from_type_arguments(type_engine, &call_path_binding.type_arguments)
+                    .gather_from_type_arguments(
+                        type_engine,
+                        &call_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(args_vec.iter(), |deps, arg| {
                         deps.gather_from_expr(type_engine, arg)
                     })
