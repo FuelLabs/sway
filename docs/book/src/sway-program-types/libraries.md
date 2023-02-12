@@ -14,19 +14,19 @@ library my_library;
 
 A good reference library to use when learning library design is the [Sway Standard Library](../introduction/standard_library.html). For example, the standard library offers an [implementation](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) of `enum Option<T>` which is a generic type that represents either the existence of a value using the variant `Some(..)` or a value's absence using the variant `None`. The [Sway file implementing `Option<T>`](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/option.sw) has the following structure:
 
-* The `library` keyword followed by the name of the library:
+- The `library` keyword followed by the name of the library:
 
 ```sway
 library option;
 ```
 
-* A `use` statement that imports `revert` from another library _inside_ the standard library:
+- A `use` statement that imports `revert` from another library _inside_ the standard library:
 
 ```sway
 use ::revert::revert;
 ```
 
-* The `enum` definition which starts with the keyword `pub` to indicate that this `Option<T>` is publically available _outside_ the `option` library:
+- The `enum` definition which starts with the keyword `pub` to indicate that this `Option<T>` is publically available _outside_ the `option` library:
 
 ```sway
 pub enum Option<T> {
@@ -34,7 +34,7 @@ pub enum Option<T> {
 }
 ```
 
-* An `impl` block that implements some methods for `Option<T>`:
+- An `impl` block that implements some methods for `Option<T>`:
 
 ```sway
 impl<T> Option<T> {
@@ -79,7 +79,7 @@ with other libraries contained in the `src` folder, like the block library (insi
 ```sway
 library block;
 
-// Implementation of the `block` library 
+// Implementation of the `block` library
 ```
 
 The `dep` keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The `dep` keyword simply makes the library a dependency and fully accessible within the current context.
@@ -104,8 +104,8 @@ $ tree
 
 As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
 
-* Use the `dep` keyword followed by the library name to make the internal library a dependancy
-* Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
+- Use the `dep` keyword followed by the library name to make the internal library a dependancy
+- Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
 dep internal_lib; // Assuming the library name in `internal_lib.sw` is `internal_lib`
@@ -144,8 +144,8 @@ external_library = { path = "../external_library" }
 
 Once the library dependency is added to the `toml` file, you can import items from it as follows:
 
-* Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
-* Use the `use` keyword to selectively import items from the library
+- Make sure the item you want imported are declared with the `pub` keyword (if applicable, for instance: `pub fn mint() {}`)
+- Use the `use` keyword to selectively import items from the library
 
 ```sway
 use external_library::mint;
@@ -163,12 +163,12 @@ The repository [`sway-libs`](https://github.com/FuelLabs/sway-libs/) is a collec
 
 Some Sway Libraries to try out:
 
-* [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof)
-* [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft)
-* [String](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string)
-* [Signed Integers](https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers)
-* [Unsigned Fixed Point Number](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp)
-* [StorageMapVec](https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec)
+- [Binary Merkle Proof](https://github.com/FuelLabs/sway-libs/tree/master/libs/merkle_proof)
+- [Non-Fungible Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/nft)
+- [String](https://github.com/FuelLabs/sway-libs/tree/master/libs/string)
+- [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
+- [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
+- [StorageMapVec](https://github.com/FuelLabs/sway-libs/tree/master/libs/storagemapvec)
 
 ### Example
 
@@ -185,7 +185,7 @@ use sway_libs::nft::{
 
 Once imported, you can use the following basic functionality of the library in your smart contract:
 
-* Minting tokens
-* Transfering tokens
-* Retrieving owner of a token
-* Approving users to transfer a token
+- Minting tokens
+- Transfering tokens
+- Retrieving owner of a token
+- Approving users to transfer a token

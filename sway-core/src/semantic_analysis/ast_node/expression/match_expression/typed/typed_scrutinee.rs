@@ -88,12 +88,8 @@ fn type_check_variable(
                 }
             };
             ty::TyScrutinee {
-                variant: ty::TyScrutineeVariant::Constant(
-                    name,
-                    value,
-                    constant_decl.value.return_type,
-                ),
                 type_id: constant_decl.value.return_type,
+                variant: ty::TyScrutineeVariant::Constant(name, value, constant_decl),
                 span,
             }
         }
@@ -158,7 +154,7 @@ fn type_check_struct(
                 span,
             } => {
                 // ensure that the struct definition has this field
-                let _ = check!(
+                let struct_field = check!(
                     struct_decl.expect_field(&field),
                     return err(warnings, errors),
                     warnings,
@@ -178,6 +174,7 @@ fn type_check_struct(
                     field,
                     scrutinee: typed_scrutinee,
                     span,
+                    field_def_name: struct_field.name.clone(),
                 });
             }
         }
@@ -201,12 +198,13 @@ fn type_check_struct(
     }
 
     let typed_scrutinee = ty::TyScrutinee {
-        variant: ty::TyScrutineeVariant::StructScrutinee(
-            struct_decl.call_path.suffix.clone(),
-            typed_fields,
-        ),
         type_id: struct_decl.create_type_id(ctx.engines()),
         span,
+        variant: ty::TyScrutineeVariant::StructScrutinee {
+            struct_name,
+            decl_name: struct_decl.call_path.suffix,
+            fields: typed_fields,
+        },
     };
 
     ok(typed_scrutinee, warnings, errors)
@@ -287,7 +285,8 @@ fn type_check_enum(
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             call_path,
-            variant,
+            decl_name: enum_decl.call_path.suffix,
+            variant: Box::new(variant),
             value: Box::new(typed_value),
         },
         type_id: enum_type_id,

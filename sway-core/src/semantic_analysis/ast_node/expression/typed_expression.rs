@@ -70,7 +70,7 @@ impl ty::TyExpression {
             inner: MethodName::FromTrait {
                 call_path: call_path.clone(),
             },
-            type_arguments: vec![],
+            type_arguments: TypeArgs::Regular(vec![]),
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
@@ -112,7 +112,7 @@ impl ty::TyExpression {
                 selector: None,
                 type_binding: None,
             },
-            return_type,
+            return_type: return_type.type_id,
             span,
         };
         ok(exp, warnings, errors)
@@ -415,7 +415,7 @@ impl ty::TyExpression {
             Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
-                    return_type,
+                    type_ascription,
                     ..
                 } = check!(
                     CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
@@ -424,7 +424,7 @@ impl ty::TyExpression {
                     errors
                 );
                 ty::TyExpression {
-                    return_type,
+                    return_type: type_ascription.type_id,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -683,7 +683,12 @@ impl ty::TyExpression {
 
         // check to see if the match expression is exhaustive and if all match arms are reachable
         let (witness_report, arms_reachability) = check!(
-            check_match_expression_usefulness(engines, type_id, typed_scrutinees, span.clone()),
+            check_match_expression_usefulness(
+                engines,
+                type_id,
+                typed_scrutinees.clone(),
+                span.clone()
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -712,7 +717,16 @@ impl ty::TyExpression {
             errors
         );
 
-        ok(typed_if_exp, warnings, errors)
+        let match_exp = ty::TyExpression {
+            span: typed_if_exp.span.clone(),
+            return_type: typed_if_exp.return_type,
+            expression: ty::TyExpressionVariant::MatchExp {
+                desugared: Box::new(typed_if_exp),
+                scrutinees: typed_scrutinees,
+            },
+        };
+
+        ok(match_exp, warnings, errors)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1034,6 +1048,21 @@ impl ty::TyExpression {
             };
             type_check_method_application(ctx.by_ref(), method_name_binding, Vec::new(), args, span)
         } else {
+            let mut type_arguments = type_arguments;
+            if let TypeArgs::Regular(vec) = before.type_arguments {
+                if !vec.is_empty() {
+                    if !type_arguments.to_vec().is_empty() {
+                        return err(
+                            vec![],
+                            vec![
+                                ConvertParseTreeError::MultipleGenericsNotSupported { span }.into()
+                            ],
+                        );
+                    }
+                    type_arguments = TypeArgs::Prefix(vec)
+                }
+            }
+
             let call_path_binding = TypeBinding {
                 inner: CallPath {
                     prefixes: path,
@@ -1043,36 +1072,7 @@ impl ty::TyExpression {
                 type_arguments,
                 span: path_span,
             };
-            let mut res =
-                Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args));
-
-            // In case `before` has type args, this would be e.g., `foo::bar::<TyArgs>::baz(...)`.
-            // So, we would need, but don't have, parametric modules to apply arguments to.
-            // Emit an error and ignore the type args.
-            //
-            // TODO: This also bans `Enum::<TyArgs>::Variant` but there's no good reason to ban that.
-            // Instead, we should allow this but ban `Enum::Variant::<TyArgs>`, which Rust does allow,
-            // but shouldn't, because with GADTs, we could ostensibly have the equivalent of:
-            // ```haskell
-            // {-# LANGUAGE GADTs, RankNTypes #-}
-            // data Foo where Bar :: forall a. Show a => a -> Foo
-            // ```
-            // or to illustrate with Sway-ish syntax:
-            // ```rust
-            // enum Foo {
-            //     Bar<A: Debug>: A, // Let's ignore memory representation, etc.
-            // }
-            // ```
-            if !before.type_arguments.is_empty() {
-                res.errors.push(
-                    ConvertParseTreeError::GenericsNotSupportedHere {
-                        span: Span::join_all(before.type_arguments.iter().map(|t| t.span())),
-                    }
-                    .into(),
-                );
-            }
-
-            res
+            Self::type_check_delineated_path(ctx, call_path_binding, span, Some(args))
         }
     }
 
@@ -1131,6 +1131,7 @@ impl ty::TyExpression {
             let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
+
             let mut call_path_binding = TypeBinding {
                 inner: enum_call_path,
                 type_arguments: call_path_binding.type_arguments,
@@ -1180,6 +1181,15 @@ impl ty::TyExpression {
             (false, Some((decl_id, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
+                // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
+                if let TypeArgs::Prefix(_) = call_path_binding.type_arguments {
+                    errors.push(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: call_path_binding.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
                 check!(
                     instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
                     return err(warnings, errors),
@@ -1197,6 +1207,16 @@ impl ty::TyExpression {
             (false, None, None, Some((const_decl, call_path_binding))) => {
                 warnings.append(&mut const_probe_warnings);
                 errors.append(&mut const_probe_errors);
+                if !call_path_binding.type_arguments.to_vec().is_empty() {
+                    // In case `foo::bar::CONST::<TyArgs>` throw an error.
+                    // In case `foo::bar::<TyArgs>::CONST` throw an error.
+                    errors.push(
+                        ConvertParseTreeError::GenericsNotSupportedHere {
+                            span: unknown_call_path_binding.type_arguments.span(),
+                        }
+                        .into(),
+                    );
+                }
                 check!(
                     instantiate_constant_decl(const_decl, call_path_binding),
                     return err(warnings, errors),
@@ -1543,7 +1563,7 @@ impl ty::TyExpression {
                         is_absolute: true,
                     },
                 },
-                type_arguments: vec![],
+                type_arguments: TypeArgs::Regular(vec![]),
                 span: span.clone(),
             };
             type_check_method_application(ctx, method_name, vec![], vec![prefix, index], span)
