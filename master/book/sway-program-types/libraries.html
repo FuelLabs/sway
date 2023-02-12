@@ -204,7 +204,7 @@ dep constants;
 <p>with other libraries contained in the <code>src</code> folder, like the block library (inside of <code>block.sw</code>):</p>
 <pre><code class="language-sway">library block;
 
-// Implementation of the `block` library 
+// Implementation of the `block` library
 </code></pre>
 <p>The <code>dep</code> keyword in the main library includes a dependency on another library, making all of its items (such as functions and structs) accessible from the main library. The <code>dep</code> keyword simply makes the library a dependency and fully accessible within the current context.</p>
 <h2 id="using-libraries"><a class="header" href="#using-libraries">Using Libraries</a></h2>
@@ -267,12 +267,12 @@ external_library = { path = &quot;../external_library&quot; }
 <p>The repository <a href="https://github.com/FuelLabs/sway-libs/"><code>sway-libs</code></a> is a collection of external libraries that you can import and make use of in your Fuel applications. These libraries are meant to be learning references of common use-cases valuable for dapp development.</p>
 <p>Some Sway Libraries to try out:</p>
 <ul>
-<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/merkle_proof">Binary Merkle Proof</a></li>
-<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft">Non-Fungible Token</a></li>
-<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/string">String</a></li>
-<li><a href="https://github.com/FuelLabs/sway-libs/blob/master/sway_libs/src/signed_integers">Signed Integers</a></li>
-<li><a href="https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/fixed_point/ufp">Unsigned Fixed Point Number</a></li>
-<li><a href="https://github.com/mehtavishwa30/sway-libs/blob/master/sway_libs/src/storagemapvec">StorageMapVec</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/merkle_proof">Binary Merkle Proof</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/nft">Non-Fungible Token</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/string">String</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers">Signed Integers</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point">Unsigned Fixed Point Number</a></li>
+<li><a href="https://github.com/FuelLabs/sway-libs/tree/master/libs/storagemapvec">StorageMapVec</a></li>
 </ul>
 <h3 id="example"><a class="header" href="#example">Example</a></h3>
 <p>You can import and use a Sway Library such as the <a href="https://github.com/FuelLabs/sway-libs/tree/master/sway_libs/src/nft">NFT</a> library just like any other external library.</p>
