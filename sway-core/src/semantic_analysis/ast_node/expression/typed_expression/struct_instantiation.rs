@@ -34,6 +34,16 @@ pub(crate) fn struct_instantiation(
         span: inner_span,
     } = call_path_binding.clone();
 
+    if let TypeArgs::Prefix(_) = type_arguments {
+        errors.push(CompileError::DoesNotTakeTypeArgumentsAsPrefix {
+            name: suffix,
+            span: type_arguments.span(),
+        });
+        return err(warnings, errors);
+    }
+
+    let type_arguments = type_arguments.to_vec();
+
     let type_info = match (suffix.as_str(), type_arguments.is_empty()) {
         ("Self", true) => TypeInfo::SelfType,
         ("Self", false) => {
