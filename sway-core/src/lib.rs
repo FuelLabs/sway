@@ -31,9 +31,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_func_dce_pass,
-    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, create_mem2reg_pass,
-    create_simplify_cfg_pass, Context, Kind, Module, PassManager, PassManagerConfig,
+    register_known_passes, Context, Kind, Module, PassManager, PassManagerConfig,
+    CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_NONPREDICATE_NAME, INLINE_PREDICATE_NAME,
+    MEM2REG_NAME, SIMPLIFYCFG_NAME,
 };
 
 pub use semantic_analysis::namespace::{self, Namespace};
@@ -471,31 +471,25 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors.extend(e);
     }
 
-    // Initialize the pass manager and a config for it.
+    // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
+    register_known_passes(&mut pass_mgr);
+
+    // Create a configuration to specify which passes we want to run now.
     let mut pmgr_config = PassManagerConfig { to_run: vec![] };
-
-    // Register required passes.
-    let mem2reg = pass_mgr.register(create_mem2reg_pass());
-    let inline = if matches!(tree_type, TreeType::Predicate) {
-        pass_mgr.register(create_inline_in_predicate_pass())
-    } else {
-        pass_mgr.register(create_inline_in_non_predicate_pass())
-    };
-    let const_combine = pass_mgr.register(create_const_combine_pass());
-    let simplify_cfg = pass_mgr.register(create_simplify_cfg_pass());
-    let func_dce = pass_mgr.register(create_func_dce_pass());
-    let dce = pass_mgr.register(create_dce_pass());
-
     // Configure to run our passes.
-    pmgr_config.to_run.push(mem2reg.to_string());
-    pmgr_config.to_run.push(inline.to_string());
-    pmgr_config.to_run.push(const_combine.to_string());
-    pmgr_config.to_run.push(simplify_cfg.to_string());
-    pmgr_config.to_run.push(const_combine.to_string());
-    pmgr_config.to_run.push(simplify_cfg.to_string());
-    pmgr_config.to_run.push(func_dce.to_string());
-    pmgr_config.to_run.push(dce.to_string());
+    pmgr_config.to_run.push(MEM2REG_NAME);
+    if matches!(tree_type, TreeType::Predicate) {
+        pmgr_config.to_run.push(INLINE_PREDICATE_NAME);
+    } else {
+        pmgr_config.to_run.push(INLINE_NONPREDICATE_NAME);
+    }
+    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
+    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
+    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
+    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
+    pmgr_config.to_run.push(FUNC_DCE_NAME);
+    pmgr_config.to_run.push(DCE_NAME);
 
     // Run the passes.
     let res = CompileResult::with_handler(|handler| {

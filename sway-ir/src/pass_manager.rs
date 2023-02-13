@@ -1,8 +1,14 @@
-use crate::{Context, Function, IrError, Module};
+use crate::{
+    create_const_combine_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass,
+    create_func_dce_pass, create_inline_in_main_pass, create_inline_in_non_predicate_pass,
+    create_inline_in_predicate_pass, create_mem2reg_pass, create_postorder_pass,
+    create_simplify_cfg_pass, Context, Function, IrError, Module,
+};
 use downcast_rs::{impl_downcast, Downcast};
+use rustc_hash::FxHashMap;
 use std::{
     any::{type_name, TypeId},
-    collections::{hash_map, HashMap},
+    collections::hash_map,
 };
 
 /// Result of an analysis. Specific result must be downcasted to.
@@ -28,7 +34,7 @@ impl PassScope for Function {
 /// Is a pass an Analysis or a Transformation over the IR?
 pub enum PassMutability<S: PassScope> {
     /// An analysis pass, producing an analysis result.
-    Analysis(fn(&mut Context, analyses: &AnalysisResults, S) -> Result<AnalysisResult, IrError>),
+    Analysis(fn(&Context, analyses: &AnalysisResults, S) -> Result<AnalysisResult, IrError>),
     /// A pass over the IR that can possibly modify it.
     Transform(fn(&mut Context, analyses: &AnalysisResults, S) -> Result<bool, IrError>),
 }
@@ -39,9 +45,16 @@ pub enum ScopedPass {
     FunctionPass(PassMutability<Function>),
 }
 
+/// An analysis or transformation pass.
 pub struct Pass {
+    /// Pass identifier.
     pub name: &'static str,
+    /// A short description.
     pub descr: &'static str,
+    /// Other passes that this pass depends on.
+    pub deps: Vec<&'static str>,
+    /// The executor.
+    ///
     pub runner: ScopedPass,
 }
 
@@ -60,7 +73,8 @@ impl Pass {
 #[derive(Default)]
 pub struct AnalysisResults {
     // Hash from (AnalysisResultT, (PassScope, Scope Identity)) to an actual result.
-    results: HashMap<(TypeId, (TypeId, generational_arena::Index)), AnalysisResult>,
+    results: FxHashMap<(TypeId, (TypeId, generational_arena::Index)), AnalysisResult>,
+    name_typid_map: FxHashMap<&'static str, TypeId>,
 }
 
 impl AnalysisResults {
@@ -81,24 +95,51 @@ impl AnalysisResults {
                 )
             })
             .downcast_ref()
-            .unwrap()
+            .expect("AnalysisResult: Incorrect type")
+    }
+
+    /// Is an analysis result available at the given scope?
+    fn is_analysis_result_available<S: PassScope + 'static>(
+        &self,
+        name: &'static str,
+        scope: S,
+    ) -> bool {
+        self.name_typid_map
+            .get(name)
+            .map(|result_typeid| {
+                self.results
+                    .get(&(*result_typeid, (TypeId::of::<S>(), scope.get_arena_idx())))
+            })
+            .is_some()
     }
 
     /// Add a new result.
-    pub fn add_result<S: PassScope + 'static>(&mut self, scope: S, result: AnalysisResult) {
+    fn add_result<S: PassScope + 'static>(
+        &mut self,
+        name: &'static str,
+        scope: S,
+        result: AnalysisResult,
+    ) {
+        let result_typeid = (*result).type_id();
         self.results.insert(
-            (
-                (*result).type_id(),
-                (TypeId::of::<S>(), scope.get_arena_idx()),
-            ),
+            (result_typeid, (TypeId::of::<S>(), scope.get_arena_idx())),
             result,
         );
+        self.name_typid_map.insert(name, result_typeid);
+    }
+
+    /// Invalidate all results at a given scope.
+    fn invalidate_all_results_at_scope<S: PassScope + 'static>(&mut self, scope: S) {
+        self.results
+            .retain(|(_result_typeid, (scope_typeid, scope_idx)), _v| {
+                (*scope_typeid, *scope_idx) != (TypeId::of::<S>(), scope.get_arena_idx())
+            });
     }
 }
 
 #[derive(Default)]
 pub struct PassManager {
-    passes: HashMap<&'static str, Pass>,
+    passes: FxHashMap<&'static str, Pass>,
     analyses: AnalysisResults,
 }
 
@@ -120,17 +161,61 @@ impl PassManager {
     /// Run the passes specified in `config`.
     pub fn run(&mut self, ir: &mut Context, config: &PassManagerConfig) -> Result<bool, IrError> {
         let mut modified = false;
-        for pass in &config.to_run {
-            let pass_t = self.passes.get(pass.as_str()).expect("Unregistered pass");
+        let mut worklist: Vec<_> = config
+            .to_run
+            .iter()
+            .rev()
+            .map(|pass| self.passes.get(pass).expect("Unregistered pass"))
+            .collect();
+        while !worklist.is_empty() {
+            // We clone because worklist may be modified later.
+            let deps = worklist.last().unwrap().deps.clone();
+            let mut unresolved_dep = false;
+            // Check if all deps are satisfied
+            for dep in deps {
+                let dep_t = self.passes.get(dep).expect("Unregistered pass");
+                for m in ir.module_iter() {
+                    match &dep_t.runner {
+                        ScopedPass::ModulePass(_) => {
+                            if !self.analyses.is_analysis_result_available(dep_t.name, m) {
+                                unresolved_dep = true;
+                                worklist.push(dep_t);
+                            }
+                        }
+                        ScopedPass::FunctionPass(_) => {
+                            for f in m.function_iter(ir) {
+                                if !self.analyses.is_analysis_result_available(dep_t.name, f) {
+                                    unresolved_dep = true;
+                                    worklist.push(dep_t);
+                                    // If the analysis is unavailable for even one function,
+                                    // we add it to worklist. Adding it once is sufficient.
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if unresolved_dep {
+                // New deps added. Start over.
+                continue;
+            }
+            let pass_t = worklist.last().unwrap();
             for m in ir.module_iter() {
                 match &pass_t.runner {
                     ScopedPass::ModulePass(mp) => match mp {
                         PassMutability::Analysis(analysis) => {
                             let result = analysis(ir, &self.analyses, m)?;
-                            self.analyses.add_result(m, result);
+                            self.analyses.add_result(pass_t.name, m, result);
                         }
                         PassMutability::Transform(transform) => {
-                            modified |= transform(ir, &self.analyses, m)?;
+                            if transform(ir, &self.analyses, m)? {
+                                self.analyses.invalidate_all_results_at_scope(m);
+                                for f in m.function_iter(ir) {
+                                    self.analyses.invalidate_all_results_at_scope(f);
+                                }
+                                modified = true;
+                            }
                         }
                     },
                     ScopedPass::FunctionPass(fp) => {
@@ -138,23 +223,27 @@ impl PassManager {
                             match fp {
                                 PassMutability::Analysis(analysis) => {
                                     let result = analysis(ir, &self.analyses, f)?;
-                                    self.analyses.add_result(f, result);
+                                    self.analyses.add_result(pass_t.name, f, result);
                                 }
                                 PassMutability::Transform(transform) => {
-                                    modified |= transform(ir, &self.analyses, f)?;
+                                    if transform(ir, &self.analyses, f)? {
+                                        self.analyses.invalidate_all_results_at_scope(f);
+                                        modified = true;
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+            worklist.pop();
         }
         Ok(modified)
     }
 
-    /// Is `name` a registered pass?
-    pub fn is_registered(&self, name: &str) -> bool {
-        self.passes.contains_key(name)
+    /// Get reference to a registered pass.
+    pub fn lookup_registered_pass(&self, name: &str) -> Option<&Pass> {
+        self.passes.get(name)
     }
 
     pub fn help_text(&self) -> String {
@@ -171,5 +260,22 @@ impl PassManager {
 
 /// Configuration for the pass manager to run passes.
 pub struct PassManagerConfig {
-    pub to_run: Vec<String>,
+    pub to_run: Vec<&'static str>,
+}
+
+/// A convenience utility to register known passes.
+pub fn register_known_passes(pm: &mut PassManager) {
+    // Analysis passes.
+    pm.register(create_postorder_pass());
+    pm.register(create_dominators_pass());
+    pm.register(create_dom_fronts_pass());
+    // Optimization passes.
+    pm.register(create_mem2reg_pass());
+    pm.register(create_inline_in_predicate_pass());
+    pm.register(create_inline_in_non_predicate_pass());
+    pm.register(create_inline_in_main_pass());
+    pm.register(create_const_combine_pass());
+    pm.register(create_simplify_cfg_pass());
+    pm.register(create_func_dce_pass());
+    pm.register(create_dce_pass());
 }
