@@ -476,6 +476,23 @@ impl ContextType {
         }
     }
 }
+/// The actual context of the item displayed by [ItemContext].
+/// This uses [ContextType] to determine how to represent the context of an item.
+///
+/// Example:
+/// ```sw
+/// struct Foo {}
+/// trait Foo {
+///     fn foo() -> Foo;
+/// }
+/// ```
+/// Becomes:
+/// ```rust
+/// Context {
+///     module_info: ModuleInfo, /* cloned from item origin to create links */
+///     context_type: ContextType::RequiredMethods(Vec<TyTraitFn>), /* trait fn foo() stored here */
+/// }
+/// ```
 #[derive(Clone)]
 pub(crate) struct Context {
     module_info: ModuleInfo,
@@ -677,7 +694,7 @@ impl Renderable for Context {
     }
 }
 #[derive(Clone)]
-/// The context of an item that appears in the page [ItemBody].
+/// The context section of an item that appears in the page [ItemBody].
 pub(crate) struct ItemContext {
     pub(crate) context_opt: Option<Context>,
     // TODO: All other Implementation types, eg
