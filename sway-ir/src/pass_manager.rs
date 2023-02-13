@@ -106,7 +106,7 @@ impl AnalysisResults {
     ) -> bool {
         self.name_typid_map
             .get(name)
-            .map(|result_typeid| {
+            .and_then(|result_typeid| {
                 self.results
                     .get(&(*result_typeid, (TypeId::of::<S>(), scope.get_arena_idx())))
             })
