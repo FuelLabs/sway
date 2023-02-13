@@ -38,7 +38,11 @@ pub(crate) fn instantiate_enum(
 
     // Return an error if enum variant is of type unit and it is called with parenthesis.
     // args_opt.is_some() returns true when this variant was called with parenthesis.
-    if type_engine.get(enum_variant.initial_type_id).is_unit() && args_opt.is_some() {
+    if type_engine
+        .get(enum_variant.type_argument.initial_type_id)
+        .is_unit()
+        && args_opt.is_some()
+    {
         errors.push(CompileError::UnitVariantWithParenthesesEnumInstantiator {
             span: enum_variant_name.span(),
             ty: enum_variant.name.as_str().to_string(),
@@ -50,7 +54,10 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], type_engine.get(enum_variant.type_id)) {
+    match (
+        &args[..],
+        type_engine.get(enum_variant.type_argument.type_id),
+    ) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
                 return_type: enum_decl.create_type_id(engines),
@@ -84,7 +91,7 @@ pub(crate) fn instantiate_enum(
                 CompileResult::from(type_engine.unify_adt(
                     decl_engine,
                     typed_expr.return_type,
-                    enum_variant.type_id,
+                    enum_variant.type_argument.type_id,
                     span,
                     "Enum instantiator must match its declared variant type.",
                     None

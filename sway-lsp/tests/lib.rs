@@ -231,6 +231,39 @@ async fn definition_check_with_req_offset<'a>(
 }
 
 #[tokio::test]
+async fn go_to_definition_for_fields() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/fields/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut opt_go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 3,
+        req_char: 8,
+        def_line: 80,
+        def_start_char: 9,
+        def_end_char: 15,
+        def_path: "sway-lib-std/src/option.sw",
+    };
+    // Option
+    let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 3, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 7, 9, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 7, 16, &mut i).await;
+
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 12, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 19, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 34, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 47, &mut i).await;
+
+    shutdown_and_exit(&mut service).await;
+}
+
+#[tokio::test]
 async fn go_to_definition_inside_turbofish() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(

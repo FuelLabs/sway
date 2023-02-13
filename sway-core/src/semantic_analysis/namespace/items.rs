@@ -254,12 +254,12 @@ impl Items {
                     let field_type_opt = {
                         fields.iter().find_map(
                             |ty::TyStructField {
-                                 type_id: r#type,
+                                 type_argument,
                                  name,
                                  ..
                              }| {
                                 if name == field_name {
-                                    Some(r#type)
+                                    Some(type_argument.type_id)
                                 } else {
                                     None
                                 }
@@ -285,7 +285,7 @@ impl Items {
                         }
                     };
                     parent_rover = symbol;
-                    symbol = *field_type;
+                    symbol = field_type;
                     symbol_span = field_name.span().clone();
                     full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =

@@ -301,7 +301,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(ctx),
+                        variant.type_argument.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -348,7 +348,7 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
                 res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(ctx),
+                    variant.type_argument.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
