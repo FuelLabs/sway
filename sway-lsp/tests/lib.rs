@@ -596,6 +596,12 @@ async fn go_to_definition_for_paths() {
     // deep_mod
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 6, 6, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 27, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 28, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 29, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 30, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 32, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 16, &mut i).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,
@@ -609,6 +615,66 @@ async fn go_to_definition_for_paths() {
     // deeper_mod
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 6, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 27, 28, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 28, 28, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 29, 28, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 30, 28, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 32, 28, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 28, &mut i).await;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 27,
+        req_char: 38,
+        def_line: 4,
+        def_start_char: 9,
+        def_end_char: 17,
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+    };
+    // DeepEnum
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 28, 38, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 29, 38, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 30, 38, &mut i).await;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 32,
+        req_char: 37,
+        def_line: 9,
+        def_start_char: 11,
+        def_end_char: 21,
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+    };
+    // DeepStruct
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 33, 37, &mut i).await;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 27,
+        req_char: 48,
+        def_line: 5,
+        def_start_char: 4,
+        def_end_char: 11,
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+    };
+    // DeepEnum::Variant
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 28, 48, &mut i).await;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 29,
+        req_char: 48,
+        def_line: 6,
+        def_start_char: 4,
+        def_end_char: 10,
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
+    };
+    // DeepEnum::Number
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 30, 48, &mut i).await;
 
     let mut go_to = GotoDefinition {
         req_uri: &uri,

@@ -14,7 +14,6 @@ use sway_types::{Ident, Span, Spanned};
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
     enum_decl: ty::TyEnumDeclaration,
-    enum_name: Ident,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
     call_path_binding: TypeBinding<CallPath>,
@@ -66,7 +65,6 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    enum_instantiation_span: call_path_binding.inner.suffix.span(),
                     variant_instantiation_span: enum_variant_name.span(),
                     call_path_binding,
                 },
@@ -112,7 +110,6 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
                         call_path_binding,
                     },
