@@ -131,3 +131,31 @@ pub fn write_comments(
 
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_collect_newlines_after_comment_span() {
+        // Scenario: comments before module definition in a contract
+        let no_whitespace = collect_newlines_after_comment_span("contract;");
+        assert_eq!(no_whitespace, "");
+
+        // Sanity test: some text followed by no newlines must definitely be part of the comment anyway
+        let whitespace_no_newlines = collect_newlines_after_comment_span(" Whitespace");
+        assert_eq!(whitespace_no_newlines, "");
+
+        // Scenario: A comment, some indentations, a newline, followed by a function definition
+        let newline = collect_newlines_after_comment_span(
+            "           \n         fn main(foo: u64) -> bool {",
+        );
+        assert_eq!(newline, "\n");
+
+        // Scenario: After a comment there is another comment separated by newlines
+        let some_newlines = collect_newlines_after_comment_span(
+            "\n\n// This is the next comment after some newlines",
+        );
+        assert_eq!(some_newlines, "\n\n");
+    }
+}
