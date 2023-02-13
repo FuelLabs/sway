@@ -34,8 +34,12 @@ pub fn has_comments<I: Iterator>(comments: I) -> bool {
 }
 
 /// This function collects newlines to insert after the comment span to preserve them.
-pub fn collect_newlines_after_comment_span(unformatted_code: &str) -> String {
-    unformatted_code
+/// The given 'unformatted_code' should be
+pub fn collect_newlines_after_comment(
+    comments_context: &CommentsContext,
+    comment: &Comment,
+) -> String {
+    comments_context.unformatted_code()[comment.span().end()..]
         .chars()
         .take_while(|&c| c.is_whitespace())
         .filter(|&c| c == '\n')
@@ -84,9 +88,7 @@ pub fn write_comments(
         }
 
         while let Some(comment) = comments_iter.next() {
-            let newlines = collect_newlines_after_comment_span(
-                &formatter.comments_context.unformatted_code()[comment.span().end()..],
-            );
+            let newlines = collect_newlines_after_comment(&formatter.comments_context, comment);
 
             if formatted_code.trim_end().ends_with(&[']', ';']) {
                 match comment.comment_kind {
@@ -134,28 +136,87 @@ pub fn write_comments(
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::map::byte_span::ByteSpan;
+    use std::sync::Arc;
+
     use super::*;
 
+    /// For readability of the assertions, the comments written within these snippets will be the
+    /// ByteSpan representations instead of some random comment,
+    /// eg. the below '// 10-18' comment is representative of its start (10) and end (18) index
+    /// This way we have contextual knowledge of what the source code looks like when we
+    /// do 'comments_ctx.map.get(&ByteSpan { start: 10, end: 18 })'.
+    /// If more tests are to be added here, it is highly encouraged to follow this convention.
     #[test]
-    fn test_collect_newlines_after_comment_span() {
-        // Scenario: comments before module definition in a contract
-        let no_whitespace = collect_newlines_after_comment_span("contract;");
-        assert_eq!(no_whitespace, "");
-
-        // Sanity test: some text followed by no newlines must definitely be part of the comment anyway
-        let whitespace_no_newlines = collect_newlines_after_comment_span(" Whitespace");
-        assert_eq!(whitespace_no_newlines, "");
-
-        // Scenario: A comment, some indentations, a newline, followed by a function definition
-        let newline = collect_newlines_after_comment_span(
-            "           \n         fn main(foo: u64) -> bool {",
+    fn test_collect_newlines_after_comment() {
+        let commented_code = r#"contract;
+// 10-18
+pub fn main() -> bool {
+    true
+}
+"#;
+        let mut comments_ctx = CommentsContext::new(
+            CommentMap::from_src(Arc::from(commented_code)).unwrap(),
+            commented_code.to_string(),
         );
-        assert_eq!(newline, "\n");
-
-        // Scenario: After a comment there is another comment separated by newlines
-        let some_newlines = collect_newlines_after_comment_span(
-            "\n\n// This is the next comment after some newlines",
+        assert_eq!(
+            collect_newlines_after_comment(
+                &comments_ctx,
+                comments_ctx
+                    .map
+                    .get(&ByteSpan { start: 10, end: 18 })
+                    .unwrap(),
+            ),
+            "\n"
         );
-        assert_eq!(some_newlines, "\n\n");
+
+        let multiline_comment = r#"contract;
+pub fn main() -> bool {
+    // 38-46
+    // 51-59
+    true
+}
+"#;
+
+        comments_ctx = CommentsContext::new(
+            CommentMap::from_src(Arc::from(multiline_comment)).unwrap(),
+            multiline_comment.to_string(),
+        );
+
+        assert_eq!(
+            collect_newlines_after_comment(
+                &comments_ctx,
+                comments_ctx
+                    .map
+                    .get(&ByteSpan { start: 38, end: 46 })
+                    .unwrap(),
+            ),
+            "\n"
+        );
+
+        let multi_newline_comments = r#"contract;
+pub fn main() -> bool {
+    // 38-46
+
+    // 52-60
+    true
+}
+"#;
+
+        comments_ctx = CommentsContext::new(
+            CommentMap::from_src(Arc::from(multi_newline_comments)).unwrap(),
+            multi_newline_comments.to_string(),
+        );
+
+        assert_eq!(
+            collect_newlines_after_comment(
+                &comments_ctx,
+                comments_ctx
+                    .map
+                    .get(&ByteSpan { start: 38, end: 46 })
+                    .unwrap(),
+            ),
+            "\n\n"
+        );
     }
 }
