@@ -16,6 +16,7 @@ pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
 pub mod type_system;
+mod submodules;
 
 use crate::ir_generation::check_function_purity;
 use crate::language::parsed::TreeType;
@@ -35,6 +36,7 @@ use sway_ir::{
     create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, create_mem2reg_pass,
     create_simplify_cfg_pass, Context, Kind, Module, PassManager, PassManagerConfig,
 };
+use submodules::dependency_graph::SubmodulePlan;
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -266,6 +268,10 @@ pub fn parsed_to_ast(
         Some(types_metadata) => types_metadata,
         None => return deduped_err(warnings, errors),
     };
+
+    // Create submodule graph
+    let submodule_plan = SubmodulePlan::from_ty_program(&typed_program);
+    println!("submodule plan validity: {}", submodule_plan.check_validity());
 
     typed_program
         .logged_types
