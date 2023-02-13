@@ -71,12 +71,9 @@ impl TyStorageDeclaration {
             .enumerate()
             .find(|(_, TyStorageField { name, .. })| name == &first_field)
         {
-            Some((
-                ix,
-                TyStorageField {
-                    type_id: r#type, ..
-                },
-            )) => (StateIndex::new(ix), r#type),
+            Some((ix, TyStorageField { type_argument, .. })) => {
+                (StateIndex::new(ix), type_argument.type_id)
+            }
             None => {
                 errors.push(CompileError::StorageFieldDoesNotExist {
                     name: first_field.clone(),
@@ -88,7 +85,7 @@ impl TyStorageDeclaration {
 
         type_checked_buf.push(TyStorageAccessDescriptor {
             name: first_field.clone(),
-            type_id: *initial_field_type,
+            type_id: initial_field_type,
             span: first_field.span(),
         });
 
@@ -99,7 +96,7 @@ impl TyStorageDeclaration {
 
         // if the previously iterated type was a struct, put its fields here so we know that,
         // in the case of a subfield, we can type check the that the subfield exists and its type.
-        let mut available_struct_fields = update_available_struct_fields(*initial_field_type);
+        let mut available_struct_fields = update_available_struct_fields(initial_field_type);
 
         // get the initial field's type
         // make sure the next field exists in that type
@@ -111,10 +108,11 @@ impl TyStorageDeclaration {
                 Some(struct_field) => {
                     type_checked_buf.push(TyStorageAccessDescriptor {
                         name: field.clone(),
-                        type_id: struct_field.type_id,
+                        type_id: struct_field.type_argument.type_id,
                         span: field.span().clone(),
                     });
-                    available_struct_fields = update_available_struct_fields(struct_field.type_id);
+                    available_struct_fields =
+                        update_available_struct_fields(struct_field.type_argument.type_id);
                 }
                 None => {
                     let available_fields = available_struct_fields
@@ -153,17 +151,14 @@ impl TyStorageDeclaration {
             .map(
                 |TyStorageField {
                      ref name,
-                     type_id: ref r#type,
+                     ref type_argument,
                      ref span,
-                     ref initializer,
                      ref attributes,
                      ..
                  }| TyStructField {
                     name: name.clone(),
-                    type_id: *r#type,
-                    initial_type_id: *r#type,
                     span: span.clone(),
-                    type_span: initializer.span.clone(),
+                    type_argument: type_argument.clone(),
                     attributes: attributes.clone(),
                 },
             )
@@ -174,8 +169,7 @@ impl TyStorageDeclaration {
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
-    pub type_id: TypeId,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
@@ -184,11 +178,8 @@ pub struct TyStorageField {
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
         self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+            && self.type_argument.eq(&other.type_argument, engines)
             && self.initializer.eq(&other.initializer, engines)
     }
 }
@@ -197,17 +188,15 @@ impl HashWithEngines for TyStorageField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let TyStorageField {
             name,
-            type_id,
+            type_argument,
             initializer,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            type_span: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
+        type_argument.hash(state, engines);
         initializer.hash(state, engines);
     }
 }

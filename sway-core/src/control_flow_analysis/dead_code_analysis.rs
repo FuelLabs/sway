@@ -570,7 +570,7 @@ fn get_struct_type_info_from_type_id(
             }
             for var in variant_types.iter() {
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, var.type_id)
+                    get_struct_type_info_from_type_id(type_engine, var.type_argument.type_id)
                 {
                     return Ok(Some(type_info));
                 }

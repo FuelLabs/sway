@@ -286,7 +286,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.span.clone(), false),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
@@ -302,7 +307,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for variant in variants {
                 check!(
-                    check_type(engines, variant.type_id, variant.span.clone(), false),
+                    check_type(
+                        engines,
+                        variant.type_argument.type_id,
+                        variant.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
@@ -318,7 +328,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.name.span().clone(), true),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.name.span().clone(),
+                        true
+                    ),
                     continue,
                     warnings,
                     errors

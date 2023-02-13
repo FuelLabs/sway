@@ -1128,7 +1128,6 @@ impl ty::TyExpression {
         let mut enum_probe_errors = vec![];
         let maybe_enum = {
             let call_path_binding = unknown_call_path_binding.clone();
-            let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
 
@@ -1142,7 +1141,7 @@ impl ty::TyExpression {
                     unknown_decl.expect_enum(decl_engine, &call_path_binding.span())
                 })
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, enum_name, variant_name, call_path_binding))
+                .map(|enum_decl| (enum_decl, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1160,19 +1159,11 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, enum_name, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_decl, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(
-                        ctx,
-                        enum_decl,
-                        enum_name,
-                        variant_name,
-                        args,
-                        call_path_binding,
-                        &span
-                    ),
+                    instantiate_enum(ctx, enum_decl, variant_name, args, call_path_binding, &span),
                     return err(warnings, errors),
                     warnings,
                     errors

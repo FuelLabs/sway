@@ -322,7 +322,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&field.type_info, TypeInfo::Custom { call_path, ..} if call_path.suffix == item_struct.name),
+        |field| matches!(&engines.te().get(field.type_argument.type_id), TypeInfo::Custom { call_path, ..} if call_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -380,7 +380,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&variant.type_info, TypeInfo::Custom { call_path, ..} if call_path.suffix == item_enum.name)
+       matches!(&engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { call_path, ..} if call_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -853,13 +853,11 @@ fn type_field_to_struct_field(
     attributes: AttributesMap,
 ) -> Result<StructField, ErrorEmitted> {
     let span = type_field.span();
-    let type_span = type_field.ty.span();
     let struct_field = StructField {
         name: type_field.name,
         attributes,
-        type_info: ty_to_type_info(context, handler, engines, type_field.ty)?,
+        type_argument: ty_to_type_argument(context, handler, engines, type_field.ty)?,
         span,
-        type_span,
     };
     Ok(struct_field)
 }
@@ -958,17 +956,11 @@ fn type_field_to_enum_variant(
     tag: usize,
 ) -> Result<EnumVariant, ErrorEmitted> {
     let span = type_field.span();
-    let type_span = if let Ty::Path(path_type) = &type_field.ty {
-        path_type.prefix.name.span()
-    } else {
-        type_field.ty.span()
-    };
 
     let enum_variant = EnumVariant {
         name: type_field.name,
         attributes,
-        type_info: ty_to_type_info(context, handler, engines, type_field.ty)?,
-        type_span,
+        type_argument: ty_to_type_argument(context, handler, engines, type_field.ty)?,
         tag,
         span,
     };
@@ -2062,17 +2054,11 @@ fn storage_field_to_storage_field(
     storage_field: sway_ast::StorageField,
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
-    let type_info_span = if let Ty::Path(path_type) = &storage_field.ty {
-        path_type.prefix.name.span()
-    } else {
-        storage_field.ty.span()
-    };
     let span = storage_field.span();
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
-        type_info: ty_to_type_info(context, handler, engines, storage_field.ty)?,
-        type_info_span,
+        type_argument: ty_to_type_argument(context, handler, engines, storage_field.ty)?,
         span,
         initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
     };

@@ -857,7 +857,11 @@ pub(crate) fn are_equal_minus_dynamic_types(
                     true,
                     |acc, (left, right)| {
                         acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+                            && are_equal_minus_dynamic_types(
+                                engines,
+                                left.type_argument.type_id,
+                                right.type_argument.type_id,
+                            )
                     },
                 )
                 && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
@@ -886,7 +890,11 @@ pub(crate) fn are_equal_minus_dynamic_types(
                     .zip(r_fields.iter())
                     .fold(true, |acc, (left, right)| {
                         acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+                            && are_equal_minus_dynamic_types(
+                                engines,
+                                left.type_argument.type_id,
+                                right.type_argument.type_id,
+                            )
                     })
                 && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
                     true,
