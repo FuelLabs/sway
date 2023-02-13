@@ -1167,7 +1167,6 @@ async fn hover_docs_for_enums() {
     hover.req_char = 29;
     hover.documentation = " Docs for variants";
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
-
 }
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
