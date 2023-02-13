@@ -7,7 +7,7 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{fmt::Write, ops::Range};
+use std::fmt::Write;
 use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, Traits};
 use sway_types::Spanned;
 
@@ -62,8 +62,7 @@ impl Format for ItemTrait {
         let trait_items = self.trait_items.get();
 
         if trait_items.is_empty() {
-            let range: Range<usize> = self.trait_items.span().into();
-            write_comments(formatted_code, range, formatter)?;
+            write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
             for (fn_signature, semicolon_token) in trait_items {
                 // format `Annotated<FnSignature>`

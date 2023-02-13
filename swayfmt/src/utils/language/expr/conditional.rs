@@ -171,10 +171,7 @@ fn format_else_opt(
         IfExpr::close_curly_brace(&mut else_if_str, formatter)?;
         let comments_written = write_comments(
             &mut else_if_str,
-            Range {
-                start: if_expr.then_block.span().end(),
-                end: else_token.span().start(),
-            },
+            if_expr.then_block.span().end()..else_token.span().start(),
             formatter,
         )?;
 
