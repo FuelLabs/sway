@@ -203,13 +203,7 @@ impl<'a> ParsedTree<'a> {
                         Token::from_parsed(AstToken::StructField(field.clone()), SymbolKind::Field);
                     self.tokens.insert(to_ident_key(&field.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &field.type_info,
-                        Some(field.type_span.clone()),
-                        None,
-                    );
-
+                    self.collect_type_arg(&field.type_argument, &token);
                     field.attributes.parse(self.tokens);
                 }
 
@@ -246,12 +240,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens
                         .insert(to_ident_key(&variant.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &variant.type_info,
-                        Some(variant.type_span.clone()),
-                        Some(SymbolKind::Variant),
-                    );
+                    self.collect_type_arg(&variant.type_argument, &token);
                     variant.attributes.parse(self.tokens);
                 }
 
@@ -365,12 +354,7 @@ impl<'a> ParsedTree<'a> {
                     );
                     self.tokens.insert(to_ident_key(&field.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &field.type_info,
-                        Some(field.type_info_span.clone()),
-                        None,
-                    );
+                    self.collect_type_arg(&field.type_argument, &token);
                     self.handle_expression(&field.initializer);
 
                     field.attributes.parse(self.tokens);

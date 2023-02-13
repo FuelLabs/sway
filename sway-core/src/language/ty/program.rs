@@ -173,7 +173,7 @@ impl TyProgram {
                             decl_engine.get_storage(decl_id.clone(), &decl_id.span())
                         {
                             for field in storage_decl.fields.iter() {
-                                let type_info = ty_engine.get(field.type_id);
+                                let type_info = ty_engine.get(field.type_argument.type_id);
                                 let type_info_str = engines.help_out(&type_info).to_string();
                                 let raw_ptr_type = type_info
                                     .extract_nested_types(ty_engine, &field.span)
