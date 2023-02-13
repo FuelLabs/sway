@@ -422,7 +422,7 @@ pub(crate) async fn definition_check<'a>(
 pub(crate) async fn hover_request<'a>(
     service: &mut LspService<Backend>,
     hover_docs: &'a HoverDocumentation<'a>,
-    id: i64,
+    ids: &mut impl Iterator<Item = i64>,
 ) -> Request {
     let params = json!({
         "textDocument": {
@@ -433,7 +433,7 @@ pub(crate) async fn hover_request<'a>(
             "character": hover_docs.req_char
         }
     });
-    let hover = build_request_with_id("textDocument/hover", params, id);
+    let hover = build_request_with_id("textDocument/hover", params, ids.next().unwrap());
     let response = call_request(service, hover.clone()).await.unwrap().unwrap();
     let value = response.result().unwrap().clone();
     let hover_res: Hover = serde_json::from_value(value).unwrap();
