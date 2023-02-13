@@ -205,8 +205,10 @@ impl PassManager {
                 match &pass_t.runner {
                     ScopedPass::ModulePass(mp) => match mp {
                         PassMutability::Analysis(analysis) => {
-                            let result = analysis(ir, &self.analyses, m)?;
-                            self.analyses.add_result(pass_t.name, m, result);
+                            if !self.analyses.is_analysis_result_available(pass_t.name, m) {
+                                let result = analysis(ir, &self.analyses, m)?;
+                                self.analyses.add_result(pass_t.name, m, result);
+                            }
                         }
                         PassMutability::Transform(transform) => {
                             if transform(ir, &self.analyses, m)? {
@@ -222,8 +224,10 @@ impl PassManager {
                         for f in m.function_iter(ir) {
                             match fp {
                                 PassMutability::Analysis(analysis) => {
-                                    let result = analysis(ir, &self.analyses, f)?;
-                                    self.analyses.add_result(pass_t.name, f, result);
+                                    if !self.analyses.is_analysis_result_available(pass_t.name, f) {
+                                        let result = analysis(ir, &self.analyses, f)?;
+                                        self.analyses.add_result(pass_t.name, f, result);
+                                    }
                                 }
                                 PassMutability::Transform(transform) => {
                                     if transform(ir, &self.analyses, f)? {
