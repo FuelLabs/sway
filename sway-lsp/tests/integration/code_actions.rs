@@ -46,7 +46,7 @@ pub(crate) async fn code_action_abi_request(
               "changes": {
                 uri_string: [
                   {
-                    "newText": "\nimpl FooABI for Contract {\n    /// This is the `main` method on the `FooABI` abi\n    fn main() -> u64 {}\n}\n",
+                    "newText": "\nimpl FooABI for Contract {\n    fn main() -> u64 {}\n}\n",
                     "range": {
                       "end": {
                         "character": 0,
@@ -128,7 +128,7 @@ pub(crate) async fn code_action_struct_request(
               "changes": {
                   uri_string: [
                   {
-                    "newText": "\nimpl Data {\n\n    /// Struct holding:\n    ///\n    /// 1. A `value` of type `NumberOrString`\n    /// 2. An `address` of type `u64`\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n",
+                    "newText": "\nimpl Data {\n    fn new(value: NumberOrString, address: u64) -> Self { Self { value, address } }\n}\n",
                     "range": {
                       "end": {
                         "character": 0,

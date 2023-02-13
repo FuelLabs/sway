@@ -9,7 +9,11 @@ use crate::core::{
 pub use crate::error::DocumentError;
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{language::ty::TyDeclaration, transform::AttributesMap, Engines, TypeParameter};
+use sway_core::{
+    language::ty::TyDeclaration,
+    transform::{AttributeKind, AttributesMap},
+    Engines, TypeParameter,
+};
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
@@ -158,6 +162,34 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
         )
     }
 
+    /// Returns a [String] of a an attribute map, optionally excluding comments.
+    fn attribute_string(&self, attr_map: &AttributesMap, include_comments: bool) -> String {
+        let attr_string = attr_map
+            .iter()
+            .map(|(kind, attrs)| {
+                attrs
+                    .iter()
+                    .filter_map(|attr| match kind {
+                        AttributeKind::DocComment { .. } => {
+                            if include_comments {
+                                return Some(format!("{}{}", TAB, attr.span.as_str()));
+                            }
+                            None
+                        }
+                        _ => Some(format!("{}{}", TAB, attr.span.as_str())),
+                    })
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        let attribute_padding = match attr_string.len() > 1 {
+            true => "\n",
+            false => "",
+        };
+        format!("{attr_string}{attribute_padding}")
+    }
+
     /// Returns a [String] of a generated function signature.
     fn fn_signature_string(
         &self,
@@ -167,27 +199,13 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
         return_type_string: String,
         body: Option<String>,
     ) -> String {
-        let attribute_string = attr_map
-            .iter()
-            .map(|(_, attrs)| {
-                attrs
-                    .iter()
-                    .map(|attr| format!("{}{}", TAB, attr.span.as_str()))
-                    .collect::<Vec<String>>()
-                    .join("\n")
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        let attribute_padding = match attribute_string.len() > 1 {
-            true => "\n",
-            false => "",
-        };
+        let attribute_string = self.attribute_string(attr_map, false);
         let body_string = match body {
             Some(body) => format!(" {body} "),
             None => String::new(),
         };
         format!(
-            "{attribute_padding}{attribute_string}{attribute_padding}{TAB}fn {fn_name}({params_string}){return_type_string} {{{body_string}}}",
+            "{attribute_string}{TAB}fn {fn_name}({params_string}){return_type_string} {{{body_string}}}",
         )
     }
 }
