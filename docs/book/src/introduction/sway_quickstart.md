@@ -188,7 +188,7 @@ where `--url` parameter is the URL where your local node is hosted.
 This should produce some output in `stdout` that looks like this:
 
 ```console
-$ forc deploy --unsigned
+$ forc-deploy --unsigned
   Compiled library "core".
   Compiled library "std".
   Compiled contract "counter_contract".
