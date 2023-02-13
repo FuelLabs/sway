@@ -14,6 +14,7 @@ struct MyStruct<T, U> {
     z: (u64, Data),
     t: [Data; 5],
     j: (u32, (Data, [Data; 2])),
+    o: Option<Identity>,
 }
 
 struct Simple {

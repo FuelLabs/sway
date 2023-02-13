@@ -1007,12 +1007,13 @@ async fn go_to_definition_for_structs() {
     definition_check_with_req_offset(&mut service, &mut go_to, 14, 9, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 15, 16, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 15, 23, &mut i).await;
+    // TODO: check `o: Option<Identity>`
 
     // Call Path
-    go_to.def_line = 18;
+    go_to.def_line = 19;
     go_to.def_start_char = 7;
     go_to.def_end_char = 13;
-    definition_check_with_req_offset(&mut service, &mut go_to, 23, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 24, 16, &mut i).await;
 }
 
 #[tokio::test]
@@ -1166,6 +1167,7 @@ async fn hover_docs_for_enums() {
     hover.req_char = 29;
     hover.documentation = " Docs for variants";
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+
 }
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
