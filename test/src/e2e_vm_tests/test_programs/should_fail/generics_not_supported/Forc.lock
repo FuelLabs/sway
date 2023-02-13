@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-8ABF95223FABF6E4'
+
+[[package]]
+name = 'generics_not_supported'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-8ABF95223FABF6E4'
+dependencies = ['core']

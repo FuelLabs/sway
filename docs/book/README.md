@@ -21,10 +21,11 @@ cargo install --path ./scripts/mdbook-forc-documenter
 You must also install forc plugins that are already documented within the book. You can skip plugins that are going to be removed and install plugins that are going to be added to the book:
 
 ```sh
+cargo install --path ./forc-plugins/forc-client
+cargo install --path ./forc-plugins/forc-doc
+cargo install forc-explore
 cargo install --path ./forc-plugins/forc-fmt
 cargo install --path ./forc-plugins/forc-lsp
-cargo install forc-explore
-cargo install --path ./forc-plugins/forc-doc
 ```
 
 To build book:
