@@ -1633,7 +1633,9 @@ version = "0.35.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "clap 3.2.23",
+ "devault",
  "forc",
  "forc-pkg",
  "forc-tracing",
@@ -1649,6 +1651,7 @@ dependencies = [
  "futures",
  "hex",
  "serde",
+ "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",

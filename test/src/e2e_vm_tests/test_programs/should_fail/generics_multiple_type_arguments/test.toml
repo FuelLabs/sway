@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let e = lib_a::inner_lib::MyEnum::<u64>::VariantA::<u64>;
+# nextln: $()multiple generics are not supported

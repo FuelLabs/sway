@@ -260,6 +260,7 @@ impl Opts {
             time_phases: self.time_phases,
             tests: true,
             const_inject_map,
+            member_filter: Default::default(),
         }
     }
 

@@ -24,12 +24,8 @@ pub struct TyFunctionDeclaration {
     pub implementing_type: Option<TyDeclaration>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
-    pub return_type: TypeId,
-    pub initial_return_type: TypeId,
     pub type_parameters: Vec<TypeParameter>,
-    /// Used for error messages -- the span pointing to the return type
-    /// annotation of the function
-    pub return_type_span: Span,
+    pub return_type: TypeArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
     pub is_contract_call: bool,
@@ -39,13 +35,10 @@ pub struct TyFunctionDeclaration {
 impl EqWithEngines for TyFunctionDeclaration {}
 impl PartialEqWithEngines for TyFunctionDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
         self.name == other.name
             && self.body.eq(&other.body, engines)
             && self.parameters.eq(&other.parameters, engines)
-            && type_engine
-                .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+            && self.return_type.eq(&other.return_type, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
@@ -68,15 +61,12 @@ impl HashWithEngines for TyFunctionDeclaration {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            initial_return_type: _,
-            return_type_span: _,
             implementing_type: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
         body.hash(state, engines);
         parameters.hash(state, engines);
-        type_engine.get(*return_type).hash(state, engines);
+        return_type.hash(state, engines);
         type_parameters.hash(state, engines);
         visibility.hash(state);
         is_contract_call.hash(state);
@@ -151,13 +141,13 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         if self
             .parameters
             .iter()
-            .map(|param| type_engine.get(param.type_id))
+            .map(|param| type_engine.get(param.type_argument.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
             return true;
         }
         if type_engine
-            .get(self.return_type)
+            .get(self.return_type.type_id)
             .eq(&type_parameter_info, engines)
         {
             return true;
@@ -184,7 +174,7 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
             ));
         }
         body.append(&mut check!(
-            self.return_type.collect_types_metadata(ctx),
+            self.return_type.type_id.collect_types_metadata(ctx),
             return err(warnings, errors),
             warnings,
             errors
@@ -199,7 +189,7 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
         }
         for param in self.parameters.iter() {
             body.append(&mut check!(
-                param.type_id.collect_types_metadata(ctx),
+                param.type_argument.type_id.collect_types_metadata(ctx),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -216,22 +206,15 @@ impl TyFunctionDeclaration {
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(
-        decl: parsed::FunctionDeclaration,
-        engines: Engines<'_>,
-    ) -> TyFunctionDeclaration {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
+    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDeclaration {
         let parsed::FunctionDeclaration {
             name,
             return_type,
             span,
-            return_type_span,
             visibility,
             purity,
             ..
         } = decl;
-        let initial_return_type = type_engine.insert(decl_engine, return_type);
         TyFunctionDeclaration {
             purity,
             name,
@@ -242,11 +225,9 @@ impl TyFunctionDeclaration {
             span,
             attributes: Default::default(),
             is_contract_call: false,
-            return_type_span,
             parameters: Default::default(),
             visibility,
-            return_type: initial_return_type,
-            initial_return_type,
+            return_type,
             type_parameters: Default::default(),
         }
     }
@@ -256,7 +237,9 @@ impl TyFunctionDeclaration {
         if !self.parameters.is_empty() {
             self.parameters.iter().fold(
                 self.parameters[0].name.span(),
-                |acc, TyFunctionParameter { type_span, .. }| Span::join(acc, type_span.clone()),
+                |acc, TyFunctionParameter { type_argument, .. }| {
+                    Span::join(acc, type_argument.span.clone())
+                },
             )
         } else {
             self.name.span()
@@ -305,16 +288,12 @@ impl TyFunctionDeclaration {
         let named_params = self
             .parameters
             .iter()
-            .map(
-                |TyFunctionParameter {
-                     type_id, type_span, ..
-                 }| {
-                    type_engine
-                        .to_typeinfo(*type_id, type_span)
-                        .expect("unreachable I think?")
-                        .to_selector_name(type_engine, type_span)
-                },
-            )
+            .map(|TyFunctionParameter { type_argument, .. }| {
+                type_engine
+                    .to_typeinfo(type_argument.type_id, &type_argument.span)
+                    .expect("unreachable I think?")
+                    .to_selector_name(type_engine, &type_argument.span)
+            })
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
             .collect::<Vec<String>>();
 
@@ -365,19 +344,14 @@ pub struct TyFunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
 }
 
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
         self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+            && self.type_argument.eq(&other.type_argument, engines)
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
     }
@@ -389,16 +363,13 @@ impl HashWithEngines for TyFunctionParameter {
             name,
             is_reference,
             is_mutable,
-            type_id,
+            type_argument,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            type_span: _,
             mutability_span: _,
-            initial_type_id: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
+        type_argument.hash(state, engines);
         is_reference.hash(state);
         is_mutable.hash(state);
     }
@@ -406,13 +377,15 @@ impl HashWithEngines for TyFunctionParameter {
 
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+        self.type_argument.type_id.subst(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyFunctionParameter {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
+        self.type_argument
+            .type_id
+            .replace_self_type(engines, self_type);
     }
 }
 
@@ -431,11 +404,11 @@ pub struct TyFunctionSig {
 impl TyFunctionSig {
     pub fn from_fn_decl(fn_decl: &TyFunctionDeclaration) -> Self {
         Self {
-            return_type: fn_decl.return_type,
+            return_type: fn_decl.return_type.type_id,
             parameters: fn_decl
                 .parameters
                 .iter()
-                .map(|p| p.type_id)
+                .map(|p| p.type_argument.type_id)
                 .collect::<Vec<_>>(),
         }
     }

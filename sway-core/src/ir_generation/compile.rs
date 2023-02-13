@@ -389,8 +389,15 @@ fn convert_fn_param(
     context: &mut Context,
     param: &ty::TyFunctionParameter,
 ) -> Result<(String, Type, bool, Span), CompileError> {
-    convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span).map(|ty| {
-        let by_ref = param.is_reference && type_engine.get(param.type_id).is_copy_type();
+    convert_resolved_typeid(
+        type_engine,
+        context,
+        &param.type_argument.type_id,
+        &param.type_argument.span,
+    )
+    .map(|ty| {
+        let by_ref =
+            param.is_reference && type_engine.get(param.type_argument.type_id).is_copy_type();
         (param.name.as_str().into(), ty, by_ref, param.name.span())
     })
 }
@@ -416,7 +423,6 @@ fn compile_fn_with_args(
         name,
         body,
         return_type,
-        return_type_span,
         visibility,
         purity,
         span,
@@ -428,16 +434,21 @@ fn compile_fn_with_args(
         .map(|(name, ty, by_ref, span)| (name, ty, by_ref, md_mgr.span_to_md(context, &span)))
         .collect::<Vec<_>>();
 
-    let ret_type = convert_resolved_typeid(type_engine, context, return_type, return_type_span)?;
+    let ret_type = convert_resolved_typeid(
+        type_engine,
+        context,
+        &return_type.type_id,
+        &return_type.span,
+    )?;
 
-    let returns_by_ref = !is_entry && !type_engine.get(*return_type).is_copy_type();
+    let returns_by_ref = !is_entry && !type_engine.get(return_type.type_id).is_copy_type();
     if returns_by_ref {
         // Instead of 'returning' a by-ref value we make the last argument an 'out' parameter.
         args.push((
             "__ret_value".to_owned(),
             ret_type,
             true,
-            md_mgr.span_to_md(context, return_type_span),
+            md_mgr.span_to_md(context, &return_type.span),
         ));
     }
 
@@ -584,8 +595,13 @@ fn compile_abi_method(
         .parameters
         .iter()
         .map(|param| {
-            convert_resolved_typeid(type_engine, context, &param.type_id, &param.type_span)
-                .map(|ty| (param.name.as_str().into(), ty, false, param.name.span()))
+            convert_resolved_typeid(
+                type_engine,
+                context,
+                &param.type_argument.type_id,
+                &param.type_argument.span,
+            )
+            .map(|ty| (param.name.as_str().into(), ty, false, param.name.span()))
         })
         .collect::<Result<Vec<(String, Type, bool, Span)>, CompileError>>()?;
 

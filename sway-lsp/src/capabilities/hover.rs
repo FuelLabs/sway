@@ -131,7 +131,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
         .and_then(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDeclaration::VariableDeclaration(var_decl) => {
-                    let type_name = format!("{}", engines.help_out(var_decl.type_ascription));
+                    let type_name =
+                        format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -173,9 +174,10 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
             TypedAstToken::TypedFunctionDeclaration(func) => {
                 Some(extract_fn_signature(&func.span()))
             }
-            TypedAstToken::TypedFunctionParameter(param) => {
-                Some(format_name_with_type(param.name.as_str(), &param.type_id))
-            }
+            TypedAstToken::TypedFunctionParameter(param) => Some(format_name_with_type(
+                param.name.as_str(),
+                &param.type_argument.type_id,
+            )),
             TypedAstToken::TypedStructField(field) => {
                 Some(format_name_with_type(field.name.as_str(), &field.type_id))
             }

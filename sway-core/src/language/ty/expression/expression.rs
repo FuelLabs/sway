@@ -214,6 +214,12 @@ impl CollectTypesMetadata for TyExpression {
                     ));
                 }
             }
+            MatchExp { desugared, .. } => res.append(&mut check!(
+                desugared.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
             IfExp {
                 condition,
                 then,
@@ -469,6 +475,9 @@ impl DeterministicallyAborts for TyExpression {
                     .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
                     .unwrap_or(false)
             }),
+            MatchExp { desugared, .. } => {
+                desugared.deterministically_aborts(decl_engine, check_call_body)
+            }
             IfExp {
                 condition,
                 then,
