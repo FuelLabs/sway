@@ -51,8 +51,13 @@ fn main() {
 fn run() -> Result<()> {
     let app = App::parse();
 
+    let dir = match app.path.as_ref() {
+        Some(path) => PathBuf::from(path),
+        None => std::env::current_dir()?,
+    };
+
     if let Some(f) = app.file.as_ref() {
-        let mut formatter = Formatter::default();
+        let mut formatter = Formatter::from_dir(&dir)?;
         let file_path = &PathBuf::from(f);
 
         // If we're formatting a single file, find the nearest manifest if within a project.
@@ -69,11 +74,6 @@ fn run() -> Result<()> {
             "Provided file '{}' is not a valid Sway file",
             file_path.display()
         );
-    };
-
-    let dir = match app.path.as_ref() {
-        Some(path) => PathBuf::from(path),
-        None => std::env::current_dir()?,
     };
 
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
