@@ -108,7 +108,26 @@ impl Delimiter {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum CommentKind {
+    /// a newlined comment is a comment with a preceding newline before another token.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// pub fn main() -> bool {
+    ///
+    ///     // Newlined comment
+    ///     true
+    /// }
+    /// ```
     Newlined,
+
+    /// a trailing comment is a comment without a preceding newline before another token.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// var foo = 1; // Trailing comment
+    /// ```
     Trailing,
 }
 
