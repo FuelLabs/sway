@@ -115,7 +115,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: Ident,
+        call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
@@ -191,10 +191,10 @@ impl HashWithEngines for TypeInfo {
                 trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                name.hash(state);
+                call_path.hash(state);
                 type_arguments.as_deref().hash(state, engines);
             }
             TypeInfo::Storage { fields } => {
@@ -238,14 +238,17 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
-            ) => l_name == r_name && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines),
+            ) => {
+                l_name.suffix == r_name.suffix
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+            }
             (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
@@ -337,7 +340,9 @@ impl DisplayWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { call_path, .. } => {
+                format!("unresolved {}", call_path.suffix.as_str())
+            }
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -799,7 +804,7 @@ impl TypeInfo {
                 err(warnings, errors)
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments: other_type_arguments,
             } => {
                 if other_type_arguments.is_some() {
@@ -807,7 +812,7 @@ impl TypeInfo {
                     err(warnings, errors)
                 } else {
                     let type_info = TypeInfo::Custom {
-                        name,
+                        call_path,
                         type_arguments: Some(type_arguments),
                     };
                     ok(type_info, warnings, errors)
@@ -1374,11 +1379,11 @@ impl TypeInfo {
             }
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -1394,7 +1399,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(engines, &l_types, &r_types)
+                l_name.suffix == r_name.suffix && types_are_subset_of(engines, &l_types, &r_types)
             }
             (
                 Self::Enum {

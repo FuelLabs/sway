@@ -6,31 +6,37 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct TyScrutinee {
-    pub(crate) variant: TyScrutineeVariant,
-    pub(crate) type_id: TypeId,
-    pub(crate) span: Span,
+pub struct TyScrutinee {
+    pub variant: TyScrutineeVariant,
+    pub type_id: TypeId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TyScrutineeVariant {
+pub enum TyScrutineeVariant {
     CatchAll,
     Literal(Literal),
     Variable(Ident),
-    Constant(Ident, Literal, TypeId),
-    StructScrutinee(Ident, Vec<TyStructScrutineeField>),
+    Constant(Ident, Literal, TyConstantDeclaration),
+    StructScrutinee {
+        struct_name: Ident,
+        decl_name: Ident,
+        fields: Vec<TyStructScrutineeField>,
+    },
     #[allow(dead_code)]
     EnumScrutinee {
         call_path: CallPath,
-        variant: TyEnumVariant,
+        variant: Box<TyEnumVariant>,
+        decl_name: Ident,
         value: Box<TyScrutinee>,
     },
     Tuple(Vec<TyScrutinee>),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TyStructScrutineeField {
-    pub(crate) field: Ident,
-    pub(crate) scrutinee: Option<TyScrutinee>,
-    pub(crate) span: Span,
+pub struct TyStructScrutineeField {
+    pub field: Ident,
+    pub scrutinee: Option<TyScrutinee>,
+    pub span: Span,
+    pub field_def_name: Ident,
 }

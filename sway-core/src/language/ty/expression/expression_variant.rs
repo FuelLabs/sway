@@ -58,6 +58,10 @@ pub enum TyExpressionVariant {
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
+    MatchExp {
+        desugared: Box<TyExpression>,
+        scrutinees: Vec<TyScrutinee>,
+    },
     IfExp {
         condition: Box<TyExpression>,
         then: Box<TyExpression>,
@@ -444,6 +448,14 @@ impl HashWithEngines for TyExpressionVariant {
             Self::CodeBlock(contents) => {
                 contents.hash(state, engines);
             }
+            Self::MatchExp {
+                desugared,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                scrutinees: _,
+            } => {
+                desugared.hash(state, engines);
+            }
             Self::IfExp {
                 condition,
                 then,
@@ -597,6 +609,7 @@ impl SubstTypes for TyExpressionVariant {
                 block.subst(type_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -716,6 +729,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 block.replace_self_type(engines, self_type);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_self_type(engines, self_type),
             IfExp {
                 condition,
                 then,
@@ -830,6 +844,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 block.replace_decls(decl_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -913,7 +928,9 @@ impl DisplayWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),
-            TyExpressionVariant::IfExp { .. } => "if exp".into(),
+            TyExpressionVariant::MatchExp { .. } | TyExpressionVariant::IfExp { .. } => {
+                "if exp".into()
+            }
             TyExpressionVariant::AsmExpression { .. } => "inline asm".into(),
             TyExpressionVariant::AbiCast { abi_name, .. } => {
                 format!("abi cast {}", abi_name.suffix.as_str())
@@ -1025,6 +1042,9 @@ impl TyExpressionVariant {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match self {
+            TyExpressionVariant::MatchExp { desugared, .. } => {
+                desugared.expression.gather_return_statements()
+            }
             TyExpressionVariant::IfExp {
                 condition,
                 then,
