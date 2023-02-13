@@ -187,15 +187,15 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         }
     }
 
-    // Format subdirectories. Note that we do not call format on members directly here, since
+    // Format subdirectories. We do not call format on members directly here, since
     // in workspaces, it is perfectly valid to have subdirectories containing Sway files,
     // yet not be a member of the workspace.
     for sub_dir in get_sway_dirs(dir.to_path_buf()) {
-        // Here, we cannot simply call Formatter::from_dir() and rely on defaults
-        // if there is not swayfmt.toml in the sub directory because we still want
-        // to use the swayfmt.toml at the workspace root (if any).
-        // In order of priority: member > workspace > default.
-        if members.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
+        if sub_dir.contains(&sub_dir.join(constants::MANIFEST_FILE_NAME)) {
+            // Here, we cannot simply call Formatter::from_dir() and rely on defaults
+            // if there is no swayfmt.toml in the sub directory because we still want
+            // to use the swayfmt.toml at the workspace root (if any).
+            // In order of priority: member > workspace > default.
             formatter = Formatter::from_dir(&sub_dir)?;
         }
         format_pkg_at_dir(app, &sub_dir, &mut formatter)?;
