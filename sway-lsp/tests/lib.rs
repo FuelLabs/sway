@@ -960,7 +960,7 @@ async fn go_to_definition_for_functions() {
     go_to.def_end_char = 18;
     definition_check_with_req_offset(&mut service, &mut go_to, 33, 55, &mut i).await;
 
-    // Function parameter
+    // Function parameters
     go_to.def_line = 2;
     go_to.def_start_char = 7;
     go_to.def_end_char = 12;
