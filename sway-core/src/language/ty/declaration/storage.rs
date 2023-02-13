@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -14,6 +16,19 @@ impl EqWithEngines for TyStorageDeclaration {}
 impl PartialEqWithEngines for TyStorageDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    }
+}
+
+impl HashWithEngines for TyStorageDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageDeclaration {
+            fields,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        fields.hash(state, engines);
     }
 }
 
@@ -166,9 +181,6 @@ pub struct TyStorageField {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -178,5 +190,24 @@ impl PartialEqWithEngines for TyStorageField {
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
             && self.initializer.eq(&other.initializer, engines)
+    }
+}
+
+impl HashWithEngines for TyStorageField {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageField {
+            name,
+            type_id,
+            initializer,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+            type_span: _,
+        } = self;
+        let type_engine = engines.te();
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
+        initializer.hash(state, engines);
     }
 }

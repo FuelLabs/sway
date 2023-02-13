@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: $()let b = lib_a::inner_lib::<u64>::func();
+# nextln: $()generics are not supported here
+
+# check: $()let c = lib_a::inner_lib::C::<u32>;
+# nextln: $()generics are not supported here
+
+# check: $()let c = lib_a::inner_lib::<u32>::C;
+# nextln: $()generics are not supported here
+
+# check: $()let s = lib_a::inner_lib::<u32>::S2 {};
+# nextln: $()"S2" does not take type arguments as prefix.

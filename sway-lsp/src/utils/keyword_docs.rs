@@ -11,7 +11,7 @@ use syn::{parse_quote, ItemMod};
 /// Primarily used for showing documentation on LSP hover requests.
 /// Key = keyword
 /// Value = documentation
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KeywordDocs(HashMap<String, String>);
 
 impl KeywordDocs {

@@ -115,7 +115,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: Ident,
+        call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
@@ -144,55 +144,38 @@ pub enum TypeInfo {
     RawUntypedSlice,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeInfo {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        std::mem::discriminant(self).hash(state);
         match self {
             TypeInfo::Str(len) => {
-                state.write_u8(1);
                 len.hash(state);
             }
             TypeInfo::UnsignedInteger(bits) => {
-                state.write_u8(2);
                 bits.hash(state);
             }
-            TypeInfo::Numeric => {
-                state.write_u8(3);
-            }
-            TypeInfo::Boolean => {
-                state.write_u8(4);
-            }
             TypeInfo::Tuple(fields) => {
-                state.write_u8(5);
-                fields.hash(state, type_engine);
-            }
-            TypeInfo::B256 => {
-                state.write_u8(6);
+                fields.hash(state, engines);
             }
             TypeInfo::Enum {
                 call_path,
                 variant_types,
                 type_parameters,
             } => {
-                state.write_u8(7);
                 call_path.hash(state);
-                variant_types.hash(state, type_engine);
-                type_parameters.hash(state, type_engine);
+                variant_types.hash(state, engines);
+                type_parameters.hash(state, engines);
             }
             TypeInfo::Struct {
                 call_path,
                 fields,
                 type_parameters,
             } => {
-                state.write_u8(8);
                 call_path.hash(state);
-                fields.hash(state, type_engine);
-                type_parameters.hash(state, type_engine);
+                fields.hash(state, engines);
+                type_parameters.hash(state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
-                state.write_u8(9);
                 abi_name.hash(state);
                 let address = address
                     .as_ref()
@@ -200,72 +183,48 @@ impl HashWithEngines for TypeInfo {
                     .unwrap_or_default();
                 address.hash(state);
             }
-            TypeInfo::Contract => {
-                state.write_u8(10);
-            }
-            TypeInfo::ErrorRecovery => {
-                state.write_u8(11);
-            }
-            TypeInfo::Unknown => {
-                state.write_u8(12);
-            }
-            TypeInfo::SelfType => {
-                state.write_u8(13);
-            }
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints,
             } => {
-                state.write_u8(14);
                 name.hash(state);
-                trait_constraints.hash(state, type_engine);
+                trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                state.write_u8(15);
-                name.hash(state);
-                type_arguments.as_deref().hash(state, type_engine);
+                call_path.hash(state);
+                type_arguments.as_deref().hash(state, engines);
             }
             TypeInfo::Storage { fields } => {
-                state.write_u8(16);
-                fields.hash(state, type_engine);
+                fields.hash(state, engines);
             }
             TypeInfo::Array(elem_ty, count) => {
-                state.write_u8(17);
-                elem_ty.hash(state, type_engine);
+                elem_ty.hash(state, engines);
                 count.hash(state);
             }
-            TypeInfo::RawUntypedPtr => {
-                state.write_u8(18);
-            }
-            TypeInfo::RawUntypedSlice => {
-                state.write_u8(19);
-            }
             TypeInfo::Placeholder(ty) => {
-                state.write_u8(20);
-                ty.hash(state, type_engine);
+                ty.hash(state, engines);
             }
+            TypeInfo::Numeric
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::Contract
+            | TypeInfo::ErrorRecovery
+            | TypeInfo::Unknown
+            | TypeInfo::SelfType
+            | TypeInfo::RawUntypedPtr
+            | TypeInfo::RawUntypedSlice => {}
         }
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         match (self, other) {
-            (Self::Unknown, Self::Unknown)
-            | (Self::Boolean, Self::Boolean)
-            | (Self::SelfType, Self::SelfType)
-            | (Self::B256, Self::B256)
-            | (Self::Numeric, Self::Numeric)
-            | (Self::Contract, Self::Contract)
-            | (Self::ErrorRecovery, Self::ErrorRecovery) => true,
             (
                 Self::UnknownGeneric {
                     name: l,
@@ -279,14 +238,17 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
-            ) => l_name == r_name && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines),
+            ) => {
+                l_name.suffix == r_name.suffix
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+            }
             (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
@@ -351,9 +313,7 @@ impl PartialEqWithEngines for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
-            (TypeInfo::RawUntypedPtr, TypeInfo::RawUntypedPtr) => true,
-            (TypeInfo::RawUntypedSlice, TypeInfo::RawUntypedSlice) => true,
-            _ => false,
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
         }
     }
 }
@@ -380,7 +340,9 @@ impl DisplayWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { call_path, .. } => {
+                format!("unresolved {}", call_path.suffix.as_str())
+            }
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -842,7 +804,7 @@ impl TypeInfo {
                 err(warnings, errors)
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments: other_type_arguments,
             } => {
                 if other_type_arguments.is_some() {
@@ -850,7 +812,7 @@ impl TypeInfo {
                     err(warnings, errors)
                 } else {
                     let type_info = TypeInfo::Custom {
-                        name,
+                        call_path,
                         type_arguments: Some(type_arguments),
                     };
                     ok(type_info, warnings, errors)
@@ -1417,11 +1379,11 @@ impl TypeInfo {
             }
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -1437,7 +1399,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(engines, &l_types, &r_types)
+                l_name.suffix == r_name.suffix && types_are_subset_of(engines, &l_types, &r_types)
             }
             (
                 Self::Enum {

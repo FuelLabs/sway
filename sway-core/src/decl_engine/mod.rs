@@ -15,8 +15,13 @@ pub(crate) mod mapping;
 pub(crate) mod replace_decl_id;
 pub(crate) mod wrapper;
 
+use std::collections::BTreeMap;
+
 pub use engine::*;
 pub use id::*;
 pub(crate) use mapping::*;
 pub(crate) use replace_decl_id::*;
+use sway_types::Ident;
 pub(crate) use wrapper::*;
+
+pub(crate) type MethodMap = BTreeMap<Ident, DeclId>;

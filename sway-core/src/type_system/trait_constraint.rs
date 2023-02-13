@@ -19,9 +19,9 @@ pub struct TraitConstraint {
 }
 
 impl HashWithEngines for TraitConstraint {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         self.trait_name.hash(state);
-        self.type_arguments.hash(state, type_engine);
+        self.type_arguments.hash(state, engines);
     }
 }
 impl EqWithEngines for TraitConstraint {}

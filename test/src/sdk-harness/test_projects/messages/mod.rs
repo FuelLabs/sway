@@ -1,4 +1,4 @@
-use fuels::{prelude::*, types::core::Bits256};
+use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "TestMessagesContract",

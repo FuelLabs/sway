@@ -46,7 +46,7 @@ pub(crate) fn abi_impl_code_action(
 }
 
 fn get_param_string(param: &TyFunctionParameter) -> String {
-    format!("{}: {}", param.name, param.type_span.as_str())
+    format!("{}: {}", param.name, param.type_argument.span.as_str())
 }
 
 fn get_return_type_string(engines: Engines<'_>, function_decl: TyTraitFn) -> String {

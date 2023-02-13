@@ -156,15 +156,9 @@ impl TyProgram {
                 .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration(_)));
 
             if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
-                let TyStorageDeclaration { span, .. } = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), &decl_id.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span,
+                    span: decl_id.span(),
                 });
             }
         }
@@ -223,7 +217,7 @@ impl TyProgram {
                     });
                 }
                 let main_func = mains.remove(0);
-                match ty_engine.get(main_func.return_type) {
+                match ty_engine.get(main_func.return_type.type_id) {
                     TypeInfo::Boolean => (),
                     _ => errors.push(CompileError::PredicateMainDoesNotReturnBool(
                         main_func.span.clone(),
@@ -249,11 +243,11 @@ impl TyProgram {
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
                 let main_func = mains.remove(0);
-                let main_return_type_info = ty_engine.get(main_func.return_type);
+                let main_return_type_info = ty_engine.get(main_func.return_type.type_id);
                 let nested_types = check!(
                     main_return_type_info
                         .clone()
-                        .extract_nested_types(ty_engine, &main_func.return_type_span),
+                        .extract_nested_types(ty_engine, &main_func.return_type.span),
                     vec![],
                     warnings,
                     errors
@@ -263,7 +257,7 @@ impl TyProgram {
                     .any(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
                 {
                     errors.push(CompileError::PointerReturnNotAllowedInMain {
-                        span: main_func.return_type_span.clone(),
+                        span: main_func.return_type.span.clone(),
                     });
                 }
                 if !matches!(main_return_type_info, TypeInfo::RawUntypedSlice)
@@ -272,7 +266,7 @@ impl TyProgram {
                         .any(|ty| matches!(ty, TypeInfo::RawUntypedSlice))
                 {
                     errors.push(CompileError::NestedSliceReturnNotAllowedInMain {
-                        span: main_func.return_type_span.clone(),
+                        span: main_func.return_type.span.clone(),
                     });
                 }
                 TyProgramKind::Script {

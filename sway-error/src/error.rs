@@ -190,6 +190,8 @@ pub enum CompileError {
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("\"{name}\" does not take type arguments as prefix.")]
+    DoesNotTakeTypeArgumentsAsPrefix { name: Ident, span: Span },
     #[error("Type arguments are not allowed for this type.")]
     TypeArgumentsNotAllowed { span: Span },
     #[error("\"{name}\" needs type arguments.")]
@@ -772,6 +774,7 @@ impl Spanned for CompileError {
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
             StructNotFound { span, .. } => span.clone(),

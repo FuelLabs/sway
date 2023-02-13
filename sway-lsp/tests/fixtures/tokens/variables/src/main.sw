@@ -9,19 +9,14 @@ enum ExampleEnum {
 }
 
 // Function parameters
-fn example_function(variable: u32) -> u32 {
+fn example_function(variable: Result<Option<u32>, u32>) -> Result<Option<u32>, u32> {
     variable
-}
-
-enum Result<T, E> {
-    Ok: T,
-    Err: E,
 }
 
 fn main() {
     // Variable usage: Variable Declarations
     let variable1 = 10;
-    let variable2 = variable1;
+    let variable2 = Result::Err(variable1);
     let variable3 = false;
     let variable4 = "test";
 
@@ -49,10 +44,13 @@ fn main() {
     // Variable usage: If let scopes
     let x: Result<u64, u64> = Result::Ok::<u64, u64>(5u64);
     let variable3 = if let Result::Ok(y) = x { y + 10 } else { 1 };
-    
+
     // Variable usage: Shadowing
     let variable5 = variable3; 
 
     // Variable type ascriptions
     let variable6: ExampleEnum = ExampleEnum::Variants(101);
+
+    // Complex type ascriptions
+    let variable7: Result<Option<u32>, u32> = variable2;
 }

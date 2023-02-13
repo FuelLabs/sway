@@ -74,8 +74,67 @@ use super::{TypeArgument, TypeId};
 #[derive(Debug, Clone)]
 pub struct TypeBinding<T> {
     pub inner: T,
-    pub type_arguments: Vec<TypeArgument>,
+    pub type_arguments: TypeArgs,
     pub span: Span,
+}
+
+/// A [TypeArgs] contains a `Vec<TypeArgument>` either in the variant `Regular`
+/// or in the variant `Prefix`.
+///
+/// `Regular` variant indicates the type arguments are located after the suffix.
+/// `Prefix` variant indicates the type arguments are located between the last
+/// prefix and the suffix.
+///
+/// In the case of an enum we can have either the type parameters in the `Regular`
+/// variant, case of:
+/// ```ignore
+/// let z = Option::Some::<u32>(10);
+/// ```
+/// Or the enum can have the type parameters in the `Prefix` variant, case of:
+/// ```ignore
+/// let z = Option::<u32>::Some(10);
+/// ```
+/// So we can have type parameters in the `Prefix` or `Regular` variant but not
+/// in both.
+#[derive(Debug, Clone)]
+pub enum TypeArgs {
+    /// `Regular` variant indicates the type arguments are located after the suffix.
+    Regular(Vec<TypeArgument>),
+    /// `Prefix` variant indicates the type arguments are located between the last
+    /// prefix and the suffix.
+    Prefix(Vec<TypeArgument>),
+}
+
+impl TypeArgs {
+    pub fn to_vec(&self) -> Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec.to_vec(),
+            TypeArgs::Prefix(vec) => vec.to_vec(),
+        }
+    }
+
+    pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
+        match self {
+            TypeArgs::Regular(vec) => vec,
+            TypeArgs::Prefix(vec) => vec,
+        }
+    }
+}
+
+impl Spanned for TypeArgs {
+    fn span(&self) -> Span {
+        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+    }
+}
+
+impl PartialEqWithEngines for TypeArgs {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        match (self, other) {
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
+            _ => false,
+        }
+    }
 }
 
 impl<T> Spanned for TypeBinding<T> {
@@ -84,9 +143,6 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for TypeBinding<()> {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
@@ -128,7 +184,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 
         // create the type info object
         let type_info = check!(
-            type_info.apply_type_arguments(self.type_arguments.clone(), &type_info_span),
+            type_info.apply_type_arguments(self.type_arguments.to_vec(), &type_info_span),
             return err(warnings, errors),
             warnings,
             errors
@@ -172,7 +228,7 @@ impl TypeBinding<CallPath> {
         );
 
         // replace the self types inside of the type arguments
-        for type_argument in self.type_arguments.iter_mut() {
+        for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
             check!(
                 ctx.resolve_type_with_self(
                     type_argument.type_id,
@@ -206,17 +262,19 @@ impl TypeBinding<CallPath> {
                 );
 
                 // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        &mut self.type_arguments,
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                if let TypeArgs::Regular(_) = self.type_arguments {
+                    check!(
+                        ctx.monomorphize(
+                            &mut new_copy,
+                            self.type_arguments.to_vec_mut(),
+                            EnforceTypeArguments::No,
+                            &self.span
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                }
 
                 // insert the new copy into the declaration engine
                 let new_id = ctx
@@ -239,7 +297,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),
@@ -272,7 +330,7 @@ impl TypeBinding<CallPath> {
                 check!(
                     ctx.monomorphize(
                         &mut new_copy,
-                        &mut self.type_arguments,
+                        self.type_arguments.to_vec_mut(),
                         EnforceTypeArguments::No,
                         &self.span
                     ),

@@ -177,7 +177,7 @@ impl ReplaceSelfType for TypeId {
                     }
                 }
                 TypeInfo::Custom {
-                    name,
+                    call_path,
                     type_arguments,
                 } => {
                     let mut need_to_create_new = false;
@@ -198,7 +198,7 @@ impl ReplaceSelfType for TypeId {
                         Some(type_engine.insert(
                             decl_engine,
                             TypeInfo::Custom {
-                                name,
+                                call_path,
                                 type_arguments,
                             },
                         ))
@@ -307,19 +307,19 @@ impl TypeId {
     ) -> bool {
         match (type_engine.get(self), type_engine.get(resolved_type_id)) {
             (
-                TypeInfo::Custom { name, .. },
+                TypeInfo::Custom { call_path, .. },
                 TypeInfo::Enum {
                     call_path: enum_call_path,
                     ..
                 },
-            ) => name != enum_call_path.suffix,
+            ) => call_path.suffix != enum_call_path.suffix,
             (
-                TypeInfo::Custom { name, .. },
+                TypeInfo::Custom { call_path, .. },
                 TypeInfo::Struct {
                     call_path: struct_call_path,
                     ..
                 },
-            ) => name != struct_call_path.suffix,
+            ) => call_path.suffix != struct_call_path.suffix,
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

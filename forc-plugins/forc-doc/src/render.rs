@@ -599,7 +599,7 @@ impl Renderable for Context {
                                 fn_sig,
                                 "{} {},",
                                 param.name.as_str(),
-                                param.type_span.as_str()
+                                param.type_argument.span.as_str()
                             )?;
                         }
                     }
@@ -621,7 +621,7 @@ impl Renderable for Context {
                                             br;
                                             : "    ";
                                             @ if param.is_reference {
-                                                : "&";
+                                                : "ref";
                                             }
                                             @ if param.is_mutable {
                                                 : "mut ";
@@ -631,7 +631,7 @@ impl Renderable for Context {
                                             } else {
                                                 : param.name.as_str();
                                                 : ": ";
-                                                : param.type_span.as_str();
+                                                : param.type_argument.span.as_str();
                                                 : ","
                                             }
                                         }
@@ -640,7 +640,7 @@ impl Renderable for Context {
                                     } else {
                                         @ for param in &method.parameters {
                                             @ if param.is_reference {
-                                                : "&";
+                                                : "ref";
                                             }
                                             @ if param.is_mutable {
                                                 : "mut ";
@@ -650,7 +650,7 @@ impl Renderable for Context {
                                             } else {
                                                 : param.name.as_str();
                                                 : ": ";
-                                                : param.type_span.as_str();
+                                                : param.type_argument.span.as_str();
                                             }
                                             @ if param.name.as_str()
                                                 != method.parameters.last()
@@ -886,8 +886,8 @@ fn render_type_anchor(
                 Err(anyhow!("Deferred AbiName is unhandled"))
             }
         }
-        TypeInfo::Custom { name, .. } => Ok(box_html! {
-            : name.as_str();
+        TypeInfo::Custom { call_path, .. } => Ok(box_html! {
+            : call_path.suffix.as_str();
         }),
         TypeInfo::SelfType => Ok(box_html! {
             : "Self";
