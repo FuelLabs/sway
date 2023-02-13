@@ -331,26 +331,21 @@ impl ty::TyDeclaration {
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
                     name,
-                    type_info,
                     initializer,
-                    type_info_span,
+                    mut type_argument,
                     attributes,
                     span: field_span,
                     ..
                 } in fields
                 {
-                    let type_id = check!(
-                        ctx.resolve_type_without_self(
-                            type_engine.insert(decl_engine, type_info),
-                            &name.span(),
-                            None
-                        ),
+                    type_argument.type_id = check!(
+                        ctx.resolve_type_without_self(type_argument.type_id, &name.span(), None),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
 
-                    let mut ctx = ctx.by_ref().with_type_annotation(type_id);
+                    let mut ctx = ctx.by_ref().with_type_annotation(type_argument.type_id);
                     let initializer = check!(
                         ty::TyExpression::type_check(ctx.by_ref(), initializer),
                         return err(warnings, errors),
@@ -360,8 +355,7 @@ impl ty::TyDeclaration {
 
                     fields_buf.push(ty::TyStorageField {
                         name,
-                        type_id,
-                        type_span: type_info_span,
+                        type_argument,
                         initializer,
                         span: field_span,
                         attributes,

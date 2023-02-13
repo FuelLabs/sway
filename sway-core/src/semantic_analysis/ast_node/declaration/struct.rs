@@ -81,11 +81,12 @@ impl ty::TyStructField {
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let initial_type_id = type_engine.insert(decl_engine, field.type_info);
-        let r#type = check!(
+
+        let mut type_argument = field.type_argument;
+        type_argument.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
-                &field.type_span,
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -95,10 +96,8 @@ impl ty::TyStructField {
         );
         let field = ty::TyStructField {
             name: field.name,
-            type_id: r#type,
-            initial_type_id,
             span: field.span,
-            type_span: field.type_span,
+            type_argument,
             attributes: field.attributes,
         };
         ok(field, warnings, errors)

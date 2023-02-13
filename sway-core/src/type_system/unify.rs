@@ -362,7 +362,7 @@ impl<'a> Unifier<'a> {
                     &rf.span
                 };
                 append!(
-                    self.unify(rf.type_id, ef.type_id, new_span),
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );
@@ -411,7 +411,7 @@ impl<'a> Unifier<'a> {
                     &rv.span
                 };
                 append!(
-                    self.unify(rv.type_id, ev.type_id, new_span),
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );
