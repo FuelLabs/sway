@@ -63,7 +63,7 @@ impl AbiImplCodeAction<'_> {
     fn fn_signatures_string(&self) -> String {
         let decl_engine = self.engines.de();
         format!(
-            "{}\n",
+            "\n{}\n",
             self.decl
                 .interface_surface
                 .iter()
@@ -89,7 +89,7 @@ impl AbiImplCodeAction<'_> {
     fn params_string(&self, params: &[TyFunctionParameter]) -> String {
         params
             .iter()
-            .map(|param| format!("{}: {}", param.name, param.type_span.as_str()))
+            .map(|param| format!("{}: {}", param.name, param.type_argument.span.as_str()))
             .collect::<Vec<String>>()
             .join(", ")
     }

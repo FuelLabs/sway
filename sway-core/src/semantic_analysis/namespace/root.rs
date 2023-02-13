@@ -1,6 +1,10 @@
+use sway_error::error::CompileError;
+use sway_types::Spanned;
+
 use crate::{
-    language::{ty, CallPath},
-    CompileResult, Ident,
+    error::*,
+    language::{ty, CallPath, Visibility},
+    CompileResult, Engines, Ident,
 };
 
 use super::{module::Module, namespace::Namespace, Path};
@@ -34,6 +38,51 @@ impl Root {
             .cloned()
             .collect();
         self.resolve_symbol(&symbol_path, &call_path.suffix)
+    }
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    ///
+    /// When `call_path` contains prefixes and the resolved declaration visibility is not public
+    /// an error is thrown.
+    pub(crate) fn resolve_call_path_with_visibility_check(
+        &self,
+        engines: Engines<'_>,
+        mod_path: &Path,
+        call_path: &CallPath,
+    ) -> CompileResult<&ty::TyDeclaration> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let result = self.resolve_call_path(mod_path, call_path);
+
+        // In case there are no prefixes we don't need to check visibility
+        if call_path.prefixes.is_empty() {
+            return result;
+        }
+
+        if let CompileResult {
+            value: Some(decl), ..
+        } = result
+        {
+            let visibility = check!(
+                decl.visibility(engines.de()),
+                return err(warnings, errors),
+                warnings,
+                errors
+            );
+            if visibility != Visibility::Public {
+                errors.push(CompileError::ImportPrivateSymbol {
+                    name: call_path.suffix.clone(),
+                    span: call_path.suffix.span(),
+                });
+                return err(warnings, errors);
+            }
+        }
+
+        result
     }
 
     /// Given a path to a module and the identifier of a symbol within that module, resolve its

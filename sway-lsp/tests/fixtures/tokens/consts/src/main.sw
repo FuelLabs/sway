@@ -9,6 +9,7 @@ const CONSTANT_1 = 100;
 const CONSTANT_2: u32 = 200;
 const BASE_TOKEN = ContractId::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599e33fc64dcdc30c);
 const MY_DATA: Data = Data::B(Value {a: 100});
+const EXAMPLE: Option<Option<u32>> = Option::None;
 
 struct Point {
     x: u64,

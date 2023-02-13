@@ -115,7 +115,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: Ident,
+        call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
@@ -191,10 +191,10 @@ impl HashWithEngines for TypeInfo {
                 trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                name.hash(state);
+                call_path.hash(state);
                 type_arguments.as_deref().hash(state, engines);
             }
             TypeInfo::Storage { fields } => {
@@ -238,14 +238,17 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
-            ) => l_name == r_name && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines),
+            ) => {
+                l_name.suffix == r_name.suffix
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+            }
             (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
@@ -337,7 +340,9 @@ impl DisplayWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { call_path, .. } => {
+                format!("unresolved {}", call_path.suffix.as_str())
+            }
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -430,6 +435,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .iter()
                     .map(|variant| {
                         variant
+                            .type_argument
                             .type_id
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
@@ -453,6 +459,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .iter()
                     .map(|field| {
                         field
+                            .type_argument
                             .type_id
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
@@ -552,7 +559,9 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|ty| {
-                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                            {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -605,7 +614,9 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                            {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -682,10 +693,10 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
                 .iter()
-                .all(|variant_type| id_uninhabited(variant_type.type_id)),
-            TypeInfo::Struct { fields, .. } => {
-                fields.iter().any(|field| id_uninhabited(field.type_id))
-            }
+                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id)),
+            TypeInfo::Struct { fields, .. } => fields
+                .iter()
+                .any(|field| id_uninhabited(field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
@@ -699,7 +710,7 @@ impl TypeInfo {
             TypeInfo::Enum { variant_types, .. } => {
                 let mut found_unit_variant = false;
                 for variant_type in variant_types {
-                    let type_info = type_engine.get(variant_type.type_id);
+                    let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         continue;
                     }
@@ -714,7 +725,7 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let type_info = type_engine.get(field.type_id);
+                    let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         return true;
                     }
@@ -799,7 +810,7 @@ impl TypeInfo {
                 err(warnings, errors)
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments: other_type_arguments,
             } => {
                 if other_type_arguments.is_some() {
@@ -807,7 +818,7 @@ impl TypeInfo {
                     err(warnings, errors)
                 } else {
                     let type_info = TypeInfo::Custom {
-                        name,
+                        call_path,
                         type_arguments: Some(type_arguments),
                     };
                     ok(type_info, warnings, errors)
@@ -858,7 +869,7 @@ impl TypeInfo {
                     for variant in variant_types.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(variant.type_id)
+                                .get(variant.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -879,7 +890,7 @@ impl TypeInfo {
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(field.type_id)
+                                .get(field.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -915,7 +926,7 @@ impl TypeInfo {
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(field.type_id)
+                                .get(field.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -951,7 +962,7 @@ impl TypeInfo {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for variant in variant_types.iter() {
-                    inner_types.extend(helper(variant.type_id));
+                    inner_types.extend(helper(variant.type_argument.type_id));
                 }
             }
             TypeInfo::Struct {
@@ -963,7 +974,7 @@ impl TypeInfo {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for field in fields.iter() {
-                    inner_types.extend(helper(field.type_id));
+                    inner_types.extend(helper(field.type_argument.type_id));
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
@@ -983,7 +994,7 @@ impl TypeInfo {
             }
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
-                    inner_types.extend(helper(field.type_id));
+                    inner_types.extend(helper(field.type_argument.type_id));
                 }
             }
             TypeInfo::Unknown
@@ -1113,7 +1124,7 @@ impl TypeInfo {
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(variant_type.type_id)
+                            .get(variant_type.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1141,7 +1152,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1178,7 +1189,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1374,11 +1385,11 @@ impl TypeInfo {
             }
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -1394,7 +1405,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(engines, &l_types, &r_types)
+                l_name.suffix == r_name.suffix && types_are_subset_of(engines, &l_types, &r_types)
             }
             (
                 Self::Enum {
@@ -1520,7 +1531,7 @@ impl TypeInfo {
                 } else {
                     check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .apply_subfields(engines, rest, span),
                         return err(warnings, errors),
                         warnings,

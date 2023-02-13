@@ -24,6 +24,7 @@ impl ty::TyIntrinsicFunctionKind {
             type_arguments,
             ..
         } = kind_binding;
+        let type_arguments = type_arguments.to_vec();
         match kind {
             Intrinsic::SizeOfVal => {
                 type_check_size_of_val(ctx, kind, arguments, type_arguments, span)

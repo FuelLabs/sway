@@ -103,16 +103,11 @@ impl<'a> TypedTree<'a> {
                     .try_get_mut(&to_ident_key(&variable.name))
                     .try_unwrap()
                 {
-                    token.typed = Some(typed_token.clone());
+                    token.typed = Some(typed_token);
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
-                if let Some(type_ascription_span) = &variable.type_ascription_span {
-                    self.collect_type_id(
-                        variable.type_ascription,
-                        &typed_token,
-                        type_ascription_span.clone(),
-                    );
-                }
+
+                self.collect_type_argument(&variable.type_ascription);
 
                 self.handle_expression(&variable.body, namespace);
             }
@@ -127,17 +122,7 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                     }
 
-                    if let Some(type_ascription_span) = &const_decl.type_ascription_span {
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&Ident::new(type_ascription_span.clone())))
-                            .try_unwrap()
-                        {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(const_decl.return_type));
-                        }
-                    };
+                    self.collect_type_argument(&const_decl.type_ascription);
                     self.handle_expression(&const_decl.value, namespace);
                 }
             }
@@ -335,17 +320,11 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+                            token.type_def =
+                                Some(TypeDefinition::TypeId(field.type_argument.type_id));
                         }
 
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&Ident::new(field.type_span.clone())))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(field.type_id));
-                        }
+                        self.collect_type_argument(&field.type_argument);
 
                         self.handle_expression(&field.initializer, namespace);
                     }
@@ -451,7 +430,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
-                    for type_arg in &type_binding.type_arguments {
+                    for type_arg in &type_binding.type_arguments.to_vec() {
                         self.collect_type_argument(type_arg);
                     }
                 }
@@ -567,20 +546,19 @@ impl<'a> TypedTree<'a> {
             }
             ty::TyExpressionVariant::StructExpression {
                 fields,
-                span,
                 call_path_binding,
                 ..
             } => {
                 if let Some(mut token) = self
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                     token.type_def = Some(TypeDefinition::TypeId(expression.return_type));
                 }
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_argument(type_arg);
                 }
 
@@ -679,14 +657,13 @@ impl<'a> TypedTree<'a> {
                 variant_name,
                 variant_instantiation_span,
                 enum_decl,
-                enum_instantiation_span,
                 contents,
                 call_path_binding,
                 ..
             } => {
                 if let Some(mut token) = self
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
@@ -694,7 +671,7 @@ impl<'a> TypedTree<'a> {
                         Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
                 }
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_argument(type_arg);
                 }
 
@@ -1014,11 +991,11 @@ impl<'a> TypedTree<'a> {
             .try_get_mut(&to_ident_key(&param.name))
             .try_unwrap()
         {
-            token.typed = Some(typed_token.clone());
-            token.type_def = Some(TypeDefinition::TypeId(param.type_id));
+            token.typed = Some(typed_token);
+            token.type_def = Some(TypeDefinition::TypeId(param.type_argument.type_id));
         }
 
-        self.collect_type_id(param.type_id, &typed_token, param.type_span.clone());
+        self.collect_type_argument(&param.type_argument);
     }
 
     fn collect_type_argument(&self, type_arg: &TypeArgument) {
@@ -1148,7 +1125,7 @@ impl<'a> TypedTree<'a> {
             }
             TypeInfo::Custom {
                 type_arguments,
-                name,
+                call_path: name,
             } => {
                 if let Some(token) = self
                     .tokens
@@ -1211,11 +1188,7 @@ impl<'a> TypedTree<'a> {
             );
         }
 
-        self.collect_type_id(
-            func_decl.return_type,
-            &typed_token,
-            func_decl.return_type_span.clone(),
-        );
+        self.collect_type_argument(&func_decl.return_type);
     }
 
     fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant) {
@@ -1225,15 +1198,11 @@ impl<'a> TypedTree<'a> {
             .try_get_mut(&to_ident_key(&enum_variant.name))
             .try_unwrap()
         {
-            token.typed = Some(typed_token.clone());
-            token.type_def = Some(TypeDefinition::TypeId(enum_variant.type_id));
+            token.typed = Some(typed_token);
+            token.type_def = Some(TypeDefinition::TypeId(enum_variant.type_argument.type_id));
         }
 
-        self.collect_type_id(
-            enum_variant.type_id,
-            &typed_token,
-            enum_variant.type_span.clone(),
-        );
+        self.collect_type_argument(&enum_variant.type_argument);
     }
 
     fn collect_ty_struct_field(&self, field: &ty::TyStructField) {
@@ -1243,11 +1212,10 @@ impl<'a> TypedTree<'a> {
             .try_unwrap()
         {
             token.typed = Some(TypedAstToken::TypedStructField(field.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(field.type_id));
+            token.type_def = Some(TypeDefinition::TypeId(field.type_argument.type_id));
         }
 
-        let typed_token = TypedAstToken::TypedStructField(field.clone());
-        self.collect_type_id(field.type_id, &typed_token, field.type_span.clone());
+        self.collect_type_argument(&field.type_argument);
     }
 }
 

@@ -147,11 +147,11 @@ impl<'a> UnifyCheck<'a> {
 
             (
                 Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {

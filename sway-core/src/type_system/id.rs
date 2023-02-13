@@ -89,9 +89,11 @@ impl ReplaceSelfType for TypeId {
                     let variant_types = variant_types
                         .into_iter()
                         .map(|mut variant| {
-                            if let Some(type_id) = helper(variant.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(variant.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                variant.type_id = type_id;
+                                variant.type_argument.type_id = type_id;
                             }
                             variant
                         })
@@ -128,9 +130,11 @@ impl ReplaceSelfType for TypeId {
                     let fields = fields
                         .into_iter()
                         .map(|mut field| {
-                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(field.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                field.type_id = type_id;
+                                field.type_argument.type_id = type_id;
                             }
                             field
                         })
@@ -177,7 +181,7 @@ impl ReplaceSelfType for TypeId {
                     }
                 }
                 TypeInfo::Custom {
-                    name,
+                    call_path,
                     type_arguments,
                 } => {
                     let mut need_to_create_new = false;
@@ -198,7 +202,7 @@ impl ReplaceSelfType for TypeId {
                         Some(type_engine.insert(
                             decl_engine,
                             TypeInfo::Custom {
-                                name,
+                                call_path,
                                 type_arguments,
                             },
                         ))
@@ -216,9 +220,11 @@ impl ReplaceSelfType for TypeId {
                     let fields = fields
                         .into_iter()
                         .map(|mut field| {
-                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(field.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                field.type_id = type_id;
+                                field.type_argument.type_id = type_id;
                             }
                             field
                         })
@@ -307,19 +313,19 @@ impl TypeId {
     ) -> bool {
         match (type_engine.get(self), type_engine.get(resolved_type_id)) {
             (
-                TypeInfo::Custom { name, .. },
+                TypeInfo::Custom { call_path, .. },
                 TypeInfo::Enum {
                     call_path: enum_call_path,
                     ..
                 },
-            ) => name != enum_call_path.suffix,
+            ) => call_path.suffix != enum_call_path.suffix,
             (
-                TypeInfo::Custom { name, .. },
+                TypeInfo::Custom { call_path, .. },
                 TypeInfo::Struct {
                     call_path: struct_call_path,
                     ..
                 },
-            ) => name != struct_call_path.suffix,
+            ) => call_path.suffix != struct_call_path.suffix,
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

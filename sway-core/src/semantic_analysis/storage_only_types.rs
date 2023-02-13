@@ -206,7 +206,6 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 body,
                 parameters,
                 return_type,
-                return_type_span,
                 ..
             } = check!(
                 CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl.span())),
@@ -222,14 +221,19 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for param in parameters {
                 check!(
-                    check_type(engines, param.type_id, param.type_span.clone(), false),
+                    check_type(
+                        engines,
+                        param.type_argument.type_id,
+                        param.type_argument.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
                 );
             }
             check!(
-                check_type(engines, return_type, return_type_span, false),
+                check_type(engines, return_type.type_id, return_type.span, false),
                 (),
                 warnings,
                 errors
@@ -260,8 +264,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                         check!(
                             check_type(
                                 engines,
-                                method.return_type,
-                                method.return_type_span.clone(),
+                                method.return_type.type_id,
+                                method.return_type.span.clone(),
                                 false
                             ),
                             (),
@@ -282,7 +286,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.span.clone(), false),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
@@ -298,7 +307,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for variant in variants {
                 check!(
-                    check_type(engines, variant.type_id, variant.span.clone(), false),
+                    check_type(
+                        engines,
+                        variant.type_argument.type_id,
+                        variant.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
@@ -314,7 +328,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.name.span().clone(), true),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.name.span().clone(),
+                        true
+                    ),
                     continue,
                     warnings,
                     errors
