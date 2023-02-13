@@ -13,7 +13,7 @@ use sway_ast::{
 };
 use sway_types::{constants::DOC_COMMENT_ATTRIBUTE_NAME, Spanned};
 
-impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
+impl<T: Format + Spanned> Format for Annotated<T> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
