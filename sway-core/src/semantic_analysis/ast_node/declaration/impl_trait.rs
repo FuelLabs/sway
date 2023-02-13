@@ -113,9 +113,9 @@ impl ty::TyImplTrait {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_ref, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -156,21 +156,25 @@ impl ty::TyImplTrait {
                     impl_type_parameters: new_impl_type_parameters,
                     trait_name: trait_name.clone(),
                     trait_type_arguments,
-                    trait_decl_ref: Some(decl_ref),
+                    trait_decl_ref: Some(DeclRef::new(
+                        trait_decl.name.clone(),
+                        *decl_id,
+                        trait_decl.span.clone(),
+                    )),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
                     type_implementing_for_span: type_implementing_for_span.clone(),
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
                 // if you are comparing this with the `impl_trait` branch above, note that
                 // there are no type arguments here because we don't support generic types
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
 
                 let abi = check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_ref, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -210,7 +214,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(decl_ref),
+                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
                     span: block_span,
                     methods: new_methods,
                     implementing_for_type_id,
@@ -371,22 +375,22 @@ impl ty::TyImplTrait {
                 ty::TyDeclaration::VariableDeclaration(decl) => {
                     expr_contains_get_storage_index(decl_engine, &decl.body, access_span)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(decl_ref, access_span)?;
+                        decl_engine.get_constant(decl_id, access_span)?;
                     expr_contains_get_storage_index(decl_engine, &expr, access_span)
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
-                ty::TyDeclaration::FunctionDeclaration(_)
-                | ty::TyDeclaration::TraitDeclaration(_)
-                | ty::TyDeclaration::StructDeclaration(_)
-                | ty::TyDeclaration::EnumDeclaration(_)
-                | ty::TyDeclaration::ImplTrait(_)
-                | ty::TyDeclaration::AbiDeclaration(_)
+                ty::TyDeclaration::FunctionDeclaration { .. }
+                | ty::TyDeclaration::TraitDeclaration { .. }
+                | ty::TyDeclaration::StructDeclaration { .. }
+                | ty::TyDeclaration::EnumDeclaration { .. }
+                | ty::TyDeclaration::ImplTrait { .. }
+                | ty::TyDeclaration::AbiDeclaration { .. }
                 | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
                 | ty::TyDeclaration::ErrorRecovery(_)
-                | ty::TyDeclaration::StorageDeclaration(_) => Ok(false),
+                | ty::TyDeclaration::StorageDeclaration { .. } => Ok(false),
             }
         }
 
@@ -716,7 +720,7 @@ fn type_check_trait_implementation(
         all_method_refs.push(
             decl_engine
                 .insert(method)
-                .with_parent(decl_engine, decl_ref.clone()),
+                .with_parent(decl_engine, decl_ref),
         );
     }
 
@@ -1101,9 +1105,9 @@ fn handle_supertraits(
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
                 let trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_ref, &supertrait.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1141,7 +1145,7 @@ fn handle_supertraits(
                 interface_surface_methods_ids.extend(next_stub_supertrait_decl_refs);
                 impld_method_refs.extend(next_these_supertrait_decl_refs);
             }
-            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
                 errors.push(CompileError::AbiAsSupertrait {
                     span: supertrait.name.span().clone(),
                 })

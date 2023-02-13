@@ -589,7 +589,7 @@ impl TraitMap {
                                 name,
                                 decl_engine
                                     .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
-                                    .with_parent(decl_engine, decl_ref),
+                                    .with_parent(decl_engine, &decl_ref),
                             )
                         })
                         .collect();

@@ -21,8 +21,8 @@ pub fn possibly_nonzero_u64_expression(
                         ty::TyDeclaration::VariableDeclaration(var_decl) => {
                             possibly_nonzero_u64_expression(namespace, decl_engine, &var_decl.body)
                         }
-                        ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
-                            match decl_engine.get_constant(decl_ref, &expr.span) {
+                        ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                            match decl_engine.get_constant(decl_id, &expr.span) {
                                 Ok(const_decl) => possibly_nonzero_u64_expression(
                                     namespace,
                                     decl_engine,

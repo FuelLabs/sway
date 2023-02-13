@@ -138,8 +138,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_ref) => decl_engine
-                    .get_struct(decl_ref, &decl.span())
+                ty::TyDeclaration::StructDeclaration { decl_id, .. } => decl_engine
+                    .get_struct(decl_id, &decl.span())
                     .map(|struct_decl| {
                         format_visibility_hover(
                             struct_decl.visibility,
@@ -148,8 +148,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                ty::TyDeclaration::TraitDeclaration(ref decl_ref) => decl_engine
-                    .get_trait(decl_ref, &decl.span())
+                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => decl_engine
+                    .get_trait(decl_id, &decl.span())
                     .map(|trait_decl| {
                         format_visibility_hover(
                             trait_decl.visibility,
@@ -158,8 +158,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => decl_engine
-                    .get_enum(decl_ref, &decl.span())
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => decl_engine
+                    .get_enum(decl_id, &decl.span())
                     .map(|enum_decl| {
                         format_visibility_hover(
                             enum_decl.visibility,

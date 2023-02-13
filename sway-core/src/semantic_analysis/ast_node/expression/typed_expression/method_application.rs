@@ -237,7 +237,7 @@ pub(crate) fn type_check_method_application(
             );
 
             let is_decl_mutable = match unknown_decl {
-                ty::TyDeclaration::ConstantDeclaration(_) => false,
+                ty::TyDeclaration::ConstantDeclaration { .. } => false,
                 _ => {
                     let variable_decl = check!(
                         unknown_decl.expect_variable().cloned(),
@@ -538,7 +538,7 @@ pub(crate) fn resolve_method_name(
     let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, decl_ref);
+        .with_parent(ctx.decl_engine, &decl_ref);
 
     ok(decl_ref, warnings, errors)
 }

@@ -2,8 +2,8 @@ use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty, type_system::*};
 
-/// A smart-wrapper around a [DeclId], containing additional information about
-/// a declaration.
+/// A reference to the use of a declaration. A smart-wrapper around a [DeclId],
+/// containing additional information about a declaration.
 #[derive(Debug, Clone)]
 pub struct DeclRef {
     /// The name of the declaration.
@@ -11,10 +11,10 @@ pub struct DeclRef {
     pub name: Ident,
 
     /// The index into the [DeclEngine].
-    pub(crate) id: DeclId,
+    pub id: DeclId,
 
     /// The [Span] of the entire declaration.
-    decl_span: Span,
+    pub decl_span: Span,
 }
 
 impl DeclRef {
@@ -26,8 +26,11 @@ impl DeclRef {
         }
     }
 
-    pub(crate) fn with_parent(self, decl_engine: &DeclEngine, parent: DeclRef) -> DeclRef {
-        decl_engine.register_parent(&self, parent);
+    pub(crate) fn with_parent<'a, T>(self, decl_engine: &DeclEngine, parent: &'a T) -> DeclRef
+    where
+        DeclId: From<&'a T>,
+    {
+        decl_engine.register_parent::<T>(&self, parent);
         self
     }
 
@@ -45,7 +48,7 @@ impl DeclRef {
         decl.subst(type_mapping, engines);
         decl_engine
             .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self.clone())
+            .with_parent(decl_engine, self)
     }
 
     pub(crate) fn replace_self_type_and_insert_new(
@@ -58,7 +61,7 @@ impl DeclRef {
         decl.replace_self_type(engines, self_type);
         decl_engine
             .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self.clone())
+            .with_parent(decl_engine, self)
     }
 
     pub(crate) fn replace_decls_and_insert_new(
@@ -71,7 +74,7 @@ impl DeclRef {
         decl.replace_decls(decl_mapping, engines);
         decl_engine
             .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self.clone())
+            .with_parent(decl_engine, self)
     }
 }
 
@@ -113,13 +116,13 @@ impl ReplaceDecls for DeclRef {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         let decl_engine = engines.de();
         if let Some(new_decl_ref) = decl_mapping.find_match(self) {
-            self.id = new_decl_ref.id;
+            self.id = new_decl_ref;
             return;
         }
         let all_parents = decl_engine.find_all_parents(engines, self);
-        for parent in all_parents.into_iter() {
-            if let Some(new_decl_ref) = decl_mapping.find_match(&parent) {
-                self.id = new_decl_ref.id;
+        for parent in all_parents.iter() {
+            if let Some(new_decl_ref) = decl_mapping.find_match(parent) {
+                self.id = new_decl_ref;
                 return;
             }
         }

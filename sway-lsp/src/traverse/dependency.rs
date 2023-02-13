@@ -46,11 +46,11 @@ impl<'a> Dependency<'a> {
 
             let ident = match declaration {
                 ty::TyDeclaration::VariableDeclaration(variable) => variable.name.clone(),
-                ty::TyDeclaration::StructDeclaration(decl_ref)
-                | ty::TyDeclaration::TraitDeclaration(decl_ref)
-                | ty::TyDeclaration::FunctionDeclaration(decl_ref)
-                | ty::TyDeclaration::ConstantDeclaration(decl_ref)
-                | ty::TyDeclaration::EnumDeclaration(decl_ref) => decl_ref.name.clone(),
+                ty::TyDeclaration::StructDeclaration { name, .. }
+                | ty::TyDeclaration::TraitDeclaration { name, .. }
+                | ty::TyDeclaration::FunctionDeclaration { name, .. }
+                | ty::TyDeclaration::ConstantDeclaration { name, .. }
+                | ty::TyDeclaration::EnumDeclaration { name, .. } => name.clone(),
                 _ => return,
             };
             let ident = token::to_ident_key(&ident);

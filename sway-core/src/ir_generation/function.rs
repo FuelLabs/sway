@@ -139,37 +139,35 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
-                    let tcd = self.decl_engine.get_constant(decl_ref, &ast_node.span)?;
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                    let tcd = self.decl_engine.get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::FunctionDeclaration(_) => {
+                ty::TyDeclaration::FunctionDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "function",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::TraitDeclaration(_) => {
+                ty::TyDeclaration::TraitDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "trait",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StructDeclaration(_) => {
+                ty::TyDeclaration::StructDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "struct",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                    let ted = self
-                        .decl_engine
-                        .get_enum(&decl_ref.clone(), &ast_node.span)?;
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let ted = self.decl_engine.get_enum(decl_id, &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDeclaration::ImplTrait(_) => {
+                ty::TyDeclaration::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -177,10 +175,12 @@ impl<'eng> FnCompiler<'eng> {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                ty::TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "abi",
-                    span: ast_node.span.clone(),
-                }),
+                ty::TyDeclaration::AbiDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "abi",
+                        span: ast_node.span.clone(),
+                    })
+                }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
@@ -193,7 +193,7 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StorageDeclaration(_) => {
+                ty::TyDeclaration::StorageDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "storage",
                         span: ast_node.span.clone(),

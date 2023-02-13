@@ -237,9 +237,9 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDeclaration::TraitDeclaration(decl_ref)) => {
+        Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
             let trait_decl = check!(
-                CompileResult::from(decl_engine.get_trait(&decl_ref, &trait_name.suffix.span())),
+                CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors

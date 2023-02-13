@@ -181,11 +181,13 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &decl.body), (), warnings, errors)
         }
-        ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
+        ty::TyDeclaration::ConstantDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
-                CompileResult::from(decl_engine.get_constant(decl_ref, &decl_ref.span())),
+                CompileResult::from(decl_engine.get_constant(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -198,7 +200,9 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &expr), (), warnings, errors)
         }
-        ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
+        ty::TyDeclaration::FunctionDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyFunctionDeclaration {
                 body,
                 parameters,
@@ -206,7 +210,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 return_type_span,
                 ..
             } = check!(
-                CompileResult::from(decl_engine.get_function(decl_ref, &decl.span())),
+                CompileResult::from(decl_engine.get_function(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -232,12 +236,14 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 errors
             );
         }
-        ty::TyDeclaration::AbiDeclaration(_) | ty::TyDeclaration::TraitDeclaration(_) => {
+        ty::TyDeclaration::AbiDeclaration { .. } | ty::TyDeclaration::TraitDeclaration { .. } => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        ty::TyDeclaration::ImplTrait(decl_ref) => {
+        ty::TyDeclaration::ImplTrait {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyImplTrait { methods, span, .. } = check!(
-                CompileResult::from(decl_engine.get_impl_trait(decl_ref, &decl_ref.span())),
+                CompileResult::from(decl_engine.get_impl_trait(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -270,9 +276,11 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 };
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_ref) => {
+        ty::TyDeclaration::StructDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyStructDeclaration { fields, .. } = check!(
-                CompileResult::from(decl_engine.get_struct(decl_ref, &decl_ref.span())),
+                CompileResult::from(decl_engine.get_struct(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors,
@@ -286,9 +294,11 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+        ty::TyDeclaration::EnumDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyEnumDeclaration { variants, .. } = check!(
-                CompileResult::from(decl_engine.get_enum(&decl_ref.clone(), &decl.span())),
+                CompileResult::from(decl_engine.get_enum(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -302,9 +312,9 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::StorageDeclaration(decl_ref) => {
+        ty::TyDeclaration::StorageDeclaration { decl_id, decl_span } => {
             let ty::TyStorageDeclaration { fields, .. } = check!(
-                CompileResult::from(decl_engine.get_storage(decl_ref, &decl.span())),
+                CompileResult::from(decl_engine.get_storage(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors

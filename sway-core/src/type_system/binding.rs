@@ -1,16 +1,14 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::EnforceTypeArguments,
     type_system::*,
-    CreateTypeId, Ident, TypeInfo,
+    CreateTypeId, Ident,
 };
-
-use super::{TypeArgument, TypeId};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -194,7 +192,11 @@ impl TypeBinding<CallPath> {
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            ty::TyDeclaration::FunctionDeclaration(original_id) => {
+            ty::TyDeclaration::FunctionDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(decl_engine.get_function(&original_id, &self.span())),
@@ -217,14 +219,24 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx
+                let DeclRef {
+                    id: new_decl_id, ..
+                } = ctx
                     .decl_engine
                     .insert(new_copy)
-                    .with_parent(ctx.decl_engine, original_id);
+                    .with_parent(ctx.decl_engine, &original_id);
 
-                ty::TyDeclaration::FunctionDeclaration(new_id)
+                ty::TyDeclaration::FunctionDeclaration {
+                    name,
+                    decl_id: new_decl_id,
+                    decl_span,
+                }
             }
-            ty::TyDeclaration::EnumDeclaration(original_id) => {
+            ty::TyDeclaration::EnumDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(decl_engine.get_enum(&original_id, &self.span())),
@@ -253,11 +265,21 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
+                let DeclRef {
+                    id: new_decl_id, ..
+                } = ctx.decl_engine.insert(new_copy);
 
-                ty::TyDeclaration::EnumDeclaration(new_id)
+                ty::TyDeclaration::EnumDeclaration {
+                    name,
+                    decl_id: new_decl_id,
+                    decl_span,
+                }
             }
-            ty::TyDeclaration::StructDeclaration(original_id) => {
+            ty::TyDeclaration::StructDeclaration {
+                decl_id: original_id,
+                name,
+                decl_span,
+            } => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
                     CompileResult::from(decl_engine.get_struct(&original_id, &self.span())),
@@ -286,9 +308,15 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
+                let DeclRef {
+                    id: new_decl_id, ..
+                } = ctx.decl_engine.insert(new_copy);
 
-                ty::TyDeclaration::StructDeclaration(new_id)
+                ty::TyDeclaration::StructDeclaration {
+                    name,
+                    decl_id: new_decl_id,
+                    decl_span,
+                }
             }
             _ => unknown_decl,
         };

@@ -77,12 +77,12 @@ impl ty::TyTraitDeclaration {
                 errors
             );
             let decl_ref = decl_engine.insert(method.clone());
-            new_interface_surface.push(decl_ref.clone());
             dummy_interface_surface.push(
                 decl_engine
                     .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(decl_engine, decl_ref),
+                    .with_parent(decl_engine, &decl_ref),
             );
+            new_interface_surface.push(decl_ref);
         }
 
         // insert placeholder functions representing the interface surface
@@ -227,7 +227,7 @@ impl ty::TyTraitDeclaration {
                 method.name.clone(),
                 decl_engine
                     .insert(method)
-                    .with_parent(decl_engine, decl_ref),
+                    .with_parent(decl_engine, &decl_ref),
             );
         }
 
@@ -289,7 +289,7 @@ impl ty::TyTraitDeclaration {
             all_methods.push(
                 ctx.decl_engine
                     .insert(method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(ctx.decl_engine, decl_ref.clone()),
+                    .with_parent(ctx.decl_engine, decl_ref),
             );
         }
         for decl_ref in methods.iter() {
@@ -304,7 +304,7 @@ impl ty::TyTraitDeclaration {
             all_methods.push(
                 ctx.decl_engine
                     .insert(method)
-                    .with_parent(ctx.decl_engine, decl_ref.clone()),
+                    .with_parent(ctx.decl_engine, decl_ref),
             );
         }
 

@@ -118,10 +118,10 @@ impl<'a> TypedTree<'a> {
 
                 self.handle_expression(&variable.body, namespace);
             }
-            ty::TyDeclaration::ConstantDeclaration(decl_ref) => {
-                if let Ok(const_decl) =
-                    decl_engine.get_constant(&decl_ref.clone(), &decl_ref.span())
-                {
+            ty::TyDeclaration::ConstantDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(const_decl) = decl_engine.get_constant(decl_id, decl_span) {
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&const_decl.name))
@@ -145,13 +145,17 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(&const_decl.value, namespace);
                 }
             }
-            ty::TyDeclaration::FunctionDeclaration(decl_ref) => {
-                if let Ok(func_decl) = decl_engine.get_function(decl_ref, &decl_ref.span()) {
+            ty::TyDeclaration::FunctionDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(func_decl) = decl_engine.get_function(decl_id, decl_span) {
                     self.collect_typed_fn_decl(&func_decl, namespace);
                 }
             }
-            ty::TyDeclaration::TraitDeclaration(decl_ref) => {
-                if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, &decl_ref.span()) {
+            ty::TyDeclaration::TraitDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(trait_decl) = decl_engine.get_trait(decl_id, decl_span) {
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&trait_decl.name))
@@ -173,8 +177,8 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::StructDeclaration(decl_ref) => {
-                if let Ok(struct_decl) = decl_engine.get_struct(decl_ref, &declaration.span()) {
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                if let Ok(struct_decl) = decl_engine.get_struct(decl_id, &declaration.span()) {
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
@@ -201,8 +205,10 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::EnumDeclaration(decl_ref) => {
-                if let Ok(enum_decl) = decl_engine.get_enum(decl_ref, &decl_ref.span()) {
+            ty::TyDeclaration::EnumDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(enum_decl) = decl_engine.get_enum(decl_id, decl_span) {
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
@@ -230,7 +236,9 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::ImplTrait(decl_ref) => {
+            ty::TyDeclaration::ImplTrait {
+                decl_id, decl_span, ..
+            } => {
                 if let Ok(ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
@@ -240,7 +248,7 @@ impl<'a> TypedTree<'a> {
                     implementing_for_type_id,
                     type_implementing_for_span,
                     ..
-                }) = decl_engine.get_impl_trait(decl_ref, &decl_ref.span())
+                }) = decl_engine.get_impl_trait(decl_id, decl_span)
                 {
                     for param in impl_type_parameters {
                         self.collect_type_id(
@@ -266,9 +274,7 @@ impl<'a> TypedTree<'a> {
                     {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                         token.type_def = if let Some(decl_ref) = &trait_decl_ref {
-                            if let Ok(trait_decl) =
-                                decl_engine.get_trait(decl_ref, &decl_ref.span())
-                            {
+                            if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, decl_span) {
                                 Some(TypeDefinition::Ident(trait_decl.name))
                             } else {
                                 Some(TypeDefinition::TypeId(implementing_for_type_id))
@@ -287,8 +293,7 @@ impl<'a> TypedTree<'a> {
                     }
 
                     for method_ref in methods {
-                        if let Ok(method) = decl_engine.get_function(&method_ref, &decl_ref.span())
-                        {
+                        if let Ok(method) = decl_engine.get_function(&method_ref, decl_span) {
                             self.collect_typed_fn_decl(&method, namespace);
                         }
                     }
@@ -300,8 +305,10 @@ impl<'a> TypedTree<'a> {
                     );
                 }
             }
-            ty::TyDeclaration::AbiDeclaration(decl_ref) => {
-                if let Ok(abi_decl) = decl_engine.get_abi(decl_ref, &decl_ref.span()) {
+            ty::TyDeclaration::AbiDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(abi_decl) = decl_engine.get_abi(decl_id, decl_span) {
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_decl.name))
@@ -326,8 +333,10 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyDeclaration::ErrorRecovery(_) => {}
-            ty::TyDeclaration::StorageDeclaration(decl_ref) => {
-                if let Ok(storage_decl) = decl_engine.get_storage(decl_ref, &decl_ref.span()) {
+            ty::TyDeclaration::StorageDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                if let Ok(storage_decl) = decl_engine.get_storage(decl_id, decl_span) {
                     for field in &storage_decl.fields {
                         if let Some(mut token) = self
                             .tokens

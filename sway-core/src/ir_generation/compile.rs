@@ -243,8 +243,10 @@ fn compile_declarations(
     let (type_engine, decl_engine) = engines.unwrap();
     for declaration in declarations {
         match declaration {
-            ty::TyDeclaration::ConstantDeclaration(ref decl_ref) => {
-                let decl = decl_engine.get_constant(decl_ref, &declaration.span())?;
+            ty::TyDeclaration::ConstantDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let decl = decl_engine.get_constant(decl_id, decl_span)?;
                 compile_const_decl(
                     &mut LookupEnv {
                         type_engine,
@@ -260,14 +262,14 @@ fn compile_declarations(
                 )?;
             }
 
-            ty::TyDeclaration::FunctionDeclaration(_decl) => {
+            ty::TyDeclaration::FunctionDeclaration { .. } => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.
                 //
                 //compile_function(context, module, decl).map(|_| ())?
             }
-            ty::TyDeclaration::ImplTrait(_) => {
+            ty::TyDeclaration::ImplTrait { .. } => {
                 // And for the same reason we don't need to compile impls at all.
                 //
                 // compile_impl(
@@ -278,13 +280,13 @@ fn compile_declarations(
                 //)?,
             }
 
-            ty::TyDeclaration::StructDeclaration(_)
-            | ty::TyDeclaration::EnumDeclaration(_)
-            | ty::TyDeclaration::TraitDeclaration(_)
+            ty::TyDeclaration::StructDeclaration { .. }
+            | ty::TyDeclaration::EnumDeclaration { .. }
+            | ty::TyDeclaration::TraitDeclaration { .. }
             | ty::TyDeclaration::VariableDeclaration(_)
-            | ty::TyDeclaration::AbiDeclaration(_)
+            | ty::TyDeclaration::AbiDeclaration { .. }
             | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
-            | ty::TyDeclaration::StorageDeclaration(_)
+            | ty::TyDeclaration::StorageDeclaration { .. }
             | ty::TyDeclaration::ErrorRecovery(_) => (),
         }
     }

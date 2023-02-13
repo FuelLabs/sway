@@ -5,7 +5,6 @@ pub use crate::error::DocumentError;
 use abi_impl::abi_impl_code_action;
 use std::sync::Arc;
 use sway_core::{language::ty::TyDeclaration, Engines};
-use sway_types::Spanned;
 use tower_lsp::lsp_types::{CodeActionResponse, Range, TextDocumentIdentifier, Url};
 
 pub(crate) fn code_actions(
@@ -25,12 +24,9 @@ pub(crate) fn code_actions(
 
         maybe_decl
             .and_then(|decl| match decl {
-                TyDeclaration::AbiDeclaration(ref decl_ref) => Some(
-                    session
-                        .decl_engine
-                        .read()
-                        .get_abi(decl_ref, &decl_ref.span()),
-                ),
+                TyDeclaration::AbiDeclaration {
+                    decl_id, decl_span, ..
+                } => Some(session.decl_engine.read().get_abi(&decl_id, &decl_span)),
                 // Add code actions for other declaration types here
                 _ => None,
             })

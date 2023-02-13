@@ -410,13 +410,13 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::ConstantDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
                     return_type,
                     ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_ref, &span)),
+                    CompileResult::from(decl_engine.get_constant(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -434,9 +434,9 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration(decl_ref)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_ref, &span)),
+                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1262,9 +1262,9 @@ impl ty::TyExpression {
             span,
             ..
         } = match abi {
-            ty::TyDeclaration::AbiDeclaration(decl_ref) => {
+            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
                 check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_ref, &span)),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1347,7 +1347,7 @@ impl ty::TyExpression {
             abi_methods.push(
                 decl_engine
                     .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, decl_ref),
+                    .with_parent(decl_engine, &decl_ref),
             );
         }
 

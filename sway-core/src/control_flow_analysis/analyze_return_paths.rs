@@ -182,21 +182,21 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     use ty::TyDeclaration::*;
     let decl_engine = engines.de();
     match decl {
-        TraitDeclaration(_)
-        | AbiDeclaration(_)
-        | StructDeclaration(_)
-        | EnumDeclaration(_)
-        | StorageDeclaration(_)
+        TraitDeclaration { .. }
+        | AbiDeclaration { .. }
+        | StructDeclaration { .. }
+        | EnumDeclaration { .. }
+        | StorageDeclaration { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
-        VariableDeclaration(_) | ConstantDeclaration(_) => {
+        VariableDeclaration(_) | ConstantDeclaration { .. } => {
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(decl_ref) => {
-            let fn_decl = decl_engine.get_function(decl_ref, &decl.span())?;
+        FunctionDeclaration { decl_id, .. } => {
+            let fn_decl = decl_engine.get_function(decl_id, &decl.span())?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
@@ -204,12 +204,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node, span)?;
             Ok(leaves.to_vec())
         }
-        ImplTrait(decl_ref) => {
+        ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
                 trait_name,
                 methods,
                 ..
-            } = decl_engine.get_impl_trait(decl_ref, &span)?;
+            } = decl_engine.get_impl_trait(decl_id, &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());

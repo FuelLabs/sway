@@ -14,33 +14,148 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum TyDeclaration {
     VariableDeclaration(Box<TyVariableDeclaration>),
-    ConstantDeclaration(DeclRef),
-    FunctionDeclaration(DeclRef),
-    TraitDeclaration(DeclRef),
-    StructDeclaration(DeclRef),
-    EnumDeclaration(DeclRef),
-    ImplTrait(DeclRef),
-    AbiDeclaration(DeclRef),
+    ConstantDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    FunctionDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    TraitDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    StructDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    EnumDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    ImplTrait {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
+    AbiDeclaration {
+        name: Ident,
+        decl_id: DeclId,
+        decl_span: Span,
+    },
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
-    GenericTypeForFunctionScope { name: Ident, type_id: TypeId },
+    GenericTypeForFunctionScope {
+        name: Ident,
+        type_id: TypeId,
+    },
     ErrorRecovery(Span),
-    StorageDeclaration(DeclRef),
+    StorageDeclaration {
+        decl_id: DeclId,
+        decl_span: Span,
+    },
 }
 
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let decl_engine = engines.de();
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
-            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, engines),
-            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x.eq(y, engines),
-            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x.eq(y, engines),
-            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x.eq(y, engines),
-            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x.eq(y, engines),
-            (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, engines),
-            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, engines),
-            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, engines),
+            (
+                Self::ConstantDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::ConstantDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::FunctionDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::FunctionDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::TraitDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::TraitDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::StructDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::StructDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::EnumDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::EnumDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::ImplTrait {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::ImplTrait {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            )
+            | (
+                Self::AbiDeclaration {
+                    name: ln,
+                    decl_id: lid,
+                    ..
+                },
+                Self::AbiDeclaration {
+                    name: rn,
+                    decl_id: rid,
+                    ..
+                },
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            (
+                Self::StorageDeclaration { decl_id: lid, .. },
+                Self::StorageDeclaration { decl_id: rid, .. },
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
@@ -62,15 +177,25 @@ impl SubstTypes for TyDeclaration {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
-            FunctionDeclaration(ref mut decl_ref) => decl_ref.subst(type_mapping, engines),
-            TraitDeclaration(ref mut decl_ref) => decl_ref.subst(type_mapping, engines),
-            StructDeclaration(ref mut decl_ref) => decl_ref.subst(type_mapping, engines),
-            EnumDeclaration(ref mut decl_ref) => decl_ref.subst(type_mapping, engines),
-            ImplTrait(decl_ref) => decl_ref.subst(type_mapping, engines),
+            FunctionDeclaration {
+                ref mut decl_id, ..
+            }
+            | TraitDeclaration {
+                ref mut decl_id, ..
+            }
+            | StructDeclaration {
+                ref mut decl_id, ..
+            }
+            | EnumDeclaration {
+                ref mut decl_id, ..
+            }
+            | ImplTrait {
+                ref mut decl_id, ..
+            } => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
-            AbiDeclaration(..)
-            | ConstantDeclaration(_)
-            | StorageDeclaration(..)
+            AbiDeclaration { .. }
+            | ConstantDeclaration { .. }
+            | StorageDeclaration { .. }
             | GenericTypeForFunctionScope { .. }
             | ErrorRecovery(_) => (),
         }
@@ -82,15 +207,25 @@ impl ReplaceSelfType for TyDeclaration {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
-            FunctionDeclaration(ref mut decl_ref) => decl_ref.replace_self_type(engines, self_type),
-            TraitDeclaration(ref mut decl_ref) => decl_ref.replace_self_type(engines, self_type),
-            StructDeclaration(ref mut decl_ref) => decl_ref.replace_self_type(engines, self_type),
-            EnumDeclaration(ref mut decl_ref) => decl_ref.replace_self_type(engines, self_type),
-            ImplTrait(decl_ref) => decl_ref.replace_self_type(engines, self_type),
+            FunctionDeclaration {
+                ref mut decl_id, ..
+            }
+            | TraitDeclaration {
+                ref mut decl_id, ..
+            }
+            | StructDeclaration {
+                ref mut decl_id, ..
+            }
+            | EnumDeclaration {
+                ref mut decl_id, ..
+            }
+            | ImplTrait {
+                ref mut decl_id, ..
+            } => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
-            AbiDeclaration(..)
-            | ConstantDeclaration(_)
-            | StorageDeclaration(..)
+            AbiDeclaration { .. }
+            | ConstantDeclaration { .. }
+            | StorageDeclaration { .. }
             | GenericTypeForFunctionScope { .. }
             | ErrorRecovery(_) => (),
         }
@@ -102,14 +237,14 @@ impl Spanned for TyDeclaration {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(decl) => decl.name.span(),
-            ConstantDeclaration(decl_ref) => decl_ref.span(),
-            FunctionDeclaration(decl_ref) => decl_ref.span(),
-            TraitDeclaration(decl_ref) => decl_ref.span(),
-            StructDeclaration(decl_ref) => decl_ref.span(),
-            EnumDeclaration(decl_ref) => decl_ref.span(),
-            AbiDeclaration(decl_ref) => decl_ref.span(),
-            ImplTrait(decl_ref) => decl_ref.span(),
-            StorageDeclaration(decl) => decl.span(),
+            FunctionDeclaration { decl_span, .. }
+            | TraitDeclaration { decl_span, .. }
+            | StructDeclaration { decl_span, .. }
+            | EnumDeclaration { decl_span, .. }
+            | ImplTrait { decl_span, .. }
+            | ConstantDeclaration { decl_span, .. }
+            | StorageDeclaration { decl_span, .. }
+            | AbiDeclaration { decl_span, .. } => decl_span.clone(),
             GenericTypeForFunctionScope { name, .. } => name.span(),
             ErrorRecovery(span) => span.clone(),
         }
@@ -149,10 +284,10 @@ impl DisplayWithEngines for TyDeclaration {
                     builder.push_str(&engines.help_out(body).to_string());
                     builder
                 }
-                TyDeclaration::FunctionDeclaration(decl_ref) => decl_ref.name.as_str().into(),
-                TyDeclaration::TraitDeclaration(decl_ref) => decl_ref.name.as_str().into(),
-                TyDeclaration::StructDeclaration(decl_ref) => decl_ref.name.as_str().into(),
-                TyDeclaration::EnumDeclaration(decl_ref) => decl_ref.name.as_str().into(),
+                TyDeclaration::FunctionDeclaration { name, .. }
+                | TyDeclaration::TraitDeclaration { name, .. }
+                | TyDeclaration::StructDeclaration { name, .. }
+                | TyDeclaration::EnumDeclaration { name, .. } => name.as_str().into(),
                 _ => String::new(),
             }
         )
@@ -185,45 +320,45 @@ impl CollectTypesMetadata for TyDeclaration {
                 ));
                 body
             }
-            FunctionDeclaration(decl_ref) => {
-                match decl_engine.get_function(decl_ref, &decl_ref.span()) {
-                    Ok(decl) => {
-                        check!(
-                            decl.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
-                    Err(e) => {
-                        errors.push(e);
-                        return err(warnings, errors);
-                    }
+            FunctionDeclaration {
+                decl_id, decl_span, ..
+            } => match decl_engine.get_function(decl_id, decl_span) {
+                Ok(decl) => {
+                    check!(
+                        decl.collect_types_metadata(ctx),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
                 }
-            }
-            ConstantDeclaration(decl_ref) => {
-                match decl_engine.get_constant(decl_ref, &decl_ref.span()) {
-                    Ok(TyConstantDeclaration { value, .. }) => {
-                        check!(
-                            value.collect_types_metadata(ctx),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        )
-                    }
-                    Err(e) => {
-                        errors.push(e);
-                        return err(warnings, errors);
-                    }
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
                 }
-            }
+            },
+            ConstantDeclaration {
+                decl_id, decl_span, ..
+            } => match decl_engine.get_constant(decl_id, decl_span) {
+                Ok(TyConstantDeclaration { value, .. }) => {
+                    check!(
+                        value.collect_types_metadata(ctx),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    )
+                }
+                Err(e) => {
+                    errors.push(e);
+                    return err(warnings, errors);
+                }
+            },
             ErrorRecovery(_)
-            | StorageDeclaration(_)
-            | TraitDeclaration(_)
-            | StructDeclaration(_)
-            | EnumDeclaration(_)
+            | StorageDeclaration { .. }
+            | TraitDeclaration { .. }
+            | StructDeclaration { .. }
+            | EnumDeclaration { .. }
             | ImplTrait { .. }
-            | AbiDeclaration(_)
+            | AbiDeclaration { .. }
             | GenericTypeForFunctionScope { .. } => vec![],
         };
         if errors.is_empty() {
@@ -238,16 +373,16 @@ impl GetDeclIdent for TyDeclaration {
     fn get_decl_ident(&self) -> Option<Ident> {
         match self {
             TyDeclaration::VariableDeclaration(decl) => Some(decl.name.clone()),
-            TyDeclaration::ConstantDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::FunctionDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::TraitDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::StructDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::EnumDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::ImplTrait(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::AbiDeclaration(decl_ref) => Some(decl_ref.name.clone()),
-            TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
+            TyDeclaration::FunctionDeclaration { name, .. }
+            | TyDeclaration::TraitDeclaration { name, .. }
+            | TyDeclaration::StructDeclaration { name, .. }
+            | TyDeclaration::EnumDeclaration { name, .. }
+            | TyDeclaration::ConstantDeclaration { name, .. }
+            | TyDeclaration::ImplTrait { name, .. }
+            | TyDeclaration::AbiDeclaration { name, .. }
+            | TyDeclaration::GenericTypeForFunctionScope { name, .. } => Some(name.clone()),
             TyDeclaration::ErrorRecovery(_) => None,
-            TyDeclaration::StorageDeclaration(_decl) => None,
+            TyDeclaration::StorageDeclaration { .. } => None,
         }
     }
 }
@@ -256,16 +391,44 @@ impl GetDeclRef for TyDeclaration {
     fn get_decl_ref(&self) -> Option<DeclRef> {
         match self {
             TyDeclaration::VariableDeclaration(_) => todo!("not a declaration id yet"),
-            TyDeclaration::ConstantDeclaration(decl) => Some(decl.clone()),
-            TyDeclaration::FunctionDeclaration(decl) => Some(decl.clone()),
-            TyDeclaration::TraitDeclaration(decl) => Some(decl.clone()),
-            TyDeclaration::StructDeclaration(decl) => Some(decl.clone()),
-            TyDeclaration::EnumDeclaration(decl) => Some(decl.clone()),
-            TyDeclaration::ImplTrait(decl) => Some(decl.clone()),
-            TyDeclaration::AbiDeclaration(decl) => Some(decl.clone()),
+            TyDeclaration::FunctionDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::ConstantDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::TraitDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::StructDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::EnumDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::ImplTrait {
+                name,
+                decl_id,
+                decl_span,
+            }
+            | TyDeclaration::AbiDeclaration {
+                name,
+                decl_id,
+                decl_span,
+            } => Some(DeclRef::new(name.clone(), **decl_id, decl_span.clone())),
             TyDeclaration::GenericTypeForFunctionScope { .. } => None,
             TyDeclaration::ErrorRecovery(_) => None,
-            TyDeclaration::StorageDeclaration(_decl) => None,
+            TyDeclaration::StorageDeclaration { .. } => None,
         }
     }
 }
@@ -280,8 +443,8 @@ impl TyDeclaration {
         access_span: &Span,
     ) -> CompileResult<TyEnumDeclaration> {
         match self {
-            TyDeclaration::EnumDeclaration(decl_ref) => {
-                CompileResult::from(decl_engine.get_enum(decl_ref, access_span))
+            TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                CompileResult::from(decl_engine.get_enum(decl_id, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
@@ -305,9 +468,9 @@ impl TyDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TyDeclaration::StructDeclaration(decl_ref) => {
+            TyDeclaration::StructDeclaration { decl_id, .. } => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_ref, access_span)),
+                    CompileResult::from(decl_engine.get_struct(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -336,9 +499,9 @@ impl TyDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
-            TyDeclaration::FunctionDeclaration(decl_ref) => {
+            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_function(decl_ref, access_span)),
+                    CompileResult::from(decl_engine.get_function(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors,
@@ -384,8 +547,8 @@ impl TyDeclaration {
         access_span: &Span,
     ) -> CompileResult<TyAbiDeclaration> {
         match self {
-            TyDeclaration::AbiDeclaration(decl_ref) => {
-                CompileResult::from(decl_engine.get_abi(decl_ref, access_span))
+            TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                CompileResult::from(decl_engine.get_abi(decl_id, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
@@ -407,8 +570,8 @@ impl TyDeclaration {
         access_span: &Span,
     ) -> CompileResult<TyConstantDeclaration> {
         match self {
-            TyDeclaration::ConstantDeclaration(decl) => {
-                CompileResult::from(decl_engine.get_constant(decl, access_span))
+            TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                CompileResult::from(decl_engine.get_constant(decl_id, access_span))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {
@@ -430,10 +593,8 @@ impl TyDeclaration {
         let decl_engine = engines.de();
         let type_engine = engines.te();
         match self {
-            ImplTrait(decl_ref) => {
-                let decl = decl_engine
-                    .get_impl_trait(decl_ref, &Span::dummy())
-                    .unwrap();
+            ImplTrait { decl_id, .. } => {
+                let decl = decl_engine.get_impl_trait(decl_id, &Span::dummy()).unwrap();
                 let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
                 format!(
                     "{} for {}",
@@ -454,16 +615,16 @@ impl TyDeclaration {
         use TyDeclaration::*;
         match self {
             VariableDeclaration(_) => "variable",
-            ConstantDeclaration(_) => "constant",
-            FunctionDeclaration(_) => "function",
-            TraitDeclaration(_) => "trait",
-            StructDeclaration(_) => "struct",
-            EnumDeclaration(_) => "enum",
+            ConstantDeclaration { .. } => "constant",
+            FunctionDeclaration { .. } => "function",
+            TraitDeclaration { .. } => "trait",
+            StructDeclaration { .. } => "struct",
+            EnumDeclaration { .. } => "enum",
             ImplTrait { .. } => "impl trait",
-            AbiDeclaration(..) => "abi",
+            AbiDeclaration { .. } => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
             ErrorRecovery(_) => "error",
-            StorageDeclaration(_) => "contract storage declaration",
+            StorageDeclaration { .. } => "contract storage declaration",
         }
     }
 
@@ -471,14 +632,14 @@ impl TyDeclaration {
     pub fn doc_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
-            StructDeclaration(_) => "struct",
-            EnumDeclaration(_) => "enum",
-            TraitDeclaration(_) => "trait",
-            AbiDeclaration(_) => "abi",
-            StorageDeclaration(_) => "contract_storage",
-            ImplTrait(_) => "impl_trait",
-            FunctionDeclaration(_) => "fn",
-            ConstantDeclaration(_) => "constant",
+            StructDeclaration { .. } => "struct",
+            EnumDeclaration { .. } => "enum",
+            TraitDeclaration { .. } => "trait",
+            AbiDeclaration { .. } => "abi",
+            StorageDeclaration { .. } => "contract_storage",
+            ImplTrait { .. } => "impl_trait",
+            FunctionDeclaration { .. } => "fn",
+            ConstantDeclaration { .. } => "constant",
             _ => unreachable!("these items are non-documentable"),
         }
     }
@@ -494,36 +655,36 @@ impl TyDeclaration {
         let decl_engine = engines.de();
         let type_id = match self {
             TyDeclaration::VariableDeclaration(decl) => decl.body.return_type,
-            TyDeclaration::FunctionDeclaration(decl_ref) => {
+            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_function(decl_ref, &self.span())),
+                    CompileResult::from(decl_engine.get_function(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 decl.return_type
             }
-            TyDeclaration::StructDeclaration(decl_ref) => {
+            TyDeclaration::StructDeclaration { decl_id, .. } => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_ref, &self.span())),
+                    CompileResult::from(decl_engine.get_struct(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 decl.create_type_id(engines)
             }
-            TyDeclaration::EnumDeclaration(decl_ref) => {
+            TyDeclaration::EnumDeclaration { decl_id, .. } => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_enum(decl_ref, access_span)),
+                    CompileResult::from(decl_engine.get_enum(decl_id, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 decl.create_type_id(engines)
             }
-            TyDeclaration::StorageDeclaration(decl_ref) => {
+            TyDeclaration::StorageDeclaration { decl_id, .. } => {
                 let storage_decl = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_ref, &self.span())),
+                    CompileResult::from(decl_engine.get_storage(decl_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -553,45 +714,55 @@ impl TyDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
         let visibility = match self {
-            TraitDeclaration(decl_ref) => {
+            TraitDeclaration {
+                decl_id, decl_span, ..
+            } => {
                 let TyTraitDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_ref, &decl_ref.span())),
+                    CompileResult::from(decl_engine.get_trait(decl_id, decl_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 visibility
             }
-            ConstantDeclaration(decl_ref) => {
+            ConstantDeclaration {
+                decl_id, decl_span, ..
+            } => {
                 let TyConstantDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_ref, &decl_ref.span())),
+                    CompileResult::from(decl_engine.get_constant(decl_id, decl_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 visibility
             }
-            StructDeclaration(decl_ref) => {
+            StructDeclaration {
+                decl_id, decl_span, ..
+            } => {
                 let TyStructDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_ref, &decl_ref.span())),
+                    CompileResult::from(decl_engine.get_struct(decl_id, decl_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 visibility
             }
-            EnumDeclaration(decl_ref) => {
+            EnumDeclaration {
+                decl_id, decl_span, ..
+            } => {
                 let TyEnumDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_enum(decl_ref, &decl_ref.span())),
+                    CompileResult::from(decl_engine.get_enum(decl_id, decl_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 visibility
             }
-            FunctionDeclaration(decl_ref) => {
+            FunctionDeclaration {
+                decl_id, decl_span, ..
+            } => {
                 let TyFunctionDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_ref, &decl_ref.span())),
+                    CompileResult::from(decl_engine.get_function(decl_id, decl_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -601,7 +772,7 @@ impl TyDeclaration {
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }
-            | AbiDeclaration(..)
+            | AbiDeclaration { .. }
             | ErrorRecovery(_) => Visibility::Public,
             VariableDeclaration(decl) => decl.mutability.visibility(),
         };
