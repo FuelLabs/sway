@@ -310,7 +310,7 @@ impl BuiltTests {
     pub fn test_count(&self) -> usize {
         // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
         let mut visited_tests = HashSet::new();
-        
+
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
