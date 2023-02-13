@@ -285,11 +285,11 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
-                enum_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
