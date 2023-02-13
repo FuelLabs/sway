@@ -497,7 +497,7 @@ impl Renderable for Context {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(field.type_id),
+                        type_engine.get(field.type_argument.type_id),
                         &type_engine,
                         &self.module_info,
                     );
@@ -510,7 +510,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_span.as_str();
+                                    : field.type_argument.span.as_str();
                                 }
                             }
                         }
@@ -526,7 +526,7 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(field.type_id),
+                        type_engine.get(field.type_argument.type_id),
                         &type_engine,
                         &self.module_info,
                     );
@@ -539,7 +539,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : field.type_span.as_str();
+                                    : field.type_argument.span.as_str();
                                 }
                             }
                         }
@@ -555,7 +555,7 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(variant.type_id),
+                        type_engine.get(variant.type_argument.type_id),
                         &type_engine,
                         &self.module_info,
                     );
@@ -567,7 +567,7 @@ impl Renderable for Context {
                                 @ if let Ok(type_anchor) = type_anchor {
                                     : type_anchor;
                                 } else {
-                                    : variant.type_span.as_str();
+                                    : variant.type_argument.span.as_str();
                                 }
                             }
                         }
