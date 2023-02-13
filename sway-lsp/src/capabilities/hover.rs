@@ -178,9 +178,10 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                 param.name.as_str(),
                 &param.type_argument.type_id,
             )),
-            TypedAstToken::TypedStructField(field) => {
-                Some(format_name_with_type(field.name.as_str(), &field.type_id))
-            }
+            TypedAstToken::TypedStructField(field) => Some(format_name_with_type(
+                field.name.as_str(),
+                &field.type_argument.type_id,
+            )),
             TypedAstToken::TypedExpression(expr) => match expr.expression {
                 ty::TyExpressionVariant::Literal { .. } => {
                     Some(format!("{}", engines.help_out(expr.return_type)))

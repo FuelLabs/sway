@@ -80,11 +80,11 @@ impl ty::TyEnumVariant {
         let mut errors = vec![];
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let initial_type_id = type_engine.insert(decl_engine, variant.type_info);
-        let enum_variant_type = check!(
+        let mut type_argument = variant.type_argument;
+        type_argument.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
-                &variant.span,
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -95,9 +95,7 @@ impl ty::TyEnumVariant {
         ok(
             ty::TyEnumVariant {
                 name: variant.name.clone(),
-                type_id: enum_variant_type,
-                initial_type_id,
-                type_span: variant.type_span.clone(),
+                type_argument,
                 tag: variant.tag,
                 span: variant.span,
                 attributes: variant.attributes,

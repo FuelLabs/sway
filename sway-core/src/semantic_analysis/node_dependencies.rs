@@ -315,7 +315,10 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(type_engine, &field.type_info)
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.get(field.type_argument.type_id),
+                    )
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::EnumDeclaration(EnumDeclaration {
@@ -324,7 +327,10 @@ impl Dependencies {
                 ..
             }) => self
                 .gather_from_iter(variants.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(type_engine, &variant.type_info)
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.get(variant.type_argument.type_id),
+                    )
                 })
                 .gather_from_type_parameters(type_parameters),
             Declaration::TraitDeclaration(TraitDeclaration {
@@ -388,9 +394,18 @@ impl Dependencies {
                     deps.gather_from_fn_decl(type_engine, fn_decl)
                 }),
             Declaration::StorageDeclaration(StorageDeclaration { fields, .. }) => self
-                .gather_from_iter(fields.iter(), |deps, StorageField { ref type_info, .. }| {
-                    deps.gather_from_typeinfo(type_engine, type_info)
-                }),
+                .gather_from_iter(
+                    fields.iter(),
+                    |deps,
+                     StorageField {
+                         ref type_argument, ..
+                     }| {
+                        deps.gather_from_typeinfo(
+                            type_engine,
+                            &type_engine.get(type_argument.type_id),
+                        )
+                    },
+                ),
         }
     }
 
@@ -670,12 +685,18 @@ impl Dependencies {
             }
             TypeInfo::Struct { fields, .. } => {
                 self.gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.get(field.type_argument.type_id),
+                    )
                 })
             }
             TypeInfo::Enum { variant_types, .. } => {
                 self.gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
+                    deps.gather_from_typeinfo(
+                        type_engine,
+                        &type_engine.get(variant.type_argument.type_id),
+                    )
                 })
             }
             _ => self,
