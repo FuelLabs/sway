@@ -24,12 +24,7 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
         for attr in &self.attribute_list {
             // Write trailing comments after the end of the previous attribute
             if let Some(end) = attr_end {
-                let range = std::ops::Range {
-                    start: end,
-                    end: attr.span().start(),
-                };
-
-                write_comments(formatted_code, range, formatter)?;
+                write_comments(formatted_code, end..attr.span().start(), formatter)?;
             };
             attr.format(formatted_code, formatter)?;
             write!(
@@ -42,12 +37,7 @@ impl<ItemKind: Format + Spanned> Format for Annotated<ItemKind> {
 
         // Write trailing comments after the end of the last attribute
         if let Some(end) = attr_end {
-            let range = std::ops::Range {
-                start: end,
-                end: self.value.span().start(),
-            };
-
-            write_comments(formatted_code, range, formatter)?;
+            write_comments(formatted_code, end..self.value.span().start(), formatter)?;
         };
         // format `ItemKind`
         self.value.format(formatted_code, formatter)?;

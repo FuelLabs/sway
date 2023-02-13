@@ -36,25 +36,17 @@ impl Format for ItemAbi {
             abi_items.first().unwrap().0.value.span().start()
         };
 
-        write_comments(
-            formatted_code,
-            std::ops::Range {
-                start: self.name.span().end(),
-                end,
-            },
-            formatter,
-        )?;
+        write_comments(formatted_code, self.name.span().end()..end, formatter)?;
 
         let mut prev_end = None;
         // abi_items
         for (fn_signature, semicolon) in self.abi_items.get().iter() {
             if let Some(end) = prev_end {
-                let range = std::ops::Range {
-                    start: end,
-                    end: fn_signature.value.span().start(),
-                };
-
-                write_comments(formatted_code, range, formatter)?;
+                write_comments(
+                    formatted_code,
+                    end..fn_signature.value.span().start(),
+                    formatter,
+                )?;
             }
             // add indent + format item
             write!(
@@ -104,12 +96,7 @@ impl Format for ItemAbi {
             self.span().start()
         };
 
-        let range = std::ops::Range {
-            start,
-            end: self.span().end(),
-        };
-
-        write_comments(formatted_code, range, formatter)?;
+        write_comments(formatted_code, start..self.span().end(), formatter)?;
 
         Self::close_curly_brace(formatted_code, formatter)?;
 

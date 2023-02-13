@@ -16,14 +16,7 @@ impl Format for Module {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        write_comments(
-            formatted_code,
-            std::ops::Range {
-                start: 0,
-                end: self.span().start(),
-            },
-            formatter,
-        )?;
+        write_comments(formatted_code, 0..self.span().start(), formatter)?;
         self.kind.format(formatted_code, formatter)?;
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
 
@@ -31,10 +24,7 @@ impl Format for Module {
         if !self.items.is_empty() {
             write_comments(
                 formatted_code,
-                std::ops::Range {
-                    start: 0,
-                    end: self.items.first().unwrap().span().start(),
-                },
+                0..self.items.first().unwrap().span().start(),
                 formatter,
             )?;
         }
