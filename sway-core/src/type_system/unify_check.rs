@@ -147,11 +147,11 @@ impl<'a> UnifyCheck<'a> {
 
             (
                 Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -204,7 +204,9 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
             }
             (
                 Struct {
@@ -228,7 +230,9 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
             }
 
             // For contract callers, they can be coerced if they have the same

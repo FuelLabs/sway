@@ -9,6 +9,7 @@ use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
+use sway_core::fuel_prelude::fuel_tx;
 use sway_core::language::parsed::TreeType;
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;

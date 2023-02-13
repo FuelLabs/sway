@@ -6,6 +6,7 @@ use forc_client::{
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -151,9 +152,9 @@ pub(crate) fn runs_in_vm(
                 .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
                 .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity)
-                .finalize_checked(block_height as Word, params);
+                .finalize_checked(block_height as Word, params, &GasCosts::default());
 
-            let mut i = Interpreter::with_storage(storage, Default::default());
+            let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
             let transition = i.transact(tx)?;
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),

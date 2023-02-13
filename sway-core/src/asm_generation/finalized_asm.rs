@@ -13,7 +13,7 @@ use sway_error::error::CompileError;
 use sway_types::span::Span;
 
 use either::Either;
-use std::{collections::BTreeMap, fmt, io::Read};
+use std::{collections::BTreeMap, fmt};
 
 /// Represents an ASM set which has had register allocation, jump elimination, and optimization
 /// applied to it
@@ -143,14 +143,13 @@ fn to_bytecode_mut(
                 if ops.len() > 1 {
                     buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
                 }
-                for mut op in ops {
+                for op in ops {
                     if let Some(span) = &span {
                         source_map.insert(half_word_ix, span);
                     }
                     let read_range_upper_bound =
                         core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());
-                    op.read_exact(&mut buf[half_word_ix * 4..read_range_upper_bound])
-                        .expect("Failed to write to in-memory buffer.");
+                    buf[half_word_ix * 4..read_range_upper_bound].copy_from_slice(&op.to_bytes());
                     half_word_ix += 1;
                 }
             }

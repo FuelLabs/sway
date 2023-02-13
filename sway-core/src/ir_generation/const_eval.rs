@@ -425,6 +425,9 @@ fn const_eval_typed_expr(
             _ => None,
         },
         ty::TyExpressionVariant::Return(exp) => const_eval_typed_expr(lookup, known_consts, exp)?,
+        ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+            const_eval_typed_expr(lookup, known_consts, desugared)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)

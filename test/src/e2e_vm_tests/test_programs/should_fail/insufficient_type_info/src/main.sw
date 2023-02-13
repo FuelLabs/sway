@@ -5,5 +5,8 @@ fn foo<T>() {
 }
 
 fn main() {
-    foo()
+    foo();
+
+
+    Option::None::<T>;
 }

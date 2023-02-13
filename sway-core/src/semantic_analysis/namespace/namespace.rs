@@ -223,13 +223,7 @@ impl Namespace {
         let mut matching_method_decl_ids: Vec<DeclId> = vec![];
 
         for decl_id in methods.into_iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if &method.name == method_name {
+            if &decl_id.name == method_name {
                 matching_method_decl_ids.push(decl_id);
             }
         }
@@ -252,7 +246,11 @@ impl Namespace {
                     );
                     if method.parameters.len() == args_buf.len()
                         && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                            !are_equal_minus_dynamic_types(engines, p.type_id, a.return_type)
+                            !are_equal_minus_dynamic_types(
+                                engines,
+                                p.type_argument.type_id,
+                                a.return_type,
+                            )
                         })
                     {
                         maybe_method_decl_id = Some(decl_id);

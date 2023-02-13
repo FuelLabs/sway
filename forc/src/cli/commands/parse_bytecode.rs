@@ -19,15 +19,10 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         .map_err(|_| anyhow!("{}: file not found", command.file_path))?;
     let mut buffer = vec![0; metadata.len() as usize];
     f.read_exact(&mut buffer).expect("buffer overflow");
-    let mut instructions = vec![];
 
-    for i in (0..buffer.len()).step_by(4) {
-        let raw = &buffer[i..i + 4];
-        unsafe {
-            let op = fuel_asm::Opcode::from_bytes_unchecked(raw);
-            instructions.push((raw, op));
-        };
-    }
+    let instructions = fuel_asm::from_bytes(buffer.iter().cloned())
+        .zip(buffer.chunks(fuel_asm::Instruction::SIZE));
+
     let mut table = term_table::Table::new();
     table.separate_rows = false;
     table.add_row(Row::new(vec![
@@ -38,34 +33,36 @@ pub(crate) fn exec(command: Command) -> Result<()> {
         TableCell::new("notes"),
     ]));
     table.style = term_table::TableStyle::empty();
-    for (word_ix, instruction) in instructions.iter().enumerate() {
-        use fuel_asm::Opcode::*;
-        let notes = match instruction.1 {
-            JI(num) => format!("jump to byte {}", num * 4),
-            JNEI(_, _, num) => format!("conditionally jump to byte {}", num * 4),
-            JNZI(_, num) => format!("conditionally jump to byte {}", num * 4),
-            Undefined if word_ix == 2 || word_ix == 3 => {
-                let parsed_raw = u32::from_be_bytes([
-                    instruction.0[0],
-                    instruction.0[1],
-                    instruction.0[2],
-                    instruction.0[3],
-                ]);
+    for (word_ix, (result, raw)) in instructions.enumerate() {
+        use fuel_asm::Instruction;
+        let notes = match result {
+            Ok(Instruction::JI(ji)) => format!("jump to byte {}", u32::from(ji.imm24()) * 4),
+            Ok(Instruction::JNEI(jnei)) => {
+                format!("conditionally jump to byte {}", u32::from(jnei.imm12()) * 4)
+            }
+            Ok(Instruction::JNZI(jnzi)) => {
+                format!("conditionally jump to byte {}", u32::from(jnzi.imm18()) * 4)
+            }
+            Err(fuel_asm::InvalidOpcode) if word_ix == 2 || word_ix == 3 => {
+                let parsed_raw = u32::from_be_bytes([raw[0], raw[1], raw[2], raw[3]]);
                 format!(
                     "data section offset {} ({})",
                     if word_ix == 2 { "lo" } else { "hi" },
                     parsed_raw
                 )
             }
-            _ => "".into(),
+            Ok(_) | Err(fuel_asm::InvalidOpcode) => "".into(),
         };
         table.add_row(Row::new(vec![
             TableCell::new_with_alignment(word_ix, 1, Alignment::Right),
             TableCell::new(word_ix * 4),
-            TableCell::new(format!("{:?}", instruction.1)),
+            TableCell::new(match result {
+                Ok(inst) => format!("{inst:?}"),
+                Err(err) => format!("{err:?}"),
+            }),
             TableCell::new(format!(
                 "{:02x} {:02x} {:02x} {:02x}",
-                instruction.0[0], instruction.0[1], instruction.0[2], instruction.0[3],
+                raw[0], raw[1], raw[2], raw[3],
             )),
             TableCell::new(notes),
         ]));

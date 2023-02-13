@@ -1,6 +1,7 @@
 use clap::Parser;
-use fuel_gql_client::fuel_crypto::SecretKey;
+use fuel_crypto::SecretKey;
 
+pub use super::submit::Network;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 pub use forc_tx::Gas;
 
@@ -21,15 +22,17 @@ pub struct Command {
     pub build_output: BuildOutput,
     #[clap(flatten)]
     pub build_profile: BuildProfile,
+    /// The URL of the Fuel node to which we're submitting the transaction.
+    /// If unspecified, checks the manifest's `network` table, then falls back
+    /// to [`crate::default::NODE_URL`].
+    #[clap(long, env = "FUEL_NODE_URL")]
+    pub node_url: Option<String>,
     /// Hex string of data to input to script.
     #[clap(short, long)]
     pub data: Option<String>,
     /// Only craft transaction and print it out.
     #[clap(long)]
     pub dry_run: bool,
-    /// URL of the Fuel Client Node
-    #[clap(long, env = "FUEL_NODE_URL")]
-    pub node_url: Option<String>,
     /// Pretty-print the outputs from the node.
     #[clap(long = "pretty-print", short = 'r')]
     pub pretty_print: bool,

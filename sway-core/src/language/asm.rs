@@ -10,9 +10,6 @@ pub struct AsmOp {
     pub(crate) immediate: Option<Ident>,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for AsmOp {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.op_name.hash(state);
@@ -23,9 +20,6 @@ impl Hash for AsmOp {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for AsmOp {
     fn eq(&self, other: &Self) -> bool {
         self.op_name == other.op_name

@@ -9,6 +9,8 @@ pub enum ConvertParseTreeError {
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
     GenericsNotSupportedHere { span: Span },
+    #[error("multiple generics are not supported")]
+    MultipleGenericsNotSupported { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -113,6 +115,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),

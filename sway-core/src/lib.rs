@@ -1,6 +1,9 @@
 #[macro_use]
 pub mod error;
 
+#[macro_use]
+mod engine_threading;
+
 pub mod abi_generation;
 pub mod asm_generation;
 mod asm_lang;
@@ -8,7 +11,6 @@ mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod decl_engine;
-mod engine_threading;
 pub mod ir_generation;
 pub mod language;
 mod metadata;

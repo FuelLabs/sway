@@ -109,7 +109,11 @@ pub fn init(command: InitCommand) -> Result<()> {
         )?,
         InitType::Package(ProgramType::Library) => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
-            defaults::default_pkg_manifest(&project_name, constants::LIB_ENTRY),
+            // Library names cannot have `-` in them because the Sway compiler does not allow that.
+            // Even though this is technically not a problem in the toml file, we replace `-` with
+            // `_` here as well so that the library name in the Sway file matches the one in
+            // `Forc.toml`
+            defaults::default_pkg_manifest(&project_name.replace('-', "_"), constants::LIB_ENTRY),
         )?,
         _ => fs::write(
             Path::new(&project_dir).join(constants::MANIFEST_FILE_NAME),
@@ -134,7 +138,8 @@ pub fn init(command: InitCommand) -> Result<()> {
             Path::new(&project_dir)
                 .join("src")
                 .join(constants::LIB_ENTRY),
-            defaults::default_library(&project_name),
+            // Library names cannot have `-` in them because the Sway compiler does not allow that
+            defaults::default_library(&project_name.replace('-', "_")),
         )?,
         InitType::Package(ProgramType::Predicate) => fs::write(
             Path::new(&project_dir)
