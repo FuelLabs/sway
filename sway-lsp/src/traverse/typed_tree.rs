@@ -552,13 +552,12 @@ impl<'a> TypedTree<'a> {
             }
             ty::TyExpressionVariant::StructExpression {
                 fields,
-                span,
                 call_path_binding,
                 ..
             } => {
                 if let Some(mut token) = self
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(span.clone())))
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
@@ -664,14 +663,13 @@ impl<'a> TypedTree<'a> {
                 variant_name,
                 variant_instantiation_span,
                 enum_decl,
-                enum_instantiation_span,
                 contents,
                 call_path_binding,
                 ..
             } => {
                 if let Some(mut token) = self
                     .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
+                    .try_get_mut(&to_ident_key(&call_path_binding.inner.suffix))
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
