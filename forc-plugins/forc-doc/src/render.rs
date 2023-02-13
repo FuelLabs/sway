@@ -592,7 +592,7 @@ impl Renderable for TyStructField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -612,7 +612,7 @@ impl Renderable for TyStorageField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -632,7 +632,7 @@ impl Renderable for TyEnumVariant {
                 a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -663,7 +663,7 @@ impl Renderable for TyTraitFn {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_span.as_str()
+                    param.type_argument.span.as_str()
                 )?;
             }
         }
@@ -685,7 +685,7 @@ impl Renderable for TyTraitFn {
                                 br;
                                 : "    ";
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -695,7 +695,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                     : ","
                                 }
                             }
@@ -704,7 +704,7 @@ impl Renderable for TyTraitFn {
                         } else {
                             @ for param in &self.parameters {
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -714,7 +714,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                 }
                                 @ if param.name.as_str()
                                     != self.parameters.last()

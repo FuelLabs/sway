@@ -71,7 +71,7 @@ pub(crate) fn instantiate_function_application(
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, function_decl.return_type);
+        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
 
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
@@ -87,7 +87,7 @@ pub(crate) fn instantiate_function_application(
         errors
     );
     function_decl.replace_decls(&decl_mapping, engines);
-    let return_type = function_decl.return_type;
+    let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
         .insert(function_decl)
         .with_parent(decl_engine, &function_decl_ref);
@@ -102,7 +102,7 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type,
+        return_type: return_type.type_id,
         span,
     };
 
@@ -164,7 +164,7 @@ fn unify_arguments_and_parameters(
             CompileResult::from(type_engine.unify(
                 decl_engine,
                 arg.return_type,
-                param.type_id,
+                param.type_argument.type_id,
                 &arg.span,
                 "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \

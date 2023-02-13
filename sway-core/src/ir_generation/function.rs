@@ -283,6 +283,9 @@ impl<'eng> FnCompiler<'eng> {
                 "Unexpected function parameter declaration.",
                 ast_expr.span.clone(),
             )),
+            ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+                self.compile_expression(context, md_mgr, desugared)
+            }
             ty::TyExpressionVariant::IfExp {
                 condition,
                 then,
@@ -1252,7 +1255,11 @@ impl<'eng> FnCompiler<'eng> {
         // be more accurate but also more fiddly.
         let fn_key = (
             callee.span(),
-            callee.parameters.iter().map(|p| p.type_id).collect(),
+            callee
+                .parameters
+                .iter()
+                .map(|p| p.type_argument.type_id)
+                .collect(),
             callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
         );
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
@@ -1588,7 +1595,7 @@ impl<'eng> FnCompiler<'eng> {
             let is_ref_primitive = fn_param.is_some()
                 && self
                     .type_engine
-                    .get(fn_param.unwrap().type_id)
+                    .get(fn_param.unwrap().type_argument.type_id)
                     .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;

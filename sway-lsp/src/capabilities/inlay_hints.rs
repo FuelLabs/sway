@@ -48,7 +48,7 @@ pub(crate) fn inlay_hints(
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
-                    match var_decl.type_ascription_span {
+                    match var_decl.type_ascription.name_spans {
                         Some(_) => None,
                         None => {
                             let var_range = get_range_from_span(&var_decl.name.span());
@@ -64,7 +64,7 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.get(var.type_ascription);
+            let type_info = type_engine.get(var.type_ascription.type_id);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),

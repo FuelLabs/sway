@@ -325,6 +325,7 @@ fn analyze_expression(
             Some(expr) => analyze_expression(engines, expr, block_name, warnings),
             None => HashSet::new(),
         },
+        MatchExp { desugared, .. } => analyze_expression(engines, desugared, block_name, warnings),
         IfExp {
             condition,
             then,
@@ -546,6 +547,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
         }
         StructExpression { fields, .. } => effects_of_struct_expressions(engines, fields),
         CodeBlock(codeblock) => effects_of_codeblock(engines, codeblock),
+        MatchExp { desugared, .. } => effects_of_expression(engines, desugared),
         IfExp {
             condition,
             then,

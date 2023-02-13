@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -66,6 +69,7 @@ impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let decl_engine = engines.de();
+        let type_engine = engines.te();
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
             (
@@ -165,9 +169,38 @@ impl PartialEqWithEngines for TyDeclaration {
                     name: yn,
                     type_id: yti,
                 },
-            ) => xn == yn && xti == yti,
+            ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), engines),
             (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use TyDeclaration::*;
+        let decl_engine = engines.de();
+        let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
+        match self {
+            VariableDeclaration(decl) => {
+                decl.hash(state, engines);
+            }
+            ConstantDeclaration { decl_id, .. }
+            | FunctionDeclaration { decl_id, .. }
+            | TraitDeclaration { decl_id, .. }
+            | StructDeclaration { decl_id, .. }
+            | EnumDeclaration { decl_id, .. }
+            | ImplTrait { decl_id, .. }
+            | AbiDeclaration { decl_id, .. }
+            | StorageDeclaration { decl_id, .. } => {
+                decl_engine.get(decl_id).hash(state, engines);
+            }
+            GenericTypeForFunctionScope { name, type_id } => {
+                name.hash(state);
+                type_engine.get(*type_id).hash(state, engines);
+            }
+            ErrorRecovery(_) => {}
         }
     }
 }
@@ -277,7 +310,7 @@ impl DisplayWithEngines for TyDeclaration {
                     builder.push_str(": ");
                     builder.push_str(
                         &engines
-                            .help_out(type_engine.get(*type_ascription))
+                            .help_out(type_engine.get(type_ascription.type_id))
                             .to_string(),
                     );
                     builder.push_str(" = ");
@@ -313,7 +346,7 @@ impl CollectTypesMetadata for TyDeclaration {
                     errors
                 );
                 body.append(&mut check!(
-                    decl.type_ascription.collect_types_metadata(ctx),
+                    decl.type_ascription.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -662,7 +695,7 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.return_type
+                decl.return_type.type_id
             }
             TyDeclaration::StructDeclaration { decl_id, .. } => {
                 let decl = check!(

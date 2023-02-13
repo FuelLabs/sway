@@ -1,3 +1,5 @@
+use std::hash::Hasher;
+
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty, type_system::*};
@@ -85,6 +87,14 @@ impl PartialEqWithEngines for DeclRef {
         let left = decl_engine.get(self);
         let right = decl_engine.get(other);
         self.name == other.name && left.eq(&right, engines)
+    }
+}
+
+impl HashWithEngines for DeclRef {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let decl_engine = engines.de();
+        let decl = decl_engine.get(self);
+        decl.hash(state, engines);
     }
 }
 

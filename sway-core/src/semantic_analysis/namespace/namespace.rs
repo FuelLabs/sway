@@ -244,7 +244,11 @@ impl Namespace {
                     );
                     if method.parameters.len() == args_buf.len()
                         && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                            !are_equal_minus_dynamic_types(engines, p.type_id, a.return_type)
+                            !are_equal_minus_dynamic_types(
+                                engines,
+                                p.type_argument.type_id,
+                                a.return_type,
+                            )
                         })
                     {
                         maybe_method_decl_ref = Some(decl_ref);

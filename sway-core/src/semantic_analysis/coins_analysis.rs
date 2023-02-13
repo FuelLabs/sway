@@ -49,6 +49,7 @@ pub fn possibly_nonzero_u64_expression(
         FunctionApplication { .. }
         | ArrayIndex { .. }
         | CodeBlock(_)
+        | MatchExp { .. }
         | IfExp { .. }
         | AsmExpression { .. }
         | StructFieldAccess { .. }

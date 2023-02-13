@@ -26,14 +26,14 @@ pub struct TypeEngine {
 
 fn make_hasher<'a: 'b, 'b, K>(
     hash_builder: &'a impl BuildHasher,
-    type_engine: &'b TypeEngine,
+    engines: Engines<'b>,
 ) -> impl Fn(&K) -> u64 + 'b
 where
     K: HashWithEngines + ?Sized,
 {
     move |key: &K| {
         let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, type_engine);
+        key.hash(&mut state, engines);
         state.finish()
     }
 }
@@ -44,18 +44,19 @@ impl TypeEngine {
     pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
 
+        let engines = Engines::new(self, decl_engine);
         let hash_builder = id_map.hasher().clone();
-        let ty_hash = make_hasher(&hash_builder, self)(&ty);
+        let ty_hash = make_hasher(&hash_builder, engines)(&ty);
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, decl_engine)));
+            .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
-                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));
+                v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, engines));
                 type_id
             }
         }
@@ -401,23 +402,24 @@ impl TypeEngine {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match self.get(type_id) {
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
                 match namespace
                     .root()
-                    .resolve_symbol(module_path, &name)
+                    .resolve_call_path_with_visibility_check(engines, module_path, &call_path)
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
                     Some(ty::TyDeclaration::StructDeclaration {
                         decl_id: original_id,
-                        name,
                         ..
                     }) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_struct(&original_id, &name.span())),
+                            CompileResult::from(
+                                decl_engine.get_struct(&original_id, &call_path.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -450,12 +452,13 @@ impl TypeEngine {
                     }
                     Some(ty::TyDeclaration::EnumDeclaration {
                         decl_id: original_id,
-                        name,
                         ..
                     }) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(&original_id, &name.span())),
+                            CompileResult::from(
+                                decl_engine.get_enum(&original_id, &call_path.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -489,8 +492,8 @@ impl TypeEngine {
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {
-                            name: name.to_string(),
-                            span: name.span(),
+                            name: call_path.to_string(),
+                            span: call_path.span(),
                         });
                         self.insert(decl_engine, TypeInfo::ErrorRecovery)
                     }
