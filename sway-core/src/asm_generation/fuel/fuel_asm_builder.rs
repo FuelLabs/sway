@@ -13,7 +13,7 @@ use crate::{
         ProgramKind,
     },
     asm_lang::{virtual_register::*, Label, Op, VirtualImmediate12, VirtualImmediate18, VirtualOp},
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     error::*,
     fuel_prelude::fuel_crypto::Hasher,
     metadata::MetadataManager,
@@ -63,7 +63,7 @@ pub struct FuelAsmBuilder<'ir> {
 
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
-    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclId>)>,
+    pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclRef>)>,
     pub(super) non_entries: Vec<Vec<Op>>,
 
     // In progress VM bytecode ops.
@@ -73,7 +73,7 @@ pub struct FuelAsmBuilder<'ir> {
 pub type FuelAsmBuilderResult = (
     DataSection,
     RegisterSequencer,
-    Vec<(Function, Label, AbstractInstructionSet, Option<DeclId>)>,
+    Vec<(Function, Label, AbstractInstructionSet, Option<DeclRef>)>,
     Vec<AbstractInstructionSet>,
 );
 
@@ -140,8 +140,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             self.entries
                 .clone()
                 .into_iter()
-                .map(|(f, l, ops, test_decl_id)| {
-                    (f, l, AbstractInstructionSet { ops }, test_decl_id)
+                .map(|(f, l, ops, test_decl_ref)| {
+                    (f, l, AbstractInstructionSet { ops }, test_decl_ref)
                 })
                 .collect(),
             self.non_entries

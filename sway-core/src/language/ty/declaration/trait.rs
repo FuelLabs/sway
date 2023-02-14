@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     engine_threading::*,
     language::{parsed, Visibility},
     transform,
@@ -14,8 +14,8 @@ use crate::{
 pub struct TyTraitDeclaration {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
-    pub interface_surface: Vec<DeclId>,
-    pub methods: Vec<DeclId>,
+    pub interface_surface: Vec<DeclRef>,
+    pub methods: Vec<DeclRef>,
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
@@ -64,11 +64,11 @@ impl SubstTypes for TyTraitDeclaration {
             .for_each(|x| x.subst(type_mapping, engines));
         self.interface_surface
             .iter_mut()
-            .for_each(|function_decl_id| {
-                let new_decl_id = function_decl_id
+            .for_each(|function_decl_ref| {
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_ref.replace_id((&new_decl_ref).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }
@@ -81,11 +81,11 @@ impl ReplaceSelfType for TyTraitDeclaration {
             .for_each(|x| x.replace_self_type(engines, self_type));
         self.interface_surface
             .iter_mut()
-            .for_each(|function_decl_id| {
-                let new_decl_id = function_decl_id
+            .for_each(|function_decl_ref| {
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_ref.replace_id((&new_decl_ref).into());
             });
         // we don't have to type check the methods because it hasn't been type checked yet
     }

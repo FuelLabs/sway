@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclId, ReplaceDecls},
+    decl_engine::{DeclRef, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,7 +11,7 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    function_decl_id: DeclId,
+    function_decl_ref: DeclRef,
     call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
@@ -22,9 +22,7 @@ pub(crate) fn instantiate_function_application(
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
-    let mut function_decl = decl_engine
-        .get_function(function_decl_id.clone(), &span)
-        .unwrap();
+    let mut function_decl = decl_engine.get_function(&function_decl_ref, &span).unwrap();
 
     if arguments.is_none() {
         errors.push(CompileError::MissingParenthesesForFunction {
@@ -90,16 +88,16 @@ pub(crate) fn instantiate_function_application(
     );
     function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type.clone();
-    let new_decl_id = decl_engine
+    let new_decl_ref = decl_engine
         .insert(function_decl)
-        .with_parent(decl_engine, function_decl_id);
+        .with_parent(decl_engine, &function_decl_ref);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_id: new_decl_id,
+            function_decl_ref: new_decl_ref,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
