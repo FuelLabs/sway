@@ -583,7 +583,7 @@ impl Renderable for TyStructField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -603,7 +603,7 @@ impl Renderable for TyStorageField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -623,7 +623,7 @@ impl Renderable for TyEnumVariant {
                 a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {

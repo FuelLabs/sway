@@ -39,7 +39,7 @@ pub(crate) fn instantiate_unsafe_downcast(
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
         },
-        return_type: variant.type_id,
+        return_type: variant.type_argument.type_id,
         span,
     };
     (match_req_map, unsafe_downcast)
