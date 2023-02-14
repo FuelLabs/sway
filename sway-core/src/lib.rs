@@ -114,7 +114,11 @@ fn parse_in_memory(
         module.clone(),
     )?;
     let submodules = Default::default();
-    let root = parsed::ParseModule { tree, submodules };
+    let root = parsed::ParseModule {
+        tree,
+        submodules,
+        // attributes,
+    };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
@@ -225,6 +229,7 @@ fn parse_module_tree(
     let parsed = parsed::ParseModule {
         tree,
         submodules: submodules.parsed,
+        // attributes,
     };
     Ok((kind, lexed, parsed))
 }

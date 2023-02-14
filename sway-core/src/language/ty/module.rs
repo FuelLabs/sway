@@ -12,6 +12,7 @@ pub struct TyModule {
     pub submodules: Vec<(DepName, TySubmodule)>,
     pub namespace: namespace::Module,
     pub all_nodes: Vec<TyAstNode>,
+    // pub attributes: transform::AttributesMap,
 }
 
 #[derive(Clone, Debug)]
