@@ -67,9 +67,9 @@ impl AbiImplCodeAction<'_> {
             self.decl
                 .interface_surface
                 .iter()
-                .filter_map(|function_decl_id| {
+                .filter_map(|function_decl_ref| {
                     decl_engine
-                        .get_trait_fn(function_decl_id.clone(), &function_decl_id.span())
+                        .get_trait_fn(function_decl_ref, &function_decl_ref.span())
                         .ok()
                         .map(|function_decl| {
                             self.fn_signature_string(

@@ -22,13 +22,13 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
             .tokens
             .all_references_of_token(ctx.token, ctx.engines.te())
             .find_map(|(_, token)| {
-                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait(decl_id))) =
-                    token.typed
+                if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
+                    decl_id,
+                    decl_span,
+                    ..
+                })) = token.typed
                 {
-                    ctx.engines
-                        .de()
-                        .get_impl_trait(decl_id.clone(), &decl_id.span())
-                        .ok()
+                    ctx.engines.de().get_impl_trait(&decl_id, &decl_span).ok()
                 } else {
                     None
                 }
@@ -137,6 +137,9 @@ impl StructNewCodeAction<'_> {
     }
 
     fn fn_body(&self) -> String {
+        if self.decl.fields.is_empty() {
+            return "Self {{}}".to_string();
+        }
         format!(
             "Self {{ {} }}",
             self.decl

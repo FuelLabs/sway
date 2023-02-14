@@ -52,10 +52,12 @@ pub(crate) fn code_actions(
     };
     token.typed.and_then(|typed_token| match typed_token {
         TypedAstToken::TypedDeclaration(decl) => match decl {
-            TyDeclaration::AbiDeclaration(ref decl_id) => abi_decl::code_actions(decl_id, ctx),
-            TyDeclaration::StructDeclaration(ref decl_id) => {
-                struct_decl::code_actions(decl_id, ctx)
-            }
+            TyDeclaration::AbiDeclaration {
+                decl_id, decl_span, ..
+            } => abi_decl::code_actions(&decl_id, &decl_span, ctx),
+            TyDeclaration::StructDeclaration {
+                decl_id, decl_span, ..
+            } => struct_decl::code_actions(&decl_id, &decl_span, ctx),
             _ => None,
         },
         _ => None,
