@@ -76,94 +76,94 @@ fn main() -> bool {
     assert(last_left_shift_one.b == 1 << 63);
 
     let not_1_0_0_0 = !U256::from((1, 0, 0, 0));
-    assert(not_1_0_0_0.a == 1);
-    assert(not_1_0_0_0.b == 1);
-    assert(not_1_0_0_0.c == 1);
-    assert(not_1_0_0_0.d == 0);
+    assert(not_1_0_0_0.a == u64::max() - 1);
+    assert(not_1_0_0_0.b == u64::max());
+    assert(not_1_0_0_0.c == u64::max());
+    assert(not_1_0_0_0.d == u64::max());
 
     let not_0_1_0_0 = !U256::from((0, 1, 0, 0));
-    assert(not_0_1_0_0.a == 1);
-    assert(not_0_1_0_0.b == 1);
-    assert(not_0_1_0_0.c == 1);
-    assert(not_0_1_0_0.d == 0);
+    assert(not_0_1_0_0.a == u64::max());
+    assert(not_0_1_0_0.b == u64::max() - 1);
+    assert(not_0_1_0_0.c == u64::max());
+    assert(not_0_1_0_0.d == u64::max());
 
     let not_0_0_1_0 = !U256::from((0, 0, 1, 0));
-    assert(not_0_0_1_0.a == 1);
-    assert(not_0_0_1_0.b == 1);
-    assert(not_0_0_1_0.c == 1);
-    assert(not_0_0_1_0.d == 0);
+    assert(not_0_0_1_0.a == u64::max());
+    assert(not_0_0_1_0.b == u64::max());
+    assert(not_0_0_1_0.c == u64::max() - 1);
+    assert(not_0_0_1_0.d == u64::max());
 
     let not_0_0_0_1 = !U256::from((0, 0, 0, 1));
-    assert(not_0_0_0_1.a == 1);
-    assert(not_0_0_0_1.b == 1);
-    assert(not_0_0_0_1.c == 1);
-    assert(not_0_0_0_1.d == 0);
+    assert(not_0_0_0_1.a == u64::max());
+    assert(not_0_0_0_1.b == u64::max());
+    assert(not_0_0_0_1.c == u64::max());
+    assert(not_0_0_0_1.d == u64::max() - 1);
 
     let not_1_1_0_0 = !U256::from((1, 1, 0, 0));
-    assert(not_1_1_0_0.a == 1);
-    assert(not_1_1_0_0.b == 1);
-    assert(not_1_1_0_0.c == 1);
-    assert(not_1_1_0_0.d == 0);
+    assert(not_1_1_0_0.a == u64::max());
+    assert(not_1_1_0_0.b == u64::max() - 1);
+    assert(not_1_1_0_0.c == u64::max());
+    assert(not_1_1_0_0.d == u64::max());
 
     let not_0_1_1_0 = !U256::from((0, 1, 1, 0));
-    assert(not_0_1_1_0.a == 1);
-    assert(not_0_1_1_0.b == 1);
-    assert(not_0_1_1_0.c == 1);
-    assert(not_0_1_1_0.d == 0);
+    assert(not_0_1_1_0.a == u64::max());
+    assert(not_0_1_1_0.b == u64::max() - 1);
+    assert(not_0_1_1_0.c == u64::max() - 1);
+    assert(not_0_1_1_0.d == u64::max());
 
     let not_0_0_1_1 = !U256::from((0, 0, 1, 1));
-    assert(not_0_0_1_1.a == 1);
-    assert(not_0_0_1_1.b == 1);
-    assert(not_0_0_1_1.c == 1);
-    assert(not_0_0_1_1.d == 0);
+    assert(not_0_0_1_1.a == u64::max());
+    assert(not_0_0_1_1.b == u64::max());
+    assert(not_0_0_1_1.c == u64::max() - 1);
+    assert(not_0_0_1_1.d == u64::max() - 1);
 
     let not_1_0_1_0 = !U256::from((1, 0, 1, 0));
-    assert(not_1_0_1_0.a == 1);
-    assert(not_1_0_1_0.b == 1);
-    assert(not_1_0_1_0.c == 1);
-    assert(not_1_0_1_0.d == 0);
+    assert(not_1_0_1_0.a == u64::max() - 1);
+    assert(not_1_0_1_0.b == u64::max());
+    assert(not_1_0_1_0.c == u64::max() - 1);
+    assert(not_1_0_1_0.d == u64::max());
 
     let not_1_0_0_1 = !U256::from((1, 0, 0, 1));
-    assert(not_1_0_0_1.a == 1);
-    assert(not_1_0_0_1.b == 1);
-    assert(not_1_0_0_1.c == 1);
-    assert(not_1_0_0_1.d == 0);
+    assert(not_1_0_0_1.a == u64::max() - 1);
+    assert(not_1_0_0_1.b == u64::max());
+    assert(not_1_0_0_1.c == u64::max());
+    assert(not_1_0_0_1.d == u64::max() - 1);
 
     let not_0_1_0_1 = !U256::from((0, 1, 0, 1));
-    assert(not_0_1_0_1.a == 1);
-    assert(not_0_1_0_1.b == 1);
-    assert(not_0_1_0_1.c == 1);
-    assert(not_0_1_0_1.d == 0);
+    assert(not_0_1_0_1.a == u64::max());
+    assert(not_0_1_0_1.b == u64::max() - 1);
+    assert(not_0_1_0_1.c == u64::max());
+    assert(not_0_1_0_1.d == u64::max() - 1);
 
     let not_1_1_1_0 = !U256::from((1, 1, 1, 0));
-    assert(not_1_1_1_0.a == 1);
-    assert(not_1_1_1_0.b == 1);
-    assert(not_1_1_1_0.c == 1);
-    assert(not_1_1_1_0.d == 0);
+    assert(not_1_1_1_0.a == u64::max() - 1);
+    assert(not_1_1_1_0.b == u64::max() - 1);
+    assert(not_1_1_1_0.c == u64::max() - 1);
+    assert(not_1_1_1_0.d == u64::max());
 
     let not_0_1_1_1 = !U256::from((0, 1, 1, 1));
-    assert(not_0_1_1_1.a == 1);
-    assert(not_0_1_1_1.b == 1);
-    assert(not_0_1_1_1.c == 1);
-    assert(not_0_1_1_1.d == 0);
+    assert(not_0_1_1_1.a == u64::max());
+    assert(not_0_1_1_1.b == u64::max() - 1);
+    assert(not_0_1_1_1.c == u64::max() - 1);
+    assert(not_0_1_1_1.d == u64::max() - 1);
 
     let not_1_0_1_1 = !U256::from((1, 0, 1, 1));
-    assert(not_1_0_1_1.a == 1);
-    assert(not_1_0_1_1.b == 1);
-    assert(not_1_0_1_1.c == 1);
-    assert(not_1_0_1_1.d == 0);
+    assert(not_1_0_1_1.a == u64::max() - 1);
+    assert(not_1_0_1_1.b == u64::max());
+    assert(not_1_0_1_1.c == u64::max() - 1);
+    assert(not_1_0_1_1.d == u64::max() - 1);
 
     let not_1_1_0_1 = !U256::from((1, 1, 0, 1));
-    assert(not_1_1_0_1.a == 1);
-    assert(not_1_1_0_1.b == 1);
-    assert(not_1_1_0_1.c == 1);
-    assert(not_1_1_0_1.d == 0);
+    assert(not_1_1_0_1.a == u64::max() - 1);
+    assert(not_1_1_0_1.b == u64::max() - 1);
+    assert(not_1_1_0_1.c == u64::max());
+    assert(not_1_1_0_1.d == u64::max() - 1);
 
     let not_1_1_1_1 = !U256::from((1, 1, 1, 1));
-    assert(not_1_1_1_1.a == 1);
-    assert(not_1_1_1_1.b == 1);
-    assert(not_1_1_1_1.c == 1);
-    assert(not_1_1_1_1.d == 0);
+    assert(not_1_1_1_1.a == u64::max() - 1);
+    assert(not_1_1_1_1.b == u64::max() - 1);
+    assert(not_1_1_1_1.c == u64::max() - 1);
+    assert(not_1_1_1_1.d == u64::max() - 1);
 
     true
 }

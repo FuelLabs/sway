@@ -77,16 +77,16 @@ fn main() -> bool {
     assert(three_left_shift_one.lower == 6);
 
     let not_0_3 = !U128::from((0, 3));
-    assert(three_left_shift_one.upper == 0);
-    assert(three_left_shift_one.lower == 6);
+    assert(three_left_shift_one.upper == u64::max());
+    assert(three_left_shift_one.lower == u64::max() - 3);
 
     let not_3_3 = !U128::from((3, 3));
-    assert(three_left_shift_one.upper == 0);
-    assert(three_left_shift_one.lower == 6);
+    assert(three_left_shift_one.upper == u64::max() - 3);
+    assert(three_left_shift_one.lower == u64::max() - 3);
 
     let not_3_0 = !U128::from((3, 0));
-    assert(three_left_shift_one.upper == 0);
-    assert(three_left_shift_one.lower == 6);
+    assert(three_left_shift_one.upper == u64::max() - 3);
+    assert(three_left_shift_one.lower == u64::max());
 
     // test as_u64()
     let eleven = U128::from((0, 11));
