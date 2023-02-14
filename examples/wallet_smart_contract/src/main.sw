@@ -2,10 +2,7 @@
 contract;
 
 use std::{
-    auth::{
-        AuthError,
-        msg_sender,
-    },
+    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
@@ -33,12 +30,12 @@ impl Wallet for Contract {
         }
     }
 
-    #[storage(read, write)]
+    #[storage(read, write, payable)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Identity, AuthError> = msg_sender();
-        match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        match sender {
             Identity::Address(addr) => assert(addr == OWNER_ADDRESS),
             _ => revert(0),
         };
