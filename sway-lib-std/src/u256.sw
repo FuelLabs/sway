@@ -328,7 +328,7 @@ impl core::ops::Shift for U256 {
 
 impl core::ops::Not for U256 {
     fn not(self) -> Self {
-        U256 {
+        Self {
             a: !self.a,
             b: !self.b,
             c: !self.c,

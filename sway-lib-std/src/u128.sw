@@ -258,7 +258,7 @@ impl core::ops::Shift for U128 {
 
 impl core::ops::Not for U128 {
     fn not(self) -> Self {
-        U128 {
+        Self {
             upper: !self.upper,
             lower: !self.lower,
         }
