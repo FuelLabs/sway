@@ -256,6 +256,15 @@ impl core::ops::Shift for U128 {
     }
 }
 
+impl core::ops::Not for U128 {
+    fn not(self) -> Self {
+        U128 {
+            upper: !self.upper,
+            lower: !self.lower,
+        }
+    }
+}
+
 impl core::ops::Add for U128 {
     /// Add a `U128` to a `U128`. Panics on overflow.
     fn add(self, other: Self) -> Self {

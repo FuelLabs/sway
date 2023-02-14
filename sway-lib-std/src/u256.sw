@@ -326,6 +326,17 @@ impl core::ops::Shift for U256 {
     }
 }
 
+impl core::ops::Not for U256 {
+    fn not(self) -> Self {
+        U256 {
+            a: !self.a,
+            b: !self.b,
+            c: !self.c,
+            d: !self.d,
+        }
+    }
+}
+
 impl core::ops::Add for U256 {
     /// Add a `U256` to a `U256`. Panics on overflow.
     fn add(self, other: Self) -> Self {
