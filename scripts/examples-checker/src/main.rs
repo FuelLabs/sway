@@ -170,7 +170,7 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     }
 
     print_summary(&summary, command_kind)?;
-    println!("Finished in {:.3?}", total_time);
+    println!("Finished in {total_time:.3?}");
     Ok(())
 }
 
