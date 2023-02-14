@@ -33,8 +33,7 @@ pub fn has_comments<I: Iterator>(comments: I) -> bool {
     comments.peekable().peek().is_some()
 }
 
-/// This function collects newlines to insert after the comment span to preserve them.
-/// The given 'unformatted_code' should be
+/// This function collects newlines to insert after a given Comment span to preserve them.
 pub fn collect_newlines_after_comment(
     comments_context: &CommentsContext,
     comment: &Comment,
