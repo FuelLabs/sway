@@ -8,6 +8,7 @@ use std::{
     fs,
     io::{self, Write},
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 #[derive(Parser)]
@@ -94,16 +95,22 @@ fn run_forc_fmt(path: &Path) -> bool {
     run_forc_command(path, &["fmt", "--check", "--path"])
 }
 
-fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Result<()> {
+fn print_summary(summary: &[(PathBuf, Duration, bool)], command_kind: CommandKind) -> Result<()> {
     println!("\nSummary for command {command_kind}:");
     let mut successes = 0;
-    for (path, success) in summary {
+    for (path, duration, success) in summary {
         let (checkmark, status) = if *success {
             ("[✓]", "succeeded")
         } else {
             ("[x]", "failed")
         };
-        println!("  {}: {} {}!", checkmark, path.display(), status);
+        println!(
+            "  {}: {} {} in {:.3?}!",
+            checkmark,
+            path.display(),
+            status,
+            duration
+        );
         if *success {
             successes += 1;
         }
@@ -125,7 +132,7 @@ fn print_summary(summary: &[(PathBuf, bool)], command_kind: CommandKind) -> Resu
 }
 
 fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
-    let mut summary: Vec<(PathBuf, bool)> = vec![];
+    let mut summary: Vec<(PathBuf, Duration, bool)> = vec![];
 
     if all_examples {
         let examples_dir = get_sway_path().join("examples");
@@ -136,23 +143,27 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
                 _ => continue,
             };
 
+            let start = std::time::Instant::now();
             let success: bool = if command_kind == CommandKind::Build {
                 run_forc_build(&path)
             } else {
                 run_forc_fmt(&path)
             };
+            let duration = start.elapsed();
 
-            summary.push((path, success));
+            summary.push((path, duration, success));
         }
     } else {
         for path in paths {
+            let start = std::time::Instant::now();
             let success: bool = if command_kind == CommandKind::Build {
                 run_forc_build(&path)
             } else {
                 run_forc_fmt(&path)
             };
+            let duration = start.elapsed();
 
-            summary.push((path, success));
+            summary.push((path, duration, success));
         }
     }
 
