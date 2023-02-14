@@ -1,4 +1,7 @@
-use crate::{block::Block, BranchToWithArgs, Context, Function};
+use crate::{
+    block::Block, AnalysisResult, AnalysisResultT, AnalysisResults, BranchToWithArgs, Context,
+    Function, IrError, Pass, PassMutability, ScopedPass,
+};
 /// Dominator tree and related algorithms.
 /// The algorithms implemented here are from the paper
 // "A Simple, Fast Dominance Algorithm" -- Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy.
@@ -24,13 +27,36 @@ impl DomTreeNode {
 
 // The dominator tree is represented by mapping each Block to its DomTreeNode.
 pub type DomTree = FxHashMap<Block, DomTreeNode>;
+impl AnalysisResultT for DomTree {}
+
 // Dominance frontier sets.
 pub type DomFronts = FxHashMap<Block, FxHashSet<Block>>;
+impl AnalysisResultT for DomFronts {}
 
 /// Post ordering of blocks in the CFG.
 pub struct PostOrder {
     pub block_to_po: FxHashMap<Block, usize>,
     pub po_to_block: Vec<Block>,
+}
+impl AnalysisResultT for PostOrder {}
+
+pub const POSTORDER_NAME: &str = "postorder";
+
+pub fn create_postorder_pass() -> Pass {
+    Pass {
+        name: POSTORDER_NAME,
+        descr: "Postorder traversal of the control-flow graph",
+        deps: vec![],
+        runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_post_order_pass)),
+    }
+}
+
+pub fn compute_post_order_pass(
+    context: &Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<AnalysisResult, IrError> {
+    Ok(Box::new(compute_post_order(context, &function)))
 }
 
 /// Compute the post-order traversal of the CFG.
@@ -70,9 +96,24 @@ pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
     res
 }
 
+pub const DOMINATORS_NAME: &str = "dominators";
+
+pub fn create_dominators_pass() -> Pass {
+    Pass {
+        name: DOMINATORS_NAME,
+        descr: "Dominator tree computation",
+        deps: vec![POSTORDER_NAME],
+        runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_dom_tree)),
+    }
+}
+
 /// Compute the dominator tree for the CFG.
-pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, PostOrder) {
-    let po = compute_post_order(context, function);
+fn compute_dom_tree(
+    context: &Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<AnalysisResult, IrError> {
+    let po: &PostOrder = analyses.get_analysis_result(function);
     let mut dom_tree = DomTree::default();
     let entry = function.get_entry_block(context);
 
@@ -108,7 +149,7 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
             {
                 if matches!(dom_tree[p].parent, Some(_)) {
                     // if doms[p] already calculated
-                    new_idom = intersect(&po, &mut dom_tree, *p, new_idom);
+                    new_idom = intersect(po, &mut dom_tree, *p, new_idom);
                 }
             }
             let b_node = dom_tree.get_mut(b).unwrap();
@@ -152,11 +193,27 @@ pub fn compute_dom_tree(context: &Context, function: &Function) -> (DomTree, Pos
         dom_tree.get_mut(&parent).unwrap().children.push(child);
     }
 
-    (dom_tree, po)
+    Ok(Box::new(dom_tree))
+}
+
+pub const DOMFRONTS_NAME: &str = "dominance_frontiers";
+
+pub fn create_dom_fronts_pass() -> Pass {
+    Pass {
+        name: DOMFRONTS_NAME,
+        descr: "Dominator frontiers computation",
+        deps: vec![DOMINATORS_NAME],
+        runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_dom_fronts)),
+    }
 }
 
 /// Compute dominance frontiers set for each block.
-pub fn compute_dom_fronts(context: &Context, dom_tree: &DomTree) -> DomFronts {
+fn compute_dom_fronts(
+    context: &Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<AnalysisResult, IrError> {
+    let dom_tree: &DomTree = analyses.get_analysis_result(function);
     let mut res = DomFronts::default();
     for (b, _) in dom_tree.iter() {
         res.insert(*b, FxHashSet::default());
@@ -179,7 +236,7 @@ pub fn compute_dom_fronts(context: &Context, dom_tree: &DomTree) -> DomFronts {
             }
         }
     }
-    res
+    Ok(Box::new(res))
 }
 
 /// Print dominator tree in the graphviz dot format.
