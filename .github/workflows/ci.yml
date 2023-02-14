@@ -106,8 +106,8 @@ jobs:
 
       - name: Print diagnostics
         run: |
-          echo "fmt (master) took $ {{ steps.fmt-check-master }}"
-          echo "fmt (current) took $ {{ steps.fmt-check-current }}"
+          echo "fmt (master) took ${{ steps.fmt-check-master.outputs.DURATION_MASTER }}"
+          echo "fmt (current) took ${{ steps.fmt-check-current.outputs.DURATION_CURRENT }}"
           
   build-mdbook:
     runs-on: ubuntu-latest
