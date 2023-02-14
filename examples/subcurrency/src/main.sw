@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{auth::{AuthError, msg_sender}, hash::sha256};
+use std::{auth::msg_sender, hash::sha256};
 
 ////////////////////////////////////////
 // Event declarations
@@ -29,7 +29,7 @@ abi Token {
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    #[storage(read, write)]
+    #[storage(read, write, payable)]
     fn send(receiver: Address, amount: u64);
 }
 
@@ -56,7 +56,7 @@ impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Identity, AuthError> = msg_sender();
+        let sender = msg_sender().unwrap.();
         let sender: Address = match sender.unwrap() {
             Identity::Address(addr) => {
                 assert(addr == MINTER);
@@ -69,11 +69,11 @@ impl Token for Contract {
         storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
     }
 
-    #[storage(read, write)]
+    #[storage(read, write, payable)]
     fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender: Result<Identity, AuthError> = msg_sender();
+        let sender = msg_sender().unwrap();
         let sender = match sender.unwrap() {
             Identity::Address(addr) => addr,
             _ => revert(0),
