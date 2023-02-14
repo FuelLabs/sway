@@ -10,7 +10,7 @@ pub struct ParseModule {
     pub tree: ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, ParseSubmodule)>,
-    // pub attributes: transform::AttributesMap,
+    // pub attributes: crate::transform::AttributesMap,
 }
 
 /// A library module that was declared as a `dep` of another module.

@@ -111,7 +111,7 @@ fn parse_in_memory(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
     let submodules = Default::default();
     let root = parsed::ParseModule {
@@ -122,7 +122,7 @@ fn parse_in_memory(
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
-            tree: module,
+            tree: module.value,
             submodules: Default::default(),
         },
     );
@@ -212,18 +212,18 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module.value, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
 
     let lexed = lexed::LexedModule {
-        tree: module,
+        tree: module.value,
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {
