@@ -74,7 +74,7 @@ impl Pass {
 pub struct AnalysisResults {
     // Hash from (AnalysisResultT, (PassScope, Scope Identity)) to an actual result.
     results: FxHashMap<(TypeId, (TypeId, generational_arena::Index)), AnalysisResult>,
-    name_typid_map: FxHashMap<&'static str, TypeId>,
+    name_typeid_map: FxHashMap<&'static str, TypeId>,
 }
 
 impl AnalysisResults {
@@ -104,7 +104,7 @@ impl AnalysisResults {
         name: &'static str,
         scope: S,
     ) -> bool {
-        self.name_typid_map
+        self.name_typeid_map
             .get(name)
             .and_then(|result_typeid| {
                 self.results
@@ -125,7 +125,7 @@ impl AnalysisResults {
             (result_typeid, (TypeId::of::<S>(), scope.get_arena_idx())),
             result,
         );
-        self.name_typid_map.insert(name, result_typeid);
+        self.name_typeid_map.insert(name, result_typeid);
     }
 
     /// Invalidate all results at a given scope.
