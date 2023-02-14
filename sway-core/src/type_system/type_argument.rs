@@ -1,25 +1,26 @@
-use crate::{engine_threading::*, type_system::*};
+use crate::{engine_threading::*, language::CallPathTree, type_system::*};
 use std::{fmt, hash::Hasher};
-use sway_types::{Span, SpanTree, Spanned};
+use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
-    pub name_spans: Option<SpanTree>,
+    pub call_path_tree: Option<CallPathTree>,
 }
 
-impl TypeArgument {
-    pub fn no_spans(type_id: TypeId) -> Self {
+impl From<TypeId> for TypeArgument {
+    fn from(type_id: TypeId) -> Self {
         TypeArgument {
             type_id,
             initial_type_id: type_id,
             span: Span::dummy(),
-            name_spans: None,
+            call_path_tree: None,
         }
     }
 }
+
 impl Spanned for TypeArgument {
     fn span(&self) -> Span {
         self.span.clone()
@@ -34,7 +35,7 @@ impl HashWithEngines for TypeArgument {
             // reliable source of obj v. obj distinction
             initial_type_id: _,
             span: _,
-            name_spans: _,
+            call_path_tree: _,
         } = self;
         let type_engine = engines.te();
         type_engine.get(*type_id).hash(state, engines);
@@ -69,7 +70,7 @@ impl From<&TypeParameter> for TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,
             span: type_param.name_ident.span(),
-            name_spans: None,
+            call_path_tree: None,
         }
     }
 }
