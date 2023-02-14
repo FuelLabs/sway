@@ -268,7 +268,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
             }
             // format manifest using taplo formatter
             if let Ok(edited) = format_manifest(app, manifest_file) {
-                contains_edits = edited;
+                contains_edits = contains_edits || edited;
             }
 
             if app.check && contains_edits {
