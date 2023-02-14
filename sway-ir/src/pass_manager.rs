@@ -146,6 +146,21 @@ pub struct PassManager {
 impl PassManager {
     /// Register a pass. Should be called only once for each pass.
     pub fn register(&mut self, pass: Pass) -> &'static str {
+        for dep in &pass.deps {
+            if let Some(dep_t) = self.lookup_registered_pass(dep) {
+                if dep_t.is_transform() {
+                    panic!(
+                        "Pass {} cannot depend on a transformation pass {}",
+                        pass.name, dep
+                    );
+                }
+            } else {
+                panic!(
+                    "Pass {} depends on a (yet) unregistered pass {}",
+                    pass.name, dep
+                );
+            }
+        }
         let pass_name = pass.name;
         match self.passes.entry(pass.name) {
             hash_map::Entry::Occupied(_) => {
@@ -158,89 +173,65 @@ impl PassManager {
         pass_name
     }
 
+    fn actually_run(&mut self, ir: &mut Context, pass: &'static str) -> Result<bool, IrError> {
+        let mut modified = false;
+        let pass_t = self.passes.get(pass).expect("Unregistered pass");
+
+        // Run passes that this depends on.
+        for dep in pass_t.deps.clone() {
+            self.actually_run(ir, dep)?;
+        }
+
+        // To please the borrow checker, get current pass again.
+        let pass_t = self.passes.get(pass).expect("Unregistered pass");
+
+        for m in ir.module_iter() {
+            match &pass_t.runner {
+                ScopedPass::ModulePass(mp) => match mp {
+                    PassMutability::Analysis(analysis) => {
+                        if !self.analyses.is_analysis_result_available(pass_t.name, m) {
+                            let result = analysis(ir, &self.analyses, m)?;
+                            self.analyses.add_result(pass_t.name, m, result);
+                        }
+                    }
+                    PassMutability::Transform(transform) => {
+                        if transform(ir, &self.analyses, m)? {
+                            self.analyses.invalidate_all_results_at_scope(m);
+                            for f in m.function_iter(ir) {
+                                self.analyses.invalidate_all_results_at_scope(f);
+                            }
+                            modified = true;
+                        }
+                    }
+                },
+                ScopedPass::FunctionPass(fp) => {
+                    for f in m.function_iter(ir) {
+                        match fp {
+                            PassMutability::Analysis(analysis) => {
+                                if !self.analyses.is_analysis_result_available(pass_t.name, f) {
+                                    let result = analysis(ir, &self.analyses, f)?;
+                                    self.analyses.add_result(pass_t.name, f, result);
+                                }
+                            }
+                            PassMutability::Transform(transform) => {
+                                if transform(ir, &self.analyses, f)? {
+                                    self.analyses.invalidate_all_results_at_scope(f);
+                                    modified = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(modified)
+    }
+
     /// Run the passes specified in `config`.
     pub fn run(&mut self, ir: &mut Context, config: &PassManagerConfig) -> Result<bool, IrError> {
         let mut modified = false;
-        let mut worklist: Vec<_> = config
-            .to_run
-            .iter()
-            .rev()
-            .map(|pass| self.passes.get(pass).expect("Unregistered pass"))
-            .collect();
-        while !worklist.is_empty() {
-            // We clone because worklist may be modified later.
-            let deps = worklist.last().unwrap().deps.clone();
-            let mut unresolved_dep = false;
-            // Check if all deps are satisfied
-            for dep in deps {
-                let dep_t = self.passes.get(dep).expect("Unregistered pass");
-                for m in ir.module_iter() {
-                    match &dep_t.runner {
-                        ScopedPass::ModulePass(_) => {
-                            if !self.analyses.is_analysis_result_available(dep_t.name, m) {
-                                unresolved_dep = true;
-                                worklist.push(dep_t);
-                            }
-                        }
-                        ScopedPass::FunctionPass(_) => {
-                            for f in m.function_iter(ir) {
-                                if !self.analyses.is_analysis_result_available(dep_t.name, f) {
-                                    unresolved_dep = true;
-                                    worklist.push(dep_t);
-                                    // If the analysis is unavailable for even one function,
-                                    // we add it to worklist. Adding it once is sufficient.
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if unresolved_dep {
-                // New deps added. Start over.
-                continue;
-            }
-            let pass_t = worklist.last().unwrap();
-            for m in ir.module_iter() {
-                match &pass_t.runner {
-                    ScopedPass::ModulePass(mp) => match mp {
-                        PassMutability::Analysis(analysis) => {
-                            if !self.analyses.is_analysis_result_available(pass_t.name, m) {
-                                let result = analysis(ir, &self.analyses, m)?;
-                                self.analyses.add_result(pass_t.name, m, result);
-                            }
-                        }
-                        PassMutability::Transform(transform) => {
-                            if transform(ir, &self.analyses, m)? {
-                                self.analyses.invalidate_all_results_at_scope(m);
-                                for f in m.function_iter(ir) {
-                                    self.analyses.invalidate_all_results_at_scope(f);
-                                }
-                                modified = true;
-                            }
-                        }
-                    },
-                    ScopedPass::FunctionPass(fp) => {
-                        for f in m.function_iter(ir) {
-                            match fp {
-                                PassMutability::Analysis(analysis) => {
-                                    if !self.analyses.is_analysis_result_available(pass_t.name, f) {
-                                        let result = analysis(ir, &self.analyses, f)?;
-                                        self.analyses.add_result(pass_t.name, f, result);
-                                    }
-                                }
-                                PassMutability::Transform(transform) => {
-                                    if transform(ir, &self.analyses, f)? {
-                                        self.analyses.invalidate_all_results_at_scope(f);
-                                        modified = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            worklist.pop();
+        for pass in &config.to_run {
+            modified |= self.actually_run(ir, pass)?;
         }
         Ok(modified)
     }
