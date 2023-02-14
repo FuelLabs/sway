@@ -11,6 +11,7 @@ use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
@@ -52,6 +53,36 @@ impl PartialEqWithEngines for TypeParameter {
             .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
+    }
+}
+
+impl OrdWithEngines for TypeParameter {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TypeParameter {
+            type_id: lti,
+            name_ident: ln,
+            trait_constraints: ltc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let TypeParameter {
+            type_id: rti,
+            name_ident: rn,
+            trait_constraints: rtc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| {
+                type_engine
+                    .get(*lti)
+                    .cmp(&type_engine.get(*rti), type_engine)
+            })
+            .then_with(|| ltc.cmp(rtc, type_engine))
     }
 }
 

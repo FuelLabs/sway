@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -158,6 +161,28 @@ impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    }
+}
+
+impl OrdWithEngines for TyStructField {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TyStructField {
+            name: ln,
+            type_argument: lta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyStructField {
+            name: rn,
+            type_argument: rta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn).then_with(|| lta.cmp(rta, type_engine))
     }
 }
 
