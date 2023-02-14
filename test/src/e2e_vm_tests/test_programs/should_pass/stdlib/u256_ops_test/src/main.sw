@@ -100,7 +100,7 @@ fn main() -> bool {
     assert(not_0_0_0_1.d == u64::max() - 1);
 
     let not_1_1_0_0 = !U256::from((1, 1, 0, 0));
-    assert(not_1_1_0_0.a == u64::max());
+    assert(not_1_1_0_0.a == u64::max() - 1);
     assert(not_1_1_0_0.b == u64::max() - 1);
     assert(not_1_1_0_0.c == u64::max());
     assert(not_1_1_0_0.d == u64::max());
