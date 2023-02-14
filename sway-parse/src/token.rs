@@ -11,7 +11,7 @@ use sway_ast::token::{
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -130,7 +130,20 @@ pub fn lex_commented(
         if character == '/' {
             match l.stream.peek() {
                 Some((_, '/')) => {
-                    let has_newline = src[..index]
+                    // search_end is the index at which we stop looking backwards for
+                    // a newline
+                    let search_end = token_trees
+                        .last()
+                        .map(|tt| {
+                            if let CommentedTokenTree::Tree(t) = tt {
+                                t.span().end()
+                            } else {
+                                0
+                            }
+                        })
+                        .unwrap_or_default();
+
+                    let has_newline = src[search_end..index]
                         .chars()
                         .rev()
                         .take_while(|c| c.is_whitespace())
