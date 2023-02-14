@@ -106,7 +106,7 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
-    fn handle_function_declation(&self, func: &FunctionDeclaration) {
+    fn handle_function_declaration(&self, func: &FunctionDeclaration) {
         let token = Token::from_parsed(
             AstToken::FunctionDeclaration(func.clone()),
             SymbolKind::Function,
@@ -161,7 +161,7 @@ impl<'a> ParsedTree<'a> {
                 self.handle_expression(&variable.body);
             }
             Declaration::FunctionDeclaration(func) => {
-                self.handle_function_declation(func);
+                self.handle_function_declaration(func);
             }
             Declaration::TraitDeclaration(trait_decl) => {
                 self.tokens.insert(
@@ -177,7 +177,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &trait_decl.methods {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
 
                 for supertrait in &trait_decl.supertraits {
@@ -285,7 +285,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_trait.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::ImplSelf(impl_self) => {
@@ -315,7 +315,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_self.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {

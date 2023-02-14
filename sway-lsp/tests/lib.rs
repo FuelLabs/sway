@@ -1,12 +1,12 @@
 pub mod integration;
-use integration::lsp;
-use sway_lsp::server::Backend;
 
+use crate::integration::{code_actions, lsp};
 use std::{fs, path::PathBuf};
+use sway_lsp::server::Backend;
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
-    test_fixtures_dir,
+    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
+    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
 };
 use tower_lsp::{
     jsonrpc::{self, Response},
@@ -1347,9 +1347,24 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
-    code_action,
-    lsp::code_action_request,
+    code_action_abi,
+    code_actions::code_action_abi_request,
     doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct,
+    code_actions::code_action_struct_request,
+    doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_type_params,
+    code_actions::code_action_struct_type_params_request,
+    generic_impl_self_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_existing_impl,
+    code_actions::code_action_struct_existing_impl_request,
+    self_impl_reassignment_dir().join("src/main.sw")
 );
 lsp_capability_test!(
     code_lens,

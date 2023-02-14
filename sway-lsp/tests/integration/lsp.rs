@@ -2,19 +2,17 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
+use crate::{GotoDefinition, HoverDocumentation};
 use assert_json_diff::assert_json_eq;
 use serde_json::json;
 use std::{borrow::Cow, path::Path};
+use sway_lsp::server::{self, Backend};
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
     lsp_types::*,
     ExitedError, LspService,
 };
-
-use sway_lsp::server::{self, Backend};
-
-use crate::{GotoDefinition, HoverDocumentation};
 
 pub(crate) fn build_request_with_id(
     method: impl Into<Cow<'static, str>>,
@@ -233,60 +231,6 @@ pub(crate) async fn highlight_request(service: &mut LspService<Backend>, uri: &U
     );
     assert_json_eq!(expected, response.ok().unwrap());
     highlight
-}
-
-pub(crate) async fn code_action_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
-    let params = json!({
-        "textDocument": {
-            "uri": uri,
-        },
-        "range" : {
-            "start":{
-                "line": 27,
-                "character": 4
-            },
-            "end":{
-                "line": 27,
-                "character": 9
-            },
-        },
-        "context": {
-            "diagnostics": [],
-            "triggerKind": 2
-        }
-    });
-    let code_action = build_request_with_id("textDocument/codeAction", params, 1);
-    let response = call_request(service, code_action.clone()).await;
-    let uri_string = uri.to_string();
-    let expected = Response::from_ok(
-        1.into(),
-        json!([{
-            "data": uri,
-            "edit": {
-              "changes": {
-                uri_string: [
-                  {
-                    "newText": "\nimpl FooABI for Contract {\n    /// This is the `main` method on the `FooABI` abi\n    fn main() -> u64 {}\n}\n",
-                    "range": {
-                      "end": {
-                        "character": 0,
-                        "line": 31
-                      },
-                      "start": {
-                        "character": 0,
-                        "line": 31
-                      }
-                    }
-                  }
-                ]
-              }
-            },
-            "kind": "refactor",
-            "title": "Generate impl for contract"
-        }]),
-    );
-    assert_json_eq!(expected, response.ok().unwrap());
-    code_action
 }
 
 pub(crate) async fn code_lens_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
