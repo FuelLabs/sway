@@ -87,15 +87,28 @@ jobs:
       - name: Install Forc fmt (master)
         run: cd master && cargo install --locked --debug --path ./forc-plugins/forc-fmt && cd ..
       - name: Check Sway examples formatting (master)
-        run: cd master && cargo run --locked --bin examples-checker fmt --all-examples && cd ..
+        id: fmt-check-master
+        run: |
+          cd master
+          DURATION_MASTER=$(cargo run --locked --bin examples-checker fmt --all-examples) | tail -n 1 | cut -d ' ' -f3
+          echo "DURATION_MASTER=$DURATION_MASTER" >> $GITHUB_OUTPUT
+          cd ..
 
       - name: Install Forc (current)
         run: cargo install --locked --debug --path ./forc
       - name: Install Forc fmt (current)
         run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
       - name: Check Sway examples formatting (current)
-        run: cargo run --locked --bin examples-checker fmt --all-examples
+        id: fmt-check-current
+        run: |
+          DURATION_CURRENT=$(cargo run --locked --bin examples-checker fmt --all-examples) | tail -n 1 | cut -d ' ' -f3
+          echo "DURATION_CURRENT=$DURATION_CURRENT" >> $GITHUB_OUTPUT
 
+      - name: Print diagnostics
+        run: |
+          echo "fmt (master) took $ {{ steps.fmt-check-master }}"
+          echo "fmt (current) took $ {{ steps.fmt-check-current }}"
+          
   build-mdbook:
     runs-on: ubuntu-latest
     steps:

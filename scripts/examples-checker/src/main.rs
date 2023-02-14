@@ -133,6 +133,7 @@ fn print_summary(summary: &[(PathBuf, Duration, bool)], command_kind: CommandKin
 
 fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> Result<()> {
     let mut summary: Vec<(PathBuf, Duration, bool)> = vec![];
+    let mut total_time = Duration::default();
 
     if all_examples {
         let examples_dir = get_sway_path().join("examples");
@@ -150,6 +151,7 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
                 run_forc_fmt(&path)
             };
             let duration = start.elapsed();
+            total_time += duration;
 
             summary.push((path, duration, success));
         }
@@ -168,6 +170,7 @@ fn exec(paths: Vec<PathBuf>, all_examples: bool, command_kind: CommandKind) -> R
     }
 
     print_summary(&summary, command_kind)?;
+    println!("Finished in {:.3?}", total_time);
     Ok(())
 }
 
