@@ -2,7 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::ReplaceFunctionImplementingType,
+    decl_engine::{DeclRef, ReplaceFunctionImplementingType},
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -140,8 +140,12 @@ impl ty::TyDeclaration {
                     is_configurable,
                     span,
                 };
-                let typed_const_decl =
-                    ty::TyDeclaration::ConstantDeclaration(decl_engine.insert(decl));
+                let decl_ref = decl_engine.insert(decl);
+                let typed_const_decl = ty::TyDeclaration::ConstantDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 check!(
                     ctx.namespace.insert_symbol(name, typed_const_decl.clone()),
                     return err(warnings, errors),
@@ -159,7 +163,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = enum_decl.call_path.clone();
-                let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
+                let decl_ref = decl_engine.insert(enum_decl);
+                let decl = ty::TyDeclaration::EnumDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
@@ -179,7 +188,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = fn_decl.name.clone();
-                let decl = ty::TyDeclaration::FunctionDeclaration(decl_engine.insert(fn_decl));
+                let decl_ref = decl_engine.insert(fn_decl);
+                let decl = ty::TyDeclaration::FunctionDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl
             }
@@ -193,22 +207,33 @@ impl ty::TyDeclaration {
                 );
                 let name = trait_decl.name.clone();
 
-                // save decl_ids for the LSP
+                // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     ctx.namespace
                         .resolve_call_path(&supertrait.name)
                         .cloned()
                         .map(|supertrait_decl| {
-                            if let ty::TyDeclaration::TraitDeclaration(supertrait_decl_id) =
-                                supertrait_decl
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
                             {
-                                supertrait.decl_id = Some(supertrait_decl_id);
+                                supertrait.decl_ref = Some(DeclRef::new(
+                                    supertrait_name,
+                                    *supertrait_decl_id,
+                                    supertrait_decl_span,
+                                ));
                             }
                         });
                 }
 
-                let decl_id = decl_engine.insert(trait_decl.clone());
-                let decl = ty::TyDeclaration::TraitDeclaration(decl_id);
+                let decl_ref = decl_engine.insert(trait_decl.clone());
+                let decl = ty::TyDeclaration::TraitDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
 
                 trait_decl
                     .methods
@@ -244,8 +269,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
+                let decl_ref = decl_engine.insert(impl_trait.clone());
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 impl_trait.methods.iter_mut().for_each(|method| {
                     method.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
@@ -273,8 +302,12 @@ impl ty::TyDeclaration {
                     warnings,
                     errors
                 );
-                let impl_trait_decl =
-                    ty::TyDeclaration::ImplTrait(decl_engine.insert(impl_trait.clone()));
+                let decl_ref = decl_engine.insert(impl_trait.clone());
+                let impl_trait_decl = ty::TyDeclaration::ImplTrait {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 impl_trait.methods.iter_mut().for_each(|method| {
                     method.replace_implementing_type(engines, impl_trait_decl.clone())
                 });
@@ -289,8 +322,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = decl.call_path.clone();
-                let decl_id = decl_engine.insert(decl);
-                let decl = ty::TyDeclaration::StructDeclaration(decl_id);
+                let decl_ref = decl_engine.insert(decl);
+                let decl = ty::TyDeclaration::StructDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 // insert the struct decl into namespace
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
@@ -309,7 +346,12 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
-                let decl = ty::TyDeclaration::AbiDeclaration(decl_engine.insert(abi_decl.clone()));
+                let decl_ref = decl_engine.insert(abi_decl.clone());
+                let decl = ty::TyDeclaration::AbiDeclaration {
+                    name: decl_ref.name,
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                };
                 abi_decl
                     .methods
                     .iter_mut()
@@ -362,18 +404,21 @@ impl ty::TyDeclaration {
                     });
                 }
                 let decl = ty::TyStorageDeclaration::new(fields_buf, span, attributes);
-                let decl_id = decl_engine.insert(decl);
+                let decl_ref = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
                 check!(
-                    ctx.namespace.set_storage_declaration(decl_id.clone()),
+                    ctx.namespace.set_storage_declaration(decl_ref.clone()),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                ty::TyDeclaration::StorageDeclaration(decl_id)
+                ty::TyDeclaration::StorageDeclaration {
+                    decl_id: decl_ref.id,
+                    decl_span: decl_ref.decl_span,
+                }
             }
         };
 
