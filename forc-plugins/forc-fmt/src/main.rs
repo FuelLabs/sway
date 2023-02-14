@@ -56,8 +56,8 @@ fn run() -> Result<()> {
         None => std::env::current_dir()?,
     };
 
+    let mut formatter = Formatter::from_dir(&dir)?;
     if let Some(f) = app.file.as_ref() {
-        let mut formatter = Formatter::from_dir(&dir)?;
         let file_path = &PathBuf::from(f);
 
         // If we're formatting a single file, find the nearest manifest if within a project.
@@ -83,7 +83,6 @@ fn run() -> Result<()> {
             format_workspace_at_dir(&app, &ws, &dir)?;
         }
         ManifestFile::Package(_) => {
-            let mut formatter = Formatter::from_dir(&dir)?;
             format_pkg_at_dir(&app, &dir, &mut formatter)?;
         }
     }
@@ -140,7 +139,7 @@ fn format_file(
             Ok(formatted_content) => {
                 if app.check {
                     if *file_content != formatted_content {
-                        info!("\n{:?}\n", file);
+                        info!("File was edited by formatter: \n{:?}\n", file);
                         display_file_diff(&file_content, &formatted_content)?;
                         edited = true;
                     }
@@ -152,13 +151,15 @@ fn format_file(
             }
             Err(err) => {
                 // there could still be Sway files that are not part of the build
-                error!("\nThis file: {:?} is not part of the build", file);
-                error!("{}\n", err);
+                error!(
+                    "\nThis file: {:?} is not part of the build\n{}\n",
+                    file, err
+                );
             }
         }
     }
 
-    bail!("Could not read file")
+    bail!("Could not read file: {:?}", file)
 }
 
 /// Format the workspace at the given directory.
@@ -176,7 +177,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
     if let Ok(read_dir) = fs::read_dir(dir) {
         for entry in read_dir.filter_map(|res| res.ok()) {
             let path = entry.path();
-            if path.is_file() && is_sway_file(&path) {
+            if is_sway_file(&path) {
                 format_file(
                     app,
                     path,
@@ -208,17 +209,12 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
         contains_edits = edited;
     }
 
-    if app.check {
-        if contains_edits {
-            // One or more files are not formatted, exit with error
-            bail!("Files contain formatting violations.");
-        } else {
-            // All files are formatted, exit cleanly
-            Ok(())
-        }
-    } else {
-        Ok(())
+    if app.check && contains_edits {
+        // One or more files are not formatted, exit with error
+        bail!("Files contain formatting violations.");
     }
+
+    Ok(())
 }
 
 /// Format the given manifest at a path.
@@ -238,10 +234,16 @@ fn format_manifest(app: &App, manifest_file: PathBuf) -> Result<bool> {
             write_file_formatted(&manifest_file, &formatted_content)?;
         } else if formatted_content != manifest_content {
             edited = true;
-            error!("\nManifest Forc.toml improperly formatted");
+            error!(
+                "Improperly formatted manifest file: {}",
+                manifest_file.display()
+            );
             display_file_diff(&manifest_content, &formatted_content)?;
         } else {
-            info!("\nManifest Forc.toml properly formatted")
+            info!(
+                "Manifest Forc.toml formatted correctly: {}",
+                manifest_file.display()
+            )
         }
 
         return Ok(edited);
@@ -269,17 +271,12 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
                 contains_edits = edited;
             }
 
-            if app.check {
-                if contains_edits {
-                    // One or more files are not formatted, exit with error
-                    bail!("Files contain formatting violations.");
-                } else {
-                    // All files are formatted, exit cleanly
-                    Ok(())
-                }
-            } else {
-                Ok(())
+            if app.check && contains_edits {
+                // One or more files are not formatted, exit with error
+                bail!("Files contain formatting violations.");
             }
+
+            Ok(())
         }
         _ => bail!("Manifest file does not exist"),
     }
