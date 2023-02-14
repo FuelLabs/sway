@@ -97,7 +97,6 @@ pub enum TyExpressionVariant {
         /// If there is an error regarding this instantiation of the enum,
         /// use these spans as it points to the call site and not the declaration.
         /// They are also used in the language server.
-        enum_instantiation_span: Span,
         variant_instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
     },
@@ -514,7 +513,6 @@ impl HashWithEngines for TyExpressionVariant {
                 contents,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
-                enum_instantiation_span: _,
                 variant_instantiation_span: _,
                 call_path_binding: _,
             } => {

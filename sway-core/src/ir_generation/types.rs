@@ -19,7 +19,9 @@ pub(super) fn create_enum_aggregate(
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
         .iter()
-        .map(|tev| convert_resolved_typeid_no_span(type_engine, context, &tev.type_id))
+        .map(|tev| {
+            convert_resolved_typeid_no_span(type_engine, context, &tev.type_argument.type_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     // Enums where all the variants are unit types don't really need the union. Only a tag is
@@ -89,7 +91,7 @@ pub(super) fn get_struct_name_field_index_and_type(
                 .iter()
                 .enumerate()
                 .find(|(_, field)| field.name == field_name)
-                .map(|(idx, field)| (idx as u64, field.type_id)),
+                .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
         )),
         _otherwise => None,
     }
@@ -161,7 +163,7 @@ pub(super) fn get_indices_for_struct_access(
                             .enumerate()
                             .find(|(_, field)| field.name == *field_name);
                         let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.type_id),
+                            Some((idx, field)) => (idx as u64, field.type_argument.type_id),
                             None => {
                                 return Err(CompileError::InternalOwned(
                                     format!(
