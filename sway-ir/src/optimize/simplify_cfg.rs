@@ -15,10 +15,13 @@ use crate::{
     value::ValueDatum, AnalysisResults, BranchToWithArgs, Pass, PassMutability, ScopedPass, Value,
 };
 
+pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
+
 pub fn create_simplify_cfg_pass() -> Pass {
     Pass {
-        name: "simplifycfg",
+        name: SIMPLIFYCFG_NAME,
         descr: "merge or remove redundant blocks.",
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(simplify_cfg)),
     }
 }
