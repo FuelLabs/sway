@@ -1,8 +1,6 @@
 use core::fmt::Write;
-use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::hash::BuildHasher;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
@@ -22,20 +20,6 @@ pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-}
-
-fn make_hasher<'a: 'b, 'b, K>(
-    hash_builder: &'a impl BuildHasher,
-    engines: Engines<'b>,
-) -> impl Fn(&K) -> u64 + 'b
-where
-    K: HashWithEngines + ?Sized,
-{
-    move |key: &K| {
-        let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, engines);
-        state.finish()
-    }
 }
 
 impl TypeEngine {

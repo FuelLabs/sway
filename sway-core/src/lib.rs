@@ -14,6 +14,7 @@ pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
+mod monomorphize;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
