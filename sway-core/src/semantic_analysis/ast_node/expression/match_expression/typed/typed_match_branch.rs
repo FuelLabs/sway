@@ -5,7 +5,7 @@ use crate::{
     language::{parsed::MatchBranch, ty},
     semantic_analysis::*,
     types::DeterministicallyAborts,
-    CompileResult, TypeArgument, TypeInfo,
+    CompileResult, TypeInfo,
 };
 
 use super::matcher::matcher;
@@ -52,7 +52,7 @@ impl ty::TyMatchBranch {
         // insert it into the branch namespace, and add it to a block of code statements
         let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
-            let type_ascription = TypeArgument::no_spans(right_decl.return_type);
+            let type_ascription = right_decl.return_type.into();
             let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl =

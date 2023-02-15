@@ -4,6 +4,12 @@ use crate::{Ident, Namespace};
 
 use sway_types::{span::Span, Spanned};
 
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct CallPathTree {
+    pub call_path: CallPath,
+    pub children: Vec<CallPathTree>,
+}
+
 /// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
