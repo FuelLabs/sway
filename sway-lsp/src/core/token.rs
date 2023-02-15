@@ -4,7 +4,7 @@ use sway_core::{
         parsed::{
             Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
             ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            Supertrait, TraitFn, TreeType,
+            Supertrait, TraitFn, TreeType, UseStatement,
         },
         ty,
     },
@@ -37,6 +37,7 @@ pub enum AstToken {
     Attribute(Attribute),
     TreeType(TreeType),
     IncludeStatement,
+    UseStatement(UseStatement),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -44,6 +45,7 @@ pub enum AstToken {
 pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
+    TypedScrutinee(ty::TyScrutinee),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
@@ -58,6 +60,7 @@ pub enum TypedAstToken {
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,
+    TypedUseStatement(ty::TyUseStatement),
 }
 
 /// These variants are used to represent the semantic type of the [Token].
@@ -153,10 +156,10 @@ pub fn to_ident_key(ident: &Ident) -> (Ident, Span) {
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [Ident] if one is found.
 pub fn ident_of_type_id(type_engine: &TypeEngine, type_id: &TypeId) -> Option<Ident> {
     match type_engine.get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } | TypeInfo::Custom { name, .. } => Some(name),
-        TypeInfo::Enum { call_path, .. } | TypeInfo::Struct { call_path, .. } => {
-            Some(call_path.suffix)
-        }
+        TypeInfo::UnknownGeneric { name, .. } => Some(name),
+        TypeInfo::Enum { call_path, .. }
+        | TypeInfo::Struct { call_path, .. }
+        | TypeInfo::Custom { call_path, .. } => Some(call_path.suffix),
         _ => None,
     }
 }

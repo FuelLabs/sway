@@ -1,22 +1,14 @@
-use std::{
-    collections::HashMap,
-    io::{BufReader, BufWriter, Read, Write},
-};
+use std::io::{BufReader, BufWriter, Read, Write};
 
 use anyhow::anyhow;
-use sway_ir::{ConstCombinePass, DCEPass, InlinePass, Mem2RegPass, PassManager, SimplifyCfgPass};
+use sway_ir::{register_known_passes, PassManager, PassManagerConfig};
 
 // -------------------------------------------------------------------------------------------------
 
 fn main() -> Result<(), anyhow::Error> {
     // Maintain a list of named pass functions for delegation.
     let mut pass_mgr = PassManager::default();
-
-    pass_mgr.register::<ConstCombinePass>();
-    pass_mgr.register::<InlinePass>();
-    pass_mgr.register::<SimplifyCfgPass>();
-    pass_mgr.register::<DCEPass>();
-    pass_mgr.register::<Mem2RegPass>();
+    register_known_passes(&mut pass_mgr);
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -28,9 +20,10 @@ fn main() -> Result<(), anyhow::Error> {
     let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
-    for pass in config.passes {
-        pass_mgr.run(pass.name.as_ref(), &mut ir)?;
-    }
+    let pm_config = PassManagerConfig {
+        to_run: config.passes.clone(),
+    };
+    pass_mgr.run(&mut ir, &pm_config)?;
 
     // Write the output file or standard out.
     write_to_output(ir, &config.output_path)?;
@@ -79,23 +72,7 @@ struct Config {
     _time_passes: bool,
     _stats: bool,
 
-    passes: Vec<Pass>,
-}
-
-#[derive(Default)]
-struct Pass {
-    name: String,
-    #[allow(dead_code)]
-    opts: HashMap<String, String>,
-}
-
-impl From<&str> for Pass {
-    fn from(name: &str) -> Self {
-        Pass {
-            name: name.to_owned(),
-            opts: HashMap::new(),
-        }
-    }
+    passes: Vec<&'static str>,
 }
 
 // This is a little clumsy in that it needs to consume items from the iterator carefully in each
@@ -164,9 +141,8 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
     }
 
     fn build_pass(mut self, name: &str) -> Result<Config, anyhow::Error> {
-        if self.pass_mgr.contains(name) {
-            self.cfg.passes.push(name.into());
-            self.next = self.rest.next();
+        if let Some(pass) = self.pass_mgr.lookup_registered_pass(name) {
+            self.cfg.passes.push(pass.name);
             self.build_root()
         } else {
             Err(anyhow!(

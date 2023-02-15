@@ -8,7 +8,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_util::format_log_receipts;
-use fuel_gql_client::client::FuelClient;
+use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder, UniqueIdentifier};
 use futures::TryFutureExt;
 use pkg::BuiltPackage;
@@ -18,8 +18,6 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tokio::time::timeout;
 use tracing::info;
-
-pub const NODE_URL: &str = "http://127.0.0.1:4000";
 
 pub struct RanScript {
     pub receipts: Vec<fuel_tx::Receipt>,
@@ -66,7 +64,7 @@ pub async fn run_pkg(
         .node_url
         .as_deref()
         .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
-        .unwrap_or(NODE_URL);
+        .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
     let contract_ids = command
         .contract
@@ -172,5 +170,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         const_inject_map,
+        member_filter: pkg::MemberFilter::only_scripts(),
     }
 }

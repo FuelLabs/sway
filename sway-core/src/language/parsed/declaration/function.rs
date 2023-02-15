@@ -15,9 +15,8 @@ pub struct FunctionDeclaration {
     pub body: CodeBlock,
     pub parameters: Vec<FunctionParameter>,
     pub span: Span,
-    pub return_type: TypeInfo,
+    pub return_type: TypeArgument,
     pub type_parameters: Vec<TypeParameter>,
-    pub return_type_span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -26,8 +25,7 @@ pub struct FunctionParameter {
     pub is_reference: bool,
     pub is_mutable: bool,
     pub mutability_span: Span,
-    pub type_info: TypeInfo,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
 }
 
 impl EqWithEngines for FunctionParameter {}
@@ -37,8 +35,7 @@ impl PartialEqWithEngines for FunctionParameter {
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
             && self.mutability_span == other.mutability_span
-            && self.type_info.eq(&other.type_info, engines)
-            && self.type_span == other.type_span
+            && self.type_argument.eq(&other.type_argument, engines)
     }
 }
 

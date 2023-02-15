@@ -7,19 +7,16 @@ use crate::{
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
-use fuel_gql_client::client::types::TransactionStatus;
-use fuel_gql_client::{
-    client::FuelClient,
-    fuel_tx::{Output, Salt, TransactionBuilder},
-    fuel_vm::prelude::*,
-};
+use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::FuelClient;
+use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
 use std::path::PathBuf;
 use std::time::Duration;
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use sway_utils::constants::DEFAULT_NODE_URL;
 use tracing::info;
 
 pub struct DeployedContract {
@@ -59,12 +56,11 @@ pub async fn deploy_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
 ) -> Result<DeployedContract> {
-    let node_url = match &manifest.network {
-        Some(network) => &network.url,
-        _ => DEFAULT_NODE_URL,
-    };
-
-    let node_url = command.node_url.as_deref().unwrap_or(node_url);
+    let node_url = command
+        .node_url
+        .as_deref()
+        .or_else(|| manifest.network.as_ref().map(|nw| &nw.url[..]))
+        .unwrap_or(crate::default::NODE_URL);
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
@@ -151,5 +147,6 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         tests: false,
         const_inject_map,
+        member_filter: pkg::MemberFilter::only_contracts(),
     }
 }

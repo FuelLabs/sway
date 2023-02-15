@@ -204,7 +204,7 @@ impl Session {
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
                 self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
-                    dependency.collect_typed_declaration(decl_engine, node)
+                    dependency.collect_typed_declaration(node)
                 });
             }
         }
@@ -298,6 +298,17 @@ impl Session {
             err: err.to_string(),
         })?;
         Ok(())
+    }
+
+    /// Get the document at the given [Url].
+    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|document| document.clone())
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
@@ -454,12 +465,12 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{get_absolute_path, get_url};
+    use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         let result = Session::store_document(&session, document);
         assert!(result.is_ok());
@@ -468,7 +479,7 @@ mod tests {
     #[test]
     fn store_document_returns_document_already_stored_error() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         Session::store_document(&session, document).expect("expected successfully stored");
         let document = TextDocument::build_from_path(&path).unwrap();
@@ -480,7 +491,7 @@ mod tests {
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
         let session = Session::new();
-        let dir = get_absolute_path("sway-lsp/test/fixtures");
+        let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let result =
             Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");

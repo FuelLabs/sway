@@ -1,6 +1,9 @@
 use super::{EntryPoint, ExitPoint};
 use crate::{
-    language::{ty, CallPath},
+    language::{
+        ty::{self, TyFunctionDeclaration, TyFunctionSig},
+        CallPath,
+    },
     type_system::TypeInfo,
     Ident,
 };
@@ -32,7 +35,7 @@ pub(crate) struct StructNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<IdentUnique, FunctionNamespaceEntry>,
+    pub(crate) function_namespace: HashMap<(IdentUnique, TyFunctionSig), FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
     pub(crate) trait_namespace: HashMap<CallPath, NodeIndex>,
     /// This is a mapping from trait name to method names and their node indexes
@@ -45,13 +48,23 @@ pub struct ControlFlowNamespace {
 }
 
 impl ControlFlowNamespace {
-    pub(crate) fn get_function(&self, ident: &Ident) -> Option<&FunctionNamespaceEntry> {
-        let ident: IdentUnique = ident.into();
-        self.function_namespace.get(&ident)
+    pub(crate) fn get_function(
+        &self,
+        fn_decl: &TyFunctionDeclaration,
+    ) -> Option<&FunctionNamespaceEntry> {
+        let ident: IdentUnique = fn_decl.name.clone().into();
+        self.function_namespace
+            .get(&(ident, TyFunctionSig::from_fn_decl(fn_decl)))
     }
-    pub(crate) fn insert_function(&mut self, ident: Ident, entry: FunctionNamespaceEntry) {
+    pub(crate) fn insert_function(
+        &mut self,
+        fn_decl: &ty::TyFunctionDeclaration,
+        entry: FunctionNamespaceEntry,
+    ) {
+        let ident = &fn_decl.name;
         let ident: IdentUnique = ident.into();
-        self.function_namespace.insert(ident, entry);
+        self.function_namespace
+            .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
     }
     pub(crate) fn get_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)

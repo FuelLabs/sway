@@ -70,9 +70,9 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
-        Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
+        Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
             let constant_decl = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
+                CompileResult::from(decl_engine.get_constant(decl_id, &span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -88,12 +88,8 @@ fn type_check_variable(
                 }
             };
             ty::TyScrutinee {
-                variant: ty::TyScrutineeVariant::Constant(
-                    name,
-                    value,
-                    constant_decl.value.return_type,
-                ),
                 type_id: constant_decl.value.return_type,
+                variant: ty::TyScrutineeVariant::Constant(name, value, constant_decl),
                 span,
             }
         }
@@ -158,7 +154,7 @@ fn type_check_struct(
                 span,
             } => {
                 // ensure that the struct definition has this field
-                let _ = check!(
+                let struct_field = check!(
                     struct_decl.expect_field(&field),
                     return err(warnings, errors),
                     warnings,
@@ -178,6 +174,7 @@ fn type_check_struct(
                     field,
                     scrutinee: typed_scrutinee,
                     span,
+                    field_def_name: struct_field.name.clone(),
                 });
             }
         }
@@ -201,12 +198,13 @@ fn type_check_struct(
     }
 
     let typed_scrutinee = ty::TyScrutinee {
-        variant: ty::TyScrutineeVariant::StructScrutinee(
-            struct_decl.call_path.suffix.clone(),
-            typed_fields,
-        ),
         type_id: struct_decl.create_type_id(ctx.engines()),
         span,
+        variant: ty::TyScrutineeVariant::StructScrutinee {
+            struct_name,
+            decl_name: struct_decl.call_path.suffix,
+            fields: typed_fields,
+        },
     };
 
     ok(typed_scrutinee, warnings, errors)
@@ -223,8 +221,13 @@ fn type_check_enum(
 
     let decl_engine = ctx.decl_engine;
 
-    let enum_name = match call_path.prefixes.last() {
-        Some(enum_name) => enum_name,
+    let mut prefixes = call_path.prefixes.clone();
+    let enum_callpath = match prefixes.pop() {
+        Some(enum_name) => CallPath {
+            suffix: enum_name,
+            prefixes,
+            is_absolute: call_path.is_absolute,
+        },
         None => {
             errors.push(CompileError::EnumNotFound {
                 name: call_path.suffix.clone(),
@@ -237,13 +240,13 @@ fn type_check_enum(
 
     // find the enum definition from the name
     let unknown_decl = check!(
-        ctx.namespace.resolve_symbol(enum_name).cloned(),
+        ctx.namespace.resolve_call_path(&enum_callpath).cloned(),
         return err(warnings, errors),
         warnings,
         errors
     );
     let mut enum_decl = check!(
-        unknown_decl.expect_enum(decl_engine, &enum_name.span()),
+        unknown_decl.expect_enum(decl_engine, &enum_callpath.span()),
         return err(warnings, errors),
         warnings,
         errors
@@ -255,7 +258,7 @@ fn type_check_enum(
             &mut enum_decl,
             &mut [],
             EnforceTypeArguments::No,
-            &enum_name.span()
+            &enum_callpath.span()
         ),
         return err(warnings, errors),
         warnings,
@@ -282,7 +285,8 @@ fn type_check_enum(
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             call_path,
-            variant,
+            decl_name: enum_decl.call_path.suffix,
+            variant: Box::new(variant),
             value: Box::new(typed_value),
         },
         type_id: enum_type_id,
@@ -321,7 +325,7 @@ fn type_check_tuple(
                     type_id: x.type_id,
                     initial_type_id: x.type_id,
                     span: span.clone(),
-                    name_spans: None,
+                    call_path_tree: None,
                 })
                 .collect(),
         ),

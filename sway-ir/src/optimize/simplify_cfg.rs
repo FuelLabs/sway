@@ -12,30 +12,29 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, BranchToWithArgs, NamedPass, Value,
+    value::ValueDatum, AnalysisResults, BranchToWithArgs, Pass, PassMutability, ScopedPass, Value,
 };
 
-pub struct SimplifyCfgPass;
+pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
 
-impl NamedPass for SimplifyCfgPass {
-    fn name() -> &'static str {
-        "simplifycfg"
-    }
-
-    fn descr() -> &'static str {
-        "merge or remove redundant blocks."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, simplify_cfg)
+pub fn create_simplify_cfg_pass() -> Pass {
+    Pass {
+        name: SIMPLIFYCFG_NAME,
+        descr: "merge or remove redundant blocks.",
+        deps: vec![],
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(simplify_cfg)),
     }
 }
 
-pub fn simplify_cfg(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn simplify_cfg(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let mut modified = false;
-    modified |= remove_dead_blocks(context, function)?;
-    modified |= merge_blocks(context, function)?;
-    modified |= unlink_empty_blocks(context, function)?;
+    modified |= remove_dead_blocks(context, &function)?;
+    modified |= merge_blocks(context, &function)?;
+    modified |= unlink_empty_blocks(context, &function)?;
     Ok(modified)
 }
 

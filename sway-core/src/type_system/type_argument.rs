@@ -1,13 +1,24 @@
-use crate::{engine_threading::*, type_system::*};
+use crate::{engine_threading::*, language::CallPathTree, type_system::*};
 use std::{fmt, hash::Hasher};
-use sway_types::{Span, SpanTree, Spanned};
+use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
-    pub name_spans: Option<SpanTree>,
+    pub call_path_tree: Option<CallPathTree>,
+}
+
+impl From<TypeId> for TypeArgument {
+    fn from(type_id: TypeId) -> Self {
+        TypeArgument {
+            type_id,
+            initial_type_id: type_id,
+            span: Span::dummy(),
+            call_path_tree: None,
+        }
+    }
 }
 
 impl Spanned for TypeArgument {
@@ -16,18 +27,21 @@ impl Spanned for TypeArgument {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeArgument {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine.get(self.type_id).hash(state, type_engine);
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TypeArgument {
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = self;
+        let type_engine = engines.te();
+        type_engine.get(*type_id).hash(state, engines);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -37,11 +51,10 @@ impl PartialEqWithEngines for TypeArgument {
             .eq(&type_engine.get(other.type_id), engines)
     }
 }
+
 impl OrdWithEngines for TypeArgument {
     fn cmp(&self, rhs: &Self, _: &TypeEngine) -> std::cmp::Ordering {
-        self.type_id
-            .cmp(&rhs.type_id)
-            .then_with(|| self.initial_type_id.cmp(&rhs.initial_type_id))
+        self.type_id.cmp(&rhs.type_id)
     }
 }
 
@@ -57,7 +70,7 @@ impl From<&TypeParameter> for TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,
             span: type_param.name_ident.span(),
-            name_spans: None,
+            call_path_tree: None,
         }
     }
 }

@@ -52,31 +52,31 @@ impl RenderedDocumentation {
             match module_map.get_mut(&location) {
                 Some(doc_links) => {
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => match doc_links.get_mut(&BlockTitle::Structs) {
+                        StructDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                             }
                         },
-                        EnumDeclaration(_) => match doc_links.get_mut(&BlockTitle::Enums) {
+                        EnumDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                             }
                         },
-                        TraitDeclaration(_) => match doc_links.get_mut(&BlockTitle::Traits) {
+                        TraitDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                             }
                         },
-                        AbiDeclaration(_) => match doc_links.get_mut(&BlockTitle::Abi) {
+                        AbiDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                             }
                         },
-                        StorageDeclaration(_) => {
+                        StorageDeclaration { .. } => {
                             match doc_links.get_mut(&BlockTitle::ContractStorage) {
                                 Some(links) => links.push(doc.link()),
                                 None => {
@@ -84,43 +84,47 @@ impl RenderedDocumentation {
                                 }
                             }
                         }
-                        FunctionDeclaration(_) => match doc_links.get_mut(&BlockTitle::Functions) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                        FunctionDeclaration { .. } => {
+                            match doc_links.get_mut(&BlockTitle::Functions) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                                }
                             }
-                        },
-                        ConstantDeclaration(_) => match doc_links.get_mut(&BlockTitle::Constants) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                        }
+                        ConstantDeclaration { .. } => {
+                            match doc_links.get_mut(&BlockTitle::Constants) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                                }
                             }
-                        },
+                        }
                         _ => {} // TODO: ImplTraitDeclaration
                     }
                 }
                 None => {
                     let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => {
+                        StructDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                         }
-                        EnumDeclaration(_) => {
+                        EnumDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                         }
-                        TraitDeclaration(_) => {
+                        TraitDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                         }
-                        AbiDeclaration(_) => {
+                        AbiDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                         }
-                        StorageDeclaration(_) => {
+                        StorageDeclaration { .. } => {
                             doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
                         }
-                        FunctionDeclaration(_) => {
+                        FunctionDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
                         }
-                        ConstantDeclaration(_) => {
+                        ConstantDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
                         }
                         _ => {} // TODO: ImplTraitDeclaration
@@ -156,55 +160,60 @@ impl RenderedDocumentation {
             }
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
-                StructDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Structs) {
+                StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
                     }
                 },
-                EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
+                EnumDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
                     }
                 },
-                TraitDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Traits) {
+                TraitDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
                     }
                 },
-                AbiDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Abi) {
+                AbiDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
                     }
                 },
-                StorageDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::ContractStorage)
-                {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                StorageDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                        }
                     }
-                },
-                FunctionDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Functions) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::Functions, vec![doc.link()]);
+                }
+                FunctionDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::Functions) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::Functions, vec![doc.link()]);
+                        }
                     }
-                },
-                ConstantDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Constants) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::Constants, vec![doc.link()]);
+                }
+                ConstantDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::Constants) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::Constants, vec![doc.link()]);
+                        }
                     }
-                },
+                }
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
@@ -375,7 +384,7 @@ impl Renderable for ItemBody {
         } = self;
 
         let decl_ty = ty_decl.doc_name();
-        let friendly_name = ty_decl.friendly_name();
+        let friendly_name = ty_decl.friendly_type_name();
         let sidebar = sidebar.render()?;
         let item_context = (item_context.context.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render() });
@@ -583,7 +592,7 @@ impl Renderable for TyStructField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -603,7 +612,7 @@ impl Renderable for TyStorageField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -623,7 +632,7 @@ impl Renderable for TyEnumVariant {
                 a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -654,20 +663,20 @@ impl Renderable for TyTraitFn {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_span.as_str()
+                    param.type_argument.span.as_str()
                 )?;
             }
         }
         write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
-        let method_id = format!("tymethod.{}", self.name.as_str());
+        let method_ref = format!("tymethod.{}", self.name.as_str());
         Ok(box_html! {
             div(class="methods") {
-                div(id=&method_id, class="method has-srclink") {
+                div(id=&method_ref, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_ref}")) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -676,7 +685,7 @@ impl Renderable for TyTraitFn {
                                 br;
                                 : "    ";
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -686,7 +695,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                     : ","
                                 }
                             }
@@ -695,7 +704,7 @@ impl Renderable for TyTraitFn {
                         } else {
                             @ for param in &self.parameters {
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -705,7 +714,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                 }
                                 @ if param.name.as_str()
                                     != self.parameters.last()

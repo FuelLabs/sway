@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Ident;
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
@@ -8,9 +10,6 @@ pub struct TyAsmRegisterDeclaration {
     pub(crate) name: Ident,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for TyAsmRegisterDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
@@ -19,6 +18,16 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
             } else {
                 true
             }
+    }
+}
+
+impl HashWithEngines for TyAsmRegisterDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyAsmRegisterDeclaration { initializer, name } = self;
+        name.hash(state);
+        if let Some(x) = initializer.as_ref() {
+            x.hash(state, engines)
+        }
     }
 }
 

@@ -19,9 +19,9 @@ pub struct TraitConstraint {
 }
 
 impl HashWithEngines for TraitConstraint {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         self.trait_name.hash(state);
-        self.type_arguments.hash(state, type_engine);
+        self.type_arguments.hash(state, engines);
     }
 }
 impl EqWithEngines for TraitConstraint {}
@@ -170,9 +170,9 @@ impl TraitConstraint {
             .ok(&mut warnings, &mut errors)
             .cloned()
         {
-            Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
                 let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(decl_id, &trait_name.span())),
+                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -218,7 +218,7 @@ impl TraitConstraint {
                     errors
                 );
             }
-            Some(ty::TyDeclaration::AbiDeclaration(_)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
                 errors.push(CompileError::AbiAsSupertrait {
                     span: trait_name.span(),
                 })

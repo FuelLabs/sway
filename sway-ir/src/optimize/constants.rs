@@ -11,40 +11,39 @@ use crate::{
     function::Function,
     instruction::Instruction,
     value::{Value, ValueContent, ValueDatum},
-    BranchToWithArgs, NamedPass, Predicate,
+    AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
 };
 
-pub struct ConstCombinePass;
+pub const CONSTCOMBINE_NAME: &str = "constcombine";
 
-impl NamedPass for ConstCombinePass {
-    fn name() -> &'static str {
-        "constcombine"
-    }
-
-    fn descr() -> &'static str {
-        "constant folding."
-    }
-
-    fn run(ir: &mut Context) -> Result<bool, IrError> {
-        Self::run_on_all_fns(ir, combine_constants)
+pub fn create_const_combine_pass() -> Pass {
+    Pass {
+        name: CONSTCOMBINE_NAME,
+        descr: "constant folding.",
+        deps: vec![],
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(combine_constants)),
     }
 }
 
 /// Find constant expressions which can be reduced to fewer opterations.
-pub fn combine_constants(context: &mut Context, function: &Function) -> Result<bool, IrError> {
+pub fn combine_constants(
+    context: &mut Context,
+    _: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     let mut modified = false;
     loop {
-        if combine_const_insert_values(context, function) {
+        if combine_const_insert_values(context, &function) {
             modified = true;
             continue;
         }
 
-        if combine_cmp(context, function) {
+        if combine_cmp(context, &function) {
             modified = true;
             continue;
         }
 
-        if combine_cbr(context, function)? {
+        if combine_cbr(context, &function)? {
             modified = true;
             continue;
         }

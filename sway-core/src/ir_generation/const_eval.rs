@@ -91,15 +91,13 @@ pub(crate) fn compile_const_decl(
             // See if we it's a global const and whether we can compile it *now*.
             let decl = module_ns.check_symbol(name)?;
             let decl_name_value = match decl {
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration {
                         name,
                         value,
                         is_configurable,
                         ..
-                    } = env
-                        .decl_engine
-                        .get_constant(decl_id.clone(), &name.span())?;
+                    } = env.decl_engine.get_constant(decl_id, &name.span())?;
                     Some((name, value, is_configurable))
                 }
                 _otherwise => None,
@@ -221,7 +219,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Literal(l) => Some(convert_literal_to_constant(lookup.context, l)),
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
-            function_decl_id,
+            function_decl_ref,
             ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
@@ -245,7 +243,7 @@ fn const_eval_typed_expr(
             // TODO: Handle more than one statement in the block.
             let function_decl = lookup
                 .decl_engine
-                .get_function(function_decl_id.clone(), &expr.span)?;
+                .get_function(function_decl_ref, &expr.span)?;
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
@@ -425,6 +423,9 @@ fn const_eval_typed_expr(
             _ => None,
         },
         ty::TyExpressionVariant::Return(exp) => const_eval_typed_expr(lookup, known_consts, exp)?,
+        ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+            const_eval_typed_expr(lookup, known_consts, desugared)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
         | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)
@@ -458,6 +459,6 @@ fn const_eval_typed_ast_node(
         ty::TyAstNodeContent::Expression(e) | ty::TyAstNodeContent::ImplicitReturnExpression(e) => {
             const_eval_typed_expr(lookup, known_consts, e)
         }
-        ty::TyAstNodeContent::SideEffect => Ok(None),
+        ty::TyAstNodeContent::SideEffect(_) => Ok(None),
     }
 }

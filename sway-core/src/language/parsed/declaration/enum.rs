@@ -15,8 +15,7 @@ pub struct EnumDeclaration {
 pub struct EnumVariant {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
-    pub type_info: TypeInfo,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

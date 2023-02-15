@@ -29,7 +29,7 @@ use std::{
 use sway_core::{
     abi_generation::{evm_json_abi, fuel_json_abi},
     asm_generation::ProgramABI,
-    decl_engine::{DeclEngine, DeclId},
+    decl_engine::{DeclEngine, DeclRef},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -373,6 +373,85 @@ pub struct BuildOpts {
     pub tests: bool,
     /// List of constants to inject for each package.
     pub const_inject_map: ConstInjectionMap,
+    /// The set of options to filter by member project kind.
+    pub member_filter: MemberFilter,
+}
+
+/// The set of options to filter type of projects to build in a workspace.
+pub struct MemberFilter {
+    pub build_contracts: bool,
+    pub build_scripts: bool,
+    pub build_predicates: bool,
+    pub build_libraries: bool,
+}
+
+impl Default for MemberFilter {
+    fn default() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: true,
+            build_predicates: true,
+            build_libraries: true,
+        }
+    }
+}
+
+impl MemberFilter {
+    /// Returns a new `BuildFilter` that only builds scripts.
+    pub fn only_scripts() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: true,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Returns a new `BuildFilter` that only builds contracts.
+    pub fn only_contracts() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: false,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Filter given target of output nodes according to the this `BuildFilter`.
+    pub fn filter_outputs(
+        &self,
+        build_plan: &BuildPlan,
+        outputs: HashSet<NodeIx>,
+    ) -> HashSet<NodeIx> {
+        let graph = build_plan.graph();
+        let manifest_map = build_plan.manifest_map();
+        outputs
+            .into_iter()
+            .filter(|&node_ix| {
+                let pkg = &graph[node_ix];
+                let pkg_manifest = &manifest_map[&pkg.id()];
+                let program_type = pkg_manifest.program_type();
+                // Since parser cannot recover for program type detection, for the scenerios that
+                // parser fails to parse the code, program type detection is not possible. So in
+                // failing to parse cases we should try to build at least until
+                // https://github.com/FuelLabs/sway/issues/3017 is fixed. Until then we should
+                // build those members because of two reasons:
+                //
+                // 1. The member could already be from the desired member type
+                // 2. If we do not try to build there is no way users can know there is a code
+                //    piece failing to be parsed in their workspace.
+                match program_type {
+                    Ok(program_type) => match program_type {
+                        TreeType::Predicate => self.build_predicates,
+                        TreeType::Script => self.build_scripts,
+                        TreeType::Contract => self.build_contracts,
+                        TreeType::Library { .. } => self.build_libraries,
+                    },
+                    Err(_) => true,
+                }
+            })
+            .collect()
+    }
 }
 
 impl BuildOpts {
@@ -2571,8 +2650,13 @@ pub fn compile(
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
-                for (config, offset) in config_offsets {
-                    if let Some(ref mut configurables) = json_abi_program.configurables {
+                if let Some(ref mut configurables) = json_abi_program.configurables {
+                    // Filter out all dead configurables (i.e. ones without offsets in the
+                    // bytecode)
+                    configurables.retain(|c| config_offsets.contains_key(&c.name));
+
+                    // Set the actual offsets in the JSON object
+                    for (config, offset) in config_offsets {
                         if let Some(idx) = configurables.iter().position(|c| c.name == config) {
                             configurables[idx].offset = offset
                         }
@@ -2612,9 +2696,9 @@ impl PkgEntry {
         finalized_entry: &FinalizedEntry,
         decl_engine: &DeclEngine,
     ) -> Result<Self> {
-        let pkg_entry_kind = match &finalized_entry.test_decl_id {
-            Some(test_decl_id) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+        let pkg_entry_kind = match &finalized_entry.test_decl_ref {
+            Some(test_decl_ref) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), decl_engine)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -2638,9 +2722,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
-        let span = decl_id.span();
-        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+    fn from_decl(decl_ref: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_ref.span();
+        let test_function_decl = decl_engine.get_function(&decl_ref, &span)?;
 
         let test_args: HashSet<String> = test_function_decl
             .attributes
@@ -2742,6 +2826,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         const_inject_map,
         build_target,
+        member_filter,
         ..
     } = &build_options;
 
@@ -2775,6 +2860,8 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .collect(),
         None => build_plan.member_nodes().collect(),
     };
+
+    let outputs = member_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
     let mut built_workspace = HashMap::new();
