@@ -1,5 +1,3 @@
-use sway_error::error::CompileError;
-
 use crate::{
     error::*,
     language::{parsed::*, ty, CallPath},
@@ -26,23 +24,14 @@ impl ty::TyEnumDeclaration {
         let mut decl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut decl_namespace);
 
-        // type check the type parameters
-        // insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the variants
         let mut variants_buf = vec![];
