@@ -69,7 +69,7 @@ impl Token for Contract {
         storage.balances.insert(receiver, storage.balances.get(receiver).unwrap_or(0) + amount);
     }
 
-    #[storage(read, write, payable)]
+    #[storage(read, write), payable]
     fn send(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
