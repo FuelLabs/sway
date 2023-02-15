@@ -32,11 +32,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{
-    register_known_passes, Context, Kind, Module, PassManager, PassManagerConfig,
-    CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_NONPREDICATE_NAME, INLINE_PREDICATE_NAME,
-    MEM2REG_NAME, SIMPLIFYCFG_NAME,
-};
+use sway_ir::{create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -476,26 +472,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-
-    // Create a configuration to specify which passes we want to run now.
-    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
-    // Configure to run our passes.
-    pmgr_config.to_run.push(MEM2REG_NAME);
-    if matches!(tree_type, TreeType::Predicate) {
-        pmgr_config.to_run.push(INLINE_PREDICATE_NAME);
-    } else {
-        pmgr_config.to_run.push(INLINE_NONPREDICATE_NAME);
-    }
-    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
-    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
-    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
-    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
-    pmgr_config.to_run.push(FUNC_DCE_NAME);
-    pmgr_config.to_run.push(DCE_NAME);
+    let pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
 
     // Run the passes.
     let res = CompileResult::with_handler(|handler| {
-        if let Err(ir_error) = pass_mgr.run(&mut ir, &pmgr_config) {
+        if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
             Err(handler.emit_err(CompileError::InternalOwned(
                 ir_error.to_string(),
                 span::Span::dummy(),
