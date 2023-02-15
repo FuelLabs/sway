@@ -21,26 +21,35 @@ use crate::{
     AnalysisResults, BlockArgument, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub fn create_inline_pass() -> Pass {
+pub const INLINE_MAIN_NAME: &str = "inline_main";
+
+pub fn create_inline_in_main_pass() -> Pass {
     Pass {
-        name: "inline",
-        descr: "inline function calls.",
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_calls)),
+        name: INLINE_MAIN_NAME,
+        descr: "inline from main fn.",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_main)),
     }
 }
 
+pub const INLINE_PREDICATE_NAME: &str = "inline_predicate_module";
+
 pub fn create_inline_in_predicate_pass() -> Pass {
     Pass {
-        name: "inline",
-        descr: "inline function calls.",
+        name: INLINE_PREDICATE_NAME,
+        descr: "inline function calls in a predicate module.",
+        deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_predicate_module)),
     }
 }
 
+pub const INLINE_NONPREDICATE_NAME: &str = "inline_non_predicate_module";
+
 pub fn create_inline_in_non_predicate_pass() -> Pass {
     Pass {
-        name: "inline",
-        descr: "inline function calls.",
+        name: INLINE_NONPREDICATE_NAME,
+        descr: "inline function calls in a non-predicate module.",
+        deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_non_predicate_module)),
     }
 }
@@ -193,7 +202,7 @@ pub fn inline_in_non_predicate_module(
     Ok(modified)
 }
 
-pub fn inline_calls(
+pub fn inline_in_main(
     context: &mut Context,
     _: &AnalysisResults,
     module: Module,

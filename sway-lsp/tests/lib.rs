@@ -1,12 +1,12 @@
 pub mod integration;
-use integration::lsp;
-use sway_lsp::server::Backend;
 
+use crate::integration::{code_actions, lsp};
 use std::{fs, path::PathBuf};
+use sway_lsp::server::Backend;
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, get_fixture, load_sway_example, runnables_test_dir, sway_workspace_dir,
-    test_fixtures_dir,
+    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
+    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
 };
 use tower_lsp::{
     jsonrpc::{self, Response},
@@ -242,7 +242,7 @@ async fn go_to_definition_for_fields() {
 
     let mut opt_go_to = GotoDefinition {
         req_uri: &uri,
-        req_line: 3,
+        req_line: 5,
         req_char: 8,
         def_line: 80,
         def_start_char: 9,
@@ -251,14 +251,37 @@ async fn go_to_definition_for_fields() {
     };
     // Option
     let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 3, 16, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 7, 9, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 7, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 5, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 9, 9, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 9, 16, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 13, 12, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 13, 19, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 13, 34, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 13, 47, &mut i).await;
 
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 12, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 19, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 34, &mut i).await;
-    definition_check_with_req_offset(&mut service, &mut opt_go_to, 11, 47, &mut i).await;
+    let opt_go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 17,
+        req_char: 10,
+        def_line: 0,
+        def_start_char: 8,
+        def_end_char: 11,
+        def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
+    };
+    // foo
+    let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
+
+    let opt_go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 17,
+        req_char: 15,
+        def_line: 2,
+        def_start_char: 11,
+        def_end_char: 14,
+        def_path: "sway-lsp/tests/fixtures/tokens/fields/src/foo.sw",
+    };
+    // Foo
+    let _ = lsp::definition_check(&mut service, &opt_go_to, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
 }
@@ -1347,9 +1370,24 @@ lsp_capability_test!(
     doc_comments_dir().join("src/main.sw")
 );
 lsp_capability_test!(
-    code_action,
-    lsp::code_action_request,
+    code_action_abi,
+    code_actions::code_action_abi_request,
     doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct,
+    code_actions::code_action_struct_request,
+    doc_comments_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_type_params,
+    code_actions::code_action_struct_type_params_request,
+    generic_impl_self_dir().join("src/main.sw")
+);
+lsp_capability_test!(
+    code_action_struct_existing_impl,
+    code_actions::code_action_struct_existing_impl_request,
+    self_impl_reassignment_dir().join("src/main.sw")
 );
 lsp_capability_test!(
     code_lens,

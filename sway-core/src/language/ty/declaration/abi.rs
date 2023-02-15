@@ -1,8 +1,6 @@
-use std::hash::{Hash, Hasher};
-
-use sway_types::{Ident, Span};
-
 use crate::{decl_engine::DeclRef, engine_threading::*, transform, type_system::*};
+use std::hash::{Hash, Hasher};
+use sway_types::{Ident, Span, Spanned};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
@@ -51,5 +49,11 @@ impl CreateTypeId for TyAbiDeclaration {
             address: None,
         };
         type_engine.insert(decl_engine, ty)
+    }
+}
+
+impl Spanned for TyAbiDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }
