@@ -102,6 +102,8 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
         sway_parse::parse_module_kind(h, input, None).map(|kind| convert_module_kind(&kind))
     })
 }
+
+/// Convert attributes from `Annotated<Module>` to an [AttributesMap].
 fn module_attrs_to_map(
     handler: &Handler,
     attribute_list: &[AttributeDecl],
