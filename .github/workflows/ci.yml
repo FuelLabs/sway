@@ -92,7 +92,7 @@ jobs:
           cd master
           OUTPUT=$(cargo run --locked --bin examples-checker fmt --all-examples)
           echo "$OUTPUT"
-          DURATION_MASTER=$(echo $OUTPUT | tail -n 1 | cut -d ' ' -f3)
+          DURATION_MASTER=$(echo $OUTPUT | rev | cut -d ' ' -f1 | rev)
           echo "DURATION_MASTER=$DURATION_MASTER" >> $GITHUB_OUTPUT
           cd ..
 
@@ -105,7 +105,7 @@ jobs:
         run: |
           OUTPUT=$(cargo run --locked --bin examples-checker fmt --all-examples)
           echo "$OUTPUT"
-          DURATION_CURRENT=$(echo $OUTPUT | tail -n 1 | cut -d ' ' -f3)
+          DURATION_CURRENT=$(echo $OUTPUT | rev | cut -d ' ' -f1 | rev)
           echo "DURATION_CURRENT=$DURATION_CURRENT" >> $GITHUB_OUTPUT
 
       - name: Print diagnostics
