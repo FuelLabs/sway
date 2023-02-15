@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -151,6 +154,32 @@ impl PartialEqWithEngines for TyEnumVariant {
         self.name == other.name
             && self.type_argument.eq(&other.type_argument, engines)
             && self.tag == other.tag
+    }
+}
+
+impl OrdWithEngines for TyEnumVariant {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TyEnumVariant {
+            name: ln,
+            type_argument: lta,
+            tag: lt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyEnumVariant {
+            name: rn,
+            type_argument: rta,
+            tag: rt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| lta.cmp(rta, type_engine))
+            .then_with(|| lt.cmp(rt))
     }
 }
 
