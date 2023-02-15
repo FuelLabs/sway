@@ -30,7 +30,7 @@ use sway_types::{
     },
     integer_bits::IntegerBits,
 };
-use sway_types::{Ident, Span, SpanTree, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use std::{
     collections::{HashMap, HashSet},
@@ -435,7 +435,7 @@ fn item_fn_to_function_declaration(
                 type_id,
                 initial_type_id: type_id,
                 span: item_fn.fn_signature.span(),
-                name_spans: None,
+                call_path_tree: None,
             }
         }
     };
@@ -620,24 +620,10 @@ fn path_type_to_call_path_and_type_arguments(
     context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
-    PathType {
-        root_opt,
-        prefix,
-        mut suffix,
-    }: PathType,
+    path_type: PathType,
 ) -> Result<(CallPath, Vec<TypeArgument>), ErrorEmitted> {
-    let (prefixes, suffix) = match suffix.pop() {
-        None => (Vec::new(), prefix),
-        Some((_, last)) => {
-            // Gather the idents of the prefix, i.e. all segments but the last one.
-            let mut before = Vec::with_capacity(suffix.len() + 1);
-            before.push(path_type_segment_to_ident(context, handler, prefix)?);
-            for (_, seg) in suffix {
-                before.push(path_type_segment_to_ident(context, handler, seg)?);
-            }
-            (before, last)
-        }
-    };
+    let root_opt = path_type.root_opt.clone();
+    let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
 
     let call_path = CallPath {
         prefixes,
@@ -731,7 +717,7 @@ pub(crate) fn item_const_to_constant_declaration(
     let span = item_const.span();
     let type_ascription = match item_const.ty_opt {
         Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
-        None => TypeArgument::no_spans(engines.te().insert(engines.de(), TypeInfo::Unknown)),
+        None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
     };
 
     Ok(ConstantDeclaration {
@@ -1026,7 +1012,7 @@ fn fn_args_to_function_parameters(
                     type_id,
                     initial_type_id: type_id,
                     span: self_token.span(),
-                    name_spans: None,
+                    call_path_tree: None,
                 },
             }];
             if let Some((_comma_token, args)) = args_opt {
@@ -1103,22 +1089,59 @@ fn ty_to_type_info(
     Ok(type_info)
 }
 
-fn ty_to_span_tree(ty: &Ty) -> Result<Option<SpanTree>, ErrorEmitted> {
-    if let Some(span) = ty.name_span() {
-        let children = if let Ty::Path(path_type) = &ty {
-            if let Some((_, generic_args)) = &path_type.last_segment().generics_opt {
-                (&generic_args.parameters.inner)
-                    .into_iter()
-                    .filter_map(|ty| ty_to_span_tree(ty).transpose())
-                    .collect::<Result<Vec<_>, _>>()?
-            } else {
-                vec![]
+fn path_type_to_prefixes_and_suffix(
+    context: &mut Context,
+    handler: &Handler,
+    PathType {
+        root_opt: _,
+        prefix,
+        mut suffix,
+    }: PathType,
+) -> Result<(Vec<Ident>, PathTypeSegment), ErrorEmitted> {
+    Ok(match suffix.pop() {
+        None => (Vec::new(), prefix),
+        Some((_, last)) => {
+            // Gather the idents of the prefix, i.e. all segments but the last one.
+            let mut before = Vec::with_capacity(suffix.len() + 1);
+            before.push(path_type_segment_to_ident(context, handler, prefix)?);
+            for (_, seg) in suffix {
+                before.push(path_type_segment_to_ident(context, handler, seg)?);
             }
+            (before, last)
+        }
+    })
+}
+
+fn ty_to_call_path_tree(
+    context: &mut Context,
+    handler: &Handler,
+    ty: Ty,
+) -> Result<Option<CallPathTree>, ErrorEmitted> {
+    if let Ty::Path(path_type) = ty {
+        let root_opt = path_type.root_opt.clone();
+        let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
+
+        let children = if let Some((_, generic_args)) = suffix.generics_opt {
+            generic_args
+                .parameters
+                .inner
+                .into_iter()
+                .filter_map(|ty| ty_to_call_path_tree(context, handler, ty).transpose())
+                .collect::<Result<Vec<_>, _>>()?
         } else {
             vec![]
         };
 
-        Ok(Some(SpanTree { span, children }))
+        let call_path = CallPath {
+            prefixes,
+            suffix: suffix.name,
+            is_absolute: path_root_opt_to_bool(context, handler, root_opt)?,
+        };
+
+        Ok(Some(CallPathTree {
+            call_path,
+            children,
+        }))
     } else {
         Ok(None)
     }
@@ -1133,14 +1156,14 @@ fn ty_to_type_argument(
     let type_engine = engines.te();
     let decl_engine = engines.de();
     let span = ty.span();
-    let name_spans = ty_to_span_tree(&ty)?;
+    let call_path_tree = ty_to_call_path_tree(context, handler, ty.clone())?;
     let initial_type_id =
         type_engine.insert(decl_engine, ty_to_type_info(context, handler, engines, ty)?);
 
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
-        name_spans,
+        call_path_tree,
         span,
     };
     Ok(type_argument)
@@ -1652,7 +1675,7 @@ fn expr_to_expression(
                                             type_id,
                                             initial_type_id: type_id,
                                             span: var_decl_name.span(),
-                                            name_spans: None,
+                                            call_path_tree: None,
                                         }
                                     },
                                     name: var_decl_name,
@@ -2864,7 +2887,7 @@ fn statement_let_to_ast_nodes(
                             type_id,
                             initial_type_id: type_id,
                             span: name.span(),
-                            name_spans: None,
+                            call_path_tree: None,
                         }
                     }
                 };
@@ -2918,7 +2941,7 @@ fn statement_let_to_ast_nodes(
                             type_id,
                             initial_type_id: type_id,
                             span: destructure_name.span(),
-                            name_spans: None,
+                            call_path_tree: None,
                         }
                     }
                 };
@@ -3009,7 +3032,7 @@ fn statement_let_to_ast_nodes(
                             type_id,
                             initial_type_id: type_id,
                             span: tuple_name.span(),
-                            name_spans: None,
+                            call_path_tree: None,
                         }
                     }
                 };
@@ -3277,7 +3300,6 @@ fn ty_to_type_parameter(
     })
 }
 
-#[allow(dead_code)]
 fn path_type_to_ident(
     context: &mut Context,
     handler: &Handler,

@@ -11,12 +11,13 @@ use sway_core::{
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
+        CallPathTree,
     },
     namespace,
     type_system::TypeArgument,
     Engines, TypeId, TypeInfo,
 };
-use sway_types::{Ident, Span, SpanTree, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 pub struct TypedTree<'a> {
     engines: Engines<'a>,
@@ -107,7 +108,7 @@ impl<'a> TypedTree<'a> {
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
 
-                self.collect_type_argument(&variable.type_ascription);
+                self.collect_type_argument(&variable.type_ascription, namespace);
 
                 self.handle_expression(&variable.body, namespace);
             }
@@ -124,7 +125,7 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
                     }
 
-                    self.collect_type_argument(&const_decl.type_ascription);
+                    self.collect_type_argument(&const_decl.type_ascription, namespace);
                     self.handle_expression(&const_decl.value, namespace);
                 }
             }
@@ -152,7 +153,7 @@ impl<'a> TypedTree<'a> {
                         if let Ok(trait_fn) =
                             decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
                         {
-                            self.collect_typed_trait_fn_token(&trait_fn);
+                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
                         }
                     }
                     for supertrait in trait_decl.supertraits {
@@ -172,7 +173,7 @@ impl<'a> TypedTree<'a> {
                     }
 
                     for field in &struct_decl.fields {
-                        self.collect_ty_struct_field(field);
+                        self.collect_ty_struct_field(field, namespace);
                     }
 
                     for type_param in &struct_decl.type_parameters {
@@ -215,7 +216,7 @@ impl<'a> TypedTree<'a> {
                     }
 
                     for variant in &enum_decl.variants {
-                        self.collect_ty_enum_variant(variant);
+                        self.collect_ty_enum_variant(variant, namespace);
                     }
                 }
             }
@@ -238,6 +239,7 @@ impl<'a> TypedTree<'a> {
                             param.type_id,
                             &TypedAstToken::TypedParameter(param.clone()),
                             param.name_ident.span().clone(),
+                            namespace,
                         );
                     }
 
@@ -272,6 +274,7 @@ impl<'a> TypedTree<'a> {
                             type_arg.type_id,
                             &TypedAstToken::TypedArgument(type_arg.clone()),
                             type_arg.span().clone(),
+                            namespace,
                         );
                     }
 
@@ -285,6 +288,7 @@ impl<'a> TypedTree<'a> {
                         implementing_for_type_id,
                         &TypedAstToken::TypedDeclaration(declaration.clone()),
                         type_implementing_for_span,
+                        namespace,
                     );
                 }
             }
@@ -305,7 +309,7 @@ impl<'a> TypedTree<'a> {
                         if let Ok(trait_fn) =
                             decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
                         {
-                            self.collect_typed_trait_fn_token(&trait_fn);
+                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
                         }
                     }
                 }
@@ -331,7 +335,7 @@ impl<'a> TypedTree<'a> {
                                 Some(TypeDefinition::TypeId(field.type_argument.type_id));
                         }
 
-                        self.collect_type_argument(&field.type_argument);
+                        self.collect_type_argument(&field.type_argument, namespace);
 
                         self.handle_expression(&field.initializer, namespace);
                     }
@@ -438,7 +442,7 @@ impl<'a> TypedTree<'a> {
             } => {
                 if let Some(type_binding) = type_binding {
                     for type_arg in &type_binding.type_arguments.to_vec() {
-                        self.collect_type_argument(type_arg);
+                        self.collect_type_argument(type_arg, namespace);
                     }
                 }
 
@@ -566,7 +570,7 @@ impl<'a> TypedTree<'a> {
                 }
 
                 for type_arg in &call_path_binding.type_arguments.to_vec() {
-                    self.collect_type_argument(type_arg);
+                    self.collect_type_argument(type_arg, namespace);
                 }
 
                 self.collect_call_path_prefixes(
@@ -679,7 +683,7 @@ impl<'a> TypedTree<'a> {
                 }
 
                 for type_arg in &call_path_binding.type_arguments.to_vec() {
-                    self.collect_type_argument(type_arg);
+                    self.collect_type_argument(type_arg, namespace);
                 }
 
                 self.collect_call_path_prefixes(
@@ -966,7 +970,11 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_typed_trait_fn_token(&self, trait_fn: &ty::TyTraitFn) {
+    fn collect_typed_trait_fn_token(
+        &self,
+        trait_fn: &ty::TyTraitFn,
+        namespace: &namespace::Module,
+    ) {
         if let Some(mut token) = self
             .tokens
             .try_get_mut(&to_ident_key(&trait_fn.name))
@@ -977,7 +985,7 @@ impl<'a> TypedTree<'a> {
         }
 
         for parameter in &trait_fn.parameters {
-            self.collect_typed_fn_param_token(parameter);
+            self.collect_typed_fn_param_token(parameter, namespace);
         }
 
         let return_ident = Ident::new(trait_fn.return_type_span.clone());
@@ -991,7 +999,11 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_typed_fn_param_token(&self, param: &ty::TyFunctionParameter) {
+    fn collect_typed_fn_param_token(
+        &self,
+        param: &ty::TyFunctionParameter,
+        namespace: &namespace::Module,
+    ) {
         let typed_token = TypedAstToken::TypedFunctionParameter(param.clone());
         if let Some(mut token) = self
             .tokens
@@ -1002,24 +1014,43 @@ impl<'a> TypedTree<'a> {
             token.type_def = Some(TypeDefinition::TypeId(param.type_argument.type_id));
         }
 
-        self.collect_type_argument(&param.type_argument);
+        self.collect_type_argument(&param.type_argument, namespace);
     }
 
-    fn collect_type_argument(&self, type_arg: &TypeArgument) {
-        if let Some(name_spans) = &type_arg.name_spans {
-            self.collect_span_tree(name_spans, type_arg);
+    fn collect_type_argument(&self, type_arg: &TypeArgument, namespace: &namespace::Module) {
+        if let Some(call_path_tree) = &type_arg.call_path_tree {
+            self.collect_call_path_tree(call_path_tree, type_arg, namespace);
         } else {
             self.collect_type_id(
                 type_arg.type_id,
                 &TypedAstToken::TypedArgument(type_arg.clone()),
                 type_arg.span(),
+                namespace,
             );
         }
     }
 
-    fn collect_span_tree(&self, span_tree: &SpanTree, type_arg: &TypeArgument) {
+    fn collect_call_path_tree(
+        &self,
+        tree: &CallPathTree,
+        type_arg: &TypeArgument,
+        namespace: &namespace::Module,
+    ) {
         let type_engine = self.engines.te();
         let type_info = type_engine.get(type_arg.type_id);
+
+        self.collect_call_path_prefixes(
+            &tree.call_path.prefixes,
+            TypedAstToken::TypedArgument(type_arg.clone()),
+            namespace,
+        );
+        self.collect_type_id(
+            type_arg.type_id,
+            &TypedAstToken::TypedArgument(type_arg.clone()),
+            tree.call_path.suffix.span(),
+            namespace,
+        );
+
         match &type_info {
             TypeInfo::Enum {
                 type_parameters, ..
@@ -1027,27 +1058,15 @@ impl<'a> TypedTree<'a> {
             | TypeInfo::Struct {
                 type_parameters, ..
             } => {
-                self.collect_type_id(
-                    type_arg.type_id,
-                    &TypedAstToken::TypedArgument(type_arg.clone()),
-                    span_tree.span.clone(),
-                );
-
                 let child_type_args = type_parameters.iter().map(TypeArgument::from);
-                for (child_tree, type_arg) in span_tree.children.iter().zip(child_type_args) {
-                    self.collect_span_tree(child_tree, &type_arg);
+                for (child_tree, type_arg) in tree.children.iter().zip(child_type_args) {
+                    self.collect_call_path_tree(child_tree, &type_arg, namespace);
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
-                self.collect_type_id(
-                    type_arg.type_id,
-                    &TypedAstToken::TypedArgument(type_arg.clone()),
-                    span_tree.span.clone(),
-                );
-
                 if let Some(type_args) = type_arguments {
-                    for (child_tree, type_arg) in span_tree.children.iter().zip(type_args.iter()) {
-                        self.collect_span_tree(child_tree, type_arg);
+                    for (child_tree, type_arg) in tree.children.iter().zip(type_args.iter()) {
+                        self.collect_call_path_tree(child_tree, type_arg, namespace);
                     }
                 }
             }
@@ -1058,12 +1077,19 @@ impl<'a> TypedTree<'a> {
                     // use the whole span instead of just the name if we don't know
                     // how to walk it
                     type_arg.span(),
+                    namespace,
                 );
             }
         };
     }
 
-    fn collect_type_id(&self, type_id: TypeId, typed_token: &TypedAstToken, type_span: Span) {
+    fn collect_type_id(
+        &self,
+        type_id: TypeId,
+        typed_token: &TypedAstToken,
+        type_span: Span,
+        namespace: &namespace::Module,
+    ) {
         let type_engine = self.engines.te();
         let type_info = type_engine.get(type_id);
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
@@ -1073,11 +1099,12 @@ impl<'a> TypedTree<'a> {
                     type_arg.type_id,
                     &TypedAstToken::TypedArgument(type_arg.clone()),
                     type_arg.span(),
+                    namespace,
                 );
             }
             TypeInfo::Tuple(type_arguments) => {
                 for type_arg in type_arguments {
-                    self.collect_type_argument(type_arg);
+                    self.collect_type_argument(type_arg, namespace);
                 }
             }
             TypeInfo::Enum {
@@ -1098,11 +1125,12 @@ impl<'a> TypedTree<'a> {
                         param.type_id,
                         &TypedAstToken::TypedParameter(param.clone()),
                         param.name_ident.span().clone(),
+                        namespace,
                     );
                 }
 
                 for variant in variant_types {
-                    self.collect_ty_enum_variant(variant);
+                    self.collect_ty_enum_variant(variant, namespace);
                 }
             }
             TypeInfo::Struct {
@@ -1123,11 +1151,12 @@ impl<'a> TypedTree<'a> {
                         param.type_id,
                         &TypedAstToken::TypedParameter(param.clone()),
                         param.name_ident.span().clone(),
+                        namespace,
                     );
                 }
 
                 for field in fields {
-                    self.collect_ty_struct_field(field);
+                    self.collect_ty_struct_field(field, namespace);
                 }
             }
             TypeInfo::Custom {
@@ -1144,13 +1173,13 @@ impl<'a> TypedTree<'a> {
 
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
-                        self.collect_type_argument(type_arg);
+                        self.collect_type_argument(type_arg, namespace);
                     }
                 }
             }
             TypeInfo::Storage { fields } => {
                 for field in fields {
-                    self.collect_ty_struct_field(field);
+                    self.collect_ty_struct_field(field, namespace);
                 }
             }
             _ => {
@@ -1184,7 +1213,7 @@ impl<'a> TypedTree<'a> {
             self.traverse_node(node, namespace);
         }
         for parameter in &func_decl.parameters {
-            self.collect_typed_fn_param_token(parameter);
+            self.collect_typed_fn_param_token(parameter, namespace);
         }
 
         for type_param in &func_decl.type_parameters {
@@ -1192,13 +1221,14 @@ impl<'a> TypedTree<'a> {
                 type_param.type_id,
                 &typed_token,
                 type_param.name_ident.span().clone(),
+                namespace,
             );
         }
 
-        self.collect_type_argument(&func_decl.return_type);
+        self.collect_type_argument(&func_decl.return_type, namespace);
     }
 
-    fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant) {
+    fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant, namespace: &namespace::Module) {
         let typed_token = TypedAstToken::TypedEnumVariant(enum_variant.clone());
         if let Some(mut token) = self
             .tokens
@@ -1209,10 +1239,10 @@ impl<'a> TypedTree<'a> {
             token.type_def = Some(TypeDefinition::TypeId(enum_variant.type_argument.type_id));
         }
 
-        self.collect_type_argument(&enum_variant.type_argument);
+        self.collect_type_argument(&enum_variant.type_argument, namespace);
     }
 
-    fn collect_ty_struct_field(&self, field: &ty::TyStructField) {
+    fn collect_ty_struct_field(&self, field: &ty::TyStructField, namespace: &namespace::Module) {
         if let Some(mut token) = self
             .tokens
             .try_get_mut(&to_ident_key(&field.name))
@@ -1222,7 +1252,7 @@ impl<'a> TypedTree<'a> {
             token.type_def = Some(TypeDefinition::TypeId(field.type_argument.type_id));
         }
 
-        self.collect_type_argument(&field.type_argument);
+        self.collect_type_argument(&field.type_argument, namespace);
     }
 }
 

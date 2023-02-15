@@ -836,8 +836,11 @@ impl<'a> ParsedTree<'a> {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
                 token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(call_path.suffix.span())), token);
+
+                for ident in &call_path.prefixes {
+                    self.tokens.insert(to_ident_key(ident), token.clone());
+                }
+                self.tokens.insert(to_ident_key(&call_path.suffix), token);
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
