@@ -1,4 +1,4 @@
-use crate::language::DepName;
+use crate::{language::DepName, transform};
 
 use super::ParseTree;
 use sway_types::{Ident, Span};
@@ -10,7 +10,7 @@ pub struct ParseModule {
     pub tree: ParseTree,
     /// Submodules introduced within this module using the `dep` syntax in order of declaration.
     pub submodules: Vec<(DepName, ParseSubmodule)>,
-    // pub attributes: crate::transform::AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 /// A library module that was declared as a `dep` of another module.

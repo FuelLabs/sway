@@ -5,6 +5,7 @@ use crate::{
     language::ty::*,
     language::DepName,
     semantic_analysis::namespace,
+    transform,
 };
 
 #[derive(Clone, Debug)]
@@ -12,7 +13,7 @@ pub struct TyModule {
     pub submodules: Vec<(DepName, TySubmodule)>,
     pub namespace: namespace::Module,
     pub all_nodes: Vec<TyAstNode>,
-    // pub attributes: transform::AttributesMap,
+    pub attributes: transform::AttributesMap,
 }
 
 #[derive(Clone, Debug)]
