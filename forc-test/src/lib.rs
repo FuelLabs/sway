@@ -1,4 +1,3 @@
-mod error_codes;
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -6,11 +5,8 @@ use std::{
     sync::Arc,
 };
 
-use error_codes::{
-    ErrorSignal, FAILED_ASSERT_EQ_SIGNAL, FAILED_ASSERT_SIGNAL, FAILED_REQUIRE_SIGNAL,
-    FAILED_SEND_MESSAGE_SIGNAL, FAILED_TRANSFER_TO_ADDRESS_SIGNAL,
-};
 use forc_pkg as pkg;
+use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::{self as vm, prelude::Opcode};
 use pkg::TestPassCondition;
@@ -299,23 +295,11 @@ impl TestResult {
     }
 
     /// Return a `ErrorSignal` for this `TestResult` if the test is failed to pass.
-    pub fn error_signal(&self) -> Option<ErrorSignal> {
-        let revert_code = self.revert_code();
-        revert_code.map(|code| {
-            if code == FAILED_REQUIRE_SIGNAL {
-                ErrorSignal::Require
-            } else if code == FAILED_TRANSFER_TO_ADDRESS_SIGNAL {
-                ErrorSignal::TransferToAddress
-            } else if code == FAILED_SEND_MESSAGE_SIGNAL {
-                ErrorSignal::SendMessage
-            } else if code == FAILED_ASSERT_EQ_SIGNAL {
-                ErrorSignal::AssertEq
-            } else if code == FAILED_ASSERT_SIGNAL {
-                ErrorSignal::Assert
-            } else {
-                ErrorSignal::Unknown
-            }
-        })
+    pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
+        let revert_code = self.revert_code().ok_or_else(|| {
+            anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
+        })?;
+        ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
     }
 
     /// Return `TestDetails` from the span of the function declaring this test.

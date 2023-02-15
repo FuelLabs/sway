@@ -1674,7 +1674,7 @@ dependencies = [
  "fd-lock",
  "forc-tracing",
  "forc-util",
- "fuel-abi-types",
+ "fuel-abi-types 0.1.0",
  "git2",
  "hex",
  "petgraph",
@@ -1699,6 +1699,7 @@ version = "0.34.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
+ "fuel-abi-types 0.2.1",
  "fuel-tx",
  "fuel-vm",
  "rand",
@@ -1782,6 +1783,18 @@ dependencies = [
  "proc-macro2",
  "serde",
  "strum_macros",
+]
+
+[[package]]
+name = "fuel-abi-types"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47d99a7aeb41cdabffa38418b00fd57b5571dc58ee5af606e845a088befecd36"
+dependencies = [
+ "lazy_static",
+ "regex",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -4673,7 +4686,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-abi-types",
+ "fuel-abi-types 0.1.0",
  "fuel-ethabi",
  "fuel-etk-asm",
  "fuel-etk-dasm",
