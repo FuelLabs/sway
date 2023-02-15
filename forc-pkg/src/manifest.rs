@@ -240,6 +240,35 @@ impl PackageManifestFile {
         Ok(Self { manifest, path })
     }
 
+    /// Apply patch declarations from the workspace (which declares this package manifest as a
+    /// member) to this package manifest.
+    ///
+    /// This checks whether there is such workspace present before attempting to apply patches so
+    /// it is safe to use with standalone package manifests as well.
+    pub fn with_workspace_patches(&self) -> Self {
+        let mut workspace_patches = self
+            .workspace()
+            .ok()
+            .flatten()
+            .and_then(|workspace| workspace.patch.clone());
+        let mut package_patches = self.patch.clone().unwrap_or_default();
+        if let Some(workspace_patches) = &mut workspace_patches {
+            package_patches.append(workspace_patches);
+        }
+        let updated_patches = if package_patches.is_empty() {
+            None
+        } else {
+            Some(package_patches)
+        };
+        Self {
+            manifest: PackageManifest {
+                patch: updated_patches,
+                ..self.manifest.clone()
+            },
+            ..self.clone()
+        }
+    }
+
     /// Read the manifest from the `Forc.toml` in the directory specified by the given `path` or
     /// any of its parent directories.
     ///
@@ -364,6 +393,7 @@ impl PackageManifestFile {
                 if e.to_string().contains("could not find") {
                     return Ok(None);
                 } else {
+                    println!("{e:?}");
                     return Err(e);
                 }
             }
@@ -486,6 +516,13 @@ impl PackageManifest {
             .flat_map(|patches| patches.iter())
     }
 
+    /// Retrieve the listed patches for the given name.
+    pub fn patch(&self, patch_name: &str) -> Option<&PatchMap> {
+        self.patch
+            .as_ref()
+            .and_then(|patches| patches.get(patch_name))
+    }
+
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
     /// `std` implicitly.
     ///
@@ -543,13 +580,6 @@ impl PackageManifest {
             Dependency::Simple(_) => None,
             Dependency::Detailed(detailed) => Some(detailed),
         })
-    }
-
-    /// Retrieve the listed patches for the given name.
-    pub fn patch(&self, patch_name: &str) -> Option<&PatchMap> {
-        self.patch
-            .as_ref()
-            .and_then(|patches| patches.get(patch_name))
     }
 
     /// Retrieve a reference to the contract dependency with the given name.
@@ -694,6 +724,7 @@ pub struct WorkspaceManifestFile {
 #[serde(rename_all = "kebab-case")]
 pub struct WorkspaceManifest {
     workspace: Workspace,
+    patch: Option<BTreeMap<String, PatchMap>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -797,6 +828,14 @@ impl WorkspaceManifestFile {
     /// This will always be a canonical path.
     pub fn lock_path(&self) -> PathBuf {
         self.dir().to_path_buf().join(constants::LOCK_FILE_NAME)
+    }
+
+    /// Produce an iterator yielding all listed patches.
+    pub fn patches(&self) -> impl Iterator<Item = (&String, &PatchMap)> {
+        self.patch
+            .as_ref()
+            .into_iter()
+            .flat_map(|patches| patches.iter())
     }
 }
 
