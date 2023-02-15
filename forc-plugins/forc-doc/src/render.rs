@@ -32,7 +32,9 @@ impl RenderedDocumentation {
     pub fn from(raw: Documentation, forc_version: Option<String>) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let root_module = match raw.first() {
-            Some(doc) => ModuleInfo::from_vec(vec![doc.module_info.project_name().to_owned()]),
+            Some(doc) => {
+                ModuleInfo::from_ty_module(vec![doc.module_info.project_name().to_owned()], None)
+            }
             None => panic!("Project does not contain a root module"),
         };
         let mut all_docs = DocLinks {
@@ -485,7 +487,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -501,7 +503,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}storagefield.{}",
                                 IDENTITY,
@@ -517,7 +519,7 @@ impl ItemContext {
                         .iter()
                         .map(|variant| DocLink {
                             name: variant.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
                             preview_opt: None,
                         })
@@ -529,7 +531,7 @@ impl ItemContext {
                         .iter()
                         .map(|method| DocLink {
                             name: method.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -1078,6 +1080,9 @@ impl Renderable for ModuleIndex {
                                         }
                                     }
                                 }
+                            }
+                            @ if self.module_info.attributes.is_some() {
+                                : Raw(self.module_info.attributes.unwrap())
                             }
                             : doc_links;
                         }
