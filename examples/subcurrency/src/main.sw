@@ -57,7 +57,7 @@ impl Token for Contract {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender = msg_sender().unwrap();
-        let sender: Address = match sender.unwrap() {
+        let sender: Address = match sender {
             Identity::Address(addr) => {
                 assert(addr == MINTER);
                 addr
@@ -74,7 +74,7 @@ impl Token for Contract {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
         let sender = msg_sender().unwrap();
-        let sender = match sender.unwrap() {
+        let sender = match sender {
             Identity::Address(addr) => addr,
             _ => revert(0),
         };
