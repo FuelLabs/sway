@@ -93,7 +93,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 call_path,
                 ..
             } => {
@@ -105,11 +105,10 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(e) => return err(vec![], vec![e]),
-                    };
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
+                    Ok(decl) => decl,
+                    Err(e) => return err(vec![], vec![e]),
+                };
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -285,11 +284,11 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
-                enum_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
@@ -301,7 +300,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(ctx),
+                        variant.type_argument.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -348,7 +347,7 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
                 res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(ctx),
+                    variant.type_argument.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -420,18 +419,17 @@ impl DeterministicallyAborts for TyExpression {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_id,
+                function_decl_ref,
                 arguments,
                 ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl =
-                    match decl_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(_e) => panic!("failed to get function"),
-                    };
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
+                    Ok(decl) => decl,
+                    Err(_e) => panic!("failed to get function"),
+                };
                 function_decl
                     .body
                     .deterministically_aborts(decl_engine, check_call_body)

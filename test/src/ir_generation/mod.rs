@@ -192,7 +192,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     } else {
                         pass_mgr.register(create_inline_in_non_predicate_pass())
                     };
-                    pmgr_config.to_run.push(inline.to_string());
+                    pmgr_config.to_run.push(inline);
                     let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
                     if inline_res.is_err() {
                         panic!(

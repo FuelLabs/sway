@@ -89,9 +89,11 @@ impl ReplaceSelfType for TypeId {
                     let variant_types = variant_types
                         .into_iter()
                         .map(|mut variant| {
-                            if let Some(type_id) = helper(variant.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(variant.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                variant.type_id = type_id;
+                                variant.type_argument.type_id = type_id;
                             }
                             variant
                         })
@@ -128,9 +130,11 @@ impl ReplaceSelfType for TypeId {
                     let fields = fields
                         .into_iter()
                         .map(|mut field| {
-                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(field.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                field.type_id = type_id;
+                                field.type_argument.type_id = type_id;
                             }
                             field
                         })
@@ -216,9 +220,11 @@ impl ReplaceSelfType for TypeId {
                     let fields = fields
                         .into_iter()
                         .map(|mut field| {
-                            if let Some(type_id) = helper(field.type_id, engines, self_type) {
+                            if let Some(type_id) =
+                                helper(field.type_argument.type_id, engines, self_type)
+                            {
                                 need_to_create_new = true;
-                                field.type_id = type_id;
+                                field.type_argument.type_id = type_id;
                             }
                             field
                         })

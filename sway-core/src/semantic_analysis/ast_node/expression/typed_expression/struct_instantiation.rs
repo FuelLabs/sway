@@ -214,7 +214,7 @@ fn unify_field_arguments_and_struct_fields(
                 CompileResult::from(type_engine.unify_adt(
                     decl_engine,
                     typed_field.value.return_type,
-                    struct_field.type_id,
+                    struct_field.type_argument.type_id,
                     &typed_field.value.span,
                     "Struct field's type must match the type specified in its declaration.",
                     None,

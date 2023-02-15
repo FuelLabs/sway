@@ -265,17 +265,20 @@ impl TypeId {
                 let variants = variant_types
                     .iter()
                     .map(|x| program_abi::TypeDeclaration {
-                        type_id: x.initial_type_id.index(),
-                        type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                        components: x.initial_type_id.get_json_type_components(
+                        type_id: x.type_argument.initial_type_id.index(),
+                        type_field: x
+                            .type_argument
+                            .initial_type_id
+                            .get_json_type_str(type_engine, x.type_argument.type_id),
+                        components: x.type_argument.initial_type_id.get_json_type_components(
                             type_engine,
                             types,
-                            x.type_id,
+                            x.type_argument.type_id,
                         ),
-                        type_parameters: x.initial_type_id.get_json_type_parameters(
+                        type_parameters: x.type_argument.initial_type_id.get_json_type_parameters(
                             type_engine,
                             types,
-                            x.type_id,
+                            x.type_argument.type_id,
                         ),
                     })
                     .collect::<Vec<_>>();
@@ -288,12 +291,15 @@ impl TypeId {
                         .iter()
                         .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
-                            type_id: x.initial_type_id.index(),
-                            type_arguments: x.initial_type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
+                            type_id: x.type_argument.initial_type_id.index(),
+                            type_arguments: x
+                                .type_argument
+                                .initial_type_id
+                                .get_json_type_arguments(
+                                    type_engine,
+                                    types,
+                                    x.type_argument.type_id,
+                                ),
                         })
                         .collect(),
                 )
@@ -303,17 +309,20 @@ impl TypeId {
                 let field_types = fields
                     .iter()
                     .map(|x| program_abi::TypeDeclaration {
-                        type_id: x.initial_type_id.index(),
-                        type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                        components: x.initial_type_id.get_json_type_components(
+                        type_id: x.type_argument.initial_type_id.index(),
+                        type_field: x
+                            .type_argument
+                            .initial_type_id
+                            .get_json_type_str(type_engine, x.type_argument.type_id),
+                        components: x.type_argument.initial_type_id.get_json_type_components(
                             type_engine,
                             types,
-                            x.type_id,
+                            x.type_argument.type_id,
                         ),
-                        type_parameters: x.initial_type_id.get_json_type_parameters(
+                        type_parameters: x.type_argument.initial_type_id.get_json_type_parameters(
                             type_engine,
                             types,
-                            x.type_id,
+                            x.type_argument.type_id,
                         ),
                     })
                     .collect::<Vec<_>>();
@@ -326,12 +335,15 @@ impl TypeId {
                         .iter()
                         .map(|x| program_abi::TypeApplication {
                             name: x.name.to_string(),
-                            type_id: x.initial_type_id.index(),
-                            type_arguments: x.initial_type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
+                            type_id: x.type_argument.initial_type_id.index(),
+                            type_arguments: x
+                                .type_argument
+                                .initial_type_id
+                                .get_json_type_arguments(
+                                    type_engine,
+                                    types,
+                                    x.type_argument.type_id,
+                                ),
                         })
                         .collect(),
                 )

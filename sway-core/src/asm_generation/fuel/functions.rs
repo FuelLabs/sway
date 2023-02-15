@@ -8,7 +8,7 @@ use crate::{
         virtual_register::*, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
         VirtualImmediate24, VirtualOp,
     },
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     error::*,
     fuel_prelude::fuel_asm::GTFArgs,
     size_bytes_in_words, size_bytes_round_up_to_word_alignment,
@@ -150,8 +150,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
         let md = function.get_metadata(self.context);
         let span = self.md_mgr.md_to_span(self.context, md);
         let test_decl_index = self.md_mgr.md_to_test_decl_index(self.context, md);
-        let test_decl_id = match (&span, &test_decl_index) {
-            (Some(span), Some(decl_index)) => Some(DeclId::new(
+        let test_decl_ref = match (&span, &test_decl_index) {
+            (Some(span), Some(decl_index)) => Some(DeclRef::new(
                 Ident::new(span.clone()),
                 *decl_index,
                 span.clone(),
@@ -265,7 +265,7 @@ impl<'ir> FuelAsmBuilder<'ir> {
         ops.append(&mut self.cur_bytecode);
         if func_is_entry {
             self.entries
-                .push((function, start_label, ops, test_decl_id));
+                .push((function, start_label, ops, test_decl_ref));
         } else {
             self.non_entries.push(ops);
         }
