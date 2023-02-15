@@ -56,7 +56,7 @@ impl Token for Contract {
     fn mint(receiver: Address, amount: u64) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
-        let sender = msg_sender().unwrap.();
+        let sender = msg_sender().unwrap();
         let sender: Address = match sender.unwrap() {
             Identity::Address(addr) => {
                 assert(addr == MINTER);
