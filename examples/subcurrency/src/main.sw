@@ -29,7 +29,7 @@ abi Token {
 
     // Sends an amount of an existing token.
     // Can be called from any address.
-    #[storage(read, write, payable)]
+    #[storage(read, write), payable]
     fn send(receiver: Address, amount: u64);
 }
 
