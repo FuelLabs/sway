@@ -11,7 +11,7 @@ const OWNER = Address::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -> bool {
         let sender = msg_sender().unwrap();
-        if let Identity::Address(addr) = sender.unwrap() {
+        if let Identity::Address(addr) = sender {
             assert(addr == OWNER);
         } else {
             revert(0);
