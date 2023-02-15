@@ -8,7 +8,7 @@ use thiserror::Error;
 
 /// The top-level `forc tx` command.
 #[derive(Debug, Parser, Deserialize, Serialize)]
-#[clap(about, version)]
+#[clap(about, version, after_help = EXAMPLES)]
 pub struct Command {
     #[clap(long, short = 'o')]
     pub output_path: Option<PathBuf>,
@@ -398,6 +398,68 @@ pub enum ConvertInputError {
     #[error("input accepts either witness index or predicate, not both")]
     WitnessPredicateMismatch,
 }
+
+const EXAMPLES: &str = r#"EXAMPLES:
+    # An example constructing a `create` transaction.
+    forc tx create \
+        --bytecode ./my-contract/out/debug/my-contract.bin \
+        --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json \
+        --gas-limit 100 \
+        --gas-price 0 \
+        --maturity 0 \
+        --witness ADFD \
+        --witness DFDA \
+        input coin \
+            --utxo-id 0 \
+            --output-ix 0 \
+            --owner 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --witness-ix 0 \
+            --maturity 0 \
+            --predicate ./my-predicate/out/debug/my-predicate.bin \
+            --predicate-data ./my-predicate.dat \
+        input contract \
+            --utxo-id 1 \
+            --output-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+        input message \
+            --msg-id 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
+            --sender 0x1111111111111111111111111111111111111111111111111111111111111111 \
+            --recipient 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 1 \
+            --nonce 1234 \
+            --witness-ix 1 \
+            --msg-data ./message.dat \
+            --predicate ./my-predicate2/out/debug/my-predicate2.bin \
+            --predicate-data ./my-predicate2.dat \
+        output coin \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract \
+            --input-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output message \
+            --recipient 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+        output change \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output variable \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract-created \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
+"#;
 
 impl ParseError {
     /// Print the error with clap's fancy formatting.
