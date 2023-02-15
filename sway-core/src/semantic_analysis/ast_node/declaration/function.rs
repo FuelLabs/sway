@@ -221,7 +221,7 @@ fn test_function_selector_behavior() {
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: TypeArgument::no_spans(0.into()),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
@@ -245,9 +245,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: TypeArgument::no_spans(
-                    type_engine.insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                ),
+                type_argument: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .into(),
             },
             ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
@@ -262,13 +262,13 @@ fn test_function_selector_behavior() {
                     initial_type_id: type_engine
                         .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                     span: Span::dummy(),
-                    name_spans: None,
+                    call_path_tree: None,
                 },
             },
         ],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: TypeArgument::no_spans(0.into()),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,

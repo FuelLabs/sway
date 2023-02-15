@@ -865,7 +865,7 @@ impl ty::TyExpression {
                         type_id: initial_type_id,
                         initial_type_id,
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                     }
                 });
             let field_span = field.span();
@@ -883,7 +883,7 @@ impl ty::TyExpression {
                 type_id: typed_field.return_type,
                 initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
-                name_spans: None,
+                call_path_tree: None,
             });
             typed_fields.push(typed_field);
         }
@@ -1415,7 +1415,7 @@ impl ty::TyExpression {
                             TypeArgument {
                                 type_id: unknown_type,
                                 span: Span::dummy(),
-                                name_spans: None,
+                                call_path_tree: None,
                                 initial_type_id: unknown_type,
                             },
                             Length::new(0, Span::dummy()),
@@ -1476,7 +1476,7 @@ impl ty::TyExpression {
                         TypeArgument {
                             type_id: elem_type,
                             span: Span::dummy(),
-                            name_spans: None,
+                            call_path_tree: None,
                             initial_type_id: elem_type,
                         },
                         Length::new(array_count, Span::dummy()),
@@ -1902,7 +1902,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(2, Span::dummy()),
@@ -2036,7 +2036,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(0, Span::dummy()),

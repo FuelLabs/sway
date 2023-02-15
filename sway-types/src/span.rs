@@ -63,12 +63,6 @@ impl Position {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct SpanTree {
-    pub span: Span,
-    pub children: Vec<SpanTree>,
-}
-
 /// Represents a span of the source code in a specific file.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Span {
