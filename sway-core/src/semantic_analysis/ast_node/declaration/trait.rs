@@ -46,16 +46,14 @@ impl ty::TyTraitDeclaration {
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
-        // type check the type parameters, which will insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
