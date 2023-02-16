@@ -1357,41 +1357,51 @@ fn abi_supertrait() {
     check(
         r#"contract;
 
-trait MyTrait {
+trait ABIsupertrait {
     fn foo();
 }
 
-abi MyAbi : MyTrait {
+abi MyAbi : ABIsupertrait {
     fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
 }
 
-impl MyTrait for Contract {
+impl ABIsupertrait for Contract {
     fn foo() {}
 }
 
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
 impl MyAbi for Contract {
     fn bar() {
-        Self::foo()
+        Self::foo()     // supertrait method usage
     }
 }
 "#,
         r#"contract;
 
-trait MyTrait {
+trait ABIsupertrait {
     fn foo();
 }
 
-abi MyAbi : MyTrait {
+abi MyAbi : ABIsupertrait {
     fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
 }
 
-impl MyTrait for Contract {
+impl ABIsupertrait for Contract {
     fn foo() {}
 }
 
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
 impl MyAbi for Contract {
     fn bar() {
-        Self::foo()
+        Self::foo()     // supertrait method usage
     }
 }
 "#,

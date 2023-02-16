@@ -44,8 +44,11 @@ impl Format for ItemAbi {
             )?;
         }
 
+        Self::close_curly_brace(formatted_code, formatter)?;
+
         // abi_defs_opt
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
+            Self::open_curly_brace(formatted_code, formatter)?;
             for item in abi_defs.get().iter() {
                 // add indent + format item
                 write!(
@@ -55,8 +58,9 @@ impl Format for ItemAbi {
                 )?;
                 item.format(formatted_code, formatter)?;
             }
+            writeln!(formatted_code, "")?;
+            Self::close_curly_brace(formatted_code, formatter)?;
         }
-        Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
     }
