@@ -8,12 +8,13 @@ use sway_error::error::CompileError;
 use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -115,7 +116,7 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        name: Ident,
+        call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
     SelfType,
@@ -146,7 +147,7 @@ pub enum TypeInfo {
 
 impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        std::mem::discriminant(self).hash(state);
+        self.discriminant_value().hash(state);
         match self {
             TypeInfo::Str(len) => {
                 len.hash(state);
@@ -191,10 +192,10 @@ impl HashWithEngines for TypeInfo {
                 trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                name.hash(state);
+                call_path.hash(state);
                 type_arguments.as_deref().hash(state, engines);
             }
             TypeInfo::Storage { fields } => {
@@ -238,14 +239,17 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
-            ) => l_name == r_name && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines),
+            ) => {
+                l_name.suffix == r_name.suffix
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+            }
             (Self::Str(l), Self::Str(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (
@@ -310,7 +314,95 @@ impl PartialEqWithEngines for TypeInfo {
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
-            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
+            (l, r) => l.discriminant_value() == r.discriminant_value(),
+        }
+    }
+}
+
+impl OrdWithEngines for TypeInfo {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        match (self, other) {
+            (
+                Self::UnknownGeneric {
+                    name: l,
+                    trait_constraints: ltc,
+                },
+                Self::UnknownGeneric {
+                    name: r,
+                    trait_constraints: rtc,
+                },
+            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, type_engine)),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, type_engine),
+            (
+                Self::Custom {
+                    call_path: l_call_path,
+                    type_arguments: l_type_args,
+                },
+                Self::Custom {
+                    call_path: r_call_path,
+                    type_arguments: r_type_args,
+                },
+            ) => l_call_path.suffix.cmp(&r_call_path.suffix).then_with(|| {
+                l_type_args
+                    .as_deref()
+                    .cmp(&r_type_args.as_deref(), type_engine)
+            }),
+            (Self::Str(l), Self::Str(r)) => l.val().cmp(&r.val()),
+            (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
+            (
+                Self::Enum {
+                    call_path: l_call_path,
+                    type_parameters: ltp,
+                    variant_types: lvt,
+                },
+                Self::Enum {
+                    call_path: r_call_path,
+                    type_parameters: rtp,
+                    variant_types: rvt,
+                },
+            ) => l_call_path
+                .suffix
+                .cmp(&r_call_path.suffix)
+                .then_with(|| ltp.cmp(rtp, type_engine))
+                .then_with(|| lvt.cmp(rvt, type_engine)),
+            (
+                Self::Struct {
+                    call_path: l_call_path,
+                    type_parameters: ltp,
+                    fields: lf,
+                },
+                Self::Struct {
+                    call_path: r_call_path,
+                    type_parameters: rtp,
+                    fields: rf,
+                },
+            ) => l_call_path
+                .suffix
+                .cmp(&r_call_path.suffix)
+                .then_with(|| ltp.cmp(rtp, type_engine))
+                .then_with(|| lf.cmp(rf, type_engine)),
+            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, type_engine),
+            (
+                Self::ContractCaller {
+                    abi_name: l_abi_name,
+                    address: _,
+                },
+                Self::ContractCaller {
+                    abi_name: r_abi_name,
+                    address: _,
+                },
+            ) => {
+                // NOTE: we assume all contract callers are unique
+                l_abi_name.cmp(r_abi_name)
+            }
+            (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
+                .get(l0.type_id)
+                .cmp(&type_engine.get(r0.type_id), type_engine)
+                .then_with(|| l1.val().cmp(&r1.val())),
+            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+                l_fields.cmp(r_fields, type_engine)
+            }
+            (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
 }
@@ -337,7 +429,9 @@ impl DisplayWithEngines for TypeInfo {
             }
             .into(),
             Boolean => "bool".into(),
-            Custom { name, .. } => format!("unresolved {}", name.as_str()),
+            Custom { call_path, .. } => {
+                format!("unresolved {}", call_path.suffix.as_str())
+            }
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -430,6 +524,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .iter()
                     .map(|variant| {
                         variant
+                            .type_argument
                             .type_id
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
@@ -453,6 +548,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                     .iter()
                     .map(|field| {
                         field
+                            .type_argument
                             .type_id
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
@@ -498,6 +594,35 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
+    /// Returns a discriminant for the variant.
+    // NOTE: This is approach is not the most straightforward, but is needed
+    // because of this missing feature on Rust's `Discriminant` type:
+    // https://github.com/rust-lang/rust/pull/106418
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            TypeInfo::Unknown => 0,
+            TypeInfo::UnknownGeneric { .. } => 1,
+            TypeInfo::Placeholder(_) => 2,
+            TypeInfo::Str(_) => 3,
+            TypeInfo::UnsignedInteger(_) => 4,
+            TypeInfo::Enum { .. } => 5,
+            TypeInfo::Struct { .. } => 6,
+            TypeInfo::Boolean => 7,
+            TypeInfo::Tuple(_) => 8,
+            TypeInfo::ContractCaller { .. } => 9,
+            TypeInfo::Custom { .. } => 10,
+            TypeInfo::SelfType => 11,
+            TypeInfo::B256 => 12,
+            TypeInfo::Numeric => 13,
+            TypeInfo::Contract => 14,
+            TypeInfo::ErrorRecovery => 15,
+            TypeInfo::Array(_, _) => 16,
+            TypeInfo::Storage { .. } => 17,
+            TypeInfo::RawUntypedPtr => 18,
+            TypeInfo::RawUntypedSlice => 19,
+        }
+    }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
@@ -552,7 +677,9 @@ impl TypeInfo {
                     let names = fields
                         .iter()
                         .map(|ty| {
-                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                            {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -605,7 +732,9 @@ impl TypeInfo {
                     let names = variant_types
                         .iter()
                         .map(|ty| {
-                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
+                            let ty = match type_engine
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
+                            {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -682,10 +811,10 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum { variant_types, .. } => variant_types
                 .iter()
-                .all(|variant_type| id_uninhabited(variant_type.type_id)),
-            TypeInfo::Struct { fields, .. } => {
-                fields.iter().any(|field| id_uninhabited(field.type_id))
-            }
+                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id)),
+            TypeInfo::Struct { fields, .. } => fields
+                .iter()
+                .any(|field| id_uninhabited(field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
@@ -699,7 +828,7 @@ impl TypeInfo {
             TypeInfo::Enum { variant_types, .. } => {
                 let mut found_unit_variant = false;
                 for variant_type in variant_types {
-                    let type_info = type_engine.get(variant_type.type_id);
+                    let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         continue;
                     }
@@ -714,7 +843,7 @@ impl TypeInfo {
             TypeInfo::Struct { fields, .. } => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let type_info = type_engine.get(field.type_id);
+                    let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine) {
                         return true;
                     }
@@ -799,7 +928,7 @@ impl TypeInfo {
                 err(warnings, errors)
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments: other_type_arguments,
             } => {
                 if other_type_arguments.is_some() {
@@ -807,7 +936,7 @@ impl TypeInfo {
                     err(warnings, errors)
                 } else {
                     let type_info = TypeInfo::Custom {
-                        name,
+                        call_path,
                         type_arguments: Some(type_arguments),
                     };
                     ok(type_info, warnings, errors)
@@ -858,7 +987,7 @@ impl TypeInfo {
                     for variant in variant_types.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(variant.type_id)
+                                .get(variant.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -879,7 +1008,7 @@ impl TypeInfo {
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(field.type_id)
+                                .get(field.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -915,7 +1044,7 @@ impl TypeInfo {
                     for field in fields.iter() {
                         inner_types.extend(
                             type_engine
-                                .get(field.type_id)
+                                .get(field.type_argument.type_id)
                                 .extract_inner_types(type_engine),
                         );
                     }
@@ -951,7 +1080,7 @@ impl TypeInfo {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for variant in variant_types.iter() {
-                    inner_types.extend(helper(variant.type_id));
+                    inner_types.extend(helper(variant.type_argument.type_id));
                 }
             }
             TypeInfo::Struct {
@@ -963,7 +1092,7 @@ impl TypeInfo {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for field in fields.iter() {
-                    inner_types.extend(helper(field.type_id));
+                    inner_types.extend(helper(field.type_argument.type_id));
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
@@ -983,7 +1112,7 @@ impl TypeInfo {
             }
             TypeInfo::Storage { fields } => {
                 for field in fields.iter() {
-                    inner_types.extend(helper(field.type_id));
+                    inner_types.extend(helper(field.type_argument.type_id));
                 }
             }
             TypeInfo::Unknown
@@ -1113,7 +1242,7 @@ impl TypeInfo {
                 for variant_type in variant_types.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(variant_type.type_id)
+                            .get(variant_type.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1141,7 +1270,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1178,7 +1307,7 @@ impl TypeInfo {
                 for field in fields.iter() {
                     let mut nested_types = check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .extract_nested_types(type_engine, span),
                         return err(warnings, errors),
                         warnings,
@@ -1374,11 +1503,11 @@ impl TypeInfo {
             }
             (
                 Self::Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Self::Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -1394,7 +1523,7 @@ impl TypeInfo {
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                l_name == r_name && types_are_subset_of(engines, &l_types, &r_types)
+                l_name.suffix == r_name.suffix && types_are_subset_of(engines, &l_types, &r_types)
             }
             (
                 Self::Enum {
@@ -1520,7 +1649,7 @@ impl TypeInfo {
                 } else {
                     check!(
                         type_engine
-                            .get(field.type_id)
+                            .get(field.type_argument.type_id)
                             .apply_subfields(engines, rest, span),
                         return err(warnings, errors),
                         warnings,

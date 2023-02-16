@@ -102,7 +102,7 @@ fn convert_resolved_type(
             context,
             fields
                 .iter()
-                .map(|field| field.type_id)
+                .map(|field| field.type_argument.type_id)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,

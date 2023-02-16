@@ -83,7 +83,7 @@ pub fn json_abi_str(type_info: &TypeInfo, type_engine: &TypeEngine) -> String {
         }
         .into(),
         Boolean => "bool".into(),
-        Custom { name, .. } => name.to_string(),
+        Custom { call_path, .. } => call_path.suffix.to_string(),
         Tuple(fields) => {
             let field_strs = fields
                 .iter()
@@ -141,7 +141,9 @@ pub fn json_abi_param_type(type_info: &TypeInfo, type_engine: &TypeEngine) -> et
         Struct { fields, .. } => ethabi::ParamType::Tuple(
             fields
                 .iter()
-                .map(|f| json_abi_param_type(&type_engine.get(f.type_id), type_engine))
+                .map(|f| {
+                    json_abi_param_type(&type_engine.get(f.type_argument.type_id), type_engine)
+                })
                 .collect::<Vec<ethabi::ParamType>>(),
         ),
         Array(elem_ty, ..) => ethabi::ParamType::Array(Box::new(json_abi_param_type(
@@ -163,7 +165,11 @@ pub(self) fn generate_json_abi_function(
         .map(|x| ethabi::Param {
             name: x.name.to_string(),
             kind: ethabi::ParamType::Address,
-            internal_type: Some(get_json_type_str(&x.type_id, type_engine, x.type_id)),
+            internal_type: Some(get_json_type_str(
+                &x.type_argument.type_id,
+                type_engine,
+                x.type_argument.type_id,
+            )),
         })
         .collect::<Vec<_>>();
 
@@ -172,9 +178,9 @@ pub(self) fn generate_json_abi_function(
         name: String::default(),
         kind: ethabi::ParamType::Address,
         internal_type: Some(get_json_type_str(
-            &fn_decl.return_type,
+            &fn_decl.return_type.type_id,
             type_engine,
-            fn_decl.return_type,
+            fn_decl.return_type.type_id,
         )),
     };
 

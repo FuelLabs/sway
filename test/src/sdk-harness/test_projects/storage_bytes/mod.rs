@@ -29,9 +29,17 @@ async fn stores_byte() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    instance.methods().store_bytes(input.clone()).call().await.unwrap();
+    instance
+        .methods()
+        .store_bytes(input.clone())
+        .call()
+        .await
+        .unwrap();
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
+    assert_eq!(
+        instance.methods().len().call().await.unwrap().value,
+        input.len() as u64
+    );
 
     instance
         .methods()
@@ -49,11 +57,24 @@ async fn stores_8_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    instance.methods().store_bytes(input.clone()).call().await.unwrap();
+    instance
+        .methods()
+        .store_bytes(input.clone())
+        .call()
+        .await
+        .unwrap();
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
+    assert_eq!(
+        instance.methods().len().call().await.unwrap().value,
+        input.len() as u64
+    );
 
-    instance.methods().assert_stored_bytes(input).call().await.unwrap();
+    instance
+        .methods()
+        .assert_stored_bytes(input)
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -67,11 +88,24 @@ async fn stores_32_bytes() {
 
     assert_eq!(instance.methods().len().call().await.unwrap().value, 0);
 
-    instance.methods().store_bytes(input.clone()).call().await.unwrap();
+    instance
+        .methods()
+        .store_bytes(input.clone())
+        .call()
+        .await
+        .unwrap();
 
-    assert_eq!(instance.methods().len().call().await.unwrap().value, input.len() as u64);
+    assert_eq!(
+        instance.methods().len().call().await.unwrap().value,
+        input.len() as u64
+    );
 
-    instance.methods().assert_stored_bytes(input).call().await.unwrap();
+    instance
+        .methods()
+        .assert_stored_bytes(input)
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

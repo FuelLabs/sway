@@ -30,9 +30,8 @@ impl ty::TyFunctionDeclaration {
             parameters,
             span,
             attributes,
-            return_type,
+            mut return_type,
             type_parameters,
-            return_type_span,
             visibility,
             purity,
         } = fn_decl;
@@ -65,19 +64,14 @@ impl ty::TyFunctionDeclaration {
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -94,11 +88,10 @@ impl ty::TyFunctionDeclaration {
         }
 
         // type check the return type
-        let initial_return_type = type_engine.insert(decl_engine, return_type);
-        let return_type = check!(
+        return_type.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_return_type,
-                &return_type_span,
+                return_type.type_id,
+                &return_type.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
@@ -116,7 +109,7 @@ impl ty::TyFunctionDeclaration {
                 .by_ref()
                 .with_purity(purity)
                 .with_help_text("Function body's return type does not match up with its return type annotation.")
-                .with_type_annotation(return_type);
+                .with_type_annotation(return_type.type_id);
             check!(
                 ty::TyCodeBlock::type_check(ctx, body),
                 (
@@ -136,7 +129,7 @@ impl ty::TyFunctionDeclaration {
             .collect();
 
         check!(
-            unify_return_statements(ctx.by_ref(), &return_statements, return_type),
+            unify_return_statements(ctx.by_ref(), &return_statements, return_type.type_id),
             return err(warnings, errors),
             warnings,
             errors
@@ -160,9 +153,7 @@ impl ty::TyFunctionDeclaration {
             span,
             attributes,
             return_type,
-            initial_return_type,
             type_parameters: new_type_parameters,
-            return_type_span,
             visibility,
             is_contract_call,
             purity,
@@ -225,10 +216,8 @@ fn test_function_selector_behavior() {
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
     };
@@ -251,32 +240,31 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .into(),
             },
             ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_id: type_engine.insert(
-                    &decl_engine,
-                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                ),
-                initial_type_id: type_engine
-                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                type_span: Span::dummy(),
+                type_argument: TypeArgument {
+                    type_id: type_engine.insert(
+                        &decl_engine,
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
+                    ),
+                    initial_type_id: type_engine
+                        .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
         ],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: 0.into(),
-        initial_return_type: 0.into(),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
-        return_type_span: Span::dummy(),
         visibility: Visibility::Public,
         is_contract_call: false,
     };

@@ -53,11 +53,11 @@ pub(crate) fn struct_instantiation(
             return err(warnings, errors);
         }
         (_, true) => TypeInfo::Custom {
-            name: suffix,
+            call_path: suffix.into(),
             type_arguments: None,
         },
         (_, false) => TypeInfo::Custom {
-            name: suffix,
+            call_path: suffix.into(),
             type_arguments: Some(type_arguments),
         },
     };
@@ -214,7 +214,7 @@ fn unify_field_arguments_and_struct_fields(
                 CompileResult::from(type_engine.unify_adt(
                     decl_engine,
                     typed_field.value.return_type,
-                    struct_field.type_id,
+                    struct_field.type_argument.type_id,
                     &typed_field.value.span,
                     "Struct field's type must match the type specified in its declaration.",
                     None,

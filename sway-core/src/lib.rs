@@ -31,12 +31,15 @@ use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_func_dce_pass,
-    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, create_mem2reg_pass,
-    create_simplify_cfg_pass, Context, Kind, Module, PassManager, PassManagerConfig,
+    register_known_passes, Context, Kind, Module, PassManager, PassManagerConfig,
+    CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_NONPREDICATE_NAME, INLINE_PREDICATE_NAME,
+    MEM2REG_NAME, SIMPLIFYCFG_NAME,
 };
+use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use transform::{Attribute, AttributeKind, AttributesMap};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -100,6 +103,46 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
     })
 }
 
+/// Convert attributes from `Annotated<Module>` to an [AttributesMap].
+fn module_attrs_to_map(
+    handler: &Handler,
+    attribute_list: &[AttributeDecl],
+) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attrs = attr_decl.attribute.get().into_iter();
+        for attr in attrs {
+            let name = attr.name.as_str();
+            if name != DOC_COMMENT_ATTRIBUTE_NAME {
+                // prevent using anything except doc comment attributes
+                handler.emit_err(CompileError::ExpectedModuleDocComment {
+                    span: attr.name.span(),
+                });
+            }
+
+            let args = attr
+                .args
+                .as_ref()
+                .map(|parens| parens.get().into_iter().cloned().collect())
+                .unwrap_or_else(Vec::new);
+
+            let attribute = Attribute {
+                name: attr.name.clone(),
+                args,
+                span: attr_decl.span(),
+            };
+
+            if let Some(attr_kind) = match name {
+                DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
+                _ => None,
+            } {
+                attrs_map.entry(attr_kind).or_default().push(attribute);
+            }
+        }
+    }
+    Ok(AttributesMap::new(Arc::new(attrs_map)))
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
@@ -111,14 +154,19 @@ fn parse_in_memory(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
     let submodules = Default::default();
-    let root = parsed::ParseModule { tree, submodules };
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+    let root = parsed::ParseModule {
+        tree,
+        submodules,
+        attributes,
+    };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
-            tree: module,
+            tree: module.value,
             submodules: Default::default(),
         },
     );
@@ -208,23 +256,25 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module.value, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
     let lexed = lexed::LexedModule {
-        tree: module,
+        tree: module.value,
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {
         tree,
         submodules: submodules.parsed,
+        attributes,
     };
     Ok((kind, lexed, parsed))
 }
@@ -473,31 +523,25 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors.extend(e);
     }
 
-    // Initialize the pass manager and a config for it.
+    // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
+    register_known_passes(&mut pass_mgr);
+
+    // Create a configuration to specify which passes we want to run now.
     let mut pmgr_config = PassManagerConfig { to_run: vec![] };
-
-    // Register required passes.
-    let mem2reg = pass_mgr.register(create_mem2reg_pass());
-    let inline = if matches!(tree_type, TreeType::Predicate) {
-        pass_mgr.register(create_inline_in_predicate_pass())
-    } else {
-        pass_mgr.register(create_inline_in_non_predicate_pass())
-    };
-    let const_combine = pass_mgr.register(create_const_combine_pass());
-    let simplify_cfg = pass_mgr.register(create_simplify_cfg_pass());
-    let func_dce = pass_mgr.register(create_func_dce_pass());
-    let dce = pass_mgr.register(create_dce_pass());
-
     // Configure to run our passes.
-    pmgr_config.to_run.push(mem2reg.to_string());
-    pmgr_config.to_run.push(inline.to_string());
-    pmgr_config.to_run.push(const_combine.to_string());
-    pmgr_config.to_run.push(simplify_cfg.to_string());
-    pmgr_config.to_run.push(const_combine.to_string());
-    pmgr_config.to_run.push(simplify_cfg.to_string());
-    pmgr_config.to_run.push(func_dce.to_string());
-    pmgr_config.to_run.push(dce.to_string());
+    pmgr_config.to_run.push(MEM2REG_NAME);
+    if matches!(tree_type, TreeType::Predicate) {
+        pmgr_config.to_run.push(INLINE_PREDICATE_NAME);
+    } else {
+        pmgr_config.to_run.push(INLINE_NONPREDICATE_NAME);
+    }
+    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
+    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
+    pmgr_config.to_run.push(CONSTCOMBINE_NAME);
+    pmgr_config.to_run.push(SIMPLIFYCFG_NAME);
+    pmgr_config.to_run.push(FUNC_DCE_NAME);
+    pmgr_config.to_run.push(DCE_NAME);
 
     // Run the passes.
     let res = CompileResult::with_handler(|handler| {

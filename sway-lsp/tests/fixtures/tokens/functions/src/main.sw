@@ -30,7 +30,7 @@ pub enum DumbError {
     Error: (),
 }
 
-// Function with generic types
+// Function with complex types
 pub fn func(r: Rezult<u8, DumbError>) -> Rezult<u8, DumbError> {
     Rezult::Ok(1u8)
 }

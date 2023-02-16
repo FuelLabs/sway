@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -134,10 +137,8 @@ impl TyStructDeclaration {
 #[derive(Debug, Clone)]
 pub struct TyStructField {
     pub name: Ident,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
     pub span: Span,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub attributes: transform::AttributesMap,
 }
 
@@ -145,39 +146,54 @@ impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let TyStructField {
             name,
-            type_id,
+            type_argument,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            initial_type_id: _,
             span: _,
-            type_span: _,
             attributes: _,
         } = self;
-        let type_engine = engines.te();
         name.hash(state);
-        type_engine.get(*type_id).hash(state, engines);
+        type_argument.hash(state, engines);
     }
 }
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
-        self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    }
+}
+
+impl OrdWithEngines for TyStructField {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TyStructField {
+            name: ln,
+            type_argument: lta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyStructField {
+            name: rn,
+            type_argument: rta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn).then_with(|| lta.cmp(rta, type_engine))
     }
 }
 
 impl SubstTypes for TyStructField {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+        self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
+        self.type_argument.replace_self_type(engines, self_type);
     }
 }

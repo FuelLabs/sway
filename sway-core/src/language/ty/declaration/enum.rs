@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -131,9 +134,7 @@ impl TyEnumDeclaration {
 #[derive(Debug, Clone)]
 pub struct TyEnumVariant {
     pub name: Ident,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub(crate) tag: usize,
     pub span: Span,
     pub attributes: transform::AttributesMap,
@@ -141,9 +142,8 @@ pub struct TyEnumVariant {
 
 impl HashWithEngines for TyEnumVariant {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let type_engine = engines.te();
         self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, engines);
+        self.type_argument.hash(state, engines);
         self.tag.hash(state);
     }
 }
@@ -151,23 +151,46 @@ impl HashWithEngines for TyEnumVariant {
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
         self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+            && self.type_argument.eq(&other.type_argument, engines)
             && self.tag == other.tag
+    }
+}
+
+impl OrdWithEngines for TyEnumVariant {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TyEnumVariant {
+            name: ln,
+            type_argument: lta,
+            tag: lt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyEnumVariant {
+            name: rn,
+            type_argument: rta,
+            tag: rt,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| lta.cmp(rta, type_engine))
+            .then_with(|| lt.cmp(rt))
     }
 }
 
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+        self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyEnumVariant {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
+        self.type_argument.replace_self_type(engines, self_type);
     }
 }

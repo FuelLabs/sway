@@ -21,7 +21,7 @@ use crate::{
     error::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclId},
+        ty::{self, GetDeclRef},
         *,
     },
     semantic_analysis::*,
@@ -74,16 +74,14 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let decl_id = check!(
+        let decl_ref = check!(
             resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
             errors
         );
         let method = check!(
-            CompileResult::from(
-                decl_engine.get_function(decl_id.clone(), &method_name_binding.span())
-            ),
+            CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
             return err(warnings, errors),
             warnings,
             errors
@@ -107,12 +105,12 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_id: decl_id,
+                function_decl_ref: decl_ref,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
             },
-            return_type,
+            return_type: return_type.type_id,
             span,
         };
         ok(exp, warnings, errors)
@@ -412,19 +410,19 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
                 let ty::TyConstantDeclaration {
                     name: decl_name,
-                    return_type,
+                    type_ascription,
                     ..
                 } = check!(
-                    CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
+                    CompileResult::from(decl_engine.get_constant(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
                 ty::TyExpression {
-                    return_type,
+                    return_type: type_ascription.type_id,
                     // Although this isn't strictly a 'variable' expression we can treat it as one for
                     // this context.
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -436,9 +434,9 @@ impl ty::TyExpression {
                     span,
                 }
             }
-            Some(ty::TyDeclaration::AbiDeclaration(decl_id)) => {
+            Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
                 let decl = check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id.clone(), &span)),
+                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -497,7 +495,7 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
-            unknown_decl.get_decl_id().unwrap(),
+            unknown_decl.get_decl_ref().unwrap(),
             call_path_binding,
             Some(arguments),
             span,
@@ -867,7 +865,7 @@ impl ty::TyExpression {
                         type_id: initial_type_id,
                         initial_type_id,
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                     }
                 });
             let field_span = field.span();
@@ -885,7 +883,7 @@ impl ty::TyExpression {
                 type_id: typed_field.return_type,
                 initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
-                name_spans: None,
+                call_path_tree: None,
             });
             typed_fields.push(typed_field);
         }
@@ -1026,7 +1024,7 @@ impl ty::TyExpression {
             let before_span = before.span();
             let type_name = before.inner;
             let type_info = type_name_to_type_info_opt(&type_name).unwrap_or(TypeInfo::Custom {
-                name: type_name.clone(),
+                call_path: type_name.clone().into(),
                 type_arguments: None,
             });
 
@@ -1119,7 +1117,7 @@ impl ty::TyExpression {
                 .and_then(|decl| {
                     decl.expect_function(decl_engine, &span)
                         .ok(&mut function_probe_warnings, &mut function_probe_errors)
-                        .map(|_s| (decl.get_decl_id().unwrap(), call_path_binding))
+                        .map(|_s| (decl.get_decl_ref().unwrap(), call_path_binding))
                 })
         };
 
@@ -1128,7 +1126,6 @@ impl ty::TyExpression {
         let mut enum_probe_errors = vec![];
         let maybe_enum = {
             let call_path_binding = unknown_call_path_binding.clone();
-            let enum_name = call_path_binding.inner.prefixes[0].clone();
             let variant_name = call_path_binding.inner.suffix.clone();
             let enum_call_path = call_path_binding.inner.rshift();
 
@@ -1142,7 +1139,7 @@ impl ty::TyExpression {
                     unknown_decl.expect_enum(decl_engine, &call_path_binding.span())
                 })
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, enum_name, variant_name, call_path_binding))
+                .map(|enum_decl| (enum_decl, variant_name, call_path_binding))
         };
 
         // Check if this could be a constant
@@ -1160,25 +1157,17 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, enum_name, variant_name, call_path_binding)), None) => {
+            (false, None, Some((enum_decl, variant_name, call_path_binding)), None) => {
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
-                    instantiate_enum(
-                        ctx,
-                        enum_decl,
-                        enum_name,
-                        variant_name,
-                        args,
-                        call_path_binding,
-                        &span
-                    ),
+                    instantiate_enum(ctx, enum_decl, variant_name, args, call_path_binding, &span),
                     return err(warnings, errors),
                     warnings,
                     errors
                 )
             }
-            (false, Some((decl_id, call_path_binding)), None, None) => {
+            (false, Some((decl_ref, call_path_binding)), None, None) => {
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 // In case `foo::bar::<TyArgs>::baz(...)` throw an error.
@@ -1191,7 +1180,7 @@ impl ty::TyExpression {
                     );
                 }
                 check!(
-                    instantiate_function_application(ctx, decl_id, call_path_binding, args, span),
+                    instantiate_function_application(ctx, decl_ref, call_path_binding, args, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1284,9 +1273,9 @@ impl ty::TyExpression {
             span,
             ..
         } = match abi {
-            ty::TyDeclaration::AbiDeclaration(decl_id) => {
+            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
                 check!(
-                    CompileResult::from(decl_engine.get_abi(decl_id, &span)),
+                    CompileResult::from(decl_engine.get_abi(&decl_id, &span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1359,9 +1348,9 @@ impl ty::TyExpression {
 
         // Retrieve the interface surface for this abi.
         let mut abi_methods = vec![];
-        for decl_id in interface_surface.into_iter() {
+        for decl_ref in interface_surface.into_iter() {
             let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &name.span())),
+                CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -1369,7 +1358,7 @@ impl ty::TyExpression {
             abi_methods.push(
                 decl_engine
                     .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, decl_id),
+                    .with_parent(decl_engine, &decl_ref),
             );
         }
 
@@ -1426,7 +1415,7 @@ impl ty::TyExpression {
                             TypeArgument {
                                 type_id: unknown_type,
                                 span: Span::dummy(),
-                                name_spans: None,
+                                call_path_tree: None,
                                 initial_type_id: unknown_type,
                             },
                             Length::new(0, Span::dummy()),
@@ -1487,7 +1476,7 @@ impl ty::TyExpression {
                         TypeArgument {
                             type_id: elem_type,
                             span: Span::dummy(),
-                            name_spans: None,
+                            call_path_tree: None,
                             initial_type_id: elem_type,
                         },
                         Length::new(array_count, Span::dummy()),
@@ -1913,7 +1902,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(2, Span::dummy()),
@@ -2047,7 +2036,7 @@ mod tests {
                     TypeArgument {
                         type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                         span: Span::dummy(),
-                        name_spans: None,
+                        call_path_tree: None,
                         initial_type_id: type_engine.insert(&decl_engine, TypeInfo::Boolean),
                     },
                     Length::new(0, Span::dummy()),

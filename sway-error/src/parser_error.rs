@@ -74,6 +74,8 @@ pub enum ParseErrorKind {
     UnnecessaryVisibilityQualifier { visibility: Ident },
     #[error("Expected a doc comment.")]
     ExpectedDocComment,
+    #[error("Top of file doc comments are reserved for module level documentation.\nTry using the `//!` syntax.")]
+    ExpectedModuleDocComment,
     #[error("Use the `struct` keyword to define records, instead of `class`.")]
     UnexpectedClass,
     #[error("Field projections, e.g., `foo.bar` cannot have type arguments.")]

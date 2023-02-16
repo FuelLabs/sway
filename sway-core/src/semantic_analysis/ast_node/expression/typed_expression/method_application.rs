@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -43,14 +43,14 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let decl_id = check!(
+    let decl_ref = check!(
         resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
     let method = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &method_name_binding.span())),
+        CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
         return err(warnings, errors),
         warnings,
         errors
@@ -237,7 +237,7 @@ pub(crate) fn type_check_method_application(
             );
 
             let is_decl_mutable = match unknown_decl {
-                ty::TyDeclaration::ConstantDeclaration(_) => false,
+                ty::TyDeclaration::ConstantDeclaration { .. } => false,
                 _ => {
                     let variable_decl = check!(
                         unknown_decl.expect_variable().cloned(),
@@ -268,7 +268,7 @@ pub(crate) fn type_check_method_application(
         } => {
             let mut prefixes = call_path_binding.inner.prefixes;
             prefixes.push(match &call_path_binding.inner.suffix {
-                (TypeInfo::Custom { name, .. }, ..) => name.clone(),
+                (TypeInfo::Custom { call_path, .. }, ..) => call_path.clone().suffix,
                 (_, ident) => ident.clone(),
             });
 
@@ -345,19 +345,19 @@ pub(crate) fn type_check_method_application(
     // Retrieve the implemented traits for the type of the return type and
     // insert them in the broader namespace.
     ctx.namespace
-        .insert_trait_implementation_for_type(engines, method.return_type);
+        .insert_trait_implementation_for_type(engines, method.return_type.type_id);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            function_decl_id: decl_id,
+            function_decl_ref: decl_ref,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
         },
-        return_type: method.return_type,
+        return_type: method.return_type.type_id,
         span,
     };
 
@@ -385,14 +385,14 @@ fn unify_arguments_and_parameters(
             CompileResult::from(type_engine.unify_with_self(
                 decl_engine,
                 arg.return_type,
-                param.type_id,
+                param.type_argument.type_id,
                 ctx.self_type(),
                 &arg.span,
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {
                     span: arg.span.clone(),
                     provided: engines.help_out(arg.return_type).to_string(),
-                    should_be: engines.help_out(param.type_id).to_string(),
+                    should_be: engines.help_out(param.type_argument.type_id).to_string(),
                 })
             )),
             continue,
@@ -414,7 +414,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclId> {
+) -> CompileResult<DeclRef> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -423,7 +423,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_id = match &method_name.inner {
+    let decl_ref = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -515,7 +515,7 @@ pub(crate) fn resolve_method_name(
     };
 
     let mut func_decl = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
+        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
         return err(warnings, errors),
         warnings,
         errors
@@ -535,10 +535,10 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_id = ctx
+    let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, decl_id);
+        .with_parent(ctx.decl_engine, &decl_ref);
 
-    ok(decl_id, warnings, errors)
+    ok(decl_ref, warnings, errors)
 }

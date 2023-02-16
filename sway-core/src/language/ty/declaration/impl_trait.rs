@@ -2,16 +2,16 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::Span;
 
-use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, language::CallPath, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub methods: Vec<DeclId>,
+    pub methods: Vec<DeclRef>,
     pub implementing_for_type_id: TypeId,
-    pub trait_decl_id: Option<DeclId>,
+    pub trait_decl_ref: Option<DeclRef>,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }
@@ -30,7 +30,7 @@ impl PartialEqWithEngines for TyImplTrait {
             && type_engine
                 .get(self.implementing_for_type_id)
                 .eq(&type_engine.get(other.implementing_for_type_id), engines)
-            && self.trait_decl_id.eq(&other.trait_decl_id, engines)
+            && self.trait_decl_ref.eq(&other.trait_decl_ref, engines)
     }
 }
 
@@ -42,7 +42,7 @@ impl HashWithEngines for TyImplTrait {
             trait_type_arguments,
             methods,
             implementing_for_type_id,
-            trait_decl_id,
+            trait_decl_ref,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             type_implementing_for_span: _,
@@ -56,7 +56,7 @@ impl HashWithEngines for TyImplTrait {
         type_engine
             .get(*implementing_for_type_id)
             .hash(state, engines);
-        trait_decl_id.hash(state, engines);
+        trait_decl_ref.hash(state, engines);
     }
 }
 
