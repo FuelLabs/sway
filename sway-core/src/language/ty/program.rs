@@ -108,7 +108,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
                     let TyImplTrait {
                         methods,
-                        implementing_for_type_id,
+                        implementing_for,
                         span,
                         ..
                     } = check!(
@@ -117,7 +117,7 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
+                    if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
                         for method_ref in methods {
                             match decl_engine.get_function(&method_ref, &span) {
                                 Ok(method) => abi_entries.push(method),
