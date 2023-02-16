@@ -314,6 +314,7 @@ async fn go_to_definition_inside_turbofish() {
     definition_check_with_req_offset(&mut service, &mut opt_go_to, 21, 19, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut opt_go_to, 22, 29, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut opt_go_to, 23, 18, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut opt_go_to, 24, 26, &mut i).await;
 
     let mut res_go_to = GotoDefinition {
         req_uri: &uri,
@@ -329,6 +330,7 @@ async fn go_to_definition_inside_turbofish() {
     definition_check_with_req_offset(&mut service, &mut res_go_to, 21, 25, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut res_go_to, 22, 36, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut res_go_to, 23, 27, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut res_go_to, 24, 33, &mut i).await;
 
     shutdown_and_exit(&mut service).await;
 }
