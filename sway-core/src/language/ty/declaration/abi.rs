@@ -1,5 +1,8 @@
-use crate::{decl_engine::DeclRef, engine_threading::*, transform, type_system::*};
+use crate::{
+    decl_engine::DeclRef, engine_threading::*, language::parsed, transform, type_system::*,
+};
 use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span, Spanned};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
@@ -9,6 +12,7 @@ pub struct TyAbiDeclaration {
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
     pub interface_surface: Vec<DeclRef>,
+    pub supertraits: Vec<parsed::Supertrait>,
     pub methods: Vec<DeclRef>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
@@ -29,6 +33,7 @@ impl HashWithEngines for TyAbiDeclaration {
             name,
             interface_surface,
             methods,
+            supertraits,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
@@ -37,6 +42,7 @@ impl HashWithEngines for TyAbiDeclaration {
         name.hash(state);
         interface_surface.hash(state, engines);
         methods.hash(state, engines);
+        supertraits.hash(state, engines);
     }
 }
 
