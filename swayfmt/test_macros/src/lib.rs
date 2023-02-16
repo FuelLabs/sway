@@ -46,11 +46,10 @@ macro_rules! fmt_test_expr {
             };
 }
 
-/// Convenience macro for generating test cases. This macro should be wrapped by another macro
-/// that passes in a Sway AST type, eg. Expr.
+/// Convenience macro for generating test cases.
 ///
-/// This macro is not meant to be called directly, but through fmt_test_<AST_KIND>!,
-/// where <AST_KIND> is a valid Sway AST type.
+/// This macro should be wrapped by another macro, eg. `fmt_test_expr!` that passes
+/// in a Sway AST type, eg. sway_ast::Expr, and is not meant to be used directly.
 #[macro_export]
 macro_rules! fmt_test {
     ($ty:expr, $scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
