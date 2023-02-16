@@ -25,5 +25,6 @@ toml = "0.5"
 
 [dev-dependencies]
 forc-util = { path = "../forc-util" }
+test-macros = { path = "test_macros" }
 paste = "1.0"
 prettydiff = "0.6"

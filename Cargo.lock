@@ -4964,6 +4964,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "test-macros",
  "thiserror",
  "toml",
 ]
@@ -5144,6 +5145,10 @@ dependencies = [
  "toml",
  "tracing",
 ]
+
+[[package]]
+name = "test-macros"
+version = "0.1.0"
 
 [[package]]
 name = "text-size"
