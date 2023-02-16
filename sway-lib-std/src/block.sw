@@ -9,7 +9,7 @@ enum BlockHashError {
     BlockHeightTooHigh: (),
 }
 
-/// Get the current block height
+/// Get the current block height.
 pub fn height() -> u64 {
     asm(height) {
         bhei height;
