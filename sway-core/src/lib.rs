@@ -31,11 +31,14 @@ use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
     MODULEPRINTER_NAME,
 };
+use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use transform::{Attribute, AttributeKind, AttributesMap};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -99,6 +102,46 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
     })
 }
 
+/// Convert attributes from `Annotated<Module>` to an [AttributesMap].
+fn module_attrs_to_map(
+    handler: &Handler,
+    attribute_list: &[AttributeDecl],
+) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attrs = attr_decl.attribute.get().into_iter();
+        for attr in attrs {
+            let name = attr.name.as_str();
+            if name != DOC_COMMENT_ATTRIBUTE_NAME {
+                // prevent using anything except doc comment attributes
+                handler.emit_err(CompileError::ExpectedModuleDocComment {
+                    span: attr.name.span(),
+                });
+            }
+
+            let args = attr
+                .args
+                .as_ref()
+                .map(|parens| parens.get().into_iter().cloned().collect())
+                .unwrap_or_else(Vec::new);
+
+            let attribute = Attribute {
+                name: attr.name.clone(),
+                args,
+                span: attr_decl.span(),
+            };
+
+            if let Some(attr_kind) = match name {
+                DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
+                _ => None,
+            } {
+                attrs_map.entry(attr_kind).or_default().push(attribute);
+            }
+        }
+    }
+    Ok(AttributesMap::new(Arc::new(attrs_map)))
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
@@ -110,14 +153,19 @@ fn parse_in_memory(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
     let submodules = Default::default();
-    let root = parsed::ParseModule { tree, submodules };
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+    let root = parsed::ParseModule {
+        tree,
+        submodules,
+        attributes,
+    };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
-            tree: module,
+            tree: module.value,
             submodules: Default::default(),
         },
     );
@@ -207,23 +255,25 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module.value, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
     let lexed = lexed::LexedModule {
-        tree: module,
+        tree: module.value,
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {
         tree,
         submodules: submodules.parsed,
+        attributes,
     };
     Ok((kind, lexed, parsed))
 }

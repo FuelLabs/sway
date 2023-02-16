@@ -206,9 +206,9 @@ mod tests {
         let item = parse_item(
             r#"
             // I will be ignored.
-            //! I will be ignored.
+            //! I can't feel the way I did before
             /// This is a doc comment.
-            //! I will be ignored.
+            //! Don't turn your back on me, I won't be ignored.
             // I will be ignored.
             fn f() -> bool {
                 false
@@ -218,7 +218,17 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Fn(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" I can't feel the way I did before"])
+                )],
+                [("doc-comment", Some(vec![" This is a doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" Don't turn your back on me, I won't be ignored."])
+                )]
+            ]
         );
     }
 
@@ -227,15 +237,15 @@ mod tests {
         let item = parse_item(
             r#"
             // I will be ignored.
-            //! I will be ignored.
+            //! I can't feel the way I did before
             /// This is a doc comment.
-            //! I will be ignored.
+            //! Don't turn your back on me, I won't be ignored.
             // I will be ignored.
             struct MyStruct {
                 // I will be ignored.
-                //! I will be ignored.
+                //! Time won't heal this damage anymore
                 /// This is a doc comment.
-                //! I will be ignored.
+                //! Don't turn your back on me, I won't be ignored.
                 // I will be ignored.
                 a: bool,
             }
@@ -246,7 +256,17 @@ mod tests {
         assert!(matches!(item.value, ItemKind::Struct(_)));
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" I can't feel the way I did before"])
+                )],
+                [("doc-comment", Some(vec![" This is a doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" Don't turn your back on me, I won't be ignored."])
+                )]
+            ]
         );
 
         /* struct field annotations */
@@ -257,7 +277,17 @@ mod tests {
 
         assert_eq!(
             attributes(&item.attribute_list),
-            vec![[("doc-comment", Some(vec![" This is a doc comment."]))]]
+            vec![
+                [(
+                    "doc-comment",
+                    Some(vec![" Time won't heal this damage anymore"])
+                )],
+                [("doc-comment", Some(vec![" This is a doc comment."]))],
+                [(
+                    "doc-comment",
+                    Some(vec![" Don't turn your back on me, I won't be ignored."])
+                )]
+            ]
         );
     }
 
