@@ -1,7 +1,7 @@
 use crate::error::ParseFileError;
 use std::path::PathBuf;
 use std::sync::Arc;
-use sway_ast::{token::CommentedTokenStream, Module};
+use sway_ast::{attribute::Annotated, token::CommentedTokenStream, Module};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 fn with_handler<T>(
@@ -15,7 +15,10 @@ fn with_handler<T>(
         .ok_or(ParseFileError(errors))
 }
 
-pub fn parse_file(src: Arc<str>, path: Option<Arc<PathBuf>>) -> Result<Module, ParseFileError> {
+pub fn parse_file(
+    src: Arc<str>,
+    path: Option<Arc<PathBuf>>,
+) -> Result<Annotated<Module>, ParseFileError> {
     with_handler(|h| sway_parse::parse_file(h, src, path))
 }
 

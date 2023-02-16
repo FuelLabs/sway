@@ -628,7 +628,7 @@ impl TyDeclaration {
         match self {
             ImplTrait { decl_id, .. } => {
                 let decl = decl_engine.get_impl_trait(decl_id, &Span::dummy()).unwrap();
-                let implementing_for_type_id = type_engine.get(decl.implementing_for_type_id);
+                let implementing_for_type_id = type_engine.get(decl.implementing_for.type_id);
                 format!(
                     "{} for {}",
                     self.get_decl_ident()

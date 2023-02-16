@@ -1,6 +1,6 @@
 use crate::transform;
 
-use super::{FunctionDeclaration, TraitFn};
+use super::{FunctionDeclaration, Supertrait, TraitFn};
 
 use sway_types::{ident::Ident, span::Span};
 
@@ -12,6 +12,7 @@ pub struct AbiDeclaration {
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
     pub interface_surface: Vec<TraitFn>,
+    pub supertraits: Vec<Supertrait>,
     /// The methods provided to a contract "for free" upon opting in to this interface
     pub methods: Vec<FunctionDeclaration>,
     pub(crate) span: Span,

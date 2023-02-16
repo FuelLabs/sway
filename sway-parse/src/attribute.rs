@@ -1,9 +1,9 @@
 use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::attribute::{Annotated, Attribute, AttributeDecl};
+use sway_ast::attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind};
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{HashToken, StorageToken, Token};
+use sway_ast::keywords::{HashBangToken, HashToken, StorageToken, Token};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
 use sway_error::parser_error::ParseErrorKind;
@@ -29,17 +29,21 @@ impl<T: Parse> Parse for Annotated<T> {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         // Parse the attribute list.
         let mut attribute_list = Vec::new();
-        while let Some(DocComment {
-            doc_style: DocStyle::Outer,
-            ..
-        }) = parser.peek()
-        {
+        while let Some(DocComment { .. }) = parser.peek() {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
+            let hash_kind = match &doc_comment.doc_style {
+                DocStyle::Inner => {
+                    AttributeHashKind::Inner(HashBangToken::new(doc_comment.span.clone()))
+                }
+                DocStyle::Outer => {
+                    AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone()))
+                }
+            };
             attribute_list.push(AttributeDecl {
-                hash_token: HashToken::new(doc_comment.span.clone()),
+                hash_kind,
                 attribute: SquareBrackets::new(
                     Punctuated::single(Attribute {
                         name: Ident::new_with_override(
@@ -72,9 +76,21 @@ impl<T: Parse> Parse for Annotated<T> {
 impl Parse for AttributeDecl {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         Ok(AttributeDecl {
-            hash_token: parser.parse()?,
+            hash_kind: parser.parse()?,
             attribute: parser.parse()?,
         })
+    }
+}
+
+impl Parse for AttributeHashKind {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        match parser.take::<HashBangToken>() {
+            Some(hash_bang_token) => Ok(AttributeHashKind::Inner(hash_bang_token)),
+            None => match parser.take::<HashToken>() {
+                Some(hash_token) => Ok(AttributeHashKind::Outer(hash_token)),
+                None => Err(parser.emit_error(ParseErrorKind::ExpectedAnAttribute)),
+            },
+        }
     }
 }
 

@@ -1,7 +1,10 @@
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::{
+    io::{BufReader, BufWriter, Read, Write},
+    process::exit,
+};
 
 use anyhow::anyhow;
-use sway_ir::{register_known_passes, PassManager, PassManagerConfig};
+use sway_ir::{register_known_passes, PassGroup, PassManager};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -20,10 +23,11 @@ fn main() -> Result<(), anyhow::Error> {
     let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
-    let pm_config = PassManagerConfig {
-        to_run: config.passes.clone(),
-    };
-    pass_mgr.run(&mut ir, &pm_config)?;
+    let mut passes = PassGroup::default();
+    for pass in config.passes {
+        passes.append_pass(pass);
+    }
+    pass_mgr.run(&mut ir, &passes)?;
 
     // Write the output file or standard out.
     write_to_output(ir, &config.output_path)?;
@@ -105,6 +109,14 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                 match opt.as_str() {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
+                    "-h" => {
+                        print!(
+                            "Usage: opt [passname...] -i input_file -o output_file\n\n{}",
+                            self.pass_mgr.help_text()
+                        );
+                        print!("\n\nIn the absense of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
+                        exit(0);
+                    }
 
                     name => {
                         if matches!(opt.chars().next(), Some('-')) {
