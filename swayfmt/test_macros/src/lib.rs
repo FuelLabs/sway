@@ -1,3 +1,15 @@
+/// Convenience macro for generating test cases for a parsed Item of ItemKind.
+/// This macro is a wrapper around the fmt_test! macro and simply passes the AST type
+/// to it.
+///
+/// Provide a known good, and then some named test cases that should evaluate to
+/// that known good. e.g.:
+/// ```
+///       // test suite name          known good
+///fmt_test_item!(field_proj_foobar       "foo.bar.baz.quux",
+///       // test case name           should format to known good
+///          intermediate_whitespace "foo . bar . baz . quux");
+/// ```
 #[macro_export]
 macro_rules! fmt_test_item {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
@@ -6,6 +18,18 @@ macro_rules! fmt_test_item {
             };
 }
 
+/// Convenience macro for generating test cases for a parsed Expr.
+/// This macro is a wrapper around the fmt_test! macro and simply passes the AST type
+/// to it.
+///
+/// Provide a known good, and then some named test cases that should evaluate to
+/// that known good. e.g.:
+/// ```
+///       // test suite name          known good
+///fmt_test_expr!(field_proj_foobar       "foo.bar.baz.quux",
+///       // test case name           should format to known good
+///          intermediate_whitespace "foo . bar . baz . quux");
+/// ```
 #[macro_export]
 macro_rules! fmt_test_expr {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
@@ -14,8 +38,10 @@ macro_rules! fmt_test_expr {
             };
 }
 
-/// convenience macro for generating test cases
-/// provide a known good, and then some named test cases that should evaluate to
+/// Convenience macro for generating test cases. This macro should be wrapped by another macro
+/// that passes in a Sway AST type, eg. Expr.
+///
+/// Provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
 /// ```
 ///       // test suite name          known good
@@ -23,6 +49,9 @@ macro_rules! fmt_test_expr {
 ///       // test case name           should format to known good
 ///          intermediate_whitespace "foo . bar . baz . quux");
 /// ```
+///
+/// This macro is not meant to be called directly, but through fmt_test_<AST_KIND>!,
+/// where <AST_KIND> is a valid Sway AST type.
 #[macro_export]
 macro_rules! fmt_test {
     ($ty:expr, $scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
@@ -37,6 +66,9 @@ macro_rules! fmt_test {
     };
 }
 
+/// Inner macro for fmt_test! that does the actual formatting and presents the diffs.
+///
+/// This macro is not meant to be called directly, but through fmt_test!.
 #[macro_export]
 macro_rules! fmt_test_inner {
     ($ty:expr, $scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
