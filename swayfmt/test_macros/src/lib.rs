@@ -68,6 +68,7 @@ macro_rules! fmt_test {
 /// Inner macro for fmt_test! that does the actual formatting and presents the diffs.
 ///
 /// This macro is not meant to be called directly, but through fmt_test!.
+#[allow(clippy::crate_in_macro_def)] // Allow external parse crate
 #[macro_export]
 macro_rules! fmt_test_inner {
     ($ty:expr, $scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
