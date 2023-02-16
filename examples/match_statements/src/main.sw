@@ -7,12 +7,14 @@ fn on_even(num: u64) {
 fn on_odd(num: u64) {
     // do something with odd numbers
 }
+
 fn main(num: u64) -> u64 {
 // Match as an expression
     let isEven = match num % 2 {
         0 => true,
         _ => false,
     };
+
 // Match as control flow
     let x = 12;
     match x {
