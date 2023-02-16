@@ -1,25 +1,17 @@
 use std::{
-    collections::HashMap,
     io::{BufReader, BufWriter, Read, Write},
+    process::exit,
 };
 
 use anyhow::anyhow;
-use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_inline_pass, create_mem2reg_pass,
-    create_simplify_cfg_pass, PassManager, PassManagerConfig,
-};
+use sway_ir::{register_known_passes, PassGroup, PassManager};
 
 // -------------------------------------------------------------------------------------------------
 
 fn main() -> Result<(), anyhow::Error> {
     // Maintain a list of named pass functions for delegation.
     let mut pass_mgr = PassManager::default();
-
-    pass_mgr.register(create_const_combine_pass());
-    pass_mgr.register(create_inline_pass());
-    pass_mgr.register(create_simplify_cfg_pass());
-    pass_mgr.register(create_dce_pass());
-    pass_mgr.register(create_mem2reg_pass());
+    register_known_passes(&mut pass_mgr);
 
     // Build the config from the command line.
     let config = ConfigBuilder::build(&pass_mgr, std::env::args())?;
@@ -31,10 +23,11 @@ fn main() -> Result<(), anyhow::Error> {
     let mut ir = sway_ir::parser::parse(&input_str)?;
 
     // Perform optimisation passes in order.
-    let pm_config = PassManagerConfig {
-        to_run: config.passes.iter().map(|pass| pass.name.clone()).collect(),
-    };
-    pass_mgr.run(&mut ir, &pm_config)?;
+    let mut passes = PassGroup::default();
+    for pass in config.passes {
+        passes.append_pass(pass);
+    }
+    pass_mgr.run(&mut ir, &passes)?;
 
     // Write the output file or standard out.
     write_to_output(ir, &config.output_path)?;
@@ -83,23 +76,7 @@ struct Config {
     _time_passes: bool,
     _stats: bool,
 
-    passes: Vec<Pass>,
-}
-
-#[derive(Default)]
-struct Pass {
-    name: String,
-    #[allow(dead_code)]
-    opts: HashMap<String, String>,
-}
-
-impl From<&str> for Pass {
-    fn from(name: &str) -> Self {
-        Pass {
-            name: name.to_owned(),
-            opts: HashMap::new(),
-        }
-    }
+    passes: Vec<&'static str>,
 }
 
 // This is a little clumsy in that it needs to consume items from the iterator carefully in each
@@ -132,6 +109,14 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                 match opt.as_str() {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
+                    "-h" => {
+                        print!(
+                            "Usage: opt [passname...] -i input_file -o output_file\n\n{}",
+                            self.pass_mgr.help_text()
+                        );
+                        print!("\n\nIn the absense of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
+                        exit(0);
+                    }
 
                     name => {
                         if matches!(opt.chars().next(), Some('-')) {
@@ -168,8 +153,8 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
     }
 
     fn build_pass(mut self, name: &str) -> Result<Config, anyhow::Error> {
-        if self.pass_mgr.is_registered(name) {
-            self.cfg.passes.push(name.into());
+        if let Some(pass) = self.pass_mgr.lookup_registered_pass(name) {
+            self.cfg.passes.push(pass.name);
             self.build_root()
         } else {
             Err(anyhow!(

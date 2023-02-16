@@ -64,19 +64,14 @@ impl ty::TyFunctionDeclaration {
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -221,7 +216,7 @@ fn test_function_selector_behavior() {
         parameters: vec![],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: TypeArgument::no_spans(0.into()),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
@@ -245,9 +240,9 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: TypeArgument::no_spans(
-                    type_engine.insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
-                ),
+                type_argument: type_engine
+                    .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy())))
+                    .into(),
             },
             ty::TyFunctionParameter {
                 name: Ident::new_no_span("baz"),
@@ -262,13 +257,13 @@ fn test_function_selector_behavior() {
                     initial_type_id: type_engine
                         .insert(&decl_engine, TypeInfo::Str(Length::new(5, Span::dummy()))),
                     span: Span::dummy(),
-                    name_spans: None,
+                    call_path_tree: None,
                 },
             },
         ],
         span: Span::dummy(),
         attributes: Default::default(),
-        return_type: TypeArgument::no_spans(0.into()),
+        return_type: TypeId::from(0).into(),
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,

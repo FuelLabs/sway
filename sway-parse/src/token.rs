@@ -298,11 +298,7 @@ fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTok
 
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
-        (Some('!'), _) => {
-            // TODO: Add support for inner line doc comments.
-            // Some(DocStyle::Inner)
-            None
-        }
+        (Some('!'), _) => Some(DocStyle::Inner),
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,
         // `///` is an outer line doc comment.
@@ -767,6 +763,7 @@ mod tests {
         //none
         ////none
         //!inner
+        //! inner
         ///outer
         /// outer
         "#;
@@ -789,20 +786,21 @@ mod tests {
                 span
             })) if span.as_str() ==  "////none"
         );
-        // TODO: Add support for inner line doc comments.
-        // assert_matches!(
-        //     tts.next(),
-        //     Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
-        //         doc_style: DocStyle::Inner,
-        //         span,
-        //         content_span,
-        //     }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
-        // );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Comment(Comment {
-                span
-            })) if span.as_str() ==  "//!inner"
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
+                span,
+                content_span,
+            }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
+        );
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
+                doc_style: DocStyle::Inner,
+                span,
+                content_span,
+            }))) if span.as_str() ==  "//! inner" && content_span.as_str() == " inner"
         );
         assert_matches!(
             tts.next(),

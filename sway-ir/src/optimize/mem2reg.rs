@@ -8,15 +8,18 @@ use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
-    compute_dom_fronts, dominator::compute_dom_tree, AnalysisResults, Block, BranchToWithArgs,
-    Context, DomTree, Function, Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder,
-    ScopedPass, Type, Value, ValueDatum,
+    AnalysisResults, Block, BranchToWithArgs, Context, DomFronts, DomTree, Function, Instruction,
+    IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type, Value, ValueDatum,
+    DOMFRONTS_NAME, DOMINATORS_NAME, POSTORDER_NAME,
 };
+
+pub const MEM2REG_NAME: &str = "mem2reg";
 
 pub fn create_mem2reg_pass() -> Pass {
     Pass {
-        name: "mem2reg",
+        name: MEM2REG_NAME,
         descr: "Promote local memory to SSA registers.",
+        deps: vec![POSTORDER_NAME, DOMINATORS_NAME, DOMFRONTS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(promote_to_registers)),
     }
 }
@@ -135,18 +138,17 @@ pub fn compute_livein(
 /// or a store.
 pub fn promote_to_registers(
     context: &mut Context,
-    _: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
     let safe_locals = filter_usable_locals(context, &function);
-
     if safe_locals.is_empty() {
         return Ok(false);
     }
-
-    let (dom_tree, po) = compute_dom_tree(context, &function);
-    let dom_fronts = compute_dom_fronts(context, &dom_tree);
-    let liveins = compute_livein(context, &function, &po, &safe_locals);
+    let po: &PostOrder = analyses.get_analysis_result(function);
+    let dom_tree: &DomTree = analyses.get_analysis_result(function);
+    let dom_fronts: &DomFronts = analyses.get_analysis_result(function);
+    let liveins = compute_livein(context, &function, po, &safe_locals);
 
     // A list of the PHIs we insert in this transform.
     let mut new_phi_tracker = HashSet::<(String, Block)>::new();
@@ -321,7 +323,7 @@ pub fn promote_to_registers(
     record_rewrites(
         context,
         &function,
-        &dom_tree,
+        dom_tree,
         function.get_entry_block(context),
         &safe_locals,
         &phi_to_local,

@@ -9,7 +9,11 @@ impl ty::TyModule {
     ///
     /// Recursively type-checks submodules first.
     pub fn type_check(mut ctx: TypeCheckContext, parsed: &ParseModule) -> CompileResult<Self> {
-        let ParseModule { submodules, tree } = parsed;
+        let ParseModule {
+            submodules,
+            tree,
+            attributes,
+        } = parsed;
 
         // Type-check submodules first in order of declaration.
         let mut submodules_res = ok(vec![], vec![], vec![]);
@@ -37,6 +41,7 @@ impl ty::TyModule {
                 submodules,
                 namespace: ctx.namespace.module().clone(),
                 all_nodes,
+                attributes: attributes.clone(),
             })
         })
     }

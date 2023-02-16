@@ -14,10 +14,13 @@ use crate::{
     AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
 };
 
+pub const CONSTCOMBINE_NAME: &str = "constcombine";
+
 pub fn create_const_combine_pass() -> Pass {
     Pass {
-        name: "constcombine",
+        name: CONSTCOMBINE_NAME,
         descr: "constant folding.",
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(combine_constants)),
     }
 }
