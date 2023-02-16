@@ -1,7 +1,7 @@
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
 use crate::{
-    declaration_engine::{DeclarationEngine, DeclarationId},
+    decl_engine::{DeclEngine, DeclRef},
     language::ty::*,
     language::DepName,
     semantic_analysis::namespace,
@@ -18,6 +18,7 @@ pub struct TyModule {
 pub struct TySubmodule {
     pub library_name: Ident,
     pub module: TyModule,
+    pub dependency_path_span: Span,
 }
 
 /// Iterator type for iterating over submodules.
@@ -43,17 +44,23 @@ impl TyModule {
     /// All test functions within this module.
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
-        declaration_engine: &'a DeclarationEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclarationId)> {
+        decl_engine: &'a DeclEngine,
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRef)> {
         self.all_nodes.iter().filter_map(|node| {
-            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
-                node.content
+            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
+                decl_id,
+                name,
+                decl_span,
+            }) = &node.content
             {
-                let fn_decl = declaration_engine
-                    .get_function(decl_id.clone(), &node.span)
+                let fn_decl = decl_engine
+                    .get_function(decl_id, &node.span)
                     .expect("no function declaration for ID");
                 if fn_decl.is_test() {
-                    return Some((fn_decl, decl_id.clone()));
+                    return Some((
+                        fn_decl,
+                        DeclRef::new(name.clone(), **decl_id, decl_span.clone()),
+                    ));
                 }
             }
             None

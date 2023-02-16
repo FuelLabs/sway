@@ -1,11 +1,8 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Ident;
 
-use crate::{
-    declaration_engine::{DeclMapping, ReplaceDecls},
-    engine_threading::*,
-    language::ty::*,
-    type_system::*,
-};
+use crate::{decl_engine::*, engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyStructExpressionField {
@@ -20,9 +17,17 @@ impl PartialEqWithEngines for TyStructExpressionField {
     }
 }
 
-impl CopyTypes for TyStructExpressionField {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.value.copy_types(type_mapping, engines);
+impl HashWithEngines for TyStructExpressionField {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStructExpressionField { name, value } = self;
+        name.hash(state);
+        value.hash(state, engines);
+    }
+}
+
+impl SubstTypes for TyStructExpressionField {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.value.subst(type_mapping, engines);
     }
 }
 

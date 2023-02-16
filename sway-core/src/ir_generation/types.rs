@@ -7,29 +7,32 @@ use crate::{
 use super::convert::convert_resolved_typeid_no_span;
 
 use sway_error::error::CompileError;
-use sway_ir::{Aggregate, Context, Type};
+use sway_ir::{Context, Type};
 use sway_types::span::Spanned;
 
 pub(super) fn create_enum_aggregate(
     type_engine: &TypeEngine,
     context: &mut Context,
     variants: &[ty::TyEnumVariant],
-) -> Result<Aggregate, CompileError> {
+) -> Result<Type, CompileError> {
     // Create the enum aggregate first.  NOTE: single variant enums don't need an aggregate but are
     // getting one here anyway.  They don't need to be a tagged union either.
     let field_types: Vec<_> = variants
         .iter()
-        .map(|tev| convert_resolved_typeid_no_span(type_engine, context, &tev.type_id))
+        .map(|tev| {
+            convert_resolved_typeid_no_span(type_engine, context, &tev.type_argument.type_id)
+        })
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     // Enums where all the variants are unit types don't really need the union. Only a tag is
     // needed. For consistency, and to keep enums as reference types, we keep the tag in an
     // Aggregate.
-    Ok(if field_types.iter().all(|f| matches!(f, Type::Unit)) {
-        Aggregate::new_struct(context, vec![Type::Uint(64)])
+    Ok(if field_types.iter().all(|f| f.is_unit(context)) {
+        Type::new_struct(context, vec![Type::get_uint64(context)])
     } else {
-        let enum_aggregate = Aggregate::new_struct(context, field_types);
-        Aggregate::new_struct(context, vec![Type::Uint(64), Type::Union(enum_aggregate)])
+        let u64_ty = Type::get_uint64(context);
+        let union_ty = Type::new_union(context, field_types);
+        Type::new_struct(context, vec![u64_ty, union_ty])
     })
 }
 
@@ -37,13 +40,13 @@ pub(super) fn create_tuple_aggregate(
     type_engine: &TypeEngine,
     context: &mut Context,
     fields: Vec<TypeId>,
-) -> Result<Aggregate, CompileError> {
+) -> Result<Type, CompileError> {
     let field_types = fields
         .into_iter()
         .map(|ty_id| convert_resolved_typeid_no_span(type_engine, context, &ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
-    Ok(Aggregate::new_struct(context, field_types))
+    Ok(Type::new_struct(context, field_types))
 }
 
 pub(super) fn create_array_aggregate(
@@ -51,21 +54,21 @@ pub(super) fn create_array_aggregate(
     context: &mut Context,
     element_type_id: TypeId,
     count: u64,
-) -> Result<Aggregate, CompileError> {
+) -> Result<Type, CompileError> {
     let element_type = convert_resolved_typeid_no_span(type_engine, context, &element_type_id)?;
-    Ok(Aggregate::new_array(context, element_type, count))
+    Ok(Type::new_array(context, element_type, count))
 }
 
 pub(super) fn get_aggregate_for_types(
     type_engine: &TypeEngine,
     context: &mut Context,
     type_ids: &[TypeId],
-) -> Result<Aggregate, CompileError> {
+) -> Result<Type, CompileError> {
     let types = type_ids
         .iter()
         .map(|ty_id| convert_resolved_typeid_no_span(type_engine, context, ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
-    Ok(Aggregate::new_struct(context, types))
+    Ok(Type::new_struct(context, types))
 }
 
 pub(super) fn get_struct_name_field_index_and_type(
@@ -78,15 +81,17 @@ pub(super) fn get_struct_name_field_index_and_type(
         .ok()?;
     match (ty_info, field_kind) {
         (
-            TypeInfo::Struct { name, fields, .. },
+            TypeInfo::Struct {
+                call_path, fields, ..
+            },
             ty::ProjectionKind::StructField { name: field_name },
         ) => Some((
-            name.as_str().to_owned(),
+            call_path.suffix.as_str().to_owned(),
             fields
                 .iter()
                 .enumerate()
                 .find(|(_, field)| field.name == field_name)
-                .map(|(idx, field)| (idx as u64, field.type_id)),
+                .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
         )),
         _otherwise => None,
     }
@@ -139,7 +144,7 @@ pub(super) fn get_indices_for_struct_access(
                     Ok(ty_info) => ty_info,
                     Err(error) => {
                         return Err(CompileError::InternalOwned(
-                            format!("type error resolving type for reassignment: {}", error),
+                            format!("type error resolving type for reassignment: {error}"),
                             field_kind.span(),
                         ));
                     }
@@ -148,7 +153,9 @@ pub(super) fn get_indices_for_struct_access(
                 // Get the field index and also its type for the next iteration.
                 match (ty_info, &field_kind) {
                     (
-                        TypeInfo::Struct { name, fields, .. },
+                        TypeInfo::Struct {
+                            call_path, fields, ..
+                        },
                         ty::ProjectionKind::StructField { name: field_name },
                     ) => {
                         let field_idx_and_type_opt = fields
@@ -156,13 +163,13 @@ pub(super) fn get_indices_for_struct_access(
                             .enumerate()
                             .find(|(_, field)| field.name == *field_name);
                         let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.type_id),
+                            Some((idx, field)) => (idx as u64, field.type_argument.type_id),
                             None => {
                                 return Err(CompileError::InternalOwned(
                                     format!(
                                         "Unknown field '{}' for struct {} in reassignment.",
                                         field_kind.pretty_print(),
-                                        name,
+                                        call_path,
                                     ),
                                     field_kind.span(),
                                 ));

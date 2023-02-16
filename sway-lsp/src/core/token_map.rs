@@ -22,18 +22,16 @@ impl TokenMap {
         &'s self,
         uri: &'s Url,
     ) -> impl 's + Iterator<Item = (Ident, Token)> {
-        self.iter()
-            .filter(|item| {
-                let (_, span) = item.key();
-                match span.path() {
-                    Some(path) => path.to_str() == Some(uri.path()),
-                    None => false,
+        self.iter().flat_map(|item| {
+            let ((ident, span), token) = item.pair();
+            span.path().and_then(|path| {
+                if path.to_str() == Some(uri.path()) {
+                    Some((ident.clone(), token.clone()))
+                } else {
+                    None
                 }
             })
-            .map(|item| {
-                let ((ident, _), token) = item.pair();
-                (ident.clone(), token.clone())
-            })
+        })
     }
 
     /// Find all references in the TokenMap for a given token.
@@ -112,12 +110,12 @@ impl TokenMap {
         type_id: &TypeId,
     ) -> Option<ty::TyStructDeclaration> {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         self.declaration_of_type_id(type_engine, type_id)
             .and_then(|decl| match decl {
-                ty::TyDeclaration::StructDeclaration(ref decl_id) => declaration_engine
-                    .get_struct(decl_id.clone(), &decl_id.span())
-                    .ok(),
+                ty::TyDeclaration::StructDeclaration {
+                    decl_id, decl_span, ..
+                } => decl_engine.get_struct(&decl_id, &decl_span).ok(),
                 _ => None,
             })
     }

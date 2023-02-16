@@ -1,8 +1,7 @@
+use std::hash::Hasher;
+
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
-    engine_threading::*,
-    language::ty::*,
-    type_system::*,
+    decl_engine::*, engine_threading::*, language::ty::*, type_system::*,
     types::DeterministicallyAborts,
 };
 
@@ -18,11 +17,18 @@ impl PartialEqWithEngines for TyCodeBlock {
     }
 }
 
-impl CopyTypes for TyCodeBlock {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
+impl HashWithEngines for TyCodeBlock {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyCodeBlock { contents } = self;
+        contents.hash(state, engines);
+    }
+}
+
+impl SubstTypes for TyCodeBlock {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.contents
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -43,13 +49,9 @@ impl ReplaceDecls for TyCodeBlock {
 }
 
 impl DeterministicallyAborts for TyCodeBlock {
-    fn deterministically_aborts(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        check_call_body: bool,
-    ) -> bool {
+    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         self.contents
             .iter()
-            .any(|x| x.deterministically_aborts(declaration_engine, check_call_body))
+            .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }

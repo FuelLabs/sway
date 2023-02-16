@@ -65,6 +65,8 @@ pub mod parser;
 pub use parser::*;
 pub mod local_var;
 pub use local_var::*;
+pub mod pass_manager;
+pub use pass_manager::*;
 pub mod pretty;
 pub use pretty::*;
 pub mod printer;

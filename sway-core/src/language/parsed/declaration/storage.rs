@@ -18,7 +18,7 @@ pub struct StorageDeclaration {
 pub struct StorageField {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
-    pub type_info: TypeInfo,
-    pub type_info_span: Span,
+    pub type_argument: TypeArgument,
+    pub span: Span,
     pub initializer: Expression,
 }

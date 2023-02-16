@@ -1,26 +1,32 @@
 #![allow(dead_code)]
 use std::iter;
 
-use crate::core::{
-    token::{
-        desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
-        TypeDefinition,
+use crate::{
+    core::{
+        token::{
+            desugared_op, to_ident_key, type_info_to_symbol_kind, AstToken, SymbolKind, Token,
+            TypeDefinition,
+        },
+        token_map::TokenMap,
     },
-    token_map::TokenMap,
+    traverse::Parse,
 };
+
 use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
-            TraitFn, TupleIndexExpression, WhileLoopExpression,
+            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
+            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
+            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
+            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
+            TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
-        Literal,
+        CallPathTree, Literal,
     },
+    transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
     TypeEngine, TypeInfo,
 };
@@ -47,13 +53,60 @@ impl<'a> ParsedTree<'a> {
             | AstNodeContent::ImplicitReturnExpression(expression) => {
                 self.handle_expression(expression)
             }
-            // TODO
-            // handle other content types
-            _ => {}
+            AstNodeContent::UseStatement(use_statement) => self.handle_use_statement(use_statement),
+            // include statements are handled throught [`collect_module_spans`]
+            AstNodeContent::IncludeStatement(_) => {}
         };
     }
 
-    fn handle_function_declation(&self, func: &FunctionDeclaration) {
+    pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
+        self.collect_tree_type(&parse_program.kind);
+        self.collect_parse_module(&parse_program.root);
+    }
+
+    fn collect_parse_module(&self, parse_module: &ParseModule) {
+        for (
+            _,
+            ParseSubmodule {
+                library_name,
+                module,
+                dependency_path_span,
+            },
+        ) in &parse_module.submodules
+        {
+            self.tokens.insert(
+                to_ident_key(&Ident::new(dependency_path_span.clone())),
+                Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
+            );
+
+            self.tokens.insert(
+                to_ident_key(library_name),
+                Token::from_parsed(
+                    AstToken::TreeType(TreeType::Library {
+                        name: library_name.clone(),
+                    }),
+                    SymbolKind::Module,
+                ),
+            );
+
+            self.collect_parse_module(module);
+        }
+    }
+
+    fn collect_tree_type(&self, tree_type: &TreeType) {
+        use TreeType::*;
+        match tree_type {
+            Library { name } => {
+                self.tokens.insert(
+                    to_ident_key(name),
+                    Token::from_parsed(AstToken::TreeType(tree_type.clone()), SymbolKind::Module),
+                );
+            }
+            Script | Contract | Predicate => {}
+        }
+    }
+
+    fn handle_function_declaration(&self, func: &FunctionDeclaration) {
         let token = Token::from_parsed(
             AstToken::FunctionDeclaration(func.clone()),
             SymbolKind::Function,
@@ -71,12 +124,9 @@ impl<'a> ParsedTree<'a> {
             self.collect_type_parameter(type_param, AstToken::FunctionDeclaration(func.clone()));
         }
 
-        self.collect_type_info_token(
-            &token,
-            &func.return_type,
-            Some(func.return_type_span.clone()),
-            None,
-        );
+        self.collect_type_arg(&func.return_type, &token);
+
+        func.attributes.parse(self.tokens);
     }
 
     fn handle_declaration(&self, declaration: &Declaration) {
@@ -106,19 +156,12 @@ impl<'a> ParsedTree<'a> {
                         token.clone(),
                     );
 
-                    if let Some(type_ascription_span) = &variable.type_ascription_span {
-                        self.collect_type_info_token(
-                            &token,
-                            &variable.type_ascription,
-                            Some(type_ascription_span.clone()),
-                            None,
-                        );
-                    }
+                    self.collect_type_arg(&variable.type_ascription, &token);
                 }
                 self.handle_expression(&variable.body);
             }
             Declaration::FunctionDeclaration(func) => {
-                self.handle_function_declation(func);
+                self.handle_function_declaration(func);
             }
             Declaration::TraitDeclaration(trait_decl) => {
                 self.tokens.insert(
@@ -134,7 +177,17 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &trait_decl.methods {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
+                }
+
+                for supertrait in &trait_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
                 }
             }
             Declaration::StructDeclaration(struct_dec) => {
@@ -150,12 +203,8 @@ impl<'a> ParsedTree<'a> {
                         Token::from_parsed(AstToken::StructField(field.clone()), SymbolKind::Field);
                     self.tokens.insert(to_ident_key(&field.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &field.type_info,
-                        Some(field.type_span.clone()),
-                        None,
-                    );
+                    self.collect_type_arg(&field.type_argument, &token);
+                    field.attributes.parse(self.tokens);
                 }
 
                 for type_param in &struct_dec.type_parameters {
@@ -164,6 +213,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Declaration(declaration.clone()),
                     );
                 }
+
+                struct_dec.attributes.parse(self.tokens);
             }
             Declaration::EnumDeclaration(enum_decl) => {
                 self.tokens.insert(
@@ -189,13 +240,11 @@ impl<'a> ParsedTree<'a> {
                     self.tokens
                         .insert(to_ident_key(&variant.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &variant.type_info,
-                        Some(variant.type_span.clone()),
-                        Some(SymbolKind::Variant),
-                    );
+                    self.collect_type_arg(&variant.type_argument, &token);
+                    variant.attributes.parse(self.tokens);
                 }
+
+                enum_decl.attributes.parse(self.tokens);
             }
             Declaration::ImplTrait(impl_trait) => {
                 for ident in &impl_trait.trait_name.prefixes {
@@ -236,12 +285,12 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_trait.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::ImplSelf(impl_self) => {
                 if let TypeInfo::Custom {
-                    name,
+                    call_path,
                     type_arguments,
                 } = &impl_self.type_implementing_for
                 {
@@ -249,7 +298,8 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Declaration(declaration.clone()),
                         SymbolKind::Struct,
                     );
-                    self.tokens.insert(to_ident_key(name), token.clone());
+                    self.tokens
+                        .insert(to_ident_key(&call_path.suffix), token.clone());
                     if let Some(type_arguments) = type_arguments {
                         for type_arg in type_arguments {
                             self.collect_type_arg(type_arg, &token);
@@ -265,7 +315,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_self.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {
@@ -280,6 +330,8 @@ impl<'a> ParsedTree<'a> {
                 for trait_fn in &abi_decl.interface_surface {
                     self.collect_trait_fn(trait_fn);
                 }
+
+                abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {
                 let token = Token::from_parsed(
@@ -289,13 +341,10 @@ impl<'a> ParsedTree<'a> {
                 self.tokens
                     .insert(to_ident_key(&const_decl.name), token.clone());
 
-                self.collect_type_info_token(
-                    &token,
-                    &const_decl.type_ascription,
-                    const_decl.type_ascription_span.clone(),
-                    None,
-                );
+                self.collect_type_arg(&const_decl.type_ascription, &token);
                 self.handle_expression(&const_decl.value);
+
+                const_decl.attributes.parse(self.tokens);
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {
@@ -305,15 +354,65 @@ impl<'a> ParsedTree<'a> {
                     );
                     self.tokens.insert(to_ident_key(&field.name), token.clone());
 
-                    self.collect_type_info_token(
-                        &token,
-                        &field.type_info,
-                        Some(field.type_info_span.clone()),
-                        None,
-                    );
+                    self.collect_type_arg(&field.type_argument, &token);
                     self.handle_expression(&field.initializer);
+
+                    field.attributes.parse(self.tokens);
                 }
+                storage_decl.attributes.parse(self.tokens);
             }
+        }
+    }
+
+    fn handle_use_statement(
+        &self,
+        use_statement @ UseStatement {
+            alias,
+            call_path,
+            is_absolute: _,
+            import_type,
+        }: &UseStatement,
+    ) {
+        if let Some(alias) = alias {
+            self.tokens.insert(
+                to_ident_key(alias),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Unknown,
+                ),
+            );
+        }
+
+        for prefix in call_path {
+            self.tokens.insert(
+                to_ident_key(prefix),
+                Token::from_parsed(
+                    AstToken::UseStatement(use_statement.clone()),
+                    SymbolKind::Module,
+                ),
+            );
+        }
+
+        match &import_type {
+            ImportType::Item(item) => {
+                self.tokens.insert(
+                    to_ident_key(item),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::SelfImport(span) => {
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(span.clone())),
+                    Token::from_parsed(
+                        AstToken::UseStatement(use_statement.clone()),
+                        SymbolKind::Unknown,
+                    ),
+                );
+            }
+            ImportType::Star => {}
         }
     }
 
@@ -356,7 +455,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens
                         .insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-                    for type_arg in &call_path_binding.type_arguments {
+                    for type_arg in &call_path_binding.type_arguments.to_vec() {
                         self.collect_type_arg(type_arg, &token);
                     }
                 }
@@ -390,12 +489,32 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(exp);
                 }
             }
-            ExpressionKind::TupleIndex(TupleIndexExpression { prefix, .. }) => {
+            ExpressionKind::TupleIndex(TupleIndexExpression {
+                prefix, index_span, ..
+            }) => {
                 self.handle_expression(prefix);
+
+                self.tokens.insert(
+                    to_ident_key(&Ident::new(index_span.clone())),
+                    Token::from_parsed(
+                        AstToken::Expression(expression.clone()),
+                        SymbolKind::NumericLiteral,
+                    ),
+                );
             }
-            ExpressionKind::Array(contents) => {
-                for exp in contents {
+            ExpressionKind::Array(array_expression) => {
+                for exp in &array_expression.contents {
                     self.handle_expression(exp);
+                }
+
+                if let Some(length_span) = &array_expression.length_span {
+                    self.tokens.insert(
+                        to_ident_key(&Ident::new(length_span.clone())),
+                        Token::from_parsed(
+                            AstToken::Expression(expression.clone()),
+                            SymbolKind::NumericLiteral,
+                        ),
+                    );
                 }
             }
             ExpressionKind::Struct(struct_expression) => {
@@ -414,7 +533,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 let name = &call_path_binding.inner.suffix;
-                let type_arguments = &call_path_binding.type_arguments;
+                let type_arguments = &call_path_binding.type_arguments.to_vec();
 
                 let token = Token::from_parsed(
                     AstToken::Expression(expression.clone()),
@@ -487,19 +606,23 @@ impl<'a> ParsedTree<'a> {
                         AstToken::Expression(expression.clone()),
                         SymbolKind::Struct,
                     );
-                    let (type_info, span) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(span.clone()), None);
+                    let (type_info, ident) = &call_path_binding.inner.suffix;
+                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
+                }
+
+                let token = Token::from_parsed(
+                    AstToken::Expression(expression.clone()),
+                    SymbolKind::Struct,
+                );
+
+                for type_arg in &method_name_binding.type_arguments.to_vec() {
+                    self.collect_type_arg(type_arg, &token);
                 }
 
                 // Don't collect applications of desugared operators due to mismatched ident lengths.
                 if !desugared_op(&prefixes) {
-                    self.tokens.insert(
-                        to_ident_key(&method_name_binding.inner.easy_name()),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Struct,
-                        ),
-                    );
+                    self.tokens
+                        .insert(to_ident_key(&method_name_binding.inner.easy_name()), token);
                 }
 
                 for exp in arguments {
@@ -559,7 +682,7 @@ impl<'a> ParsedTree<'a> {
                     token.clone(),
                 );
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_arg(type_arg, &token);
                 }
 
@@ -590,12 +713,14 @@ impl<'a> ParsedTree<'a> {
                 self.tokens
                     .insert(to_ident_key(&call_path_binding.inner.suffix), token.clone());
 
-                for type_arg in &call_path_binding.type_arguments {
+                for type_arg in &call_path_binding.type_arguments.to_vec() {
                     self.collect_type_arg(type_arg, &token);
                 }
 
-                for exp in args {
-                    self.handle_expression(exp);
+                if let Some(args_vec) = args.as_ref() {
+                    args_vec.iter().for_each(|exp| {
+                        self.handle_expression(exp);
+                    });
                 }
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
@@ -631,8 +756,18 @@ impl<'a> ParsedTree<'a> {
                 }
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
-                arguments, ..
+                name,
+                kind_binding,
+                arguments,
             }) => {
+                self.tokens.insert(
+                    to_ident_key(name),
+                    Token::from_parsed(
+                        AstToken::Intrinsic(kind_binding.inner.clone()),
+                        SymbolKind::Function,
+                    ),
+                );
+
                 for argument in arguments {
                     self.handle_expression(argument);
                 }
@@ -675,7 +810,7 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_type_arg(&self, type_argument: &TypeArgument, token: &Token) {
         let mut token = token.clone();
-        let type_info = self.type_engine.look_up_type_id(type_argument.type_id);
+        let type_info = self.type_engine.get(type_argument.type_id);
         match &type_info {
             TypeInfo::Array(type_arg, length) => {
                 token.kind = SymbolKind::NumericLiteral;
@@ -691,10 +826,23 @@ impl<'a> ParsedTree<'a> {
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+
+                if let Some(tree) = &type_argument.call_path_tree {
+                    self.collect_call_path_tree(tree, &token);
+                }
             }
+        }
+    }
+
+    fn collect_call_path_tree(&self, tree: &CallPathTree, token: &Token) {
+        for ident in &tree.call_path.prefixes {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&tree.call_path.suffix), token.clone());
+
+        for child in &tree.children {
+            self.collect_call_path_tree(child, token);
         }
     }
 
@@ -710,20 +858,28 @@ impl<'a> ParsedTree<'a> {
                     .insert(to_ident_key(&Ident::new(span.clone())), token);
             }
             Scrutinee::Variable { name, .. } => {
-                let token = Token::from_parsed(
-                    AstToken::Scrutinee(scrutinee.clone()),
-                    SymbolKind::Variable,
+                self.tokens.insert(
+                    to_ident_key(name),
+                    // it could either be a variable or a constant
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Unknown),
                 );
-                self.tokens.insert(to_ident_key(name), token);
             }
             Scrutinee::StructScrutinee {
                 struct_name,
                 fields,
                 ..
             } => {
-                let token =
-                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct);
-                self.tokens.insert(to_ident_key(struct_name), token);
+                for ident in &struct_name.prefixes {
+                    let token = Token::from_parsed(
+                        AstToken::Scrutinee(scrutinee.clone()),
+                        SymbolKind::Struct,
+                    );
+                    self.tokens.insert(to_ident_key(ident), token);
+                }
+                self.tokens.insert(
+                    to_ident_key(&struct_name.suffix),
+                    Token::from_parsed(AstToken::Scrutinee(scrutinee.clone()), SymbolKind::Struct),
+                );
 
                 for field in fields {
                     let token = Token::from_parsed(
@@ -800,11 +956,12 @@ impl<'a> ParsedTree<'a> {
                 }
             }
             TypeInfo::Custom {
-                name,
+                call_path,
                 type_arguments,
             } => {
-                token.type_def = Some(TypeDefinition::Ident(name.clone()));
-                self.tokens.insert(to_ident_key(name), token.clone());
+                token.type_def = Some(TypeDefinition::Ident(call_path.suffix.clone()));
+                self.tokens
+                    .insert(to_ident_key(&call_path.suffix), token.clone());
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
                         self.collect_type_arg(type_arg, &token);
@@ -828,12 +985,7 @@ impl<'a> ParsedTree<'a> {
         self.tokens
             .insert(to_ident_key(&parameter.name), token.clone());
 
-        self.collect_type_info_token(
-            &token,
-            &parameter.type_info,
-            Some(parameter.type_span.clone()),
-            None,
-        );
+        self.collect_type_arg(&parameter.type_argument, &token);
     }
 
     fn collect_trait_fn(&self, trait_fn: &TraitFn) {
@@ -851,6 +1003,8 @@ impl<'a> ParsedTree<'a> {
             Some(trait_fn.return_type_span.clone()),
             None,
         );
+
+        trait_fn.attributes.parse(self.tokens);
     }
 
     fn collect_type_parameter(&self, type_param: &TypeParameter, token: AstToken) {
@@ -858,6 +1012,23 @@ impl<'a> ParsedTree<'a> {
             to_ident_key(&type_param.name_ident),
             Token::from_parsed(token, SymbolKind::TypeParameter),
         );
+    }
+}
+
+impl Parse for AttributesMap {
+    fn parse(&self, tokens: &TokenMap) {
+        self.iter()
+            .filter(|(kind, ..)| **kind != AttributeKind::DocComment)
+            .flat_map(|(.., attrs)| attrs)
+            .for_each(|attribute| {
+                tokens.insert(
+                    to_ident_key(&attribute.name),
+                    Token::from_parsed(
+                        AstToken::Attribute(attribute.clone()),
+                        SymbolKind::DeriveHelper,
+                    ),
+                );
+            });
     }
 }
 

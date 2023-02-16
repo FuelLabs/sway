@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::*,
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -11,6 +11,7 @@ use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
@@ -25,40 +26,72 @@ pub struct TypeParameter {
     pub(crate) trait_constraints_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        type_engine
-            .look_up_type_id(self.type_id)
-            .hash(state, type_engine);
-        self.name_ident.hash(state);
-        self.trait_constraints.hash(state, type_engine);
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TypeParameter {
+            type_id,
+            name_ident,
+            trait_constraints,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let type_engine = engines.te();
+        type_engine.get(*type_id).hash(state, engines);
+        name_ident.hash(state);
+        trait_constraints.hash(state, engines);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
-            .look_up_type_id(self.type_id)
-            .eq(&type_engine.look_up_type_id(other.type_id), engines)
+            .get(self.type_id)
+            .eq(&type_engine.get(other.type_id), engines)
             && self.name_ident == other.name_ident
             && self.trait_constraints.eq(&other.trait_constraints, engines)
     }
 }
 
-impl CopyTypes for TypeParameter {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.type_id.copy_types(type_mapping, engines);
+impl OrdWithEngines for TypeParameter {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TypeParameter {
+            type_id: lti,
+            name_ident: ln,
+            trait_constraints: ltc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let TypeParameter {
+            type_id: rti,
+            name_ident: rn,
+            trait_constraints: rtc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| {
+                type_engine
+                    .get(*lti)
+                    .cmp(&type_engine.get(*rti), type_engine)
+            })
+            .then_with(|| ltc.cmp(rtc, type_engine))
+    }
+}
+
+impl SubstTypes for TypeParameter {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_id.subst(type_mapping, engines);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.copy_types(type_mapping, engines));
+            .for_each(|x| x.subst(type_mapping, engines));
     }
 }
 
@@ -90,15 +123,49 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(
+    /// Type check a list of [TypeParameter] and return a new list of
+    /// [TypeParameter]. This will also insert this new list into the current
+    /// namespace.
+    pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
-        type_parameter: TypeParameter,
-    ) -> CompileResult<Self> {
+        type_params: Vec<TypeParameter>,
+        disallow_trait_constraints: bool,
+    ) -> CompileResult<Vec<TypeParameter>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut new_type_params: Vec<TypeParameter> = vec![];
+
+        for type_param in type_params.into_iter() {
+            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
+                let errors = vec![CompileError::WhereClauseNotYetSupported {
+                    span: type_param.trait_constraints_span,
+                }];
+                return err(vec![], errors);
+            }
+            new_type_params.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        if errors.is_empty() {
+            ok(new_type_params, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
+    /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
+    /// inserts into into the current namespace.
+    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         let TypeParameter {
             initial_type_id,
@@ -120,8 +187,8 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert_type(
-            declaration_engine,
+        let type_id = type_engine.insert(
+            decl_engine,
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints.clone()),
@@ -158,29 +225,6 @@ impl TypeParameter {
         ok(type_parameter, warnings, errors)
     }
 
-    /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
-    /// append the current TypeParameter as a `fuels_types::TypeDeclaration`.
-    pub(crate) fn get_json_type_parameter(
-        &self,
-        type_engine: &TypeEngine,
-        types: &mut Vec<fuels_types::TypeDeclaration>,
-    ) -> usize {
-        let type_parameter = fuels_types::TypeDeclaration {
-            type_id: self.initial_type_id.index(),
-            type_field: self
-                .initial_type_id
-                .get_json_type_str(type_engine, self.type_id),
-            components: self.initial_type_id.get_json_type_components(
-                type_engine,
-                types,
-                self.type_id,
-            ),
-            type_parameters: None,
-        };
-        types.push(type_parameter);
-        self.initial_type_id.index()
-    }
-
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         mut ctx: TypeCheckContext,
@@ -190,8 +234,8 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+        let mut original_method_refs: MethodMap = BTreeMap::new();
+        let mut impld_method_refs: MethodMap = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -221,46 +265,20 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
-                // Use trait name with module path as this is expected in get_methods_for_type_and_trait_name
-                let mut full_trait_name = trait_name.clone();
-                if trait_name.prefixes.is_empty() {
-                    if let Some(use_synonym) = ctx.namespace.use_synonyms.get(&trait_name.suffix) {
-                        let mut prefixes = use_synonym.0.clone();
-                        for mod_path in ctx.namespace.mod_path() {
-                            if prefixes[0].as_str() == mod_path.as_str() {
-                                prefixes.drain(0..1);
-                            } else {
-                                prefixes = use_synonym.0.clone();
-                                break;
-                            }
-                        }
-                        full_trait_name = CallPath {
-                            prefixes,
-                            suffix: trait_name.suffix.clone(),
-                            is_absolute: false,
-                        }
-                    }
-                }
-
-                let (trait_original_method_ids, trait_impld_method_ids) = check!(
-                    handle_trait(
-                        ctx.by_ref(),
-                        *type_id,
-                        &full_trait_name,
-                        trait_type_arguments
-                    ),
+                let (trait_original_method_refs, trait_impld_method_refs) = check!(
+                    handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(trait_original_method_ids);
-                impld_method_ids.extend(trait_impld_method_ids);
+                original_method_refs.extend(trait_original_method_refs);
+                impld_method_refs.extend(trait_impld_method_refs);
             }
         }
 
         if errors.is_empty() {
             let decl_mapping =
-                DeclMapping::from_original_and_new_decl_ids(original_method_ids, impld_method_ids);
+                DeclMapping::from_stub_and_impld_decl_refs(original_method_refs, impld_method_refs);
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -273,17 +291,14 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(
-    BTreeMap<Ident, DeclarationId>,
-    BTreeMap<Ident, DeclarationId>,
-)> {
+) -> CompileResult<(MethodMap, MethodMap)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclarationId> = BTreeMap::new();
+    let mut original_method_refs: MethodMap = BTreeMap::new();
+    let mut impld_method_refs: MethodMap = BTreeMap::new();
 
     match ctx
         .namespace
@@ -291,17 +306,15 @@ fn handle_trait(
         .ok(&mut warnings, &mut errors)
         .cloned()
     {
-        Some(ty::TyDeclaration::TraitDeclaration(decl_id)) => {
+        Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
             let trait_decl = check!(
-                CompileResult::from(
-                    declaration_engine.get_trait(decl_id, &trait_name.suffix.span())
-                ),
+                CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.suffix.span())),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
 
-            let (trait_original_method_ids, trait_method_ids, trait_impld_method_ids) = check!(
+            let (trait_original_method_refs, trait_method_refs, trait_impld_method_refs) = check!(
                 trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
                     ctx.by_ref(),
                     type_id,
@@ -312,19 +325,19 @@ fn handle_trait(
                 warnings,
                 errors
             );
-            original_method_ids.extend(trait_original_method_ids);
-            original_method_ids.extend(trait_method_ids);
-            impld_method_ids.extend(trait_impld_method_ids);
+            original_method_refs.extend(trait_original_method_refs);
+            original_method_refs.extend(trait_method_refs);
+            impld_method_refs.extend(trait_impld_method_refs);
 
             for supertrait in trait_decl.supertraits.iter() {
-                let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+                let (supertrait_original_method_refs, supertrait_impld_method_refs) = check!(
                     handle_trait(ctx.by_ref(), type_id, &supertrait.name, &[]),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(supertrait_original_method_ids);
-                impld_method_ids.extend(supertrait_impld_method_ids);
+                original_method_refs.extend(supertrait_original_method_refs);
+                impld_method_refs.extend(supertrait_impld_method_refs);
             }
         }
         _ => errors.push(CompileError::TraitNotFound {
@@ -334,7 +347,7 @@ fn handle_trait(
     }
 
     if errors.is_empty() {
-        ok((original_method_ids, impld_method_ids), warnings, errors)
+        ok((original_method_refs, impld_method_refs), warnings, errors)
     } else {
         err(warnings, errors)
     }

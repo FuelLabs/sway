@@ -1,8 +1,9 @@
 use crate::{
     capabilities::{
         self,
+        diagnostic::{get_diagnostics, Diagnostics},
         formatting::get_page_text_edit,
-        runnable::{Runnable, RunnableType},
+        runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
         document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
@@ -15,23 +16,24 @@ use crate::{
     },
 };
 use dashmap::DashMap;
-use forc_pkg::{self as pkg};
+use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use std::{fs::File, io::Write, path::PathBuf, sync::Arc};
+use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
-    declaration_engine::DeclarationEngine,
+    decl_engine::DeclEngine,
     language::{
+        lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    CompileResult, Engines, TypeEngine,
+    namespace, BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, GotoDefinitionResponse, Location, Position, Range,
-    SymbolInformation, TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
+    TextDocumentContentChangeEvent, TextEdit, Url,
 };
 
 pub type Documents = DashMap<String, TextDocument>;
@@ -39,6 +41,7 @@ pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
 pub struct CompiledProgram {
+    pub lexed: Option<LexedProgram>,
     pub parsed: Option<ParseProgram>,
     pub typed: Option<ty::TyProgram>,
 }
@@ -51,10 +54,10 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub documents: Documents,
-    pub runnables: DashMap<RunnableType, Runnable>,
+    pub runnables: DashMap<Span, Box<dyn Runnable>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub type_engine: RwLock<TypeEngine>,
-    pub declaration_engine: RwLock<DeclarationEngine>,
+    pub decl_engine: RwLock<DeclEngine>,
     pub sync: SyncWorkspace,
 }
 
@@ -66,7 +69,7 @@ impl Session {
             runnables: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             type_engine: <_>::default(),
-            declaration_engine: <_>::default(),
+            decl_engine: <_>::default(),
             sync: SyncWorkspace::new(),
         }
     }
@@ -74,7 +77,7 @@ impl Session {
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
         *self.type_engine.write() = <_>::default();
 
-        *self.declaration_engine.write() = <_>::default();
+        *self.decl_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
@@ -107,7 +110,7 @@ impl Session {
         &self.token_map
     }
 
-    pub fn parse_project(&self, uri: &Url) -> Result<Vec<Diagnostic>, LanguageServerError> {
+    pub fn parse_project(&self, uri: &Url) -> Result<Diagnostics, LanguageServerError> {
         self.token_map.clear();
         self.runnables.clear();
 
@@ -139,12 +142,15 @@ impl Session {
             pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, locked, offline)
                 .map_err(LanguageServerError::BuildPlanFailed)?;
 
-        let mut diagnostics = Vec::new();
+        let mut diagnostics = Diagnostics {
+            warnings: vec![],
+            errors: vec![],
+        };
         let type_engine = &*self.type_engine.read();
-        let declaration_engine = &*self.declaration_engine.read();
-        let engines = Engines::new(type_engine, declaration_engine);
+        let decl_engine = &*self.decl_engine.read();
+        let engines = Engines::new(type_engine, decl_engine);
         let tests_enabled = true;
-        let results = pkg::check(&plan, true, tests_enabled, engines)
+        let results = pkg::check(&plan, BuildTarget::default(), true, tests_enabled, engines)
             .map_err(LanguageServerError::FailedToCompile)?;
         let results_len = results.len();
         for (i, res) in results.into_iter().enumerate() {
@@ -164,10 +170,7 @@ impl Session {
                 typed,
             } = value.unwrap();
 
-            let parsed_res = CompileResult::new(Some(parsed), warnings.clone(), errors.clone());
             let ast_res = CompileResult::new(typed, warnings, errors);
-
-            let parse_program = self.compile_res_to_parse_program(&parsed_res)?;
             let typed_program = self.compile_res_to_typed_program(&ast_res)?;
 
             // The final element in the results is the main program.
@@ -178,28 +181,30 @@ impl Session {
 
                 // Next, populate our token_map with un-typed yet parsed ast nodes.
                 let parsed_tree = ParsedTree::new(type_engine, &self.token_map);
-                self.parse_ast_to_tokens(parse_program, |an| parsed_tree.traverse_node(an));
+                parsed_tree.collect_module_spans(&parsed);
+                self.parse_ast_to_tokens(&parsed, |an| parsed_tree.traverse_node(an));
 
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
                 let typed_tree = TypedTree::new(engines, &self.token_map);
-                self.parse_ast_to_typed_tokens(typed_program, |an| typed_tree.traverse_node(an));
+                typed_tree.collect_module_spans(typed_program);
+                self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
+                    typed_tree.traverse_node(node, namespace)
+                });
 
-                self.save_parse_program(parse_program.to_owned().clone());
+                self.save_lexed_program(lexed.to_owned().clone());
+                self.save_parsed_program(parsed.to_owned().clone());
                 self.save_typed_program(typed_program.to_owned().clone());
 
-                diagnostics =
-                    capabilities::diagnostic::get_diagnostics(&ast_res.warnings, &ast_res.errors);
+                diagnostics = get_diagnostics(&ast_res.warnings, &ast_res.errors);
             } else {
                 // Collect tokens from dependencies and the standard library prelude.
                 let dependency = Dependency::new(&self.token_map);
-                self.parse_ast_to_tokens(parse_program, |an| {
-                    dependency.collect_parsed_declaration(an)
-                });
+                self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
-                self.parse_ast_to_typed_tokens(typed_program, |an| {
-                    dependency.collect_typed_declaration(declaration_engine, an)
+                self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
+                    dependency.collect_typed_declaration(node)
                 });
             }
         }
@@ -288,11 +293,22 @@ impl Session {
                 path: uri.path().to_string(),
                 err: err.to_string(),
             })?;
-        writeln!(&mut file, "{}", src).map_err(|err| DocumentError::UnableToWriteFile {
+        writeln!(&mut file, "{src}").map_err(|err| DocumentError::UnableToWriteFile {
             path: uri.path().to_string(),
             err: err.to_string(),
         })?;
         Ok(())
+    }
+
+    /// Get the document at the given [Url].
+    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.documents
+            .try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|document| document.clone())
     }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
@@ -345,29 +361,31 @@ impl Session {
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
-        let root_nodes = typed_program.root.all_nodes.iter();
+    fn parse_ast_to_typed_tokens(
+        &self,
+        typed_program: &ty::TyProgram,
+        f: impl Fn(&ty::TyAstNode, &namespace::Module),
+    ) {
+        let root_nodes = typed_program
+            .root
+            .all_nodes
+            .iter()
+            .map(|node| (node, &typed_program.root.namespace));
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| &submodule.module.all_nodes);
+            .flat_map(|(_, submodule)| {
+                submodule
+                    .module
+                    .all_nodes
+                    .iter()
+                    .map(|node| (node, &submodule.module.namespace))
+            });
 
-        root_nodes.chain(sub_nodes).for_each(f);
-    }
-
-    /// Get a reference to the [ParseProgram] AST.
-    fn compile_res_to_parse_program<'a>(
-        &'a self,
-        parsed_result: &'a CompileResult<ParseProgram>,
-    ) -> Result<&'a ParseProgram, LanguageServerError> {
-        parsed_result.value.as_ref().ok_or_else(|| {
-            let diagnostics = capabilities::diagnostic::get_diagnostics(
-                &parsed_result.warnings,
-                &parsed_result.errors,
-            );
-            LanguageServerError::FailedToParse { diagnostics }
-        })
+        root_nodes
+            .chain(sub_nodes)
+            .for_each(|(node, namespace)| f(node, namespace));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
@@ -379,27 +397,50 @@ impl Session {
             .value
             .as_ref()
             .ok_or(LanguageServerError::FailedToParse {
-                diagnostics: capabilities::diagnostic::get_diagnostics(
-                    &ast_res.warnings,
-                    &ast_res.errors,
-                ),
+                diagnostics: get_diagnostics(&ast_res.warnings, &ast_res.errors),
             })
     }
 
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
+        // Insert runnable test functions.
+        let decl_engine = &*self.decl_engine.read();
+        for (decl, _) in typed_program.test_fns(decl_engine) {
+            // Get the span of the first attribute if it exists, otherwise use the span of the function name.
+            let span = decl
+                .attributes
+                .first()
+                .map_or_else(|| decl.name.span(), |(_, attr)| attr.span.clone());
+            let runnable = Box::new(RunnableTestFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+                test_name: Some(decl.name.to_string()),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
+        }
+
+        // Insert runnable main function if the program is a script.
         if let ty::TyProgramKind::Script {
             ref main_function, ..
         } = typed_program.kind
         {
-            let main_fn_location = get_range_from_span(&main_function.name.span());
-            let runnable = Runnable::new(main_fn_location, typed_program.kind.tree_type());
-            self.runnables.insert(RunnableType::MainFn, runnable);
+            let span = main_function.name.span();
+            let runnable = Box::new(RunnableMainFn {
+                span,
+                tree_type: typed_program.kind.tree_type(),
+            });
+            self.runnables.insert(runnable.span().clone(), runnable);
         }
     }
 
+    /// Save the `LexedProgram` AST in the session.
+    fn save_lexed_program(&self, lexed_program: LexedProgram) {
+        let mut program = self.compiled_program.write();
+        program.lexed = Some(lexed_program);
+    }
+
     /// Save the `ParseProgram` AST in the session.
-    fn save_parse_program(&self, parse_program: ParseProgram) {
+    fn save_parsed_program(&self, parse_program: ParseProgram) {
         let mut program = self.compiled_program.write();
         program.parsed = Some(parse_program);
     }
@@ -424,12 +465,12 @@ impl Session {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test::{get_absolute_path, get_url};
+    use sway_lsp_test_utils::{get_absolute_path, get_url};
 
     #[test]
     fn store_document_returns_empty_tuple() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         let result = Session::store_document(&session, document);
         assert!(result.is_ok());
@@ -438,7 +479,7 @@ mod tests {
     #[test]
     fn store_document_returns_document_already_stored_error() {
         let session = Session::new();
-        let path = get_absolute_path("sway-lsp/test/fixtures/cats.txt");
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
         let document = TextDocument::build_from_path(&path).unwrap();
         Session::store_document(&session, document).expect("expected successfully stored");
         let document = TextDocument::build_from_path(&path).unwrap();
@@ -450,7 +491,7 @@ mod tests {
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
         let session = Session::new();
-        let dir = get_absolute_path("sway-lsp/test/fixtures");
+        let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let result =
             Session::parse_project(&session, &uri).expect_err("expected ManifestFileNotFound");

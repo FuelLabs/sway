@@ -1,36 +1,32 @@
+mod binding;
 mod collect_types_metadata;
-mod copy_types;
 mod create_type_id;
+mod engine;
+mod id;
+mod info;
 mod length;
 mod occurs_check;
 mod replace_self_type;
-mod resolved_type;
+mod substitute;
 mod trait_constraint;
 mod type_argument;
-mod type_binding;
-mod type_engine;
-mod type_id;
-mod type_info;
-mod type_mapping;
 mod type_parameter;
 mod unconstrained_type_parameters;
 mod unify;
 mod unify_check;
 
+pub(crate) use binding::*;
 pub(crate) use collect_types_metadata::*;
-pub(crate) use copy_types::*;
 pub(crate) use create_type_id::*;
+pub use engine::*;
+pub use id::*;
+pub use info::*;
 pub use length::*;
 use occurs_check::*;
 pub(crate) use replace_self_type::*;
-pub(crate) use resolved_type::*;
+pub(crate) use substitute::*;
 pub(crate) use trait_constraint::*;
 pub use type_argument::*;
-pub(crate) use type_binding::*;
-pub use type_engine::*;
-pub use type_id::*;
-pub use type_info::*;
-pub(crate) use type_mapping::*;
 pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;
 
@@ -42,11 +38,9 @@ use sway_types::{integer_bits::IntegerBits, Span};
 
 #[test]
 fn generic_enum_resolution() {
-    use crate::{
-        declaration_engine::DeclarationEngine, language::ty, span::Span, transform, Ident,
-    };
+    use crate::{decl_engine::DeclEngine, language::ty, span::Span, transform, Ident};
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
 
     let sp = Span::dummy();
     let generic_name = Ident::new_with_override("T", sp.clone());
@@ -58,15 +52,15 @@ fn generic_enum_resolution() {
         a: _
     }
     */
-    let generic_type = type_engine.insert_type(
-        &declaration_engine,
+    let generic_type = type_engine.insert(
+        &decl_engine,
         TypeInfo::UnknownGeneric {
             name: generic_name.clone(),
             trait_constraints: VecSet(Vec::new()),
         },
     );
-    let placeholder_type = type_engine.insert_type(
-        &declaration_engine,
+    let placeholder_type = type_engine.insert(
+        &decl_engine,
         TypeInfo::Placeholder(TypeParameter {
             type_id: generic_type,
             initial_type_id: generic_type,
@@ -85,16 +79,19 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
         tag: 0,
-        type_id: placeholder_type,
-        initial_type_id: placeholder_type,
+        type_argument: TypeArgument {
+            type_id: placeholder_type,
+            initial_type_id: placeholder_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let ty_1 = type_engine.insert_type(
-        &declaration_engine,
+    let ty_1 = type_engine.insert(
+        &decl_engine,
         TypeInfo::Enum {
-            name: result_name.clone(),
+            call_path: result_name.clone().into(),
             variant_types,
             type_parameters: vec![placeholder_type_param],
         },
@@ -105,14 +102,17 @@ fn generic_enum_resolution() {
         a: bool
     }
     */
-    let boolean_type = type_engine.insert_type(&declaration_engine, TypeInfo::Boolean);
+    let boolean_type = type_engine.insert(&decl_engine, TypeInfo::Boolean);
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
-        type_id: boolean_type,
-        initial_type_id: boolean_type,
+        type_argument: TypeArgument {
+            type_id: boolean_type,
+            initial_type_id: boolean_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
     let type_param = TypeParameter {
@@ -122,28 +122,28 @@ fn generic_enum_resolution() {
         trait_constraints: vec![],
         trait_constraints_span: sp.clone(),
     };
-    let ty_2 = type_engine.insert_type(
-        &declaration_engine,
+    let ty_2 = type_engine.insert(
+        &decl_engine,
         TypeInfo::Enum {
-            name: result_name,
+            call_path: result_name.into(),
             variant_types,
             type_parameters: vec![type_param],
         },
     );
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, ty_1, ty_2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
-        name,
+        call_path: name,
         variant_types,
         ..
-    } = type_engine.look_up_type_id(ty_1)
+    } = type_engine.get(ty_1)
     {
-        assert_eq!(name.as_str(), "Result");
+        assert_eq!(name.suffix.as_str(), "Result");
         assert!(matches!(
-            type_engine.look_up_type_id(variant_types[0].type_id),
+            type_engine.get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean
         ));
     } else {
@@ -153,20 +153,17 @@ fn generic_enum_resolution() {
 
 #[test]
 fn basic_numeric_unknown() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
 
     let sp = Span::dummy();
     // numerics
-    let id = type_engine.insert_type(&declaration_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert_type(
-        &declaration_engine,
-        TypeInfo::UnsignedInteger(IntegerBits::Eight),
-    );
+    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
+    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -177,20 +174,17 @@ fn basic_numeric_unknown() {
 
 #[test]
 fn unify_numerics() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert_type(&declaration_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert_type(
-        &declaration_engine,
-        TypeInfo::UnsignedInteger(IntegerBits::Eight),
-    );
+    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
+    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id2, id, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id2, id, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(
@@ -201,20 +195,17 @@ fn unify_numerics() {
 
 #[test]
 fn unify_numerics_2() {
-    use crate::declaration_engine::DeclarationEngine;
+    use crate::decl_engine::DeclEngine;
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
+    let decl_engine = DeclEngine::default();
     let sp = Span::dummy();
 
     // numerics
-    let id = type_engine.insert_type(&declaration_engine, TypeInfo::Numeric);
-    let id2 = type_engine.insert_type(
-        &declaration_engine,
-        TypeInfo::UnsignedInteger(IntegerBits::Eight),
-    );
+    let id = type_engine.insert(&decl_engine, TypeInfo::Numeric);
+    let id2 = type_engine.insert(&decl_engine, TypeInfo::UnsignedInteger(IntegerBits::Eight));
 
     // Unify them together...
-    let (_, errors) = type_engine.unify(&declaration_engine, id, id2, &sp, "", None);
+    let (_, errors) = type_engine.unify(&decl_engine, id, id2, &sp, "", None);
     assert!(errors.is_empty());
 
     assert!(matches!(

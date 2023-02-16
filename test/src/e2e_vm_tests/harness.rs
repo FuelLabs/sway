@@ -1,11 +1,12 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc_client::ops::{
-    deploy::{cmd::DeployCommand, op::deploy},
-    run::{cmd::RunCommand, op::run},
+use forc_client::{
+    cmd::{Deploy as DeployCommand, Run as RunCommand},
+    op::{deploy, run},
 };
 use forc_pkg::{Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
@@ -14,6 +15,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
 use std::{fs, io::Read, path::PathBuf, str::FromStr};
+use sway_core::{asm_generation::ProgramABI, BuildTarget};
 
 use super::RunConfig;
 
@@ -61,12 +63,14 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     deploy(DeployCommand {
-        path: Some(format!(
-            "{}/src/e2e_vm_tests/test_programs/{}",
-            manifest_dir, file_name
-        )),
-        terse_mode: !run_config.verbose,
-        locked: run_config.locked,
+        pkg: forc_client::cmd::deploy::Pkg {
+            path: Some(format!(
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+            )),
+            terse: !run_config.verbose,
+            locked: run_config.locked,
+            ..Default::default()
+        },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         ..Default::default()
     })
@@ -91,19 +95,21 @@ pub(crate) async fn runs_on_node(
 
         let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
         for contract_id in contract_ids {
-            let contract = format!("0x{:x}", contract_id);
+            let contract = format!("0x{contract_id:x}");
             contracts.push(contract);
         }
 
         let command = RunCommand {
-            path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
-            )),
+            pkg: forc_client::cmd::run::Pkg {
+                path: Some(format!(
+                    "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+                )),
+                locked: run_config.locked,
+                terse: !run_config.verbose,
+                ..Default::default()
+            },
             node_url: Some(NODE_URL.into()),
-            terse_mode: !run_config.verbose,
             contract: Some(contracts),
-            locked: run_config.locked,
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
             ..Default::default()
         };
@@ -118,32 +124,72 @@ pub(crate) async fn runs_on_node(
     .await
 }
 
+pub(crate) enum VMExecutionResult {
+    Fuel(ProgramState, Vec<Receipt>),
+    Evm(revm::ExecutionResult),
+}
+
 /// Very basic check that code does indeed run in the VM.
 pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
-) -> Result<(ProgramState, Vec<Receipt>, BuiltPackage)> {
-    let storage = MemoryStorage::default();
+) -> Result<VMExecutionResult> {
+    match script.build_target {
+        BuildTarget::Fuel => {
+            let storage = MemoryStorage::default();
 
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let maturity = 1;
-    let script_data = script_data.unwrap_or_default();
-    let block_height = (u32::MAX >> 1) as u64;
-    let params = &ConsensusParameters {
-        // The default max length is 1MB which isn't enough for the bigger tests.
-        max_script_length: 64 * 1024 * 1024,
-        ..ConsensusParameters::DEFAULT
-    };
+            let rng = &mut StdRng::seed_from_u64(2322u64);
+            let maturity = 1;
+            let script_data = script_data.unwrap_or_default();
+            let block_height = (u32::MAX >> 1) as u64;
+            let params = &ConsensusParameters {
+                // The default max length is 1MB which isn't enough for the bigger tests.
+                max_script_length: 64 * 1024 * 1024,
+                ..ConsensusParameters::DEFAULT
+            };
 
-    let tx = TransactionBuilder::script(script.bytecode.clone(), script_data)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
-        .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(maturity)
-        .finalize_checked(block_height as Word, params);
+            let tx = TransactionBuilder::script(script.bytecode, script_data)
+                .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
+                .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
+                .maturity(maturity)
+                .finalize_checked(block_height as Word, params, &GasCosts::default());
 
-    let mut i = Interpreter::with_storage(storage, Default::default());
-    let transition = i.transact(tx)?;
-    Ok((*transition.state(), transition.receipts().to_vec(), script))
+            let mut i = Interpreter::with_storage(storage, Default::default(), GasCosts::default());
+            let transition = i.transact(tx)?;
+            Ok(VMExecutionResult::Fuel(
+                *transition.state(),
+                transition.receipts().to_vec(),
+            ))
+        }
+        BuildTarget::EVM => {
+            let mut evm = revm::new();
+            evm.database(revm::InMemoryDB::default());
+            evm.env = revm::Env::default();
+
+            // Transaction to create the smart contract
+            evm.env.tx.transact_to = revm::TransactTo::create();
+            evm.env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+            let result = evm.transact_commit();
+
+            match result.out {
+                revm::TransactOut::None => Err(anyhow!("Could not create smart contract")),
+                revm::TransactOut::Call(_) => todo!(),
+                revm::TransactOut::Create(ref _bytes, account_opt) => {
+                    match account_opt {
+                        Some(account) => {
+                            evm.env.tx.transact_to = revm::TransactTo::Call(account);
+
+                            // Now issue a call.
+                            //evm.env.tx. = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+                            let result = evm.transact_commit();
+                            Ok(VMExecutionResult::Evm(result))
+                        }
+                        None => todo!(),
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Compiles the code and optionally captures the output of forc and the compilation.
@@ -152,10 +198,10 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     println!("Compiling {} ...", file_name.bold());
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
+        build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
-                "{}/src/e2e_vm_tests/test_programs/{}",
-                manifest_dir, file_name
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
             )),
             locked: run_config.locked,
             terse: false,
@@ -167,7 +213,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
 
     // Print the result of the compilation (i.e., any errors Forc produces).
     if let Err(ref e) = result {
-        println!("\n{}", e);
+        println!("\n{e}");
     }
 
     result
@@ -240,7 +286,10 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
 
 fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     tracing::info!("ABI gen {} ...", file_name.bold());
-    let json_abi = serde_json::json!(built_package.json_abi_program);
+    let json_abi = match &built_package.json_abi_program {
+        ProgramABI::Fuel(abi) => serde_json::json!(abi),
+        ProgramABI::Evm(abi) => serde_json::json!(abi),
+    };
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",

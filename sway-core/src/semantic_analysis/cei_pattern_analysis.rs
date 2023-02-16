@@ -9,7 +9,7 @@
 // as well as modifying output messages.
 
 use crate::{
-    declaration_engine::{DeclarationEngine, DeclarationId},
+    decl_engine::*,
     language::{
         ty::{self, TyFunctionDeclaration},
         AsmOp,
@@ -81,9 +81,9 @@ pub(crate) fn analyze_program(engines: Engines<'_>, prog: &ty::TyProgram) -> Vec
 }
 
 fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<CompileWarning> {
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     let mut warnings: Vec<CompileWarning> = vec![];
-    for fn_decl in contract_entry_points(declaration_engine, ast_nodes) {
+    for fn_decl in contract_entry_points(decl_engine, ast_nodes) {
         analyze_code_block(engines, &fn_decl.body, &fn_decl.name, &mut warnings);
     }
     warnings
@@ -91,18 +91,18 @@ fn analyze_contract(engines: Engines<'_>, ast_nodes: &[ty::TyAstNode]) -> Vec<Co
 
 // standalone functions and methods
 fn contract_entry_points(
-    declaration_engine: &DeclarationEngine,
+    decl_engine: &DeclEngine,
     ast_nodes: &[ty::TyAstNode],
 ) -> Vec<ty::TyFunctionDeclaration> {
     use crate::ty::TyAstNodeContent::Declaration;
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)) => {
-                decl_id_to_fn_decls(declaration_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDeclaration::FunctionDeclaration { decl_id, .. }) => {
+                decl_id_to_fn_decls(decl_engine, decl_id, &ast_node.span)
             }
-            Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {
-                impl_trait_methods(declaration_engine, decl_id, &ast_node.span)
+            Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }) => {
+                impl_trait_methods(decl_engine, decl_id, &ast_node.span)
             }
             _ => vec![],
         })
@@ -110,25 +110,25 @@ fn contract_entry_points(
 }
 
 fn decl_id_to_fn_decls(
-    declaration_engine: &DeclarationEngine,
-    decl_id: &DeclarationId,
+    decl_engine: &DeclEngine,
+    decl_id: &DeclId,
     span: &Span,
 ) -> Vec<TyFunctionDeclaration> {
-    declaration_engine
-        .get_function(decl_id.clone(), span)
+    decl_engine
+        .get_function(decl_id, span)
         .map_or(vec![], |fn_decl| vec![fn_decl])
 }
 
-fn impl_trait_methods<'a>(
-    declaration_engine: &DeclarationEngine,
-    impl_trait_decl_id: &'a DeclarationId,
-    span: &'a Span,
+fn impl_trait_methods(
+    decl_engine: &DeclEngine,
+    impl_trait_decl_id: &DeclId,
+    span: &Span,
 ) -> Vec<ty::TyFunctionDeclaration> {
-    match declaration_engine.get_impl_trait(impl_trait_decl_id.clone(), span) {
+    match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
         Ok(impl_trait) => impl_trait
             .methods
             .iter()
-            .flat_map(|fn_decl| decl_id_to_fn_decls(declaration_engine, fn_decl, span))
+            .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id, span))
             .collect(),
         Err(_) => vec![],
     }
@@ -183,7 +183,7 @@ fn analyze_code_block_entry(
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
-        ty::TyAstNodeContent::SideEffect => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
     }
 }
 
@@ -210,7 +210,7 @@ fn analyze_expression(
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
     use crate::ty::TyExpressionVariant::*;
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     match &expr.expression {
         // base cases: no warnings can be emitted
         Literal(_)
@@ -247,13 +247,13 @@ fn analyze_expression(
         } => analyze_two_expressions(engines, left, right, block_name, warnings),
         FunctionApplication {
             arguments,
-            function_decl_id,
+            function_decl_ref,
             selector,
             call_path,
             ..
         } => {
-            let func = declaration_engine
-                .get_function(function_decl_id.clone(), &expr.span)
+            let func = decl_engine
+                .get_function(function_decl_ref, &expr.span)
                 .unwrap();
             // we don't need to run full analysis on the function body as it will be covered
             // as a separate step of the whole contract analysis
@@ -325,6 +325,7 @@ fn analyze_expression(
             Some(expr) => analyze_expression(engines, expr, block_name, warnings),
             None => HashSet::new(),
         },
+        MatchExp { desugared, .. } => analyze_expression(engines, desugared, block_name, warnings),
         IfExp {
             condition,
             then,
@@ -488,7 +489,7 @@ fn effects_of_codeblock_entry(engines: Engines<'_>, ast_node: &ty::TyAstNode) ->
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
             effects_of_expression(engines, expr)
         }
-        ty::TyAstNodeContent::SideEffect => HashSet::new(),
+        ty::TyAstNodeContent::SideEffect(_) => HashSet::new(),
     }
 }
 
@@ -504,7 +505,7 @@ fn effects_of_codeblock_decl(engines: Engines<'_>, decl: &ty::TyDeclaration) -> 
 fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashSet<Effect> {
     use crate::ty::TyExpressionVariant::*;
     let type_engine = engines.te();
-    let declaration_engine = engines.de();
+    let decl_engine = engines.de();
     match &expr.expression {
         Literal(_)
         | VariableExpression { .. }
@@ -514,7 +515,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
         | AbiName(_) => HashSet::new(),
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),
-        StorageAccess(_) => match type_engine.look_up_type_id(expr.return_type) {
+        StorageAccess(_) => match type_engine.get(expr.return_type) {
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
@@ -546,6 +547,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
         }
         StructExpression { fields, .. } => effects_of_struct_expressions(engines, fields),
         CodeBlock(codeblock) => effects_of_codeblock(engines, codeblock),
+        MatchExp { desugared, .. } => effects_of_expression(engines, desugared),
         IfExp {
             condition,
             then,
@@ -579,13 +581,13 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             .cloned()
             .collect(),
         FunctionApplication {
-            function_decl_id,
+            function_decl_ref,
             arguments,
             selector,
             ..
         } => {
-            let fn_body = declaration_engine
-                .get_function(function_decl_id.clone(), &expr.span)
+            let fn_body = decl_engine
+                .get_function(function_decl_ref, &expr.span)
                 .unwrap()
                 .body;
             let mut effs = effects_of_codeblock(engines, &fn_body);
@@ -612,7 +614,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
 fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
-        StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
+        StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | IsReferenceType | SizeOfType | SizeOfVal | Eq | Gtf | AddrOf | Log | Add | Sub
@@ -622,7 +624,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
-        "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
+        "scwq" | "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
         "srw" | "srwq" => HashSet::from([Effect::StorageRead]),
         "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
         "bal" => HashSet::from([Effect::BalanceTreeRead]),

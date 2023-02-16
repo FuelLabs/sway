@@ -1,9 +1,9 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_types::{Span, Spanned};
 
 use crate::{
-    declaration_engine::{DeclMapping, DeclarationEngine, ReplaceDecls},
+    decl_engine::*,
     engine_threading::*,
     error::*,
     language::{ty::*, Literal},
@@ -18,24 +18,36 @@ pub struct TyExpression {
     pub span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         self.expression.eq(&other.expression, engines)
             && type_engine
-                .look_up_type_id(self.return_type)
-                .eq(&type_engine.look_up_type_id(other.return_type), engines)
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
     }
 }
 
-impl CopyTypes for TyExpression {
-    fn copy_types_inner(&mut self, type_mapping: &TypeMapping, engines: Engines<'_>) {
-        self.return_type.copy_types(type_mapping, engines);
-        self.expression.copy_types(type_mapping, engines);
+impl HashWithEngines for TyExpression {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyExpression {
+            expression,
+            return_type,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        let type_engine = engines.te();
+        expression.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
+    }
+}
+
+impl SubstTypes for TyExpression {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.return_type.subst(type_mapping, engines);
+        self.expression.subst(type_mapping, engines);
     }
 }
 
@@ -71,7 +83,7 @@ impl CollectTypesMetadata for TyExpression {
         use TyExpressionVariant::*;
         let mut warnings = vec![];
         let mut errors = vec![];
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
         let mut res = check!(
             self.return_type.collect_types_metadata(ctx),
             return err(warnings, errors),
@@ -81,7 +93,7 @@ impl CollectTypesMetadata for TyExpression {
         match &self.expression {
             FunctionApplication {
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 call_path,
                 ..
             } => {
@@ -93,11 +105,10 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                let function_decl =
-                    match declaration_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(e) => return err(vec![], vec![e]),
-                    };
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
+                    Ok(decl) => decl,
+                    Err(e) => return err(vec![], vec![e]),
+                };
 
                 ctx.call_site_push();
                 for type_parameter in function_decl.type_parameters {
@@ -139,7 +150,7 @@ impl CollectTypesMetadata for TyExpression {
             StructExpression { fields, span, .. } => {
                 if let TypeInfo::Struct {
                     type_parameters, ..
-                } = ctx.type_engine.look_up_type_id(self.return_type)
+                } = ctx.type_engine.get(self.return_type)
                 {
                     for type_parameter in type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
@@ -202,6 +213,12 @@ impl CollectTypesMetadata for TyExpression {
                     ));
                 }
             }
+            MatchExp { desugared, .. } => res.append(&mut check!(
+                desugared.collect_types_metadata(ctx),
+                return err(warnings, errors),
+                warnings,
+                errors
+            )),
             IfExp {
                 condition,
                 then,
@@ -267,11 +284,11 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_decl,
                 contents,
-                enum_instantiation_span,
+                call_path_binding,
                 ..
             } => {
                 for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
                     res.append(&mut check!(
@@ -283,7 +300,7 @@ impl CollectTypesMetadata for TyExpression {
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(ctx),
+                        variant.type_argument.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -330,7 +347,7 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
                 res.append(&mut check!(
-                    variant.type_id.collect_types_metadata(ctx),
+                    variant.type_argument.type_id.collect_types_metadata(ctx),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -398,55 +415,46 @@ impl CollectTypesMetadata for TyExpression {
 }
 
 impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(
-        &self,
-        declaration_engine: &DeclarationEngine,
-        check_call_body: bool,
-    ) -> bool {
+    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
         use TyExpressionVariant::*;
         match &self.expression {
             FunctionApplication {
-                function_decl_id,
+                function_decl_ref,
                 arguments,
                 ..
             } => {
                 if !check_call_body {
                     return false;
                 }
-                let function_decl =
-                    match declaration_engine.get_function(function_decl_id.clone(), &self.span) {
-                        Ok(decl) => decl,
-                        Err(_e) => panic!("failed to get function"),
-                    };
+                let function_decl = match decl_engine.get_function(function_decl_ref, &self.span) {
+                    Ok(decl) => decl,
+                    Err(_e) => panic!("failed to get function"),
+                };
                 function_decl
                     .body
-                    .deterministically_aborts(declaration_engine, check_call_body)
-                    || arguments.iter().any(|(_, x)| {
-                        x.deterministically_aborts(declaration_engine, check_call_body)
-                    })
+                    .deterministically_aborts(decl_engine, check_call_body)
+                    || arguments
+                        .iter()
+                        .any(|(_, x)| x.deterministically_aborts(decl_engine, check_call_body))
             }
             Tuple { fields, .. } => fields
                 .iter()
-                .any(|x| x.deterministically_aborts(declaration_engine, check_call_body)),
+                .any(|x| x.deterministically_aborts(decl_engine, check_call_body)),
             Array { contents, .. } => contents
                 .iter()
-                .any(|x| x.deterministically_aborts(declaration_engine, check_call_body)),
-            CodeBlock(contents) => {
-                contents.deterministically_aborts(declaration_engine, check_call_body)
-            }
-            LazyOperator { lhs, .. } => {
-                lhs.deterministically_aborts(declaration_engine, check_call_body)
-            }
+                .any(|x| x.deterministically_aborts(decl_engine, check_call_body)),
+            CodeBlock(contents) => contents.deterministically_aborts(decl_engine, check_call_body),
+            LazyOperator { lhs, .. } => lhs.deterministically_aborts(decl_engine, check_call_body),
             StructExpression { fields, .. } => fields.iter().any(|x| {
                 x.value
-                    .deterministically_aborts(declaration_engine, check_call_body)
+                    .deterministically_aborts(decl_engine, check_call_body)
             }),
             EnumInstantiation { contents, .. } => contents
                 .as_ref()
-                .map(|x| x.deterministically_aborts(declaration_engine, check_call_body))
+                .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
                 .unwrap_or(false),
             AbiCast { address, .. } => {
-                address.deterministically_aborts(declaration_engine, check_call_body)
+                address.deterministically_aborts(decl_engine, check_call_body)
             }
             StructFieldAccess { .. }
             | Literal(_)
@@ -454,51 +462,50 @@ impl DeterministicallyAborts for TyExpression {
             | VariableExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => {
-                kind.deterministically_aborts(declaration_engine, check_call_body)
-            }
+            IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),
             ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(declaration_engine, check_call_body)
-                    || index.deterministically_aborts(declaration_engine, check_call_body)
+                prefix.deterministically_aborts(decl_engine, check_call_body)
+                    || index.deterministically_aborts(decl_engine, check_call_body)
             }
             AsmExpression { registers, .. } => registers.iter().any(|x| {
                 x.initializer
                     .as_ref()
-                    .map(|x| x.deterministically_aborts(declaration_engine, check_call_body))
+                    .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
                     .unwrap_or(false)
             }),
+            MatchExp { desugared, .. } => {
+                desugared.deterministically_aborts(decl_engine, check_call_body)
+            }
             IfExp {
                 condition,
                 then,
                 r#else,
                 ..
             } => {
-                condition.deterministically_aborts(declaration_engine, check_call_body)
-                    || (then.deterministically_aborts(declaration_engine, check_call_body)
+                condition.deterministically_aborts(decl_engine, check_call_body)
+                    || (then.deterministically_aborts(decl_engine, check_call_body)
                         && r#else
                             .as_ref()
-                            .map(|x| {
-                                x.deterministically_aborts(declaration_engine, check_call_body)
-                            })
+                            .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
                             .unwrap_or(false))
             }
             AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(declaration_engine, check_call_body),
+            EnumTag { exp } => exp.deterministically_aborts(decl_engine, check_call_body),
             UnsafeDowncast { exp, .. } => {
-                exp.deterministically_aborts(declaration_engine, check_call_body)
+                exp.deterministically_aborts(decl_engine, check_call_body)
             }
             WhileLoop { condition, body } => {
-                condition.deterministically_aborts(declaration_engine, check_call_body)
-                    || body.deterministically_aborts(declaration_engine, check_call_body)
+                condition.deterministically_aborts(decl_engine, check_call_body)
+                    || body.deterministically_aborts(decl_engine, check_call_body)
             }
             Break => false,
             Continue => false,
             Reassignment(reassignment) => reassignment
                 .rhs
-                .deterministically_aborts(declaration_engine, check_call_body),
+                .deterministically_aborts(decl_engine, check_call_body),
             StorageReassignment(storage_reassignment) => storage_reassignment
                 .rhs
-                .deterministically_aborts(declaration_engine, check_call_body),
+                .deterministically_aborts(decl_engine, check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
@@ -515,10 +522,10 @@ impl DeterministicallyAborts for TyExpression {
 impl TyExpression {
     pub(crate) fn error(span: Span, engines: Engines<'_>) -> TyExpression {
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            return_type: type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             span,
         }
     }

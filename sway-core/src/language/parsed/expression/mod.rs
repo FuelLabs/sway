@@ -42,6 +42,12 @@ pub struct TupleIndexExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ArrayExpression {
+    pub contents: Vec<Expression>,
+    pub length_span: Option<Span>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StructExpression {
     pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
@@ -102,7 +108,10 @@ pub struct AmbiguousPathExpression {
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
     pub call_path_binding: TypeBinding<CallPath>,
-    pub args: Vec<Expression>,
+    /// When args is equal to Option::None then it means that the
+    /// [DelineatedPathExpression] was initialized from an expression
+    /// that does not end with parenthesis.
+    pub args: Option<Vec<Expression>>,
 }
 
 #[derive(Debug, Clone)]
@@ -124,6 +133,7 @@ pub struct StorageAccessExpression {
 
 #[derive(Debug, Clone)]
 pub struct IntrinsicFunctionExpression {
+    pub name: Ident,
     pub kind_binding: TypeBinding<Intrinsic>,
     pub arguments: Vec<Expression>,
 }
@@ -157,7 +167,7 @@ pub enum ExpressionKind {
     Variable(Ident),
     Tuple(Vec<Expression>),
     TupleIndex(TupleIndexExpression),
-    Array(Vec<Expression>),
+    Array(ArrayExpression),
     Struct(Box<StructExpression>),
     CodeBlock(CodeBlock),
     If(IfExpression),

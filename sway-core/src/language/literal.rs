@@ -21,9 +21,6 @@ pub enum Literal {
     B256([u8; 32]),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl Hash for Literal {
     fn hash<H: Hasher>(&self, state: &mut H) {
         use Literal::*;
@@ -64,9 +61,6 @@ impl Hash for Literal {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEq for Literal {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -99,26 +93,11 @@ impl fmt::Display for Literal {
                 .collect::<Vec<_>>()
                 .join(", "),
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
 impl Literal {
-    #[allow(dead_code)]
-    pub(crate) fn as_type(&self) -> ResolvedType {
-        use Literal::*;
-        match self {
-            U8(_) => ResolvedType::UnsignedInteger(IntegerBits::Eight),
-            U16(_) => ResolvedType::UnsignedInteger(IntegerBits::Sixteen),
-            U32(_) => ResolvedType::UnsignedInteger(IntegerBits::ThirtyTwo),
-            U64(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-            Numeric(_) => ResolvedType::UnsignedInteger(IntegerBits::SixtyFour),
-            String(inner) => ResolvedType::Str(inner.as_str().len() as u64),
-            Boolean(_) => ResolvedType::Boolean,
-            B256(_) => ResolvedType::B256,
-        }
-    }
-
     #[allow(clippy::wildcard_in_or_patterns)]
     pub(crate) fn handle_parse_int_error(
         engines: Engines<'_>,

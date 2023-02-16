@@ -7,16 +7,21 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, declaration_engine::DeclarationEngine,
-    inline_function_calls, ir_generation::compile_program, namespace, Engines, TypeEngine,
+    compile_ir_to_asm, compile_to_ast, decl_engine::DeclEngine, ir_generation::compile_program,
+    language::parsed::TreeType, namespace, BuildTarget, Engines, TypeEngine,
+};
+use sway_ir::{
+    create_inline_in_non_predicate_pass, create_inline_in_predicate_pass, PassManager,
+    PassManagerConfig,
 };
 
 pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
     // Compile core library and reuse it when compiling tests.
     let type_engine = TypeEngine::default();
-    let declaration_engine = DeclarationEngine::default();
-    let engines = Engines::new(&type_engine, &declaration_engine);
-    let core_lib = compile_core(engines);
+    let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
+    let build_target = BuildTarget::default();
+    let core_lib = compile_core(build_target, engines);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -111,10 +116,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 tracing::info!("Testing {} ...", test_file_name.bold());
 
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
-                // no span metdata.
+                // no span metadata.
                 let bld_cfg = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
                     path.clone(),
                     PathBuf::from("/"),
+                    build_target,
                 );
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.include_tests(true);
@@ -178,15 +184,17 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                     _ => (),
                 };
 
-                // Now we're working with all functions in the module.
-                let all_functions = ir
-                    .module_iter()
-                    .flat_map(|module| module.function_iter(&ir))
-                    .collect::<Vec<_>>();
-
                 if optimisation_inline {
-                    let inline_res = inline_function_calls(&mut ir, &all_functions, &tree_type);
-                    if !inline_res.errors.is_empty() {
+                    let mut pass_mgr = PassManager::default();
+                    let mut pmgr_config = PassManagerConfig { to_run: vec![] };
+                    let inline = if matches!(tree_type, TreeType::Predicate) {
+                        pass_mgr.register(create_inline_in_predicate_pass())
+                    } else {
+                        pass_mgr.register(create_inline_in_non_predicate_pass())
+                    };
+                    pmgr_config.to_run.push(inline);
+                    let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
+                    if inline_res.is_err() {
                         panic!(
                             "Failed to compile test {}:\n{}",
                             path.display(),
@@ -294,11 +302,12 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(engines: Engines<'_>) -> namespace::Module {
+fn compile_core(build_target: BuildTarget, engines: Engines<'_>) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
     let check_cmd = forc::cli::CheckCommand {
+        build_target,
         path: Some(libcore_root_dir),
         offline_mode: true,
         terse_mode: true,

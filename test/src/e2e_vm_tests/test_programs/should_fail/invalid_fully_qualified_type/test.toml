@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()baz: foo::foo::Foo
+# nextln:$()Unknown type name "foo::foo::Foo".
+
+# check: $()baz: foo::Foo
+# nextln:$()Symbol "Foo" is private.

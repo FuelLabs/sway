@@ -1,12 +1,13 @@
 script;
-use std::{assert::assert, constants::BASE_ASSET_ID, contract_id::ContractId};
+
+use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 
 fn main() -> bool {
     let zero = b256::min();
     let gas: u64 = u64::max();
     let amount: u64 = 11;
-    let other_contract_id = ContractId::from(0x78dc5cda1446f4ddbd1d2e1e688a3be0566caf5d2bde6525dc5b0da90660b9e2);
+    let other_contract_id = ContractId::from(0xb2f6b5c29fcdcf12a58670e0ecc2ade0a20ea539055ff6995721d62d177e07e4);
     let base_asset_id = BASE_ASSET_ID;
 
     let test_contract = abi(ContextTesting, other_contract_id.into());

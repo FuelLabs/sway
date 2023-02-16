@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::DeclarationId,
+    decl_engine::DeclRef,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -7,12 +7,15 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
+use super::{
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
+    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
+};
 
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
-use std::collections::VecDeque;
+use std::{cmp::Ordering, collections::VecDeque};
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -113,7 +116,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type_with_self(
+        engines.te().resolve_with_self(
             engines.de(),
             type_id,
             self_type,
@@ -134,7 +137,7 @@ impl Namespace {
         type_info_prefix: Option<&Path>,
     ) -> CompileResult<TypeId> {
         let mod_path = self.mod_path.clone();
-        engines.te().resolve_type(
+        engines.te().resolve(
             engines.de(),
             type_id,
             span,
@@ -160,12 +163,19 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclarationId> {
+    ) -> CompileResult<DeclRef> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let declaration_engine = engines.de();
+        let decl_engine = engines.de();
+
+        // If the type that we are looking for is the error recovery type, then
+        // we want to return the error case without creating a new error
+        // message.
+        if let TypeInfo::ErrorRecovery = type_engine.get(type_id) {
+            return err(warnings, errors);
+        }
 
         // grab the local module
         let local_module = check!(
@@ -182,8 +192,8 @@ impl Namespace {
 
         // resolve the type
         let type_id = check!(
-            type_engine.resolve_type(
-                declaration_engine,
+            type_engine.resolve(
+                decl_engine,
                 type_id,
                 &method_name.span(),
                 EnforceTypeArguments::No,
@@ -191,7 +201,7 @@ impl Namespace {
                 self,
                 method_prefix
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors
         );
@@ -210,27 +220,60 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        for decl_id in methods.into_iter() {
-            let method = check!(
-                CompileResult::from(
-                    declaration_engine.get_function(decl_id.clone(), &decl_id.span())
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if &method.name == method_name {
-                // if we find the method that we are looking for, we also need
-                // to retrieve the impl definitions for the return type so that
-                // the user can string together method calls
-                self.insert_trait_implementation_for_type(engines, method.return_type);
-                return ok(decl_id, warnings, errors);
+        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
+
+        for decl_ref in methods.into_iter() {
+            if &decl_ref.name == method_name {
+                matching_method_decl_refs.push(decl_ref);
             }
+        }
+
+        let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
+            Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
+            Ordering::Greater => {
+                // Case where multiple methods exist with the same name
+                // This is the case of https://github.com/FuelLabs/sway/issues/3633
+                // where multiple generic trait impls use the same method name but with different parameter types
+                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                for decl_ref in matching_method_decl_refs.clone().into_iter() {
+                    let method = check!(
+                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if method.parameters.len() == args_buf.len()
+                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
+                            !are_equal_minus_dynamic_types(
+                                engines,
+                                p.type_argument.type_id,
+                                a.return_type,
+                            )
+                        })
+                    {
+                        maybe_method_decl_ref = Some(decl_ref);
+                        break;
+                    }
+                }
+                if let Some(matching_method_decl_ref) = maybe_method_decl_ref {
+                    // In case one or more methods match the parameter types we return the first match.
+                    Some(matching_method_decl_ref)
+                } else {
+                    // When we can't match any method with parameter types we still return the first method found
+                    // This was the behavior before introducing the parameter type matching
+                    matching_method_decl_refs.get(0).cloned()
+                }
+            }
+            Ordering::Less => None,
+        };
+
+        if let Some(method_decl_ref) = matching_method_decl_ref {
+            return ok(method_decl_ref, warnings, errors);
         }
 
         if !args_buf
             .get(0)
-            .map(|x| type_engine.look_up_type_id(x.return_type))
+            .map(|x| type_engine.get(x.return_type))
             .eq(&Some(TypeInfo::ErrorRecovery), engines)
         {
             errors.push(CompileError::MethodNotFound {
@@ -282,13 +325,54 @@ impl Namespace {
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name))
+            .chain(Some(dep_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        self.name = Some(dep_name);
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn insert_trait_implementation(
+        &mut self,
+        trait_name: CallPath,
+        trait_type_args: Vec<TypeArgument>,
+        type_id: TypeId,
+        methods: &[DeclRef],
+        impl_span: &Span,
+        is_impl_self: bool,
+        engines: Engines<'_>,
+    ) -> CompileResult<()> {
+        // Use trait name with full path, improves consistency between
+        // this inserting and getting in `get_methods_for_type_and_trait_name`.
+        let full_trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits.insert(
+            full_trait_name,
+            trait_type_args,
+            type_id,
+            methods,
+            impl_span,
+            is_impl_self,
+            engines,
+        )
+    }
+
+    pub(crate) fn get_methods_for_type_and_trait_name(
+        &mut self,
+        engines: Engines<'_>,
+        type_id: TypeId,
+        trait_name: &CallPath,
+    ) -> Vec<DeclRef> {
+        // Use trait name with full path, improves consistency between
+        // this get and inserting in `insert_trait_implementation`.
+        let trait_name = trait_name.to_fullpath(self);
+
+        self.implemented_traits
+            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 

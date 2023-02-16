@@ -2,11 +2,6 @@ script;
 
 use core::ops::*;
 
-use std::{
-    assert::assert,
-    logging::log,
-};
-
 trait MyAdd {
     fn my_add(self, other: Self) -> Self;
 }
@@ -217,7 +212,8 @@ fn main() -> u64 {
     assert(m.x == 12u64);
     assert(m.y == 20u64);
 
-    test_ok_or(true, 0);
+    // TODO(Esdrubal): reactivate this once fix in #3621 is merged
+    //test_ok_or(true, 0);
 
     42
 }

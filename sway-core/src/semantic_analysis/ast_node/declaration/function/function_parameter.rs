@@ -19,27 +19,24 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         let FunctionParameter {
             name,
             is_reference,
             is_mutable,
             mutability_span,
-            type_info,
-            type_span,
+            mut type_argument,
         } = parameter;
 
-        let initial_type_id = type_engine.insert_type(declaration_engine, type_info);
-
-        let type_id = check!(
+        type_argument.type_id = check!(
             ctx.resolve_type_with_self(
-                initial_type_id,
-                &type_span,
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -47,7 +44,10 @@ impl ty::TyFunctionParameter {
         if !is_from_method {
             let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
             if mutability == ty::VariableMutability::Mutable {
-                errors.push(CompileError::MutableParameterNotSupported { param_name: name });
+                errors.push(CompileError::MutableParameterNotSupported {
+                    param_name: name.clone(),
+                    span: name.span(),
+                });
                 return err(warnings, errors);
             }
         }
@@ -57,9 +57,7 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument,
         };
 
         insert_into_namespace(ctx, &typed_parameter);
@@ -75,29 +73,26 @@ impl ty::TyFunctionParameter {
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         let FunctionParameter {
             name,
             is_reference,
             is_mutable,
             mutability_span,
-            type_info,
-            type_span,
+            mut type_argument,
         } = parameter;
 
-        let initial_type_id = type_engine.insert_type(declaration_engine, type_info);
-
-        let type_id = check!(
+        type_argument.type_id = check!(
             ctx.namespace.resolve_type_with_self(
                 ctx.engines(),
-                initial_type_id,
-                type_engine.insert_type(declaration_engine, TypeInfo::SelfType),
-                &type_span,
+                type_argument.type_id,
+                type_engine.insert(decl_engine, TypeInfo::SelfType),
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None
             ),
-            type_engine.insert_type(declaration_engine, TypeInfo::ErrorRecovery),
+            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
             warnings,
             errors,
         );
@@ -107,9 +102,7 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument,
         };
 
         ok(typed_parameter, warnings, errors)
@@ -123,16 +116,15 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,
-                return_type: typed_parameter.type_id,
+                return_type: typed_parameter.type_argument.type_id,
                 span: typed_parameter.name.span(),
             },
             mutability: ty::VariableMutability::new_from_ref_mut(
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),
-            return_type: typed_parameter.type_id,
-            type_ascription: typed_parameter.type_id,
-            type_ascription_span: Some(typed_parameter.type_span.clone()),
+            return_type: typed_parameter.type_argument.type_id,
+            type_ascription: typed_parameter.type_argument.clone(),
         })),
     );
 }

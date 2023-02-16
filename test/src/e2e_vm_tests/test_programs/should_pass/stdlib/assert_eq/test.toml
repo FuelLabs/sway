@@ -1,0 +1,3 @@
+category = "disabled"
+expected_result = { action = "return", value = 1 }
+validate_abi = true

@@ -1,5 +1,5 @@
 use crate::{
-    declaration_engine::ReplaceDecls,
+    decl_engine::{DeclRef, ReplaceDecls},
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,28 +11,44 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: ty::TyFunctionDeclaration,
-    call_path: CallPath,
-    arguments: Vec<Expression>,
+    function_decl_ref: DeclRef,
+    call_path_binding: TypeBinding<CallPath>,
+    arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+
+    let mut function_decl = decl_engine.get_function(&function_decl_ref, &span).unwrap();
+
+    if arguments.is_none() {
+        errors.push(CompileError::MissingParenthesesForFunction {
+            method_name: call_path_binding.inner.suffix.clone(),
+            span: call_path_binding.inner.span(),
+        });
+        return err(warnings, errors);
+    }
+    let arguments = arguments.unwrap_or_default();
 
     // 'purity' is that of the callee, 'opts.purity' of the caller.
     if !ctx.purity().can_call(function_decl.purity) {
         errors.push(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path.span(),
+            span: call_path_binding.span(),
         });
     }
 
     // check that the number of parameters and the number of the arguments is the same
     check!(
-        check_function_arguments_arity(arguments.len(), &function_decl, &call_path, false),
+        check_function_arguments_arity(
+            arguments.len(),
+            &function_decl,
+            &call_path_binding.inner,
+            false
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -52,6 +68,11 @@ pub(crate) fn instantiate_function_application(
         errors
     );
 
+    // Retrieve the implemented traits for the type of the return type and
+    // insert them in the broader namespace.
+    ctx.namespace
+        .insert_trait_implementation_for_type(engines, function_decl.return_type.type_id);
+
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
@@ -59,26 +80,29 @@ pub(crate) fn instantiate_function_application(
         TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
-            &call_path.span()
+            &call_path_binding.span()
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
     function_decl.replace_decls(&decl_mapping, engines);
-    let return_type = function_decl.return_type;
-    let new_decl_id = declaration_engine.insert_function(function_decl);
+    let return_type = function_decl.return_type.clone();
+    let new_decl_ref = decl_engine
+        .insert(function_decl)
+        .with_parent(decl_engine, &function_decl_ref);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path,
+            call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_id: new_decl_id,
+            function_decl_ref: new_decl_ref,
             self_state_idx: None,
             selector: None,
+            type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type,
+        return_type: return_type.type_id,
         span,
     };
 
@@ -94,15 +118,16 @@ fn type_check_arguments(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
     let typed_arguments = arguments
         .into_iter()
         .map(|arg| {
-            let ctx = ctx.by_ref().with_help_text("").with_type_annotation(
-                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-            );
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, arg.clone()),
                 ty::TyExpression::error(arg.span(), engines),
@@ -130,16 +155,16 @@ fn unify_arguments_and_parameters(
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
-    let declaration_engine = ctx.declaration_engine;
+    let decl_engine = ctx.decl_engine;
     let mut typed_arguments_and_names = vec![];
 
     for (arg, param) in typed_arguments.into_iter().zip(parameters.iter()) {
         // unify the type of the argument with the type of the param
         check!(
             CompileResult::from(type_engine.unify(
-                declaration_engine,
+                decl_engine,
                 arg.return_type,
-                param.type_id,
+                param.type_argument.type_id,
                 &arg.span,
                 "The argument that has been provided to this function's type does \
             not match the declared type of the parameter in the function \

@@ -17,9 +17,11 @@ pub(crate) fn instantiate_struct_field_access(
     let type_engine = engines.te();
     let field_instantiation_span = field_to_access.span();
     let field = check!(
-        type_engine
-            .look_up_type_id(parent.return_type)
-            .apply_subfields(engines, &[field_to_access], &parent.span),
+        type_engine.get(parent.return_type).apply_subfields(
+            engines,
+            &[field_to_access],
+            &parent.span
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -31,7 +33,7 @@ pub(crate) fn instantiate_struct_field_access(
             field_to_access: field.clone(),
             field_instantiation_span,
         },
-        return_type: field.type_id,
+        return_type: field.type_argument.type_id,
         span,
     };
     ok(exp, warnings, errors)

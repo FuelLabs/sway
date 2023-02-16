@@ -1,12 +1,12 @@
-use fuel_vm::{consts::*, prelude::Opcode};
+use fuel_vm::fuel_asm::{op, RegId};
 use fuels::{
-    contract::abi_encoder::ABIEncoder,
-    contract::execution_script::ExecutableFuelCall,
+    core::abi_encoder::ABIEncoder,
     prelude::*,
+    programs::execution_script::ExecutableFuelCall,
     signers::wallet::Wallet,
     test_helpers::Config,
     tx::{Address, AssetId, Contract, Input, Output, Transaction, TxPointer, UtxoId},
-    types::resource::Resource,
+    types::{resource::Resource, Token},
 };
 use rand::{
     rngs::StdRng,
@@ -60,7 +60,7 @@ async fn create_predicate(
         1,
         1000000,
         0,
-        Opcode::RET(REG_ONE).to_bytes().to_vec(),
+        op::ret(RegId::ONE).to_bytes().to_vec(),
         vec![],
         wallet_coins,
         vec![output_coin, output_change],

@@ -1,14 +1,16 @@
-use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
+use std::collections::HashSet;
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_tx as tx;
-use fuel_vm::{self as vm, prelude::Opcode};
-use pkg::{Built, BuiltPackage};
-use rand::{distributions::Standard, prelude::Distribution, Rng, SeedableRng};
-use sway_core::{language::ty::TyFunctionDeclaration, transform::AttributeKind};
-use sway_types::{Span, Spanned};
-use tx::{AssetId, TxPointer, UtxoId};
-use vm::prelude::SecretKey;
+use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
+use fuel_vm::gas::GasCosts;
+use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
+use pkg::TestPassCondition;
+use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
+use rand::{Rng, SeedableRng};
+use sway_core::{language::parsed::TreeType, BuildTarget};
+use sway_types::{ConfigTimeConstant, Span};
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -45,15 +47,12 @@ pub struct TestResult {
     /// The resulting state after executing the test function.
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
-    pub condition: TestPassCondition,
+    pub condition: pkg::TestPassCondition,
+    /// Emitted `Recipt`s during the execution of the test.
+    pub logs: Vec<fuel_tx::Receipt>,
 }
 
-/// The possible conditions for a test result to be considered "passing".
-#[derive(Debug)]
-pub enum TestPassCondition {
-    ShouldRevert,
-    ShouldNotRevert,
-}
+const TEST_METADATA_SEED: u64 = 0x7E57u64;
 
 /// A package or a workspace that has been built, ready for test execution.
 pub enum BuiltTests {
@@ -91,6 +90,8 @@ pub struct Opts {
     pub binary_outfile: Option<String>,
     /// If set, outputs source file mapping in JSON format
     pub debug_outfile: Option<String>,
+    /// Build target to use.
+    pub build_target: BuildTarget,
     /// Name of the build profile to use.
     /// If it is not specified, forc will use debug build profile.
     pub build_profile: Option<String>,
@@ -102,16 +103,11 @@ pub struct Opts {
     pub time_phases: bool,
 }
 
-/// The required common metadata for building a transaction to deploy a contract or run a test.
-#[derive(Debug)]
-struct TxMetadata {
-    secret_key: SecretKey,
-    utxo_id: UtxoId,
-    amount: u64,
-    asset_id: AssetId,
-    tx_pointer: TxPointer,
-    maturity: u64,
-    block_height: tx::Word,
+/// The set of options provided for controlling logs printed for each test.
+#[derive(Default, Clone)]
+pub struct TestPrintOpts {
+    pub pretty_print: bool,
+    pub print_logs: bool,
 }
 
 /// The storage and the contract id (if a contract is being tested) for a test.
@@ -124,23 +120,21 @@ struct TestSetup {
 impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
     ///
-    /// If the `built` is a workspace, `opts` is patched for the members of the workspace that
-    /// is a `Contract` so that only that contract is re-built.
-    ///
-    /// If the `built` is a package, `PackageTests::from_built_pkg` is used.
-    pub(crate) fn from_built(built: Built, opts: Opts) -> anyhow::Result<BuiltTests> {
+    /// Contracts are already compiled once without tests included to do `CONTRACT_ID` injection. `built_contracts` map holds already compiled contracts so that they can be matched with their "tests included" version.
+    pub(crate) fn from_built(
+        built: Built,
+        built_contracts: HashMap<pkg::Pinned, BuiltPackage>,
+    ) -> anyhow::Result<BuiltTests> {
         let built = match built {
-            Built::Package(pkg) => BuiltTests::Package(PackageTests::from_built_pkg(*pkg, opts)?),
-            Built::Workspace(workspace) => {
-                let packages = workspace
+            Built::Package(built_pkg) => {
+                BuiltTests::Package(PackageTests::from_built_pkg(*built_pkg, &built_contracts)?)
+            }
+            Built::Workspace(built_workspace) => {
+                let pkg_tests = built_workspace
                     .into_values()
-                    .map(|built_pkg| {
-                        let path = built_pkg.manifest_file.path();
-                        let patched_opts = opts.clone().patch_opts(path);
-                        PackageTests::from_built_pkg(built_pkg, patched_opts)
-                    })
+                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, &built_contracts))
                     .collect::<anyhow::Result<_>>()?;
-                BuiltTests::Workspace(packages)
+                BuiltTests::Workspace(pkg_tests)
             }
         };
         Ok(built)
@@ -161,18 +155,21 @@ impl<'a> PackageTests {
 
     /// Construct a `PackageTests` from `BuiltPackage`.
     ///
-    /// If the built package is a `Contract`, this will re-compile the package with tests disabled.
-    fn from_built_pkg(built_pkg: BuiltPackage, opts: Opts) -> anyhow::Result<PackageTests> {
+    /// If the `BuiltPackage` is a contract, match the contract with the contract's
+    fn from_built_pkg(
+        built_pkg: BuiltPackage,
+        built_contracts: &HashMap<pkg::Pinned, BuiltPackage>,
+    ) -> anyhow::Result<PackageTests> {
         let tree_type = &built_pkg.tree_type;
         let package_test = match tree_type {
             sway_core::language::parsed::TreeType::Contract => {
-                let mut build_opts_without_tests = opts.into_build_opts();
-                build_opts_without_tests.tests = false;
-                let pkg_without_tests =
-                    pkg::build_with_options(build_opts_without_tests)?.expect_pkg()?;
+                let built_pkg_descriptor = &built_pkg.built_pkg_descriptor;
+                let built_contract_without_tests = built_contracts
+                    .get(&built_pkg_descriptor.pinned)
+                    .ok_or_else(|| anyhow::anyhow!("missing built contract without tests"))?;
                 let contract_to_test = ContractToTest {
                     tests_included: built_pkg,
-                    tests_excluded: pkg_without_tests,
+                    tests_excluded: built_contract_without_tests.clone(),
                 };
                 PackageTests::Contract(contract_to_test)
             }
@@ -183,34 +180,41 @@ impl<'a> PackageTests {
 
     /// Run all tests for this package and collect their results.
     pub(crate) fn run_tests(&self) -> anyhow::Result<TestedPackage> {
+        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
+        let mut visited_tests = HashSet::new();
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
             .entries
             .iter()
-            .filter(|entry| entry.is_test())
-            .map(|entry| {
-                let offset =
-                    u32::try_from(entry.imm).expect("test instruction offset out of range");
-                let name = entry.fn_name.clone();
+            .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+            .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
+            .map(|(entry, test_entry)| {
+                let offset = u32::try_from(entry.finalized.imm)
+                    .expect("test instruction offset out of range");
+                let name = entry.finalized.fn_name.clone();
                 let test_setup = self.setup()?;
-                let (state, duration) = exec_test(&pkg_with_tests.bytecode, offset, test_setup);
-                let test_decl_id = entry
-                    .test_decl_id
-                    .clone()
-                    .expect("test entry point is missing declaration id");
-                let span = test_decl_id.span();
-                let test_function_decl = pkg_with_tests
-                    .declaration_engine
-                    .get_function(test_decl_id, &span)
-                    .expect("declaration engine is missing function declaration for test");
-                let condition = test_pass_condition(&test_function_decl)?;
+                let (state, duration, receipts) =
+                    exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+
+                // Only retain `Log` and `LogData` receipts.
+                let logs = receipts
+                    .into_iter()
+                    .filter(|receipt| {
+                        matches!(receipt, fuel_tx::Receipt::Log { .. })
+                            || matches!(receipt, fuel_tx::Receipt::LogData { .. })
+                    })
+                    .collect();
+
+                let span = test_entry.span.clone();
+                let condition = test_entry.pass_condition.clone();
                 Ok(TestResult {
                     name,
                     duration,
                     span,
                     state,
                     condition,
+                    logs,
                 })
             })
             .collect::<anyhow::Result<_>>()?;
@@ -240,46 +244,30 @@ impl<'a> PackageTests {
     }
 }
 
-impl Distribution<TxMetadata> for Standard {
-    /// Samples a random sample for `TxMetadata` which contains both random and constant variables.
-    /// For random variables a random sampling is done. For constant fields a constant value that
-    /// can be used directly with `TransactionBuilder` (for test transactions) is set.
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TxMetadata {
-        TxMetadata {
-            secret_key: rng.gen(),
-            utxo_id: rng.gen(),
-            amount: 1,
-            asset_id: rng.gen(),
-            tx_pointer: rng.gen(),
-            maturity: 1,
-            block_height: (u32::MAX >> 1) as u64,
-        }
-    }
-}
-
 impl Opts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
+        let const_inject_map = std::collections::HashMap::new();
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
             minify: self.minify,
             binary_outfile: self.binary_outfile,
             debug_outfile: self.debug_outfile,
+            build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
             time_phases: self.time_phases,
             tests: true,
+            const_inject_map,
+            member_filter: Default::default(),
         }
     }
 
     /// Patch this set of test options, so that it will build the package at the given `path`.
-    pub(crate) fn patch_opts(self, path: &std::path::Path) -> Opts {
-        let mut opts = self;
-        let mut pkg_opts = opts.pkg;
-        pkg_opts.path = path.to_str().map(|path_str| path_str.to_string());
-        opts.pkg = pkg_opts;
-        opts
+    pub(crate) fn with_path(&mut self, path: &std::path::Path) -> Opts {
+        self.pkg.path = path.to_str().map(ToString::to_string);
+        self.clone()
     }
 }
 
@@ -320,6 +308,9 @@ impl TestResult {
 impl BuiltTests {
     /// The total number of tests.
     pub fn test_count(&self) -> usize {
+        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
+        let mut visited_tests = HashSet::new();
+
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
@@ -329,7 +320,8 @@ impl BuiltTests {
                 pkg.built_pkg_with_tests()
                     .entries
                     .iter()
-                    .filter(|e| e.is_test())
+                    .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                    .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
                     .count()
             })
             .sum()
@@ -341,12 +333,67 @@ impl BuiltTests {
     }
 }
 
+/// Build all contracts in the given buld plan without tests.
+fn build_contracts_without_tests(
+    opts: &Opts,
+    build_plan: &pkg::BuildPlan,
+) -> Vec<(pkg::Pinned, anyhow::Result<BuiltPackage>)> {
+    let manifest_map = build_plan.manifest_map();
+    build_plan
+        .member_pinned_pkgs()
+        .map(|pinned_pkg| {
+            let pkg_manifest = manifest_map
+                .get(&pinned_pkg.id())
+                .expect("missing manifest for member to test");
+            (pinned_pkg, pkg_manifest)
+        })
+        .filter(|(_, pkg_manifest)| matches!(pkg_manifest.program_type(), Ok(TreeType::Contract)))
+        .map(|(pinned_pkg, pkg_manifest)| {
+            let pkg_path = pkg_manifest.dir();
+            let build_opts_without_tests = opts
+                .clone()
+                .with_path(pkg_path)
+                .into_build_opts()
+                .include_tests(false);
+            let built_pkg =
+                pkg::build_with_options(build_opts_without_tests).and_then(|pkg| pkg.expect_pkg());
+            (pinned_pkg, built_pkg)
+        })
+        .collect()
+}
+
 /// First builds the package or workspace, ready for execution.
+///
+/// If the workspace contains contracts, those contracts will be built first without tests
+/// in order to determine their `CONTRACT_ID`s and enable contract calling.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.clone().into_build_opts();
-    let built = pkg::build_with_options(build_opts)?;
-    let built_tests = BuiltTests::from_built(built, opts)?;
-    Ok(built_tests)
+
+    let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
+    let mut const_inject_map = HashMap::new();
+    let mut built_contracts = HashMap::new();
+    let built_contracts_without_tests = build_contracts_without_tests(&opts, &build_plan);
+    for (pinned_contract, built_contract) in built_contracts_without_tests {
+        let built_contract = built_contract?;
+        let contract_id = pkg::contract_id(&built_contract, &fuel_tx::Salt::zeroed());
+        built_contracts.insert(pinned_contract.clone(), built_contract);
+
+        // Construct namespace with contract id
+        let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
+        let contract_id_value = format!("0x{contract_id}");
+        let contract_id_constant = ConfigTimeConstant {
+            r#type: "b256".to_string(),
+            value: contract_id_value.clone(),
+            public: true,
+        };
+        let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
+        const_inject_map.insert(pinned_contract, constant_declarations);
+    }
+
+    // Injection map is collected in the previous pass, we should build the workspace/package with injection map.
+    let build_opts_with_injection = build_opts.const_injection_map(const_inject_map);
+    let built = pkg::build_with_options(build_opts_with_injection)?;
+    BuiltTests::from_built(built, built_contracts)
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
@@ -361,33 +408,30 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
     let salt = tx::Salt::zeroed();
     let contract_id = contract.id(&salt, &root, &state_root);
-    // TODO: Remove this prompt once https://github.com/FuelLabs/sway/issues/3673 is addressed.
-    println!(
-        "      Deploying contract with id {:?} for testing",
-        contract_id
-    );
 
     // Setup the interpreter for deployment.
     let params = tx::ConsensusParameters::default();
     let storage = vm::storage::MemoryStorage::default();
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Create the deployment transaction.
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
-    let metadata: TxMetadata = rng.gen();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+    // Prepare the transaction metadata.
+    let secret_key = rng.gen();
+    let utxo_id = rng.gen();
+    let amount = 1;
+    let maturity = 1;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let block_height = (u32::MAX >> 1) as u64;
 
     let tx = tx::TransactionBuilder::create(bytecode.into(), salt, storage_slots)
-        .add_unsigned_coin_input(
-            metadata.secret_key,
-            metadata.utxo_id,
-            metadata.amount,
-            metadata.asset_id,
-            metadata.tx_pointer,
-            metadata.maturity,
-        )
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
-        .maturity(metadata.maturity)
-        .finalize_checked(metadata.block_height, &params);
+        .maturity(maturity)
+        .finalize_checked(block_height, &params, &GasCosts::default());
 
     // Deploy the contract.
     interpreter.transact(tx)?;
@@ -396,26 +440,6 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
         storage: storage_after_deploy.clone(),
         contract_id: Some(contract_id),
     })
-}
-
-fn test_pass_condition(
-    test_function_decl: &TyFunctionDeclaration,
-) -> anyhow::Result<TestPassCondition> {
-    let test_args: HashSet<String> = test_function_decl
-        .attributes
-        .get(&AttributeKind::Test)
-        .expect("test declaration is missing test attribute")
-        .iter()
-        .flat_map(|attr| attr.args.iter().map(|arg| arg.to_string()))
-        .collect();
-    let test_name = &test_function_decl.name;
-    if test_args.is_empty() {
-        Ok(TestPassCondition::ShouldNotRevert)
-    } else if test_args.get("should_revert").is_some() {
-        Ok(TestPassCondition::ShouldRevert)
-    } else {
-        anyhow::bail!("Invalid test argument(s) for test: {test_name}.")
-    }
 }
 
 /// Build the given package and run its tests, returning the results.
@@ -455,7 +479,7 @@ fn run_tests(built: BuiltTests) -> anyhow::Result<Tested> {
 fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
     // TODO: Standardize this or add metadata to bytecode.
     const PROGRAM_START_INST_OFFSET: u32 = 6;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Opcode::LEN;
+    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
 
     // If our desired entry point is the program start, no need to jump.
     if test_offset == PROGRAM_START_INST_OFFSET {
@@ -463,7 +487,7 @@ fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u
     }
 
     // Create the jump instruction and splice it into the bytecode.
-    let ji = Opcode::JI(test_offset);
+    let ji = fuel_asm::op::ji(test_offset);
     let ji_bytes = ji.to_bytes();
     let start = PROGRAM_START_BYTE_OFFSET;
     let end = start + ji_bytes.len();
@@ -477,7 +501,11 @@ fn exec_test(
     bytecode: &[u8],
     test_offset: u32,
     test_setup: TestSetup,
-) -> (vm::state::ProgramState, std::time::Duration) {
+) -> (
+    vm::state::ProgramState,
+    std::time::Duration,
+    Vec<fuel_tx::Receipt>,
+) {
     let storage = test_setup.storage;
     let contract_id = test_setup.contract_id;
 
@@ -486,20 +514,22 @@ fn exec_test(
 
     // Create a transaction to execute the test function.
     let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0x7E57u64);
-    let metadata: TxMetadata = rng.gen();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+    // Prepare the transaction metadata.
+    let secret_key = rng.gen();
+    let utxo_id = rng.gen();
+    let amount = 1;
+    let maturity = 1;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let block_height = (u32::MAX >> 1) as u64;
+
     let params = tx::ConsensusParameters::default();
     let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(
-            metadata.secret_key,
-            metadata.utxo_id,
-            metadata.amount,
-            metadata.asset_id,
-            metadata.tx_pointer,
-            0,
-        )
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, 0)
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(metadata.maturity)
+        .maturity(maturity)
         .clone();
     if let Some(contract_id) = contract_id {
         tx.add_input(tx::Input::Contract {
@@ -515,14 +545,17 @@ fn exec_test(
             state_root: tx::Bytes32::zeroed(),
         });
     }
-    let tx = tx.finalize_checked(metadata.block_height, &params);
+    let tx = tx.finalize_checked(block_height, &params, &GasCosts::default());
 
-    let mut interpreter = vm::interpreter::Interpreter::with_storage(storage, params);
+    let mut interpreter =
+        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Execute and return the result.
     let start = std::time::Instant::now();
     let transition = interpreter.transact(tx).unwrap();
     let duration = start.elapsed();
     let state = *transition.state();
-    (state, duration)
+    let receipts = transition.receipts().to_vec();
+
+    (state, duration, receipts)
 }

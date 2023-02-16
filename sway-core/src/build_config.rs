@@ -1,8 +1,21 @@
 use std::{path::PathBuf, sync::Arc};
 
+use serde::{Deserialize, Serialize};
+
+#[derive(
+    Clone, Copy, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize, clap::ValueEnum,
+)]
+pub enum BuildTarget {
+    #[default]
+    Fuel,
+    EVM,
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
+    // Build target for code generation.
+    pub(crate) build_target: BuildTarget,
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
     pub(crate) canonical_root_module: Arc<PathBuf>,
@@ -25,6 +38,7 @@ impl BuildConfig {
     pub fn root_from_file_name_and_manifest_path(
         root_module: PathBuf,
         canonical_manifest_dir: PathBuf,
+        build_target: BuildTarget,
     ) -> Self {
         assert!(
             canonical_manifest_dir.has_root(),
@@ -44,6 +58,7 @@ impl BuildConfig {
             }
         };
         Self {
+            build_target,
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: false,
             print_intermediate_asm: false,

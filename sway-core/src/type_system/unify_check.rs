@@ -96,8 +96,8 @@ impl<'a> UnifyCheck<'a> {
             return true;
         }
 
-        let left = self.engines.te().look_up_type_id(left);
-        let right = self.engines.te().look_up_type_id(right);
+        let left = self.engines.te().get(left);
+        let right = self.engines.te().get(right);
         match (left, right) {
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
@@ -147,11 +147,11 @@ impl<'a> UnifyCheck<'a> {
 
             (
                 Custom {
-                    name: l_name,
+                    call_path: l_name,
                     type_arguments: l_type_args,
                 },
                 Custom {
-                    name: r_name,
+                    call_path: r_name,
                     type_arguments: r_type_args,
                 },
             ) => {
@@ -178,12 +178,12 @@ impl<'a> UnifyCheck<'a> {
             ) if rvs.is_empty() => true,
             (
                 Enum {
-                    name: l_name,
+                    call_path: l_name,
                     variant_types: l_variant_types,
                     type_parameters: l_type_parameters,
                 },
                 Enum {
-                    name: r_name,
+                    call_path: r_name,
                     variant_types: r_variant_types,
                     type_parameters: r_type_parameters,
                 },
@@ -204,16 +204,18 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
             }
             (
                 Struct {
-                    name: l_name,
+                    call_path: l_name,
                     fields: l_fields,
                     type_parameters: l_type_parameters,
                 },
                 Struct {
-                    name: r_name,
+                    call_path: r_name,
                     fields: r_fields,
                     type_parameters: r_type_parameters,
                 },
@@ -228,7 +230,9 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix
+                    && l_names == r_names
+                    && self.check_multiple(&l_types, &r_types)
             }
 
             // For contract callers, they can be coerced if they have the same
@@ -347,11 +351,11 @@ impl<'a> UnifyCheck<'a> {
         // invariant 3. The elements of `left` satisfy the constraints of `right`
         let left_types = left
             .iter()
-            .map(|x| self.engines.te().look_up_type_id(*x))
+            .map(|x| self.engines.te().get(*x))
             .collect::<Vec<_>>();
         let right_types = right
             .iter()
-            .map(|x| self.engines.te().look_up_type_id(*x))
+            .map(|x| self.engines.te().get(*x))
             .collect::<Vec<_>>();
         let mut constraints = vec![];
         for i in 0..(right_types.len() - 1) {

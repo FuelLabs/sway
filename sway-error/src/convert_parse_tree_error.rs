@@ -9,6 +9,8 @@ pub enum ConvertParseTreeError {
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
     GenericsNotSupportedHere { span: Span },
+    #[error("multiple generics are not supported")]
+    MultipleGenericsNotSupported { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -81,6 +83,10 @@ pub enum ConvertParseTreeError {
     DuplicateEnumVariant { name: Ident, span: Span },
     #[error("storage field \"{name}\" already declared")]
     DuplicateStorageField { name: Ident, span: Span },
+    #[error("configurable \"{name}\" already declared")]
+    DuplicateConfigurable { name: Ident, span: Span },
+    #[error("Multiple configurable blocks detected in this module")]
+    MultipleConfigurableBlocksInModule { span: Span },
     #[error("struct field \"{name}\" already declared")]
     DuplicateStructField { name: Ident, span: Span },
     #[error("identifier \"{name}\" bound more than once in this parameter list")]
@@ -109,6 +115,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -145,6 +152,8 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::RecursiveType { span } => span.clone(),
             ConvertParseTreeError::DuplicateEnumVariant { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateStorageField { span, .. } => span.clone(),
+            ConvertParseTreeError::DuplicateConfigurable { span, .. } => span.clone(),
+            ConvertParseTreeError::MultipleConfigurableBlocksInModule { span } => span.clone(),
             ConvertParseTreeError::DuplicateStructField { span, .. } => span.clone(),
             ConvertParseTreeError::DuplicateParameterIdentifier { span, .. } => span.clone(),
             ConvertParseTreeError::SelfParameterNotAllowedForFn { span, .. } => span.clone(),

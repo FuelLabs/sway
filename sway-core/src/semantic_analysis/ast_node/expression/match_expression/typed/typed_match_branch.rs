@@ -26,7 +26,7 @@ impl ty::TyMatchBranch {
         } = branch;
 
         let type_engine = ctx.type_engine;
-        let declaration_engine = ctx.declaration_engine;
+        let decl_engine = ctx.decl_engine;
 
         // type check the scrutinee
         let typed_scrutinee = check!(
@@ -52,7 +52,7 @@ impl ty::TyMatchBranch {
         // insert it into the branch namespace, and add it to a block of code statements
         let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
         for (left_decl, right_decl) in match_decl_map.into_iter() {
-            let type_ascription = right_decl.return_type;
+            let type_ascription = right_decl.return_type.into();
             let return_type = right_decl.return_type;
             let span = left_decl.span().clone();
             let var_decl =
@@ -62,7 +62,6 @@ impl ty::TyMatchBranch {
                     mutability: ty::VariableMutability::Immutable,
                     return_type,
                     type_ascription,
-                    type_ascription_span: None,
                 }));
             ctx.namespace.insert_symbol(left_decl, var_decl.clone());
             code_block_contents.push(ty::TyAstNode {
@@ -73,9 +72,9 @@ impl ty::TyMatchBranch {
 
         // type check the branch result
         let typed_result = {
-            let ctx = ctx.by_ref().with_type_annotation(
-                type_engine.insert_type(declaration_engine, TypeInfo::Unknown),
-            );
+            let ctx = ctx
+                .by_ref()
+                .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
             check!(
                 ty::TyExpression::type_check(ctx, result),
                 return err(warnings, errors),
@@ -85,7 +84,7 @@ impl ty::TyMatchBranch {
         };
 
         // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts(declaration_engine, true) {
+        if !typed_result.deterministically_aborts(decl_engine, true) {
             append!(
                 ctx.unify_with_self(typed_result.return_type, &typed_result.span),
                 warnings,
