@@ -187,6 +187,35 @@ impl Ord for u64 {
 }
 </code></pre>
 <p>To require a supertrait, add a <code>:</code> after the trait name and then list the traits you would like to require and separate them with a <code>+</code>.</p>
+<h3 id="abi-supertraits"><a class="header" href="#abi-supertraits">ABI supertraits</a></h3>
+<p>ABIs can also have supertrait annotations:</p>
+<pre><code class="language-sway">contract;
+
+trait ABIsupertrait {
+    fn foo();
+}
+
+abi MyAbi : ABIsupertrait {
+    fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
+}
+
+impl ABIsupertrait for Contract {
+    fn foo() {}
+}
+
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()     // supertrait method usage
+    }
+}
+</code></pre>
+<p>The implementation of <code>MyAbi</code> for <code>Contract</code> must also implement the <code>ABIsupertrait</code> trait. Methods in <code>ABIsupertrait</code> are not available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods, as shown in the example above.</p>
+<p>ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.</p>
 <h2 id="use-cases"><a class="header" href="#use-cases">Use Cases</a></h2>
 <h3 id="custom-types-structs-enums"><a class="header" href="#custom-types-structs-enums">Custom Types (structs, enums)</a></h3>
 <p>Often, libraries and APIs have interfaces that are abstracted over a type that implements a certain trait. It is up to the consumer of the interface to implement that trait for the type they wish to use with the interface. For example, let's take a look at a trait and an interface built off of it.</p>
