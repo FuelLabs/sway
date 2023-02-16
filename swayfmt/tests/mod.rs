@@ -840,7 +840,33 @@ fn main() {
 }
 
 #[test]
-fn doc_comments() {
+fn inner_doc_comments() {
+    check(
+        r#"script;
+
+enum Color {
+//! Color is a Sway enum
+    blue: (),
+    red: ()
+}
+
+fn main() {
+}"#,
+        r#"script;
+
+enum Color {
+    //! Color is a Sway enum
+    blue: (),
+    red: (),
+}
+
+fn main() {}
+"#,
+    );
+}
+
+#[test]
+fn outer_doc_comments() {
     check(
         r#"script;
 

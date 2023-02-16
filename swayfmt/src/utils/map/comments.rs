@@ -126,7 +126,7 @@ pub fn handle_comments(
     comment_map: &mut CommentMap,
 ) -> Result<(), FormatterError> {
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = parse_file(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?.value;
 
     // Actually find & insert the comments.
     add_comments(
