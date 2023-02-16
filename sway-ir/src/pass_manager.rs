@@ -288,7 +288,7 @@ impl PassGroup {
         self.0.push(PassOrGroup::Pass(pass));
     }
 
-    /// APpend a pass group.
+    /// Append a pass group.
     pub fn append_group(&mut self, group: PassGroup) {
         self.0.push(PassOrGroup::Group(group));
     }
