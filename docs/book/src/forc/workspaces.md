@@ -30,6 +30,10 @@ Packages that are located within a workspace directory but are *not* contained w
 
 The `[patch]` section can be used to override any dependency in the workspace dependency graph. The usage is the same with package level `[patch]` section and details can be seen [here](./manifest_reference.md#the-patch-section).
 
+If a member of a workspace has a patch table in its package manifest, the workspace level patch declarations are merged with package level declarations. If there are conflicting declarations (patching the same source with different target) between workspace level patch table and a member's patch table, workspace level patch declarations.
+
+> **NOTE:** Workspace level patch declarations only apply to members declared in `members` field.
+
 Example:
 
 ```toml

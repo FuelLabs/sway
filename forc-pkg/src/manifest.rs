@@ -243,6 +243,9 @@ impl PackageManifestFile {
     /// Apply patch declarations from the workspace (which declares this package manifest as a
     /// member) to this package manifest.
     ///
+    /// If there are conflicting patch declarations from `PackageManifestFile` and
+    /// `WorkspaceManifestFile`, the priority is given to workspace level declarations.
+    ///
     /// This checks whether there is such workspace present before attempting to apply patches so
     /// it is safe to use with standalone package manifests as well.
     pub fn with_workspace_patches(&self) -> Self {
