@@ -18,3 +18,4 @@ paste = "1.0"
 prettydiff = "0.6"
 
 [package.metadata.cargo-udeps.ignore]
+development = ["paste", "prettydiff"]
