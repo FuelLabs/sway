@@ -1,1 +1,2 @@
 category = "compile"
+validate_abi = true

@@ -95,12 +95,14 @@ impl TyProgram {
                     }
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
-                // itself.
+                // itself, except for ABI supertraits, which do not expose their methods to
+                // the user
                 TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) => {
                     let TyImplTrait {
                         methods,
                         implementing_for_type_id,
                         span,
+                        trait_decl_id,
                         ..
                     } = check!(
                         CompileResult::from(
@@ -111,10 +113,16 @@ impl TyProgram {
                         errors
                     );
                     if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
-                        for method_id in methods {
-                            match decl_engine.get_function(method_id, &span) {
-                                Ok(method) => abi_entries.push(method),
-                                Err(err) => errors.push(err),
+                        // add methods to JSON ABI only if they come from an ABI implementation
+                        // and not a (super)trait implementation for Contract
+                        if let Some(trait_decl_id) = trait_decl_id {
+                            if decl_engine.get_abi(trait_decl_id, &span).is_ok() {
+                                for method_id in methods {
+                                    match decl_engine.get_function(method_id, &span) {
+                                        Ok(method) => abi_entries.push(method),
+                                        Err(err) => errors.push(err),
+                                    }
+                                }
                             }
                         }
                     }
