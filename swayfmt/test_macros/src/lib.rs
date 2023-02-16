@@ -8,10 +8,10 @@
 /// # use paste::paste;
 /// # use prettydiff::{basic::DiffOp, diff_lines};
 /// # use test_macros::fmt_test_item; fn main() {
-///       // test suite name          known good
+///               // test suite name       known good
 ///fmt_test_item!(field_proj_foobar       "foo.bar.baz.quux",
-///       // test case name           should format to known good
-///          intermediate_whitespace "foo . bar . baz . quux");
+///               // test case name        should format to known good
+///               intermediate_whitespace  "foo . bar . baz . quux");
 /// # }
 /// ```
 #[macro_export]
@@ -32,10 +32,10 @@ macro_rules! fmt_test_item {
 /// # use paste::paste;
 /// # use prettydiff::{basic::DiffOp, diff_lines};
 /// # use test_macros::fmt_test_expr; fn main() {
-///       // test suite name          known good
+///               // test suite name       known good
 ///fmt_test_expr!(field_proj_foobar       "foo.bar.baz.quux",
-///       // test case name           should format to known good
-///          intermediate_whitespace "foo . bar . baz . quux");
+///               // test case name        should format to known good
+///               intermediate_whitespace  "foo . bar . baz . quux");
 /// # }
 /// ```
 #[macro_export]
