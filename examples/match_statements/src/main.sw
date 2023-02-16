@@ -38,8 +38,8 @@ fn main(num: u64) -> u64 {
     };
 
 // match expression used for a return
-     let outsideTemp = Weather::Sunny;
-        match outsideTemp {
+    let outsideTemp = Weather::Sunny;
+    match outsideTemp {
         Weather::Sunny => 80,
         Weather::Rainy => 50,
         Weather::Cloudy => 60,
