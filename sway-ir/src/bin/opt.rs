@@ -1,4 +1,7 @@
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::{
+    io::{BufReader, BufWriter, Read, Write},
+    process::exit,
+};
 
 use anyhow::anyhow;
 use sway_ir::{register_known_passes, PassGroup, PassManager};
@@ -106,6 +109,14 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                 match opt.as_str() {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
+                    "-h" => {
+                        print!(
+                            "Usage: opt [passname...] -i input_file -o output_file\n\n{}",
+                            self.pass_mgr.help_text()
+                        );
+                        print!("\n\nIn the absense of -i or -o options, input is taken from stdin and output is printed to stdout.\n");
+                        exit(0);
+                    }
 
                     name => {
                         if matches!(opt.chars().next(), Some('-')) {

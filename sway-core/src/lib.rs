@@ -32,7 +32,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager};
+use sway_ir::{
+    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
+    MODULEPRINTER_NAME,
+};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -472,7 +475,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+    let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+    if build_config.print_ir {
+        pass_group.append_pass(MODULEPRINTER_NAME);
+    }
 
     // Run the passes.
     let res = CompileResult::with_handler(|handler| {
@@ -486,10 +492,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         }
     });
     check!(res, return err(warnings, errors), warnings, errors);
-
-    if build_config.print_ir {
-        tracing::info!("{}", ir);
-    }
 
     let final_asm = check!(
         compile_ir_to_asm(&ir, Some(build_config)),
