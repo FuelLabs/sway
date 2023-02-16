@@ -259,7 +259,7 @@ impl ty::TyDeclaration {
                     ctx.namespace.insert_trait_implementation(
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for_type_id,
+                        impl_trait.implementing_for.type_id,
                         &impl_trait.methods,
                         &impl_trait.span,
                         false,
@@ -292,7 +292,7 @@ impl ty::TyDeclaration {
                     ctx.namespace.insert_trait_implementation(
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for_type_id,
+                        impl_trait.implementing_for.type_id,
                         &impl_trait.methods,
                         &impl_trait.span,
                         true,
