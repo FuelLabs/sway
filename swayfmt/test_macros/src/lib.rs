@@ -41,15 +41,6 @@ macro_rules! fmt_test_expr {
 /// Convenience macro for generating test cases. This macro should be wrapped by another macro
 /// that passes in a Sway AST type, eg. Expr.
 ///
-/// Provide a known good, and then some named test cases that should evaluate to
-/// that known good. e.g.:
-/// ```
-///       // test suite name          known good
-///fmt_test!(field_proj_foobar       "foo.bar.baz.quux",
-///       // test case name           should format to known good
-///          intermediate_whitespace "foo . bar . baz . quux");
-/// ```
-///
 /// This macro is not meant to be called directly, but through fmt_test_<AST_KIND>!,
 /// where <AST_KIND> is a valid Sway AST type.
 #[macro_export]
