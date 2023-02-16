@@ -16,7 +16,8 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    BinaryOpKind, BlockArgument,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
+    Pass, PassMutability, ScopedPass,
 };
 
 #[derive(Debug)]
@@ -96,6 +97,40 @@ pub fn to_string(context: &Context) -> String {
         })
         .append(md_namer.to_doc(context))
         .build()
+}
+
+pub struct ModulePrinterResult;
+impl AnalysisResultT for ModulePrinterResult {}
+
+/// Print a module stdout.
+pub fn module_printer(
+    context: &Context,
+    _analyses: &AnalysisResults,
+    module: Module,
+) -> Result<AnalysisResult, IrError> {
+    let mut md_namer = MetadataNamer::default();
+    print!(
+        "{}",
+        module_to_doc(
+            context,
+            &mut md_namer,
+            context.modules.get(module.0).unwrap()
+        )
+        .append(md_namer.to_doc(context))
+        .build()
+    );
+    Ok(Box::new(ModulePrinterResult))
+}
+
+pub const MODULEPRINTER_NAME: &str = "module_printer";
+
+pub fn create_module_printer_pass() -> Pass {
+    Pass {
+        name: MODULEPRINTER_NAME,
+        descr: "Print module to stdout",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer)),
+    }
 }
 
 fn module_to_doc<'a>(

@@ -21,12 +21,12 @@ impl AllocatedProgram {
         let entries = self
             .entries
             .into_iter()
-            .map(|(selector, label, name, test_decl_id)| {
+            .map(|(selector, label, name, test_decl_ref)| {
                 let offset = label_offsets
                     .remove(&label)
                     .expect("no offset for entry")
                     .offs;
-                (selector, offset, name, test_decl_id)
+                (selector, offset, name, test_decl_ref)
             })
             .collect();
 

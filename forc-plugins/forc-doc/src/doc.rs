@@ -26,7 +26,7 @@ impl Document {
     pub(crate) fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDeclaration::StorageDeclaration;
         let name = match &self.item_body.ty_decl {
-            StorageDeclaration(_) => None,
+            StorageDeclaration { .. } => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 

@@ -68,9 +68,12 @@ impl ty::TyCodeBlock {
                         .resolve_symbol(&never_mod_path, &never_ident)
                         .value;
 
-                    if let Some(ty::TyDeclaration::EnumDeclaration(never_decl_id)) = never_decl_opt
+                    if let Some(ty::TyDeclaration::EnumDeclaration {
+                        decl_id: never_decl_id,
+                        ..
+                    }) = never_decl_opt
                     {
-                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id.clone(), &span) {
+                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id, &span) {
                             return never_decl.create_type_id(ctx.engines());
                         }
                     }

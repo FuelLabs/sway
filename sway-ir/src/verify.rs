@@ -14,8 +14,33 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     value::{Value, ValueDatum},
-    BinaryOpKind, BlockArgument, BranchToWithArgs, TypeOption,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
+    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption,
 };
+
+pub struct ModuleVerifierResult;
+impl AnalysisResultT for ModuleVerifierResult {}
+
+/// Verify module
+pub fn module_verifier(
+    context: &Context,
+    _analyses: &AnalysisResults,
+    module: Module,
+) -> Result<AnalysisResult, IrError> {
+    context.verify_module(context.modules.get(module.0).unwrap())?;
+    Ok(Box::new(ModuleVerifierResult))
+}
+
+pub const MODULEVERIFIER_NAME: &str = "module_verifier";
+
+pub fn create_module_verifier_pass() -> Pass {
+    Pass {
+        name: MODULEVERIFIER_NAME,
+        descr: "Verify module",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
+    }
+}
 
 impl Context {
     /// Verify the contents of this [`Context`] is valid.

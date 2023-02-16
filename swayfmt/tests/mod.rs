@@ -840,7 +840,33 @@ fn main() {
 }
 
 #[test]
-fn doc_comments() {
+fn inner_doc_comments() {
+    check(
+        r#"script;
+
+enum Color {
+//! Color is a Sway enum
+    blue: (),
+    red: ()
+}
+
+fn main() {
+}"#,
+        r#"script;
+
+enum Color {
+    //! Color is a Sway enum
+    blue: (),
+    red: (),
+}
+
+fn main() {}
+"#,
+    );
+}
+
+#[test]
+fn outer_doc_comments() {
     check(
         r#"script;
 
@@ -1322,6 +1348,62 @@ fn contents() {
     if true {}
 }
 fn empty() {}
+"#,
+    );
+}
+
+#[test]
+fn abi_supertrait() {
+    check(
+        r#"contract;
+
+trait ABIsupertrait {
+    fn foo();
+}
+
+abi MyAbi : ABIsupertrait {
+    fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
+}
+
+impl ABIsupertrait for Contract {
+    fn foo() {}
+}
+
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()     // supertrait method usage
+    }
+}
+"#,
+        r#"contract;
+
+trait ABIsupertrait {
+    fn foo();
+}
+
+abi MyAbi : ABIsupertrait {
+    fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
+}
+
+impl ABIsupertrait for Contract {
+    fn foo() {}
+}
+
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()     // supertrait method usage
+    }
+}
 "#,
     );
 }
