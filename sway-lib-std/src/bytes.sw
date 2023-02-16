@@ -636,7 +636,7 @@ impl Bytes {
     /// assert(bytes.len() == first_length + second_length);
     /// assert(bytes.capacity() == first_length + first_length);
     /// ```
-    pub fn append(ref mut self, ref other: self) {
+    pub fn append(ref mut self, ref mut other: self) {
         if other.len == 0 {
             return
         };
