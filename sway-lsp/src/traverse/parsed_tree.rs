@@ -24,7 +24,7 @@ use sway_core::{
             StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
             TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
-        Literal,
+        CallPathTree, Literal,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
@@ -106,7 +106,7 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
-    fn handle_function_declation(&self, func: &FunctionDeclaration) {
+    fn handle_function_declaration(&self, func: &FunctionDeclaration) {
         let token = Token::from_parsed(
             AstToken::FunctionDeclaration(func.clone()),
             SymbolKind::Function,
@@ -161,7 +161,7 @@ impl<'a> ParsedTree<'a> {
                 self.handle_expression(&variable.body);
             }
             Declaration::FunctionDeclaration(func) => {
-                self.handle_function_declation(func);
+                self.handle_function_declaration(func);
             }
             Declaration::TraitDeclaration(trait_decl) => {
                 self.tokens.insert(
@@ -177,7 +177,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &trait_decl.methods {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
 
                 for supertrait in &trait_decl.supertraits {
@@ -285,7 +285,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_trait.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::ImplSelf(impl_self) => {
@@ -315,7 +315,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for func_dec in &impl_self.functions {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {
@@ -823,29 +823,26 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
             }
-            TypeInfo::Custom {
-                call_path,
-                type_arguments,
-            } => {
-                if let Some(type_args) = type_arguments {
-                    for type_arg in type_args {
-                        self.collect_type_arg(type_arg, &token);
-                    }
-                }
-
-                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
-                token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(call_path.suffix.span())), token);
-            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+
+                if let Some(tree) = &type_argument.call_path_tree {
+                    self.collect_call_path_tree(tree, &token);
+                }
             }
+        }
+    }
+
+    fn collect_call_path_tree(&self, tree: &CallPathTree, token: &Token) {
+        for ident in &tree.call_path.prefixes {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&tree.call_path.suffix), token.clone());
+
+        for child in &tree.children {
+            self.collect_call_path_tree(child, token);
         }
     }
 

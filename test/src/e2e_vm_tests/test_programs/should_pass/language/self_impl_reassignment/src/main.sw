@@ -39,10 +39,7 @@ impl E {
 }
 
 fn main() -> bool {
-    let mut a = A {
-        a: 0,
-        b: 0,
-    };
+    let mut a = A { a: 0, b: 0 };
 
     a.f();
     assert(a.a == 42);
@@ -61,7 +58,7 @@ fn main() -> bool {
         E::X(42) => {},
         _ => revert(0),
     };
-    
+
     e.j(4);
     match e {
         E::Y(46) => {},
@@ -73,6 +70,6 @@ fn main() -> bool {
         E::X(51) => {},
         _ => revert(0),
     };
-   
+
     true
 }

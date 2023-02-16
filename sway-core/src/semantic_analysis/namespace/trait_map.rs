@@ -1,10 +1,13 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     engine_threading::*,
     error::*,
     language::CallPath,
@@ -23,10 +26,10 @@ impl PartialEqWithEngines for TraitSuffix {
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
-            .cmp(&rhs.name)
-            .then_with(|| self.args.cmp(&rhs.args, type_engine))
+            .cmp(&other.name)
+            .then_with(|| self.args.cmp(&other.args, type_engine))
     }
 }
 
@@ -38,11 +41,11 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
         self.prefixes
-            .cmp(&rhs.prefixes)
-            .then_with(|| self.suffix.cmp(&rhs.suffix, type_engine))
-            .then_with(|| self.is_absolute.cmp(&rhs.is_absolute))
+            .cmp(&other.prefixes)
+            .then_with(|| self.suffix.cmp(&other.suffix, type_engine))
+            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
 
@@ -55,15 +58,15 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
-            .cmp(&rhs.name, type_engine)
-            .then_with(|| self.type_id.cmp(&rhs.type_id))
+            .cmp(&other.name, type_engine)
+            .then_with(|| self.type_id.cmp(&other.type_id))
     }
 }
 
 /// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
-type TraitMethods = im::HashMap<String, DeclId>;
+type TraitMethods = im::HashMap<String, DeclRef>;
 
 #[derive(Clone, Debug)]
 struct TraitEntry {
@@ -98,7 +101,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclId],
+        methods: &[DeclRef],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -110,8 +113,8 @@ impl TraitMap {
         let decl_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
-        for decl_id in methods.iter() {
-            trait_methods.insert(decl_id.name.to_string(), decl_id.clone());
+        for decl_ref in methods.iter() {
+            trait_methods.insert(decl_ref.name.to_string(), decl_ref.clone());
         }
 
         // check to see if adding this trait will produce a conflicting definition
@@ -185,12 +188,12 @@ impl TraitMap {
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset && (traits_are_subset || is_impl_self) {
-                for (name, decl_id) in trait_methods.iter() {
+                for (name, decl_ref) in trait_methods.iter() {
                     if map_trait_methods.get(name).is_some() {
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
-                            func_name: decl_id.name.to_string(),
+                            func_name: decl_ref.name.to_string(),
                             type_implementing_for: engines.help_out(type_id).to_string(),
-                            span: decl_id.name.span(),
+                            span: decl_ref.name.span(),
                         });
                     }
                 }
@@ -581,15 +584,15 @@ impl TraitMap {
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
                         .into_iter()
-                        .map(|(name, decl_id)| {
-                            let mut decl = decl_engine.get(decl_id.clone());
+                        .map(|(name, decl_ref)| {
+                            let mut decl = decl_engine.get(&decl_ref);
                             decl.subst(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
                                 decl_engine
-                                    .insert_wrapper(decl_id.name.clone(), decl, decl_id.span())
-                                    .with_parent(decl_engine, decl_id),
+                                    .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
+                                    .with_parent(decl_engine, &decl_ref),
                             )
                         })
                         .collect();
@@ -618,7 +621,7 @@ impl TraitMap {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclId> {
+    ) -> Vec<DeclRef> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case
@@ -657,7 +660,7 @@ impl TraitMap {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclId> {
+    ) -> Vec<DeclRef> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case

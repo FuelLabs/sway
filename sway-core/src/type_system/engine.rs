@@ -411,11 +411,14 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::StructDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(
-                                decl_engine.get_struct(original_id, &call_path.span())
+                                decl_engine.get_struct(&original_id, &call_path.span())
                             ),
                             return err(warnings, errors),
                             warnings,
@@ -447,11 +450,14 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
                         // get the copy from the declaration engine
                         let mut new_copy = check!(
                             CompileResult::from(
-                                decl_engine.get_enum(original_id, &call_path.span())
+                                decl_engine.get_enum(&original_id, &call_path.span())
                             ),
                             return err(warnings, errors),
                             warnings,

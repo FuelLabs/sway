@@ -65,9 +65,13 @@ impl TyProgram {
         let mut fn_declarations = std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
+                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
+                    name,
+                    decl_id,
+                    decl_span,
+                }) => {
                     let func = check!(
-                        CompileResult::from(decl_engine.get_function(decl_id.clone(), &node.span)),
+                        CompileResult::from(decl_engine.get_function(decl_id, &node.span)),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -84,35 +88,38 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                    declarations.push(TyDeclaration::FunctionDeclaration {
+                        name: name.clone(),
+                        decl_id: *decl_id,
+                        decl_span: decl_span.clone(),
+                    });
                 }
-                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
-                    match decl_engine.get_constant(decl_id.clone(), &node.span) {
-                        Ok(config_decl) if config_decl.is_configurable => {
-                            configurables.push(config_decl)
-                        }
-                        _ => {}
+                TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
+                    decl_id,
+                    ..
+                }) => match decl_engine.get_constant(decl_id, &node.span) {
+                    Ok(config_decl) if config_decl.is_configurable => {
+                        configurables.push(config_decl)
                     }
-                }
+                    _ => {}
+                },
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself.
-                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait(decl_id)) => {
+                TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
                     let TyImplTrait {
                         methods,
                         implementing_for_type_id,
                         span,
                         ..
                     } = check!(
-                        CompileResult::from(
-                            decl_engine.get_impl_trait(decl_id.clone(), &node.span)
-                        ),
+                        CompileResult::from(decl_engine.get_impl_trait(decl_id, &node.span)),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
-                        for method_id in methods {
-                            match decl_engine.get_function(method_id, &span) {
+                        for method_ref in methods {
+                            match decl_engine.get_function(&method_ref, &span) {
                                 Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }
@@ -153,12 +160,12 @@ impl TyProgram {
             // `storage` declarations are not allowed in non-contracts
             let storage_decl = declarations
                 .iter()
-                .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration(_)));
+                .find(|decl| matches!(decl, TyDeclaration::StorageDeclaration { .. }));
 
-            if let Some(TyDeclaration::StorageDeclaration(decl_id)) = storage_decl {
+            if let Some(TyDeclaration::StorageDeclaration { decl_span, .. }) = storage_decl {
                 errors.push(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: decl_id.span(),
+                    span: decl_span.clone(),
                 });
             }
         }
@@ -168,10 +175,8 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDeclaration::StorageDeclaration(decl_id) = decl {
-                        if let Ok(storage_decl) =
-                            decl_engine.get_storage(decl_id.clone(), &decl_id.span())
-                        {
+                    if let TyDeclaration::StorageDeclaration { decl_id, decl_span } = decl {
+                        if let Ok(storage_decl) = decl_engine.get_storage(decl_id, decl_span) {
                             for field in storage_decl.fields.iter() {
                                 let type_info = ty_engine.get(field.type_argument.type_id);
                                 let type_info_str = engines.help_out(&type_info).to_string();
@@ -300,7 +305,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRef)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
@@ -463,8 +468,8 @@ fn disallow_impure_functions(
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration(decl_id) => {
-                match decl_engine.get_function(decl_id.clone(), &decl.span()) {
+            TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                match decl_engine.get_function(decl_id, &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {
                         errs.push(err);

@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{decl_engine::DeclId, engine_threading::*, language::*, transform, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, language::*, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ pub struct TraitDeclaration {
 #[derive(Debug, Clone)]
 pub struct Supertrait {
     pub name: CallPath,
-    pub decl_id: Option<DeclId>,
+    pub decl_ref: Option<DeclRef>,
 }
 
 impl Spanned for Supertrait {
@@ -32,15 +32,15 @@ impl Spanned for Supertrait {
 impl EqWithEngines for Supertrait {}
 impl PartialEqWithEngines for Supertrait {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name && self.decl_id.eq(&other.decl_id, engines)
+        self.name == other.name && self.decl_ref.eq(&other.decl_ref, engines)
     }
 }
 
 impl HashWithEngines for Supertrait {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let Supertrait { name, decl_id } = self;
+        let Supertrait { name, decl_ref } = self;
         name.hash(state);
-        decl_id.hash(state, engines);
+        decl_ref.hash(state, engines);
     }
 }
 
