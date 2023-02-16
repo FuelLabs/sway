@@ -66,7 +66,7 @@ ABIs can also have supertrait annotations:
 {{#include ../../../../examples/abi_supertraits/src/main.sw}}
 ```
 
-The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertrait` trait. Methods in `ABIsupertrait` are not be available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods as follows as shown in the example above.
+The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertrait` trait. Methods in `ABIsupertrait` are not available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods, as shown in the example above.
 
 ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
 
