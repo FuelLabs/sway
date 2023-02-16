@@ -120,7 +120,7 @@ impl TyProgram {
                         errors
                     );
                     if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
-                        // add methods to JSON ABI only if they come from an ABI implementation
+                        // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
                             if decl_engine.get_abi(&trait_decl_ref, &span).is_ok() {
