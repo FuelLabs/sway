@@ -1,7 +1,7 @@
 use forc_tracing::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use test_macros::{fmt_test, fmt_test_inner, fmt_test_item};
+use test_macros::fmt_test_item;
 
 fmt_test_item!(  impl_with_nested_items
 "impl AuthTesting for Contract {

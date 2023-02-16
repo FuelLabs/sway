@@ -3,7 +3,7 @@
 use forc_tracing::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
-use test_macros::{fmt_test, fmt_test_expr, fmt_test_inner};
+use test_macros::fmt_test_expr;
 
 fmt_test_expr!(  literal "5", extra_whitespace "  5 "
 );

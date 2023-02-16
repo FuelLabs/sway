@@ -13,7 +13,7 @@
 #[macro_export]
 macro_rules! fmt_test_item {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
-        fmt_test!(sway_ast::ItemKind, $scope $desired_output,
+        $crate::fmt_test!(sway_ast::ItemKind, $scope $desired_output,
                     $($name $y)+);
             };
 }
@@ -33,7 +33,7 @@ macro_rules! fmt_test_item {
 #[macro_export]
 macro_rules! fmt_test_expr {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
-        fmt_test!(sway_ast::Expr, $scope $desired_output,
+        $crate::fmt_test!(sway_ast::Expr, $scope $desired_output,
                     $($name $y)+);
             };
 }
@@ -46,7 +46,7 @@ macro_rules! fmt_test_expr {
 #[macro_export]
 macro_rules! fmt_test {
     ($ty:expr, $scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
-        fmt_test_inner!($ty, $scope $desired_output,
+        $crate::fmt_test_inner!($ty, $scope $desired_output,
                                 $($name $y)+
                                 ,
                                 remove_trailing_whitespace format!("{} \n\n\t ", $desired_output).as_str(),
