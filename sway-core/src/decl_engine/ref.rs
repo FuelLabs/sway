@@ -1,11 +1,34 @@
+//! Represents the use of / syntactic reference to a declaration.
+//!
+//! ### Is a [DeclRef] effectively the same as a [DeclId]?
+//!
+//! A [DeclRef] is a smart wrapper around a [DeclId] and canonically represents
+//! the use / syntactic reference to a declaration. This does not include the
+//! syntactic locations for where declarations are declared though. For example,
+//! function declaration `fn my_function() { .. }` would just create a [DeclId],
+//! while function application `my_function()` would create a [DeclRef].
+//!
+//! [DeclRef] contains a [DeclId] field `id`, as well as some additional helpful
+//! information. These additional fields include an [Ident] for the declaration
+//! `name` and a [Span] for the declaration `decl_span`. Note, `name` and
+//! `decl_span` can also be found by using `id` to get the declaration itself
+//! from the [DeclEngine]. But the [DeclRef] type allows Sway compiler writers
+//! to reduce unnecessary lookups into the [DeclEngine] when only the `name` or
+//! `decl_span` is desired.
+//!
+//! It is recommend to use [DeclId] for cases like function declaration
+//! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
+//! application `my_function()`.
+
 use std::hash::Hasher;
 
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{decl_engine::*, engine_threading::*, language::ty, type_system::*};
 
-/// A reference to the use of a declaration. A smart-wrapper around a [DeclId],
-/// containing additional information about a declaration.
+/// Represents the use of / syntactic reference to a declaration. A
+/// smart-wrapper around a [DeclId], containing additional information about a
+/// declaration.
 #[derive(Debug, Clone)]
 pub struct DeclRef {
     /// The name of the declaration.

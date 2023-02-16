@@ -37,22 +37,14 @@ impl ty::TyImplTrait {
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_impl_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -456,25 +448,14 @@ impl ty::TyImplTrait {
             is_absolute: false,
         };
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                continue;
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_impl_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the type that we are implementing for
         implementing_for.type_id = check!(
