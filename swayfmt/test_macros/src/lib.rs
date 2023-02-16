@@ -1,15 +1,15 @@
 #[macro_export]
-macro_rules! fmt_test_expr {
+macro_rules! fmt_test_item {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
-        fmt_test!(sway_ast::Expr, $scope $desired_output,
+        fmt_test!(sway_ast::ItemKind, $scope $desired_output,
                     $($name $y)+);
             };
 }
 
 #[macro_export]
-macro_rules! fmt_test_impl {
+macro_rules! fmt_test_expr {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) =>{
-        fmt_test!(sway_ast::ItemImpl, $scope $desired_output,
+        fmt_test!(sway_ast::Expr, $scope $desired_output,
                     $($name $y)+);
             };
 }
