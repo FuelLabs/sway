@@ -5,10 +5,14 @@
 /// Provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
 /// ```
+/// # use paste::paste;
+/// # use prettydiff::{basic::DiffOp, diff_lines};
+/// # use test_macros::fmt_test_item; fn main() {
 ///       // test suite name          known good
 ///fmt_test_item!(field_proj_foobar       "foo.bar.baz.quux",
 ///       // test case name           should format to known good
 ///          intermediate_whitespace "foo . bar . baz . quux");
+/// # }
 /// ```
 #[macro_export]
 macro_rules! fmt_test_item {
@@ -25,10 +29,14 @@ macro_rules! fmt_test_item {
 /// Provide a known good, and then some named test cases that should evaluate to
 /// that known good. e.g.:
 /// ```
+/// # use paste::paste;
+/// # use prettydiff::{basic::DiffOp, diff_lines};
+/// # use test_macros::fmt_test_expr; fn main() {
 ///       // test suite name          known good
 ///fmt_test_expr!(field_proj_foobar       "foo.bar.baz.quux",
 ///       // test case name           should format to known good
 ///          intermediate_whitespace "foo . bar . baz . quux");
+/// # }
 /// ```
 #[macro_export]
 macro_rules! fmt_test_expr {

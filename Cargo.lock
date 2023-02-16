@@ -5149,6 +5149,10 @@ dependencies = [
 [[package]]
 name = "test-macros"
 version = "0.0.0"
+dependencies = [
+ "paste",
+ "prettydiff 0.6.2",
+]
 
 [[package]]
 name = "text-size"
