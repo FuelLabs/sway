@@ -15,14 +15,41 @@ pub struct Annotated<T> {
 
 #[derive(Clone, Debug)]
 pub struct AttributeDecl {
-    pub hash_token: HashToken,
+    pub hash_kind: AttributeHashKind,
     pub attribute: SquareBrackets<Punctuated<Attribute, CommaToken>>,
 }
 
 impl Spanned for AttributeDecl {
     fn span(&self) -> Span {
-        Span::join(self.hash_token.span(), self.attribute.span())
+        let hash_span = match &self.hash_kind {
+            AttributeHashKind::Inner(hash_bang_token) => hash_bang_token.span(),
+            AttributeHashKind::Outer(hash_token) => hash_token.span(),
+        };
+        Span::join(hash_span, self.attribute.span())
     }
+}
+
+/// Denotes the target direction of an [AttributeDecl] and
+/// the hash token kind associated.
+///
+/// Example:
+/// ```sway
+/// // outer (after), written as `///`
+/// #[doc("a Sway struct")]
+/// struct Foo {}
+///
+/// // inner (before), written as `//!`
+/// enum Bar {}
+/// #![doc("a Sway enum")]
+/// ```
+#[derive(Clone, Debug)]
+pub enum AttributeHashKind {
+    /// Inner specifies that the attribute belongs to
+    /// the item before it.
+    Inner(HashBangToken),
+    /// Outer specifies that the attribute belongs to
+    /// the item after it.
+    Outer(HashToken),
 }
 
 #[derive(Clone, Debug)]
