@@ -136,6 +136,7 @@ fn module_attrs_to_map(
                 DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
                 _ => None,
             } {
+<<<<<<< HEAD
                 match attrs_map.get_mut(&attr_kind) {
                     Some(old_args) => {
                         old_args.push(attribute);
@@ -144,6 +145,9 @@ fn module_attrs_to_map(
                         attrs_map.insert(attr_kind, vec![attribute]);
                     }
                 }
+=======
+                attrs_map.entry(attr_kind).or_default().push(attribute);
+>>>>>>> master
             }
         }
     }

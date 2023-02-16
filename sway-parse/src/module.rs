@@ -39,29 +39,29 @@ impl ParseToEnd for Annotated<Module> {
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
-            let hash_kind = match &doc_comment.doc_style {
-                DocStyle::Inner => Ok(AttributeHashKind::Inner(HashBangToken::new(
-                    doc_comment.span.clone(),
-                ))),
-                DocStyle::Outer => Err(parser.emit_error(ParseErrorKind::ExpectedModuleDocComment)),
+            match &doc_comment.doc_style {
+                DocStyle::Inner => attribute_list.push(AttributeDecl {
+                    hash_kind: AttributeHashKind::Inner(HashBangToken::new(
+                        doc_comment.span.clone(),
+                    )),
+                    attribute: SquareBrackets::new(
+                        Punctuated::single(Attribute {
+                            name: Ident::new_with_override(
+                                DOC_COMMENT_ATTRIBUTE_NAME,
+                                doc_comment.span.clone(),
+                            ),
+                            args: Some(Parens::new(
+                                Punctuated::single(value),
+                                doc_comment.content_span,
+                            )),
+                        }),
+                        doc_comment.span,
+                    ),
+                }),
+                DocStyle::Outer => {
+                    parser.emit_error(ParseErrorKind::ExpectedModuleDocComment);
+                }
             }
-            .unwrap();
-            attribute_list.push(AttributeDecl {
-                hash_kind,
-                attribute: SquareBrackets::new(
-                    Punctuated::single(Attribute {
-                        name: Ident::new_with_override(
-                            DOC_COMMENT_ATTRIBUTE_NAME,
-                            doc_comment.span.clone(),
-                        ),
-                        args: Some(Parens::new(
-                            Punctuated::single(value),
-                            doc_comment.content_span,
-                        )),
-                    }),
-                    doc_comment.span,
-                ),
-            });
         }
         let (kind, semicolon_token) = parser.parse()?;
 

@@ -64,19 +64,14 @@ impl ty::TyFunctionDeclaration {
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
