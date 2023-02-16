@@ -62,32 +62,11 @@ To require a supertrait, add a `:` after the trait name and then list the traits
 
 ABIs can also have supertrait annotations:
 
-``` sway
-
-trait Ownable {
-    fn only_owner();
-}
-
-abi MyContractWithOwner : Ownable {
-    fn restricted_access_method();
-}
+```sway
+{{#include ../../../../examples/abi_supertraits/src/main.sw}}
 ```
 
-The implementation of `MyContractWithOwner` for `Contract` must also implement the `Ownable` trait. Methods in `Ownable` are not be available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods as follows:
-
-``` sway
-
-impl Ownable for Contract {
-    fn only_owner() { ... }
-}
-
-impl MyContractWithAnOwner for Contract {
-    fn restricted_access_method() {
-        Self::only_owner();  // supertrait method usage
-        ...
-    }
-}
-```
+The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertrait` trait. Methods in `ABIsupertrait` are not be available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods as follows as shown in the example above.
 
 ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
 
