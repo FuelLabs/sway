@@ -220,3 +220,4 @@ define_token!(
 define_token!(DoublePipeToken, "`||`", [Pipe, Pipe], [Pipe]);
 define_token!(UnderscoreToken, "`_`", [Underscore], [Underscore]);
 define_token!(HashToken, "`#`", [Sharp], []);
+define_token!(HashBangToken, "`#!`", [Sharp, Bang], []);
