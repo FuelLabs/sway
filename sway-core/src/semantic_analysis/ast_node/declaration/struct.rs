@@ -48,7 +48,7 @@ impl ty::TyStructDeclaration {
         }
 
         let mut path: CallPath = name.into();
-        path = path.to_fullpath(ctx.namespace);
+        path = path.to_dirpath(ctx.namespace);
 
         // create the struct decl
         let decl = ty::TyStructDeclaration {

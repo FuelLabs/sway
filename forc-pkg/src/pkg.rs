@@ -27,7 +27,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    abi_generation::{evm_json_abi, fuel_json_abi},
+    abi_generation::{
+        evm_json_abi,
+        fuel_json_abi::{self, JsonAbiContext},
+    },
     asm_generation::ProgramABI,
     decl_engine::{DeclEngine, DeclRef},
     fuel_prelude::{
@@ -2383,9 +2386,8 @@ pub fn dependency_namespace(
     let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
 
     let node_idx = &graph[node];
-    namespace.name = Some(Ident::new_no_span(Box::leak(
-        node_idx.name.clone().into_boxed_str(),
-    )));
+    namespace.call_path =
+        Some(Ident::new_no_span(Box::leak(node_idx.name.clone().into_boxed_str())).into());
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -2602,7 +2604,13 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                fuel_json_abi::generate_json_abi_program(typed_program, engines.te(), &mut types)
+                fuel_json_abi::generate_json_abi_program(
+                    &mut JsonAbiContext {
+                        program: typed_program
+                    },
+                    engines.te(),
+                    &mut types
+                )
             ))
         }
         BuildTarget::EVM => {
@@ -3016,7 +3024,7 @@ pub fn build(
         }
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
-            namespace.name = Some(name.clone());
+            namespace.call_path = Some(name.clone().into());
             lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(manifest.dir());
@@ -3241,7 +3249,7 @@ pub fn check(
 
         if let TreeType::Library { name } = typed_program.kind.tree_type() {
             let mut namespace = typed_program.root.namespace.clone();
-            namespace.name = Some(name.clone());
+            namespace.call_path = Some(name.clone().into());
             lib_namespace_map.insert(node, namespace);
         }
 

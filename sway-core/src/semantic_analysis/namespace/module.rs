@@ -1,7 +1,7 @@
 use crate::{
     engine_threading::Engines,
     error::*,
-    language::{parsed::*, ty, Visibility},
+    language::{parsed::*, ty, CallPath, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
@@ -41,9 +41,11 @@ pub struct Module {
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
     /// The set of symbols, implementations, synonyms and aliases present within this module.
     items: Items,
-    /// Name of the module, package name for root module, library name for other modules.
+    /// Call path of the module.
+    /// The suffix is the package name for root module, library name for other modules.
+    /// The prefixes are the folder names in between the root module dir and this module dir.
     /// Library name used is the same as declared in `library name;`.
-    pub name: Option<Ident>,
+    pub call_path: Option<CallPath>,
 }
 
 impl Module {

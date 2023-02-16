@@ -318,17 +318,19 @@ impl Namespace {
     /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
     /// back to the original path so that we can continue type-checking the current module after
     /// finishing with the dependency.
-    pub(crate) fn enter_submodule(&mut self, dep_name: Ident) -> SubmoduleNamespace {
+    pub(crate) fn enter_submodule(&mut self, dep_call_path: CallPath) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(dep_name.to_string()).or_insert(init);
+        self.submodules
+            .entry(dep_call_path.suffix.to_string())
+            .or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name.clone()))
+            .chain(Some(dep_call_path.suffix.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(dep_name);
+        self.call_path = Some(dep_call_path);
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

@@ -377,11 +377,11 @@ impl<'a> TypedTree<'a> {
                     {
                         token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
-                        if let Some(name) = namespace
+                        if let Some(call_path) = namespace
                             .submodule(mod_path)
-                            .and_then(|tgt_submod| tgt_submod.name.clone())
+                            .and_then(|tgt_submod| tgt_submod.call_path.clone())
                         {
-                            token.type_def = Some(TypeDefinition::Ident(name));
+                            token.type_def = Some(TypeDefinition::Ident(call_path.suffix));
                         }
                     }
                 }
@@ -412,11 +412,11 @@ impl<'a> TypedTree<'a> {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
-                            if let Some(name) = namespace
+                            if let Some(call_path) = namespace
                                 .submodule(call_path)
-                                .and_then(|tgt_submod| tgt_submod.name.clone())
+                                .and_then(|tgt_submod| tgt_submod.call_path.clone())
                             {
-                                token.type_def = Some(TypeDefinition::Ident(name));
+                                token.type_def = Some(TypeDefinition::Ident(call_path.suffix));
                             }
                         }
                     }
@@ -952,11 +952,11 @@ impl<'a> TypedTree<'a> {
             if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
                 token.typed = Some(typed.clone());
 
-                if let Some(name) = namespace
+                if let Some(call_path) = namespace
                     .submodule(mod_path)
-                    .and_then(|tgt_submod| tgt_submod.name.clone())
+                    .and_then(|tgt_submod| tgt_submod.call_path.clone())
                 {
-                    token.type_def = Some(TypeDefinition::Ident(name));
+                    token.type_def = Some(TypeDefinition::Ident(call_path.suffix));
                 }
             }
         }

@@ -85,6 +85,31 @@ impl CallPath {
         }
     }
 
+    pub fn to_dirpath(&self, namespace: &mut Namespace) -> CallPath {
+        let mut full_trait_name = self.clone();
+
+        if self.prefixes.is_empty() {
+            let mut prefixes = vec![];
+            if let Some(submodule_call_path) = namespace.call_path.clone() {
+                prefixes.extend(submodule_call_path.prefixes);
+                prefixes.push(submodule_call_path.suffix);
+            }
+
+            if namespace.module().call_path != namespace.root().module.call_path {
+                if let Some(pkg_call_path) = &namespace.root().module.call_path {
+                    prefixes.insert(0, pkg_call_path.suffix.clone());
+                }
+            }
+
+            full_trait_name = CallPath {
+                prefixes,
+                suffix: self.suffix.clone(),
+                is_absolute: true,
+            }
+        }
+        full_trait_name
+    }
+
     pub fn to_fullpath(&self, namespace: &mut Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
@@ -99,9 +124,9 @@ impl CallPath {
                 synonym_prefixes = use_synonym.0.clone();
                 let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
-                    if let Some(submodule_name) = submodule.name.clone() {
+                    if let Some(submodule_call_path) = submodule.call_path.clone() {
                         submodule_name_in_synonym_prefixes =
-                            submodule_name.as_str() == synonym_prefixes[0].as_str();
+                            submodule_call_path.suffix.as_str() == synonym_prefixes[0].as_str();
                     }
                 }
             }
@@ -109,8 +134,8 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if synonym_prefixes.is_empty() || !submodule_name_in_synonym_prefixes {
-                if let Some(pkg_name) = &namespace.root().module.name {
-                    prefixes.push(pkg_name.clone());
+                if let Some(pkg_call_path) = &namespace.root().module.call_path {
+                    prefixes.push(pkg_call_path.suffix.clone());
                 }
                 for mod_path in namespace.mod_path() {
                     prefixes.push(mod_path.clone());

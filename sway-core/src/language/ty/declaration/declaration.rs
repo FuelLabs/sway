@@ -633,7 +633,7 @@ impl TyDeclaration {
                     "{} for {}",
                     self.get_decl_ident()
                         .map_or(String::from(""), |f| f.as_str().to_string()),
-                    implementing_for_type_id.json_abi_str(type_engine)
+                    engines.help_out(implementing_for_type_id)
                 )
             }
             _ => self

@@ -157,7 +157,7 @@
           "typeArguments": null
         }
       ],
-      "type": "enum Option",
+      "type": "enum ::std::option::Option",
       "typeId": 4,
       "typeParameters": [
         6

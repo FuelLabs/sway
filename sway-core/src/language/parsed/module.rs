@@ -22,4 +22,5 @@ pub struct ParseSubmodule {
     pub library_name: Ident,
     pub module: ParseModule,
     pub dependency_path_span: Span,
+    pub relative_path: Vec<Ident>,
 }

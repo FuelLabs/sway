@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::{parsed::*, ty, DepName},
+    language::{parsed::*, ty, CallPath, DepName},
     semantic_analysis::*,
 };
 
@@ -71,8 +71,14 @@ impl ty::TySubmodule {
             library_name,
             module,
             dependency_path_span,
+            relative_path,
         } = submodule;
-        parent_ctx.enter_submodule(dep_name, |submod_ctx| {
+        let call_path = CallPath {
+            prefixes: relative_path.to_vec(),
+            suffix: dep_name,
+            is_absolute: false,
+        };
+        parent_ctx.enter_submodule(call_path, |submod_ctx| {
             let module_res = ty::TyModule::type_check(submod_ctx, module);
             module_res.map(|module| ty::TySubmodule {
                 library_name: library_name.clone(),

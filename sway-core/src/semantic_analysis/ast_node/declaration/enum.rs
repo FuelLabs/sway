@@ -45,7 +45,7 @@ impl ty::TyEnumDeclaration {
         }
 
         let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace);
+        call_path = call_path.to_dirpath(ctx.namespace);
 
         // create the enum decl
         let decl = ty::TyEnumDeclaration {
