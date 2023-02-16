@@ -10,6 +10,7 @@ The key points for workspaces are:
 Workspace manifests are declared within `Forc.toml` files and support the following fields:
 
 * [`members`](#the-members-field) - Packages to include in the workspace.
+* [`[patch]`](#the-patch-section) - Defines the patches.
 
 An empty workspace can be created with `forc new --workspace` or `forc init --workspace`.
 
@@ -24,6 +25,23 @@ members = ["member1", "path/to/member2"]
 
 The `members` field accepts entries to be given in relative path with respect to the workspace root.
 Packages that are located within a workspace directory but are *not* contained within the `members` set are ignored.
+
+## The `[patch]` section
+
+The `[patch]` section can be used to override any dependency in the workspace dependency graph. The usage is the same with package level `[patch]` section and details can be seen [here](./manifest_reference.md#the-patch-section).
+
+Example:
+
+```toml
+[workspace]
+members = ["member1", "path/to/member2"]
+
+
+[patch.'https://github.com/fuellabs/sway']
+std = { git = "https://github.com/fuellabs/sway", branch = "test" }
+```
+
+In the above example each occurance of `std` as a dependency in the workspace will be changed with `std` from `test` branch of sway repo.
 
 ## Some `forc` commands that support workspaces
 
