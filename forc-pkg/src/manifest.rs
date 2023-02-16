@@ -396,7 +396,6 @@ impl PackageManifestFile {
                 if e.to_string().contains("could not find") {
                     return Ok(None);
                 } else {
-                    println!("{e:?}");
                     return Err(e);
                 }
             }
