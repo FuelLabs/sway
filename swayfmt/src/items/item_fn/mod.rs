@@ -1,4 +1,5 @@
 use crate::{
+    comments::maybe_write_comments_from_map,
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -38,7 +39,9 @@ impl Format for ItemFn {
                     body.format(formatted_code, formatter)?;
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
-                    write!(formatted_code, " {{}}")?;
+                    Self::open_curly_brace(formatted_code, formatter)?;
+                    maybe_write_comments_from_map(formatted_code, self.span().into(), formatter)?;
+                    Self::close_curly_brace(formatted_code, formatter)?;
                 }
 
                 Ok(())
