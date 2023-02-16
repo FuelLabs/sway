@@ -375,8 +375,12 @@ impl Dependencies {
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
                 methods,
+                supertraits,
                 ..
             }) => self
+                .gather_from_iter(supertraits.iter(), |deps, sup| {
+                    deps.gather_from_call_path(&sup.name, false, false)
+                })
                 .gather_from_iter(interface_surface.iter(), |deps, sig| {
                     deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
                         deps.gather_from_type_argument(type_engine, &param.type_argument)

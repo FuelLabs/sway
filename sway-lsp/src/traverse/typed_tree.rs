@@ -319,6 +319,10 @@ impl<'a> TypedTree<'a> {
                             self.collect_typed_trait_fn_token(&trait_fn, namespace);
                         }
                     }
+
+                    for supertrait in abi_decl.supertraits {
+                        self.collect_supertrait(&supertrait);
+                    }
                 }
             }
             ty::TyDeclaration::GenericTypeForFunctionScope { name, .. } => {

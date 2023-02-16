@@ -674,6 +674,10 @@ fn item_abi_to_abi_declaration(
                 })
                 .collect::<Result<_, _>>()?
         },
+        supertraits: match item_abi.super_traits {
+            None => Vec::new(),
+            Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
+        },
         methods: match item_abi.abi_defs_opt {
             None => Vec::new(),
             Some(abi_defs) => abi_defs

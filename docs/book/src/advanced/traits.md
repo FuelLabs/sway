@@ -58,6 +58,18 @@ impl Ord for u64 {
 
 To require a supertrait, add a `:` after the trait name and then list the traits you would like to require and separate them with a `+`.
 
+### ABI supertraits
+
+ABIs can also have supertrait annotations:
+
+```sway
+{{#include ../../../../examples/abi_supertraits/src/main.sw}}
+```
+
+The implementation of `MyAbi` for `Contract` must also implement the `ABIsupertrait` trait. Methods in `ABIsupertrait` are not available externally, i.e. they're not actually contract methods, but they can be used in the actual contract methods, as shown in the example above.
+
+ABI supertraits are intended to make contract implementations compositional, allowing combining orthogonal contract features using, for instance, libraries.
+
 ## Use Cases
 
 ### Custom Types (structs, enums)
