@@ -1,6 +1,7 @@
 use forc_tracing::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
+use test_macros::{fmt_test, fmt_test_inner};
 
 macro_rules! fmt_test {
     ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
