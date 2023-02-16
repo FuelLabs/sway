@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-C56FC6F7BF362A4A'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-C56FC6F7BF362A4A'
+dependencies = ['core']
+
+[[package]]
+name = 'supertraits_for_abis_ownable'
+source = 'member'
+dependencies = ['std']

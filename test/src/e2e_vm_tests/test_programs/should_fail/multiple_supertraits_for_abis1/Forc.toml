@@ -1,0 +1,6 @@
+[project]
+name = "multiple_supertraits_for_abis1"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
