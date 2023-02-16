@@ -93,7 +93,7 @@ where
 
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
-    Some(OsStr::new(constants::SWAY_EXTENSION)) == res
+    file.is_file() && Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
