@@ -300,8 +300,8 @@ fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTok
         // `//!` is an inner line doc comment.
         (Some('!'), _) => {
             if index == 0 {
-                // remove conditional block to enable
-                // item inner doc comment attributes
+                // TODO(#4112): remove this conditional block to enable
+                // inner doc comment attributes for all items
                 Some(DocStyle::Inner)
             } else {
                 None
@@ -796,19 +796,15 @@ mod tests {
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
-                doc_style: DocStyle::Inner,
+            Some(CommentedTokenTree::Comment(Comment {
                 span,
-                content_span,
-            }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
+            })) if span.as_str() ==  "//!inner"
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
-                doc_style: DocStyle::Inner,
+            Some(CommentedTokenTree::Comment(Comment {
                 span,
-                content_span,
-            }))) if span.as_str() ==  "//! inner" && content_span.as_str() == " inner"
+            })) if span.as_str() ==  "//! inner"
         );
         assert_matches!(
             tts.next(),
