@@ -109,7 +109,7 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
                     let TyImplTrait {
                         methods,
-                        implementing_for_type_id,
+                        implementing_for,
                         span,
                         trait_decl_ref,
                         ..
@@ -119,7 +119,7 @@ impl TyProgram {
                         warnings,
                         errors
                     );
-                    if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
+                    if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
                         // add methods to JSON ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
