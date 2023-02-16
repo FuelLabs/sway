@@ -45,6 +45,8 @@ match expression {
 }
 ```
 
+Some examples of how you can use a match statement:
+
 ```sway
 {{#include ../../../../examples/match_statements/src/main.sw}}
 ```
