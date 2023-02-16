@@ -575,6 +575,8 @@ fn comments_empty_fns() {
     check(
         r#"contract;
 
+fn single_comment_same_line() { /* a comment */ }
+
 fn single_comment() -> bool {
     // TODO: This is a TODO
 }
@@ -585,6 +587,10 @@ fn multiline_comments() {
 // comment
 }"#,
         r#"contract;
+
+fn single_comment_same_line() {
+    /* a comment */
+}
 
 fn single_comment() -> bool {
     // TODO: This is a TODO
