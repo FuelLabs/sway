@@ -340,6 +340,10 @@ pub enum CompileError {
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span },
     #[error(
+        "Expected Module level doc comment. All other attributes are unsupported at this level."
+    )]
+    ExpectedModuleDocComment { span: Span },
+    #[error(
         "This register was not initialized in the initialization section of the ASM expression. \
          Initialized registers are: {initialized_registers}"
     )]
@@ -799,6 +803,7 @@ impl Spanned for CompileError {
             PathDoesNotReturn { span, .. } => span.clone(),
             ExpectedImplicitReturnFromBlockWithType { span, .. } => span.clone(),
             ExpectedImplicitReturnFromBlock { span, .. } => span.clone(),
+            ExpectedModuleDocComment { span } => span.clone(),
             UnknownRegister { span, .. } => span.clone(),
             MissingImmediate { span, .. } => span.clone(),
             InvalidImmediateValue { span, .. } => span.clone(),
