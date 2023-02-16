@@ -1597,7 +1597,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1629,7 +1629,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1661,7 +1661,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1697,7 +1697,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1707,7 +1707,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "fd-lock",
@@ -1734,7 +1734,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -1748,7 +1748,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -1757,7 +1757,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1769,7 +1769,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -4784,7 +4784,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "sway-ast"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4794,7 +4794,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "clap 3.2.23",
  "derivative",
@@ -4833,7 +4833,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4845,7 +4845,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -4860,7 +4860,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4870,7 +4870,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4936,7 +4936,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4947,11 +4947,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.35.0"
+version = "0.35.1"
 
 [[package]]
 name = "swayfmt"
-version = "0.35.0"
+version = "0.35.1"
 dependencies = [
  "anyhow",
  "forc-tracing",
