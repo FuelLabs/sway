@@ -346,6 +346,28 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let name = abi_decl.name.clone();
+
+                // save decl_refs for the LSP
+                for supertrait in abi_decl.supertraits.iter_mut() {
+                    ctx.namespace
+                        .resolve_call_path(&supertrait.name)
+                        .cloned()
+                        .map(|supertrait_decl| {
+                            if let ty::TyDeclaration::TraitDeclaration {
+                                name: supertrait_name,
+                                decl_id: supertrait_decl_id,
+                                decl_span: supertrait_decl_span,
+                            } = supertrait_decl
+                            {
+                                supertrait.decl_ref = Some(DeclRef::new(
+                                    supertrait_name,
+                                    *supertrait_decl_id,
+                                    supertrait_decl_span,
+                                ));
+                            }
+                        });
+                }
+
                 let decl_ref = decl_engine.insert(abi_decl.clone());
                 let decl = ty::TyDeclaration::AbiDeclaration {
                     name: decl_ref.name,
