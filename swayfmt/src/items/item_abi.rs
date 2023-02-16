@@ -58,7 +58,7 @@ impl Format for ItemAbi {
                 )?;
                 item.format(formatted_code, formatter)?;
             }
-            writeln!(formatted_code, "")?;
+            writeln!(formatted_code)?;
             Self::close_curly_brace(formatted_code, formatter)?;
         }
 
