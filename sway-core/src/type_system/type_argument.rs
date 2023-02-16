@@ -1,5 +1,5 @@
 use crate::{engine_threading::*, language::CallPathTree, type_system::*};
-use std::{fmt, hash::Hasher};
+use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -53,8 +53,26 @@ impl PartialEqWithEngines for TypeArgument {
 }
 
 impl OrdWithEngines for TypeArgument {
-    fn cmp(&self, rhs: &Self, _: &TypeEngine) -> std::cmp::Ordering {
-        self.type_id.cmp(&rhs.type_id)
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TypeArgument {
+            type_id: lti,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = self;
+        let TypeArgument {
+            type_id: rti,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = other;
+        type_engine
+            .get(*lti)
+            .cmp(&type_engine.get(*rti), type_engine)
     }
 }
 
