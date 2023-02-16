@@ -298,7 +298,15 @@ fn lex_line_comment(l: &mut Lexer<'_>, end: usize, index: usize) -> CommentedTok
 
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
-        (Some('!'), _) => Some(DocStyle::Inner),
+        (Some('!'), _) => {
+            if index == 0 {
+                // remove conditional block to enable
+                // item inner doc comment attributes
+                Some(DocStyle::Inner)
+            } else {
+                None
+            }
+        }
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,
         // `///` is an outer line doc comment.

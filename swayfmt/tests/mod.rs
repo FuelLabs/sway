@@ -845,7 +845,7 @@ fn inner_doc_comments() {
         r#"script;
 
 enum Color {
-//! Color is a Sway enum
+    //! Color is a Sway enum
     blue: (),
     red: ()
 }
