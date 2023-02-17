@@ -84,7 +84,14 @@ pub async fn deploy_pkg(
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
-    let salt = command.salt.salt.unwrap_or_default();
+    let salt = match (command.salt.salt, command.random_salt) {
+        (Some(salt), false) => salt,
+        (None, true) => rand::random(),
+        (None, false) => Default::default(),
+        (Some(_), true) => {
+            bail!("Both `--salt` and `--random-salt` were specified: must choose one")
+        }
+    };
     let mut storage_slots = compiled.storage_slots.clone();
     storage_slots.sort();
 

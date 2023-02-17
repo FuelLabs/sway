@@ -19,6 +19,10 @@ pub struct Command {
     pub maturity: Maturity,
     #[clap(flatten)]
     pub salt: Salt,
+    /// Generate a random salt for the contract.
+    /// Useful for testing or deploying examples to a shared network.
+    #[clap(long)]
+    pub random_salt: bool,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]
