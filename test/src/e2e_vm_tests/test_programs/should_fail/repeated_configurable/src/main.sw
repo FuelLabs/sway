@@ -5,7 +5,4 @@ configurable {
     X: u64 = 42,
 }
 
-fn main() {
-}
-
-
+fn main() {}
