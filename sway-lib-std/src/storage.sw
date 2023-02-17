@@ -308,7 +308,7 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(write)]
     pub fn clear(self) {
-        let _ = clear::<u64>(sha256((__get_storage_key(), 0)));
+        let _ = clear::<u64>(__get_storage_key());
     }
 
     /// Gets the value in the given index, `None` if index is out of bounds.
@@ -993,14 +993,14 @@ impl<V> StorageVec<V> {
     #[storage(read, write)]
     pub fn append(self, other: StorageVec<V>) {
         let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-        let combined_len = len + other.len();
+        let other_len = other.len();
 
-        let mut i = len;
-        while i < combined_len {
-            store::<V>(sha256((i, __get_storage_key())), other.get(i - len).unwrap());
+        let mut i = 0;
+        while i < other_len {
+            store::<V>(sha256((len + i, __get_storage_key())), other.get(i).unwrap());
         }
 
-        store::<u64>(sha256(__get_storage_key()), combined_len);
+        store::<u64>(sha256((len + other_len, __get_storage_key())))
     }
 }
 
