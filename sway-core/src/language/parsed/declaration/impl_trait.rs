@@ -1,9 +1,5 @@
 use super::FunctionDeclaration;
-use crate::{
-    language::CallPath,
-    type_system::{TypeInfo, TypeParameter},
-    TypeArgument,
-};
+use crate::{language::CallPath, type_system::TypeParameter, TypeArgument};
 
 use sway_types::span::Span;
 
@@ -12,8 +8,7 @@ pub struct ImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub type_implementing_for: TypeInfo,
-    pub type_implementing_for_span: Span,
+    pub implementing_for: TypeArgument,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
@@ -24,8 +19,7 @@ pub struct ImplTrait {
 #[derive(Debug, Clone)]
 pub struct ImplSelf {
     pub impl_type_parameters: Vec<TypeParameter>,
-    pub type_implementing_for: TypeInfo,
-    pub(crate) type_implementing_for_span: Span,
+    pub implementing_for: TypeArgument,
     pub functions: Vec<FunctionDeclaration>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,

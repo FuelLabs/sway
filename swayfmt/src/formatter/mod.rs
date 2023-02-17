@@ -69,7 +69,7 @@ impl Formatter {
         self.comments_context =
             CommentsContext::new(CommentMap::from_src(Arc::from(src))?, src.to_string());
 
-        let module = parse_file(Arc::from(src), path.clone())?;
+        let module = parse_file(Arc::from(src), path.clone())?.value;
         module.format(&mut raw_formatted_code, self)?;
 
         let mut formatted_code = String::from(&raw_formatted_code);

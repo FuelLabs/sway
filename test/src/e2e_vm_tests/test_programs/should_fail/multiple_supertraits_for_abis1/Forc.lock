@@ -1,0 +1,3 @@
+[[package]]
+name = 'multiple_supertraits_for_abis1'
+source = 'member'
