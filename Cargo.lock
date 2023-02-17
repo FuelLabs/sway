@@ -1650,6 +1650,7 @@ dependencies = [
  "fuels-types",
  "futures",
  "hex",
+ "rand",
  "serde",
  "serde_json",
  "sway-core",
