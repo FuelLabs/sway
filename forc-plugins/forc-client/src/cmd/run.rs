@@ -3,7 +3,7 @@ use fuel_crypto::SecretKey;
 
 pub use super::submit::Network;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
-pub use forc_tx::Gas;
+pub use forc_tx::{Gas, Maturity};
 
 /// Run script project.
 /// Crafts a script transaction then sends it to a running node.
@@ -18,6 +18,8 @@ pub struct Command {
     pub print: Print,
     #[clap(flatten)]
     pub gas: Gas,
+    #[clap(flatten)]
+    pub maturity: Maturity,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

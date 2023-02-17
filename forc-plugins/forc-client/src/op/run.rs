@@ -79,6 +79,8 @@ pub async fn run_pkg(
     let tx = TransactionBuilder::script(compiled.bytecode.clone(), script_data)
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
+        // TODO: Spec says maturity should be u32, but fuel-tx expects u64.
+        .maturity(u64::from(command.maturity.value))
         .add_contracts(contract_ids)
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;
