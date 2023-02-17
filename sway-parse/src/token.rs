@@ -6,7 +6,7 @@ use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
     Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
-    DocComment, DocStyle, Punct, PunctKind, Spacing, TokenStream,
+    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -120,11 +120,19 @@ pub fn lex_commented(
         path,
         stream,
     };
+    let mut gather_module_docs = false;
+    let mut file_start_offset: usize = 0;
 
     let mut parent_token_trees = Vec::new();
     let mut token_trees = Vec::new();
     while let Some((mut index, mut character)) = l.stream.next() {
         if character.is_whitespace() {
+            // if the beginning of a file starts with whitespace
+            // we must keep track to ensure that the module level docs
+            // will get inserted into the tree correctly
+            if index - file_start_offset == 0 {
+                file_start_offset += character.len_utf8();
+            }
             continue;
         }
         if character == '/' {
@@ -155,7 +163,23 @@ pub fn lex_commented(
                     } else {
                         CommentKind::Trailing
                     };
-                    token_trees.push(lex_line_comment(&mut l, end, index, comment_kind));
+
+                    let ctt = lex_line_comment(
+                        &mut l,
+                        end,
+                        index,
+                        comment_kind,
+                        file_start_offset,
+                        gather_module_docs,
+                    );
+                    if let CommentedTokenTree::Tree(GenericTokenTree::DocComment(DocComment {
+                        doc_style: DocStyle::Inner,
+                        ..
+                    })) = &ctt
+                    {
+                        gather_module_docs = true;
+                    }
+                    token_trees.push(ctt);
                     continue;
                 }
                 Some((_, '*')) => {
@@ -166,7 +190,10 @@ pub fn lex_commented(
                 }
                 Some(_) | None => {}
             }
+        } else {
+            gather_module_docs = false;
         }
+
         if character.is_xid_start() || character == '_' {
             // Raw identifier, e.g., `r#foo`? Then mark as such, stripping the prefix `r#`.
             let is_raw_ident = character == 'r' && matches!(l.stream.peek(), Some((_, '#')));
@@ -316,6 +343,8 @@ fn lex_line_comment(
     end: usize,
     index: usize,
     comment_kind: CommentKind,
+    offset: usize,
+    gather_module_docs: bool,
 ) -> CommentedTokenTree {
     let _ = l.stream.next();
 
@@ -328,7 +357,15 @@ fn lex_line_comment(
 
     let doc_style = match (sp.as_str().chars().nth(2), sp.as_str().chars().nth(3)) {
         // `//!` is an inner line doc comment.
-        (Some('!'), _) => Some(DocStyle::Inner),
+        (Some('!'), _) => {
+            if index - offset == 0 || gather_module_docs {
+                // TODO(#4112): remove this conditional block to enable
+                // inner doc comment attributes for all items
+                Some(DocStyle::Inner)
+            } else {
+                None
+            }
+        }
         // `////` (more than 3 slashes) is not considered a doc comment.
         (Some('/'), Some('/')) => None,
         // `///` is an outer line doc comment.
@@ -904,19 +941,17 @@ mod tests {
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
-                doc_style: DocStyle::Inner,
+            Some(CommentedTokenTree::Comment(Comment {
                 span,
-                content_span,
-            }))) if span.as_str() ==  "//!inner" && content_span.as_str() == "inner"
+                comment_kind: CommentKind::Newlined,
+            })) if span.as_str() ==  "//!inner"
         );
         assert_matches!(
             tts.next(),
-            Some(CommentedTokenTree::Tree(CommentedTree::DocComment(DocComment {
-                doc_style: DocStyle::Inner,
+            Some(CommentedTokenTree::Comment(Comment {
                 span,
-                content_span,
-            }))) if span.as_str() ==  "//! inner" && content_span.as_str() == " inner"
+                comment_kind: CommentKind::Newlined,
+            })) if span.as_str() ==  "//! inner"
         );
         assert_matches!(
             tts.next(),
