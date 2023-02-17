@@ -227,7 +227,7 @@ mod tests {
         let item = parse_item(
             r#"
             // I will be ignored.
-            //! I will be ignored.
+            //! I will be ignored. 
             /// This is a doc comment.
             //! I will be ignored.
             // I will be ignored.

@@ -237,6 +237,42 @@ fmt_test!(  match_branch_kind
 quux();\n    }\n\n\n}"
 );
 
+fmt_test!(  match_branch_kind_tuple_long
+"match (foo, bar) {
+    (
+        VeryLongFoo::SomeLongFoo(some_foo),
+        VeryLongBar::SomeLongBar(some_bar),
+    ) => {
+        foo();
+    }
+    (
+        VeryLongFoo::OtherLongFoo(other_foo),
+        VeryLongBar::OtherLongBar(other_bar),
+    ) => {
+        bar();
+    }
+    _ => {
+        revert(0)
+    }
+}",
+            intermediate_whitespace
+"match (foo, bar) {
+    (
+        VeryLongFoo::SomeLongFoo(some_foo), \n  \n VeryLongBar::SomeLongBar(some_bar)) => \n 
+    \n{
+    \n
+        foo();
+    }
+    (VeryLongFoo::OtherLongFoo(other_foo), VeryLongBar::OtherLongBar(other_bar) \n ) => {
+        bar();
+    \n
+    }
+    _ \n=> {
+      \n  revert(0)
+    }
+}"
+);
+
 fmt_test!(  basic_array             "[1, 2, 3, 4, 5]",
             intermediate_whitespace " \n [ 1 , 2 , 3 , 4 , 5 ]  \n"
 );

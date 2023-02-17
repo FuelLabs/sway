@@ -7,6 +7,13 @@ impl Parse for ItemAbi {
     fn parse(parser: &mut Parser) -> ParseResult<ItemAbi> {
         let abi_token = parser.parse()?;
         let name = parser.parse()?;
+        let super_traits = match parser.take() {
+            Some(colon_token) => {
+                let traits = parser.parse()?;
+                Some((colon_token, traits))
+            }
+            None => None,
+        };
         let abi_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
         for (fn_signature, _) in abi_items.get().iter() {
             parser.ban_visibility_qualifier(&fn_signature.value.visibility)?;
@@ -20,6 +27,7 @@ impl Parse for ItemAbi {
         Ok(ItemAbi {
             abi_token,
             name,
+            super_traits,
             abi_items,
             abi_defs_opt,
         })

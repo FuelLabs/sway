@@ -19,6 +19,13 @@ impl Format for ItemAbi {
         // `abi name`
         write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
         self.name.format(formatted_code, formatter)?;
+
+        // ` : super_trait + super_trait`
+        if let Some((colon_token, traits)) = &self.super_traits {
+            write!(formatted_code, " {} ", colon_token.ident().as_str())?;
+            traits.format(formatted_code, formatter)?;
+        }
+
         Self::open_curly_brace(formatted_code, formatter)?;
 
         // abi_items
@@ -37,8 +44,11 @@ impl Format for ItemAbi {
             )?;
         }
 
+        Self::close_curly_brace(formatted_code, formatter)?;
+
         // abi_defs_opt
         if let Some(abi_defs) = self.abi_defs_opt.clone() {
+            Self::open_curly_brace(formatted_code, formatter)?;
             for item in abi_defs.get().iter() {
                 // add indent + format item
                 write!(
@@ -48,8 +58,9 @@ impl Format for ItemAbi {
                 )?;
                 item.format(formatted_code, formatter)?;
             }
+            writeln!(formatted_code)?;
+            Self::close_curly_brace(formatted_code, formatter)?;
         }
-        Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
     }
