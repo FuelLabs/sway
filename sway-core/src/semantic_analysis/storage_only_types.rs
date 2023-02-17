@@ -267,6 +267,21 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             warnings,
                             errors
                         );
+                        for param in method.parameters {
+                            if param.name.as_str() != "self" {
+                                check!(
+                                    check_type(
+                                        engines,
+                                        param.type_argument.type_id,
+                                        param.type_argument.span.clone(),
+                                        false
+                                    ),
+                                    continue,
+                                    warnings,
+                                    errors
+                                );
+                            }
+                        }
                         check!(
                             check_type(
                                 engines,
