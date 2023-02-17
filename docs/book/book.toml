@@ -4,6 +4,7 @@ language = "en"
 multilingual = false
 src = "src"
 title = "The Sway Programming Language"
+google_analytics_id: "G-SB795MHP73"
 
 [output.html]
 git-repository-url = "https://github.com/FuelLabs/sway"
