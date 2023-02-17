@@ -10,13 +10,13 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{keywords::Token, token::Delimiter, ItemStorage, StorageField};
+use sway_ast::{keywords::Token, token::Delimiter, ConfigurableField, ItemConfigurable};
 use sway_types::Spanned;
 
 #[cfg(test)]
 mod tests;
 
-impl Format for ItemStorage {
+impl Format for ItemConfigurable {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
@@ -27,8 +27,12 @@ impl Format for ItemStorage {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
-                // Add storage token
-                write!(formatted_code, "{}", self.storage_token.span().as_str())?;
+                // Add configurable token
+                write!(
+                    formatted_code,
+                    "{}",
+                    self.configurable_token.span().as_str()
+                )?;
                 let fields = self.fields.get();
 
                 // Handle openning brace
@@ -36,35 +40,39 @@ impl Format for ItemStorage {
 
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
-                    FieldAlignment::AlignFields(storage_field_align_threshold) => {
+                    FieldAlignment::AlignFields(configurable_field_align_threshold) => {
                         writeln!(formatted_code)?;
                         let value_pairs = &fields
                             .value_separator_pairs
                             .iter()
                             // TODO: Handle annotations instead of stripping them
-                            .map(|(storage_field, comma_token)| (&storage_field.value, comma_token))
+                            .map(|(configurable_field, comma_token)| {
+                                (&configurable_field.value, comma_token)
+                            })
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the
                         // struct fields.
                         let field_length: Vec<usize> = value_pairs
                             .iter()
-                            .map(|(storage_field, _)| storage_field.name.as_str().len())
+                            .map(|(configurable_field, _)| configurable_field.name.as_str().len())
                             .collect();
 
                         // Find the maximum length in the `field_length` vector that is still
-                        // smaller than `storage_field_align_threshold`.  `max_valid_field_length`:
-                        // the length of the field that we are taking as a reference to align.
+                        // smaller than `configurable_field_align_threshold`.
+                        // `max_valid_field_length`: the length of the field that we are taking as
+                        // a reference to align.
                         let mut max_valid_field_length = 0;
                         field_length.iter().for_each(|length| {
                             if *length > max_valid_field_length
-                                && *length < storage_field_align_threshold
+                                && *length < configurable_field_align_threshold
                             {
                                 max_valid_field_length = *length;
                             }
                         });
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
-                        for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
+                        for (field_index, (configurable_field, comma_token)) in
+                            value_pairs_iter.clone()
                         {
                             write!(
                                 formatted_code,
@@ -73,7 +81,7 @@ impl Format for ItemStorage {
                             )?;
 
                             // Add name
-                            storage_field.name.format(formatted_code, formatter)?;
+                            configurable_field.name.format(formatted_code, formatter)?;
 
                             // `current_field_length`: the length of the current field that we are
                             // trying to format.
@@ -91,15 +99,15 @@ impl Format for ItemStorage {
                             write!(
                                 formatted_code,
                                 " {} ",
-                                storage_field.colon_token.ident().as_str(),
+                                configurable_field.colon_token.ident().as_str(),
                             )?;
-                            storage_field.ty.format(formatted_code, formatter)?;
+                            configurable_field.ty.format(formatted_code, formatter)?;
                             write!(
                                 formatted_code,
                                 " {} ",
-                                storage_field.eq_token.ident().as_str()
+                                configurable_field.eq_token.ident().as_str()
                             )?;
-                            storage_field
+                            configurable_field
                                 .initializer
                                 .format(formatted_code, formatter)?;
                             writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
@@ -121,7 +129,7 @@ impl Format for ItemStorage {
     }
 }
 
-impl CurlyBrace for ItemStorage {
+impl CurlyBrace for ItemConfigurable {
     fn open_curly_brace(
         line: &mut String,
         formatter: &mut Formatter,
@@ -160,15 +168,15 @@ impl CurlyBrace for ItemStorage {
     }
 }
 
-impl LeafSpans for ItemStorage {
+impl LeafSpans for ItemConfigurable {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from(self.storage_token.span())];
+        let mut collected_spans = vec![ByteSpan::from(self.configurable_token.span())];
         collected_spans.append(&mut self.fields.leaf_spans());
         collected_spans
     }
 }
 
-impl LeafSpans for StorageField {
+impl LeafSpans for ConfigurableField {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.name.span())];
         collected_spans.push(ByteSpan::from(self.colon_token.span()));
