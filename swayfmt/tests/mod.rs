@@ -571,6 +571,41 @@ trait AlignMyComments {
 }
 
 #[test]
+fn comments_empty_fns() {
+    check(
+        r#"contract;
+
+fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+        // line
+// comment
+}"#,
+        r#"contract;
+
+fn single_comment_same_line() {
+    /* a comment */
+}
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+    // line
+    // comment
+}
+"#,
+    );
+}
+
+#[test]
 fn enum_comments() {
     check(
         r#"contract;
@@ -845,7 +880,7 @@ fn inner_doc_comments() {
         r#"script;
 
 enum Color {
-//! Color is a Sway enum
+    //! Color is a Sway enum
     blue: (),
     red: ()
 }

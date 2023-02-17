@@ -55,7 +55,9 @@ where
                     write!(formatted_code, " ")?;
                 }
                 LineStyle::Multiline => {
-                    writeln!(formatted_code)?;
+                    if !formatted_code.ends_with('\n') {
+                        writeln!(formatted_code)?;
+                    }
                     let value_pairs_iter = self.value_separator_pairs.iter();
                     for (type_field, comma_token) in value_pairs_iter.clone() {
                         write!(
