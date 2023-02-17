@@ -29,21 +29,17 @@ impl<T: Parse> Parse for Annotated<T> {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         // Parse the attribute list.
         let mut attribute_list = Vec::new();
-        while let Some(DocComment { .. }) = parser.peek() {
+        while let Some(DocComment {
+            doc_style: DocStyle::Outer,
+            ..
+        }) = parser.peek()
+        {
             let doc_comment = parser.parse::<DocComment>()?;
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
-            let hash_kind = match &doc_comment.doc_style {
-                DocStyle::Inner => {
-                    AttributeHashKind::Inner(HashBangToken::new(doc_comment.span.clone()))
-                }
-                DocStyle::Outer => {
-                    AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone()))
-                }
-            };
             attribute_list.push(AttributeDecl {
-                hash_kind,
+                hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
                 attribute: SquareBrackets::new(
                     Punctuated::single(Attribute {
                         name: Ident::new_with_override(
