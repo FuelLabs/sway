@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_tx::{Output, TransactionBuilder};
 use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
@@ -49,7 +49,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     // package. In the future, we can consider relaxing this to allow for
     // specifying a salt for workspace deployment, as long as there is only one
     // root contract member in the package graph.
-    if command.salt.value.is_some() && built_pkgs_with_manifest.len() > 1 {
+    if command.salt.salt.is_some() && built_pkgs_with_manifest.len() > 1 {
         bail!(
             "A salt was specified when attempting to deploy a workspace with more than one member.
               If you wish to deploy a contract member with salt, deploy the member individually.
@@ -84,7 +84,7 @@ pub async fn deploy_pkg(
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
-    let salt = command.salt.value.unwrap_or_default();
+    let salt = command.salt.salt.unwrap_or_default();
     let mut storage_slots = compiled.storage_slots.clone();
     storage_slots.sort();
 
@@ -98,7 +98,7 @@ pub async fn deploy_pkg(
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
         // TODO: Spec says maturity should be u32, but fuel-tx wants u64.
-        .maturity(u64::from(command.maturity.value))
+        .maturity(u64::from(command.maturity.maturity))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;

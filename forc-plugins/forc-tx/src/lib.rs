@@ -114,7 +114,7 @@ pub struct Gas {
 pub struct Maturity {
     /// Block height until which tx cannot be included.
     #[clap(long = "maturity", default_value_t = 0)]
-    pub value: u32,
+    pub maturity: u32,
 }
 
 /// Added salt used to derive the contract ID.
@@ -124,7 +124,7 @@ pub struct Salt {
     ///
     /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
     #[clap(long = "salt")]
-    pub value: Option<fuel_tx::Salt>,
+    pub salt: Option<fuel_tx::Salt>,
 }
 
 /// Transaction input.
@@ -648,9 +648,9 @@ impl TryFrom<Create> for fuel_tx::Create {
             create.gas.price,
             create.gas.limit,
             // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            fuel_tx::Word::from(create.maturity.value),
+            fuel_tx::Word::from(create.maturity.maturity),
             create.bytecode_witness_index,
-            create.salt.value.unwrap_or_default(),
+            create.salt.salt.unwrap_or_default(),
             storage_slots,
             inputs,
             outputs,
@@ -693,7 +693,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             script.gas.price,
             script.gas.limit,
             // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            fuel_tx::Word::from(script.maturity.value),
+            fuel_tx::Word::from(script.maturity.maturity),
             script_bytecode,
             script_data,
             inputs,
