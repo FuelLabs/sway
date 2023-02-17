@@ -268,7 +268,7 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             errors
                         );
                         for param in method.parameters {
-                            if param.name.as_str() != "self" {
+                            if !param.is_self() {
                                 check!(
                                     check_type(
                                         engines,
