@@ -377,19 +377,19 @@ pub enum ConvertScriptTxError {
 /// Errors that can occur during transaction input conversion.
 #[derive(Debug, Error)]
 pub enum ConvertInputError {
-    #[error("failed to read message data from {path:?}")]
+    #[error("failed to read `--msg-data` from {path:?}")]
     MessageDataRead {
         path: PathBuf,
         #[source]
         err: std::io::Error,
     },
-    #[error("failed to read predicate from {path:?}")]
+    #[error("failed to read `--predicate` from {path:?}")]
     PredicateRead {
         path: PathBuf,
         #[source]
         err: std::io::Error,
     },
-    #[error("failed to read predicate data from {path:?}")]
+    #[error("failed to read `--predicate-data` from {path:?}")]
     PredicateDataRead {
         path: PathBuf,
         #[source]
