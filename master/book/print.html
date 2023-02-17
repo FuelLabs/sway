@@ -4415,6 +4415,9 @@ whitespace</p>
 <p><code>--locked</code> </p>
 <p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
 to be updated, Forc will exit with an error</p>
+<p><code>--maturity</code> &lt;<em>MATURITY</em>&gt;</p>
+<p>Block height until which tx cannot be included</p>
+<p>[default: 0]</p>
 <p><code>--node-url</code> &lt;<em>NODE_URL</em>&gt;</p>
 <p>The URL of the Fuel node to which we're submitting the transaction. If unspecified,
 checks the manifest's <code>network</code> table, then falls back to [<code>crate::default::NODE_URL</code>]</p>
@@ -4429,11 +4432,18 @@ it will only try to use previously downloaded dependencies</p>
 <p>By default, this is <code>&lt;project-root&gt;/out</code>.</p>
 <p><code>-p</code>, <code>--path</code> &lt;<em>PATH</em>&gt;</p>
 <p>Path to the project, if not specified, current working directory will be used</p>
+<p><code>--random-salt</code> </p>
+<p>Generate a random salt for the contract. Useful for testing or deploying examples to a
+shared network</p>
 <p><code>--release</code> </p>
 <p>Use release build plan. If a custom release plan is not specified, it is implicitly
 added to the manifest file.</p>
 <p>If --build-profile is also provided, forc omits this flag and uses provided
 build-profile.</p>
+<p><code>--salt</code> &lt;<em>SALT</em>&gt;</p>
+<p>Added salt used to derive the contract ID.</p>
+<p>By default, this is
+<code>0x0000000000000000000000000000000000000000000000000000000000000000</code>.</p>
 <p><code>-t</code>, <code>--terse</code> </p>
 <p>Terse mode. Limited warning and error output</p>
 <p><code>--time-phases</code> </p>
@@ -4496,6 +4506,9 @@ whitespace</p>
 <p><code>--locked</code> </p>
 <p>Requires that the Forc.lock file is up-to-date. If the lock file is missing, or it needs
 to be updated, Forc will exit with an error</p>
+<p><code>--maturity</code> &lt;<em>MATURITY</em>&gt;</p>
+<p>Block height until which tx cannot be included</p>
+<p>[default: 0]</p>
 <p><code>--node-url</code> &lt;<em>NODE_URL</em>&gt;</p>
 <p>The URL of the Fuel node to which we're submitting the transaction. If unspecified,
 checks the manifest's <code>network</code> table, then falls back to [<code>crate::default::NODE_URL</code>]</p>
