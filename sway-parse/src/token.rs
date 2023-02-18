@@ -944,12 +944,14 @@ mod tests {
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
                 span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//!inner"
         );
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
                 span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//! inner"
         );
         assert_matches!(
