@@ -51,75 +51,173 @@ macro_rules! testgen {
 
                 // TODO: tx params
                 pub async fn push(instance: &MyContract, value: $type_declaration) {
-                    instance.methods().push(value).call().await.unwrap();
+                    instance.methods()
+                        .push(value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn get(instance: &MyContract, index: u64) -> $type_declaration {
-                    instance.methods().get(index).call().await.unwrap().value
+                    instance.methods()
+                        .get(index)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn pop(instance: &MyContract) -> $type_declaration {
-                    instance.methods().pop().call().await.unwrap().value
+                    instance.methods()
+                        .pop()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn remove(instance: &MyContract, index: u64) -> $type_declaration {
-                    instance.methods().remove(index).call().await.unwrap().value
+                    instance.methods()
+                        .remove(index)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn swap_remove(instance: &MyContract, index: u64) -> $type_declaration {
-                    instance.methods().swap_remove(index).call().await.unwrap().value
+                    instance.methods()
+                        .swap_remove(index)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn set(instance: &MyContract, index: u64, value: $type_declaration) {
-                    instance.methods().set(index, value).call().await.unwrap();
+                    instance.methods()
+                        .set(index, value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn insert(instance: &MyContract, index: u64, value: $type_declaration) {
-                    instance.methods().insert(index, value).call().await.unwrap();
+                    instance.methods()
+                        .insert(index, value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn len(instance: &MyContract) -> u64 {
-                    instance.methods().len().call().await.unwrap().value
+                    instance.methods()
+                        .len()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn is_empty(instance: &MyContract) -> bool {
-                    instance.methods().is_empty().call().await.unwrap().value
+                    instance.methods()
+                        .is_empty()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn clear(instance: &MyContract) {
-                    instance.methods().clear().call().await.unwrap();
+                    instance.methods()
+                        .clear()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn swap(instance: &MyContract, index_0: u64, index_1: u64) {
-                    instance.methods().swap(index_0, index_1).call().await.unwrap();
+                    instance.methods()
+                        .swap(index_0, index_1)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn first(instance: &MyContract) -> $type_declaration {
-                    instance.methods().first().call().await.unwrap().value
+                    instance.methods()
+                        .first()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn last(instance: &MyContract) -> $type_declaration {
-                    instance.methods().last().call().await.unwrap().value
+                    instance.methods()
+                        .last()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap()
+                        .value
                 }
 
                 pub async fn reverse(instance: &MyContract) {
-                    instance.methods().reverse().call().await.unwrap();
+                    instance.methods()
+                        .reverse()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn fill(instance: &MyContract, value: $type_declaration) {
-                    instance.methods().fill(value).call().await.unwrap();
+                    instance.methods()
+                        .fill(value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn resize(instance: &MyContract, new_len: u64, value: $type_declaration) {
-                    instance.methods().resize(new_len, value).call().await.unwrap();
+                    instance.methods()
+                        .resize(new_len, value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn append(instance: &MyContract) {
-                    instance.methods().append().call().await.unwrap();
+                    instance.methods()
+                        .append()
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
 
                 pub async fn push_other(instance: &MyContract, value: $type_declaration) {
-                    instance.methods().push_other(value).call().await.unwrap();
+                    instance.methods()
+                        .push_other(value)
+                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
+                        .call()
+                        .await
+                        .unwrap();
                 }
             }
 
@@ -243,7 +341,7 @@ macro_rules! testgen {
 
                     clear(&instance).await;
 
-                    assert!(!is_empty(&instance).await);
+                    assert!(is_empty(&instance).await);
                 }
 
                 #[tokio::test]
@@ -254,7 +352,7 @@ macro_rules! testgen {
 
                     clear(&instance).await;
 
-                    assert!(!is_empty(&instance).await);
+                    assert!(is_empty(&instance).await);
 
                     push(&instance, $arg0).await;
                     push(&instance, $arg1).await;
@@ -263,7 +361,7 @@ macro_rules! testgen {
 
                     clear(&instance).await;
 
-                    assert!(!is_empty(&instance).await);
+                    assert!(is_empty(&instance).await);
                 }
 
                 #[tokio::test]

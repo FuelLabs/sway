@@ -887,6 +887,7 @@ impl<V> StorageVec<V> {
         let mut i = 0;
         while i < len {
             store::<V>(sha256((i, __get_storage_key())), value);
+            i += 1;
         }
     }
 
@@ -998,9 +999,10 @@ impl<V> StorageVec<V> {
         let mut i = 0;
         while i < other_len {
             store::<V>(sha256((len + i, __get_storage_key())), other.get(i).unwrap());
+            i += 1;
         }
 
-        store::<u64>(sha256((len + other_len, __get_storage_key())))
+        store::<u64>(__get_storage_key(), len + other_len)
     }
 }
 
