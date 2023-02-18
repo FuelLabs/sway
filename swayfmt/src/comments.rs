@@ -89,7 +89,7 @@ pub fn write_comments(
         while let Some(comment) = comments_iter.next() {
             let newlines = collect_newlines_after_comment(&formatter.comments_context, comment);
 
-            if formatted_code.trim_end().ends_with(&[']', ';']) {
+            if formatted_code.trim_end().ends_with(&[']', ';', ')']) {
                 match comment.comment_kind {
                     CommentKind::Newlined => {
                         write!(

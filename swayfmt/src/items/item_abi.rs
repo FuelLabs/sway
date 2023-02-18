@@ -71,24 +71,6 @@ impl Format for ItemAbi {
             prev_end = Some(fn_signature.value.span().end());
         }
 
-        Self::close_curly_brace(formatted_code, formatter)?;
-
-        // abi_defs_opt
-        if let Some(abi_defs) = self.abi_defs_opt.clone() {
-            Self::open_curly_brace(formatted_code, formatter)?;
-            for item in abi_defs.get().iter() {
-                // add indent + format item
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
-                )?;
-                item.format(formatted_code, formatter)?;
-            }
-            writeln!(formatted_code)?;
-            Self::close_curly_brace(formatted_code, formatter)?;
-        }
-
         let last_abi_item = abi_items.last();
         let start = if let Some(last_abi_item) = last_abi_item {
             // If there are ABI items and attributes:
@@ -108,9 +90,29 @@ impl Format for ItemAbi {
             self.span().start()
         };
 
-        write_comments(formatted_code, start..self.span().end(), formatter)?;
-
+        write_comments(
+            formatted_code,
+            start..self.abi_items.span().end(),
+            formatter,
+        )?;
         Self::close_curly_brace(formatted_code, formatter)?;
+
+        // abi_defs_opt
+        if let Some(abi_defs) = self.abi_defs_opt.clone() {
+            Self::open_curly_brace(formatted_code, formatter)?;
+            for item in abi_defs.get().iter() {
+                // add indent + format item
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                )?;
+                item.format(formatted_code, formatter)?;
+            }
+            writeln!(formatted_code)?;
+
+            Self::close_curly_brace(formatted_code, formatter)?;
+        }
 
         Ok(())
     }

@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
-    DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
+    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -158,13 +158,21 @@ pub fn lex_commented(
                         .filter(|&c| c == '\n')
                         .count()
                         > 0;
+
                     let comment_kind = if has_newline {
                         CommentKind::Newlined
                     } else {
                         CommentKind::Trailing
                     };
-                    let ctt =
-                        lex_line_comment(&mut l, end, index, comment_kind, file_start_offset, gather_module_docs);
+
+                    let ctt = lex_line_comment(
+                        &mut l,
+                        end,
+                        index,
+                        comment_kind,
+                        file_start_offset,
+                        gather_module_docs,
+                    );
                     if let CommentedTokenTree::Tree(GenericTokenTree::DocComment(DocComment {
                         doc_style: DocStyle::Inner,
                         ..
