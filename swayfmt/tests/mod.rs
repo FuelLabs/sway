@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
-
-#[macro_use]
-mod macros;
+use test_macros::assert_eq_pretty;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.

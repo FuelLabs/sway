@@ -27,3 +27,4 @@ toml = "0.5"
 forc-util = { path = "../forc-util" }
 paste = "1.0"
 prettydiff = "0.6"
+test-macros = { path = "test_macros" }
