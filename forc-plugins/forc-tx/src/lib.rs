@@ -1,6 +1,6 @@
 //! A simple tool for constructing transactions from the command line.
 
-use clap::Parser;
+use clap::{Args, Parser};
 use devault::Devault;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -30,12 +30,10 @@ pub enum Transaction {
 pub struct Create {
     #[clap(flatten)]
     pub gas: Gas,
-    /// Block until which tx cannot be included.
-    #[clap(long)]
-    pub maturity: u32,
-    /// Added salt used to derive the contract ID.
-    #[clap(long)]
-    pub salt: Option<fuel_tx::Salt>,
+    #[clap(flatten)]
+    pub maturity: Maturity,
+    #[clap(flatten)]
+    pub salt: Salt,
     /// Path to the contract bytecode.
     #[clap(long)]
     pub bytecode: PathBuf,
@@ -74,9 +72,8 @@ pub struct Mint {
 pub struct Script {
     #[clap(flatten)]
     pub gas: Gas,
-    /// Block until which tx cannot be included.
-    #[clap(long)]
-    pub maturity: u32,
+    #[clap(flatten)]
+    pub maturity: Maturity,
     /// Script to execute.
     #[clap(long)]
     pub bytecode: PathBuf,
@@ -110,6 +107,24 @@ pub struct Gas {
     #[clap(long = "gas-limit", default_value_t = fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)]
     #[devault("fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx")]
     pub limit: u64,
+}
+
+/// Block until which tx cannot be included.
+#[derive(Debug, Args, Default, Deserialize, Serialize)]
+pub struct Maturity {
+    /// Block height until which tx cannot be included.
+    #[clap(long = "maturity", default_value_t = 0)]
+    pub maturity: u32,
+}
+
+/// Added salt used to derive the contract ID.
+#[derive(Debug, Args, Default, Deserialize, Serialize)]
+pub struct Salt {
+    /// Added salt used to derive the contract ID.
+    ///
+    /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+    #[clap(long = "salt")]
+    pub salt: Option<fuel_tx::Salt>,
 }
 
 /// Transaction input.
@@ -633,9 +648,9 @@ impl TryFrom<Create> for fuel_tx::Create {
             create.gas.price,
             create.gas.limit,
             // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            create.maturity as fuel_tx::Word,
+            fuel_tx::Word::from(create.maturity.maturity),
             create.bytecode_witness_index,
-            create.salt.unwrap_or_default(),
+            create.salt.salt.unwrap_or_default(),
             storage_slots,
             inputs,
             outputs,
@@ -678,7 +693,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             script.gas.price,
             script.gas.limit,
             // TODO: `fuel_tx` create shouldn't accept `Word`: spec says `u32`.
-            script.maturity as fuel_tx::Word,
+            fuel_tx::Word::from(script.maturity.maturity),
             script_bytecode,
             script_data,
             inputs,
