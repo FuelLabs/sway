@@ -38,7 +38,7 @@ impl Format for ItemAbi {
         // if there are existing abi items, we want to end before the hash token
         // This is OK to unwrap since we've checked is_empty() above.
         else if let Some(first_attr) = abi_items.first().unwrap().0.attribute_list.first() {
-            first_attr.hash_token.span().start()
+            first_attr.span().start()
         } else {
             abi_items.first().unwrap().0.value.span().start()
         };
@@ -94,7 +94,7 @@ impl Format for ItemAbi {
             // If there are ABI items and attributes:
             // we start from the hash token of the last attribute.
             if let Some(last_attr) = last_abi_item.0.attribute_list.last() {
-                last_attr.hash_token.span().start()
+                last_attr.span().start()
             }
             // If there are ABI items but no attributes:
             // we start from the last item.

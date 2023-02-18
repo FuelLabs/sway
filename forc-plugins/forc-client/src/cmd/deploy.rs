@@ -2,7 +2,7 @@ use clap::Parser;
 use fuel_crypto::SecretKey;
 
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
-pub use forc_tx::Gas;
+pub use forc_tx::{Gas, Maturity, Salt};
 
 #[derive(Debug, Default, Parser)]
 #[clap(bin_name = "forc deploy", version)]
@@ -15,6 +15,14 @@ pub struct Command {
     pub print: Print,
     #[clap(flatten)]
     pub gas: Gas,
+    #[clap(flatten)]
+    pub maturity: Maturity,
+    #[clap(flatten)]
+    pub salt: Salt,
+    /// Generate a random salt for the contract.
+    /// Useful for testing or deploying examples to a shared network.
+    #[clap(long)]
+    pub random_salt: bool,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]
