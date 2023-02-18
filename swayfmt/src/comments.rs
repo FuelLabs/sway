@@ -45,7 +45,7 @@ pub fn collect_newlines_after_comment(
         .collect()
 }
 
-/// Writes a trailing newline using potentially destructive 'truncate()' to strip the end
+/// Writes a trailing comment using potentially destructive 'truncate()' to strip the end
 /// of whitespaces.
 fn write_trailing_comment(
     formatted_code: &mut FormattedCode,
