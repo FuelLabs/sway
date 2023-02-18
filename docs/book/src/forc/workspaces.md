@@ -29,5 +29,8 @@ Packages that are located within a workspace directory but are *not* contained w
 
 * `forc build` - Builds an entire workspace.
 * `forc deploy` - Builds and deploys all deployable members (i.e, contracts) of the workspace in the correct order.
+* `forc run` - Builds and runs all scripts of the workspace.
 * `forc check` - Checks all members of the workspace.
 * `forc update` - Checks and updates workspace level `Forc.lock` file that is shared between workspace members.
+* `forc clean` - Cleans all output artifacts for each member of the workspace.
+* `forc fmt` - Formats all members of a workspace.
