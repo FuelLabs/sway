@@ -13,6 +13,8 @@ fn example_function(variable: Result<Option<u32>, u32>) -> Result<Option<u32>, u
     variable
 }
 
+abi TestAbi {}
+
 fn main() {
     // Variable usage: Variable Declarations
     let variable1 = 10;
@@ -53,4 +55,9 @@ fn main() {
 
     // Complex type ascriptions
     let variable7: Result<Option<u32>, u32> = variable2;
+
+    // ContractCaller
+    use std::constants::ZERO_B256;
+    let variable8: ContractCaller<TestAbi> = abi(TestAbi, ZERO_B256);
+    let variable9: ContractCaller<_> = abi(TestAbi, ZERO_B256);
 }
