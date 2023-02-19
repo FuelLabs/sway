@@ -213,6 +213,7 @@ pub struct BuildProfile {
     pub terse: bool,
     pub time_phases: bool,
     pub include_tests: bool,
+    pub reverse_errors: bool,
 }
 
 impl Dependency {

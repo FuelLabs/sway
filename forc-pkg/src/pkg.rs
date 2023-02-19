@@ -2992,7 +2992,7 @@ pub fn build(
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs);
+                print_on_failure(profile.terse, &[], &errs, bool);
                 bail!("Failed to compile {}", pkg.name);
             }
         };

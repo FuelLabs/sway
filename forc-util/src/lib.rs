@@ -230,12 +230,22 @@ pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[C
     }
 }
 
-pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
+pub fn print_on_failure(
+    terse_mode: bool,
+    warnings: &[CompileWarning],
+    errors: &[CompileError],
+    reverse_errors: bool,
+) {
     let e_len = errors.len();
 
     if !terse_mode {
-        warnings.iter().for_each(format_warning);
-        errors.iter().for_each(format_err);
+        if reverse_errors {
+            warnings.iter().rev().for_each(format_warning);
+            errors.iter().rev().for_each(format_err);
+        } else {
+            warnings.iter().for_each(format_warning);
+            errors.iter().for_each(format_err);
+        }
     }
 
     println_red_err(&format!(
