@@ -11,6 +11,7 @@ use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
@@ -55,6 +56,36 @@ impl PartialEqWithEngines for TypeParameter {
     }
 }
 
+impl OrdWithEngines for TypeParameter {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TypeParameter {
+            type_id: lti,
+            name_ident: ln,
+            trait_constraints: ltc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = self;
+        let TypeParameter {
+            type_id: rti,
+            name_ident: rn,
+            trait_constraints: rtc,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            trait_constraints_span: _,
+            initial_type_id: _,
+        } = other;
+        ln.cmp(rn)
+            .then_with(|| {
+                type_engine
+                    .get(*lti)
+                    .cmp(&type_engine.get(*rti), type_engine)
+            })
+            .then_with(|| ltc.cmp(rtc, type_engine))
+    }
+}
+
 impl SubstTypes for TypeParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_id.subst(type_mapping, engines);
@@ -92,10 +123,44 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(
+    /// Type check a list of [TypeParameter] and return a new list of
+    /// [TypeParameter]. This will also insert this new list into the current
+    /// namespace.
+    pub(crate) fn type_check_type_params(
         mut ctx: TypeCheckContext,
-        type_parameter: TypeParameter,
-    ) -> CompileResult<Self> {
+        type_params: Vec<TypeParameter>,
+        disallow_trait_constraints: bool,
+    ) -> CompileResult<Vec<TypeParameter>> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut new_type_params: Vec<TypeParameter> = vec![];
+
+        for type_param in type_params.into_iter() {
+            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
+                let errors = vec![CompileError::WhereClauseNotYetSupported {
+                    span: type_param.trait_constraints_span,
+                }];
+                return err(vec![], errors);
+            }
+            new_type_params.push(check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param),
+                continue,
+                warnings,
+                errors
+            ));
+        }
+
+        if errors.is_empty() {
+            ok(new_type_params, warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
+    /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
+    /// inserts into into the current namespace.
+    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParameter) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 

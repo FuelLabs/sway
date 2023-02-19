@@ -94,7 +94,7 @@ pub fn handle_newlines(
     // formatting the code a second time will still produce the same result.
     let newline_map = newline_map_from_src(&unformatted_input)?;
     // After the formatting existing items should be the same (type of the item) but their spans will be changed since we applied formatting to them.
-    let formatted_module = parse_file(formatted_input, path)?;
+    let formatted_module = parse_file(formatted_input, path)?.value;
     // Actually find & insert the newline sequences
     add_newlines(
         newline_map,

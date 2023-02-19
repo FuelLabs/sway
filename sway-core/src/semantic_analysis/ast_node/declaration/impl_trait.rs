@@ -24,8 +24,7 @@ impl ty::TyImplTrait {
             impl_type_parameters,
             trait_name,
             mut trait_type_arguments,
-            type_implementing_for,
-            type_implementing_for_span,
+            mut implementing_for,
             functions,
             block_span,
         } = impl_trait;
@@ -38,22 +37,14 @@ impl ty::TyImplTrait {
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_impl_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -66,12 +57,9 @@ impl ty::TyImplTrait {
         }
 
         // type check the type that we are implementing for
-        let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
-                type_engine.insert(decl_engine, type_implementing_for),
-                &type_implementing_for_span,
-                None
-            ),
+
+        implementing_for.type_id = check!(
+            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
             return err(warnings, errors),
             warnings,
             errors
@@ -80,8 +68,8 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .get(implementing_for_type_id)
-                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
+                .get(implementing_for.type_id)
+                .expect_is_supported_in_impl_blocks_self(&implementing_for.span),
             return err(warnings, errors),
             warnings,
             errors
@@ -93,8 +81,8 @@ impl ty::TyImplTrait {
                 engines,
                 &new_impl_type_parameters,
                 &trait_type_arguments,
-                implementing_for_type_id,
-                &type_implementing_for_span
+                implementing_for.type_id,
+                &implementing_for.span
             ),
             return err(warnings, errors),
             warnings,
@@ -103,7 +91,7 @@ impl ty::TyImplTrait {
 
         // Update the context with the new `self` type.
         let mut ctx = ctx
-            .with_self_type(implementing_for_type_id)
+            .with_self_type(implementing_for.type_id)
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
@@ -163,8 +151,7 @@ impl ty::TyImplTrait {
                     )),
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id,
-                    type_implementing_for_span: type_implementing_for_span.clone(),
+                    implementing_for,
                 }
             }
             Some(ty::TyDeclaration::AbiDeclaration { decl_id, .. }) => {
@@ -181,12 +168,12 @@ impl ty::TyImplTrait {
                 );
 
                 if !type_engine
-                    .get(implementing_for_type_id)
+                    .get(implementing_for.type_id)
                     .eq(&TypeInfo::Contract, engines)
                 {
                     errors.push(CompileError::ImplAbiForNonContract {
-                        span: type_implementing_for_span.clone(),
-                        ty: engines.help_out(implementing_for_type_id).to_string(),
+                        span: implementing_for.span(),
+                        ty: engines.help_out(implementing_for.type_id).to_string(),
                     });
                 }
 
@@ -198,7 +185,7 @@ impl ty::TyImplTrait {
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
-                        &[], // this is empty because abi definitions don't support supertraits,
+                        &abi.supertraits,
                         &abi.interface_surface,
                         &abi.methods,
                         &functions,
@@ -217,8 +204,7 @@ impl ty::TyImplTrait {
                     trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
                     span: block_span,
                     methods: new_methods,
-                    implementing_for_type_id,
-                    type_implementing_for_span,
+                    implementing_for,
                 }
             }
             Some(_) | None => {
@@ -439,8 +425,7 @@ impl ty::TyImplTrait {
 
         let ImplSelf {
             impl_type_parameters,
-            type_implementing_for,
-            type_implementing_for_span,
+            mut implementing_for,
             functions,
             block_span,
         } = impl_self;
@@ -456,40 +441,25 @@ impl ty::TyImplTrait {
         // create the trait name
         let trait_name = CallPath {
             prefixes: vec![],
-            suffix: match &type_implementing_for {
+            suffix: match &type_engine.get(implementing_for.type_id) {
                 TypeInfo::Custom { call_path, .. } => call_path.suffix.clone(),
-                _ => Ident::new_with_override("r#Self", type_implementing_for_span.clone()),
+                _ => Ident::new_with_override("r#Self", implementing_for.span()),
             },
             is_absolute: false,
         };
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                continue;
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters. This will also insert them into the
+        // current namespace.
+        let new_impl_type_parameters = check!(
+            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the type that we are implementing for
-        let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
-                type_engine.insert(decl_engine, type_implementing_for),
-                &type_implementing_for_span,
-                None
-            ),
+        implementing_for.type_id = check!(
+            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
             return err(warnings, errors),
             warnings,
             errors
@@ -498,8 +468,8 @@ impl ty::TyImplTrait {
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
-                .get(implementing_for_type_id)
-                .expect_is_supported_in_impl_blocks_self(&type_implementing_for_span),
+                .get(implementing_for.type_id)
+                .expect_is_supported_in_impl_blocks_self(&implementing_for.span),
             return err(warnings, errors),
             warnings,
             errors
@@ -511,8 +481,8 @@ impl ty::TyImplTrait {
                 engines,
                 &new_impl_type_parameters,
                 &[],
-                implementing_for_type_id,
-                &type_implementing_for_span
+                implementing_for.type_id,
+                &implementing_for.span
             ),
             return err(warnings, errors),
             warnings,
@@ -520,7 +490,7 @@ impl ty::TyImplTrait {
         );
 
         let mut ctx = ctx
-            .with_self_type(implementing_for_type_id)
+            .with_self_type(implementing_for.type_id)
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
@@ -541,9 +511,9 @@ impl ty::TyImplTrait {
         check!(
             CompileResult::from(Self::gather_storage_only_types(
                 engines,
-                implementing_for_type_id,
+                implementing_for.type_id,
                 &methods,
-                &type_implementing_for_span,
+                &implementing_for.span,
             )),
             return err(warnings, errors),
             warnings,
@@ -562,8 +532,7 @@ impl ty::TyImplTrait {
             trait_decl_ref: None,
             span: block_span,
             methods: methods_ids,
-            implementing_for_type_id,
-            type_implementing_for_span,
+            implementing_for,
         };
         ok(impl_trait, warnings, errors)
     }

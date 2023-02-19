@@ -1,0 +1,21 @@
+[package]
+name = "test-macros"
+version = "0.0.0"
+edition = "2021"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+homepage = "https://fuel.network/"
+license = "Apache-2.0"
+repository = "https://github.com/FuelLabs/sway"
+description = "Macros for testing the Sway formatter."
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+paste = "1.0"
+prettydiff = "0.6"
+
+[package.metadata.cargo-udeps.ignore]
+development = ["paste", "prettydiff"]

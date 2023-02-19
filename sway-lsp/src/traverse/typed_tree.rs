@@ -229,8 +229,7 @@ impl<'a> TypedTree<'a> {
                     trait_type_arguments,
                     trait_decl_ref,
                     methods,
-                    implementing_for_type_id,
-                    type_implementing_for_span,
+                    implementing_for,
                     ..
                 }) = decl_engine.get_impl_trait(decl_id, decl_span)
                 {
@@ -262,10 +261,10 @@ impl<'a> TypedTree<'a> {
                             if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, decl_span) {
                                 Some(TypeDefinition::Ident(trait_decl.name))
                             } else {
-                                Some(TypeDefinition::TypeId(implementing_for_type_id))
+                                Some(TypeDefinition::TypeId(implementing_for.type_id))
                             }
                         } else {
-                            Some(TypeDefinition::TypeId(implementing_for_type_id))
+                            Some(TypeDefinition::TypeId(implementing_for.type_id))
                         };
                     }
 
@@ -284,10 +283,18 @@ impl<'a> TypedTree<'a> {
                         }
                     }
 
+                    self.collect_type_argument(&implementing_for, namespace);
+
+                    // collect the root type argument again with declaration info this time so the
+                    // impl is registered
                     self.collect_type_id(
-                        implementing_for_type_id,
+                        implementing_for.type_id,
                         &TypedAstToken::TypedDeclaration(declaration.clone()),
-                        type_implementing_for_span,
+                        implementing_for
+                            .call_path_tree
+                            .as_ref()
+                            .map(|tree| tree.call_path.suffix.span())
+                            .unwrap_or(implementing_for.span()),
                         namespace,
                     );
                 }
@@ -311,6 +318,10 @@ impl<'a> TypedTree<'a> {
                         {
                             self.collect_typed_trait_fn_token(&trait_fn, namespace);
                         }
+                    }
+
+                    for supertrait in abi_decl.supertraits {
+                        self.collect_supertrait(&supertrait);
                     }
                 }
             }
@@ -710,13 +721,11 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::AbiCast {
                 abi_name, address, ..
             } => {
-                for ident in &abi_name.prefixes {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    }
-                }
+                self.collect_call_path_prefixes(
+                    &abi_name.prefixes,
+                    TypedAstToken::TypedExpression(expression.clone()),
+                    namespace,
+                );
 
                 if let Some(mut token) = self
                     .tokens
@@ -724,6 +733,13 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                    if let Some(abi_def_ident) = namespace
+                        .submodule(&abi_name.prefixes)
+                        .and_then(|module| module.symbols().get(&abi_name.suffix))
+                        .and_then(|decl| decl.get_decl_ident())
+                    {
+                        token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
+                    }
                 }
 
                 self.handle_expression(address, namespace);
@@ -1063,23 +1079,42 @@ impl<'a> TypedTree<'a> {
                     self.collect_call_path_tree(child_tree, &type_arg, namespace);
                 }
             }
-            TypeInfo::Custom { type_arguments, .. } => {
-                if let Some(type_args) = type_arguments {
-                    for (child_tree, type_arg) in tree.children.iter().zip(type_args.iter()) {
-                        self.collect_call_path_tree(child_tree, type_arg, namespace);
+            TypeInfo::Custom {
+                type_arguments: Some(type_args),
+                ..
+            } => {
+                for (child_tree, type_arg) in tree.children.iter().zip(type_args.iter()) {
+                    self.collect_call_path_tree(child_tree, type_arg, namespace);
+                }
+            }
+            TypeInfo::ContractCaller { .. } => {
+                // single generic argument to ContractCaller<_> has to be a single ABI
+                // definition call path which we can collect without recursion
+                if let Some(child_tree) = tree.children.first() {
+                    let abi_call_path = &child_tree.call_path;
+
+                    self.collect_call_path_prefixes(
+                        &abi_call_path.prefixes,
+                        TypedAstToken::TypedArgument(type_arg.clone()),
+                        namespace,
+                    );
+                    if let Some(mut token) = self
+                        .tokens
+                        .try_get_mut(&to_ident_key(&abi_call_path.suffix))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedArgument(type_arg.clone()));
+                        if let Some(abi_def_ident) = namespace
+                            .submodule(&abi_call_path.prefixes)
+                            .and_then(|module| module.symbols().get(&abi_call_path.suffix))
+                            .and_then(|decl| decl.get_decl_ident())
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
+                        }
                     }
                 }
             }
-            _ => {
-                self.collect_type_id(
-                    type_arg.type_id,
-                    &TypedAstToken::TypedArgument(type_arg.clone()),
-                    // use the whole span instead of just the name if we don't know
-                    // how to walk it
-                    type_arg.span(),
-                    namespace,
-                );
-            }
+            _ => {}
         };
     }
 

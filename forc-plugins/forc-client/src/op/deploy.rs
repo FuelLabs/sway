@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 use forc_pkg::{self as pkg, PackageManifestFile};
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_tx::{Output, TransactionBuilder};
 use fuel_vm::prelude::*;
 use futures::FutureExt;
 use pkg::BuiltPackage;
@@ -36,8 +36,28 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     } else {
         std::env::current_dir()?
     };
+
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs_with_manifest(&curr_dir, build_opts)?;
+
+    // If a salt was specified but we have more than one member to build, there
+    // may be ambiguity in how the salt should be applied, especially if the
+    // workspace contains multiple contracts, and especially if one contract
+    // member is the dependency of another (in which case salt should be
+    // specified under `[contract- dependencies]`). Considering this, we have a
+    // simple check to ensure that we only accept salt when deploying a single
+    // package. In the future, we can consider relaxing this to allow for
+    // specifying a salt for workspace deployment, as long as there is only one
+    // root contract member in the package graph.
+    if command.salt.salt.is_some() && built_pkgs_with_manifest.len() > 1 {
+        bail!(
+            "A salt was specified when attempting to deploy a workspace with more than one member.
+              If you wish to deploy a contract member with salt, deploy the member individually.
+              If you wish to specify the salt for a contract dependency, \
+            please do so within the `[contract-dependencies]` table."
+        )
+    }
+
     for (member_manifest, built_pkg) in built_pkgs_with_manifest {
         if member_manifest
             .check_program_type(vec![TreeType::Contract])
@@ -64,7 +84,14 @@ pub async fn deploy_pkg(
     let client = FuelClient::new(node_url)?;
 
     let bytecode = compiled.bytecode.clone().into();
-    let salt = Salt::new([0; 32]);
+    let salt = match (command.salt.salt, command.random_salt) {
+        (Some(salt), false) => salt,
+        (None, true) => rand::random(),
+        (None, false) => Default::default(),
+        (Some(_), true) => {
+            bail!("Both `--salt` and `--random-salt` were specified: must choose one")
+        }
+    };
     let mut storage_slots = compiled.storage_slots.clone();
     storage_slots.sort();
 
@@ -77,6 +104,8 @@ pub async fn deploy_pkg(
     let tx = TransactionBuilder::create(bytecode, salt, storage_slots.clone())
         .gas_limit(command.gas.limit)
         .gas_price(command.gas.price)
+        // TODO: Spec says maturity should be u32, but fuel-tx wants u64.
+        .maturity(u64::from(command.maturity.maturity))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(client.clone(), command.unsigned, command.signing_key)
         .await?;

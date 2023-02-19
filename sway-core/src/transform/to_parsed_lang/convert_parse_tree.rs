@@ -564,8 +564,7 @@ fn item_impl_to_declaration(
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
-    let type_implementing_for_span = item_impl.ty.span();
-    let type_implementing_for = ty_to_type_info(context, handler, engines, item_impl.ty)?;
+    let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
     let functions = item_impl
         .contents
         .into_inner()
@@ -592,20 +591,18 @@ fn item_impl_to_declaration(
                 impl_type_parameters,
                 trait_name,
                 trait_type_arguments,
-                type_implementing_for,
-                type_implementing_for_span,
+                implementing_for,
                 functions,
                 block_span,
             };
             Ok(Declaration::ImplTrait(impl_trait))
         }
-        None => match type_implementing_for {
+        None => match engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
                 let impl_self = ImplSelf {
-                    type_implementing_for,
-                    type_implementing_for_span,
+                    implementing_for,
                     impl_type_parameters,
                     functions,
                     block_span,
@@ -676,6 +673,10 @@ fn item_abi_to_abi_declaration(
                     Ok(trait_fn)
                 })
                 .collect::<Result<_, _>>()?
+        },
+        supertraits: match item_abi.super_traits {
+            None => Vec::new(),
+            Some((_colon_token, traits)) => traits_to_supertraits(context, handler, traits)?,
         },
         methods: match item_abi.abi_defs_opt {
             None => Vec::new(),

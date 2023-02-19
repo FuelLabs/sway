@@ -24,7 +24,7 @@ use sway_core::{
             StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
             TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
-        Literal,
+        CallPathTree, Literal,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
@@ -267,15 +267,12 @@ impl<'a> ParsedTree<'a> {
 
                 let token = Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    type_info_to_symbol_kind(self.type_engine, &impl_trait.type_implementing_for),
+                    type_info_to_symbol_kind(
+                        self.type_engine,
+                        &self.type_engine.get(impl_trait.implementing_for.type_id),
+                    ),
                 );
-
-                self.collect_type_info_token(
-                    &token,
-                    &impl_trait.type_implementing_for,
-                    Some(impl_trait.type_implementing_for_span.clone()),
-                    Some(SymbolKind::Variant),
-                );
+                self.collect_type_arg(&impl_trait.implementing_for, &token);
 
                 for type_param in &impl_trait.impl_type_parameters {
                     self.collect_type_parameter(
@@ -292,7 +289,7 @@ impl<'a> ParsedTree<'a> {
                 if let TypeInfo::Custom {
                     call_path,
                     type_arguments,
-                } = &impl_self.type_implementing_for
+                } = &self.type_engine.get(impl_self.implementing_for.type_id)
                 {
                     let token = Token::from_parsed(
                         AstToken::Declaration(declaration.clone()),
@@ -329,6 +326,16 @@ impl<'a> ParsedTree<'a> {
 
                 for trait_fn in &abi_decl.interface_surface {
                     self.collect_trait_fn(trait_fn);
+                }
+
+                for supertrait in &abi_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
                 }
 
                 abi_decl.attributes.parse(self.tokens);
@@ -823,32 +830,26 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
             }
-            TypeInfo::Custom {
-                call_path,
-                type_arguments,
-            } => {
-                if let Some(type_args) = type_arguments {
-                    for type_arg in type_args {
-                        self.collect_type_arg(type_arg, &token);
-                    }
-                }
-
-                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
-                token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-
-                for ident in &call_path.prefixes {
-                    self.tokens.insert(to_ident_key(ident), token.clone());
-                }
-                self.tokens.insert(to_ident_key(&call_path.suffix), token);
-            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+
+                if let Some(tree) = &type_argument.call_path_tree {
+                    self.collect_call_path_tree(tree, &token);
+                }
             }
+        }
+    }
+
+    fn collect_call_path_tree(&self, tree: &CallPathTree, token: &Token) {
+        for ident in &tree.call_path.prefixes {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&tree.call_path.suffix), token.clone());
+
+        for child in &tree.children {
+            self.collect_call_path_tree(child, token);
         }
     }
 
