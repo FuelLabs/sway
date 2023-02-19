@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
-
-#[macro_use]
-mod macros;
+use test_macros::assert_eq_pretty;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
@@ -571,6 +569,41 @@ trait AlignMyComments {
 }
 
 #[test]
+fn comments_empty_fns() {
+    check(
+        r#"contract;
+
+fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+        // line
+// comment
+}"#,
+        r#"contract;
+
+fn single_comment_same_line() {
+    /* a comment */
+}
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+    // line
+    // comment
+}
+"#,
+    );
+}
+
+#[test]
 fn enum_comments() {
     check(
         r#"contract;
@@ -845,7 +878,7 @@ fn inner_doc_comments() {
         r#"script;
 
 enum Color {
-//! Color is a Sway enum
+    //! Color is a Sway enum
     blue: (),
     red: ()
 }
