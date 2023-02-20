@@ -5,13 +5,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use sway_ast::literal::{LitChar, LitInt, LitIntType, LitString, Literal};
 use sway_ast::token::{
-    Comment, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter, DocComment,
-    DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
+    Comment, CommentKind, CommentedGroup, CommentedTokenStream, CommentedTokenTree, Delimiter,
+    DocComment, DocStyle, GenericTokenTree, Punct, PunctKind, Spacing, TokenStream,
 };
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::lex_error::{LexError, LexErrorKind};
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Span, Spanned};
 use unicode_xid::UnicodeXID;
 
 #[extension_trait]
@@ -138,8 +138,41 @@ pub fn lex_commented(
         if character == '/' {
             match l.stream.peek() {
                 Some((_, '/')) => {
-                    let ctt =
-                        lex_line_comment(&mut l, end, index, file_start_offset, gather_module_docs);
+                    // search_end is the index at which we stop looking backwards for
+                    // a newline
+                    let search_end = token_trees
+                        .last()
+                        .map(|tt| {
+                            if let CommentedTokenTree::Tree(t) = tt {
+                                t.span().end()
+                            } else {
+                                0
+                            }
+                        })
+                        .unwrap_or_default();
+
+                    let has_newline = src[search_end..index]
+                        .chars()
+                        .rev()
+                        .take_while(|c| c.is_whitespace())
+                        .filter(|&c| c == '\n')
+                        .count()
+                        > 0;
+
+                    let comment_kind = if has_newline {
+                        CommentKind::Newlined
+                    } else {
+                        CommentKind::Trailing
+                    };
+
+                    let ctt = lex_line_comment(
+                        &mut l,
+                        end,
+                        index,
+                        comment_kind,
+                        file_start_offset,
+                        gather_module_docs,
+                    );
                     if let CommentedTokenTree::Tree(GenericTokenTree::DocComment(DocComment {
                         doc_style: DocStyle::Inner,
                         ..
@@ -310,6 +343,7 @@ fn lex_line_comment(
     l: &mut Lexer<'_>,
     end: usize,
     index: usize,
+    comment_kind: CommentKind,
     offset: usize,
     gather_module_docs: bool,
 ) -> CommentedTokenTree {
@@ -348,7 +382,11 @@ fn lex_line_comment(
         };
         CommentedTokenTree::Tree(doc_comment.into())
     } else {
-        Comment { span: sp }.into()
+        Comment {
+            span: sp,
+            comment_kind,
+        }
+        .into()
     }
 }
 
@@ -378,7 +416,13 @@ fn lex_multiline_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTok
                         // We could represent them as several ones, but that's unnecessary.
                         let end = slash_ix + '/'.len_utf8();
                         let span = span(l, start, end);
-                        return Some(Comment { span }.into());
+                        return Some(
+                            Comment {
+                                span,
+                                comment_kind: CommentKind::Newlined,
+                            }
+                            .into(),
+                        );
                     }
                 }
                 Some(_) => {}
@@ -742,7 +786,10 @@ mod tests {
     use std::sync::Arc;
     use sway_ast::{
         literal::{LitChar, Literal},
-        token::{Comment, CommentedTokenTree, CommentedTree, DocComment, DocStyle, TokenTree},
+        token::{
+            Comment, CommentKind, CommentedTokenTree, CommentedTree, DocComment, DocStyle,
+            TokenTree,
+        },
     };
     use sway_error::handler::Handler;
 
@@ -755,7 +802,7 @@ mod tests {
             /* multi-
              * line-
              * comment */
-            bar: i32,
+            bar: i32, // trailing comment
         }
         "#;
         let start = 0;
@@ -786,9 +833,80 @@ mod tests {
             assert_eq!(tts.next().unwrap().span().as_str(), ":");
             assert_eq!(tts.next().unwrap().span().as_str(), "i32");
             assert_eq!(tts.next().unwrap().span().as_str(), ",");
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Trailing,
+                })) if span.as_str() ==  "// trailing comment"
+            );
             assert!(tts.next().is_none());
         }
         assert!(tts.next().is_none());
+    }
+
+    #[test]
+    fn lex_comments_check_comment_kind() {
+        let input = r#"
+        // CommentKind::Newlined
+        abi Foo {
+            // CommentKind::Newlined
+            fn bar(); // CommentKind::Trailing
+            // CommentKind::Newlined
+        }
+        "#;
+        let start = 0;
+        let end = input.len();
+        let path = None;
+        let handler = Handler::default();
+        let stream = lex_commented(&handler, &Arc::from(input), start, end, &path).unwrap();
+        assert!(handler.consume().0.is_empty());
+        let mut tts = stream.token_trees().iter();
+
+        assert_matches!(
+            tts.next(),
+            Some(CommentedTokenTree::Comment(Comment {
+                span,
+                comment_kind: CommentKind::Newlined,
+            })) if span.as_str() ==  "// CommentKind::Newlined"
+        );
+        assert_eq!(tts.next().unwrap().span().as_str(), "abi");
+        assert_eq!(tts.next().unwrap().span().as_str(), "Foo");
+
+        {
+            let group = match tts.next() {
+                Some(CommentedTokenTree::Tree(CommentedTree::Group(group))) => group,
+                _ => panic!("expected group"),
+            };
+            let mut tts = group.token_stream.token_trees().iter();
+
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Newlined,
+                })) if span.as_str() ==  "// CommentKind::Newlined"
+            );
+            assert_eq!(tts.next().unwrap().span().as_str(), "fn");
+            assert_eq!(tts.next().unwrap().span().as_str(), "bar");
+            assert_eq!(tts.next().unwrap().span().as_str(), "()");
+            assert_eq!(tts.next().unwrap().span().as_str(), ";");
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Trailing,
+                })) if span.as_str() ==  "// CommentKind::Trailing"
+            );
+            assert_matches!(
+                tts.next(),
+                Some(CommentedTokenTree::Comment(Comment {
+                    span,
+                    comment_kind: CommentKind::Newlined,
+                })) if span.as_str() ==  "// CommentKind::Newlined"
+            );
+            assert!(tts.next().is_none());
+        }
     }
 
     #[test]
@@ -811,25 +929,29 @@ mod tests {
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
-                span
+                span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//none"
         );
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
-                span
+                span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "////none"
         );
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
                 span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//!inner"
         );
         assert_matches!(
             tts.next(),
             Some(CommentedTokenTree::Comment(Comment {
                 span,
+                comment_kind: CommentKind::Newlined,
             })) if span.as_str() ==  "//! inner"
         );
         assert_matches!(

@@ -588,8 +588,12 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(&branch.result);
                 }
             }
-            ExpressionKind::Asm(_) => {
-                //TODO handle asm expressions
+            ExpressionKind::Asm(asm) => {
+                for register in &asm.registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer);
+                    }
+                }
             }
             ExpressionKind::MethodApplication(method_application_expression) => {
                 let MethodApplicationExpression {
@@ -767,17 +771,20 @@ impl<'a> ParsedTree<'a> {
                 kind_binding,
                 arguments,
             }) => {
-                self.tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Intrinsic(kind_binding.inner.clone()),
-                        SymbolKind::Function,
-                    ),
+                let token = Token::from_parsed(
+                    AstToken::Intrinsic(kind_binding.inner.clone()),
+                    SymbolKind::Function,
                 );
 
                 for argument in arguments {
                     self.handle_expression(argument);
                 }
+
+                for type_arg in &kind_binding.type_arguments.to_vec() {
+                    self.collect_type_arg(type_arg, &token);
+                }
+
+                self.tokens.insert(to_ident_key(name), token);
             }
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 body, condition, ..
