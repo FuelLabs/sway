@@ -57,7 +57,7 @@ fn write_trailing_comment(
     Ok(())
 }
 
-/// Writes an indentation if the given 'predicate' evaluates to true.
+/// Writes an indentation if the given `predicate` evaluates to true.
 pub fn write_indent_if(
     predicate: bool,
     formatted_code: &mut FormattedCode,
