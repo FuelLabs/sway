@@ -119,11 +119,11 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                 match opt.as_str() {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
-                    "-verify-after-all" => {
+                    "-verify-after-each" => {
                         self.cfg.verify_after_each = true;
                         self.build_root()
                     }
-                    "-print-after-all" => {
+                    "-print-after-each" => {
                         self.cfg.print_after_each = true;
                         self.build_root()
                     }
