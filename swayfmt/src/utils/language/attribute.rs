@@ -24,7 +24,18 @@ impl<T: Format + Spanned> Format for Annotated<T> {
         for attr in &self.attribute_list {
             // Write trailing comments after the end of the previous attribute
             if let Some(end) = attr_end {
-                write_comments(formatted_code, end..attr.span().start(), formatter)?;
+                write_comments(formatted_code, end..attr.span().start(), formatter).and_then(
+                    |w| {
+                        if w {
+                            write!(
+                                formatted_code,
+                                "{}",
+                                &formatter.shape.indent.to_string(&formatter.config)?,
+                            )?
+                        }
+                        Ok(())
+                    },
+                )?;
             };
             attr.format(formatted_code, formatter)?;
             write!(
