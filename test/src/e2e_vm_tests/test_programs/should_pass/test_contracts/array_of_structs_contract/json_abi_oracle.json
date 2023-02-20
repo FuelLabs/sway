@@ -91,7 +91,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Id",
+      "type": "struct array_of_structs_abi::Id",
       "typeId": 3,
       "typeParameters": null
     },
@@ -103,7 +103,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Wrapper",
+      "type": "struct array_of_structs_abi::Wrapper",
       "typeId": 4,
       "typeParameters": null
     },
