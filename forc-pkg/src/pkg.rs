@@ -15,6 +15,7 @@ use forc_util::{
 use fuel_abi_types::program_abi;
 use petgraph::{
     self,
+    algo::has_path_connecting,
     visit::{Bfs, Dfs, EdgeRef, Walker},
     Directed, Direction,
 };
@@ -683,6 +684,22 @@ impl BuildPlan {
         }
 
         Ok(plan)
+    }
+
+    /// Produce an iterator yielding all contract dependencies of given node in the order of
+    /// compilation.
+    pub fn contract_dependencies(&self, node: NodeIx) -> impl Iterator<Item = NodeIx> + '_ {
+        let graph = self.graph();
+        self.compilation_order()
+            .iter()
+            .cloned()
+            .filter(move |&n| n != node)
+            .filter(|&n| {
+                graph
+                    .edges_directed(n, Direction::Incoming)
+                    .any(|edge| matches!(edge.weight().kind, DepKind::Contract { .. }))
+            })
+            .filter(move |&n| has_path_connecting(graph, node, n, None))
     }
 
     /// Produce an iterator yielding all workspace member nodes in order of compilation.
