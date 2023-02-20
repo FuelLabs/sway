@@ -167,7 +167,7 @@ pub struct PkgTestEntry {
 /// This is a map from each member package name to its associated built package.
 pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Built {
     /// Represents a standalone package build.
     Package(Box<BuiltPackage>),
@@ -515,12 +515,15 @@ impl BuiltPackage {
 
 impl Built {
     /// Returns a map between package names and their corresponding built package.
-    pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
+    pub fn into_members(self) -> Result<HashMap<Pinned, BuiltPackage>> {
         match self {
             Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.descriptor.name.clone(), *built_pkg)).collect())
+                Ok(std::iter::once((built_pkg.descriptor.pinned.clone(), *built_pkg)).collect())
             }
-            Built::Workspace(built_workspace) => Ok(built_workspace),
+            Built::Workspace(built_workspace) => Ok(built_workspace
+                .into_values()
+                .map(|pkg| (pkg.descriptor.pinned.clone(), pkg))
+                .collect()),
         }
     }
 

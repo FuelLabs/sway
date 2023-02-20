@@ -21,12 +21,13 @@ pub(crate) fn built_pkgs_with_manifest(
     let mut built_pkgs = build_with_options(build_opts)?.into_members()?;
     let mut pkgs_with_manifest = Vec::new();
     for member_index in build_plan.member_nodes() {
-        let pkg_name = &graph[member_index].name;
+        let pkg = &graph[member_index];
+        let pkg_name = &pkg.name;
         // Check if the currrent member is built.
         //
         // For indivual members of the workspace, member nodes would be iterating
         // over all the members but only the relevant member would be built.
-        if let Some(built_pkg) = built_pkgs.remove(pkg_name) {
+        if let Some(built_pkg) = built_pkgs.remove(pkg) {
             let member_manifest = member_manifests
                 .remove(pkg_name)
                 .expect("Member manifest file is missing");
