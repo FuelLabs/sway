@@ -159,7 +159,7 @@ pub fn lex_commented(
                         .count()
                         > 0;
 
-                    let comment_kind = if has_newline {
+                    let comment_kind = if has_newline || (search_end == 0 && index == 0) {
                         CommentKind::Newlined
                     } else {
                         CommentKind::Trailing
