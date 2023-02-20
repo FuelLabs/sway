@@ -4968,6 +4968,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "test-macros",
  "thiserror",
  "toml",
 ]
@@ -5147,6 +5148,14 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "test-macros"
+version = "0.0.0"
+dependencies = [
+ "paste",
+ "prettydiff 0.6.2",
 ]
 
 [[package]]
