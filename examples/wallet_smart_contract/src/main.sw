@@ -20,7 +20,7 @@ storage {
 
 // ANCHOR: abi_impl
 impl Wallet for Contract {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
