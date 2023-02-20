@@ -86,7 +86,7 @@ pub fn write_comments(
             writeln!(formatted_code)?;
         }
 
-        while let Some(comment) = comments_iter.next() {
+        for comment in comments_iter {
             let newlines = collect_newlines_after_comment(&formatter.comments_context, comment);
 
             if formatted_code.trim_end().ends_with(&[']', ';', ')']) {
