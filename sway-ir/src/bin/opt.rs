@@ -4,7 +4,10 @@ use std::{
 };
 
 use anyhow::anyhow;
-use sway_ir::{register_known_passes, PassGroup, PassManager};
+use sway_ir::{
+    insert_after_each, register_known_passes, PassGroup, PassManager, MODULEPRINTER_NAME,
+    MODULEVERIFIER_NAME,
+};
 
 // -------------------------------------------------------------------------------------------------
 
@@ -26,6 +29,12 @@ fn main() -> Result<(), anyhow::Error> {
     let mut passes = PassGroup::default();
     for pass in config.passes {
         passes.append_pass(pass);
+    }
+    if config.print_after_each {
+        passes = insert_after_each(passes, MODULEPRINTER_NAME);
+    }
+    if config.verify_after_each {
+        passes = insert_after_each(passes, MODULEVERIFIER_NAME);
     }
     pass_mgr.run(&mut ir, &passes)?;
 
@@ -72,7 +81,8 @@ struct Config {
     input_path: Option<String>,
     output_path: Option<String>,
 
-    _verify_each: bool,
+    verify_after_each: bool,
+    print_after_each: bool,
     _time_passes: bool,
     _stats: bool,
 
@@ -109,6 +119,14 @@ impl<'a, I: Iterator<Item = String>> ConfigBuilder<'a, I> {
                 match opt.as_str() {
                     "-i" => self.build_input(),
                     "-o" => self.build_output(),
+                    "-verify-after-each" => {
+                        self.cfg.verify_after_each = true;
+                        self.build_root()
+                    }
+                    "-print-after-each" => {
+                        self.cfg.print_after_each = true;
+                        self.build_root()
+                    }
                     "-h" => {
                         print!(
                             "Usage: opt [passname...] -i input_file -o output_file\n\n{}",

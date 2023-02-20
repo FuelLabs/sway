@@ -1,5 +1,5 @@
 library errors;
 
 pub enum MyError {
-    UnauthorizedUser: (),
+    UnauthorizedUser: Identity,
 }
