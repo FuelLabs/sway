@@ -44,5 +44,5 @@ fn main(num: u64) -> u64 {
         Weather::Rainy => 50,
         Weather::Cloudy => 60,
         Weather::Snowy => 20,
-    } 
+    }
 }
