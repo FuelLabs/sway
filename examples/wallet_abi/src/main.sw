@@ -9,7 +9,7 @@ abi Wallet {
     // ANCHOR_END: receive_funds
     
     // ANCHOR: send_funds
-    #[storage(read, write), payable]
+    #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address);
     // ANCHOR_END: send_funds
 }
