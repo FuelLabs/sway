@@ -423,7 +423,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_ref = match &method_name.inner {
+    let (type_id, module_path, method_ident) = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -447,72 +447,63 @@ pub(crate) fn resolve_method_name(
                 errors
             );
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &type_info_prefix,
-                    method_name,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, type_info_prefix, method_name)
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
             let module_path = ctx.namespace.find_module_path(&call_path.prefixes);
 
-            // find the type of the first argument
-            let type_id = arguments
-                .get(0)
-                .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+            // Find the type of the first argument. The first argument defines
+            // what method we look for, so we error early if it is the "error
+            // type".
+            let type_id = match arguments.get(0) {
+                Some(exp)
+                    if !matches!(type_engine.get(exp.return_type), TypeInfo::ErrorRecovery) =>
+                {
+                    exp.return_type
+                }
+                _ => {
+                    return err(warnings, errors);
+                }
+            };
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &module_path,
-                    &call_path.suffix,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, module_path, &call_path.suffix)
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
             let module_path = ctx.namespace.find_module_path(vec![]);
 
-            // find the type of the first argument
-            let type_id = arguments
-                .get(0)
-                .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+            // Find the type of the first argument. The first argument defines
+            // what method we look for, so we error early if it is the "error
+            // type".
+            let type_id = match arguments.get(0) {
+                Some(exp)
+                    if !matches!(type_engine.get(exp.return_type), TypeInfo::ErrorRecovery) =>
+                {
+                    exp.return_type
+                }
+                _ => {
+                    return err(warnings, errors);
+                }
+            };
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &module_path,
-                    method_name,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, module_path, method_name)
         }
     };
+
+    // find the method
+    let decl_ref = check!(
+        ctx.namespace.find_method_for_type(
+            type_id,
+            &module_path,
+            method_ident,
+            &arguments,
+            engines,
+        ),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
 
     let mut func_decl = check!(
         CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),

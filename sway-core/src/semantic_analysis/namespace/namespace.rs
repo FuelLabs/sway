@@ -12,7 +12,6 @@ use super::{
     trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
 };
 
-use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
 use std::{cmp::Ordering, collections::VecDeque};
@@ -157,10 +156,9 @@ impl Namespace {
     /// found.
     pub(crate) fn find_method_for_type(
         &mut self,
-        mut type_id: TypeId,
+        type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
-        self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
     ) -> CompileResult<DeclRef> {
@@ -187,24 +185,6 @@ impl Namespace {
 
         // grab the local methods from the local module
         let local_methods = local_module.get_methods_for_type(engines, type_id);
-
-        type_id.replace_self_type(engines, self_type);
-
-        // resolve the type
-        let type_id = check!(
-            type_engine.resolve(
-                decl_engine,
-                type_id,
-                &method_name.span(),
-                EnforceTypeArguments::No,
-                None,
-                self,
-                method_prefix
-            ),
-            type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
-            warnings,
-            errors
-        );
 
         // grab the module where the type itself is declared
         let type_module = check!(
@@ -271,17 +251,17 @@ impl Namespace {
             return ok(method_decl_ref, warnings, errors);
         }
 
-        if !args_buf
-            .get(0)
-            .map(|x| type_engine.get(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), engines)
-        {
-            errors.push(CompileError::MethodNotFound {
-                method_name: method_name.clone(),
-                type_name: engines.help_out(type_id).to_string(),
-                span: method_name.span(),
-            });
-        }
+        // if !args_buf
+        //     .get(0)
+        //     .map(|x| type_engine.get(x.return_type))
+        //     .eq(&Some(TypeInfo::ErrorRecovery), engines)
+        // {
+        //     errors.push(CompileError::MethodNotFound {
+        //         method_name: method_name.clone(),
+        //         type_name: engines.help_out(type_id).to_string(),
+        //         span: method_name.span(),
+        //     });
+        // }
         err(warnings, errors)
     }
 
