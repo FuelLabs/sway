@@ -605,6 +605,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            reverse_errors: false,
         }
     }
 
@@ -618,6 +619,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            reverse_errors: false,
         }
     }
 }

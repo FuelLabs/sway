@@ -2564,8 +2564,9 @@ pub fn compile(
         sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
     );
     let terse_mode = build_profile.terse;
+    let reverse_errors = build_profile.reverse_errors;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors);
+        print_on_failure(terse_mode, warnings, errors, reverse_errors);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -2992,7 +2993,7 @@ pub fn build(
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs, bool);
+                print_on_failure(profile.terse, &[], &errs, profile.reverse_errors);
                 bail!("Failed to compile {}", pkg.name);
             }
         };

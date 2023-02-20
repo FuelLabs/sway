@@ -1,10 +1,11 @@
 [[package]]
 name = 'core'
 source = 'path+from-root-D8BC155605882939'
+dependencies = []
 
 [[package]]
 name = 'counter'
-source = 'member'
+source = 'root'
 dependencies = ['std']
 
 [[package]]
