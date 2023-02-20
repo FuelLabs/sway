@@ -642,7 +642,13 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(r#else, namespace);
                 }
             }
-            ty::TyExpressionVariant::AsmExpression { .. } => {}
+            ty::TyExpressionVariant::AsmExpression { registers, .. } => {
+                for register in registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer, namespace);
+                    }
+                }
+            }
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
