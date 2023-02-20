@@ -30,7 +30,7 @@ impl Wallet for Contract {
         }
     }
 
-    #[storage(read, write), payable]
+    #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
         // Note: The return type of `msg_sender()` can be inferred by the
         // compiler. It is shown here for explicitness.
