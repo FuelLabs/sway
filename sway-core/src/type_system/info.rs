@@ -264,7 +264,7 @@ impl PartialEqWithEngines for TypeInfo {
                     type_parameters: r_type_parameters,
                 },
             ) => {
-                l_name == r_name
+                l_name.suffix == r_name.suffix
                     && l_variant_types.eq(r_variant_types, engines)
                     && l_type_parameters.eq(r_type_parameters, engines)
             }
@@ -280,7 +280,7 @@ impl PartialEqWithEngines for TypeInfo {
                     type_parameters: r_type_parameters,
                 },
             ) => {
-                l_name == r_name
+                l_name.suffix == r_name.suffix
                     && l_fields.eq(r_fields, engines)
                     && l_type_parameters.eq(r_type_parameters, engines)
             }

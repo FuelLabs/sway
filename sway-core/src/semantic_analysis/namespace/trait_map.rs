@@ -800,10 +800,10 @@ pub(crate) fn are_equal_minus_dynamic_types(
         (TypeInfo::Unknown, TypeInfo::Unknown) => false,
         (TypeInfo::SelfType, TypeInfo::SelfType) => false,
         (TypeInfo::Numeric, TypeInfo::Numeric) => false,
-        (TypeInfo::Contract, TypeInfo::Contract) => false,
         (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
         // these cases are able to be directly compared
+        (TypeInfo::Contract, TypeInfo::Contract) => true,
         (TypeInfo::Boolean, TypeInfo::Boolean) => true,
         (TypeInfo::B256, TypeInfo::B256) => true,
         (TypeInfo::ErrorRecovery, TypeInfo::ErrorRecovery) => true,

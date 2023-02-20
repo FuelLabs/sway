@@ -1,4 +1,5 @@
 use crate::{
+    comments::write_comments,
     formatter::*,
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
@@ -15,8 +16,18 @@ impl Format for Module {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        write_comments(formatted_code, 0..self.span().start(), formatter)?;
         self.kind.format(formatted_code, formatter)?;
         writeln!(formatted_code, "{}", self.semicolon_token.span().as_str())?;
+
+        // Format comments between module kind declaration and rest of items
+        if !self.items.is_empty() {
+            write_comments(
+                formatted_code,
+                0..self.items.first().unwrap().span().start(),
+                formatter,
+            )?;
+        }
 
         let iter = self.items.iter();
         for item in iter.clone() {

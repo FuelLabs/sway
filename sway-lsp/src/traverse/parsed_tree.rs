@@ -267,15 +267,12 @@ impl<'a> ParsedTree<'a> {
 
                 let token = Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    type_info_to_symbol_kind(self.type_engine, &impl_trait.type_implementing_for),
+                    type_info_to_symbol_kind(
+                        self.type_engine,
+                        &self.type_engine.get(impl_trait.implementing_for.type_id),
+                    ),
                 );
-
-                self.collect_type_info_token(
-                    &token,
-                    &impl_trait.type_implementing_for,
-                    Some(impl_trait.type_implementing_for_span.clone()),
-                    Some(SymbolKind::Variant),
-                );
+                self.collect_type_arg(&impl_trait.implementing_for, &token);
 
                 for type_param in &impl_trait.impl_type_parameters {
                     self.collect_type_parameter(
@@ -292,7 +289,7 @@ impl<'a> ParsedTree<'a> {
                 if let TypeInfo::Custom {
                     call_path,
                     type_arguments,
-                } = &impl_self.type_implementing_for
+                } = &self.type_engine.get(impl_self.implementing_for.type_id)
                 {
                     let token = Token::from_parsed(
                         AstToken::Declaration(declaration.clone()),
@@ -329,6 +326,16 @@ impl<'a> ParsedTree<'a> {
 
                 for trait_fn in &abi_decl.interface_surface {
                     self.collect_trait_fn(trait_fn);
+                }
+
+                for supertrait in &abi_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
                 }
 
                 abi_decl.attributes.parse(self.tokens);
@@ -581,8 +588,12 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(&branch.result);
                 }
             }
-            ExpressionKind::Asm(_) => {
-                //TODO handle asm expressions
+            ExpressionKind::Asm(asm) => {
+                for register in &asm.registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer);
+                    }
+                }
             }
             ExpressionKind::MethodApplication(method_application_expression) => {
                 let MethodApplicationExpression {
@@ -760,17 +771,20 @@ impl<'a> ParsedTree<'a> {
                 kind_binding,
                 arguments,
             }) => {
-                self.tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Intrinsic(kind_binding.inner.clone()),
-                        SymbolKind::Function,
-                    ),
+                let token = Token::from_parsed(
+                    AstToken::Intrinsic(kind_binding.inner.clone()),
+                    SymbolKind::Function,
                 );
 
                 for argument in arguments {
                     self.handle_expression(argument);
                 }
+
+                for type_arg in &kind_binding.type_arguments.to_vec() {
+                    self.collect_type_arg(type_arg, &token);
+                }
+
+                self.tokens.insert(to_ident_key(name), token);
             }
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 body, condition, ..
