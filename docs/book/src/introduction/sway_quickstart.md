@@ -180,7 +180,7 @@ To deploy `counter_contract` on your local Fuel node, open a new terminal tab an
 forc deploy --unsigned
 ```
 
-where `--url` parameter is the URL where your local node is hosted.
+where `--node-url` parameter is the URL where your local node is hosted.
 
 > **Note**
 > You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.
@@ -201,6 +201,34 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.
 
 If `forc-deploy` emits a `no such subcommand` error, try to install it with [fuelup](../introduction/installation.md) or [manually](https://github.com/FuelLabs/sway/releases).
+
+## Deploying the contract with Salt
+
+You can now pass a --salt flag in your forc deploy command to redeploy a contract that has been deployed already. This is useful when multiple deployments of the same contract.
+
+In order to use the `--salt` flag, install the latest `forc` update by running the following command in your project directory:
+
+```bash
+cargo add forc
+```
+
+Alternately, you can add the following to your `cargo.toml` file:
+
+```toml
+forc = 0.35.2
+```
+
+Once `forc` is updated, can now add a `--salt` to your contractID while deploying the contract as follows:
+
+```bash
+forc deploy --salt <Salt> --node-url <key> --gas-price 1
+```
+
+> 💡 Note: Salt is 0x00000000000000000000000000000000 by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as below:
+
+```bash
+forc deploy --random-salt --node-url <key> --gas-price 1
+```
 
 ## Testing Your Contract
 
