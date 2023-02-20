@@ -1,6 +1,6 @@
 [package]
 name = "forc-tx"
-version = "0.35.1"
+version = "0.35.2"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 edition = "2021"
 homepage = "https://fuel.network/"
@@ -22,3 +22,4 @@ devault = "0.1"
 fuel-tx = { workspace = true, features = ["serde"] }
 serde = "1.0"
 serde_json = { version = "1" }
+thiserror = "1"

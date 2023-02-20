@@ -22,6 +22,7 @@ pub fn g(amount: u64, to: Identity) {
     s.method::<Option<Result<u32, u32>>>(Option::None);
     let a = Option::None::<Option<Result<u32, u32>>>;
     let b = B::<Option<Result<u32, u32>>>{};
+	let _ = __size_of::<Option<Result<u32, u32>>>();
 }
 
 fn fun<T>(t: T){}

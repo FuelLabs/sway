@@ -26,7 +26,8 @@ members = [
     "test",
 ]
 exclude = [
-    "examples/*"
+    "examples/*",
+    "swayfmt/test_macros"
 ]
 
 [profile.dev.package.sway-lsp]
