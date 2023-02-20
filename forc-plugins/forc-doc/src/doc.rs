@@ -116,7 +116,7 @@ impl Document {
                 let attributes = (!typed_submodule.module.attributes.is_empty())
                     .then(|| typed_submodule.module.attributes.to_html_string());
                 let module_prefix =
-                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], dbg!(attributes));
+                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], attributes);
                 Document::from_ty_submodule(
                     decl_engine,
                     typed_submodule,

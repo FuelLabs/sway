@@ -1082,7 +1082,14 @@ impl Renderable for ModuleIndex {
                                 }
                             }
                             @ if self.module_info.attributes.is_some() {
-                                : Raw(self.module_info.attributes.unwrap())
+                                details(class="swaydoc-toggle top-doc", open) {
+                                    summary(class="hideme") {
+                                        span { : "Expand description" }
+                                    }
+                                    div(class="docblock") {
+                                        : Raw(self.module_info.attributes.unwrap())
+                                    }
+                                }
                             }
                             : doc_links;
                         }
