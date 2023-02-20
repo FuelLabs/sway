@@ -734,10 +734,15 @@ pub(crate) fn item_const_to_constant_declaration(
         None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
     };
 
+    let expr = match item_const.expr_opt {
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        None => None,
+    };
+
     Ok(ConstantDeclaration {
         name: item_const.name,
         type_ascription,
-        value: expr_to_expression(context, handler, engines, item_const.expr)?,
+        value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
         attributes,
@@ -2114,7 +2119,12 @@ fn configurable_field_to_constant_declaration(
     Ok(ConstantDeclaration {
         name: configurable_field.name,
         type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
-        value: expr_to_expression(context, handler, engines, configurable_field.initializer)?,
+        value: Some(expr_to_expression(
+            context,
+            handler,
+            engines,
+            configurable_field.initializer,
+        )?),
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,

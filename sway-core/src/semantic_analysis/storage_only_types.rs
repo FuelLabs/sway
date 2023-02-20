@@ -187,21 +187,12 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         ty::TyDeclaration::ConstantDeclaration {
             decl_id, decl_span, ..
         } => {
-            let ty::TyConstantDeclaration {
-                value: expr, name, ..
-            } = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id, decl_span)),
+            check!(
+                validate_const_decl(engines, decl_id, decl_span),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            check!(
-                check_type(engines, expr.return_type, name.span(), false),
-                (),
-                warnings,
-                errors
-            );
-            check!(expr_validate(engines, &expr), (), warnings, errors)
         }
         ty::TyDeclaration::FunctionDeclaration {
             decl_id, decl_span, ..
@@ -307,6 +298,38 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
         }
         ty::TyDeclaration::GenericTypeForFunctionScope { .. }
         | ty::TyDeclaration::ErrorRecovery(_) => {}
+    }
+    if errors.is_empty() {
+        ok((), warnings, errors)
+    } else {
+        err(warnings, errors)
+    }
+}
+
+pub fn validate_const_decl(
+    engines: Engines<'_>,
+    decl_id: &DeclId,
+    decl_span: &Span,
+) -> CompileResult<()> {
+    let mut warnings: Vec<CompileWarning> = vec![];
+    let mut errors: Vec<CompileError> = vec![];
+    let decl_engine = engines.de();
+    let ty::TyConstantDeclaration {
+        value: expr, name, ..
+    } = check!(
+        CompileResult::from(decl_engine.get_constant(decl_id, decl_span)),
+        return err(warnings, errors),
+        warnings,
+        errors
+    );
+    if let Some(expr) = expr {
+        check!(
+            check_type(engines, expr.return_type, name.span(), false),
+            (),
+            warnings,
+            errors
+        );
+        check!(expr_validate(engines, &expr), (), warnings, errors)
     }
     if errors.is_empty() {
         ok((), warnings, errors)

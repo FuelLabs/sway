@@ -371,7 +371,13 @@ impl ty::TyImplTrait {
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
                         decl_engine.get_constant(decl_id, access_span)?;
-                    expr_contains_get_storage_index(decl_engine, &expr, access_span)
+                    decl_engine.get_constant(decl_id, access_span)?;
+                    match expr {
+                        Some(expr) => {
+                            expr_contains_get_storage_index(decl_engine, &expr, access_span)
+                        }
+                        None => Ok(false),
+                    }
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.

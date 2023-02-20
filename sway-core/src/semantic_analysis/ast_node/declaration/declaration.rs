@@ -106,31 +106,44 @@ impl ty::TyDeclaration {
                         "This declaration's type annotation does not match up with the assigned \
                         expression's type.",
                     );
-                let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
-                if !is_screaming_snake_case(name.as_str()) {
-                    warnings.push(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::NonScreamingSnakeCaseConstName {
-                            name: name.clone(),
-                        },
-                    })
-                }
+                let value = match value {
+                    Some(value) => {
+                        let result = ty::TyExpression::type_check(ctx.by_ref(), value);
 
-                let value = check!(
-                    result,
-                    ty::TyExpression::error(name.span(), engines),
-                    warnings,
-                    errors
-                );
+                        if !is_screaming_snake_case(name.as_str()) {
+                            warnings.push(CompileWarning {
+                                span: name.span(),
+                                warning_content: Warning::NonScreamingSnakeCaseConstName {
+                                    name: name.clone(),
+                                },
+                            })
+                        }
+
+                        let value = check!(
+                            result,
+                            ty::TyExpression::error(name.span(), engines),
+                            warnings,
+                            errors
+                        );
+
+                        Some(value)
+                    }
+                    None => None,
+                };
+
                 // Integers are special in the sense that we can't only rely on the type of `body`
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
                 type_ascription.type_id = match type_engine.get(type_ascription.type_id) {
                     TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-                    _ => value.return_type,
+                    _ => match &value {
+                        Some(value) => value.return_type,
+                        None => type_ascription.type_id,
+                    },
                 };
+
                 let decl = ty::TyConstantDeclaration {
                     name: name.clone(),
                     value,

@@ -16,9 +16,9 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
-            AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
-            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
+            AstNodeContent, CodeBlock, ConstantDeclaration, Declaration, DelineatedPathExpression,
+            Expression, ExpressionKind, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
             ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
             StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
@@ -104,6 +104,22 @@ impl<'a> ParsedTree<'a> {
             }
             Script | Contract | Predicate => {}
         }
+    }
+
+    fn handle_const_declaration(&self, const_decl: &ConstantDeclaration) {
+        let token = Token::from_parsed(
+            AstToken::ConstantDeclaration(const_decl.clone()),
+            SymbolKind::Const,
+        );
+        self.tokens
+            .insert(to_ident_key(&const_decl.name), token.clone());
+
+        self.collect_type_arg(&const_decl.type_ascription, &token);
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value);
+        }
+
+        const_decl.attributes.parse(self.tokens);
     }
 
     fn handle_function_declaration(&self, func: &FunctionDeclaration) {
@@ -349,17 +365,7 @@ impl<'a> ParsedTree<'a> {
                 abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {
-                let token = Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Const,
-                );
-                self.tokens
-                    .insert(to_ident_key(&const_decl.name), token.clone());
-
-                self.collect_type_arg(&const_decl.type_ascription, &token);
-                self.handle_expression(&const_decl.value);
-
-                const_decl.attributes.parse(self.tokens);
+                self.handle_const_declaration(const_decl);
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {

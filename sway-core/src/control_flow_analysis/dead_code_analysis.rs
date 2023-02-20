@@ -321,17 +321,21 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let ty::TyConstantDeclaration { name, value, .. } =
                 decl_engine.get_constant(decl_id, &span)?;
             graph.namespace.insert_constant(name, entry_node);
-            connect_expression(
-                engines,
-                &value.expression,
-                graph,
-                &[entry_node],
-                exit_node,
-                "constant declaration expression",
-                tree_type,
-                value.span.clone(),
-                options,
-            )
+            if let Some(value) = &value {
+                connect_expression(
+                    engines,
+                    &value.expression,
+                    graph,
+                    &[entry_node],
+                    exit_node,
+                    "constant declaration expression",
+                    tree_type,
+                    value.span.clone(),
+                    options,
+                )
+            } else {
+                Ok(leaves.to_vec())
+            }
         }
         FunctionDeclaration { decl_id, .. } => {
             let fn_decl = decl_engine.get_function(decl_id, &decl.span())?;

@@ -116,17 +116,7 @@ impl<'a> TypedTree<'a> {
                 decl_id, decl_span, ..
             } => {
                 if let Ok(const_decl) = decl_engine.get_constant(decl_id, decl_span) {
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&const_decl.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
-                    }
-
-                    self.collect_type_argument(&const_decl.type_ascription, namespace);
-                    self.handle_expression(&const_decl.value, namespace);
+                    self.collect_const_decl(&const_decl, namespace);
                 }
             }
             ty::TyDeclaration::FunctionDeclaration {
@@ -1252,6 +1242,27 @@ impl<'a> TypedTree<'a> {
                     assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
                 }
             }
+        }
+    }
+
+    fn collect_const_decl(
+        &self,
+        const_decl: &ty::TyConstantDeclaration,
+        namespace: &namespace::Module,
+    ) {
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&const_decl.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
+            token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
+        }
+
+        self.collect_type_argument(&const_decl.type_ascription, namespace);
+
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value, namespace);
         }
     }
 

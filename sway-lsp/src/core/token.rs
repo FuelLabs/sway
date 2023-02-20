@@ -2,9 +2,9 @@ use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
-            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            Supertrait, TraitFn, TreeType, UseStatement,
+            ConstantDeclaration, Declaration, EnumVariant, Expression, FunctionDeclaration,
+            FunctionParameter, ReassignmentExpression, Scrutinee, StorageField,
+            StructExpressionField, StructField, Supertrait, TraitFn, TreeType, UseStatement,
         },
         ty,
     },
@@ -29,6 +29,7 @@ pub enum AstToken {
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
+    ConstantDeclaration(ConstantDeclaration),
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
@@ -46,6 +47,7 @@ pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedScrutinee(ty::TyScrutinee),
+    TypedConstantDeclaration(ty::TyConstantDeclaration),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),

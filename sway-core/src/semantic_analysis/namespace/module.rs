@@ -106,7 +106,14 @@ impl Module {
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.
-            if !matches!(const_decl.value.kind, ExpressionKind::Literal(_)) {
+            let has_literal = match &const_decl.value {
+                Some(value) => {
+                    matches!(value.kind, ExpressionKind::Literal(_))
+                }
+                None => false,
+            };
+
+            if !has_literal {
                 return Err(
                     handler.emit_err(CompileError::ConfigTimeConstantNotALiteral {
                         span: const_item_span,

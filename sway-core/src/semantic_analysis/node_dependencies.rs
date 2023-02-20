@@ -304,13 +304,9 @@ impl Dependencies {
             }) => self
                 .gather_from_type_argument(type_engine, type_ascription)
                 .gather_from_expr(type_engine, body),
-            Declaration::ConstantDeclaration(ConstantDeclaration {
-                type_ascription,
-                value,
-                ..
-            }) => self
-                .gather_from_type_argument(type_engine, type_ascription)
-                .gather_from_expr(type_engine, value),
+            Declaration::ConstantDeclaration(decl) => {
+                self.gather_from_constant_decl(type_engine, decl)
+            }
             Declaration::FunctionDeclaration(fn_decl) => {
                 self.gather_from_fn_decl(type_engine, fn_decl)
             }
@@ -402,6 +398,24 @@ impl Dependencies {
                         deps.gather_from_type_argument(type_engine, type_argument)
                     },
                 ),
+        }
+    }
+
+    fn gather_from_constant_decl(
+        self,
+        type_engine: &TypeEngine,
+        const_decl: &ConstantDeclaration,
+    ) -> Self {
+        let ConstantDeclaration {
+            type_ascription,
+            value,
+            ..
+        } = const_decl;
+        match value {
+            Some(value) => self
+                .gather_from_type_argument(type_engine, type_ascription)
+                .gather_from_expr(type_engine, value),
+            None => self,
         }
     }
 

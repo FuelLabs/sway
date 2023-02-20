@@ -359,7 +359,9 @@ impl Parse for ItemConst {
             ty.parse(tokens);
         }
 
-        self.expr.parse(tokens);
+        if let Some(expr) = self.expr_opt.as_ref() {
+            expr.parse(tokens);
+        }
     }
 }
 
