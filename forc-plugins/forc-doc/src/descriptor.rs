@@ -8,20 +8,19 @@ use sway_core::{
     decl_engine::*,
     language::ty::{TyDeclaration, TyTraitFn},
 };
-use sway_types::Spanned;
 
 trait RequiredMethods {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>>;
 }
-impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
+impl RequiredMethods for Vec<sway_core::decl_engine::DeclRef> {
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
         self.iter()
-            .map(|decl_id| {
+            .map(|DeclRef { id, decl_span, .. }| {
                 decl_engine
-                    .get_trait_fn(decl_id.clone(), &decl_id.span())
-                    .expect("could not get trait fn from declaration id")
+                    .get_trait_fn(id, decl_span)
+                    .map_err(|e| anyhow::anyhow!("{}", e))
             })
-            .collect()
+            .collect::<anyhow::Result<_>>()
     }
 }
 
@@ -44,12 +43,14 @@ impl Descriptor {
         use swayfmt::parse;
         use TyDeclaration::*;
         match ty_decl {
-            StructDeclaration(ref decl_id) => {
-                let struct_decl = decl_engine.get_struct(decl_id.clone(), &decl_id.span())?;
+            StructDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let struct_decl = decl_engine.get_struct(decl_id, decl_span)?;
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = struct_decl.name;
+                    let item_name = struct_decl.call_path.suffix;
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
                     let context = (!struct_decl.fields.is_empty())
@@ -59,7 +60,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -76,12 +77,14 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration(ref decl_id) => {
-                let enum_decl = decl_engine.get_enum(decl_id.clone(), &decl_id.span())?;
+            EnumDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let enum_decl = decl_engine.get_enum(decl_id, decl_span)?;
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = enum_decl.name;
+                    let item_name = enum_decl.call_path.suffix;
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
                     let context = (!enum_decl.variants.is_empty())
@@ -91,7 +94,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -108,8 +111,10 @@ impl Descriptor {
                     }))
                 }
             }
-            TraitDeclaration(ref decl_id) => {
-                let trait_decl = decl_engine.get_trait(decl_id.clone(), &decl_id.span())?;
+            TraitDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let trait_decl = decl_engine.get_trait(decl_id, decl_span)?;
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -118,7 +123,7 @@ impl Descriptor {
                         .then(|| trait_decl.attributes.to_html_string());
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
-                            trait_decl.interface_surface.to_methods(decl_engine),
+                            trait_decl.interface_surface.to_methods(decl_engine)?,
                         ),
                     );
 
@@ -126,7 +131,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -143,14 +148,16 @@ impl Descriptor {
                     }))
                 }
             }
-            AbiDeclaration(ref decl_id) => {
-                let abi_decl = decl_engine.get_abi(decl_id.clone(), &decl_id.span())?;
+            AbiDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let abi_decl = decl_engine.get_abi(decl_id, decl_span)?;
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
-                        abi_decl.interface_surface.to_methods(decl_engine),
+                        abi_decl.interface_surface.to_methods(decl_engine)?,
                     ),
                 );
 
@@ -158,7 +165,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -172,8 +179,10 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            StorageDeclaration(ref decl_id) => {
-                let storage_decl = decl_engine.get_storage(decl_id.clone(), &decl_id.span())?;
+            StorageDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let storage_decl = decl_engine.get_storage(decl_id, decl_span)?;
                 let item_name = sway_types::BaseIdent::new_no_trim(
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
                 );
@@ -186,7 +195,7 @@ impl Descriptor {
                     module_info: module_info.clone(),
                     item_header: ItemHeader {
                         module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
+                        friendly_name: ty_decl.friendly_type_name(),
                         item_name: item_name.clone(),
                     },
                     item_body: ItemBody {
@@ -202,35 +211,38 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            ImplTrait(ref decl_id) => {
-                // TODO: figure out how to use this, likely we don't want to document this directly.
-                //
-                // This declaration type may make more sense to document as part of another declaration
-                // much like how we document method functions for traits or fields on structs.
-                let impl_trait = decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())?;
-                let item_name = impl_trait.trait_name.suffix;
-                Ok(Descriptor::Documentable(Document {
-                    module_info: module_info.clone(),
-                    item_header: ItemHeader {
-                        module_info: module_info.clone(),
-                        friendly_name: ty_decl.friendly_name(),
-                        item_name: item_name.clone(),
-                    },
-                    item_body: ItemBody {
-                        module_info,
-                        ty_decl: ty_decl.clone(),
-                        item_name,
-                        code_str: parse::parse_format::<sway_ast::ItemImpl>(
-                            impl_trait.span.as_str(),
-                        ),
-                        attrs_opt: None, // no attributes field
-                        item_context: ItemContext { context: None },
-                    },
-                    raw_attributes: None,
-                }))
-            }
-            FunctionDeclaration(ref decl_id) => {
-                let fn_decl = decl_engine.get_function(decl_id.clone(), &decl_id.span())?;
+            // Uncomment this when we decide how to handle ImplTraits
+            // ImplTrait { decl_id, decl_span, .. } => {
+            // TODO: figure out how to use this, likely we don't want to document this directly.
+            //
+            // This declaration type may make more sense to document as part of another declaration
+            // much like how we document method functions for traits or fields on structs.
+            //     let impl_trait = decl_engine.get_impl_trait(&decl_ref, decl_span)?;
+            //     let item_name = impl_trait.trait_name.suffix;
+            //     Ok(Descriptor::Documentable(Document {
+            //         module_info: module_info.clone(),
+            //         item_header: ItemHeader {
+            //             module_info: module_info.clone(),
+            //             friendly_name: ty_decl.friendly_name(),
+            //             item_name: item_name.clone(),
+            //         },
+            //         item_body: ItemBody {
+            //             module_info,
+            //             ty_decl: ty_decl.clone(),
+            //             item_name,
+            //             code_str: parse::parse_format::<sway_ast::ItemImpl>(
+            //                 impl_trait.span.as_str(),
+            //             ),
+            //             attrs_opt: None, // no attributes field
+            //             item_context: ItemContext { context: None },
+            //         },
+            //         raw_attributes: None,
+            //     }))
+            // }
+            FunctionDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let fn_decl = decl_engine.get_function(decl_id, decl_span)?;
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -242,7 +254,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {
@@ -259,8 +271,10 @@ impl Descriptor {
                     }))
                 }
             }
-            ConstantDeclaration(ref decl_id) => {
-                let const_decl = decl_engine.get_constant(decl_id.clone(), &decl_id.span())?;
+            ConstantDeclaration {
+                decl_id, decl_span, ..
+            } => {
+                let const_decl = decl_engine.get_constant(decl_id, decl_span)?;
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -272,7 +286,7 @@ impl Descriptor {
                         module_info: module_info.clone(),
                         item_header: ItemHeader {
                             module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
+                            friendly_name: ty_decl.friendly_type_name(),
                             item_name: item_name.clone(),
                         },
                         item_body: ItemBody {

@@ -19,8 +19,8 @@ pub enum InterfaceName {
 impl fmt::Display for InterfaceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InterfaceName::Abi(name) => write!(f, "ABI \"{}\"", name),
-            InterfaceName::Trait(name) => write!(f, "trait \"{}\"", name),
+            InterfaceName::Abi(name) => write!(f, "ABI \"{name}\""),
+            InterfaceName::Trait(name) => write!(f, "trait \"{name}\""),
         }
     }
 }
@@ -190,6 +190,8 @@ pub enum CompileError {
     },
     #[error("\"{name}\" does not take type arguments.")]
     DoesNotTakeTypeArguments { name: Ident, span: Span },
+    #[error("\"{name}\" does not take type arguments as prefix.")]
+    DoesNotTakeTypeArgumentsAsPrefix { name: Ident, span: Span },
     #[error("Type arguments are not allowed for this type.")]
     TypeArgumentsNotAllowed { span: Span },
     #[error("\"{name}\" needs type arguments.")]
@@ -337,6 +339,10 @@ pub enum CompileError {
     ExpectedImplicitReturnFromBlockWithType { span: Span, ty: String },
     #[error("Expected block to implicitly return a value.")]
     ExpectedImplicitReturnFromBlock { span: Span },
+    #[error(
+        "Expected Module level doc comment. All other attributes are unsupported at this level."
+    )]
+    ExpectedModuleDocComment { span: Span },
     #[error(
         "This register was not initialized in the initialization section of the ASM expression. \
          Initialized registers are: {initialized_registers}"
@@ -772,6 +778,7 @@ impl Spanned for CompileError {
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
             IncorrectNumberOfTypeArguments { span, .. } => span.clone(),
             DoesNotTakeTypeArguments { span, .. } => span.clone(),
+            DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
             StructNotFound { span, .. } => span.clone(),
@@ -796,6 +803,7 @@ impl Spanned for CompileError {
             PathDoesNotReturn { span, .. } => span.clone(),
             ExpectedImplicitReturnFromBlockWithType { span, .. } => span.clone(),
             ExpectedImplicitReturnFromBlock { span, .. } => span.clone(),
+            ExpectedModuleDocComment { span } => span.clone(),
             UnknownRegister { span, .. } => span.clone(),
             MissingImmediate { span, .. } => span.clone(),
             InvalidImmediateValue { span, .. } => span.clone(),

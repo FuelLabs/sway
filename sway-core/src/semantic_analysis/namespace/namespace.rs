@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -7,12 +7,15 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
+use super::{
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
+    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
+};
 
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
-use std::collections::VecDeque;
+use std::{cmp::Ordering, collections::VecDeque};
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -160,7 +163,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclId> {
+    ) -> CompileResult<DeclRef> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -217,16 +220,55 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        for decl_id in methods.into_iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if &method.name == method_name {
-                return ok(decl_id, warnings, errors);
+        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
+
+        for decl_ref in methods.into_iter() {
+            if &decl_ref.name == method_name {
+                matching_method_decl_refs.push(decl_ref);
             }
+        }
+
+        let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
+            Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
+            Ordering::Greater => {
+                // Case where multiple methods exist with the same name
+                // This is the case of https://github.com/FuelLabs/sway/issues/3633
+                // where multiple generic trait impls use the same method name but with different parameter types
+                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                for decl_ref in matching_method_decl_refs.clone().into_iter() {
+                    let method = check!(
+                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    if method.parameters.len() == args_buf.len()
+                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
+                            !are_equal_minus_dynamic_types(
+                                engines,
+                                p.type_argument.type_id,
+                                a.return_type,
+                            )
+                        })
+                    {
+                        maybe_method_decl_ref = Some(decl_ref);
+                        break;
+                    }
+                }
+                if let Some(matching_method_decl_ref) = maybe_method_decl_ref {
+                    // In case one or more methods match the parameter types we return the first match.
+                    Some(matching_method_decl_ref)
+                } else {
+                    // When we can't match any method with parameter types we still return the first method found
+                    // This was the behavior before introducing the parameter type matching
+                    matching_method_decl_refs.get(0).cloned()
+                }
+            }
+            Ordering::Less => None,
+        };
+
+        if let Some(method_decl_ref) = matching_method_decl_ref {
+            return ok(method_decl_ref, warnings, errors);
         }
 
         if !args_buf
@@ -283,9 +325,10 @@ impl Namespace {
             .mod_path
             .iter()
             .cloned()
-            .chain(Some(dep_name))
+            .chain(Some(dep_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        self.name = Some(dep_name);
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -293,15 +336,15 @@ impl Namespace {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn insert_trait_implementation<'a>(
+    pub(crate) fn insert_trait_implementation(
         &mut self,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclId],
+        methods: &[DeclRef],
         impl_span: &Span,
         is_impl_self: bool,
-        engines: Engines<'a>,
+        engines: Engines<'_>,
     ) -> CompileResult<()> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
@@ -323,7 +366,7 @@ impl Namespace {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclId> {
+    ) -> Vec<DeclRef> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);

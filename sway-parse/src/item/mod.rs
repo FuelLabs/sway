@@ -84,7 +84,7 @@ impl Parse for TypeField {
 
 impl ParseToEnd for FnArgs {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(FnArgs, ParserConsumed<'a>)> {
         let mut ref_self: Option<RefToken> = None;
         let mut mutable_self: Option<MutToken> = None;
@@ -227,7 +227,7 @@ mod tests {
         let item = parse_item(
             r#"
             // I will be ignored.
-            //! I will be ignored.
+            //! I will be ignored. 
             /// This is a doc comment.
             //! I will be ignored.
             // I will be ignored.

@@ -16,6 +16,8 @@ pub enum FormatterError {
     CommentError,
     #[error("Error while formatting newline sequences")]
     NewlineSequenceError,
+    #[error("Cannot format raw hashbang attribute,\nIf this is intended to be a doc comment try using the `//!` syntax instead")]
+    HashBangAttributeError,
 }
 
 #[derive(Debug, Error)]

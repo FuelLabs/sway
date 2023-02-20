@@ -108,9 +108,15 @@ impl Format for Expr {
                 Self::close_parenthesis(formatted_code, formatter)?;
             }
             Self::Block(code_block) => {
-                CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
-                code_block.get().format(formatted_code, formatter)?;
-                CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
+                if !code_block.get().statements.is_empty()
+                    || code_block.get().final_expr_opt.is_some()
+                {
+                    CodeBlockContents::open_curly_brace(formatted_code, formatter)?;
+                    code_block.get().format(formatted_code, formatter)?;
+                    CodeBlockContents::close_curly_brace(formatted_code, formatter)?;
+                } else {
+                    write!(formatted_code, "{{}}")?;
+                }
             }
             Self::Array(array_descriptor) => {
                 formatter.with_shape(
@@ -156,18 +162,22 @@ impl Format for Expr {
                 write!(formatted_code, "{} ", match_token.span().as_str())?;
                 value.format(formatted_code, formatter)?;
                 write!(formatted_code, " ")?;
-                MatchBranch::open_curly_brace(formatted_code, formatter)?;
-                let branches = branches.get();
-                for match_branch in branches.iter() {
-                    write!(
-                        formatted_code,
-                        "{}",
-                        formatter.shape.indent.to_string(&formatter.config)?
-                    )?;
-                    match_branch.format(formatted_code, formatter)?;
-                    writeln!(formatted_code)?;
+                if !branches.get().is_empty() {
+                    MatchBranch::open_curly_brace(formatted_code, formatter)?;
+                    let branches = branches.get();
+                    for match_branch in branches.iter() {
+                        write!(
+                            formatted_code,
+                            "{}",
+                            formatter.shape.indent.to_string(&formatter.config)?
+                        )?;
+                        match_branch.format(formatted_code, formatter)?;
+                        writeln!(formatted_code)?;
+                    }
+                    MatchBranch::close_curly_brace(formatted_code, formatter)?;
+                } else {
+                    write!(formatted_code, "{{}}")?;
                 }
-                MatchBranch::close_curly_brace(formatted_code, formatter)?;
             }
             Self::While {
                 while_token,

@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span};
 
 use crate::{
@@ -20,11 +22,34 @@ pub struct TyTraitFn {
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.name == other.name
             && self.purity == other.purity
             && self.parameters.eq(&other.parameters, engines)
-            && self.return_type == other.return_type
+            && type_engine
+                .get(self.return_type)
+                .eq(&type_engine.get(other.return_type), engines)
             && self.attributes == other.attributes
+    }
+}
+
+impl HashWithEngines for TyTraitFn {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyTraitFn {
+            name,
+            purity,
+            parameters,
+            return_type,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            return_type_span: _,
+            attributes: _,
+        } = self;
+        let type_engine = engines.te();
+        name.hash(state);
+        parameters.hash(state, engines);
+        type_engine.get(*return_type).hash(state, engines);
+        purity.hash(state);
     }
 }
 

@@ -63,6 +63,16 @@ pub struct PathType {
     pub suffix: Vec<(DoubleColonToken, PathTypeSegment)>,
 }
 
+impl PathType {
+    pub fn last_segment(&self) -> &PathTypeSegment {
+        self.suffix
+            .iter()
+            .map(|s| &s.1)
+            .last()
+            .unwrap_or(&self.prefix)
+    }
+}
+
 impl Spanned for PathType {
     fn span(&self) -> Span {
         let start = match &self.root_opt {

@@ -1,6 +1,6 @@
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -14,10 +14,9 @@ use sway_types::{Ident, Span, Spanned};
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
     enum_decl: ty::TyEnumDeclaration,
-    enum_name: Ident,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
-    mut type_binding: TypeBinding<()>,
+    call_path_binding: TypeBinding<CallPath>,
     span: &Span,
 ) -> CompileResult<ty::TyExpression> {
     let mut warnings = vec![];
@@ -38,7 +37,11 @@ pub(crate) fn instantiate_enum(
 
     // Return an error if enum variant is of type unit and it is called with parenthesis.
     // args_opt.is_some() returns true when this variant was called with parenthesis.
-    if type_engine.get(enum_variant.initial_type_id).is_unit() && args_opt.is_some() {
+    if type_engine
+        .get(enum_variant.type_argument.initial_type_id)
+        .is_unit()
+        && args_opt.is_some()
+    {
         errors.push(CompileError::UnitVariantWithParenthesesEnumInstantiator {
             span: enum_variant_name.span(),
             ty: enum_variant.name.as_str().to_string(),
@@ -47,21 +50,13 @@ pub(crate) fn instantiate_enum(
     }
     let args = args_opt.unwrap_or_default();
 
-    // Update type binding with the correct type information from the enum decl
-    for (type_arg, type_param) in type_binding
-        .type_arguments
-        .iter_mut()
-        .zip(enum_decl.type_parameters.iter())
-    {
-        type_arg.type_id = type_param.type_id;
-        type_arg.initial_type_id = type_param.initial_type_id;
-        // keep the type_arg span so the LSP knows where we are
-    }
-
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (&args[..], type_engine.get(enum_variant.type_id)) {
+    match (
+        &args[..],
+        type_engine.get(enum_variant.type_argument.type_id),
+    ) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
                 return_type: enum_decl.create_type_id(engines),
@@ -70,9 +65,8 @@ pub(crate) fn instantiate_enum(
                     contents: None,
                     enum_decl,
                     variant_name: enum_variant.name,
-                    enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
-                    type_binding,
+                    call_path_binding,
                 },
                 span: enum_variant_name.span(),
             },
@@ -95,7 +89,7 @@ pub(crate) fn instantiate_enum(
                 CompileResult::from(type_engine.unify_adt(
                     decl_engine,
                     typed_expr.return_type,
-                    enum_variant.type_id,
+                    enum_variant.type_argument.type_id,
                     span,
                     "Enum instantiator must match its declared variant type.",
                     None
@@ -116,9 +110,8 @@ pub(crate) fn instantiate_enum(
                         contents: Some(Box::new(typed_expr)),
                         enum_decl,
                         variant_name: enum_variant.name,
-                        enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),
-                        type_binding,
+                        call_path_binding,
                     },
                     span: enum_variant_name.span(),
                 },

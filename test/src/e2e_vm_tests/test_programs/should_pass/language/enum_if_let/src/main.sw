@@ -1,7 +1,5 @@
 script;
 
-use std::{address::Address, assert::assert, identity::Identity};
-
 enum Result<T, E> {
     Ok: T,
     Err: E,

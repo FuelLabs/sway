@@ -107,16 +107,22 @@ impl<'a> Unifier<'a> {
             }
             (
                 Struct {
-                    name: rn,
+                    call_path: rn,
                     type_parameters: rpts,
                     fields: rfs,
                 },
                 Struct {
-                    name: en,
+                    call_path: en,
                     type_parameters: etps,
                     fields: efs,
                 },
-            ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
+            ) => self.unify_structs(
+                received,
+                expected,
+                span,
+                (rn.suffix, rpts, rfs),
+                (en.suffix, etps, efs),
+            ),
             // Let empty enums to coerce to any other type. This is useful for Never enum.
             (
                 Enum {
@@ -126,16 +132,22 @@ impl<'a> Unifier<'a> {
             ) if rvs.is_empty() => (vec![], vec![]),
             (
                 Enum {
-                    name: rn,
+                    call_path: rn,
                     type_parameters: rtps,
                     variant_types: rvs,
                 },
                 Enum {
-                    name: en,
+                    call_path: en,
                     type_parameters: etps,
                     variant_types: evs,
                 },
-            ) => self.unify_enums(received, expected, span, (rn, rtps, rvs), (en, etps, evs)),
+            ) => self.unify_enums(
+                received,
+                expected,
+                span,
+                (rn.suffix, rtps, rvs),
+                (en.suffix, etps, evs),
+            ),
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
@@ -350,7 +362,7 @@ impl<'a> Unifier<'a> {
                     &rf.span
                 };
                 append!(
-                    self.unify(rf.type_id, ef.type_id, new_span),
+                    self.unify(rf.type_argument.type_id, ef.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );
@@ -399,7 +411,7 @@ impl<'a> Unifier<'a> {
                     &rv.span
                 };
                 append!(
-                    self.unify(rv.type_id, ev.type_id, new_span),
+                    self.unify(rv.type_argument.type_id, ev.type_argument.type_id, new_span),
                     warnings,
                     errors
                 );

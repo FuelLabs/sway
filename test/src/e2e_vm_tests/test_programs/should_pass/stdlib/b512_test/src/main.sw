@@ -1,7 +1,6 @@
 script;
 
 use std::b512::B512;
-use std::assert::assert;
 
 // helper to prove contiguity of memory in B512 type's hi & lo fields.
 fn are_fields_contiguous(big_value: B512) -> bool {

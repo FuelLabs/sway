@@ -79,16 +79,19 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name.clone(),
         tag: 0,
-        type_id: placeholder_type,
-        initial_type_id: placeholder_type,
+        type_argument: TypeArgument {
+            type_id: placeholder_type,
+            initial_type_id: placeholder_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
     let ty_1 = type_engine.insert(
         &decl_engine,
         TypeInfo::Enum {
-            name: result_name.clone(),
+            call_path: result_name.clone().into(),
             variant_types,
             type_parameters: vec![placeholder_type_param],
         },
@@ -103,10 +106,13 @@ fn generic_enum_resolution() {
     let variant_types = vec![ty::TyEnumVariant {
         name: a_name,
         tag: 0,
-        type_id: boolean_type,
-        initial_type_id: boolean_type,
+        type_argument: TypeArgument {
+            type_id: boolean_type,
+            initial_type_id: boolean_type,
+            span: sp.clone(),
+            call_path_tree: None,
+        },
         span: sp.clone(),
-        type_span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
     let type_param = TypeParameter {
@@ -119,7 +125,7 @@ fn generic_enum_resolution() {
     let ty_2 = type_engine.insert(
         &decl_engine,
         TypeInfo::Enum {
-            name: result_name,
+            call_path: result_name.into(),
             variant_types,
             type_parameters: vec![type_param],
         },
@@ -130,14 +136,14 @@ fn generic_enum_resolution() {
     assert!(errors.is_empty());
 
     if let TypeInfo::Enum {
-        name,
+        call_path: name,
         variant_types,
         ..
     } = type_engine.get(ty_1)
     {
-        assert_eq!(name.as_str(), "Result");
+        assert_eq!(name.suffix.as_str(), "Result");
         assert!(matches!(
-            type_engine.get(variant_types[0].type_id),
+            type_engine.get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean
         ));
     } else {

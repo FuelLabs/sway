@@ -139,37 +139,35 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDeclaration::VariableDeclaration(tvd) => {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
-                ty::TyDeclaration::ConstantDeclaration(decl_id) => {
-                    let tcd = self
-                        .decl_engine
-                        .get_constant(decl_id.clone(), &ast_node.span)?;
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                    let tcd = self.decl_engine.get_constant(decl_id, &ast_node.span)?;
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::FunctionDeclaration(_) => {
+                ty::TyDeclaration::FunctionDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "function",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::TraitDeclaration(_) => {
+                ty::TyDeclaration::TraitDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "trait",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StructDeclaration(_) => {
+                ty::TyDeclaration::StructDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "struct",
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
+                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                    let ted = self.decl_engine.get_enum(decl_id, &ast_node.span)?;
                     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDeclaration::ImplTrait(_) => {
+                ty::TyDeclaration::ImplTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!
@@ -177,10 +175,12 @@ impl<'eng> FnCompiler<'eng> {
                     // compile and then call these properly.
                     Ok(None)
                 }
-                ty::TyDeclaration::AbiDeclaration(_) => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "abi",
-                    span: ast_node.span.clone(),
-                }),
+                ty::TyDeclaration::AbiDeclaration { .. } => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "abi",
+                        span: ast_node.span.clone(),
+                    })
+                }
                 ty::TyDeclaration::GenericTypeForFunctionScope { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "abi",
@@ -193,7 +193,7 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StorageDeclaration(_) => {
+                ty::TyDeclaration::StorageDeclaration { .. } => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "storage",
                         span: ast_node.span.clone(),
@@ -214,7 +214,7 @@ impl<'eng> FnCompiler<'eng> {
             }
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
-            ty::TyAstNodeContent::SideEffect => Ok(None),
+            ty::TyAstNodeContent::SideEffect(_) => Ok(None),
         }
     }
 
@@ -233,7 +233,7 @@ impl<'eng> FnCompiler<'eng> {
                 call_path: name,
                 contract_call_params,
                 arguments,
-                function_decl_id,
+                function_decl_ref,
                 self_state_idx,
                 selector,
                 type_binding: _,
@@ -252,7 +252,7 @@ impl<'eng> FnCompiler<'eng> {
                 } else {
                     let function_decl = self
                         .decl_engine
-                        .get_function(function_decl_id.clone(), &ast_expr.span)?;
+                        .get_function(function_decl_ref, &ast_expr.span)?;
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -283,11 +283,21 @@ impl<'eng> FnCompiler<'eng> {
                 "Unexpected function parameter declaration.",
                 ast_expr.span.clone(),
             )),
+            ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+                self.compile_expression(context, md_mgr, desugared)
+            }
             ty::TyExpressionVariant::IfExp {
                 condition,
                 then,
                 r#else,
-            } => self.compile_if(context, md_mgr, condition, then, r#else.as_deref()),
+            } => self.compile_if(
+                context,
+                md_mgr,
+                condition,
+                then,
+                r#else.as_deref(),
+                ast_expr.return_type,
+            ),
             ty::TyExpressionVariant::AsmExpression {
                 registers,
                 body,
@@ -585,6 +595,20 @@ impl<'eng> FnCompiler<'eng> {
                     .current_block
                     .ins(context)
                     .addr_of(value)
+                    .add_metadatum(context, span_md_idx))
+            }
+            Intrinsic::StateClear => {
+                let key_exp = arguments[0].clone();
+                let number_of_slots_exp = arguments[1].clone();
+                let key_value = self.compile_expression(context, md_mgr, &key_exp)?;
+                let number_of_slots_value =
+                    self.compile_expression(context, md_mgr, &number_of_slots_exp)?;
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                Ok(self
+                    .current_block
+                    .ins(context)
+                    .state_clear(key_var, number_of_slots_value)
                     .add_metadatum(context, span_md_idx))
             }
             Intrinsic::StateLoadWord => {
@@ -1231,7 +1255,11 @@ impl<'eng> FnCompiler<'eng> {
         // be more accurate but also more fiddly.
         let fn_key = (
             callee.span(),
-            callee.parameters.iter().map(|p| p.type_id).collect(),
+            callee
+                .parameters
+                .iter()
+                .map(|p| p.type_argument.type_id)
+                .collect(),
             callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
         );
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
@@ -1320,6 +1348,7 @@ impl<'eng> FnCompiler<'eng> {
         ast_condition: &ty::TyExpression,
         ast_then: &ty::TyExpression,
         ast_else: Option<&ty::TyExpression>,
+        return_type: TypeId,
     ) -> Result<Value, CompileError> {
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
@@ -1367,17 +1396,12 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
+        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)
+            .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
-        let merge_val_arg_idx = merge_block.new_arg(
-            context,
-            true_value.get_type(context).unwrap_or_else(|| {
-                false_value
-                    .get_type(context)
-                    .unwrap_or_else(|| Type::get_unit(context))
-            }),
-            false,
-        );
+        // Rely on the type of the ast node when creating that argument
+        let merge_val_arg_idx = merge_block.new_arg(context, return_type, false);
         if !true_block_end.is_terminated(context) {
             true_block_end
                 .ins(context)
@@ -1571,7 +1595,7 @@ impl<'eng> FnCompiler<'eng> {
             let is_ref_primitive = fn_param.is_some()
                 && self
                     .type_engine
-                    .get(fn_param.unwrap().type_id)
+                    .get(fn_param.unwrap().type_argument.type_id)
                     .is_copy_type()
                 && fn_param.unwrap().is_reference
                 && fn_param.unwrap().is_mutable;
@@ -1624,7 +1648,7 @@ impl<'eng> FnCompiler<'eng> {
                 .type_engine
                 .to_typeinfo(body.return_type, &body.span)
                 .map_err(|ty_err| {
-                    CompileError::InternalOwned(format!("{:?}", ty_err), body.span.clone())
+                    CompileError::InternalOwned(format!("{ty_err:?}"), body.span.clone())
                 })?,
             TypeInfo::ContractCaller { .. }
         ) {
@@ -2414,7 +2438,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2523,7 +2547,7 @@ impl<'eng> FnCompiler<'eng> {
                 // New name for the key
                 let mut key_name = format!("{}{}", "key_for_", ix.to_usize());
                 for ix in indices {
-                    key_name = format!("{}_{}", key_name, ix);
+                    key_name = format!("{key_name}_{ix}");
                 }
                 let alias_key_name = self.lexical_map.insert(key_name.as_str().to_owned());
 
@@ -2646,7 +2670,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 
@@ -2684,7 +2708,7 @@ impl<'eng> FnCompiler<'eng> {
         // First, create a name for the value to load from or store to
         let mut value_name = format!("{}{}", "val_for_", ix.to_usize());
         for ix in indices {
-            value_name = format!("{}_{}", value_name, ix);
+            value_name = format!("{value_name}_{ix}");
         }
         let alias_value_name = self.lexical_map.insert(value_name.as_str().to_owned());
 

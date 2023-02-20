@@ -1,13 +1,17 @@
 use std::path::PathBuf;
 
-use sway_ir::{optimize as opt, Context};
+use sway_ir::{
+    create_const_combine_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass,
+    create_mem2reg_pass, create_postorder_pass, create_simplify_cfg_pass, optimize as opt, Context,
+    PassGroup, PassManager,
+};
 
 // -------------------------------------------------------------------------------------------------
 // Utility for finding test files and running FileCheck.  See actual pass invocations below.
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let dir: PathBuf = format!("{}/tests/{}", manifest_dir, sub_dir).into();
+    let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
 
@@ -117,13 +121,11 @@ fn inline() {
 #[test]
 fn constants() {
     run_tests("constants", |_first_line, ir: &mut Context| {
-        let funcs: Vec<_> = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .collect();
-        funcs.into_iter().fold(false, |acc, func| {
-            sway_ir::optimize::combine_constants(ir, &func).unwrap() || acc
-        })
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_const_combine_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
 
@@ -133,13 +135,11 @@ fn constants() {
 #[test]
 fn simplify_cfg() {
     run_tests("simplify_cfg", |_first_line, ir: &mut Context| {
-        let funcs: Vec<_> = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .collect();
-        funcs.into_iter().fold(false, |acc, func| {
-            sway_ir::optimize::simplify_cfg(ir, &func).unwrap() || acc
-        })
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_simplify_cfg_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
 
@@ -149,13 +149,11 @@ fn simplify_cfg() {
 #[test]
 fn dce() {
     run_tests("dce", |_first_line, ir: &mut Context| {
-        let funcs: Vec<_> = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .collect();
-        funcs.into_iter().fold(false, |acc, func| {
-            sway_ir::optimize::dce(ir, &func).unwrap() || acc
-        })
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        let pass = pass_mgr.register(create_dce_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
 
@@ -165,13 +163,14 @@ fn dce() {
 #[test]
 fn mem2reg() {
     run_tests("mem2reg", |_first_line, ir: &mut Context| {
-        let funcs: Vec<_> = ir
-            .module_iter()
-            .flat_map(|module| module.function_iter(ir))
-            .collect();
-        funcs.into_iter().fold(false, |acc, func| {
-            sway_ir::optimize::promote_to_registers(ir, &func).unwrap() || acc
-        })
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        pass_mgr.register(create_postorder_pass());
+        pass_mgr.register(create_dominators_pass());
+        pass_mgr.register(create_dom_fronts_pass());
+        let pass = pass_mgr.register(create_mem2reg_pass());
+        pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
 

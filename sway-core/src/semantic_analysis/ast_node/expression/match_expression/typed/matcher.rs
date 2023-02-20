@@ -95,12 +95,12 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::CatchAll => ok((vec![], vec![]), warnings, errors),
         ty::TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         ty::TyScrutineeVariant::Variable(name) => match_variable(exp, name),
-        ty::TyScrutineeVariant::Constant(name, _, type_id) => {
-            match_constant(exp, name, type_id, span)
+        ty::TyScrutineeVariant::Constant(name, _, const_decl) => {
+            match_constant(exp, name, const_decl.value.return_type, span)
         }
-        ty::TyScrutineeVariant::StructScrutinee(_, fields) => match_struct(ctx, exp, fields),
+        ty::TyScrutineeVariant::StructScrutinee { fields, .. } => match_struct(ctx, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
-            match_enum(ctx, exp, variant, *value, span)
+            match_enum(ctx, exp, *variant, *value, span)
         }
         ty::TyScrutineeVariant::Tuple(elems) => match_tuple(ctx, exp, elems, span),
     }
@@ -143,6 +143,7 @@ fn match_constant(
                 name: scrutinee_name,
                 span: span.clone(),
                 mutability: ty::VariableMutability::Immutable,
+                call_path: None,
             },
             return_type: scrutinee_type_id,
             span,
@@ -166,6 +167,7 @@ fn match_struct(
         field,
         scrutinee,
         span: field_span,
+        field_def_name: _,
     } in fields.into_iter()
     {
         let subfield = check!(

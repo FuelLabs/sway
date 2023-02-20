@@ -1,13 +1,16 @@
 #[macro_use]
 pub mod error;
 
+#[macro_use]
+mod engine_threading;
+
+pub mod abi_generation;
 pub mod asm_generation;
 mod asm_lang;
 mod build_config;
 mod concurrent_slab;
 mod control_flow_analysis;
 pub mod decl_engine;
-mod engine_threading;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
@@ -17,7 +20,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::language::Inline;
+use crate::language::parsed::TreeType;
 use crate::{error::*, source_map::SourceMap};
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
@@ -28,8 +31,14 @@ use metadata::MetadataManager;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{call_graph, Context, Function, Instruction, Kind, Module, Value};
+use sway_ir::{
+    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
+    MODULEPRINTER_NAME,
+};
+use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
+use transform::{Attribute, AttributeKind, AttributesMap};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -93,6 +102,46 @@ pub fn parse_tree_type(input: Arc<str>) -> CompileResult<parsed::TreeType> {
     })
 }
 
+/// Convert attributes from `Annotated<Module>` to an [AttributesMap].
+fn module_attrs_to_map(
+    handler: &Handler,
+    attribute_list: &[AttributeDecl],
+) -> Result<AttributesMap, ErrorEmitted> {
+    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    for attr_decl in attribute_list {
+        let attrs = attr_decl.attribute.get().into_iter();
+        for attr in attrs {
+            let name = attr.name.as_str();
+            if name != DOC_COMMENT_ATTRIBUTE_NAME {
+                // prevent using anything except doc comment attributes
+                handler.emit_err(CompileError::ExpectedModuleDocComment {
+                    span: attr.name.span(),
+                });
+            }
+
+            let args = attr
+                .args
+                .as_ref()
+                .map(|parens| parens.get().into_iter().cloned().collect())
+                .unwrap_or_else(Vec::new);
+
+            let attribute = Attribute {
+                name: attr.name.clone(),
+                args,
+                span: attr_decl.span(),
+            };
+
+            if let Some(attr_kind) = match name {
+                DOC_COMMENT_ATTRIBUTE_NAME => Some(AttributeKind::DocComment),
+                _ => None,
+            } {
+                attrs_map.entry(attr_kind).or_default().push(attribute);
+            }
+        }
+    }
+    Ok(AttributesMap::new(Arc::new(attrs_map)))
+}
+
 /// When no `BuildConfig` is given, we're assumed to be parsing in-memory with no submodules.
 fn parse_in_memory(
     handler: &Handler,
@@ -104,14 +153,19 @@ fn parse_in_memory(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
     let submodules = Default::default();
-    let root = parsed::ParseModule { tree, submodules };
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+    let root = parsed::ParseModule {
+        tree,
+        submodules,
+        attributes,
+    };
     let lexed_program = lexed::LexedProgram::new(
         kind.clone(),
         lexed::LexedModule {
-            tree: module,
+            tree: module.value,
             submodules: Default::default(),
         },
     );
@@ -170,6 +224,7 @@ fn parse_submodules(
             let parse_submodule = parsed::ParseSubmodule {
                 library_name: library_name.clone(),
                 module: parse_module,
+                dependency_path_span: dep.path.span(),
             };
             let lexed_submodule = lexed::LexedSubmodule {
                 library_name,
@@ -200,23 +255,25 @@ fn parse_module_tree(
 
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
-    let submodules = parse_submodules(handler, engines, &module, module_dir);
+    let submodules = parse_submodules(handler, engines, &module.value, module_dir);
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::default(),
         handler,
         engines,
-        module.clone(),
+        module.value.clone(),
     )?;
+    let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
 
     let lexed = lexed::LexedModule {
-        tree: module,
+        tree: module.value,
         submodules: submodules.lexed,
     };
     let parsed = parsed::ParseModule {
         tree,
         submodules: submodules.parsed,
+        attributes,
     };
     Ok((kind, lexed, parsed))
 }
@@ -465,47 +522,26 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         errors.extend(e);
     }
 
-    // Now we're working with all functions in the module.
-    let all_functions = ir
-        .module_iter()
-        .flat_map(|module| module.function_iter(&ir))
-        .collect::<Vec<_>>();
+    // Initialize the pass manager and register known passes.
+    let mut pass_mgr = PassManager::default();
+    register_known_passes(&mut pass_mgr);
+    let mut pass_group = create_o1_pass_group(matches!(tree_type, TreeType::Predicate));
+    if build_config.print_ir {
+        pass_group.append_pass(MODULEPRINTER_NAME);
+    }
 
-    // Promote local values to registers.
-    check!(
-        promote_to_registers(&mut ir, &all_functions),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // Inline function calls.
-    check!(
-        inline_function_calls(&mut ir, &all_functions, &tree_type),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
+    // Run the passes.
     let res = CompileResult::with_handler(|handler| {
-        // TODO: Experiment with putting combine-constants and simplify-cfg
-        // in a loop, but per function.
-        combine_constants(handler, &mut ir, &all_functions)?;
-        simplify_cfg(handler, &mut ir, &all_functions)?;
-        // Simplify-CFG helps combine constants.
-        combine_constants(handler, &mut ir, &all_functions)?;
-        // And that in-turn enables more simplify-cfg.
-        simplify_cfg(handler, &mut ir, &all_functions)?;
-
-        // Remove dead definitions based on the entry points root set.
-        dce(handler, &mut ir, &entry_point_functions)?;
-        Ok(())
+        if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
+            Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )))
+        } else {
+            Ok(())
+        }
     });
     check!(res, return err(warnings, errors), warnings, errors);
-
-    if build_config.print_ir {
-        tracing::info!("{}", ir);
-    }
 
     let final_asm = check!(
         compile_ir_to_asm(&ir, Some(build_config)),
@@ -515,180 +551,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     );
 
     ok(final_asm, warnings, errors)
-}
-
-fn promote_to_registers(ir: &mut Context, functions: &[Function]) -> CompileResult<()> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::promote_to_registers(ir, function) {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
-        }
-    }
-    ok((), Vec::new(), Vec::new())
-}
-
-/// Inline function calls based on two conditions:
-/// 1. The program we're compiling is a "predicate". Predicates cannot jump backwards which means
-///    that supporting function calls (i.e. without inlining) is not possible. This is a protocl
-///    restriction and not a heuristic.
-/// 2. If the program is not a "predicate" then, we rely on some heuristic which is described below
-///    in the `inline_heuristc` closure.
-///
-pub fn inline_function_calls(
-    ir: &mut Context,
-    functions: &[Function],
-    tree_type: &parsed::TreeType,
-) -> CompileResult<()> {
-    // Inspect ALL calls and count how often each function is called.
-    // This is not required for predicates because we don't inline their function calls
-    let call_counts: HashMap<Function, u64> = match tree_type {
-        parsed::TreeType::Predicate => HashMap::new(),
-        _ => functions.iter().fold(HashMap::new(), |mut counts, func| {
-            for (_block, ins) in func.instruction_iter(ir) {
-                if let Some(Instruction::Call(callee, _args)) = ins.get_instruction(ir) {
-                    counts
-                        .entry(*callee)
-                        .and_modify(|count| *count += 1)
-                        .or_insert(1);
-                }
-            }
-            counts
-        }),
-    };
-
-    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
-        let mut md_mgr = metadata::MetadataManager::default();
-        let attributed_inline = md_mgr.md_to_inline(ctx, func.get_metadata(ctx));
-
-        match attributed_inline {
-            Some(Inline::Always) => {
-                // TODO: check if inlining of function is possible
-                // return true;
-            }
-            Some(Inline::Never) => {
-                return false;
-            }
-            None => {}
-        }
-
-        // For now, pending improvements to ASMgen for calls, we must inline any function which has
-        // too many args.
-        if func.args_iter(ctx).count() as u8
-            > crate::asm_generation::fuel::compiler_constants::NUM_ARG_REGISTERS
-        {
-            return true;
-        }
-
-        // If the function is called only once then definitely inline it.
-        if call_counts.get(func).copied().unwrap_or(0) == 1 {
-            return true;
-        }
-
-        // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 4;
-        if func.num_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
-            return true;
-        }
-
-        // As per https://github.com/FuelLabs/sway/issues/2819 we can hit problems if a function
-        // argument is used as a pointer (probably because it has a ref type) although it actually
-        // isn't one.  Ref type args which aren't pointers need to be inlined.
-        if func.args_iter(ctx).any(|(_name, arg_val)| {
-            arg_val
-                .get_argument_type_and_byref(ctx)
-                .map(|(ty, by_ref)| {
-                    by_ref || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
-                })
-                .unwrap_or(false)
-        }) {
-            return true;
-        }
-
-        false
-    };
-
-    let cg = call_graph::build_call_graph(ir, functions);
-    let functions = call_graph::callee_first_order(&cg);
-
-    for function in functions {
-        if let Err(ir_error) = match tree_type {
-            parsed::TreeType::Predicate => {
-                // Inline everything for predicates
-                sway_ir::optimize::inline_all_function_calls(ir, &function)
-            }
-            _ => sway_ir::optimize::inline_some_function_calls(ir, &function, inline_heuristic),
-        } {
-            return err(
-                Vec::new(),
-                vec![CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )],
-            );
-        }
-    }
-    ok((), Vec::new(), Vec::new())
-}
-
-fn combine_constants(
-    handler: &Handler,
-    ir: &mut Context,
-    functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::combine_constants(ir, function) {
-            return Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn dce(
-    handler: &Handler,
-    ir: &mut Context,
-    entry_functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    // Remove entire dead functions first.
-    for module in ir.module_iter() {
-        sway_ir::optimize::func_dce(ir, &module, entry_functions);
-    }
-
-    // Then DCE all the remaining functions.
-    for module in ir.module_iter() {
-        for function in module.function_iter(ir) {
-            if let Err(ir_error) = sway_ir::optimize::dce(ir, &function) {
-                return Err(handler.emit_err(CompileError::InternalOwned(
-                    ir_error.to_string(),
-                    span::Span::dummy(),
-                )));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn simplify_cfg(
-    handler: &Handler,
-    ir: &mut Context,
-    functions: &[Function],
-) -> Result<(), ErrorEmitted> {
-    for function in functions {
-        if let Err(ir_error) = sway_ir::optimize::simplify_cfg(ir, function) {
-            return Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )));
-        }
-    }
-    Ok(())
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.

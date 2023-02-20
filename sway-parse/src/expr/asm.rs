@@ -42,7 +42,7 @@ impl Parse for AsmRegisterDeclaration {
 
 impl ParseToEnd for AsmBlockContents {
     fn parse_to_end<'a, 'e>(
-        mut parser: Parser<'a, 'e>,
+        mut parser: Parser<'a, '_>,
     ) -> ParseResult<(AsmBlockContents, ParserConsumed<'a>)> {
         let mut instructions = Vec::new();
         let (final_expr_opt, consumed) = loop {

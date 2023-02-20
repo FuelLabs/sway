@@ -1,4 +1,7 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -17,10 +20,29 @@ pub struct TyReassignment {
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.lhs_base_name == other.lhs_base_name
-            && self.lhs_type == other.lhs_type
+            && type_engine
+                .get(self.lhs_type)
+                .eq(&type_engine.get(other.lhs_type), engines)
             && self.lhs_indices.eq(&other.lhs_indices, engines)
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyReassignment {
+            lhs_base_name,
+            lhs_type,
+            lhs_indices,
+            rhs,
+        } = self;
+        let type_engine = engines.te();
+        lhs_base_name.hash(state);
+        type_engine.get(*lhs_type).hash(state, engines);
+        lhs_indices.hash(state, engines);
+        rhs.hash(state, engines);
     }
 }
 
@@ -92,6 +114,30 @@ impl PartialEqWithEngines for ProjectionKind {
     }
 }
 
+impl HashWithEngines for ProjectionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        use ProjectionKind::*;
+        std::mem::discriminant(self).hash(state);
+        match self {
+            StructField { name } => name.hash(state),
+            TupleField {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => index.hash(state),
+            ArrayIndex {
+                index,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                index_span: _,
+            } => {
+                index.hash(state, engines);
+            }
+        }
+    }
+}
+
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
@@ -107,7 +153,7 @@ impl ProjectionKind {
         match self {
             ProjectionKind::StructField { name } => Cow::Borrowed(name.as_str()),
             ProjectionKind::TupleField { index, .. } => Cow::Owned(index.to_string()),
-            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{:#?}", index)),
+            ProjectionKind::ArrayIndex { index, .. } => Cow::Owned(format!("{index:#?}")),
         }
     }
 }
@@ -126,6 +172,15 @@ impl PartialEqWithEngines for TyStorageReassignment {
         self.fields.eq(&other.fields, engines)
             && self.ix == other.ix
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageReassignment { fields, ix, rhs } = self;
+        fields.hash(state, engines);
+        ix.hash(state);
+        rhs.hash(state, engines);
     }
 }
 
@@ -157,9 +212,6 @@ pub struct TyStorageReassignDescriptor {
     pub(crate) span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageReassignDescriptor {}
 impl PartialEqWithEngines for TyStorageReassignDescriptor {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -168,5 +220,20 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
             && type_engine
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStorageReassignDescriptor {
+            name,
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        let type_engine = engines.te();
+        name.hash(state);
+        type_engine.get(*type_id).hash(state, engines);
     }
 }

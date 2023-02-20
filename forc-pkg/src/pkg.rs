@@ -27,8 +27,9 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
+    abi_generation::{evm_json_abi, fuel_json_abi},
     asm_generation::ProgramABI,
-    decl_engine::{DeclEngine, DeclId},
+    decl_engine::{DeclEngine, DeclRef},
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
@@ -372,6 +373,85 @@ pub struct BuildOpts {
     pub tests: bool,
     /// List of constants to inject for each package.
     pub const_inject_map: ConstInjectionMap,
+    /// The set of options to filter by member project kind.
+    pub member_filter: MemberFilter,
+}
+
+/// The set of options to filter type of projects to build in a workspace.
+pub struct MemberFilter {
+    pub build_contracts: bool,
+    pub build_scripts: bool,
+    pub build_predicates: bool,
+    pub build_libraries: bool,
+}
+
+impl Default for MemberFilter {
+    fn default() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: true,
+            build_predicates: true,
+            build_libraries: true,
+        }
+    }
+}
+
+impl MemberFilter {
+    /// Returns a new `BuildFilter` that only builds scripts.
+    pub fn only_scripts() -> Self {
+        Self {
+            build_contracts: false,
+            build_scripts: true,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Returns a new `BuildFilter` that only builds contracts.
+    pub fn only_contracts() -> Self {
+        Self {
+            build_contracts: true,
+            build_scripts: false,
+            build_predicates: false,
+            build_libraries: false,
+        }
+    }
+
+    /// Filter given target of output nodes according to the this `BuildFilter`.
+    pub fn filter_outputs(
+        &self,
+        build_plan: &BuildPlan,
+        outputs: HashSet<NodeIx>,
+    ) -> HashSet<NodeIx> {
+        let graph = build_plan.graph();
+        let manifest_map = build_plan.manifest_map();
+        outputs
+            .into_iter()
+            .filter(|&node_ix| {
+                let pkg = &graph[node_ix];
+                let pkg_manifest = &manifest_map[&pkg.id()];
+                let program_type = pkg_manifest.program_type();
+                // Since parser cannot recover for program type detection, for the scenerios that
+                // parser fails to parse the code, program type detection is not possible. So in
+                // failing to parse cases we should try to build at least until
+                // https://github.com/FuelLabs/sway/issues/3017 is fixed. Until then we should
+                // build those members because of two reasons:
+                //
+                // 1. The member could already be from the desired member type
+                // 2. If we do not try to build there is no way users can know there is a code
+                //    piece failing to be parsed in their workspace.
+                match program_type {
+                    Ok(program_type) => match program_type {
+                        TreeType::Predicate => self.build_predicates,
+                        TreeType::Script => self.build_scripts,
+                        TreeType::Contract => self.build_contracts,
+                        TreeType::Library { .. } => self.build_libraries,
+                    },
+                    Err(_) => true,
+                }
+            })
+            .collect()
+    }
 }
 
 impl BuildOpts {
@@ -437,7 +517,7 @@ impl BuiltPackage {
 
         self.write_bytecode(&bin_path)?;
 
-        let json_abi_program_stem = format!("{}-abi", pkg_name);
+        let json_abi_program_stem = format!("{pkg_name}-abi");
         let json_abi_program_path = output_dir
             .join(json_abi_program_stem)
             .with_extension("json");
@@ -471,7 +551,7 @@ impl BuiltPackage {
         match self.tree_type {
             TreeType::Contract => {
                 // For contracts, emit a JSON file with all the initialized storage slots.
-                let json_storage_slots_stem = format!("{}-storage_slots", pkg_name);
+                let json_storage_slots_stem = format!("{pkg_name}-storage_slots");
                 let json_storage_slots_path = output_dir
                     .join(json_storage_slots_stem)
                     .with_extension("json");
@@ -518,7 +598,7 @@ impl Built {
         }
     }
 
-    /// Tries to retrieve the `Built` as a `BuiltPackage`, panics otherwise.
+    /// Tries to retrieve the `Built` as a `BuiltPackage`.
     pub fn expect_pkg(self) -> Result<BuiltPackage> {
         match self {
             Built::Package(built_pkg) => Ok(*built_pkg),
@@ -1068,7 +1148,7 @@ impl GitReference {
     pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
         // Find the commit associated with this tag.
         fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/{}/tags/{}", DEFAULT_REMOTE_NAME, tag);
+            let refname = format!("refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{tag}");
             let id = repo.refname_to_id(&refname)?;
             let obj = repo.find_object(id, None)?;
             let obj = obj.peel(git2::ObjectType::Commit)?;
@@ -1077,10 +1157,10 @@ impl GitReference {
 
         // Resolve to the target for the given branch.
         fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("{}/{}", DEFAULT_REMOTE_NAME, branch);
+            let name = format!("{DEFAULT_REMOTE_NAME}/{branch}");
             let b = repo
                 .find_branch(&name, git2::BranchType::Remote)
-                .with_context(|| format!("failed to find branch `{}`", branch))?;
+                .with_context(|| format!("failed to find branch `{branch}`"))?;
             b.get()
                 .target()
                 .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
@@ -1089,7 +1169,7 @@ impl GitReference {
         // Use the HEAD commit when default branch is specified.
         fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
             let head_id =
-                repo.refname_to_id(&format!("refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME))?;
+                repo.refname_to_id(&format!("refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"))?;
             let head = repo.find_object(head_id, None)?;
             Ok(head.peel(git2::ObjectType::Commit)?.id())
         }
@@ -1105,7 +1185,7 @@ impl GitReference {
 
         match self {
             GitReference::Tag(s) => {
-                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{}`", s))
+                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{s}`"))
             }
             GitReference::Branch(s) => resolve_branch(repo, s),
             GitReference::DefaultBranch => resolve_default_branch(repo),
@@ -1184,8 +1264,8 @@ impl fmt::Display for SourceGitPinned {
 impl fmt::Display for GitReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            GitReference::Branch(ref s) => write!(f, "branch={}", s),
-            GitReference::Tag(ref s) => write!(f, "tag={}", s),
+            GitReference::Branch(ref s) => write!(f, "branch={s}"),
+            GitReference::Tag(ref s) => write!(f, "tag={s}"),
             GitReference::Rev(ref _s) => write!(f, "rev"),
             GitReference::DefaultBranch => write!(f, "default-branch"),
         }
@@ -1408,14 +1488,13 @@ fn pkg_graph_to_manifest_map(
         // Retrieve the parent node whose manifest is already stored.
         let (parent_manifest, dep_name) = graph
             .edges_directed(dep_node, Direction::Incoming)
-            .filter_map(|edge| {
+            .find_map(|edge| {
                 let parent_node = edge.source();
                 let dep_name = &edge.weight().name;
                 let parent = &graph[parent_node];
                 let parent_manifest = manifest_map.get(&parent.id())?;
                 Some((parent_manifest, dep_name))
             })
-            .next()
             .ok_or_else(|| anyhow!("more than one root package detected in graph"))?;
         let dep_path = dep_path(graph, parent_manifest, dep_node, manifests).map_err(|e| {
             anyhow!(
@@ -1667,7 +1746,7 @@ fn fetch_deps(
 /// The name to use for a package's git repository under the user's forc directory.
 fn git_repo_dir_name(name: &str, repo: &Url) -> String {
     let repo_url_hash = hash_url(repo);
-    format!("{}-{:x}", name, repo_url_hash)
+    format!("{name}-{repo_url_hash:x}")
 }
 
 fn hash_url(url: &Url) -> u64 {
@@ -1702,32 +1781,29 @@ fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
     match reference {
         GitReference::Branch(s) => {
             refspecs.push(format!(
-                "+refs/heads/{1}:refs/remotes/{0}/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/heads/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/{s}"
             ));
         }
         GitReference::Tag(s) => {
             refspecs.push(format!(
-                "+refs/tags/{1}:refs/remotes/{0}/tags/{1}",
-                DEFAULT_REMOTE_NAME, s
+                "+refs/tags/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{s}"
             ));
         }
         GitReference::Rev(s) => {
             if s.starts_with("refs/") {
-                refspecs.push(format!("+{0}:{0}", s));
+                refspecs.push(format!("+{s}:{s}"));
             } else {
                 // We can't fetch the commit directly, so we fetch all branches and tags in order
                 // to find it.
                 refspecs.push(format!(
-                    "+refs/heads/*:refs/remotes/{}/*",
-                    DEFAULT_REMOTE_NAME
+                    "+refs/heads/*:refs/remotes/{DEFAULT_REMOTE_NAME}/*"
                 ));
-                refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+                refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
                 tags = true;
             }
         }
         GitReference::DefaultBranch => {
-            refspecs.push(format!("+HEAD:refs/remotes/{}/HEAD", DEFAULT_REMOTE_NAME));
+            refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
         }
     }
     (refspecs, tags)
@@ -1785,7 +1861,7 @@ pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGit
             .reference
             .resolve(&repo)
             .with_context(|| "failed to resolve reference".to_string())?;
-        Ok(format!("{}", commit_id))
+        Ok(format!("{commit_id}"))
     })?;
     Ok(SourceGitPinned {
         source,
@@ -1943,8 +2019,8 @@ fn fd_lock_path(path: &Path) -> PathBuf {
     path.hash(&mut hasher);
     let hash = hasher.finish();
     let file_name = match path.file_stem().and_then(|s| s.to_str()) {
-        None => format!("{:X}", hash),
-        Some(stem) => format!("{:X}-{}", hash, stem),
+        None => format!("{hash:X}"),
+        Some(stem) => format!("{hash:X}-{stem}"),
     };
 
     user_forc_directory()
@@ -2526,13 +2602,29 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                typed_program.generate_json_abi_program(engines.te(), &mut types)
+                fuel_json_abi::generate_json_abi_program(typed_program, engines.te(), &mut types)
             ))
         }
-        BuildTarget::EVM => match &asm_res.value {
-            Some(ref v) => v.0.abi.as_ref().unwrap().clone(),
-            None => todo!(),
-        },
+        BuildTarget::EVM => {
+            // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
+            // generated by the ASM backend.
+            let mut ops = match &asm_res.value {
+                Some(ref asm) => match &asm.0.abi {
+                    Some(ProgramABI::Evm(ops)) => ops.clone(),
+                    _ => vec![],
+                },
+                _ => vec![],
+            };
+
+            let abi = time_expr!(
+                "generate JSON ABI program",
+                evm_json_abi::generate_json_abi_program(typed_program, engines.te())
+            );
+
+            ops.extend(abi.into_iter());
+
+            ProgramABI::Evm(ops)
+        }
     };
 
     let entries = asm_res
@@ -2558,8 +2650,13 @@ pub fn compile(
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
-                for (config, offset) in config_offsets {
-                    if let Some(ref mut configurables) = json_abi_program.configurables {
+                if let Some(ref mut configurables) = json_abi_program.configurables {
+                    // Filter out all dead configurables (i.e. ones without offsets in the
+                    // bytecode)
+                    configurables.retain(|c| config_offsets.contains_key(&c.name));
+
+                    // Set the actual offsets in the JSON object
+                    for (config, offset) in config_offsets {
                         if let Some(idx) = configurables.iter().position(|c| c.name == config) {
                             configurables[idx].offset = offset
                         }
@@ -2599,9 +2696,9 @@ impl PkgEntry {
         finalized_entry: &FinalizedEntry,
         decl_engine: &DeclEngine,
     ) -> Result<Self> {
-        let pkg_entry_kind = match &finalized_entry.test_decl_id {
-            Some(test_decl_id) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_id.clone(), decl_engine)?;
+        let pkg_entry_kind = match &finalized_entry.test_decl_ref {
+            Some(test_decl_ref) => {
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref.clone(), decl_engine)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -2625,9 +2722,9 @@ impl PkgEntryKind {
 }
 
 impl PkgTestEntry {
-    fn from_decl(decl_id: DeclId, decl_engine: &DeclEngine) -> Result<Self> {
-        let span = decl_id.span();
-        let test_function_decl = decl_engine.get_function(decl_id, &span)?;
+    fn from_decl(decl_ref: DeclRef, decl_engine: &DeclEngine) -> Result<Self> {
+        let span = decl_ref.span();
+        let test_function_decl = decl_engine.get_function(&decl_ref, &span)?;
 
         let test_args: HashSet<String> = test_function_decl
             .attributes
@@ -2729,6 +2826,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         const_inject_map,
         build_target,
+        member_filter,
         ..
     } = &build_options;
 
@@ -2762,6 +2860,8 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .collect(),
         None => build_plan.member_nodes().collect(),
     };
+
+    let outputs = member_filter.filter_outputs(&build_plan, outputs);
 
     // Build it!
     let mut built_workspace = HashMap::new();
@@ -2914,8 +3014,10 @@ pub fn build(
         {
             compiled_contract_deps.insert(node, built_package.clone());
         }
-        if let TreeType::Library { .. } = built_package.tree_type {
-            lib_namespace_map.insert(node, namespace.into());
+        if let TreeType::Library { ref name } = built_package.tree_type {
+            let mut namespace = namespace::Module::from(namespace);
+            namespace.name = Some(name.clone());
+            lib_namespace_map.insert(node, namespace);
         }
         source_map.insert_dependency(manifest.dir());
         if let ProgramABI::Fuel(ref mut json_abi_program) = built_package.json_abi_program {
@@ -3137,8 +3239,10 @@ pub fn check(
             Some(typed_program) => typed_program,
         };
 
-        if let TreeType::Library { .. } = typed_program.kind.tree_type() {
-            lib_namespace_map.insert(node, typed_program.root.namespace.clone());
+        if let TreeType::Library { name } = typed_program.kind.tree_type() {
+            let mut namespace = typed_program.root.namespace.clone();
+            namespace.name = Some(name.clone());
+            lib_namespace_map.insert(node, namespace);
         }
 
         source_map.insert_dependency(manifest.dir());
@@ -3293,10 +3397,10 @@ pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
 pub fn parsing_failed(project_name: &str, errors: Vec<CompileError>) -> anyhow::Error {
     let error = errors
         .iter()
-        .map(|e| format!("{}", e))
+        .map(|e| format!("{e}"))
         .collect::<Vec<String>>()
         .join("\n");
-    let message = format!("Parsing {} failed: \n{}", project_name, error);
+    let message = format!("Parsing {project_name} failed: \n{error}");
     Error::msg(message)
 }
 
@@ -3306,15 +3410,12 @@ pub fn wrong_program_type(
     expected_types: Vec<TreeType>,
     parse_type: TreeType,
 ) -> anyhow::Error {
-    let message = format!(
-        "{} is not a '{:?}' it is a '{:?}'",
-        project_name, expected_types, parse_type
-    );
+    let message = format!("{project_name} is not a '{expected_types:?}' it is a '{parse_type:?}'");
     Error::msg(message)
 }
 
 /// Format an error message if a given URL fails to produce a working node.
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
-    let message = format!("could not get a response from node at the URL {}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information", node_url);
+    let message = format!("could not get a response from node at the URL {node_url}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information");
     Error::msg(message)
 }

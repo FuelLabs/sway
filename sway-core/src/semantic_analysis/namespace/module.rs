@@ -150,8 +150,7 @@ impl Module {
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, mut submodule: Module) {
-        submodule.name = Some(Ident::new_no_span(Box::leak(name.clone().into_boxed_str())));
+    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
         self.submodules.insert(name, submodule);
     }
 
@@ -429,14 +428,14 @@ impl<'a> std::ops::Index<&'a Path> for Module {
     type Output = Module;
     fn index(&self, path: &'a Path) -> &Self::Output {
         self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
 impl<'a> std::ops::IndexMut<&'a Path> for Module {
     fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
         self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {:?}", path))
+            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 

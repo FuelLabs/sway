@@ -17,6 +17,6 @@ pub use expression_variant::*;
 pub use intrinsic_function::*;
 pub(crate) use match_expression::*;
 pub use reassignment::*;
-pub(crate) use scrutinee::*;
+pub use scrutinee::*;
 pub use storage::*;
 pub use struct_exp_field::*;

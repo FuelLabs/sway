@@ -14,8 +14,33 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::ModuleContent,
     value::{Value, ValueDatum},
-    BinaryOpKind, BlockArgument, BranchToWithArgs, TypeOption,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
+    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption,
 };
+
+pub struct ModuleVerifierResult;
+impl AnalysisResultT for ModuleVerifierResult {}
+
+/// Verify module
+pub fn module_verifier(
+    context: &Context,
+    _analyses: &AnalysisResults,
+    module: Module,
+) -> Result<AnalysisResult, IrError> {
+    context.verify_module(context.modules.get(module.0).unwrap())?;
+    Ok(Box::new(ModuleVerifierResult))
+}
+
+pub const MODULEVERIFIER_NAME: &str = "module_verifier";
+
+pub fn create_module_verifier_pass() -> Pass {
+    Pass {
+        name: MODULEVERIFIER_NAME,
+        descr: "Verify module",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
+    }
+}
 
 impl Context {
     /// Verify the contents of this [`Context`] is valid.
@@ -192,6 +217,10 @@ impl<'a> InstructionVerifier<'a> {
                             output_index,
                             coins,
                         )?,
+                        FuelVmInstruction::StateClear {
+                            key,
+                            number_of_slots,
+                        } => self.verify_state_clear(key, number_of_slots)?,
                         FuelVmInstruction::StateLoadWord(key) => {
                             self.verify_state_load_word(key)?
                         }
@@ -774,6 +803,19 @@ impl<'a> InstructionVerifier<'a> {
         }
 
         Ok(())
+    }
+
+    fn verify_state_clear(&self, key: &Value, number_of_slots: &Value) -> Result<(), IrError> {
+        if !key.get_type(self.context).is(Type::is_b256, self.context) {
+            Err(IrError::VerifyStateKeyBadType)
+        } else if !number_of_slots
+            .get_type(self.context)
+            .is(Type::is_uint, self.context)
+        {
+            Err(IrError::VerifyStateAccessNumOfSlots)
+        } else {
+            Ok(())
+        }
     }
 
     fn verify_state_load_store(

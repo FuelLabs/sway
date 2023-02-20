@@ -12,6 +12,8 @@ pub struct Config {
     pub inlay_hints: InlayHintsConfig,
     #[serde(default)]
     pub diagnostic: DiagnosticConfig,
+    #[serde(default)]
+    pub on_enter: OnEnterConfig,
     #[serde(default, skip_serializing)]
     trace: TraceConfig,
 }
@@ -19,14 +21,22 @@ pub struct Config {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 struct TraceConfig {}
 
-// Options for debugging various parts of the server
+// Options for debugging various parts of the server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugConfig {
     pub show_collected_tokens_as_warnings: Warnings,
 }
 
-// Options for displaying compiler diagnostics
+impl Default for DebugConfig {
+    fn default() -> Self {
+        Self {
+            show_collected_tokens_as_warnings: Warnings::Default,
+        }
+    }
+}
+
+// Options for displaying compiler diagnostics.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticConfig {
@@ -43,6 +53,7 @@ impl Default for DiagnosticConfig {
     }
 }
 
+// Options for confguring server logging.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LoggingConfig {
     #[serde(with = "LevelFilterDef")]
@@ -80,6 +91,7 @@ pub enum Warnings {
     Typed,
 }
 
+// Options for configuring inlay hints.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintsConfig {
@@ -91,20 +103,29 @@ pub struct InlayHintsConfig {
     pub max_length: Option<usize>,
 }
 
-impl Default for DebugConfig {
-    fn default() -> Self {
-        Self {
-            show_collected_tokens_as_warnings: Warnings::Default,
-        }
-    }
-}
-
 impl Default for InlayHintsConfig {
     fn default() -> Self {
         Self {
             render_colons: true,
             type_hints: true,
             max_length: Some(25),
+        }
+    }
+}
+
+// Options for additional behavior when the user presses enter.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OnEnterConfig {
+    pub continue_doc_comments: Option<bool>,
+    pub continue_comments: Option<bool>,
+}
+
+impl Default for OnEnterConfig {
+    fn default() -> Self {
+        Self {
+            continue_doc_comments: Some(true),
+            continue_comments: Some(false),
         }
     }
 }
