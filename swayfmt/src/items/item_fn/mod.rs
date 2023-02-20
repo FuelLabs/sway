@@ -46,6 +46,9 @@ impl Format for ItemFn {
                     if has_comments(comments) {
                         formatter.shape.block_indent(&formatter.config);
                         write_comments(formatted_code, range, formatter)?;
+                        if !formatted_code.ends_with('\n') {
+                            writeln!(formatted_code)?;
+                        }
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
