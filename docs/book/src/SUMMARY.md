@@ -21,6 +21,7 @@
 - [Sway Language Basics](./basics/index.md)
   - [Variables](./basics/variables.md)
   - [Built-in Types](./basics/built_in_types.md)
+  - [Commonly Used Library Types](./basics/commonly_used_library_types.md)
   - [Blockchain Types](./basics/blockchain_types.md)
   - [Functions](./basics/functions.md)
   - [Structs, Tuples, and Enums](./basics/structs_tuples_and_enums.md)

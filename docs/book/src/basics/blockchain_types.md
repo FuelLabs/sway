@@ -75,18 +75,3 @@ A common use case for `Identity` is for access control. The use of `Identity` un
 ```sway
 {{#include ../../../../examples/identity/src/main.sw:access_control_with_identity}}
 ```
-
-## `Result` Type
-
-`Result<T, E>` `Result` is the type used for returning and propagating
-errors. It is an enum with the variants, `Ok(T)`, representing
-success and containing a value, and `Err(E)`, representing error
-and containing an error value.
-
-Functions return `Result` whenever errors are expected and recoverable. In
-the `std` crate, `Result` is most prominently used for `Identity`
-interactions and cryptographic operations.
-
-```sway
-{{#include ../../../../examples/msg_sender/src/main.sw}}
-```
