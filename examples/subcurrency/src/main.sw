@@ -54,8 +54,6 @@ storage {
 impl Token for Contract {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
         let sender = msg_sender().unwrap();
         let sender: Address = match sender {
             Identity::Address(addr) => {
@@ -71,8 +69,6 @@ impl Token for Contract {
 
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
         let sender = msg_sender().unwrap();
         let sender = match sender {
             Identity::Address(addr) => addr,
