@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B1BD953F42F45255'
+
+[[package]]
+name = 'return_struct'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B1BD953F42F45255'
+dependencies = ['core']

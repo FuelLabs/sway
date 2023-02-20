@@ -642,7 +642,13 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(r#else, namespace);
                 }
             }
-            ty::TyExpressionVariant::AsmExpression { .. } => {}
+            ty::TyExpressionVariant::AsmExpression { registers, .. } => {
+                for register in registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer, namespace);
+                    }
+                }
+            }
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
@@ -926,9 +932,16 @@ impl<'a> TypedTree<'a> {
 
     fn handle_intrinsic_function(
         &self,
-        ty::TyIntrinsicFunctionKind { arguments, .. }: &ty::TyIntrinsicFunctionKind,
+        ty::TyIntrinsicFunctionKind {
+            arguments,
+            type_arguments,
+            ..
+        }: &ty::TyIntrinsicFunctionKind,
         namespace: &namespace::Module,
     ) {
+        for type_arg in type_arguments {
+            self.collect_type_argument(type_arg, namespace);
+        }
         for arg in arguments {
             self.handle_expression(arg, namespace);
         }

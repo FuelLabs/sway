@@ -332,3 +332,12 @@ pub fn create_o1_pass_group(is_predicate: bool) -> PassGroup {
 
     o1
 }
+
+/// Utility to insert a pass after every pass in the given group
+pub fn insert_after_each(pg: PassGroup, pass: &'static str) -> PassGroup {
+    PassGroup(
+        pg.0.into_iter()
+            .flat_map(|p_o_g| vec![p_o_g, PassOrGroup::Pass(pass)])
+            .collect(),
+    )
+}
