@@ -151,7 +151,7 @@
 <pre><code class="language-sway">library wallet_abi;
 
 abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -161,7 +161,7 @@ abi Wallet {
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -174,7 +174,7 @@ abi Wallet {
 </code></pre>
 <hr />
 <p>In the second line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]
+<pre><code class="language-sway">    #[storage(read, write), payable]
     fn receive_funds();
 </code></pre>
 <p>we are declaring an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="../advanced/traits.html">trait declarations</a>. This particular ABI method does not take any parameters.</p>
@@ -191,7 +191,7 @@ abi Wallet {
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
@@ -203,10 +203,8 @@ abi Wallet {
 
     #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        match sender {
             Identity::Address(addr) =&gt; assert(addr == OWNER_ADDRESS),
             _ =&gt; revert(0),
         };

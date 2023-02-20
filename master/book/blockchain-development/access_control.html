@@ -150,7 +150,7 @@
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::auth::{AuthError, msg_sender};
+use std::auth::msg_sender;
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
@@ -160,8 +160,8 @@ const OWNER = Address::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599
 
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -&gt; bool {
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        if let Identity::Address(addr) = sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        if let Identity::Address(addr) = sender {
             assert(addr == OWNER);
         } else {
             revert(0);

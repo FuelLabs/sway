@@ -592,7 +592,7 @@ impl TestContract for Contract {
 <p>Being a ledger-based token, this example does not use Fuel's <a href="examples/../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{auth::{AuthError, msg_sender}, hash::sha256};
+use std::{auth::msg_sender, hash::sha256};
 
 ////////////////////////////////////////
 // Event declarations
@@ -645,10 +645,8 @@ storage {
 impl Token for Contract {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender: Address = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender: Address = match sender {
             Identity::Address(addr) =&gt; {
                 assert(addr == MINTER);
                 addr
@@ -662,10 +660,8 @@ impl Token for Contract {
 
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender = match sender {
             Identity::Address(addr) =&gt; addr,
             _ =&gt; revert(0),
         };
@@ -721,7 +717,7 @@ impl FizzBuzz for Contract {
 <pre><code class="language-sway">library wallet_abi;
 
 abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -732,10 +728,7 @@ abi Wallet {
 <pre><code class="language-sway">contract;
 
 use std::{
-    auth::{
-        AuthError,
-        msg_sender,
-    },
+    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
@@ -750,7 +743,7 @@ storage {
 }
 
 impl Wallet for Contract {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
@@ -762,10 +755,8 @@ impl Wallet for Contract {
 
     #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        match sender {
             Identity::Address(addr) =&gt; assert(addr == OWNER_ADDRESS),
             _ =&gt; revert(0),
         };
@@ -801,7 +792,7 @@ impl Wallet for Contract {
 <pre><code class="language-sway">library wallet_abi;
 
 abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -811,7 +802,7 @@ abi Wallet {
 <p>Let's focus on the ABI declaration and inspect it line-by-line.</p>
 <h3 id="the-abi-declaration"><a class="header" href="#the-abi-declaration">The ABI Declaration</a></h3>
 <pre><code class="language-sway">abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -824,7 +815,7 @@ abi Wallet {
 </code></pre>
 <hr />
 <p>In the second line,</p>
-<pre><code class="language-sway">    #[storage(read, write)]
+<pre><code class="language-sway">    #[storage(read, write), payable]
     fn receive_funds();
 </code></pre>
 <p>we are declaring an ABI method called <code>receive_funds</code> which, when called, should receive funds into this wallet. Note that we are simply defining an interface here, so there is no <em>function body</em> or implementation of the function. We only need to define the interface itself. In this way, ABI declarations are similar to <a href="sway-program-types/../advanced/traits.html">trait declarations</a>. This particular ABI method does not take any parameters.</p>
@@ -841,7 +832,7 @@ abi Wallet {
 <p>Now that we've discussed how to define the interface, let's discuss how to use it. We will start by implementing the above ABI for a specific contract.</p>
 <p>Implementing an ABI for a contract is accomplished with <code>impl &lt;ABI name&gt; for Contract</code> syntax. The <code>for Contract</code> syntax can only be used to implement an ABI for a contract; implementing methods for a struct should use <code>impl Foo</code> syntax.</p>
 <pre><code class="language-sway">impl Wallet for Contract {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
@@ -853,10 +844,8 @@ abi Wallet {
 
     #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        match sender {
             Identity::Address(addr) =&gt; assert(addr == OWNER_ADDRESS),
             _ =&gt; revert(0),
         };
@@ -1320,8 +1309,8 @@ let forty_two: b256 = my_contract_id.into();
         };
 </code></pre>
 <p>A common use case for <code>Identity</code> is for access control. The use of <code>Identity</code> uniquely allows both <code>ContractId</code> and <code>Address</code> to have access control inclusively.</p>
-<pre><code class="language-sway">        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        require(sender.unwrap() == storage.owner, MyError::UnauthorizedUser);
+<pre><code class="language-sway">        let sender = msg_sender().unwrap();
+        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="functions"><a class="header" href="#functions">Functions</a></h1>
 <p>Functions in Sway are declared with the <code>fn</code> keyword. Let's take a look:</p>
@@ -2262,7 +2251,7 @@ impl NativeAssetToken for Contract {
 <p>To deliver an experience akin to the EVM's access control, the <code>std</code> library provides a <code>msg_sender</code> function, which identifies a unique caller based upon the call and/or transaction input data.</p>
 <pre><code class="language-sway">contract;
 
-use std::auth::{AuthError, msg_sender};
+use std::auth::msg_sender;
 
 abi MyOwnedContract {
     fn receive(field_1: u64) -&gt; bool;
@@ -2272,8 +2261,8 @@ const OWNER = Address::from(0x9ae5b658754e096e4d681c548daf46354495a437cc61492599
 
 impl MyOwnedContract for Contract {
     fn receive(field_1: u64) -&gt; bool {
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        if let Identity::Address(addr) = sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        if let Identity::Address(addr) = sender {
             assert(addr == OWNER);
         } else {
             revert(0);

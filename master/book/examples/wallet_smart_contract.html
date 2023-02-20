@@ -149,7 +149,7 @@
 <pre><code class="language-sway">library wallet_abi;
 
 abi Wallet {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
 
     #[storage(read, write)]
@@ -160,10 +160,7 @@ abi Wallet {
 <pre><code class="language-sway">contract;
 
 use std::{
-    auth::{
-        AuthError,
-        msg_sender,
-    },
+    auth::msg_sender,
     call_frames::msg_asset_id,
     constants::BASE_ASSET_ID,
     context::msg_amount,
@@ -178,7 +175,7 @@ storage {
 }
 
 impl Wallet for Contract {
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds() {
         if msg_asset_id() == BASE_ASSET_ID {
             // If we received `BASE_ASSET_ID` then keep track of the balance.
@@ -190,10 +187,8 @@ impl Wallet for Contract {
 
     #[storage(read, write)]
     fn send_funds(amount_to_send: u64, recipient_address: Address) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        match sender {
             Identity::Address(addr) =&gt; assert(addr == OWNER_ADDRESS),
             _ =&gt; revert(0),
         };

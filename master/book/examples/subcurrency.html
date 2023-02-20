@@ -149,7 +149,7 @@
 <p>Being a ledger-based token, this example does not use Fuel's <a href="../blockchain-development/native_assets.html">native asset system</a>. It is not recommended to actually use ledger-based tokens in production; this example is here purely for illustrative purposes.</p>
 <pre><code class="language-sway">contract;
 
-use std::{auth::{AuthError, msg_sender}, hash::sha256};
+use std::{auth::msg_sender, hash::sha256};
 
 ////////////////////////////////////////
 // Event declarations
@@ -202,10 +202,8 @@ storage {
 impl Token for Contract {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender: Address = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender: Address = match sender {
             Identity::Address(addr) =&gt; {
                 assert(addr == MINTER);
                 addr
@@ -219,10 +217,8 @@ impl Token for Contract {
 
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result&lt;Identity, AuthError&gt; = msg_sender();
-        let sender = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender = match sender {
             Identity::Address(addr) =&gt; addr,
             _ =&gt; revert(0),
         };
