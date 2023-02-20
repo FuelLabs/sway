@@ -204,7 +204,7 @@ If `forc-deploy` emits a `no such subcommand` error, try to install it with [fue
 
 ## Deploying the contract with Salt
 
-You can now pass a --salt flag in your forc deploy command to redeploy a contract that has been deployed already. This is useful when multiple deployments of the same contract.
+You can now pass a --salt flag in your forc deploy command to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
 
 In order to use the `--salt` flag, install the latest `forc` update by running the following command in your project directory:
 
@@ -215,7 +215,7 @@ cargo add forc
 Alternately, you can add the following to your `cargo.toml` file:
 
 ```toml
-forc = 0.35.2
+forc = "0.35.2"
 ```
 
 Once `forc` is updated, can now add a `--salt` to your contractID while deploying the contract as follows:
