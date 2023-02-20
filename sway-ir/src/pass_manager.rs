@@ -1,8 +1,10 @@
 use crate::{
     create_const_combine_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass,
     create_func_dce_pass, create_inline_in_main_pass, create_inline_in_non_predicate_pass,
-    create_inline_in_predicate_pass, create_mem2reg_pass, create_postorder_pass,
-    create_simplify_cfg_pass, Context, Function, IrError, Module,
+    create_inline_in_predicate_pass, create_mem2reg_pass, create_module_printer_pass,
+    create_module_verifier_pass, create_postorder_pass, create_simplify_cfg_pass, Context,
+    Function, IrError, Module, CONSTCOMBINE_NAME, DCE_NAME, FUNC_DCE_NAME,
+    INLINE_NONPREDICATE_NAME, INLINE_PREDICATE_NAME, MEM2REG_NAME, SIMPLIFYCFG_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -216,6 +218,7 @@ impl PassManager {
                             PassMutability::Transform(transform) => {
                                 if transform(ir, &self.analyses, f)? {
                                     self.analyses.invalidate_all_results_at_scope(f);
+                                    self.analyses.invalidate_all_results_at_scope(m);
                                     modified = true;
                                 }
                             }
@@ -228,9 +231,9 @@ impl PassManager {
     }
 
     /// Run the passes specified in `config`.
-    pub fn run(&mut self, ir: &mut Context, config: &PassManagerConfig) -> Result<bool, IrError> {
+    pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
         let mut modified = false;
-        for pass in &config.to_run {
+        for pass in passes.flatten_pass_group() {
             modified |= self.actually_run(ir, pass)?;
         }
         Ok(modified)
@@ -253,9 +256,42 @@ impl PassManager {
     }
 }
 
-/// Configuration for the pass manager to run passes.
-pub struct PassManagerConfig {
-    pub to_run: Vec<&'static str>,
+/// A group of passes.
+/// Can contain sub-groups.
+#[derive(Default)]
+pub struct PassGroup(Vec<PassOrGroup>);
+
+/// An individual pass, or a group (with possible subgroup) of passes.
+pub enum PassOrGroup {
+    Pass(&'static str),
+    Group(PassGroup),
+}
+
+impl PassGroup {
+    // Flatten a group of passes into an ordered list.
+    fn flatten_pass_group(&self) -> Vec<&'static str> {
+        let mut output = Vec::<&str>::new();
+        fn inner(output: &mut Vec<&str>, input: &PassGroup) {
+            for pass_or_group in &input.0 {
+                match pass_or_group {
+                    PassOrGroup::Pass(pass) => output.push(pass),
+                    PassOrGroup::Group(pg) => inner(output, pg),
+                }
+            }
+        }
+        inner(&mut output, self);
+        output
+    }
+
+    /// Append a pass to this group.
+    pub fn append_pass(&mut self, pass: &'static str) {
+        self.0.push(PassOrGroup::Pass(pass));
+    }
+
+    /// Append a pass group.
+    pub fn append_group(&mut self, group: PassGroup) {
+        self.0.push(PassOrGroup::Group(group));
+    }
 }
 
 /// A convenience utility to register known passes.
@@ -264,6 +300,8 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_postorder_pass());
     pm.register(create_dominators_pass());
     pm.register(create_dom_fronts_pass());
+    pm.register(create_module_printer_pass());
+    pm.register(create_module_verifier_pass());
     // Optimization passes.
     pm.register(create_mem2reg_pass());
     pm.register(create_inline_in_predicate_pass());
@@ -273,4 +311,33 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_simplify_cfg_pass());
     pm.register(create_func_dce_pass());
     pm.register(create_dce_pass());
+}
+
+pub fn create_o1_pass_group(is_predicate: bool) -> PassGroup {
+    // Create a configuration to specify which passes we want to run now.
+    let mut o1 = PassGroup::default();
+    // Configure to run our passes.
+    o1.append_pass(MEM2REG_NAME);
+    if is_predicate {
+        o1.append_pass(INLINE_PREDICATE_NAME);
+    } else {
+        o1.append_pass(INLINE_NONPREDICATE_NAME);
+    }
+    o1.append_pass(CONSTCOMBINE_NAME);
+    o1.append_pass(SIMPLIFYCFG_NAME);
+    o1.append_pass(CONSTCOMBINE_NAME);
+    o1.append_pass(SIMPLIFYCFG_NAME);
+    o1.append_pass(FUNC_DCE_NAME);
+    o1.append_pass(DCE_NAME);
+
+    o1
+}
+
+/// Utility to insert a pass after every pass in the given group
+pub fn insert_after_each(pg: PassGroup, pass: &'static str) -> PassGroup {
+    PassGroup(
+        pg.0.into_iter()
+            .flat_map(|p_o_g| vec![p_o_g, PassOrGroup::Pass(pass)])
+            .collect(),
+    )
 }

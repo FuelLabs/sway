@@ -167,7 +167,7 @@ impl<'a> UnifyCheck<'a> {
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                l_name == r_name && self.check_multiple(&l_types, &r_types)
+                l_name.suffix == r_name.suffix && self.check_multiple(&l_types, &r_types)
             }
             // Let empty enums to coerce to any other type. This is useful for Never enum.
             (

@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
-
-#[macro_use]
-mod macros;
+use test_macros::assert_eq_pretty;
 
 /// Takes a configured formatter as input and formats a given input and checks the actual output against an
 /// expected output. There are two format passes to ensure that the received output does not change on a second pass.
@@ -571,6 +569,41 @@ trait AlignMyComments {
 }
 
 #[test]
+fn comments_empty_fns() {
+    check(
+        r#"contract;
+
+fn single_comment_same_line() { /* a comment */ }
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+        // line
+// comment
+}"#,
+        r#"contract;
+
+fn single_comment_same_line() {
+    /* a comment */
+}
+
+fn single_comment() -> bool {
+    // TODO: This is a TODO
+}
+
+fn multiline_comments() {
+    // Multi
+    // line
+    // comment
+}
+"#,
+    );
+}
+
+#[test]
 fn enum_comments() {
     check(
         r#"contract;
@@ -629,7 +662,30 @@ abi StorageMapExample {
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
-}"#,
+}
+
+// This is another abi
+abi AnotherAbi {
+    // insert_into_map is blah blah
+    #[storage(write)]
+    fn update_map(key: u64, value: u64);
+        // this is some other comment
+    fn read(key: u64);
+}
+
+abi CommentsInBetween {
+    fn foo();
+    // This should not collapse below
+
+    // this is a comment
+    fn bar();
+}
+
+// This is another abi
+abi Empty {
+    // Empty abi
+}
+"#,
         r#"contract;
 
 // This is an abi
@@ -638,6 +694,28 @@ abi StorageMapExample {
     #[storage(write)] // this is some other comment
     fn insert_into_map(key: u64, value: u64);
     // this is the last comment inside the StorageMapExample
+}
+
+// This is another abi
+abi AnotherAbi {
+    // insert_into_map is blah blah
+    #[storage(write)]
+    fn update_map(key: u64, value: u64);
+    // this is some other comment
+    fn read(key: u64);
+}
+
+abi CommentsInBetween {
+    fn foo();
+    // This should not collapse below
+
+    // this is a comment
+    fn bar();
+}
+
+// This is another abi
+abi Empty {
+    // Empty abi
 }
 "#,
     );
@@ -845,7 +923,7 @@ fn inner_doc_comments() {
         r#"script;
 
 enum Color {
-//! Color is a Sway enum
+    //! Color is a Sway enum
     blue: (),
     red: ()
 }
@@ -1348,6 +1426,62 @@ fn contents() {
     if true {}
 }
 fn empty() {}
+"#,
+    );
+}
+
+#[test]
+fn abi_supertrait() {
+    check(
+        r#"contract;
+
+trait ABIsupertrait {
+    fn foo();
+}
+
+abi MyAbi : ABIsupertrait {
+    fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
+}
+
+impl ABIsupertrait for Contract {
+    fn foo() {}
+}
+
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()     // supertrait method usage
+    }
+}
+"#,
+        r#"contract;
+
+trait ABIsupertrait {
+    fn foo();
+}
+
+abi MyAbi : ABIsupertrait {
+    fn bar();
+} {
+    fn baz() {
+        Self::foo()     // supertrait method usage
+    }
+}
+
+impl ABIsupertrait for Contract {
+    fn foo() {}
+}
+
+// The implementation of MyAbi for Contract must also implement ABIsupertrait
+impl MyAbi for Contract {
+    fn bar() {
+        Self::foo()     // supertrait method usage
+    }
+}
 "#,
     );
 }

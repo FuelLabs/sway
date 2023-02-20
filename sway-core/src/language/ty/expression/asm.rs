@@ -6,7 +6,7 @@ use crate::{engine_threading::*, language::ty::*, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyAsmRegisterDeclaration {
-    pub(crate) initializer: Option<TyExpression>,
+    pub initializer: Option<TyExpression>,
     pub(crate) name: Ident,
 }
 

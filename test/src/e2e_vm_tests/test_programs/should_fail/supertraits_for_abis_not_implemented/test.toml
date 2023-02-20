@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Trait "MyTrait" is not implemented for type "contract".

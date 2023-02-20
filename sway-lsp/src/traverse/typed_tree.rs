@@ -229,8 +229,7 @@ impl<'a> TypedTree<'a> {
                     trait_type_arguments,
                     trait_decl_ref,
                     methods,
-                    implementing_for_type_id,
-                    type_implementing_for_span,
+                    implementing_for,
                     ..
                 }) = decl_engine.get_impl_trait(decl_id, decl_span)
                 {
@@ -262,10 +261,10 @@ impl<'a> TypedTree<'a> {
                             if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, decl_span) {
                                 Some(TypeDefinition::Ident(trait_decl.name))
                             } else {
-                                Some(TypeDefinition::TypeId(implementing_for_type_id))
+                                Some(TypeDefinition::TypeId(implementing_for.type_id))
                             }
                         } else {
-                            Some(TypeDefinition::TypeId(implementing_for_type_id))
+                            Some(TypeDefinition::TypeId(implementing_for.type_id))
                         };
                     }
 
@@ -284,10 +283,18 @@ impl<'a> TypedTree<'a> {
                         }
                     }
 
+                    self.collect_type_argument(&implementing_for, namespace);
+
+                    // collect the root type argument again with declaration info this time so the
+                    // impl is registered
                     self.collect_type_id(
-                        implementing_for_type_id,
+                        implementing_for.type_id,
                         &TypedAstToken::TypedDeclaration(declaration.clone()),
-                        type_implementing_for_span,
+                        implementing_for
+                            .call_path_tree
+                            .as_ref()
+                            .map(|tree| tree.call_path.suffix.span())
+                            .unwrap_or(implementing_for.span()),
                         namespace,
                     );
                 }
@@ -311,6 +318,10 @@ impl<'a> TypedTree<'a> {
                         {
                             self.collect_typed_trait_fn_token(&trait_fn, namespace);
                         }
+                    }
+
+                    for supertrait in abi_decl.supertraits {
+                        self.collect_supertrait(&supertrait);
                     }
                 }
             }
@@ -631,7 +642,13 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(r#else, namespace);
                 }
             }
-            ty::TyExpressionVariant::AsmExpression { .. } => {}
+            ty::TyExpressionVariant::AsmExpression { registers, .. } => {
+                for register in registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer, namespace);
+                    }
+                }
+            }
             ty::TyExpressionVariant::StructFieldAccess {
                 prefix,
                 field_to_access,
@@ -915,9 +932,16 @@ impl<'a> TypedTree<'a> {
 
     fn handle_intrinsic_function(
         &self,
-        ty::TyIntrinsicFunctionKind { arguments, .. }: &ty::TyIntrinsicFunctionKind,
+        ty::TyIntrinsicFunctionKind {
+            arguments,
+            type_arguments,
+            ..
+        }: &ty::TyIntrinsicFunctionKind,
         namespace: &namespace::Module,
     ) {
+        for type_arg in type_arguments {
+            self.collect_type_argument(type_arg, namespace);
+        }
         for arg in arguments {
             self.handle_expression(arg, namespace);
         }
