@@ -32,15 +32,18 @@ impl Format for ItemAbi {
         let abi_items = self.abi_items.get();
 
         // add pre fn_signature comments
-        let end = if abi_items.is_empty() {
-            self.span().end()
-        }
-        // if there are existing abi items, we want to end before the hash token
-        // This is OK to unwrap since we've checked is_empty() above.
-        else if let Some(first_attr) = abi_items.first().unwrap().0.attribute_list.first() {
-            first_attr.span().start()
+        let end = if let Some(first_abi_item) = abi_items.first() {
+            let fn_signature = &first_abi_item.0;
+            if let Some(first_attr) = fn_signature.attribute_list.first() {
+                // if there are existing abi items, we want to write comments until before the first attr
+                first_attr.span().start()
+            } else {
+                // otherwise, write until before the fn signature
+                fn_signature.value.span().start()
+            }
         } else {
-            abi_items.first().unwrap().0.value.span().start()
+            // if there are no abi_items, write until closing brace
+            self.span().end()
         };
 
         write_comments(formatted_code, self.name.span().end()..end, formatter)?;
