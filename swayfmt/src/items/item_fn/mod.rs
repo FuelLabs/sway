@@ -1,5 +1,5 @@
 use crate::{
-    comments::{has_comments, maybe_write_comments_from_map},
+    comments::{has_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -42,10 +42,10 @@ impl Format for ItemFn {
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     let range: Range<usize> = self.span().into();
-                    let comments = formatter.comment_map.comments_between(&range);
+                    let comments = formatter.comments_context.map.comments_between(&range);
                     if has_comments(comments) {
                         formatter.shape.block_indent(&formatter.config);
-                        maybe_write_comments_from_map(formatted_code, range, formatter)?;
+                        write_comments(formatted_code, range, formatter)?;
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
