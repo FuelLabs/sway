@@ -1319,7 +1319,7 @@ impl MyContract for Contract {
             // Overindented comment, underindented else
     else if self == PrimaryColor::Red {
             true
-        } // Trailing multiline comment should be newlined
+        } // Trailing comment
     // Underindented comment
             // Overindented else
                 else {
@@ -1337,7 +1337,7 @@ impl MyContract for Contract {
         // Overindented comment, underindented else
         else if self == PrimaryColor::Red {
             true
-        } // Trailing multiline comment should be newlined
+        } // Trailing comment
         // Underindented comment
         // Overindented else
         else {
