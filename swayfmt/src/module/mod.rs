@@ -46,7 +46,7 @@ impl Format for Module {
                 writeln!(formatted_code)?;
             }
 
-            prev_item = Some(&item);
+            prev_item = Some(item);
         }
 
         Ok(())
