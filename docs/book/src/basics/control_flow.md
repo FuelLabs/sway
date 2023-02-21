@@ -32,7 +32,7 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 ### `match` expressions
 
-Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a match statement asserts at compile time all possible patterns have been matched. If you don't handle all cases, you'll get a warning from the compiler indicating that you need to add a `_`, a catch-all pattern that matches any value and is used when you want to specify a default action.
+Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a `match` expression asserts **at compile** time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
 
 The basic syntax of a `match` statement:
 
