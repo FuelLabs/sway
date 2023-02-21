@@ -166,50 +166,62 @@
 </code></pre>
 <p>Note that all branches of the <code>if</code> expression must return a value of the same type.</p>
 <h3 id="match-expressions"><a class="header" href="#match-expressions"><code>match</code> expressions</a></h3>
-<p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions.</p>
+<p>Sway supports advanced pattern matching through exhaustive <code>match</code> expressions. Unlike an <code>if</code> statement, a <code>match</code> expression asserts <strong>at compile</strong> time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your <code>match</code> expression is non-exhaustive.</p>
+<p>The basic syntax of a <code>match</code> statement is as follows:</p>
+<pre><code class="language-sway">let result = match expression {
+    pattern1 =&gt; code_to_execute_if_expression_matches_pattern1,
+    pattern2 =&gt; code_to_execute_if_expression_matches_pattern2,
+    ...
+    _ =&gt; code_to_execute_if_expression_matches_no_pattern,
+}
+</code></pre>
+<p>Some examples of how you can use a match statement:</p>
 <pre><code class="language-sway">script;
 
-fn foo() {}
-    // do something
-fn bar() {}
-
-    // do something
-enum SomeEnum {
-    A: u64,
-    B: bool,
-    C: b256,
+// helper functions for our example
+fn on_even(num: u64) {
+    // do something with even numbers
+}
+fn on_odd(num: u64) {
+    // do something with odd numbers
 }
 
-fn main() -&gt; u64 {
-    let x = 5;
-
-    // Match as an expression.
-    let a = match 8 {
-        7 =&gt; 4,
-        9 =&gt; 5,
-        8 =&gt; 6,
-        _ =&gt; 100,
+fn main(num: u64) -&gt; u64 {
+    // Match as an expression
+    let isEven = match num % 2 {
+        0 =&gt; true,
+        _ =&gt; false,
     };
 
-    // Match as a statement for control flow.
+    // Match as control flow
+    let x = 12;
     match x {
-        5 =&gt; foo(),
-        _ =&gt; bar(),
+        5 =&gt; on_odd(x),
+        _ =&gt; on_even(x),
     };
 
     // Match an enum
-    let e = SomeEnum::A(42);
-    let v = match e {
-        SomeEnum::A(val) =&gt; val,
-        SomeEnum::B(true) =&gt; 1,
-        SomeEnum::B(false) =&gt; 0,
-        _ =&gt; 0,
+    enum Weather {
+        Sunny: (),
+        Rainy: (),
+        Cloudy: (),
+        Snowy: (),
+    }
+    let currentWeather = Weather::Sunny;
+    let avgTemp = match currentWeather {
+        Weather::Sunny =&gt; 80,
+        Weather::Rainy =&gt; 50,
+        Weather::Cloudy =&gt; 60,
+        Weather::Snowy =&gt; 20,
     };
 
-    // Match as expression used for a return.
-    match 42 {
-        0 =&gt; 24,
-        foo =&gt; foo,
+    // match expression used for a return
+    let outsideTemp = Weather::Sunny;
+    match outsideTemp {
+        Weather::Sunny =&gt; 80,
+        Weather::Rainy =&gt; 50,
+        Weather::Cloudy =&gt; 60,
+        Weather::Snowy =&gt; 20,
     }
 }
 </code></pre>
