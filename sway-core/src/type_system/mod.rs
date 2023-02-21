@@ -25,7 +25,7 @@ pub use length::*;
 use occurs_check::*;
 pub(crate) use replace_self_type::*;
 pub(crate) use substitute::*;
-pub(crate) use trait_constraint::*;
+pub use trait_constraint::*;
 pub use type_argument::*;
 pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;

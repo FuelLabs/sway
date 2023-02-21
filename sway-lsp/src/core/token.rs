@@ -10,7 +10,7 @@ use sway_core::{
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    TypeArgument, TypeEngine,
+    TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -57,6 +57,7 @@ pub enum TypedAstToken {
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
+    TypedTraitConstraint(TraitConstraint),
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,

@@ -28,7 +28,7 @@ use sway_core::{
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
-    TypeEngine, TypeInfo,
+    TraitConstraint, TypeEngine, TypeInfo,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
@@ -122,6 +122,13 @@ impl<'a> ParsedTree<'a> {
 
         for type_param in &func.type_parameters {
             self.collect_type_parameter(type_param, AstToken::FunctionDeclaration(func.clone()));
+        }
+
+        for (ident, constraints) in &func.where_clause {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+            for constr in constraints {
+                self.collect_trait_constraint(constr, &token)
+            }
         }
 
         self.collect_type_arg(&func.return_type, &token);
@@ -819,6 +826,17 @@ impl<'a> ParsedTree<'a> {
         self.handle_expression(condition);
         for node in &body.contents {
             self.traverse_node(node);
+        }
+    }
+
+    fn collect_trait_constraint(&self, constraint: &TraitConstraint, token: &Token) {
+        for prefix in &constraint.trait_name.prefixes {
+            self.tokens.insert(to_ident_key(prefix), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&constraint.trait_name.suffix), token.clone());
+        for type_arg in &constraint.type_arguments {
+            self.collect_type_arg(type_arg, token)
         }
     }
 
