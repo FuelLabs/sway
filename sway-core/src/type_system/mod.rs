@@ -10,7 +10,7 @@ mod replace_self_type;
 mod substitute;
 mod trait_constraint;
 mod type_argument;
-mod type_parameter;
+mod type_param;
 mod unconstrained_type_parameters;
 mod unify;
 mod unify_check;
@@ -27,7 +27,7 @@ pub(crate) use replace_self_type::*;
 pub(crate) use substitute::*;
 pub(crate) use trait_constraint::*;
 pub use type_argument::*;
-pub use type_parameter::*;
+pub use type_param::*;
 pub(crate) use unconstrained_type_parameters::*;
 
 use crate::error::*;
