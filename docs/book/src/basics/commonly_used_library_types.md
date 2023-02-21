@@ -21,7 +21,7 @@ In the `std` crate, `Result` is most prominently used for `Identity` interaction
 {{#include ../../../../examples/result/src/main.sw}}
 ```
 
-## `Option` Type
+## `Option<T>`
 
 Type `Option` represents an optional value: every `Option` is either `Some` and contains a value, or `None`, and does not. `Option` types are very common in Sway code, as they have a number of uses:
 
