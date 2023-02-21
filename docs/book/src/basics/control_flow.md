@@ -37,7 +37,7 @@ Sway supports advanced pattern matching through exhaustive `match` expressions. 
 The basic syntax of a `match` statement is as follows:
 
 ```sway
-match expression {
+let result = match expression {
     pattern1 => code_to_execute_if_expression_matches_pattern1,
     pattern2 => code_to_execute_if_expression_matches_pattern2,
     ...
