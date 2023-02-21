@@ -25,7 +25,11 @@ pub use crate::{
     token::{lex, lex_commented},
 };
 
-use sway_ast::{attribute::Annotated, token::DocComment, Module, ModuleKind};
+use sway_ast::{
+    attribute::Annotated,
+    token::{DocComment, DocStyle},
+    Module, ModuleKind,
+};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use std::{path::PathBuf, sync::Arc};
@@ -46,7 +50,11 @@ pub fn parse_module_kind(
 ) -> Result<ModuleKind, ErrorEmitted> {
     let ts = lex(handler, &src, 0, src.len(), path)?;
     let mut parser = Parser::new(handler, &ts);
-    while let Some(DocComment { .. }) = parser.peek() {
+    while let Some(DocComment {
+        doc_style: DocStyle::Inner,
+        ..
+    }) = parser.peek()
+    {
         parser.parse::<DocComment>()?;
     }
     parser.parse()
