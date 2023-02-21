@@ -206,7 +206,7 @@ fn format_workspace_at_dir(app: &App, workspace: &WorkspaceManifestFile, dir: &P
 
     // Finally, format the root manifest using taplo formatter
     if let Ok(edited) = format_manifest(app, manifest_file) {
-        contains_edits = edited;
+        contains_edits = contains_edits || edited;
     }
 
     if app.check && contains_edits {
@@ -263,7 +263,7 @@ fn format_pkg_at_dir(app: &App, dir: &Path, formatter: &mut Formatter) -> Result
 
             for file in files {
                 if let Ok(edited) = format_file(app, file, Some(manifest_file.clone()), formatter) {
-                    contains_edits = edited;
+                    contains_edits = contains_edits || edited;
                 };
             }
             // format manifest using taplo formatter
