@@ -115,9 +115,94 @@ pub struct TestPrintOpts {
 
 /// The storage and the contract id (if a contract is being tested) for a test.
 #[derive(Debug)]
-struct TestSetup {
+enum TestSetup {
+    ContractSetup(ContractTestSetup),
+    NonContractSetup(vm::storage::MemoryStorage),
+}
+
+impl TestSetup {
+    /// Returns the storage for this test setup
+    fn storage(&self) -> &vm::storage::MemoryStorage {
+        match self {
+            TestSetup::ContractSetup(contract_setup) => &contract_setup.storage,
+            TestSetup::NonContractSetup(storage) => storage,
+        }
+    }
+
+    /// Produces an iterator yielding contract ids of contract dependencies for this test setup.
+    fn contract_dependency_ids(&self) -> impl Iterator<Item = &tx::ContractId> + '_ {
+        match self {
+            TestSetup::ContractSetup(contract_setup) => {
+                contract_setup.contract_dependency_ids.iter()
+            }
+            TestSetup::NonContractSetup(_) => [].iter(),
+        }
+    }
+
+    /// Return the root contract id if this is a contract setup.
+    fn root_contract_id(&self) -> Option<tx::ContractId> {
+        match self {
+            TestSetup::ContractSetup(contract_setup) => Some(contract_setup.root_contract_id),
+            TestSetup::NonContractSetup(_) => None,
+        }
+    }
+
+    /// Produces an iterator yielding all contract ids required to be included in the transaction
+    /// for this test setup.
+    fn contract_ids(&self) -> impl Iterator<Item = tx::ContractId> + '_ {
+        self.contract_dependency_ids()
+            .cloned()
+            .chain(self.root_contract_id().into_iter())
+    }
+}
+
+/// The data collected to test a contract.
+#[derive(Debug)]
+struct ContractTestSetup {
     storage: vm::storage::MemoryStorage,
-    contract_id: Option<tx::ContractId>,
+    contract_dependency_ids: Vec<tx::ContractId>,
+    root_contract_id: tx::ContractId,
+}
+
+impl ContractToTest {
+    /// Deploy the contract dependencies and tests excluded version for this package.
+    fn deploy(&self) -> anyhow::Result<TestSetup> {
+        // Setup the interpreter for deployment.
+        let params = tx::ConsensusParameters::default();
+        let storage = vm::storage::MemoryStorage::default();
+        let mut interpreter =
+            vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
+
+        // Root contract is the contract we are currently deploying.
+        let (root_contract_id, root_contract_tx) =
+            deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
+
+        // Iterator over deployment setup of contract dependencies for the root contract.
+        let contract_dependency_setups = self
+            .contract_dependencies
+            .iter()
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
+
+        let contract_dependency_ids = contract_dependency_setups
+            .map(|(contract_id, tx)| {
+                // Transact the deployment transaction constructed for this contract dependency.
+                interpreter.transact(tx)?;
+                Ok(contract_id)
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+
+        // Transact the deployment transaction for the root contract.
+        interpreter.transact(root_contract_tx)?;
+        let storage = interpreter.as_ref().clone();
+
+        let contract_test_setup = ContractTestSetup {
+            storage,
+            contract_dependency_ids,
+            root_contract_id,
+        };
+
+        Ok(TestSetup::ContractSetup(contract_test_setup))
+    }
 }
 
 impl BuiltTests {
@@ -245,15 +330,12 @@ impl<'a> PackageTests {
     fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
-                let contract_pkg = &contract_to_test.pkg;
-                let contract_pkg_without_tests = &contract_to_test.without_tests_bytecode;
-                let test_setup = deploy_test_contract(contract_pkg, contract_pkg_without_tests)?;
+                let test_setup = contract_to_test.deploy()?;
                 Ok(test_setup)
             }
-            PackageTests::NonContract(_) => Ok(TestSetup {
-                storage: vm::storage::MemoryStorage::default(),
-                contract_id: None,
-            }),
+            PackageTests::NonContract(_) => Ok(TestSetup::NonContractSetup(
+                vm::storage::MemoryStorage::default(),
+            )),
         }
     }
 }
@@ -383,12 +465,16 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
     BuiltTests::from_built(built, &member_contract_dependencies)
 }
 
+/// Result of preparing a deployment transaction setup for a contract.
+type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
+
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
-fn deploy_test_contract(
+fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-) -> anyhow::Result<TestSetup> {
+    params: tx::ConsensusParameters,
+) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
     storage_slots.sort();
@@ -396,14 +482,9 @@ fn deploy_test_contract(
     let contract = tx::Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
+    // TODO: use actual salt from build plan.
     let salt = tx::Salt::zeroed();
     let contract_id = contract.id(&salt, &root, &state_root);
-
-    // Setup the interpreter for deployment.
-    let params = tx::ConsensusParameters::default();
-    let storage = vm::storage::MemoryStorage::default();
-    let mut interpreter =
-        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
     // Create the deployment transaction.
     let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
@@ -422,14 +503,7 @@ fn deploy_test_contract(
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
         .finalize_checked(block_height, &params, &GasCosts::default());
-
-    // Deploy the contract.
-    interpreter.transact(tx)?;
-    let storage_after_deploy = interpreter.as_ref();
-    Ok(TestSetup {
-        storage: storage_after_deploy.clone(),
-        contract_id: Some(contract_id),
-    })
+    (contract_id, tx)
 }
 
 /// Build the given package and run its tests, returning the results.
@@ -496,8 +570,7 @@ fn exec_test(
     std::time::Duration,
     Vec<fuel_tx::Receipt>,
 ) {
-    let storage = test_setup.storage;
-    let contract_id = test_setup.contract_id;
+    let storage = test_setup.storage().clone();
 
     // Patch the bytecode to jump to the relevant test.
     let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
@@ -521,7 +594,9 @@ fn exec_test(
         .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
         .maturity(maturity)
         .clone();
-    if let Some(contract_id) = contract_id {
+    let mut output_index = 1;
+    // Insert contract ids into tx input
+    for contract_id in test_setup.contract_ids() {
         tx.add_input(tx::Input::Contract {
             utxo_id: tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
             balance_root: tx::Bytes32::zeroed(),
@@ -530,10 +605,11 @@ fn exec_test(
             contract_id,
         })
         .add_output(tx::Output::Contract {
-            input_index: 1,
+            input_index: output_index,
             balance_root: fuel_tx::Bytes32::zeroed(),
             state_root: tx::Bytes32::zeroed(),
         });
+        output_index += 1;
     }
     let tx = tx.finalize_checked(block_height, &params, &GasCosts::default());
 
