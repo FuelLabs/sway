@@ -287,6 +287,6 @@ impl fmt::Display for DataSection {
             )?;
         }
 
-        write!(f, ".data:\n{}", data_buf)
+        write!(f, ".data:\n{data_buf}")
     }
 }

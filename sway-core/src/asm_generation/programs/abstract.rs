@@ -54,7 +54,7 @@ impl AbstractProgram {
                     entry.selector,
                     entry.label,
                     entry.name.clone(),
-                    entry.test_decl_id.clone(),
+                    entry.test_decl_ref.clone(),
                 )
             })
             .collect();
@@ -72,7 +72,7 @@ impl AbstractProgram {
         // Allocate the registers for each function.
         let functions = abstract_functions
             .into_iter()
-            .map(|fn_ops| fn_ops.allocate_registers(&mut self.reg_seqr))
+            .map(|fn_ops| fn_ops.allocate_registers())
             .map(AllocatedAbstractInstructionSet::emit_pusha_popa)
             .collect::<Vec<_>>();
 

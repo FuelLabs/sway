@@ -8,7 +8,7 @@ pub enum TypeError {
          expected: {expected}\n\
          found:    {received}.\n\
          {help}",
-         help = if !help_text.is_empty() { format!("help: {}", help_text) } else { String::new() }
+         help = if !help_text.is_empty() { format!("help: {help_text}") } else { String::new() }
     )]
     MismatchedType {
         expected: String,

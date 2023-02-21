@@ -37,7 +37,7 @@ A few pieces of info that will be helpful before moving on:
 
 ### Writing the Contract
 
-First, let's [install the Sway toolchain](./installation.md). Then with `forc` installed, create a contract project:
+First, let's [install the Fuel toolchain](./installation.md). Then with `forc` installed, create a contract project:
 
 ```sh
 forc new counter_contract

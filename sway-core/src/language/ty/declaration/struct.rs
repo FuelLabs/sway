@@ -1,13 +1,22 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    error::*,
+    language::{CallPath, Visibility},
+    transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyStructDeclaration {
-    pub name: Ident,
+    pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
@@ -15,16 +24,32 @@ pub struct TyStructDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructDeclaration {}
 impl PartialEqWithEngines for TyStructDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.name == other.name
+        self.call_path.suffix == other.call_path.suffix
             && self.fields.eq(&other.fields, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
+    }
+}
+
+impl HashWithEngines for TyStructDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStructDeclaration {
+            call_path,
+            fields,
+            type_parameters,
+            visibility,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        call_path.suffix.hash(state);
+        fields.hash(state, engines);
+        type_parameters.hash(state, engines);
+        visibility.hash(state);
     }
 }
 
@@ -57,7 +82,7 @@ impl CreateTypeId for TyStructDeclaration {
         type_engine.insert(
             decl_engine,
             TypeInfo::Struct {
-                name: self.name.clone(),
+                call_path: self.call_path.clone(),
                 fields: self.fields.clone(),
                 type_parameters: self.type_parameters.clone(),
             },
@@ -77,7 +102,7 @@ impl MonomorphizeHelper for TyStructDeclaration {
     }
 
     fn name(&self) -> &Ident {
-        &self.name
+        &self.call_path.suffix
     }
 }
 
@@ -100,7 +125,7 @@ impl TyStructDeclaration {
                         .collect::<Vec<_>>()
                         .join("\n"),
                     field_name: field_to_access.clone(),
-                    struct_name: self.name.clone(),
+                    struct_name: self.call_path.suffix.clone(),
                     span: field_to_access.span(),
                 });
                 err(warnings, errors)
@@ -112,45 +137,63 @@ impl TyStructDeclaration {
 #[derive(Debug, Clone)]
 pub struct TyStructField {
     pub name: Ident,
-    pub type_id: TypeId,
-    pub initial_type_id: TypeId,
     pub span: Span,
-    pub type_span: Span,
+    pub type_argument: TypeArgument,
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TyStructField {
-    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
-        self.name.hash(state);
-        type_engine.get(self.type_id).hash(state, type_engine);
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyStructField {
+            name,
+            type_argument,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        name.hash(state);
+        type_argument.hash(state, engines);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
-        self.name == other.name
-            && type_engine
-                .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    }
+}
+
+impl OrdWithEngines for TyStructField {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        let TyStructField {
+            name: ln,
+            type_argument: lta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = self;
+        let TyStructField {
+            name: rn,
+            type_argument: rta,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+            attributes: _,
+        } = other;
+        ln.cmp(rn).then_with(|| lta.cmp(rta, type_engine))
     }
 }
 
 impl SubstTypes for TyStructField {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_id.subst(type_mapping, engines);
+        self.type_argument.subst_inner(type_mapping, engines);
     }
 }
 
 impl ReplaceSelfType for TyStructField {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
+        self.type_argument.replace_self_type(engines, self_type);
     }
 }

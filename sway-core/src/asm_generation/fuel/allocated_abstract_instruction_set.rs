@@ -116,7 +116,7 @@ impl AllocatedAbstractInstructionSet {
                         );
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(store_op),
-                            comment: format!("save {}", reg),
+                            comment: format!("save {reg}"),
                             owning_span: None,
                         });
                     })
@@ -149,7 +149,7 @@ impl AllocatedAbstractInstructionSet {
                         );
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(load_op),
-                            comment: format!("restore {}", reg),
+                            comment: format!("restore {reg}"),
                             owning_span: None,
                         });
                     });

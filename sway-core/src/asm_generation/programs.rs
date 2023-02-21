@@ -10,12 +10,8 @@ use super::fuel::{
 
 use crate::{
     asm_lang::{allocated_ops::AllocatedOp, Label},
-    decl_engine::DeclId,
+    decl_engine::DeclRef,
 };
-
-mod ethabi {
-    pub use fuel_ethabi::*;
-}
 
 type SelectorOpt = Option<[u8; 4]>;
 type FnName = String;
@@ -48,7 +44,7 @@ pub(super) struct AbstractEntry {
     pub(super) label: Label,
     pub(super) ops: AbstractInstructionSet,
     pub(super) name: FnName,
-    pub(super) test_decl_id: Option<DeclId>,
+    pub(super) test_decl_ref: Option<DeclRef>,
 }
 
 /// An AllocatedProgram represents code which has allocated registers but still has abstract
@@ -58,7 +54,7 @@ pub(super) struct AllocatedProgram {
     data_section: DataSection,
     prologue: AllocatedAbstractInstructionSet,
     functions: Vec<AllocatedAbstractInstructionSet>,
-    entries: Vec<(SelectorOpt, Label, FnName, Option<DeclId>)>,
+    entries: Vec<(SelectorOpt, Label, FnName, Option<DeclRef>)>,
 }
 
 /// A FinalProgram represents code which may be serialized to VM bytecode.
@@ -67,7 +63,7 @@ pub(super) enum FinalProgram {
         kind: ProgramKind,
         data_section: DataSection,
         ops: Vec<AllocatedOp>,
-        entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclId>)>,
+        entries: Vec<(SelectorOpt, ImmOffset, FnName, Option<DeclRef>)>,
     },
     Evm {
         ops: Vec<etk_asm::ops::AbstractOp>,

@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Eq, PartialEq, Hash, Debug, Clone, Copy)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Copy, PartialOrd, Ord)]
 pub enum IntegerBits {
     Eight,
     Sixteen,
@@ -17,6 +17,6 @@ impl fmt::Display for IntegerBits {
             ThirtyTwo => "thirty two",
             SixtyFour => "sixty four",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }

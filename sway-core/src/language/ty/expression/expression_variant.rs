@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
+    hash::{Hash, Hasher},
 };
 
 use sway_types::{state::StateIndex, Ident, Span};
@@ -19,7 +20,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_id: DeclId,
+        function_decl_ref: DeclRef,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -36,6 +37,7 @@ pub enum TyExpressionVariant {
         name: Ident,
         span: Span,
         mutability: VariableMutability,
+        call_path: Option<CallPath>,
     },
     Tuple {
         fields: Vec<TyExpression>,
@@ -51,10 +53,15 @@ pub enum TyExpressionVariant {
         struct_name: Ident,
         fields: Vec<TyStructExpressionField>,
         span: Span,
+        call_path_binding: TypeBinding<CallPath>,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
     FunctionParameter,
+    MatchExp {
+        desugared: Box<TyExpression>,
+        scrutinees: Vec<TyScrutinee>,
+    },
     IfExp {
         condition: Box<TyExpression>,
         then: Box<TyExpression>,
@@ -90,9 +97,8 @@ pub enum TyExpressionVariant {
         /// If there is an error regarding this instantiation of the enum,
         /// use these spans as it points to the call site and not the declaration.
         /// They are also used in the language server.
-        enum_instantiation_span: Span,
         variant_instantiation_span: Span,
-        type_binding: TypeBinding<()>,
+        call_path_binding: TypeBinding<CallPath>,
     },
     AbiCast {
         abi_name: CallPath,
@@ -125,9 +131,6 @@ pub enum TyExpressionVariant {
     Return(Box<TyExpression>),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
@@ -139,21 +142,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::FunctionApplication {
                     call_path: l_name,
                     arguments: l_arguments,
-                    function_decl_id: l_function_decl_id,
+                    function_decl_ref: l_function_decl_ref,
                     ..
                 },
                 Self::FunctionApplication {
                     call_path: r_name,
                     arguments: r_arguments,
-                    function_decl_id: r_function_decl_id,
+                    function_decl_ref: r_function_decl_ref,
                     ..
                 },
             ) => {
                 let l_function_decl = decl_engine
-                    .get_function(l_function_decl_id.clone(), &Span::dummy())
+                    .get_function(l_function_decl_ref, &Span::dummy())
                     .unwrap();
                 let r_function_decl = decl_engine
-                    .get_function(r_function_decl_id.clone(), &Span::dummy())
+                    .get_function(r_function_decl_ref, &Span::dummy())
                     .unwrap();
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
@@ -184,11 +187,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     name: l_name,
                     span: l_span,
                     mutability: l_mutability,
+                    call_path: _,
                 },
                 Self::VariableExpression {
                     name: r_name,
                     span: r_span,
                     mutability: r_mutability,
+                    call_path: _,
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
@@ -217,11 +222,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     struct_name: l_struct_name,
                     fields: l_fields,
                     span: l_span,
+                    call_path_binding: _,
                 },
                 Self::StructExpression {
                     struct_name: r_struct_name,
                     fields: r_fields,
                     span: r_span,
+                    call_path_binding: _,
                 },
             ) => {
                 l_struct_name == r_struct_name && l_fields.eq(r_fields, engines) && l_span == r_span
@@ -358,7 +365,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
                 l_exp.eq(&**r_exp, engines)
             }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -369,7 +376,193 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     condition: r_condition,
                 },
             ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
-            _ => false,
+            (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
+        }
+    }
+}
+
+impl HashWithEngines for TyExpressionVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let type_engine = engines.te();
+        std::mem::discriminant(self).hash(state);
+        match self {
+            Self::Literal(lit) => {
+                lit.hash(state);
+            }
+            Self::FunctionApplication {
+                call_path,
+                arguments,
+                function_decl_ref,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                contract_call_params: _,
+                self_state_idx: _,
+                selector: _,
+                type_binding: _,
+            } => {
+                call_path.hash(state);
+                function_decl_ref.hash(state, engines);
+                arguments.iter().for_each(|(name, arg)| {
+                    name.hash(state);
+                    arg.hash(state, engines);
+                });
+            }
+            Self::LazyOperator { op, lhs, rhs } => {
+                op.hash(state);
+                lhs.hash(state, engines);
+                rhs.hash(state, engines);
+            }
+            Self::VariableExpression {
+                name,
+                mutability,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                call_path: _,
+                span: _,
+            } => {
+                name.hash(state);
+                mutability.hash(state);
+            }
+            Self::Tuple { fields } => {
+                fields.hash(state, engines);
+            }
+            Self::Array { contents } => {
+                contents.hash(state, engines);
+            }
+            Self::ArrayIndex { prefix, index } => {
+                prefix.hash(state, engines);
+                index.hash(state, engines);
+            }
+            Self::StructExpression {
+                struct_name,
+                fields,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+                call_path_binding: _,
+            } => {
+                struct_name.hash(state);
+                fields.hash(state, engines);
+            }
+            Self::CodeBlock(contents) => {
+                contents.hash(state, engines);
+            }
+            Self::MatchExp {
+                desugared,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                scrutinees: _,
+            } => {
+                desugared.hash(state, engines);
+            }
+            Self::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.hash(state, engines);
+                then.hash(state, engines);
+                if let Some(x) = r#else.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AsmExpression {
+                registers,
+                body,
+                returns,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                whole_block_span: _,
+            } => {
+                registers.hash(state, engines);
+                body.hash(state);
+                returns.hash(state);
+            }
+            Self::StructFieldAccess {
+                prefix,
+                field_to_access,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                field_instantiation_span: _,
+            } => {
+                prefix.hash(state, engines);
+                field_to_access.hash(state, engines);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::TupleElemAccess {
+                prefix,
+                elem_to_access_num,
+                resolved_type_of_parent,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                elem_to_access_span: _,
+            } => {
+                prefix.hash(state, engines);
+                elem_to_access_num.hash(state);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, engines);
+            }
+            Self::EnumInstantiation {
+                enum_decl,
+                variant_name,
+                tag,
+                contents,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                variant_instantiation_span: _,
+                call_path_binding: _,
+            } => {
+                enum_decl.hash(state, engines);
+                variant_name.hash(state);
+                tag.hash(state);
+                if let Some(x) = contents.as_ref() {
+                    x.hash(state, engines)
+                }
+            }
+            Self::AbiCast {
+                abi_name,
+                address,
+                // these fields are not hashed because they aren't relevant/a
+                // reliable source of obj v. obj distinction
+                span: _,
+            } => {
+                abi_name.hash(state);
+                address.hash(state, engines);
+            }
+            Self::StorageAccess(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::IntrinsicFunction(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::AbiName(name) => {
+                name.hash(state);
+            }
+            Self::EnumTag { exp } => {
+                exp.hash(state, engines);
+            }
+            Self::UnsafeDowncast { exp, variant } => {
+                exp.hash(state, engines);
+                variant.hash(state, engines);
+            }
+            Self::WhileLoop { condition, body } => {
+                condition.hash(state, engines);
+                body.hash(state, engines);
+            }
+            Self::Break | Self::Continue | Self::FunctionParameter => {}
+            Self::Reassignment(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::StorageReassignment(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::Return(exp) => {
+                exp.hash(state, engines);
+            }
         }
     }
 }
@@ -381,16 +574,16 @@ impl SubstTypes for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -414,6 +607,7 @@ impl SubstTypes for TyExpressionVariant {
                 block.subst(type_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -500,16 +694,16 @@ impl ReplaceSelfType for TyExpressionVariant {
             Literal(..) => (),
             FunctionApplication {
                 arguments,
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ..
             } => {
                 arguments
                     .iter_mut()
                     .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
-                let new_decl_id = function_decl_id
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_ref.replace_id((&new_decl_ref).into());
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_self_type(engines, self_type);
@@ -533,6 +727,7 @@ impl ReplaceSelfType for TyExpressionVariant {
                 block.replace_self_type(engines, self_type);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_self_type(engines, self_type),
             IfExp {
                 condition,
                 then,
@@ -612,15 +807,15 @@ impl ReplaceDecls for TyExpressionVariant {
         match self {
             Literal(..) => (),
             FunctionApplication {
-                ref mut function_decl_id,
+                ref mut function_decl_ref,
                 ref mut arguments,
                 ..
             } => {
-                function_decl_id.replace_decls(decl_mapping, engines);
-                let new_decl_id = function_decl_id
+                function_decl_ref.replace_decls(decl_mapping, engines);
+                let new_decl_ref = function_decl_ref
                     .clone()
                     .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
+                function_decl_ref.replace_id((&new_decl_ref).into());
                 for (_, arg) in arguments.iter_mut() {
                     arg.replace_decls(decl_mapping, engines);
                 }
@@ -647,6 +842,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 block.replace_decls(decl_mapping, engines);
             }
             FunctionParameter => (),
+            MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, engines),
             IfExp {
                 condition,
                 then,
@@ -705,7 +901,7 @@ impl ReplaceDecls for TyExpressionVariant {
 impl DisplayWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::Literal(lit) => format!("literal {}", lit),
+            TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
             } => {
@@ -721,7 +917,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                     .map(|field| engines.help_out(field).to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("tuple({})", fields)
+                format!("tuple({fields})")
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
@@ -730,7 +926,9 @@ impl DisplayWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),
-            TyExpressionVariant::IfExp { .. } => "if exp".into(),
+            TyExpressionVariant::MatchExp { .. } | TyExpressionVariant::IfExp { .. } => {
+                "if exp".into()
+            }
             TyExpressionVariant::AsmExpression { .. } => "inline asm".into(),
             TyExpressionVariant::AbiCast { abi_name, .. } => {
                 format!("abi cast {}", abi_name.suffix.as_str())
@@ -768,7 +966,7 @@ impl DisplayWithEngines for TyExpressionVariant {
             } => {
                 format!(
                     "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
+                    enum_decl.call_path.suffix.as_str(),
                     variant_name.as_str(),
                     tag
                 )
@@ -777,7 +975,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("storage field {} access", access.storage_field_name())
             }
             TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
-            TyExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
                 format!("({} as tag)", engines.help_out(exp.return_type))
             }
@@ -800,14 +998,14 @@ impl DisplayWithEngines for TyExpressionVariant {
                     match index {
                         ProjectionKind::StructField { name } => place.push_str(name.as_str()),
                         ProjectionKind::TupleField { index, .. } => {
-                            write!(&mut place, "{}", index).unwrap();
+                            write!(&mut place, "{index}").unwrap();
                         }
                         ProjectionKind::ArrayIndex { index, .. } => {
-                            write!(&mut place, "{:#?}", index).unwrap();
+                            write!(&mut place, "{index:#?}").unwrap();
                         }
                     }
                 }
-                format!("reassignment to {}", place)
+                format!("reassignment to {place}")
             }
             TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 let place: String = {
@@ -817,13 +1015,13 @@ impl DisplayWithEngines for TyExpressionVariant {
                         .map(|field| field.name.as_str())
                         .collect()
                 };
-                format!("storage reassignment to {}", place)
+                format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {}", engines.help_out(&**exp))
             }
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -842,6 +1040,9 @@ impl TyExpressionVariant {
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
         match self {
+            TyExpressionVariant::MatchExp { desugared, .. } => {
+                desugared.expression.gather_return_statements()
+            }
             TyExpressionVariant::IfExp {
                 condition,
                 then,

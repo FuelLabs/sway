@@ -37,7 +37,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclId>,
+    pub(crate) declared_storage: Option<DeclRef>,
 }
 
 impl Items {
@@ -58,9 +58,9 @@ impl Items {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match self.declared_storage {
-            Some(ref decl_id) => {
+            Some(ref decl_ref) => {
                 let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -76,16 +76,16 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_id: DeclId) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_ref: DeclRef) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
                 vec![CompileError::MultipleStorageDeclarations {
-                    span: decl_id.span(),
+                    span: decl_ref.span(),
                 }],
             );
         }
-        self.declared_storage = Some(decl_id);
+        self.declared_storage = Some(decl_ref);
         ok((), vec![], vec![])
     }
 
@@ -166,7 +166,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclId> {
+    ) -> Vec<DeclRef> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }
@@ -183,9 +183,9 @@ impl Items {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
-            Some(ref decl_id) => {
+            Some(ref decl_ref) => {
                 let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_id.clone(), access_span)),
+                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -245,7 +245,7 @@ impl Items {
             match (resolved_type, projection) {
                 (
                     TypeInfo::Struct {
-                        name: struct_name,
+                        call_path: struct_name,
                         fields,
                         ..
                     },
@@ -254,12 +254,12 @@ impl Items {
                     let field_type_opt = {
                         fields.iter().find_map(
                             |ty::TyStructField {
-                                 type_id: r#type,
+                                 type_argument,
                                  name,
                                  ..
                              }| {
                                 if name == field_name {
-                                    Some(r#type)
+                                    Some(type_argument.type_id)
                                 } else {
                                     None
                                 }
@@ -277,7 +277,7 @@ impl Items {
 
                             errors.push(CompileError::FieldNotFound {
                                 field_name: field_name.clone(),
-                                struct_name,
+                                struct_name: struct_name.suffix,
                                 available_fields: available_fields.join(", "),
                                 span: field_name.span(),
                             });
@@ -285,7 +285,7 @@ impl Items {
                         }
                     };
                     parent_rover = symbol;
-                    symbol = *field_type;
+                    symbol = field_type;
                     symbol_span = field_name.span().clone();
                     full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =

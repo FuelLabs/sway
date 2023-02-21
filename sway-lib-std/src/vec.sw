@@ -186,7 +186,7 @@ impl<T> Vec<T> {
     pub fn get(self, index: u64) -> Option<T> {
         // First check that index is within bounds.
         if self.len <= index {
-            return Option::None::<T>;
+            return Option::None;
         };
 
         // Get a pointer to the desired element using `index`

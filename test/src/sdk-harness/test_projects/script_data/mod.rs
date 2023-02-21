@@ -5,7 +5,7 @@ use fuels::{
     tx::{ConsensusParameters, Receipt, Transaction},
 };
 
-async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>, fuels::prelude::Error> {
+async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let bin = std::fs::read("test_projects/script_data/out/debug/script_data.bin");
 
     let wallet = launch_provider_and_get_wallet().await;

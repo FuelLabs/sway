@@ -1,9 +1,10 @@
 library r#storage;
 
-use ::alloc::alloc;
+use ::alloc::{alloc, realloc_bytes};
 use ::assert::assert;
 use ::hash::sha256;
 use ::option::Option;
+use ::bytes::Bytes;
 
 /// Store a stack value in storage. Will not work for heap values.
 ///
@@ -71,11 +72,10 @@ pub fn get<T>(key: b256) -> Option<T> {
         // registers: the loaded word as well as flag indicating whether the storage slot was 
         // written before. We store the two registers on the heap and return the result as a tuple 
         // `(bool, T)` which contains the two values we need.
-        // NOTE: we are leaking this allocation on the heap.
         // NOTE: we should eventually be using `__state_load_word` here but we are currently unable 
         // to make that intrinsic return two things due to some limitations in IR/codegen.
-        let result_ptr = alloc::<u64>(16); //  
-        asm(key: key, result_ptr: result_ptr, loaded_word, previously_set) {
+        let temp_pair = (false, 0_u64);    // Using a `u64` as a placeholder for copy-type `T` value.
+        asm(key: key, result_ptr: temp_pair, loaded_word, previously_set) {
             srw  loaded_word previously_set key;
             sw   result_ptr previously_set i0;
             sw   result_ptr loaded_word i1;
@@ -86,8 +86,9 @@ pub fn get<T>(key: b256) -> Option<T> {
         // might be larger than a word.
         // NOTE: we are leaking this value on the heap.
         
-        // Get the number of storage slots needed based on the size of `T`
-        let number_of_slots = (__size_of::<T>() + 31) >> 5;
+        // Get the number of storage slots needed based on the size of `T` as the ceiling of 
+        // `__size_of::<T>() / 32`
+        let number_of_slots = (__size_of::<T>() + 31) >> 5; 
 
         // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
         // make the 'quad' storage instruction read without overflowing.
@@ -106,6 +107,34 @@ pub fn get<T>(key: b256) -> Option<T> {
     } else {
         Option::None
     }
+}
+
+/// Clear a sequence of consecutive storage slots starting at a some key. Returns a Boolean
+/// indicating whether all of the storage slots cleared were previously set.
+///
+/// ### Arguments
+///
+/// * `key` - The key of the first storage slot that will be cleared
+///
+/// ### Examples
+///
+/// ```sway
+/// use std::{storage::{clear, get, store}, constants::ZERO_B256};
+///
+/// let five = 5_u64;
+/// store(ZERO_B256, five);
+/// let cleared = clear::<u64>(ZERO_B256);
+/// assert(cleared);
+/// assert(get::<u64>(ZERO_B256).is_none());
+/// ```
+#[storage(write)]
+pub fn clear<T>(key: b256) -> bool {
+    // Get the number of storage slots needed based on the size of `T` as the ceiling of 
+    // `__size_of::<T>() / 32`
+    let number_of_slots = (__size_of::<T>() + 31) >> 5;
+
+    // Clear `number_of_slots * 32` bytes starting at storage slot `key`.
+    __state_clear(key, number_of_slots)
 }
 
 /// A persistent key-value pair mapping struct.
@@ -168,6 +197,36 @@ impl<K, V> StorageMap<K, V> {
     pub fn get(self, key: K) -> Option<V> {
         let key = sha256((key, __get_storage_key()));
         get::<V>(key)
+    }
+
+    /// Clears a value previously stored using a key
+    ///
+    /// Return a Boolean indicating whether there was a value previously stored at `key`.
+    ///
+    /// ### Arguments
+    ///
+    /// * `key` - The key to which the value is paired
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let removed = storage.map.remove(key);
+    ///     assert(removed);
+    ///     assert(storage.map.get(key).is_none());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn remove(self, key: K) -> bool {
+        let key = sha256((key, __get_storage_key()));
+        clear::<V>(key)
     }
 }
 
@@ -578,5 +637,93 @@ impl<V> StorageVec<V> {
     #[storage(write)]
     pub fn clear(self) {
         store(__get_storage_key(), 0);
+    }
+}
+
+pub struct StorageBytes {}
+
+impl StorageBytes {
+    /// Takes a `Bytes` type and stores the underlying collection of tightly packed bytes.
+    ///
+    /// ### Arguments
+    ///
+    /// * `bytes` - The bytes which will be stored.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///
+    ///     storage.stored_bytes.store_bytes(bytes);
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn store_bytes(self, mut bytes: Bytes) {
+        // Get the number of storage slots needed based on the size of bytes.
+        let number_of_slots = (bytes.len() + 31) >> 5;
+
+        // The bytes capacity needs to be greater than or a multiple of 32 bytes so we can 
+        // make the 'quad' storage instruction store without accessing unallocated heap memory.
+        if bytes.buf.cap < number_of_slots * 32 {
+            bytes.buf.ptr = realloc_bytes(bytes.buf.ptr, bytes.buf.cap, number_of_slots * 32);
+        }
+
+        // Store `number_of_slots * 32` bytes starting at storage slot `key`.
+        let key = sha256(__get_storage_key());
+        let _ = __state_store_quad(key, bytes.buf.ptr, number_of_slots);
+
+        // Store the length of the bytes
+        store(__get_storage_key(), bytes.len());
+    }
+
+    /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     stored_bytes: StorageBytes = StorageBytes {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(5_u8);
+    ///     bytes.push(7_u8);
+    ///     bytes.push(9_u8);
+    ///     storage.stored_bytes.write_bytes(bytes);
+    ///
+    ///     let retrieved_bytes = storage.stored_bytes.into_bytes(key);
+    ///     assert(bytes == retrieved_bytes);
+    /// }
+    /// ```
+    #[storage(read)]
+    pub fn into_bytes(self) -> Option<Bytes> {
+        // Get the length of the bytes and create a new `Bytes` type on the heap.
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
+        if len > 0 {
+            // Get the number of storage slots needed based on the size of bytes.
+            let number_of_slots = (len + 31) >> 5;
+
+            // Create a new bytes type with a capacity that is a multiple of 32 bytes so we can 
+            // make the 'quad' storage instruction read without overflowing.
+            let mut bytes = Bytes::with_capacity(number_of_slots * 32);
+            bytes.len = len;
+
+            // Load the stores bytes into the `Bytes` type pointer.
+            let _ = __state_load_quad(sha256(__get_storage_key()), bytes.buf.ptr, number_of_slots);
+
+            Option::Some(bytes)
+        } else {
+            Option::None
+        }
     }
 }

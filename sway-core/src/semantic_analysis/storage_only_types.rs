@@ -11,7 +11,7 @@ fn ast_node_validate(engines: Engines<'_>, x: &ty::TyAstNodeContent) -> CompileR
         ty::TyAstNodeContent::Expression(expr)
         | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => expr_validate(engines, expr),
         ty::TyAstNodeContent::Declaration(decl) => decl_validate(engines, decl),
-        ty::TyAstNodeContent::SideEffect => ok((), warnings, errors),
+        ty::TyAstNodeContent::SideEffect(_) => ok((), warnings, errors),
     }
 }
 
@@ -64,6 +64,9 @@ fn expr_validate(engines: Engines<'_>, expr: &ty::TyExpression) -> CompileResult
                 warnings,
                 errors
             );
+        }
+        ty::TyExpressionVariant::MatchExp { desugared, .. } => {
+            check!(expr_validate(engines, desugared), (), warnings, errors)
         }
         ty::TyExpressionVariant::IfExp {
             condition,
@@ -181,11 +184,13 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &decl.body), (), warnings, errors)
         }
-        ty::TyDeclaration::ConstantDeclaration(decl_id) => {
+        ty::TyDeclaration::ConstantDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyConstantDeclaration {
                 value: expr, name, ..
             } = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(decl_engine.get_constant(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -198,15 +203,16 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &expr), (), warnings, errors)
         }
-        ty::TyDeclaration::FunctionDeclaration(decl_id) => {
+        ty::TyDeclaration::FunctionDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyFunctionDeclaration {
                 body,
                 parameters,
                 return_type,
-                return_type_span,
                 ..
             } = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl.span())),
+                CompileResult::from(decl_engine.get_function(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -219,31 +225,38 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             for param in parameters {
                 check!(
-                    check_type(engines, param.type_id, param.type_span.clone(), false),
+                    check_type(
+                        engines,
+                        param.type_argument.type_id,
+                        param.type_argument.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
                 );
             }
             check!(
-                check_type(engines, return_type, return_type_span, false),
+                check_type(engines, return_type.type_id, return_type.span, false),
                 (),
                 warnings,
                 errors
             );
         }
-        ty::TyDeclaration::AbiDeclaration(_) | ty::TyDeclaration::TraitDeclaration(_) => {
+        ty::TyDeclaration::AbiDeclaration { .. } | ty::TyDeclaration::TraitDeclaration { .. } => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
-        ty::TyDeclaration::ImplTrait(decl_id) => {
+        ty::TyDeclaration::ImplTrait {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyImplTrait { methods, span, .. } = check!(
-                CompileResult::from(decl_engine.get_impl_trait(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(decl_engine.get_impl_trait(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            for method_id in methods {
-                match decl_engine.get_function(method_id, &span) {
+            for method_ref in methods {
+                match decl_engine.get_function(&method_ref, &span) {
                     Ok(method) => {
                         check!(
                             validate_decls_for_storage_only_types_in_codeblock(
@@ -254,11 +267,26 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             warnings,
                             errors
                         );
+                        for param in method.parameters {
+                            if !param.is_self() {
+                                check!(
+                                    check_type(
+                                        engines,
+                                        param.type_argument.type_id,
+                                        param.type_argument.span.clone(),
+                                        false
+                                    ),
+                                    continue,
+                                    warnings,
+                                    errors
+                                );
+                            }
+                        }
                         check!(
                             check_type(
                                 engines,
-                                method.return_type,
-                                method.return_type_span.clone(),
+                                method.return_type.type_id,
+                                method.return_type.span.clone(),
                                 false
                             ),
                             (),
@@ -270,48 +298,67 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 };
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_id) => {
+        ty::TyDeclaration::StructDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyStructDeclaration { fields, .. } = check!(
-                CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
+                CompileResult::from(decl_engine.get_struct(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors,
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.span.clone(), false),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_id) => {
+        ty::TyDeclaration::EnumDeclaration {
+            decl_id, decl_span, ..
+        } => {
             let ty::TyEnumDeclaration { variants, .. } = check!(
-                CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl.span())),
+                CompileResult::from(decl_engine.get_enum(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
             for variant in variants {
                 check!(
-                    check_type(engines, variant.type_id, variant.span.clone(), false),
+                    check_type(
+                        engines,
+                        variant.type_argument.type_id,
+                        variant.span.clone(),
+                        false
+                    ),
                     continue,
                     warnings,
                     errors
                 );
             }
         }
-        ty::TyDeclaration::StorageDeclaration(decl_id) => {
+        ty::TyDeclaration::StorageDeclaration { decl_id, decl_span } => {
             let ty::TyStorageDeclaration { fields, .. } = check!(
-                CompileResult::from(decl_engine.get_storage(decl_id.clone(), &decl.span())),
+                CompileResult::from(decl_engine.get_storage(decl_id, decl_span)),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
             for field in fields {
                 check!(
-                    check_type(engines, field.type_id, field.name.span().clone(), true),
+                    check_type(
+                        engines,
+                        field.type_argument.type_id,
+                        field.name.span().clone(),
+                        true
+                    ),
                     continue,
                     warnings,
                     errors

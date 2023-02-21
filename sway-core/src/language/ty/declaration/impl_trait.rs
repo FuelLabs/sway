@@ -1,15 +1,18 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Span;
 
-use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
+use crate::{decl_engine::DeclRef, engine_threading::*, language::CallPath, type_system::*};
 
+// impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
-    pub methods: Vec<DeclId>,
-    pub implementing_for_type_id: TypeId,
-    pub type_implementing_for_span: Span,
+    pub methods: Vec<DeclRef>,
+    pub trait_decl_ref: Option<DeclRef>,
+    pub implementing_for: TypeArgument,
     pub span: Span,
 }
 
@@ -23,9 +26,30 @@ impl PartialEqWithEngines for TyImplTrait {
                 .trait_type_arguments
                 .eq(&other.trait_type_arguments, engines)
             && self.methods.eq(&other.methods, engines)
-            && self.implementing_for_type_id == other.implementing_for_type_id
-            && self.type_implementing_for_span == other.type_implementing_for_span
-            && self.span == other.span
+            && self.implementing_for.eq(&other.implementing_for, engines)
+            && self.trait_decl_ref.eq(&other.trait_decl_ref, engines)
+    }
+}
+
+impl HashWithEngines for TyImplTrait {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
+        let TyImplTrait {
+            impl_type_parameters,
+            trait_name,
+            trait_type_arguments,
+            methods,
+            implementing_for,
+            trait_decl_ref,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            span: _,
+        } = self;
+        trait_name.hash(state);
+        impl_type_parameters.hash(state, engines);
+        trait_type_arguments.hash(state, engines);
+        methods.hash(state, engines);
+        implementing_for.hash(state, engines);
+        trait_decl_ref.hash(state, engines);
     }
 }
 
@@ -34,7 +58,7 @@ impl SubstTypes for TyImplTrait {
         self.impl_type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for_type_id.subst(type_mapping, engines);
+        self.implementing_for.subst_inner(type_mapping, engines);
         self.methods
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -46,8 +70,7 @@ impl ReplaceSelfType for TyImplTrait {
         self.impl_type_parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
-        self.implementing_for_type_id
-            .replace_self_type(engines, self_type);
+        self.implementing_for.replace_self_type(engines, self_type);
         self.methods
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));

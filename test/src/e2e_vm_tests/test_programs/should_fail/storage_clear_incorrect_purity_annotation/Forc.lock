@@ -1,0 +1,13 @@
+[[package]]
+name = 'abi_impl_purity_mismatch'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-F8710BB88FA26760'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-F8710BB88FA26760'
+dependencies = ['core']

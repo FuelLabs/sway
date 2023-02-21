@@ -20,3 +20,6 @@ use ::revert::{require, revert};
 
 // Convert
 use ::convert::From;
+
+// Logging
+use ::logging::log;

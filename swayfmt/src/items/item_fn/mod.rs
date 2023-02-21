@@ -1,4 +1,5 @@
 use crate::{
+    comments::{has_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -9,7 +10,7 @@ use crate::{
         {CurlyBrace, Parenthesis},
     },
 };
-use std::fmt::Write;
+use std::{fmt::Write, ops::Range};
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
     token::Delimiter,
@@ -35,10 +36,18 @@ impl Format for ItemFn {
                 let body = self.body.get();
                 if !body.statements.is_empty() || body.final_expr_opt.is_some() {
                     Self::open_curly_brace(formatted_code, formatter)?;
+                    formatter.shape.block_indent(&formatter.config);
                     body.format(formatted_code, formatter)?;
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
-                    write!(formatted_code, " {{}}")?;
+                    Self::open_curly_brace(formatted_code, formatter)?;
+                    let range: Range<usize> = self.span().into();
+                    let comments = formatter.comments_context.map.comments_between(&range);
+                    if has_comments(comments) {
+                        formatter.shape.block_indent(&formatter.config);
+                        write_comments(formatted_code, range, formatter)?;
+                    }
+                    Self::close_curly_brace(formatted_code, formatter)?;
                 }
 
                 Ok(())
@@ -59,24 +68,20 @@ impl CurlyBrace for ItemFn {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, "\n{open_brace}")?;
             }
             ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
                 true => {
-                    write!(line, "{}", open_brace)?;
+                    write!(line, "{open_brace}")?;
                     formatter.shape.code_line.update_where_clause(false);
-                    formatter.shape.block_indent(&formatter.config);
                 }
                 false => {
-                    write!(line, " {}", open_brace)?;
-                    formatter.shape.block_indent(&formatter.config);
+                    write!(line, " {open_brace}")?;
                 }
             },
             _ => {
                 // TODO: implement PreferSameLine
-                writeln!(line, " {}", open_brace)?;
-                formatter.shape.block_indent(&formatter.config);
+                writeln!(line, " {open_brace}")?;
             }
         }
 

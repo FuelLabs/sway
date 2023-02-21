@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-0492F2320BFFFD1E'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-0492F2320BFFFD1E'
+dependencies = ['core']
+
+[[package]]
+name = 'typeinfo_custom_callpath'
+source = 'member'
+dependencies = ['std']

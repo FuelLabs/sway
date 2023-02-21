@@ -1,4 +1,5 @@
 use crate::{
+    comments::write_comments,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -58,15 +59,21 @@ impl Format for ItemTrait {
             write!(formatted_code, " ")?;
         }
         Self::open_curly_brace(formatted_code, formatter)?;
-        for (fn_signature, semicolon_token) in self.trait_items.get() {
-            // format `Annotated<FnSignature>`
-            write!(
-                formatted_code,
-                "{}",
-                formatter.shape.indent.to_string(&formatter.config)?,
-            )?;
-            fn_signature.format(formatted_code, formatter)?;
-            writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+        let trait_items = self.trait_items.get();
+
+        if trait_items.is_empty() {
+            write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
+        } else {
+            for (fn_signature, semicolon_token) in trait_items {
+                // format `Annotated<FnSignature>`
+                write!(
+                    formatted_code,
+                    "{}",
+                    formatter.shape.indent.to_string(&formatter.config)?,
+                )?;
+                fn_signature.format(formatted_code, formatter)?;
+                writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+            }
         }
         formatted_code.pop(); // pop last ending newline
         Self::close_curly_brace(formatted_code, formatter)?;
@@ -99,10 +106,10 @@ impl CurlyBrace for ItemTrait {
         match brace_style {
             ItemBraceStyle::AlwaysNextLine => {
                 // Add openning brace to the next line.
-                writeln!(line, "\n{}", open_brace)?;
+                writeln!(line, "\n{open_brace}")?;
             }
             _ => {
-                writeln!(line, "{}", open_brace)?;
+                writeln!(line, "{open_brace}")?;
             }
         }
 

@@ -49,7 +49,7 @@ impl fmt::Debug for TypeSubstMap {
             "TypeSubstMap {{ {} }}",
             self.mapping
                 .iter()
-                .map(|(source_type, dest_type)| { format!("{:?} -> {:?}", source_type, dest_type) })
+                .map(|(source_type, dest_type)| { format!("{source_type:?} -> {dest_type:?}") })
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -230,9 +230,12 @@ impl TypeSubstMap {
             ) => {
                 let type_parameters = type_parameters
                     .iter()
-                    .map(|x| x.type_id)
+                    .map(|x| x.type_argument.type_id)
                     .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let type_arguments = type_arguments
+                    .iter()
+                    .map(|x| x.type_argument.type_id)
+                    .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
@@ -321,16 +324,17 @@ impl TypeSubstMap {
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::Struct {
                 fields,
-                name,
+                call_path,
                 type_parameters,
             } => {
                 let mut need_to_create_new = false;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id, engines) {
+                        if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
+                        {
                             need_to_create_new = true;
-                            field.type_id = type_id;
+                            field.type_argument.type_id = type_id;
                         }
                         field
                     })
@@ -350,7 +354,7 @@ impl TypeSubstMap {
                         decl_engine,
                         TypeInfo::Struct {
                             fields,
-                            name,
+                            call_path,
                             type_parameters,
                         },
                     ))
@@ -360,16 +364,18 @@ impl TypeSubstMap {
             }
             TypeInfo::Enum {
                 variant_types,
-                name,
+                call_path,
                 type_parameters,
             } => {
                 let mut need_to_create_new = false;
                 let variant_types = variant_types
                     .into_iter()
                     .map(|mut variant| {
-                        if let Some(type_id) = self.find_match(variant.type_id, engines) {
+                        if let Some(type_id) =
+                            self.find_match(variant.type_argument.type_id, engines)
+                        {
                             need_to_create_new = true;
-                            variant.type_id = type_id;
+                            variant.type_argument.type_id = type_id;
                         }
                         variant
                     })
@@ -390,7 +396,7 @@ impl TypeSubstMap {
                         TypeInfo::Enum {
                             variant_types,
                             type_parameters,
-                            name,
+                            call_path,
                         },
                     ))
                 } else {
@@ -426,9 +432,10 @@ impl TypeSubstMap {
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id, engines) {
+                        if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
+                        {
                             need_to_create_new = true;
-                            field.type_id = type_id;
+                            field.type_argument.type_id = type_id;
                         }
                         field
                     })

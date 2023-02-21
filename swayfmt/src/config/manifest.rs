@@ -122,7 +122,7 @@ impl ConfigOptions {
             })?;
         let toml_de = &mut toml::de::Deserializer::new(&config_str);
         let config_opts: Self = serde_ignored::deserialize(toml_de, |field| {
-            let warning = format!("  WARNING! found unusable configuration: {}", field);
+            let warning = format!("  WARNING! found unusable configuration: {field}");
             println_yellow_err(&warning);
         })
         .map_err(|e| ConfigError::Deserialize { err: (e) })?;
