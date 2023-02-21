@@ -82,13 +82,17 @@ pub fn main() -> Result<()> {
         no_deps,
         document_private_items,
     )?;
+    let root_attributes =
+        (!typed_program.root.attributes.is_empty()).then(|| typed_program.root.attributes);
+    let program_kind = typed_program.kind;
     // render docs to HTML
     let forc_version = pkg_manifest
         .project
         .forc_version
         .as_ref()
         .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
-    let rendered_docs = RenderedDocumentation::from(raw_docs, forc_version)?;
+    let rendered_docs =
+        RenderedDocumentation::from(raw_docs, root_attributes, program_kind, forc_version)?;
 
     // write contents to outfile
     for doc in rendered_docs.0 {
