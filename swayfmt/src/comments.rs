@@ -106,35 +106,19 @@ pub fn write_comments(
         for comment in comments_iter {
             let newlines = collect_newlines_after_comment(&formatter.comments_context, comment);
 
-            if formatted_code.trim_end().ends_with(&[']', ';', ')']) {
-                match comment.comment_kind {
-                    CommentKind::Newlined => {
-                        write!(
-                            formatted_code,
-                            "{}{}{}",
-                            formatter.shape.indent.to_string(&formatter.config)?,
-                            comment.span().as_str(),
-                            newlines
-                        )?;
-                    }
-                    CommentKind::Trailing => {
-                        write_trailing_comment(formatted_code, comment)?;
-                        if comments_iter.peek().is_none() {
-                            write!(
-                                formatted_code,
-                                "{}",
-                                formatter.shape.indent.to_string(&formatter.config)?,
-                            )?;
-                        }
-                    }
+            match comment.comment_kind {
+                CommentKind::Newlined => {
+                    write!(
+                        formatted_code,
+                        "{}{}{}",
+                        formatter.shape.indent.to_string(&formatter.config)?,
+                        comment.span().as_str(),
+                        newlines
+                    )?;
                 }
-            } else {
-                writeln!(
-                    formatted_code,
-                    "{}{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
-                    comment.span().as_str(),
-                )?;
+                CommentKind::Trailing => {
+                    write_trailing_comment(formatted_code, comment)?;
+                }
             }
         }
     }
