@@ -2817,6 +2817,13 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
+/// Check if the given node is a contract dependency of any node in the graph.
+fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
+    graph
+        .edges_directed(node, Direction::Incoming)
+        .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
+}
+
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let BuildOpts {
@@ -2996,22 +3003,23 @@ pub fn build(
                 bail!("Failed to compile {}", pkg.name);
             }
         };
+        let profile = if is_contract_dependency(plan.graph(), node) {
+            BuildProfile::release()
+        } else {
+            profile.clone()
+        };
         let res = compile(
             pkg,
             manifest,
             target,
-            profile,
+            &profile,
             dep_namespace,
             engines,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
         // If the current node is a contract dependency, collect the contract_id
-        if plan
-            .graph()
-            .edges_directed(node, Direction::Incoming)
-            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
-        {
+        if is_contract_dependency(plan.graph(), node) {
             compiled_contract_deps.insert(node, built_package.clone());
         }
         if let TreeType::Library { ref name } = built_package.tree_type {
