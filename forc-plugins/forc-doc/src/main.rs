@@ -83,7 +83,7 @@ pub fn main() -> Result<()> {
         document_private_items,
     )?;
     let root_attributes =
-        (!typed_program.root.attributes.is_empty()).then(|| typed_program.root.attributes);
+        (!typed_program.root.attributes.is_empty()).then_some(typed_program.root.attributes);
     let program_kind = typed_program.kind;
     // render docs to HTML
     let forc_version = pkg_manifest

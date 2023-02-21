@@ -39,7 +39,7 @@ impl RenderedDocumentation {
         let root_module = match raw.first() {
             Some(doc) => ModuleInfo::from_ty_module(
                 vec![doc.module_info.project_name().to_owned()],
-                root_attributes.and_then(|attrs_map| Some(attrs_map.to_html_string())),
+                root_attributes.map(|attrs_map| attrs_map.to_html_string()),
             ),
             None => panic!("Project does not contain a root module"),
         };
