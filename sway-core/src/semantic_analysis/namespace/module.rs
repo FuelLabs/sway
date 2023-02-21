@@ -103,6 +103,7 @@ impl Module {
                 engines,
                 const_item,
                 attributes,
+                true,
             )?;
 
             // Temporarily disallow non-literals. See https://github.com/FuelLabs/sway/issues/2647.

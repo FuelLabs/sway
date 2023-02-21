@@ -183,7 +183,9 @@ fn item_to_ast_nodes(
             context, handler, engines, item_abi, attributes,
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
-            item_const_to_constant_declaration(context, handler, engines, item_const, attributes)?,
+            item_const_to_constant_declaration(
+                context, handler, engines, item_const, attributes, is_root,
+            )?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(
@@ -726,6 +728,7 @@ pub(crate) fn item_const_to_constant_declaration(
     engines: Engines<'_>,
     item_const: ItemConst,
     attributes: AttributesMap,
+    is_root: bool,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
 
@@ -736,7 +739,15 @@ pub(crate) fn item_const_to_constant_declaration(
 
     let expr = match item_const.expr_opt {
         Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
-        None => None,
+        None => {
+            if is_root {
+                let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            None
+        }
     };
 
     Ok(ConstantDeclaration {
