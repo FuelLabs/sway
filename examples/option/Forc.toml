@@ -1,0 +1,7 @@
+[project]
+authors = ["Camila Ramos"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "option"
+
+[dependencies]
