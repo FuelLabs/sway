@@ -18,7 +18,7 @@ use crate::{
 pub struct TyStructDeclaration {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParam>,
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::AttributesMap,
@@ -97,7 +97,7 @@ impl Spanned for TyStructDeclaration {
 }
 
 impl MonomorphizeHelper for TyStructDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &[TypeParam] {
         &self.type_parameters
     }
 

@@ -76,7 +76,7 @@ impl MonomorphizeHelper for TyTraitFn {
         &self.name
     }
 
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &[TypeParam] {
         &[]
     }
 }

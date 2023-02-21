@@ -7,7 +7,7 @@ use crate::{decl_engine::DeclRef, engine_threading::*, language::CallPath, type_
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
-    pub impl_type_parameters: Vec<TypeParameter>,
+    pub impl_type_parameters: Vec<TypeParam>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub methods: Vec<DeclRef>,

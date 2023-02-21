@@ -24,7 +24,7 @@ pub struct TyFunctionDeclaration {
     pub implementing_type: Option<TyDeclaration>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParam>,
     pub return_type: TypeArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
@@ -113,7 +113,7 @@ impl Spanned for TyFunctionDeclaration {
 }
 
 impl MonomorphizeHelper for TyFunctionDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &[TypeParam] {
         &self.type_parameters
     }
 
@@ -126,7 +126,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
     fn type_parameter_is_unconstrained(
         &self,
         engines: Engines<'_>,
-        type_parameter: &TypeParameter,
+        type_parameter: &TypeParam,
     ) -> bool {
         let type_engine = engines.te();
         let type_parameter_info = type_engine.get(type_parameter.type_id);

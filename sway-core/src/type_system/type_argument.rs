@@ -82,8 +82,8 @@ impl DisplayWithEngines for TypeArgument {
     }
 }
 
-impl From<&TypeParameter> for TypeArgument {
-    fn from(type_param: &TypeParameter) -> Self {
+impl From<&TypeParam> for TypeArgument {
+    fn from(type_param: &TypeParam) -> Self {
         TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,

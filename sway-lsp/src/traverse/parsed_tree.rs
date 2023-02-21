@@ -27,7 +27,7 @@ use sway_core::{
         CallPathTree, Literal,
     },
     transform::{AttributeKind, AttributesMap},
-    type_system::{TypeArgument, TypeParameter},
+    type_system::{TypeArgument, TypeParam},
     TypeEngine, TypeInfo,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
@@ -1021,7 +1021,7 @@ impl<'a> ParsedTree<'a> {
         trait_fn.attributes.parse(self.tokens);
     }
 
-    fn collect_type_parameter(&self, type_param: &TypeParameter, token: AstToken) {
+    fn collect_type_parameter(&self, type_param: &TypeParam, token: AstToken) {
         self.tokens.insert(
             to_ident_key(&type_param.name_ident),
             Token::from_parsed(token, SymbolKind::TypeParameter),

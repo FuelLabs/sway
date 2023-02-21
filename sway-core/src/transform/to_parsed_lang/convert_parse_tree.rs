@@ -855,7 +855,7 @@ fn generic_params_opt_to_type_parameters(
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<Vec<TypeParam>, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -881,7 +881,7 @@ fn generic_params_opt_to_type_parameters(
                         type_arguments: None,
                     },
                 );
-                TypeParameter {
+                TypeParam {
                     type_id: custom_type,
                     initial_type_id: custom_type,
                     name_ident: ident,
@@ -897,7 +897,7 @@ fn generic_params_opt_to_type_parameters(
     for (ty_name, bounds) in trait_constraints.into_iter() {
         let param_to_edit = match params
             .iter_mut()
-            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParam { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
         {
             Some(o) => o,
             None => {
@@ -3125,7 +3125,7 @@ fn generic_args_to_type_parameters(
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<Vec<TypeParam>, ErrorEmitted> {
     generic_args
         .parameters
         .into_inner()
@@ -3265,7 +3265,7 @@ fn ty_to_type_parameter(
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
-) -> Result<TypeParameter, ErrorEmitted> {
+) -> Result<TypeParam, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -3273,7 +3273,7 @@ fn ty_to_type_parameter(
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
             let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
-            return Ok(TypeParameter {
+            return Ok(TypeParam {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
@@ -3292,7 +3292,7 @@ fn ty_to_type_parameter(
             type_arguments: None,
         },
     );
-    Ok(TypeParameter {
+    Ok(TypeParam {
         type_id: custom_type,
         initial_type_id: custom_type,
         name_ident,

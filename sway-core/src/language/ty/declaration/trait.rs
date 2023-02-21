@@ -13,7 +13,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyTraitDeclaration {
     pub name: Ident,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParam>,
     pub interface_surface: Vec<DeclRef>,
     pub methods: Vec<DeclRef>,
     pub supertraits: Vec<parsed::Supertrait>,
@@ -96,7 +96,7 @@ impl MonomorphizeHelper for TyTraitDeclaration {
         &self.name
     }
 
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &[TypeParam] {
         &self.type_parameters
     }
 }

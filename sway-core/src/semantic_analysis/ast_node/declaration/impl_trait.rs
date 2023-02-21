@@ -40,7 +40,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParam::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
@@ -451,7 +451,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParam::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
@@ -541,8 +541,8 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    impl_type_parameters: &[TypeParameter],
-    trait_type_parameters: &[TypeParameter],
+    impl_type_parameters: &[TypeParam],
+    trait_type_parameters: &[TypeParam],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
     trait_interface_surface: &[DeclRef],
@@ -717,7 +717,7 @@ fn type_check_trait_implementation(
 
 fn type_check_impl_method(
     mut ctx: TypeCheckContext,
-    impl_type_parameters: &[TypeParameter],
+    impl_type_parameters: &[TypeParam],
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
@@ -917,20 +917,19 @@ fn type_check_impl_method(
     //
     // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
     // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-    let unconstrained_type_parameters_in_this_function: HashSet<WithEngines<'_, TypeParameter>> =
+    let unconstrained_type_parameters_in_this_function: HashSet<WithEngines<'_, TypeParam>> =
         impl_method
             .unconstrained_type_parameters(engines, impl_type_parameters)
             .into_iter()
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect();
-    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
-        self_type
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect::<HashSet<_>>();
+    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParam>> = self_type
+        .unconstrained_type_parameters(engines, impl_type_parameters)
+        .into_iter()
+        .cloned()
+        .map(|x| WithEngines::new(x, engines))
+        .collect::<HashSet<_>>();
     let mut unconstrained_type_parameters_to_be_added =
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
@@ -985,7 +984,7 @@ fn type_check_impl_method(
 /// ```
 fn check_for_unconstrained_type_parameters(
     engines: Engines<'_>,
-    type_parameters: &[TypeParameter],
+    type_parameters: &[TypeParam],
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
     self_type_span: &Span,

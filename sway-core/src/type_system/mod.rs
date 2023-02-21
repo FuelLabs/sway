@@ -61,7 +61,7 @@ fn generic_enum_resolution() {
     );
     let placeholder_type = type_engine.insert(
         &decl_engine,
-        TypeInfo::Placeholder(TypeParameter {
+        TypeInfo::Placeholder(TypeParam {
             type_id: generic_type,
             initial_type_id: generic_type,
             name_ident: generic_name.clone(),
@@ -69,7 +69,7 @@ fn generic_enum_resolution() {
             trait_constraints_span: sp.clone(),
         }),
     );
-    let placeholder_type_param = TypeParameter {
+    let placeholder_type_param = TypeParam {
         type_id: placeholder_type,
         initial_type_id: placeholder_type,
         name_ident: generic_name.clone(),
@@ -115,7 +115,7 @@ fn generic_enum_resolution() {
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let type_param = TypeParameter {
+    let type_param = TypeParam {
         type_id: boolean_type,
         initial_type_id: boolean_type,
         name_ident: generic_name,

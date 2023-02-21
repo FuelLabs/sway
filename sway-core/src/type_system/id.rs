@@ -269,7 +269,7 @@ impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,
         engines: Engines<'_>,
-        type_parameter: &TypeParameter,
+        type_parameter: &TypeParam,
     ) -> bool {
         let type_engine = engines.te();
         type_engine
@@ -288,10 +288,7 @@ impl TypeId {
         self.0
     }
 
-    pub(crate) fn get_type_parameters(
-        &self,
-        type_engine: &TypeEngine,
-    ) -> Option<Vec<TypeParameter>> {
+    pub(crate) fn get_type_parameters(&self, type_engine: &TypeEngine) -> Option<Vec<TypeParam>> {
         match type_engine.get(*self) {
             TypeInfo::Enum {
                 type_parameters, ..

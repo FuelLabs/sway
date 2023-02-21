@@ -8,7 +8,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
-    pub(crate) type_parameters: Vec<TypeParameter>,
+    pub(crate) type_parameters: Vec<TypeParam>,
     pub attributes: transform::AttributesMap,
     pub interface_surface: Vec<TraitFn>,
     pub methods: Vec<FunctionDeclaration>,

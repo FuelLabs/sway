@@ -68,7 +68,7 @@ impl TypeSubstMap {
     /// new [TypeId]s created from a transformation upon `type_parameters`.
     pub(crate) fn from_type_parameters(
         engines: Engines<'_>,
-        type_parameters: &[TypeParameter],
+        type_parameters: &[TypeParam],
     ) -> TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();

@@ -17,7 +17,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
     pub call_path: CallPath,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: Vec<TypeParam>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
@@ -97,7 +97,7 @@ impl Spanned for TyEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TyEnumDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &[TypeParam] {
         &self.type_parameters
     }
 
