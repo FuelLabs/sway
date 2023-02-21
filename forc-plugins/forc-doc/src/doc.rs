@@ -67,12 +67,7 @@ impl Document {
                 let desc = Descriptor::from_typed_decl(
                     decl_engine,
                     decl,
-                    ModuleInfo::from_ty_module(
-                        vec![project_name.to_owned()],
-                        None,
-                        // later we should allow a description in the forc.toml
-                        // to be used as the attributes of the project root
-                    ),
+                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
                     document_private_items,
                 )?;
 
@@ -272,22 +267,18 @@ fn create_preview(raw_attributes: Option<String>) -> Option<String> {
     raw_attributes.as_ref().map(|description| {
         let preview = split_at_markdown_header(description);
         if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains(CLOSING_PARAGRAPH_TAG) {
-            match preview.find(CLOSING_PARAGRAPH_TAG) {
-                Some(closing_tag_index) => {
-                    // We add 1 here to get the index of the char after the closing tag.
-                    // This ensures we retain the closing tag and don't break the html.
-                    let (preview, _) =
-                        preview.split_at(closing_tag_index + CLOSING_PARAGRAPH_TAG.len() + 1);
-                    if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
-                        match preview.find('\n') {
-                            Some(newline_index) => preview.split_at(newline_index).0.to_string(),
-                            None => unreachable!("Previous logic prevents this panic"),
-                        }
-                    } else {
-                        preview.to_string()
-                    }
-                }
-                None => unreachable!("Previous logic prevents this panic"),
+            let closing_tag_index = preview
+                .find(CLOSING_PARAGRAPH_TAG)
+                .expect("closing tag out of range");
+            // We add 1 here to get the index of the char after the closing tag.
+            // This ensures we retain the closing tag and don't break the html.
+            let (preview, _) =
+                preview.split_at(closing_tag_index + CLOSING_PARAGRAPH_TAG.len() + 1);
+            if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
+                let newline_index = preview.find('\n').expect("new line char out of range");
+                preview.split_at(newline_index).0.to_string()
+            } else {
+                preview.to_string()
             }
         } else {
             preview.to_string()
