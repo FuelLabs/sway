@@ -4,7 +4,7 @@ The Sway Standard Library is the foundation of portable Sway software, a set of 
 
 ## `Result` Type
 
-**`Result<T, E>`** `Result` is the type used for returning and propagating errors. It is an enum with the variants, `Ok(T)`, representing success and containing a value, and `Err(E)`, representing error and containing an error value. The T and E in this definition are type parameters, allowing Result to be generic and used with any types.
+Type `Result` is the type used for returning and propagating errors. It is an `enum` with two variants: `Ok(T)`, representing success and containing a value, and `Err(E)`, representing error and containing an error value. The `T` and `E` in this definition are type parameters, allowing `Result` to be generic and to be used with any types.
 
 ```sway
 pub enum Result<T, E> {
