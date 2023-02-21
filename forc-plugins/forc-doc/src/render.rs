@@ -140,7 +140,7 @@ impl RenderedDocumentation {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
                     html_filename: INDEX_FILENAME.to_owned(),
-                    preview_opt: None,
+                    preview_opt: doc.module_info.preview_opt(),
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
