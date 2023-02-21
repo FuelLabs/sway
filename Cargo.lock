@@ -1464,14 +1464,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples-checker"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap 3.2.23",
-]
-
-[[package]]
 name = "extension-trait"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
