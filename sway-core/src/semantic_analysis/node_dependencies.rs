@@ -395,6 +395,9 @@ impl Dependencies {
                         deps.gather_from_type_argument(engines, type_argument)
                     },
                 ),
+            Declaration::TypeAliasDeclaration(TypeAliasDeclaration { ty, .. }) => {
+                self.gather_from_type_argument(engines, ty)
+            }
         }
     }
 
@@ -686,6 +689,7 @@ impl Dependencies {
                 decl_engine.get_enum(decl_ref).variants.iter(),
                 |deps, variant| deps.gather_from_type_argument(engines, &variant.type_argument),
             ),
+            TypeInfo::Alias { ty, .. } => self.gather_from_type_argument(engines, ty),
             _ => self,
         }
     }
@@ -766,6 +770,7 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
         Declaration::EnumDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::TraitDeclaration(decl) => dep_sym(decl.name.clone()),
         Declaration::AbiDeclaration(decl) => dep_sym(decl.name.clone()),
+        Declaration::TypeAliasDeclaration(decl) => dep_sym(decl.name.clone()),
 
         // These have the added complexity of converting CallPath and/or TypeInfo into a name.
         Declaration::ImplSelf(decl) => {
@@ -842,6 +847,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Storage { .. } => "contract storage",
         TypeInfo::RawUntypedPtr => "raw untyped ptr",
         TypeInfo::RawUntypedSlice => "raw untyped slice",
+        TypeInfo::Alias { .. } => "alias",
     }
     .to_string()
 }

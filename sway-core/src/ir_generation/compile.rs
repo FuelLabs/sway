@@ -290,6 +290,7 @@ fn compile_declarations(
             | ty::TyDeclaration::AbiDeclaration { .. }
             | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
             | ty::TyDeclaration::StorageDeclaration { .. }
+            | ty::TyDeclaration::TypeAliasDeclaration { .. }
             | ty::TyDeclaration::ErrorRecovery(_) => (),
         }
     }

@@ -418,7 +418,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_storage_declaration(&storage, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
+        ErrorRecovery(_) | GenericTypeForFunctionScope { .. } | TypeAliasDeclaration { .. } => {
+            Ok(leaves.to_vec())
+        }
     }
 }
 
@@ -1197,11 +1199,19 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .to_typeinfo(*resolved_type_of_parent, &field_to_access.span)
                 .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
-            assert!(matches!(resolved_type_of_parent, TypeInfo::Struct { .. }));
-            let resolved_type_of_parent = match resolved_type_of_parent {
-                TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).call_path,
-                _ => panic!("Called subfield on a non-struct"),
+            let resolved_type_of_parent = match resolved_type_of_parent
+                .expect_struct(engines, field_instantiation_span)
+                .value
+            {
+                Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path,
+                None => {
+                    return Err(CompileError::Internal(
+                        "Called subfield on a non-struct",
+                        field_instantiation_span.clone(),
+                    ))
+                }
             };
+
             let field_name = &field_to_access.name;
             // find the struct field index in the namespace
             let field_ix = match graph
@@ -1836,6 +1846,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             }
             ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
                 allow_dead_code(decl_engine.get_enum(decl_id).attributes)
+            }
+            ty::TyDeclaration::TypeAliasDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_type_alias(decl_id).attributes)
             }
             ty::TyDeclaration::ImplTrait { .. } => false,
             ty::TyDeclaration::AbiDeclaration { .. } => false,

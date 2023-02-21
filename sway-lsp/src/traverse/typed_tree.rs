@@ -309,6 +309,7 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(&field.initializer);
                 }
             }
+            ty::TyDeclaration::TypeAliasDeclaration { .. } => todo!(),
         }
     }
 

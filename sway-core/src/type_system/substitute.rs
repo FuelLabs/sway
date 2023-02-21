@@ -422,6 +422,12 @@ impl TypeSubstMap {
                     None
                 }
             }
+            TypeInfo::Alias { name, mut ty } => {
+                self.find_match(ty.type_id, engines).map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert(decl_engine, TypeInfo::Alias { name, ty })
+                })
+            }
             TypeInfo::Unknown
             | TypeInfo::Str(..)
             | TypeInfo::UnsignedInteger(..)

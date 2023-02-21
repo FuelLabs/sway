@@ -487,6 +487,33 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
+                    Some(ty::TyDeclaration::TypeAliasDeclaration {
+                        decl_id: original_id,
+                        ..
+                    }) => {
+                        // get the copy from the declaration engine
+                        let new_copy = decl_engine.get_type_alias(&original_id);
+
+                        // TODO: monomorphize the copy, in place when generic type aliases are
+                        // supported
+
+                        // create the type id from the copy
+                        let type_id = new_copy.create_type_id(engines);
+
+                        // take any trait methods that apply to this type and copy them to the new type
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
+
+                        // Copy methods from the contained type in `TypeInfo::Alias` to the
+                        // `TypeInfo::Alias` type itself.
+                        namespace.implemented_traits.copy_methods_from_type(
+                            engines,
+                            new_copy.ty.type_id, // This is the contained type in `TypeInfo::Alias`
+                            type_id,             // This is the actual `TypeInfo::Alias` type
+                        );
+
+                        // return the id
+                        type_id
+                    }
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,
                     _ => {
                         errors.push(CompileError::UnknownTypeName {

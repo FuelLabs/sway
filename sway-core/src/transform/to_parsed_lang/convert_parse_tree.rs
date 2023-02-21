@@ -13,7 +13,7 @@ use sway_ast::{
     CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
     FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
     Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
-    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt, LitIntType,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
     MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, Traits, Ty, TypeField, UseTree, WhereClause,
@@ -205,6 +205,15 @@ fn item_to_ast_nodes(
         .into_iter()
         .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
         .collect(),
+        ItemKind::TypeAlias(item_type_alias) => decl(Declaration::TypeAliasDeclaration(
+            item_type_alias_to_type_alias_declaration(
+                context,
+                handler,
+                engines,
+                item_type_alias,
+                attributes,
+            )?,
+        )),
     };
 
     Ok(contents
@@ -885,6 +894,23 @@ fn item_configurable_to_constant_declarations(
     context.set_module_has_configurable_block(true);
 
     Ok(declarations)
+}
+
+fn item_type_alias_to_type_alias_declaration(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    item_type_alias: ItemTypeAlias,
+    attributes: AttributesMap,
+) -> Result<TypeAliasDeclaration, ErrorEmitted> {
+    let span = item_type_alias.span();
+    Ok(TypeAliasDeclaration {
+        name: item_type_alias.name.clone(),
+        attributes,
+        ty: ty_to_type_argument(context, handler, engines, item_type_alias.ty)?,
+        visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
+        span,
+    })
 }
 
 fn type_field_to_struct_field(

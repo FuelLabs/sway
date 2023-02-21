@@ -97,13 +97,17 @@ impl<'a> UnifyCheck<'a> {
             return true;
         }
 
-        let left = self.engines.te().get(left);
-        let right = self.engines.te().get(right);
-        match (left, right) {
+        let left_info = self.engines.te().get(left);
+        let right_info = self.engines.te().get(right);
+        match (left_info, right_info) {
             // the placeholder type can be coerced into any type
             (Placeholder(_), _) => true,
             // any type can be coerced into the placeholder type
             (_, Placeholder(_)) => true,
+
+            // Type aliases and the types they encapsulate coerce to each other.
+            (Alias { ty, .. }, _) => self.check(ty.type_id, right),
+            (_, Alias { ty, .. }) => self.check(left, ty.type_id),
 
             (
                 UnknownGeneric {

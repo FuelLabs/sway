@@ -340,6 +340,38 @@ impl TraitMap {
         self.extend(self.filter_by_type(type_id, engines), engines);
     }
 
+    /// Given a [TypeId] `from_type` and a `[TypeId] `to_type`, retrieves entries in the [TraitMap]
+    /// `self` for which `from_type` is a subset and insert them with new keys containing
+    /// `to_type`. This is useful when `to_type` is a type alias for `from_type`.
+    pub(crate) fn copy_methods_from_type(
+        &mut self,
+        engines: Engines<'_>,
+        from_type: TypeId,
+        to_type: TypeId,
+    ) {
+        let map_for_from_type = self.filter_by_type(from_type, engines);
+        for oe in map_for_from_type.trait_impls.into_iter() {
+            let new_key = TraitKey {
+                name: oe.key.name,
+                type_id: to_type,
+            };
+            let pos = self
+                .trait_impls
+                .binary_search_by(|se| se.key.cmp(&new_key, engines));
+
+            match pos {
+                Ok(pos) => self.trait_impls[pos].value.extend(oe.value.into_iter()),
+                Err(pos) => self.trait_impls.insert(
+                    pos,
+                    TraitEntry {
+                        key: new_key,
+                        value: oe.value.clone(),
+                    },
+                ),
+            }
+        }
+    }
+
     /// Given [TraitMap]s `self` and `other`, extend `self` with `other`,
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: Engines<'_>) {

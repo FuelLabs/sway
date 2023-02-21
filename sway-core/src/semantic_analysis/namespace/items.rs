@@ -117,10 +117,12 @@ impl Items {
                 | (
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                     StructDeclaration { .. }
                     | EnumDeclaration { .. }
+                    | TypeAliasDeclaration { .. }
                     | TraitDeclaration { .. }
                     | AbiDeclaration { .. },
                 ) => errors.push(CompileError::NameDefinedMultipleTimes { name: name.to_string(), span: name.span() }),
