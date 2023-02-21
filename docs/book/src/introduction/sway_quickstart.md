@@ -204,31 +204,23 @@ If `forc-deploy` emits a `no such subcommand` error, try to install it with [fue
 
 ## Deploying the contract with Salt
 
-You can now pass a --salt flag in your forc deploy command to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
+You can pass a Salt using the `--salt` flag in your `forc deploy` command to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
 
-In order to use the `--salt` flag, install the latest `forc` update by running the following command in your project directory:
-
-```bash
-cargo add forc
-```
-
-Alternately, you can add the following to your `cargo.toml` file:
-
-```toml
-forc = "0.35.2"
-```
-
-Once `forc` is updated, can now add a `--salt` to your contractID while deploying the contract as follows:
+To add a Salt to your ContractID while deployment, you can run the following command:
 
 ```bash
 forc deploy --salt <Salt> --node-url <key> --gas-price 1
 ```
 
-> 💡 Note: Salt is 0x00000000000000000000000000000000 by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as below:
+### Randomised Salt
+
+Salt is 0x00000000000000000000000000000000 by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:
 
 ```bash
 forc deploy --random-salt --node-url <key> --gas-price 1
 ```
+
+> Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](https://fuellabs.github.io/sway/v0.35.2/book/forc/plugins/forc_client/index.html).
 
 ## Testing Your Contract
 
