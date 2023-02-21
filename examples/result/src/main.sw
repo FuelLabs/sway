@@ -1,7 +1,7 @@
 script;
 
 enum MyContractError {
-    MyErrorMessage: (),
+    DivisionByZero: (),
 }
 
 fn divide(numerator: u64, denominator: u64) -> Result<u64, MyContractError> {
