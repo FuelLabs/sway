@@ -16,6 +16,6 @@ fn main() -> Result<u64, str[4]> {
     let result = divide(20, 2);
     match result {
         Result::Ok(value) => Result::Ok(value),
-        Result::Err(MyContractError::MyErrorMessage) => Result::Err("Fail"),
+        Result::Err(MyContractError::DivisionByZero) => Result::Err("Fail"),
     }
 }
