@@ -204,9 +204,9 @@ If `forc-deploy` emits a `no such subcommand` error, try to install it with [fue
 
 ## Deploying the contract with Salt
 
-You can pass a Salt using the `--salt` flag in your `forc deploy` command to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
+You can pass a "Salt" using the `--salt` flag passed to your `forc deploy` command as a 256-bit hexadecimal literal, to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.
 
-To add a Salt to your ContractID while deployment, you can run the following command:
+To add a "Salt" while deploying your contract, you can run the following command:
 
 ```bash
 forc deploy --salt <Salt> --node-url <key> --gas-price 1
@@ -214,7 +214,7 @@ forc deploy --salt <Salt> --node-url <key> --gas-price 1
 
 ### Randomised Salt
 
-Salt is 0x00000000000000000000000000000000 by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:
+Salt is `0x0000000000000000000000000000000000000000000000000000000000000000` by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:
 
 ```bash
 forc deploy --random-salt --node-url <key> --gas-price 1
