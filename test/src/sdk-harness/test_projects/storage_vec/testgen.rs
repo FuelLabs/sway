@@ -19,6 +19,8 @@ macro_rules! testgen {
                 abi = $abi_path,
             ));
 
+            // Silences `super::*` warning
+            #[allow(unused_imports)]
             pub mod setup {
                 use super::*;
 
@@ -46,6 +48,8 @@ macro_rules! testgen {
                 }
             }
 
+            // Silences `super::*` warning
+            #[allow(unused_imports)]
             pub mod wrappers {
                 use super::*;
 
@@ -201,26 +205,10 @@ macro_rules! testgen {
                         .await
                         .unwrap();
                 }
-
-                pub async fn append(instance: &MyContract) {
-                    instance.methods()
-                        .append()
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
-                        .call()
-                        .await
-                        .unwrap();
-                }
-
-                pub async fn push_other(instance: &MyContract, value: $type_declaration) {
-                    instance.methods()
-                        .push_other(value)
-                        .tx_params(TxParameters::new(None, Some(100_000_000), None))
-                        .call()
-                        .await
-                        .unwrap();
-                }
             }
 
+            // Silences `super::*` warning
+            #[allow(unused_imports)]
             pub mod success {
                 use super::{
                     *,
@@ -499,33 +487,10 @@ macro_rules! testgen {
                     assert_eq!(get(&instance, 0).await, $arg0);
                     assert_eq!(get(&instance, 1).await, $arg1);
                 }
-
-                #[tokio::test]
-                async fn can_append() {
-                    let instance = get_contract_instance().await;
-
-                    push(&instance, $arg0).await;
-                    push(&instance, $arg1).await;
-                    push(&instance, $arg2).await;
-                    push(&instance, $arg3).await;
-                    push_other(&instance, $arg0).await;
-                    push_other(&instance, $arg1).await;
-                    push_other(&instance, $arg2).await;
-                    push_other(&instance, $arg3).await;
-
-                    append(&instance).await;
-
-                    assert_eq!(get(&instance, 0).await, $arg0);
-                    assert_eq!(get(&instance, 1).await, $arg1);
-                    assert_eq!(get(&instance, 2).await, $arg2);
-                    assert_eq!(get(&instance, 3).await, $arg3);
-                    assert_eq!(get(&instance, 4).await, $arg0);
-                    assert_eq!(get(&instance, 5).await, $arg1);
-                    assert_eq!(get(&instance, 6).await, $arg2);
-                    assert_eq!(get(&instance, 7).await, $arg3);
-                }
             }
 
+            // Silences `super::*` warning
+            #[allow(unused_imports)]
             pub mod failure {
                 use super::{
                     *,

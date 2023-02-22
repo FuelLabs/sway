@@ -766,8 +766,6 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn first(self) -> Option<V> {
-        // TODO: should we omit this and just check if the first element is `None`?
-        // are there cases where length is set to zero, but the elements remain?
         match get::<u64>(__get_storage_key()).unwrap_or(0) {
             0 => Option::None,
             _ => get::<V>(sha256((0, __get_storage_key()))),
@@ -945,64 +943,7 @@ impl<V> StorageVec<V> {
                 i += 1;
             }
         }
-        // TODO: should we clear the old slots if new_len < len?
         store::<u64>(__get_storage_key(), new_len);
-    }
-}
-
-impl<V> StorageVec<V> {
-    /// Copies all elements of `other` into `self`.
-    ///
-    /// > NOTE: While `Vec` clears `other`, `StorageVec` does not clear `other` to reduce storage
-    /// > operations.
-    ///
-    /// ### Arguments
-    ///
-    /// * other - The vector to append to `self`.
-    ///
-    /// ### Storage Access
-    ///
-    /// * Reads - `1 + (2 * N)` where `N` is `other.len()`
-    /// * Writes - `1 + N` where `N` is `other.len()`
-    ///
-    /// ### Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {},
-    ///     vec2: StorageVec<u64> = StorageVec {},
-    /// }
-    ///
-    /// fn foo() {
-    ///     storage.vec.push(5);
-    ///     storage.vec.push(10);
-    ///
-    ///     storage.vec2.push(15);
-    ///     storage.vec2.push(20);
-    ///
-    ///     storage.vec.append(storage.vec2);
-    ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
-    ///     assert(20 == storage.vec.get(3).unwrap());
-    ///
-    ///     assert(15 == storage.vec2.get(0).unwrap());
-    ///     assert(20 == storage.vec2.get(1).unwrap());
-    /// }
-    /// ```
-    #[storage(read, write)]
-    pub fn append(self, other: StorageVec<V>) {
-        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
-        let other_len = other.len();
-
-        let mut i = 0;
-        while i < other_len {
-            store::<V>(sha256((len + i, __get_storage_key())), other.get(i).unwrap());
-            i += 1;
-        }
-
-        store::<u64>(__get_storage_key(), len + other_len)
     }
 }
 

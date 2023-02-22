@@ -6,9 +6,6 @@ abi MyContract {
     #[storage(read, write)]
     fn push(value: [u8; 3]);
 
-    #[storage(read, write)]
-    fn push_other(value: [u8; 3]);
-
     #[storage(write)]
     fn clear();
     #[storage(read)]
@@ -52,25 +49,16 @@ abi MyContract {
 
     #[storage(read, write)]
     fn resize(new_len: u64, value: [u8; 3]);
-
-    #[storage(read, write)]
-    fn append();
 }
 
 storage {
     my_vec: StorageVec<[u8; 3]> = StorageVec {},
-    my_other_vec: StorageVec<[u8; 3]> = StorageVec {},
 }
 
 impl MyContract for Contract {
     #[storage(read, write)]
     fn push(value: [u8; 3]) {
         storage.my_vec.push(value);
-    }
-
-    #[storage(read, write)]
-    fn push_other(value: [u8; 3]) {
-        storage.my_other_vec.push(value);
     }
 
     #[storage(write)]
@@ -146,10 +134,5 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn resize(new_len: u64, value: [u8; 3]) {
         storage.my_vec.resize(new_len, value);
-    }
-
-    #[storage(read, write)]
-    fn append() {
-        storage.my_vec.append(storage.my_other_vec);
     }
 }
