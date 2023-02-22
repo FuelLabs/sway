@@ -216,7 +216,7 @@ impl ty::TyImplTrait {
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
 
-                let abi = check!(
+                let mut abi = check!(
                     CompileResult::from(decl_engine.get_abi(&decl_id, &trait_name.span())),
                     return err(warnings, errors),
                     warnings,
@@ -233,14 +233,37 @@ impl ty::TyImplTrait {
                     });
                 }
 
+                // Replace the self type in the abi declaration.
+                let abi_type_parameters =
+                    TypeParameters::new_with_self_type(Some(abi.implementing_for.clone()));
+                let type_mapping =
+                    TypeSubstMap::from_type_parameters(engines, &abi_type_parameters);
+                abi.subst(&type_mapping, engines);
+
+                // Unify the "self" type param from the abi declaration with
+                // the type that we are implementing for.
+                check!(
+                    CompileResult::from(type_engine.unify(
+                        decl_engine,
+                        implementing_for.type_id,
+                        abi.implementing_for.type_id,
+                        &implementing_for.span,
+                        "",
+                        None
+                    )),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+
                 let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
 
                 let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
                         implementing_for.type_id,
-                        &TypeParameters::new(), // this is empty because abi definitions don't support generics,
-                        &TypeParameters::new(), // this is empty because abi definitions don't support generics,
+                        &new_impl_type_parameters, // this is empty because abi definitions don't support generics,
+                        &abi_type_parameters, // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &abi.supertraits,
                         &abi.interface_surface,

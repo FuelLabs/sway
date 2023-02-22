@@ -8,7 +8,7 @@ use crate::{
         ty::{self, TyTraitItem},
     },
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
-    CompileResult,
+    CompileResult, TypeParameter,
 };
 
 impl ty::TyAbiDeclaration {
@@ -18,6 +18,8 @@ impl ty::TyAbiDeclaration {
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let engines = ctx.engines();
 
         let AbiDeclaration {
             name,
@@ -34,16 +36,18 @@ impl ty::TyAbiDeclaration {
         // from itself. This is by design.
 
         // A temporary namespace for checking within this scope.
-        let type_engine = ctx.type_engine;
-        let decl_engine = ctx.decl_engine;
-        let contract_type = type_engine.insert(decl_engine, crate::TypeInfo::Contract);
         let mut abi_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut abi_namespace).with_mode(Mode::ImplAbiFn);
+
+        // Insert the "self" type param into the namespace.
+        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type_id = self_type_param.type_id;
+        self_type_param.insert_self_type_into_namespace(ctx.by_ref());
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this abi.
         check!(
-            insert_supertraits_into_namespace(ctx.by_ref(), contract_type, &supertraits),
+            insert_supertraits_into_namespace(ctx.by_ref(), self_type_id, &supertraits),
             return err(warnings, errors),
             warnings,
             errors
@@ -103,6 +107,7 @@ impl ty::TyAbiDeclaration {
             supertraits,
             items: new_items,
             name,
+            implementing_for: self_type_param,
             span,
             attributes,
         };
