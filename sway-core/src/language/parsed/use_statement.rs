@@ -1,7 +1,7 @@
 use crate::parsed::Span;
 use sway_types::ident::Ident;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImportType {
     Star,
     SelfImport(Span),
@@ -9,7 +9,7 @@ pub enum ImportType {
 }
 
 /// A [UseStatement] is a statement that imports something from a module into the local namespace.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseStatement {
     pub call_path: Vec<Ident>,
     pub import_type: ImportType,

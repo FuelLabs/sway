@@ -12,18 +12,24 @@ use crate::{
 
 use std::collections::{HashMap, HashSet};
 
+pub const DCE_NAME: &str = "dce";
+
 pub fn create_dce_pass() -> Pass {
     Pass {
-        name: "dce",
+        name: DCE_NAME,
         descr: "Dead code elimination.",
         runner: ScopedPass::FunctionPass(PassMutability::Transform(dce)),
+        deps: vec![],
     }
 }
 
+pub const FUNC_DCE_NAME: &str = "func_dce";
+
 pub fn create_func_dce_pass() -> Pass {
     Pass {
-        name: "func_dce",
+        name: FUNC_DCE_NAME,
         descr: "Dead function elimination.",
+        deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Transform(func_dce)),
     }
 }

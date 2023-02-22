@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration::{self, *},
-    TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
+    TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
@@ -29,14 +29,22 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: Documentation, forc_version: Option<String>) -> Result<RenderedDocumentation> {
+    pub fn from(
+        raw: Documentation,
+        root_attributes: Option<AttributesMap>,
+        program_kind: TyProgramKind,
+        forc_version: Option<String>,
+    ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let root_module = match raw.first() {
-            Some(doc) => ModuleInfo::from_vec(vec![doc.module_info.project_name().to_owned()]),
+            Some(doc) => ModuleInfo::from_ty_module(
+                vec![doc.module_info.project_name().to_owned()],
+                root_attributes.map(|attrs_map| attrs_map.to_html_string()),
+            ),
             None => panic!("Project does not contain a root module"),
         };
         let mut all_docs = DocLinks {
-            style: DocStyle::AllDoc,
+            style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
             links: Default::default(),
         };
         let mut module_map: BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>> =
@@ -52,31 +60,31 @@ impl RenderedDocumentation {
             match module_map.get_mut(&location) {
                 Some(doc_links) => {
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => match doc_links.get_mut(&BlockTitle::Structs) {
+                        StructDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Structs) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                             }
                         },
-                        EnumDeclaration(_) => match doc_links.get_mut(&BlockTitle::Enums) {
+                        EnumDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Enums) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                             }
                         },
-                        TraitDeclaration(_) => match doc_links.get_mut(&BlockTitle::Traits) {
+                        TraitDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Traits) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                             }
                         },
-                        AbiDeclaration(_) => match doc_links.get_mut(&BlockTitle::Abi) {
+                        AbiDeclaration { .. } => match doc_links.get_mut(&BlockTitle::Abi) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                             }
                         },
-                        StorageDeclaration(_) => {
+                        StorageDeclaration { .. } => {
                             match doc_links.get_mut(&BlockTitle::ContractStorage) {
                                 Some(links) => links.push(doc.link()),
                                 None => {
@@ -84,43 +92,47 @@ impl RenderedDocumentation {
                                 }
                             }
                         }
-                        FunctionDeclaration(_) => match doc_links.get_mut(&BlockTitle::Functions) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                        FunctionDeclaration { .. } => {
+                            match doc_links.get_mut(&BlockTitle::Functions) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                                }
                             }
-                        },
-                        ConstantDeclaration(_) => match doc_links.get_mut(&BlockTitle::Constants) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                        }
+                        ConstantDeclaration { .. } => {
+                            match doc_links.get_mut(&BlockTitle::Constants) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
+                                }
                             }
-                        },
+                        }
                         _ => {} // TODO: ImplTraitDeclaration
                     }
                 }
                 None => {
                     let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => {
+                        StructDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                         }
-                        EnumDeclaration(_) => {
+                        EnumDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                         }
-                        TraitDeclaration(_) => {
+                        TraitDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Traits, vec![doc.link()]);
                         }
-                        AbiDeclaration(_) => {
+                        AbiDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Abi, vec![doc.link()]);
                         }
-                        StorageDeclaration(_) => {
+                        StorageDeclaration { .. } => {
                             doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
                         }
-                        FunctionDeclaration(_) => {
+                        FunctionDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
                         }
-                        ConstantDeclaration(_) => {
+                        ConstantDeclaration { .. } => {
                             doc_links.insert(BlockTitle::Constants, vec![doc.link()]);
                         }
                         _ => {} // TODO: ImplTraitDeclaration
@@ -134,7 +146,7 @@ impl RenderedDocumentation {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
                     html_filename: INDEX_FILENAME.to_owned(),
-                    preview_opt: None,
+                    preview_opt: doc.module_info.preview_opt(),
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
@@ -156,55 +168,60 @@ impl RenderedDocumentation {
             }
             // Above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow.
             match doc.item_body.ty_decl {
-                StructDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Structs) {
+                StructDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Structs) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
                     }
                 },
-                EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
+                EnumDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Enums) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
                     }
                 },
-                TraitDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Traits) {
+                TraitDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Traits) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Traits, vec![doc.link()]);
                     }
                 },
-                AbiDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Abi) {
+                AbiDeclaration { .. } => match all_docs.links.get_mut(&BlockTitle::Abi) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Abi, vec![doc.link()]);
                     }
                 },
-                StorageDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::ContractStorage)
-                {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                StorageDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::ContractStorage) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::ContractStorage, vec![doc.link()]);
+                        }
                     }
-                },
-                FunctionDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Functions) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::Functions, vec![doc.link()]);
+                }
+                FunctionDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::Functions) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::Functions, vec![doc.link()]);
+                        }
                     }
-                },
-                ConstantDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Constants) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs
-                            .links
-                            .insert(BlockTitle::Constants, vec![doc.link()]);
+                }
+                ConstantDeclaration { .. } => {
+                    match all_docs.links.get_mut(&BlockTitle::Constants) {
+                        Some(links) => links.push(doc.link()),
+                        None => {
+                            all_docs
+                                .links
+                                .insert(BlockTitle::Constants, vec![doc.link()]);
+                        }
                     }
-                },
+                }
                 _ => {} // TODO: ImplTraitDeclaration
             }
         }
@@ -218,7 +235,7 @@ impl RenderedDocumentation {
                         version_opt: forc_version,
                         module_info: root_module.clone(),
                         module_docs: DocLinks {
-                            style: DocStyle::ProjectIndex,
+                            style: DocStyle::ProjectIndex(program_kind.as_title_str().to_string()),
                             links: doc_links.to_owned(),
                         },
                     }
@@ -476,7 +493,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -492,7 +509,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}storagefield.{}",
                                 IDENTITY,
@@ -508,7 +525,7 @@ impl ItemContext {
                         .iter()
                         .map(|variant| DocLink {
                             name: variant.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
                             preview_opt: None,
                         })
@@ -520,7 +537,7 @@ impl ItemContext {
                         .iter()
                         .map(|method| DocLink {
                             name: method.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -583,7 +600,7 @@ impl Renderable for TyStructField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -603,7 +620,7 @@ impl Renderable for TyStorageField {
                 code {
                     : format!("{}: ", self.name.as_str());
                     // TODO: Add links to types based on visibility
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -623,7 +640,7 @@ impl Renderable for TyEnumVariant {
                 a(class="anchor field", href=format!("{IDENTITY}{enum_variant_id}"));
                 code {
                     : format!("{}: ", self.name.as_str());
-                    : self.type_span.as_str();
+                    : self.type_argument.span.as_str();
                 }
             }
             @ if !self.attributes.is_empty() {
@@ -654,20 +671,20 @@ impl Renderable for TyTraitFn {
                     fn_sig,
                     "{} {},",
                     param.name.as_str(),
-                    param.type_span.as_str()
+                    param.type_argument.span.as_str()
                 )?;
             }
         }
         write!(fn_sig, ") -> {}", self.return_type_span.as_str())?;
         let multiline = fn_sig.chars().count() >= 60;
 
-        let method_id = format!("tymethod.{}", self.name.as_str());
+        let method_ref = format!("tymethod.{}", self.name.as_str());
         Ok(box_html! {
             div(class="methods") {
-                div(id=&method_id, class="method has-srclink") {
+                div(id=&method_ref, class="method has-srclink") {
                     h4(class="code-header") {
                         : "fn ";
-                        a(class="fnname", href=format!("{IDENTITY}{method_id}")) {
+                        a(class="fnname", href=format!("{IDENTITY}{method_ref}")) {
                             : self.name.as_str();
                         }
                         : "(";
@@ -676,7 +693,7 @@ impl Renderable for TyTraitFn {
                                 br;
                                 : "    ";
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -686,7 +703,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                     : ","
                                 }
                             }
@@ -695,7 +712,7 @@ impl Renderable for TyTraitFn {
                         } else {
                             @ for param in &self.parameters {
                                 @ if param.is_reference {
-                                    : "&";
+                                    : "ref";
                                 }
                                 @ if param.is_mutable {
                                     : "mut ";
@@ -705,7 +722,7 @@ impl Renderable for TyTraitFn {
                                 } else {
                                     : param.name.as_str();
                                     : ": ";
-                                    : param.type_span.as_str();
+                                    : param.type_argument.span.as_str();
                                 }
                                 @ if param.name.as_str()
                                     != self.parameters.last()
@@ -740,7 +757,7 @@ struct DocLinks {
 impl Renderable for DocLinks {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
-            DocStyle::AllDoc => box_html! {
+            DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
@@ -768,7 +785,7 @@ impl Renderable for DocLinks {
             }
             .into_string()
             .unwrap(),
-            DocStyle::ProjectIndex => box_html! {
+            DocStyle::ProjectIndex(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
@@ -905,7 +922,7 @@ impl SidebarNav for AllDocIndex {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
             version_opt: None,
-            style: DocStyle::AllDoc,
+            style: self.all_docs.style.clone(),
             module_info: self.project_name.clone(),
             href_path: INDEX_FILENAME.to_owned(),
             nav: self.all_docs.clone(),
@@ -980,7 +997,7 @@ pub(crate) struct ModuleIndex {
 impl SidebarNav for ModuleIndex {
     fn sidebar(&self) -> Sidebar {
         let style = match self.module_info.is_root_module() {
-            true => DocStyle::ProjectIndex,
+            true => self.module_docs.style.clone(),
             false => DocStyle::ModuleIndex,
         };
         Sidebar {
@@ -997,8 +1014,8 @@ impl Renderable for ModuleIndex {
         let doc_links = self.module_docs.clone().render()?;
         let sidebar = self.sidebar().render()?;
         let title_prefix = match self.module_docs.style {
-            DocStyle::ProjectIndex => "Project ",
-            DocStyle::ModuleIndex => "Module ",
+            DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
+            DocStyle::ModuleIndex => "Module ".to_string(),
             _ => unreachable!("Module Index can only be either a project or module at this time."),
         };
 
@@ -1070,6 +1087,16 @@ impl Renderable for ModuleIndex {
                                     }
                                 }
                             }
+                            @ if self.module_info.attributes.is_some() {
+                                details(class="swaydoc-toggle top-doc", open) {
+                                    summary(class="hideme") {
+                                        span { : "Expand description" }
+                                    }
+                                    div(class="docblock") {
+                                        : Raw(self.module_info.attributes.unwrap())
+                                    }
+                                }
+                            }
                             : doc_links;
                         }
                     }
@@ -1085,8 +1112,8 @@ trait SidebarNav {
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 enum DocStyle {
-    AllDoc,
-    ProjectIndex,
+    AllDoc(String),
+    ProjectIndex(String),
     ModuleIndex,
     Item,
 }
@@ -1106,8 +1133,8 @@ impl Renderable for Sidebar {
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
         let location_with_prefix = match &self.style {
-            DocStyle::AllDoc | DocStyle::ProjectIndex => {
-                format!("Project {}", self.module_info.location())
+            DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
+                format!("{project_kind} {}", self.module_info.location())
             }
             DocStyle::ModuleIndex | DocStyle::Item => format!(
                 "{} {}",
@@ -1116,15 +1143,17 @@ impl Renderable for Sidebar {
             ),
         };
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
-            DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
-            DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
+            DocStyle::AllDoc(_) | DocStyle::Item => {
+                (self.href_path.clone(), self.href_path.clone())
+            }
+            DocStyle::ProjectIndex(_) => (IDENTITY.to_owned(), IDENTITY.to_owned()),
             DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
-            DocStyle::ProjectIndex => {
+            DocStyle::ProjectIndex(_) => {
                 let nav_links = self.nav.links;
                 let version = match self.version_opt {
                     Some(ref v) => v.as_str(),

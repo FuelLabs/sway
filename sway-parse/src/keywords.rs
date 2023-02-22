@@ -147,7 +147,8 @@ token_impls! {
     DoubleAmpersandToken,
     DoublePipeToken,
     UnderscoreToken,
-    HashToken
+    HashToken,
+    HashBangToken
 }
 
 // Keep this in sync with the list in `sway-ast/keywords.rs` defined by define_keyword!

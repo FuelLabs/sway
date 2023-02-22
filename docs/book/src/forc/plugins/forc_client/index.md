@@ -6,9 +6,9 @@ Forc plugin for interacting with a Fuel node.
 
 If you don't have an initialized wallet or any account for your wallet you won't be able to sign transactions.
 
-To initialize a wallet you can use `forc wallet init`. It will ask you to choose a password to encrypt your wallet. After the initialization is done you will have your mnemonic phrase.
+To create a wallet you can use `forc wallet new`. It will ask you to choose a password to encrypt your wallet. After the initialization is done you will have your mnemonic phrase.
 
-After you have an initialized wallet, you can create an account for it by simply running `forc wallet new`. It will ask your password to decrypt the wallet before creating an account.
+After you have created a wallet, you can derive a new account by running `forc wallet account new`. It will ask your password to decrypt the wallet before deriving an account.
 
 ## Signing transactions using `forc-wallet` CLI
 
@@ -21,15 +21,15 @@ If you want to run `fuel-core` with UTXO validation, you can pass `--utxo-valida
 To install `forc-wallet` please refer to `forc-wallet`'s [github repo](https://github.com/FuelLabs/forc-wallet#forc-wallet).
 
 1. Construct the transaction by using either `forc deploy` or `forc run`. To do so simply run `forc deploy` or `forc run` with your desired parameters. For a list of parameters please refer to the [forc-deploy](./forc_deploy) or [forc-run](./forc_run) section of the book. Once you run either command you will be asked the address of the wallet you are going to be signing with. After the address is given the transaction will be generated and you will be given a transaction ID. At this point CLI will actively wait for you to insert the signature.
-2. Take the transaction ID generated in the first step and sign it with `forc wallet sign <transaction_id> <account_index>`. This will generate a signature.
+2. Take the transaction ID generated in the first step and sign it with `forc wallet sign --account <account_index> tx-id <transaction_id>`. This will generate a signature.
 3. Take the signature generated in the second step and provide it to `forc-deploy` (or `forc-run`). Once the signature is provided, the signed transaction will be submitted.
 
 ## Other useful commands of `forc-wallet`
 
-- You can see a list of existing accounts with `list` command.
+- You can see a list of existing accounts with `accounts` command.
 
 ```sh
-forc wallet list
+forc wallet accounts
 ```
 
 - If you want to retrieve the address for an account by its index you can use `account` command.

@@ -15,7 +15,7 @@
 ///
 /// `bar`'s [StorageSlot] is `sha256(format!("{}{}", STORAGE_DOMAIN_SEPARATOR, 1))` or
 /// `DE9090CB50E71C2588C773487D1DA7066D0C719849A7E58DC8B6397A25C567C0`.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub struct StateIndex(usize);
 
 impl StateIndex {

@@ -1,7 +1,12 @@
-use std::collections::HashSet;
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::PathBuf,
+    sync::Arc,
+};
 
 use forc_pkg as pkg;
+use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::gas::GasCosts;
@@ -260,6 +265,7 @@ impl Opts {
             time_phases: self.time_phases,
             tests: true,
             const_inject_map,
+            member_filter: Default::default(),
         }
     }
 
@@ -281,6 +287,22 @@ impl TestResult {
                 !matches!(self.state, vm::state::ProgramState::Revert(_))
             }
         }
+    }
+
+    /// Return the revert code for this `TestResult` if the test is reverted.
+    pub fn revert_code(&self) -> Option<u64> {
+        match self.state {
+            vm::state::ProgramState::Revert(revert_code) => Some(revert_code),
+            _ => None,
+        }
+    }
+
+    /// Return a `ErrorSignal` for this `TestResult` if the test is failed to pass.
+    pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
+        let revert_code = self.revert_code().ok_or_else(|| {
+            anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
+        })?;
+        ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
     }
 
     /// Return `TestDetails` from the span of the function declaring this test.
@@ -307,6 +329,9 @@ impl TestResult {
 impl BuiltTests {
     /// The total number of tests.
     pub fn test_count(&self) -> usize {
+        // TODO: Remove this once https://github.com/FuelLabs/sway/issues/3947 is solved.
+        let mut visited_tests = HashSet::new();
+
         let pkgs: Vec<&PackageTests> = match self {
             BuiltTests::Package(pkg) => vec![pkg],
             BuiltTests::Workspace(workspace) => workspace.iter().collect(),
@@ -316,7 +341,8 @@ impl BuiltTests {
                 pkg.built_pkg_with_tests()
                     .entries
                     .iter()
-                    .filter(|e| e.is_test())
+                    .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
+                    .filter(|(_, test_entry)| visited_tests.insert(&test_entry.span))
                     .count()
             })
             .sum()

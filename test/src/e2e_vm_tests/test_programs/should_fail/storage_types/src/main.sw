@@ -63,3 +63,24 @@ fn insert(mapping: StorageMap<u64, u64>) {
 fn return_storage_vec_standalone_fn() -> StorageVec<u64> {
     storage.v
 }
+
+pub struct MyStruct { }
+
+impl MyStruct {
+    #[storage(read, write)]
+    pub fn takes_storage_struct_in_impl(self, my_struct: StorageVec<u64>) {
+        my_struct.push(5);
+    }
+}
+
+pub trait MyTrait {
+    #[storage(read, write)]
+    fn takes_storage_struct_in_trait_impl(self, my_struct: StorageVec<u64>);
+}
+
+impl MyTrait for MyStruct {
+    #[storage(read, write)]
+    fn takes_storage_struct_in_trait_impl(self, my_struct: StorageVec<u64>) {
+        my_struct.push(5);
+    }
+}

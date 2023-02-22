@@ -451,6 +451,7 @@ mod inputs {
                     .methods()
                     .get_tx_input_predicate_data_pointer(0)
                     .call_params(call_params)
+                    .unwrap()
                     .call()
                     .await
                     .unwrap();

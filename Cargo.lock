@@ -1464,14 +1464,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples-checker"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap 3.2.23",
-]
-
-[[package]]
 name = "extension-trait"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1597,7 +1589,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -1629,11 +1621,13 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "async-trait",
+ "chrono",
  "clap 3.2.23",
+ "devault",
  "forc",
  "forc-pkg",
  "forc-tracing",
@@ -1648,7 +1642,9 @@ dependencies = [
  "fuels-types",
  "futures",
  "hex",
+ "rand",
  "serde",
+ "serde_json",
  "sway-core",
  "sway-types",
  "sway-utils",
@@ -1658,7 +1654,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "clap 4.1.4",
@@ -1677,7 +1673,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1694,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1704,7 +1700,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "fd-lock",
@@ -1731,10 +1727,11 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "forc-pkg",
+ "fuel-abi-types 0.2.0",
  "fuel-tx",
  "fuel-vm",
  "rand",
@@ -1744,7 +1741,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -1753,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "clap 3.2.23",
@@ -1761,11 +1758,12 @@ dependencies = [
  "fuel-tx",
  "serde",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
 name = "forc-util"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -4779,7 +4777,7 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "sway-ast"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4789,7 +4787,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "clap 3.2.23",
  "derivative",
@@ -4828,7 +4826,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -4840,7 +4838,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -4855,7 +4853,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -4865,7 +4863,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -4915,7 +4913,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -4931,7 +4929,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -4942,11 +4940,11 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.35.0"
+version = "0.35.3"
 
 [[package]]
 name = "swayfmt"
-version = "0.35.0"
+version = "0.35.3"
 dependencies = [
  "anyhow",
  "forc-tracing",
@@ -4961,6 +4959,7 @@ dependencies = [
  "sway-error",
  "sway-parse",
  "sway-types",
+ "test-macros",
  "thiserror",
  "toml",
 ]
@@ -5140,6 +5139,14 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+]
+
+[[package]]
+name = "test-macros"
+version = "0.0.0"
+dependencies = [
+ "paste",
+ "prettydiff 0.6.2",
 ]
 
 [[package]]

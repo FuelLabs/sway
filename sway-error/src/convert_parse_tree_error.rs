@@ -9,6 +9,8 @@ pub enum ConvertParseTreeError {
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
     GenericsNotSupportedHere { span: Span },
+    #[error("multiple generics are not supported")]
+    MultipleGenericsNotSupported { span: Span },
     #[error("tuple index out of range")]
     TupleIndexOutOfRange { span: Span },
     #[error("shift-left expressions are not implemented")]
@@ -105,6 +107,8 @@ pub enum ConvertParseTreeError {
     RefExprNotYetSupported { span: Span },
     #[error("Deref expressions are not supported yet.")]
     DerefExprNotYetSupported { span: Span },
+    #[error("Constant requires expression.")]
+    ConstantRequiresExpression { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -113,6 +117,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
+            ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
             ConvertParseTreeError::TupleIndexOutOfRange { span } => span.clone(),
             ConvertParseTreeError::ShlNotImplemented { span } => span.clone(),
             ConvertParseTreeError::ShrNotImplemented { span } => span.clone(),
@@ -161,6 +166,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
             ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
+            ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
         }
     }
 }

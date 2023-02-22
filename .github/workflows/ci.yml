@@ -56,12 +56,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Install Forc fmt
-        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
-      - name: Build Sway examples
-        run: cargo run --locked --bin examples-checker build --all-examples
+      - name: Build Sway examples workspace
+        run: cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml
 
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
@@ -72,12 +68,8 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - name: Install Forc
-        run: cargo install --locked --debug --path ./forc
-      - name: Install Forc fmt
-        run: cargo install --locked --debug --path ./forc-plugins/forc-fmt
       - name: Check Sway examples formatting
-        run: cargo run --locked --bin examples-checker fmt --all-examples
+        run: cargo run --locked -p forc-fmt -- --check --path ./examples
 
   build-mdbook:
     runs-on: ubuntu-latest
@@ -95,8 +87,8 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
           cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-client
-          cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug --path ./forc-plugins/forc-doc
+          cargo install --locked --debug --path ./forc-plugins/forc-tx
           cargo install --locked --debug forc-explore
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
