@@ -17,6 +17,7 @@ pub struct FunctionDeclaration {
     pub span: Span,
     pub return_type: TypeArgument,
     pub type_parameters: Vec<TypeParameter>,
+    pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
 }
 
 #[derive(Debug, Clone)]

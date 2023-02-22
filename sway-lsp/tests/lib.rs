@@ -1207,6 +1207,66 @@ async fn go_to_definition_for_impls() {
 }
 
 #[tokio::test]
+async fn go_to_definition_for_where_clause() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/where_clause/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 6,
+        req_char: 8,
+        def_line: 2,
+        def_start_char: 6,
+        def_end_char: 12,
+        def_path: uri.as_str(),
+    };
+    // Trait1
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 7, 8, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 7,
+        req_char: 17,
+        def_line: 3,
+        def_start_char: 6,
+        def_end_char: 12,
+        def_path: uri.as_str(),
+    };
+    // Trait2
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 6,
+        req_char: 4,
+        def_line: 5,
+        def_start_char: 7,
+        def_end_char: 8,
+        def_path: uri.as_str(),
+    };
+    // A
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    let go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 7,
+        req_char: 4,
+        def_line: 5,
+        def_start_char: 10,
+        def_end_char: 11,
+        def_path: uri.as_str(),
+    };
+    // B
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+}
+
+#[tokio::test]
 async fn go_to_definition_for_enums() {
     let (mut service, _) = LspService::new(Backend::new);
     let uri = init_and_open(

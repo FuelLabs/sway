@@ -460,8 +460,16 @@ fn item_fn_to_function_declaration(
             handler,
             engines,
             item_fn.fn_signature.generics,
-            item_fn.fn_signature.where_clause_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
         )?,
+        where_clause: item_fn
+            .fn_signature
+            .where_clause_opt
+            .map(|where_clause| {
+                where_clause_to_trait_constraints(context, handler, engines, where_clause)
+            })
+            .transpose()?
+            .unwrap_or(vec![]),
     })
 }
 
@@ -497,6 +505,24 @@ fn get_attributed_purity(
         }
         _otherwise => Ok(Purity::Pure),
     }
+}
+
+fn where_clause_to_trait_constraints(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    where_clause: WhereClause,
+) -> Result<Vec<(Ident, Vec<TraitConstraint>)>, ErrorEmitted> {
+    where_clause
+        .bounds
+        .into_iter()
+        .map(|bound| {
+            Ok((
+                bound.ty_name,
+                traits_to_trait_constraints(context, handler, engines, bound.bounds)?,
+            ))
+        })
+        .collect()
 }
 
 fn item_trait_to_trait_declaration(
@@ -940,14 +966,11 @@ fn generic_params_opt_to_type_parameters(
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
 
-        param_to_edit.trait_constraints.extend(
-            traits_to_call_paths(context, handler, engines, bounds)?
-                .into_iter()
-                .map(|(trait_name, type_arguments)| TraitConstraint {
-                    trait_name,
-                    type_arguments,
-                }),
-        );
+        param_to_edit
+            .trait_constraints
+            .extend(traits_to_trait_constraints(
+                context, handler, engines, bounds,
+            )?);
     }
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1229,12 +1252,12 @@ fn fn_signature_to_trait_fn(
     Ok(trait_fn)
 }
 
-fn traits_to_call_paths(
+fn traits_to_trait_constraints(
     context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     traits: Traits,
-) -> Result<Vec<(CallPath, Vec<TypeArgument>)>, ErrorEmitted> {
+) -> Result<Vec<TraitConstraint>, ErrorEmitted> {
     let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
         context,
         handler,
@@ -1246,7 +1269,13 @@ fn traits_to_call_paths(
             path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
-    Ok(parsed_traits)
+    Ok(parsed_traits
+        .into_iter()
+        .map(|(trait_name, type_arguments)| TraitConstraint {
+            trait_name,
+            type_arguments,
+        })
+        .collect())
 }
 
 fn traits_to_supertraits(
