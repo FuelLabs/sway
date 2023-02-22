@@ -461,7 +461,6 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
             (pinned_member, contract_dependencies)
         })
         .collect();
-
     BuiltTests::from_built(built, &member_contract_dependencies)
 }
 

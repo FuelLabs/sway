@@ -2259,7 +2259,7 @@ pub fn build(
                 // `forc-test` interpreter deployments are done with zeroed salt.
                 let contract_id = contract_id(
                     compiled_without_tests.bytecode.bytes.clone(),
-                    compiled_without_tests.storage_slots,
+                    compiled_without_tests.storage_slots.clone(),
                     &fuel_tx::Salt::zeroed(),
                 );
                 let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
@@ -2271,6 +2271,13 @@ pub fn build(
                 };
                 let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
+            }
+            // TODO: remove this once https://github.com/FuelLabs/sway/issues/4162 is fixed
+            if is_contract_dependency && include_tests {
+                let bytes = compiled_without_tests.bytecode.bytes.clone();
+                let storage_slots = compiled_without_tests.storage_slots;
+                let contract_id = contract_id(bytes, storage_slots, &fuel_tx::Salt::zeroed());
+                info!(" {} id for test execution:{}", pkg.name, contract_id)
             }
 
             Some(compiled_without_tests.bytecode)
