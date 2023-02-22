@@ -223,6 +223,7 @@ macro_rules! testgen {
 
             pub mod success {
                 use super::{
+                    *,
                     setup::get_contract_instance,
                     wrappers::*,
                 };
@@ -527,6 +528,7 @@ macro_rules! testgen {
 
             pub mod failure {
                 use super::{
+                    *,
                     setup::get_contract_instance,
                     wrappers::*,
                 };
