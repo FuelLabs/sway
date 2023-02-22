@@ -3003,8 +3003,14 @@ pub fn build(
                 bail!("Failed to compile {}", pkg.name);
             }
         };
+        // If this node is a contract dependency of any other node in the graph, we need to build
+        // it with tests disabled so that the contract id injected into the namepsace is not
+        // effected by the tests in that file.
         let profile = if is_contract_dependency(plan.graph(), node) {
-            BuildProfile::release()
+            BuildProfile {
+                include_tests: false,
+                ..profile.clone()
+            }
         } else {
             profile.clone()
         };
