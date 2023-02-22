@@ -209,7 +209,7 @@ You can pass a "Salt" using the `--salt` flag passed to your `forc deploy` comma
 To add a "Salt" while deploying your contract, you can run the following command:
 
 ```bash
-forc deploy --salt <Salt> --node-url <key> --gas-price 1
+forc deploy --unsigned --salt <Salt> --node-url <key> --gas-price 1
 ```
 
 ### Randomised Salt
@@ -217,10 +217,10 @@ forc deploy --salt <Salt> --node-url <key> --gas-price 1
 Salt is `0x0000000000000000000000000000000000000000000000000000000000000000` by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:
 
 ```bash
-forc deploy --random-salt --node-url <key> --gas-price 1
+forc deploy --unsigned --random-salt --node-url <key> --gas-price 1
 ```
 
-> Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](https://fuellabs.github.io/sway/v0.35.2/book/forc/plugins/forc_client/index.html).
+> Note: To be able to use the `forc deploy` and `forc run` commands, you require the `forc client` plugin that lets you interact with a Fuel node. You can read more about `forc client` [here](../forc/plugins/forc_client/index.md).
 
 ## Testing Your Contract
 
