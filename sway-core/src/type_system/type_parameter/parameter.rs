@@ -135,6 +135,18 @@ impl TypeParameter {
         }
     }
 
+    pub(crate) fn insert_self_type_into_namespace(&self, ctx: TypeCheckContext) {
+        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
+            name: self.name_ident.clone(),
+            type_id: self.type_id,
+        };
+        let name_a = Ident::new_with_override("self", self.name_ident.span());
+        let name_b = Ident::new_with_override("Self", self.name_ident.span());
+        ctx.namespace
+            .insert_symbol(name_a, type_parameter_decl.clone());
+        ctx.namespace.insert_symbol(name_b, type_parameter_decl);
+    }
+
     /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
     /// inserts into into the current namespace.
     pub(super) fn type_check(
