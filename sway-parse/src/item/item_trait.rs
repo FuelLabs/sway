@@ -1,8 +1,20 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::keywords::{OpenAngleBracketToken, WhereToken};
-use sway_ast::{Braces, FnSignature, ItemFn, ItemTrait, Traits};
+use sway_ast::keywords::{FnToken, OpenAngleBracketToken, WhereToken};
+use sway_ast::{Braces, ItemFn, ItemTrait, ItemTraitItem, PubToken, Traits};
+use sway_error::parser_error::ParseErrorKind;
+
+impl Parse for ItemTraitItem {
+    fn parse(parser: &mut Parser) -> ParseResult<ItemTraitItem> {
+        if parser.peek::<PubToken>().is_some() || parser.peek::<FnToken>().is_some() {
+            let fn_decl = parser.parse()?;
+            Ok(ItemTraitItem::Fn(fn_decl))
+        } else {
+            Err(parser.emit_error(ParseErrorKind::ExpectedAnItem))
+        }
+    }
+}
 
 impl Parse for ItemTrait {
     fn parse(parser: &mut Parser) -> ParseResult<ItemTrait> {
@@ -19,10 +31,12 @@ impl Parse for ItemTrait {
         };
         let where_clause_opt = parser.guarded_parse::<WhereToken, _>()?;
 
-        let trait_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
-        for item in trait_items.get().iter() {
-            let (fn_sig, _) = item;
-            parser.ban_visibility_qualifier(&fn_sig.value.visibility)?;
+        let trait_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
+        for (annotated, _) in trait_items.get().iter() {
+            #[allow(irrefutable_let_patterns)]
+            if let ItemTraitItem::Fn(fn_sig) = &annotated.value {
+                parser.ban_visibility_qualifier(&fn_sig.visibility)?;
+            }
         }
 
         let trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;

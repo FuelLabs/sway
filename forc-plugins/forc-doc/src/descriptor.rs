@@ -6,7 +6,7 @@ use crate::{
 use anyhow::Result;
 use sway_core::{
     decl_engine::*,
-    language::ty::{TyDeclaration, TyTraitFn},
+    language::ty::{TyDeclaration, TyTraitFn, TyTraitInterfaceItem},
 };
 
 trait RequiredMethods {
@@ -123,7 +123,14 @@ impl Descriptor {
                         .then(|| trait_decl.attributes.to_html_string());
                     let context = (!trait_decl.interface_surface.is_empty()).then_some(
                         ContextType::RequiredMethods(
-                            trait_decl.interface_surface.to_methods(decl_engine)?,
+                            trait_decl
+                                .interface_surface
+                                .into_iter()
+                                .flat_map(|item| match item {
+                                    TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                })
+                                .collect::<Vec<_>>()
+                                .to_methods(decl_engine)?,
                         ),
                     );
 
@@ -157,7 +164,14 @@ impl Descriptor {
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
                 let context = (!abi_decl.interface_surface.is_empty()).then_some(
                     ContextType::RequiredMethods(
-                        abi_decl.interface_surface.to_methods(decl_engine)?,
+                        abi_decl
+                            .interface_surface
+                            .into_iter()
+                            .flat_map(|item| match item {
+                                TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                            })
+                            .collect::<Vec<_>>()
+                            .to_methods(decl_engine)?,
                     ),
                 );
 

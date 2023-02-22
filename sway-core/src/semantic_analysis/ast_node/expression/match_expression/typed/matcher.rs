@@ -96,7 +96,7 @@ pub(crate) fn matcher(
         ty::TyScrutineeVariant::Literal(value) => match_literal(exp, value, span),
         ty::TyScrutineeVariant::Variable(name) => match_variable(exp, name),
         ty::TyScrutineeVariant::Constant(name, _, const_decl) => {
-            match_constant(exp, name, const_decl.value.return_type, span)
+            match_constant(exp, name, const_decl.type_ascription.type_id, span)
         }
         ty::TyScrutineeVariant::StructScrutinee { fields, .. } => match_struct(ctx, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee { value, variant, .. } => {
