@@ -60,12 +60,3 @@ impl SubstTypes for DeclId {
         decl_engine.replace(self, decl);
     }
 }
-
-impl ReplaceSelfType for DeclId {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(self, decl);
-    }
-}

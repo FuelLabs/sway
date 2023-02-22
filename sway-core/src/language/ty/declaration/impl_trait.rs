@@ -66,14 +66,3 @@ impl SubstTypes for TyImplTrait {
             .for_each(|x| x.subst(type_mapping, engines));
     }
 }
-
-impl ReplaceSelfType for TyImplTrait {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.impl_type_parameters
-            .replace_self_type(engines, self_type);
-        self.implementing_for.replace_self_type(engines, self_type);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}

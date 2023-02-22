@@ -94,7 +94,6 @@ impl<'a> Unifier<'a> {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (vec![], vec![]),
-            (SelfType, SelfType) => (vec![], vec![]),
             (B256, B256) => (vec![], vec![]),
             (Numeric, Numeric) => (vec![], vec![]),
             (Contract, Contract) => (vec![], vec![]),
@@ -124,6 +123,24 @@ impl<'a> Unifier<'a> {
                 (en.suffix, etps, efs),
             ),
             // Let empty enums to coerce to any other type. This is useful for Never enum.
+            (
+                ref r @ Enum {
+                    variant_types: ref rvs,
+                    ..
+                },
+                e @ Placeholder(_),
+            ) if rvs.is_empty() => {
+                self.replace_expected_with_received(received, expected, r.clone(), &e, span)
+            }
+            (
+                ref r @ Enum {
+                    variant_types: ref rvs,
+                    ..
+                },
+                e @ UnknownGeneric { .. },
+            ) if rvs.is_empty() && e.is_self_type() => {
+                self.replace_expected_with_received(received, expected, r.clone(), &e, span)
+            }
             (
                 Enum {
                     variant_types: rvs, ..
@@ -354,7 +371,10 @@ impl<'a> Unifier<'a> {
         let mut errors = vec![];
         let (rn, rtps, rfs) = r;
         let (en, etps, efs) = e;
-        if rn == en && rfs.len() == efs.len() && rtps.len() == etps.len() {
+        if rn == en
+            && rfs.len() == efs.len()
+            && rtps.len_excluding_self() == etps.len_excluding_self()
+        {
             rfs.iter().zip(efs.iter()).for_each(|(rf, ef)| {
                 let new_span = if self.arguments_are_flipped {
                     &ef.span
@@ -367,18 +387,20 @@ impl<'a> Unifier<'a> {
                     errors
                 );
             });
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let new_span = if self.arguments_are_flipped {
-                    etp.name_ident.span()
-                } else {
-                    rtp.name_ident.span()
-                };
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &new_span),
-                    warnings,
-                    errors
-                );
-            });
+            rtps.iter_including_self()
+                .zip(etps.iter_including_self())
+                .for_each(|(rtp, etp)| {
+                    let new_span = if self.arguments_are_flipped {
+                        etp.name_ident.span()
+                    } else {
+                        rtp.name_ident.span()
+                    };
+                    append!(
+                        self.unify(rtp.type_id, etp.type_id, &new_span),
+                        warnings,
+                        errors
+                    );
+                });
         } else {
             let (received, expected) = self.assign_args(received, expected);
             errors.push(TypeError::MismatchedType {
@@ -403,7 +425,10 @@ impl<'a> Unifier<'a> {
         let mut errors = vec![];
         let (rn, rtps, rvs) = r;
         let (en, etps, evs) = e;
-        if rn == en && rvs.len() == evs.len() && rtps.len() == etps.len() {
+        if rn == en
+            && rvs.len() == evs.len()
+            && rtps.len_excluding_self() == etps.len_excluding_self()
+        {
             rvs.iter().zip(evs.iter()).for_each(|(rv, ev)| {
                 let new_span = if self.arguments_are_flipped {
                     &ev.span
@@ -416,18 +441,20 @@ impl<'a> Unifier<'a> {
                     errors
                 );
             });
-            rtps.iter().zip(etps.iter()).for_each(|(rtp, etp)| {
-                let new_span = if self.arguments_are_flipped {
-                    etp.name_ident.span()
-                } else {
-                    rtp.name_ident.span()
-                };
-                append!(
-                    self.unify(rtp.type_id, etp.type_id, &new_span),
-                    warnings,
-                    errors
-                );
-            });
+            rtps.iter_including_self()
+                .zip(etps.iter_including_self())
+                .for_each(|(rtp, etp)| {
+                    let new_span = if self.arguments_are_flipped {
+                        etp.name_ident.span()
+                    } else {
+                        rtp.name_ident.span()
+                    };
+                    append!(
+                        self.unify(rtp.type_id, etp.type_id, &new_span),
+                        warnings,
+                        errors
+                    );
+                });
         } else {
             let (received, expected) = self.assign_args(received, expected);
             errors.push(TypeError::MismatchedType {

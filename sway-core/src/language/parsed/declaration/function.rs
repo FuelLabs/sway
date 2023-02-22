@@ -16,7 +16,7 @@ pub struct FunctionDeclaration {
     pub parameters: Vec<FunctionParameter>,
     pub span: Span,
     pub return_type: TypeArgument,
-    pub type_parameters: TypeParameters,
+    pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
 }
 

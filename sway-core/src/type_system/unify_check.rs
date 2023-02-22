@@ -125,7 +125,6 @@ impl<'a> UnifyCheck<'a> {
             (_, Unknown) => true,
 
             (Boolean, Boolean) => true,
-            (SelfType, SelfType) => true,
             (B256, B256) => true,
             (Numeric, Numeric) => true,
             (Contract, Contract) => true,
@@ -197,11 +196,11 @@ impl<'a> UnifyCheck<'a> {
                     .map(|x| x.name.clone())
                     .collect::<Vec<_>>();
                 let l_types = l_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 l_name.suffix == r_name.suffix
@@ -223,11 +222,11 @@ impl<'a> UnifyCheck<'a> {
                 let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let l_types = l_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 l_name.suffix == r_name.suffix

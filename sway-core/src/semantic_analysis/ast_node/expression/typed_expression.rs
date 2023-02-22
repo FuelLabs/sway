@@ -310,14 +310,14 @@ impl ty::TyExpression {
 
         // if the return type cannot be cast into the annotation type then it is a type error
         append!(
-            ctx.unify_with_self(typed_expression.return_type, &expr_span),
+            ctx.unify_with_type_annotation(typed_expression.return_type, &expr_span),
             warnings,
             errors
         );
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 typed_expression.return_type,
                 &expr_span,
                 EnforceTypeArguments::No,
@@ -555,7 +555,7 @@ impl ty::TyExpression {
         );
 
         append!(
-            ctx.unify_with_self(block_return_type, &span),
+            ctx.unify_with_type_annotation(block_return_type, &span),
             warnings,
             errors
         );
@@ -757,7 +757,7 @@ impl ty::TyExpression {
             .map(|x| x.1)
             .unwrap_or_else(|| asm.whole_block_span.clone());
         let return_type = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 type_engine.insert(decl_engine, asm.return_type.clone()),
                 &asm_span,
                 EnforceTypeArguments::No,
@@ -1458,7 +1458,7 @@ impl ty::TyExpression {
             let (mut new_warnings, mut new_errors) = ctx
                 .by_ref()
                 .with_type_annotation(elem_type)
-                .unify_with_self(typed_elem.return_type, &typed_elem.span);
+                .unify_with_type_annotation(typed_elem.return_type, &typed_elem.span);
             let no_warnings = new_warnings.is_empty();
             let no_errors = new_errors.is_empty();
             warnings.append(&mut new_warnings);

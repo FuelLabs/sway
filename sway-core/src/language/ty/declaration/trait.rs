@@ -107,20 +107,25 @@ impl HashWithEngines for TyTraitItem {
 
 impl SubstTypes for TyTraitDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+        self.type_parameters.subst(type_mapping, engines);
         self.interface_surface
             .iter_mut()
             .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(function_decl_ref) => {
-                    let new_decl_ref = function_decl_ref
+                TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    let new_decl_ref = decl_ref
                         .clone()
                         .subst_types_and_insert_new(type_mapping, engines);
-                    function_decl_ref.replace_id((&new_decl_ref).into());
+                    decl_ref.replace_id((&new_decl_ref).into());
                 }
             });
-        // we don't have to type check the methods because it hasn't been type checked yet
+        self.items.iter_mut().for_each(|item| match item {
+            TyTraitItem::Fn(decl_ref) => {
+                let new_decl_ref = decl_ref
+                    .clone()
+                    .subst_types_and_insert_new(type_mapping, engines);
+                decl_ref.replace_id((&new_decl_ref).into());
+            }
+        });
     }
 }
 
@@ -128,41 +133,6 @@ impl SubstTypes for TyTraitItem {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
-        }
-    }
-}
-
-impl ReplaceSelfType for TyTraitDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.interface_surface
-            .iter_mut()
-            .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(function_decl_ref) => {
-                    let new_decl_ref = function_decl_ref
-                        .clone()
-                        .replace_self_type_and_insert_new(engines, self_type);
-                    function_decl_ref.replace_id((&new_decl_ref).into());
-                }
-            });
-        // we don't have to type check the methods because it hasn't been type checked yet
-    }
-}
-
-impl ReplaceSelfType for TyTraitInterfaceItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self {
-            TyTraitInterfaceItem::TraitFn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
-        }
-    }
-}
-
-impl ReplaceSelfType for TyTraitItem {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.replace_self_type(engines, self_type),
         }
     }
 }

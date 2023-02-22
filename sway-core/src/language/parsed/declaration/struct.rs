@@ -6,7 +6,7 @@ pub struct StructDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub fields: Vec<StructField>,
-    pub type_parameters: TypeParameters,
+    pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }

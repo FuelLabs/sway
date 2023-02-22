@@ -382,11 +382,10 @@ fn unify_arguments_and_parameters(
     for (arg, param) in arguments.into_iter().zip(parameters.iter()) {
         // unify the type of the argument with the type of the param
         check!(
-            CompileResult::from(type_engine.unify_with_self(
+            CompileResult::from(type_engine.unify(
                 decl_engine,
                 arg.return_type,
                 param.type_argument.type_id,
-                ctx.self_type(),
                 &arg.span,
                 "This argument's type is not castable to the declared parameter type.",
                 Some(CompileError::ArgumentParameterTypeMismatch {
@@ -453,7 +452,6 @@ pub(crate) fn resolve_method_name(
                     type_id,
                     &type_info_prefix,
                     method_name,
-                    ctx.self_type(),
                     &arguments,
                     engines,
                 ),
@@ -478,7 +476,6 @@ pub(crate) fn resolve_method_name(
                     type_id,
                     &module_path,
                     &call_path.suffix,
-                    ctx.self_type(),
                     &arguments,
                     engines,
                 ),
@@ -503,7 +500,6 @@ pub(crate) fn resolve_method_name(
                     type_id,
                     &module_path,
                     method_name,
-                    ctx.self_type(),
                     &arguments,
                     engines,
                 ),

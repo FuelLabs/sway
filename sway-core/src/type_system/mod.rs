@@ -23,7 +23,6 @@ pub use id::*;
 pub use info::*;
 pub use length::*;
 use occurs_check::*;
-pub(crate) use replace_self_type::*;
 pub(crate) use substitute::*;
 pub use trait_constraint::*;
 pub use type_argument::*;

@@ -51,13 +51,6 @@ impl SubstTypes for TyExpression {
     }
 }
 
-impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.expression.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyExpression {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.expression.replace_decls(decl_mapping, engines);
@@ -111,7 +104,7 @@ impl CollectTypesMetadata for TyExpression {
                 };
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters.iter() {
+                for type_parameter in function_decl.type_parameters.iter_excluding_self() {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -152,7 +145,7 @@ impl CollectTypesMetadata for TyExpression {
                     type_parameters, ..
                 } = ctx.type_engine.get(self.return_type)
                 {
-                    for type_parameter in type_parameters.iter() {
+                    for type_parameter in type_parameters.iter_excluding_self() {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }
@@ -287,7 +280,7 @@ impl CollectTypesMetadata for TyExpression {
                 call_path_binding,
                 ..
             } => {
-                for type_param in enum_decl.type_parameters.iter() {
+                for type_param in enum_decl.type_parameters.iter_excluding_self() {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
@@ -306,7 +299,7 @@ impl CollectTypesMetadata for TyExpression {
                         errors
                     ));
                 }
-                for type_param in enum_decl.type_parameters.iter() {
+                for type_param in enum_decl.type_parameters.iter_excluding_self() {
                     res.append(&mut check!(
                         type_param.type_id.collect_types_metadata(ctx),
                         return err(warnings, errors),

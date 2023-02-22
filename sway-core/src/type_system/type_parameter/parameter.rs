@@ -95,15 +95,6 @@ impl SubstTypes for TypeParameter {
     }
 }
 
-impl ReplaceSelfType for TypeParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
@@ -123,6 +114,27 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
+    pub(crate) fn new_self_type(engines: Engines<'_>, span: Span) -> TypeParameter {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
+        let name = Ident::new_with_override("Self", span.clone());
+        let type_id = type_engine.insert(
+            decl_engine,
+            TypeInfo::UnknownGeneric {
+                name: name.clone(),
+                trait_constraints: VecSet(vec![]),
+            },
+        );
+        TypeParameter {
+            type_id,
+            initial_type_id: type_id,
+            name_ident: name,
+            trait_constraints: vec![],
+            trait_constraints_span: span,
+        }
+    }
+
     /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
     /// inserts into into the current namespace.
     pub(super) fn type_check(
@@ -140,7 +152,7 @@ impl TypeParameter {
             name_ident,
             mut trait_constraints,
             trait_constraints_span,
-            ..
+            type_id: _,
         } = type_parameter;
 
         // Type check the trait constraints.
@@ -206,7 +218,7 @@ impl TypeParameter {
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
 
-        for type_param in type_parameters.iter() {
+        for type_param in type_parameters.iter_excluding_self() {
             let TypeParameter {
                 type_id,
                 trait_constraints,

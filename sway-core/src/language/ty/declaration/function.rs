@@ -87,17 +87,6 @@ impl SubstTypes for TyFunctionDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters.replace_self_type(engines, self_type);
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type);
-    }
-}
-
 impl ReplaceDecls for TyFunctionDeclaration {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         self.body.replace_decls(decl_mapping, engines);
@@ -130,7 +119,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         if self
             .type_parameters
-            .iter()
+            .iter_excluding_self()
             .map(|type_param| type_engine.get(type_param.type_id))
             .any(|x| x.eq(&type_parameter_info, engines))
         {
@@ -177,7 +166,7 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
             warnings,
             errors
         ));
-        for type_param in self.type_parameters.iter() {
+        for type_param in self.type_parameters.iter_excluding_self() {
             body.append(&mut check!(
                 type_param.type_id.collect_types_metadata(ctx),
                 return err(warnings, errors),
@@ -378,14 +367,6 @@ impl HashWithEngines for TyFunctionParameter {
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_argument.type_id.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_argument
-            .type_id
-            .replace_self_type(engines, self_type);
     }
 }
 
