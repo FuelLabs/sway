@@ -15,7 +15,7 @@ use sway_core::{
     },
     namespace,
     type_system::TypeArgument,
-    Engines, TypeId, TypeInfo,
+    Engines, TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -1046,6 +1046,37 @@ impl<'a> TypedTree<'a> {
         self.collect_type_argument(&param.type_argument, namespace);
     }
 
+    fn collect_trait_constraint(
+        &self,
+        trait_constraint @ TraitConstraint {
+            trait_name,
+            type_arguments,
+        }: &TraitConstraint,
+        namespace: &namespace::Module,
+    ) {
+        let typed = TypedAstToken::TypedTraitConstraint(trait_constraint.clone());
+        self.collect_call_path_prefixes(&trait_name.prefixes, typed.clone(), namespace);
+
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&trait_name.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(typed);
+            if let Some(trait_def_ident) = namespace
+                .submodule(&trait_name.prefixes)
+                .and_then(|module| module.symbols().get(&trait_name.suffix))
+                .and_then(|decl| decl.get_decl_ident())
+            {
+                token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
+            }
+        }
+
+        for type_arg in type_arguments {
+            self.collect_type_argument(type_arg, namespace);
+        }
+    }
+
     fn collect_type_argument(&self, type_arg: &TypeArgument, namespace: &namespace::Module) {
         if let Some(call_path_tree) = &type_arg.call_path_tree {
             self.collect_call_path_tree(call_path_tree, type_arg, namespace);
@@ -1274,6 +1305,24 @@ impl<'a> TypedTree<'a> {
         }
 
         self.collect_type_argument(&func_decl.return_type, namespace);
+
+        for (ident, trait_constraints) in &func_decl.where_clause {
+            for constraint in trait_constraints {
+                self.collect_trait_constraint(constraint, namespace);
+            }
+
+            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
+                token.typed = Some(typed_token.clone());
+                if let Some(param_decl_ident) = func_decl
+                    .type_parameters
+                    .iter()
+                    .find(|type_param| type_param.name_ident.as_str() == ident.as_str())
+                    .map(|type_param| type_param.name_ident.clone())
+                {
+                    token.type_def = Some(TypeDefinition::Ident(param_decl_ident));
+                }
+            }
+        }
     }
 
     fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant, namespace: &namespace::Module) {
