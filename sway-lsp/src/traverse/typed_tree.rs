@@ -116,17 +116,7 @@ impl<'a> TypedTree<'a> {
                 decl_id, decl_span, ..
             } => {
                 if let Ok(const_decl) = decl_engine.get_constant(decl_id, decl_span) {
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&const_decl.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
-                    }
-
-                    self.collect_type_argument(&const_decl.type_ascription, namespace);
-                    self.handle_expression(&const_decl.value, namespace);
+                    self.collect_const_decl(&const_decl, namespace);
                 }
             }
             ty::TyDeclaration::FunctionDeclaration {
@@ -149,11 +139,15 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_ref in &trait_decl.interface_surface {
-                        if let Ok(trait_fn) =
-                            decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                        {
-                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                    for item in &trait_decl.interface_surface {
+                        match item {
+                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                                if let Ok(trait_fn) = decl_engine
+                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
+                                {
+                                    self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                                }
+                            }
                         }
                     }
                     for supertrait in trait_decl.supertraits {
@@ -228,7 +222,7 @@ impl<'a> TypedTree<'a> {
                     trait_name,
                     trait_type_arguments,
                     trait_decl_ref,
-                    methods,
+                    items,
                     implementing_for,
                     ..
                 }) = decl_engine.get_impl_trait(decl_id, decl_span)
@@ -277,9 +271,14 @@ impl<'a> TypedTree<'a> {
                         );
                     }
 
-                    for method_ref in methods {
-                        if let Ok(method) = decl_engine.get_function(&method_ref, decl_span) {
-                            self.collect_typed_fn_decl(&method, namespace);
+                    for item in items {
+                        match item {
+                            ty::TyTraitItem::Fn(method_ref) => {
+                                if let Ok(method) = decl_engine.get_function(&method_ref, decl_span)
+                                {
+                                    self.collect_typed_fn_decl(&method, namespace);
+                                }
+                            }
                         }
                     }
 
@@ -312,11 +311,15 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_ref in &abi_decl.interface_surface {
-                        if let Ok(trait_fn) =
-                            decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                        {
-                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                    for item in &abi_decl.interface_surface {
+                        match item {
+                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                                if let Ok(trait_fn) = decl_engine
+                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
+                                {
+                                    self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                                }
+                            }
                         }
                     }
 
@@ -1270,6 +1273,27 @@ impl<'a> TypedTree<'a> {
                     assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
                 }
             }
+        }
+    }
+
+    fn collect_const_decl(
+        &self,
+        const_decl: &ty::TyConstantDeclaration,
+        namespace: &namespace::Module,
+    ) {
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&const_decl.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
+            token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
+        }
+
+        self.collect_type_argument(&const_decl.type_ascription, namespace);
+
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value, namespace);
         }
     }
 

@@ -69,6 +69,8 @@ pub enum CompileError {
     NoScriptMainFunction(Span),
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
+    #[error("Name \"{name}\" is defined multiple times.")]
+    MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -108,12 +110,13 @@ pub enum CompileError {
     #[error(
         "expected: {expected} \n\
          found:    {given} \n\
-         help:     The definition of this function must \
+         help:     The definition of this {decl_type} must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
         interface_name: InterfaceName,
         span: Span,
+        decl_type: String,
         given: String,
         expected: String,
     },
@@ -368,9 +371,10 @@ pub enum CompileError {
         type_implementing_for: String,
         second_impl_span: Span,
     },
-    #[error("Duplicate definitions for the method \"{func_name}\" for type \"{type_implementing_for}\".")]
-    DuplicateMethodsDefinedForType {
-        func_name: String,
+    #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
+    DuplicateDeclDefinedForType {
+        decl_kind: String,
+        decl_name: String,
         type_implementing_for: String,
         span: Span,
     },
@@ -634,6 +638,7 @@ impl Spanned for CompileError {
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
+            MultipleDefinitionsOfName { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -699,7 +704,7 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
-            DuplicateMethodsDefinedForType { span, .. } => span.clone(),
+            DuplicateDeclDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),

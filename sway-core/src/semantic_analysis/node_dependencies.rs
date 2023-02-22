@@ -304,13 +304,9 @@ impl Dependencies {
             }) => self
                 .gather_from_type_argument(type_engine, type_ascription)
                 .gather_from_expr(type_engine, body),
-            Declaration::ConstantDeclaration(ConstantDeclaration {
-                type_ascription,
-                value,
-                ..
-            }) => self
-                .gather_from_type_argument(type_engine, type_ascription)
-                .gather_from_expr(type_engine, value),
+            Declaration::ConstantDeclaration(decl) => {
+                self.gather_from_constant_decl(type_engine, decl)
+            }
             Declaration::FunctionDeclaration(fn_decl) => {
                 self.gather_from_fn_decl(type_engine, fn_decl)
             }
@@ -341,11 +337,12 @@ impl Dependencies {
                 .gather_from_iter(supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
                 })
-                .gather_from_iter(interface_surface.iter(), |deps, sig| {
-                    deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_type_argument(type_engine, &param.type_argument)
-                    })
-                    .gather_from_typeinfo(type_engine, &sig.return_type)
+                .gather_from_iter(interface_surface.iter(), |deps, item| match item {
+                    TraitItem::TraitFn(sig) => deps
+                        .gather_from_iter(sig.parameters.iter(), |deps, param| {
+                            deps.gather_from_type_argument(type_engine, &param.type_argument)
+                        })
+                        .gather_from_typeinfo(type_engine, &sig.return_type),
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(type_engine, fn_decl)
@@ -354,23 +351,23 @@ impl Dependencies {
                 impl_type_parameters,
                 trait_name,
                 implementing_for,
-                functions,
+                items,
                 ..
             }) => self
                 .gather_from_call_path(trait_name, false, false)
                 .gather_from_type_argument(type_engine, implementing_for)
                 .gather_from_type_parameters(impl_type_parameters)
-                .gather_from_iter(functions.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(type_engine, fn_decl)
+                .gather_from_iter(items.iter(), |deps, item| match item {
+                    ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(type_engine, fn_decl),
                 }),
             Declaration::ImplSelf(ImplSelf {
                 implementing_for,
-                functions,
+                items,
                 ..
             }) => self
                 .gather_from_type_argument(type_engine, implementing_for)
-                .gather_from_iter(functions.iter(), |deps, fn_decl| {
-                    deps.gather_from_fn_decl(type_engine, fn_decl)
+                .gather_from_iter(items.iter(), |deps, item| match item {
+                    ImplItem::Fn(fn_decl) => deps.gather_from_fn_decl(type_engine, fn_decl),
                 }),
             Declaration::AbiDeclaration(AbiDeclaration {
                 interface_surface,
@@ -381,11 +378,12 @@ impl Dependencies {
                 .gather_from_iter(supertraits.iter(), |deps, sup| {
                     deps.gather_from_call_path(&sup.name, false, false)
                 })
-                .gather_from_iter(interface_surface.iter(), |deps, sig| {
-                    deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                        deps.gather_from_type_argument(type_engine, &param.type_argument)
-                    })
-                    .gather_from_typeinfo(type_engine, &sig.return_type)
+                .gather_from_iter(interface_surface.iter(), |deps, item| match item {
+                    TraitItem::TraitFn(sig) => deps
+                        .gather_from_iter(sig.parameters.iter(), |deps, param| {
+                            deps.gather_from_type_argument(type_engine, &param.type_argument)
+                        })
+                        .gather_from_typeinfo(type_engine, &sig.return_type),
                 })
                 .gather_from_iter(methods.iter(), |deps, fn_decl| {
                     deps.gather_from_fn_decl(type_engine, fn_decl)
@@ -400,6 +398,24 @@ impl Dependencies {
                         deps.gather_from_type_argument(type_engine, type_argument)
                     },
                 ),
+        }
+    }
+
+    fn gather_from_constant_decl(
+        self,
+        type_engine: &TypeEngine,
+        const_decl: &ConstantDeclaration,
+    ) -> Self {
+        let ConstantDeclaration {
+            type_ascription,
+            value,
+            ..
+        } = const_decl;
+        match value {
+            Some(value) => self
+                .gather_from_type_argument(type_engine, type_ascription)
+                .gather_from_expr(type_engine, value),
+            None => self,
         }
     }
 
@@ -778,9 +794,11 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
             impl_sym(
                 trait_name,
                 &type_engine.get(decl.implementing_for.type_id),
-                decl.functions
+                decl.items
                     .iter()
-                    .map(|x| x.name.as_str())
+                    .map(|item| match item {
+                        ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                    })
                     .collect::<Vec<&str>>()
                     .join(""),
             )
@@ -790,9 +808,11 @@ fn decl_name(type_engine: &TypeEngine, decl: &Declaration) -> Option<DependentSy
                 impl_sym(
                     decl.trait_name.suffix.clone(),
                     &type_engine.get(decl.implementing_for.type_id),
-                    decl.functions
+                    decl.items
                         .iter()
-                        .map(|x| x.name.as_str())
+                        .map(|item| match item {
+                            ImplItem::Fn(fn_decl) => fn_decl.name.as_str(),
+                        })
                         .collect::<Vec<&str>>()
                         .join(""),
                 )

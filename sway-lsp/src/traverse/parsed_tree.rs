@@ -16,13 +16,13 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
-            AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
-            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
-            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
-            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
-            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
-            TupleIndexExpression, UseStatement, WhileLoopExpression,
+            AstNodeContent, CodeBlock, ConstantDeclaration, Declaration, DelineatedPathExpression,
+            Expression, ExpressionKind, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
+            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
+            ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TraitItem, TreeType, TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -106,6 +106,22 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
+    fn handle_const_declaration(&self, const_decl: &ConstantDeclaration) {
+        let token = Token::from_parsed(
+            AstToken::ConstantDeclaration(const_decl.clone()),
+            SymbolKind::Const,
+        );
+        self.tokens
+            .insert(to_ident_key(&const_decl.name), token.clone());
+
+        self.collect_type_arg(&const_decl.type_ascription, &token);
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value);
+        }
+
+        const_decl.attributes.parse(self.tokens);
+    }
+
     fn handle_function_declaration(&self, func: &FunctionDeclaration) {
         let token = Token::from_parsed(
             AstToken::FunctionDeclaration(func.clone()),
@@ -179,8 +195,10 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &trait_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &trait_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
                 }
 
                 for func_dec in &trait_decl.methods {
@@ -288,8 +306,10 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_trait.functions {
-                    self.handle_function_declaration(func_dec);
+                for item in &impl_trait.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::ImplSelf(impl_self) => {
@@ -318,8 +338,10 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_self.functions {
-                    self.handle_function_declaration(func_dec);
+                for item in &impl_self.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {
@@ -331,8 +353,10 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &abi_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &abi_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
                 }
 
                 for supertrait in &abi_decl.supertraits {
@@ -348,17 +372,7 @@ impl<'a> ParsedTree<'a> {
                 abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {
-                let token = Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Const,
-                );
-                self.tokens
-                    .insert(to_ident_key(&const_decl.name), token.clone());
-
-                self.collect_type_arg(&const_decl.type_ascription, &token);
-                self.handle_expression(&const_decl.value);
-
-                const_decl.attributes.parse(self.tokens);
+                self.handle_const_declaration(const_decl);
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {
