@@ -103,7 +103,23 @@ impl ty::TyTraitDeclaration {
                         errors
                     );
                     let decl_ref = ctx.decl_engine.insert(const_decl.clone());
-                    new_interface_surface.push(ty::TyTraitInterfaceItem::Constant(decl_ref));
+                    new_interface_surface
+                        .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
+
+                    check!(
+                        ctx.namespace.insert_symbol(
+                            const_decl.name.clone(),
+                            ty::TyDeclaration::ConstantDeclaration {
+                                name: const_decl.name.clone(),
+                                decl_id: decl_ref.id,
+                                decl_span: const_decl.span.clone()
+                            }
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+
                     const_decl.name
                 }
             };

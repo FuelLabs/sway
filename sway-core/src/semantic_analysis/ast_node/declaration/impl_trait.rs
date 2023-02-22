@@ -429,7 +429,7 @@ impl ty::TyImplTrait {
     }
 
     pub(crate) fn type_check_impl_self(
-        ctx: TypeCheckContext,
+        ctx: &mut TypeCheckContext,
         impl_self: ImplSelf,
     ) -> CompileResult<Self> {
         let mut warnings = vec![];
@@ -448,7 +448,7 @@ impl ty::TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut impl_namespace).allow_functions();
+        let mut impl_ctx = ctx.scoped(&mut impl_namespace).allow_functions();
 
         // create the trait name
         let trait_name = CallPath {
@@ -463,7 +463,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParameter::type_check_type_params(impl_ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
@@ -471,7 +471,11 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         implementing_for.type_id = check!(
-            ctx.resolve_type_without_self(implementing_for.type_id, &implementing_for.span, None),
+            impl_ctx.resolve_type_without_self(
+                implementing_for.type_id,
+                &implementing_for.span,
+                None
+            ),
             return err(warnings, errors),
             warnings,
             errors
@@ -501,7 +505,7 @@ impl ty::TyImplTrait {
             errors
         );
 
-        let mut ctx = ctx
+        let mut impl_ctx = impl_ctx
             .with_self_type(implementing_for.type_id)
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
@@ -513,7 +517,12 @@ impl ty::TyImplTrait {
             match item {
                 ImplItem::Fn(fn_decl) => {
                     let fn_decl = check!(
-                        ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
+                        ty::TyFunctionDeclaration::type_check(
+                            impl_ctx.by_ref(),
+                            fn_decl,
+                            true,
+                            true
+                        ),
                         continue,
                         warnings,
                         errors
@@ -522,12 +531,27 @@ impl ty::TyImplTrait {
                 }
                 ImplItem::Constant(const_decl) => {
                     let const_decl = check!(
-                        ty::TyConstantDeclaration::type_check(ctx.by_ref(), const_decl),
+                        ty::TyConstantDeclaration::type_check(impl_ctx.by_ref(), const_decl),
                         continue,
                         warnings,
                         errors
                     );
-                    new_items.push(TyImplItem::Constant(decl_engine.insert(const_decl)));
+                    let decl_ref = decl_engine.insert(const_decl);
+                    new_items.push(TyImplItem::Constant(decl_ref.clone()));
+
+                    check!(
+                        impl_ctx.namespace.insert_symbol(
+                            decl_ref.name.clone(),
+                            ty::TyDeclaration::ConstantDeclaration {
+                                name: decl_ref.name.clone(),
+                                decl_id: decl_ref.id,
+                                decl_span: decl_ref.span().clone()
+                            }
+                        ),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
                 }
             }
         }
@@ -545,6 +569,11 @@ impl ty::TyImplTrait {
             return err(warnings, errors),
             warnings,
             errors
+        );
+
+        ctx.namespace.insert_submodule(
+            trait_name.suffix.to_string(),
+            impl_namespace.module().clone(),
         );
 
         let impl_trait = ty::TyImplTrait {

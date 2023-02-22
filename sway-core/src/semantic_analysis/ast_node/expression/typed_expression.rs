@@ -1132,6 +1132,22 @@ impl ty::TyExpression {
         let maybe_const = {
             let mut call_path_binding = unknown_call_path_binding.clone();
 
+            let type_info_opt = call_path_binding
+                .clone()
+                .inner
+                .prefixes
+                .last()
+                .map(|type_name| {
+                    type_name_to_type_info_opt(type_name).unwrap_or(TypeInfo::Custom {
+                        call_path: type_name.clone().into(),
+                        type_arguments: None,
+                    })
+                });
+
+            if let Some(TypeInfo::SelfType) = type_info_opt {
+                call_path_binding.strip_prefixes();
+            }
+
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| unknown_decl.expect_const(decl_engine))
                 .ok(&mut const_probe_warnings, &mut const_probe_errors)

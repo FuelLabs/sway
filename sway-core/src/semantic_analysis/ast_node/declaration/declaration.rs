@@ -292,7 +292,7 @@ impl ty::TyDeclaration {
             parsed::Declaration::ImplSelf(impl_self) => {
                 let span = impl_self.block_span.clone();
                 let mut impl_trait = check!(
-                    ty::TyImplTrait::type_check_impl_self(ctx.by_ref(), impl_self),
+                    ty::TyImplTrait::type_check_impl_self(&mut ctx.by_ref(), impl_self),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors

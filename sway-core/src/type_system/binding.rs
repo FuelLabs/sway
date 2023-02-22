@@ -206,6 +206,10 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 }
 
 impl TypeBinding<CallPath> {
+    pub(crate) fn strip_prefixes(&mut self) {
+        self.inner.prefixes = vec![];
+    }
+
     pub(crate) fn type_check_with_ident(
         &mut self,
         mut ctx: TypeCheckContext,

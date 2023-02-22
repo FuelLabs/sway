@@ -118,7 +118,7 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Scope the `TypeCheckContext` with the given `Namespace`.
-    pub fn scoped(self, namespace: &'a mut Namespace) -> TypeCheckContext<'a> {
+    pub fn scoped(&self, namespace: &'a mut Namespace) -> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
@@ -126,7 +126,7 @@ impl<'a> TypeCheckContext<'a> {
             mode: self.mode,
             help_text: self.help_text,
             purity: self.purity,
-            kind: self.kind,
+            kind: self.kind.clone(),
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
