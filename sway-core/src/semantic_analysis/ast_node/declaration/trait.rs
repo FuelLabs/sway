@@ -1,7 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
-use sway_error::warning::{CompileWarning, Warning};
-use sway_types::{style::is_upper_camel_case, Spanned};
+use sway_error::{
+    error::CompileError,
+    warning::{CompileWarning, Warning},
+};
+use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -72,8 +75,10 @@ impl ty::TyTraitDeclaration {
         let mut new_interface_surface = vec![];
         let mut dummy_interface_surface = vec![];
 
+        let mut ids: HashSet<Ident> = HashSet::default();
+
         for item in interface_surface.into_iter() {
-            match item {
+            let decl_name = match item {
                 TraitItem::TraitFn(method) => {
                     let method = check!(
                         ty::TyTraitFn::type_check(ctx.by_ref(), method),
@@ -88,6 +93,7 @@ impl ty::TyTraitDeclaration {
                             .with_parent(decl_engine, decl_ref.id.into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
+                    method.name.clone()
                 }
                 TraitItem::Constant(const_decl) => {
                     let const_decl = check!(
@@ -96,9 +102,17 @@ impl ty::TyTraitDeclaration {
                         warnings,
                         errors
                     );
-                    let decl_ref = ctx.decl_engine.insert(const_decl);
+                    let decl_ref = ctx.decl_engine.insert(const_decl.clone());
                     new_interface_surface.push(ty::TyTraitInterfaceItem::Constant(decl_ref));
+                    const_decl.name
                 }
+            };
+
+            if !ids.insert(decl_name.clone()) {
+                errors.push(CompileError::MultipleDefinitionsOfName {
+                    name: decl_name.clone(),
+                    span: decl_name.span(),
+                })
             }
         }
 
