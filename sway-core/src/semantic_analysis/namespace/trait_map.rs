@@ -7,12 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRef,
-    engine_threading::*,
-    error::*,
-    language::CallPath,
-    type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
+    decl_engine::DeclRef, engine_threading::*, error::*, language::CallPath, type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -579,15 +574,13 @@ impl TraitMap {
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
                     let type_mapping =
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
-                    let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
-                    type_id.replace_self_type(engines, new_self_type);
+                    type_id.subst(&type_mapping, engines);
                     let trait_methods: TraitMethods = map_trait_methods
                         .clone()
                         .into_iter()
                         .map(|(name, decl_ref)| {
                             let mut decl = decl_engine.get(&decl_ref);
                             decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
                             (
                                 name,
                                 decl_engine
@@ -798,7 +791,6 @@ pub(crate) fn are_equal_minus_dynamic_types(
         // TypeId, they may later resolve to be different types in the type
         // engine
         (TypeInfo::Unknown, TypeInfo::Unknown) => false,
-        (TypeInfo::SelfType, TypeInfo::SelfType) => false,
         (TypeInfo::Numeric, TypeInfo::Numeric) => false,
         (TypeInfo::Storage { .. }, TypeInfo::Storage { .. }) => false,
 
@@ -867,13 +859,13 @@ pub(crate) fn are_equal_minus_dynamic_types(
                             )
                     },
                 )
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
+                && l_type_parameters
+                    .iter_including_self()
+                    .zip(r_type_parameters.iter_including_self())
+                    .fold(true, |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
                             && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
+                    })
         }
         (
             TypeInfo::Struct {
@@ -899,13 +891,13 @@ pub(crate) fn are_equal_minus_dynamic_types(
                                 right.type_argument.type_id,
                             )
                     })
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
+                && l_type_parameters
+                    .iter_including_self()
+                    .zip(r_type_parameters.iter_including_self())
+                    .fold(true, |acc, (left, right)| {
                         acc && left.name_ident == right.name_ident
                             && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
+                    })
         }
         (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
             if l.len() != r.len() {

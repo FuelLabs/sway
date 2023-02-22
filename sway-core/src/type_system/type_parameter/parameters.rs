@@ -1,64 +1,95 @@
-use crate::{engine_threading::*, error::*, semantic_analysis::*, type_system::*};
+use crate::{engine_threading::*, error::*, language::ty, semantic_analysis::*, type_system::*};
 
 use sway_error::error::CompileError;
+use sway_types::{Ident, Spanned};
 
 use std::{
     cmp::Ordering,
     hash::Hasher,
     slice::{Iter, IterMut},
-    vec::IntoIter,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct TypeParameters {
+    self_type: Option<TypeParameter>,
     list: Vec<TypeParameter>,
 }
 
 impl TypeParameters {
     pub fn new() -> TypeParameters {
-        TypeParameters { list: vec![] }
+        TypeParameters {
+            self_type: None,
+            list: vec![],
+        }
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn drop_everything_but_self(self) -> TypeParameters {
+        TypeParameters {
+            self_type: self.self_type,
+            list: vec![],
+        }
+    }
+
+    pub(crate) fn to_self_type(&self) -> Option<&TypeParameter> {
+        self.self_type.as_ref()
+    }
+
+    pub fn to_mut_self_type(&mut self) -> Option<&mut TypeParameter> {
+        self.self_type.as_mut()
+    }
+
+    pub fn to_list_excluding_self(&self) -> &[TypeParameter] {
+        &self.list
+    }
+
+    pub fn is_empty_excluding_self(&self) -> bool {
         self.list.is_empty()
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len_excluding_self(&self) -> usize {
         self.list.len()
     }
 
-    fn push(&mut self, value: TypeParameter) {
-        self.list.push(value);
-    }
-
-    pub(crate) fn extend(&mut self, other: TypeParameters) {
+    pub(crate) fn extend_excluding_self(&mut self, other: TypeParameters) {
         self.list.extend(other.list);
     }
 
-    pub fn iter(&self) -> Iter<'_, TypeParameter> {
+    pub fn iter_excluding_self(&self) -> Iter<'_, TypeParameter> {
         self.list.iter()
     }
 
-    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+    pub(crate) fn iter_mut_excluding_self(&mut self) -> IterMut<'_, TypeParameter> {
         self.list.iter_mut()
     }
 
-    pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
-        self.list.into_iter()
+    pub fn iter_including_self(&self) -> TypeParametersIter<'_> {
+        TypeParametersIter::new(&self.self_type, false, self.list.iter())
     }
 
-    /// Type check a list of [TypeParameter] and return a new list of
-    /// [TypeParameter]. This will also insert this new list into the current
-    /// namespace.
+    /// Type check a [TypeParameters] and return a new [TypeParameters]. This
+    /// will also insert this new list into the current namespace.
     pub(crate) fn type_check(
         mut ctx: TypeCheckContext,
-        type_params: TypeParameters,
+        type_params: Vec<TypeParameter>,
         disallow_trait_constraints: bool,
+        self_type_param: Option<TypeParameter>,
     ) -> CompileResult<TypeParameters> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut new_type_params: TypeParameters = TypeParameters::new();
+        let mut new_type_params: Vec<TypeParameter> = vec![];
+
+        if let Some(self_type_param) = self_type_param.clone() {
+            let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
+                name: self_type_param.name_ident.clone(),
+                type_id: self_type_param.type_id,
+            };
+            let name_a = Ident::new_with_override("self", self_type_param.name_ident.span());
+            let name_b = Ident::new_with_override("Self", self_type_param.name_ident.span());
+            ctx.namespace
+                .insert_symbol(name_a, type_parameter_decl.clone());
+            ctx.namespace.insert_symbol(name_b, type_parameter_decl);
+        }
 
         for type_param in type_params.into_iter() {
             if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
@@ -76,7 +107,14 @@ impl TypeParameters {
         }
 
         if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
+            ok(
+                TypeParameters {
+                    self_type: self_type_param,
+                    list: new_type_params,
+                },
+                warnings,
+                errors,
+            )
         } else {
             err(warnings, errors)
         }
@@ -85,13 +123,17 @@ impl TypeParameters {
 
 impl From<Vec<TypeParameter>> for TypeParameters {
     fn from(value: Vec<TypeParameter>) -> Self {
-        TypeParameters { list: value }
+        TypeParameters {
+            self_type: None,
+            list: value,
+        }
     }
 }
 
 impl FromIterator<TypeParameter> for TypeParameters {
     fn from_iter<I: IntoIterator<Item = TypeParameter>>(iter: I) -> Self {
         TypeParameters {
+            self_type: None,
             list: iter.into_iter().collect(),
         }
     }
@@ -99,7 +141,8 @@ impl FromIterator<TypeParameter> for TypeParameters {
 
 impl HashWithEngines for TypeParameters {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TypeParameters { list } = self;
+        let TypeParameters { self_type, list } = self;
+        self_type.hash(state, engines);
         list.hash(state, engines);
     }
 }
@@ -107,33 +150,40 @@ impl HashWithEngines for TypeParameters {
 impl EqWithEngines for TypeParameters {}
 impl PartialEqWithEngines for TypeParameters {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let TypeParameters { list: ll } = self;
-        let TypeParameters { list: rl } = other;
-        ll.eq(rl, engines)
+        let TypeParameters {
+            self_type: lst,
+            list: ll,
+        } = self;
+        let TypeParameters {
+            self_type: rst,
+            list: rl,
+        } = other;
+        lst.eq(rst, engines) && ll.eq(rl, engines)
     }
 }
 
 impl OrdWithEngines for TypeParameters {
     fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
-        let TypeParameters { list: ll } = self;
-        let TypeParameters { list: rl } = other;
-        ll.cmp(rl, type_engine)
+        let TypeParameters {
+            self_type: lst,
+            list: ll,
+        } = self;
+        let TypeParameters {
+            self_type: rst,
+            list: rl,
+        } = other;
+        lst.cmp(rst, type_engine)
             .then_with(|| ll.cmp(rl, type_engine))
     }
 }
 
 impl SubstTypes for TypeParameters {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        if let Some(type_param) = self.self_type.as_mut() {
+            type_param.subst(type_mapping, engines);
+        }
         self.list
             .iter_mut()
             .for_each(|type_param| type_param.subst(type_mapping, engines));
-    }
-}
-
-impl ReplaceSelfType for TypeParameters {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.list
-            .iter_mut()
-            .for_each(|type_param| type_param.replace_self_type(engines, self_type));
     }
 }

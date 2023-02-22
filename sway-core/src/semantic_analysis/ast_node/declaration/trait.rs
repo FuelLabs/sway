@@ -37,19 +37,21 @@ impl ty::TyTraitDeclaration {
             })
         }
 
-        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // A temporary namespace for checking within the trait's scope.
-        let self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
         let mut trait_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
+        let mut ctx = ctx.scoped(&mut trait_namespace);
+
+        // Create a new type parameter for the "self type".
+        let self_type_param = TypeParameter::new_self_type(engines, name.span());
+        let self_type = self_type_param.type_id;
 
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameters::type_check(ctx.by_ref(), type_parameters, true),
+            TypeParameters::type_check(ctx.by_ref(), type_parameters, true, Some(self_type_param)),
             return err(warnings, errors),
             warnings,
             errors
@@ -92,7 +94,10 @@ impl ty::TyTraitDeclaration {
                     suffix: name.clone(),
                     is_absolute: false,
                 },
-                new_type_parameters.iter().map(|x| x.into()).collect(),
+                new_type_parameters
+                    .iter_including_self()
+                    .map(|x| x.into())
+                    .collect(),
                 self_type,
                 &dummy_interface_surface,
                 &span,
@@ -201,7 +206,7 @@ impl ty::TyTraitDeclaration {
         // Retrieve the implemented methods for this type.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
-                .iter()
+                .iter_excluding_self()
                 .map(|type_param| type_param.type_id)
                 .collect(),
             type_arguments
@@ -267,7 +272,7 @@ impl ty::TyTraitDeclaration {
         // the original trait declaration and the given type arguments.
         let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
             type_parameters
-                .iter()
+                .iter_excluding_self()
                 .map(|type_param| type_param.type_id)
                 .collect(),
             type_arguments
@@ -282,7 +287,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(engines, type_id);
+            // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
@@ -297,7 +302,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            method.replace_self_type(engines, type_id);
+            // method.replace_self_type(engines, type_id);
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine

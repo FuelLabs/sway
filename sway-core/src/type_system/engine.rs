@@ -129,25 +129,40 @@ impl TypeEngine {
         let mut warnings = vec![];
         let mut errors = vec![];
         let engines = Engines::new(self, decl_engine);
-        match (
-            value.type_parameters().is_empty(),
-            type_arguments.is_empty(),
-        ) {
-            (true, true) => ok((), warnings, errors),
-            (false, true) => {
-                if let EnforceTypeArguments::Yes = enforce_type_arguments {
-                    errors.push(CompileError::NeedsTypeArguments {
-                        name: value.name().clone(),
-                        span: call_site_span.clone(),
-                    });
-                    return err(warnings, errors);
-                }
-                let type_mapping =
-                    TypeSubstMap::from_type_parameters(engines, value.type_parameters());
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
+
+        // Filter the self type out of the type parameters.
+        let type_parameters = value.type_parameters().to_list_excluding_self();
+
+        for type_argument in type_arguments.iter_mut() {
+            type_argument.type_id = check!(
+                self.resolve(
+                    decl_engine,
+                    type_argument.type_id,
+                    &type_argument.span,
+                    enforce_type_arguments,
+                    None,
+                    namespace,
+                    mod_path
+                ),
+                self.insert(decl_engine, TypeInfo::ErrorRecovery),
+                warnings,
+                errors
+            );
+        }
+        if !errors.is_empty() {
+            return err(warnings, errors);
+        }
+
+        // Construct the type mapping and exit early if needed.
+        let type_mapping = match (type_parameters.len(), type_arguments.len()) {
+            (n, 0) if n > 0 && matches!(enforce_type_arguments, EnforceTypeArguments::Yes) => {
+                errors.push(CompileError::NeedsTypeArguments {
+                    name: value.name().clone(),
+                    span: call_site_span.clone(),
+                });
+                return err(warnings, errors);
             }
-            (true, false) => {
+            (0, m) if m > 0 => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
@@ -157,42 +172,26 @@ impl TypeEngine {
                     name: value.name().clone(),
                     span: type_arguments_span,
                 });
-                err(warnings, errors)
+                return err(warnings, errors);
             }
-            (false, false) => {
+            (n, m) if n > 0 && m > 0 && n != m => {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
                     .reduce(Span::join)
                     .unwrap_or_else(|| value.name().span());
-                if value.type_parameters().len() != type_arguments.len() {
-                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
-                        given: type_arguments.len(),
-                        expected: value.type_parameters().len(),
-                        span: type_arguments_span,
-                    });
-                    return err(warnings, errors);
-                }
-                for type_argument in type_arguments.iter_mut() {
-                    type_argument.type_id = check!(
-                        self.resolve(
-                            decl_engine,
-                            type_argument.type_id,
-                            &type_argument.span,
-                            enforce_type_arguments,
-                            None,
-                            namespace,
-                            mod_path
-                        ),
-                        self.insert(decl_engine, TypeInfo::ErrorRecovery),
-                        warnings,
-                        errors
-                    );
-                }
-                let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+                errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                    given: type_arguments.len(),
+                    expected: type_parameters.len(),
+                    span: type_arguments_span,
+                });
+                return err(warnings, errors);
+            }
+            (n, m) if n > 0 && m > 0 && n == m => {
+                let mut type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
                     value
                         .type_parameters()
-                        .iter()
+                        .iter_excluding_self()
                         .map(|type_param| type_param.type_id)
                         .collect(),
                     type_arguments
@@ -200,36 +199,23 @@ impl TypeEngine {
                         .map(|type_arg| type_arg.type_id)
                         .collect(),
                 );
-                value.subst(&type_mapping, engines);
-                ok((), warnings, errors)
+                type_mapping.extend(TypeSubstMap::from_type_parameters(
+                    engines,
+                    &value.type_parameters().clone().drop_everything_but_self(),
+                ));
+                type_mapping
             }
-        }
-    }
+            _ => {
+                // this should just be this case
+                // (0, 0)
+                // or this case
+                // (n, 0) if n > 0 && matches!(enforce_type_arguments, EnforceTypeArguments::No)
+                TypeSubstMap::from_type_parameters(engines, value.type_parameters())
+            }
+        };
 
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in both `received` and `expected`, then unify `received` and
-    /// `expected`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn unify_with_self(
-        &self,
-        decl_engine: &DeclEngine,
-        mut received: TypeId,
-        mut expected: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        help_text: &str,
-        err_override: Option<CompileError>,
-    ) -> (Vec<CompileWarning>, Vec<CompileError>) {
-        received.replace_self_type(Engines::new(self, decl_engine), self_type);
-        expected.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.unify(
-            decl_engine,
-            received,
-            expected,
-            span,
-            help_text,
-            err_override,
-        )
+        value.subst(&type_mapping, engines);
+        ok((), warnings, errors)
     }
 
     /// Make the types of `received` and `expected` equivalent (or produce an
@@ -372,12 +358,9 @@ impl TypeEngine {
 
     pub(crate) fn to_typeinfo(&self, id: TypeId, error_span: &Span) -> Result<TypeInfo, TypeError> {
         match self.get(id) {
-            TypeInfo::Unknown => {
-                //panic!();
-                Err(TypeError::UnknownType {
-                    span: error_span.clone(),
-                })
-            }
+            TypeInfo::Unknown => Err(TypeError::UnknownType {
+                span: error_span.clone(),
+            }),
             ty => Ok(ty),
         }
     }
@@ -538,32 +521,6 @@ impl TypeEngine {
             _ => type_id,
         };
         ok(type_id, warnings, errors)
-    }
-
-    /// Replace any instances of the [TypeInfo::SelfType] variant with
-    /// `self_type` in `type_id`, then resolve `type_id`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn resolve_with_self(
-        &self,
-        decl_engine: &DeclEngine,
-        mut type_id: TypeId,
-        self_type: TypeId,
-        span: &Span,
-        enforce_type_arguments: EnforceTypeArguments,
-        type_info_prefix: Option<&Path>,
-        namespace: &mut Namespace,
-        mod_path: &Path,
-    ) -> CompileResult<TypeId> {
-        type_id.replace_self_type(Engines::new(self, decl_engine), self_type);
-        self.resolve(
-            decl_engine,
-            type_id,
-            span,
-            enforce_type_arguments,
-            type_info_prefix,
-            namespace,
-            mod_path,
-        )
     }
 
     /// Pretty print method for printing the [TypeEngine]. This method is

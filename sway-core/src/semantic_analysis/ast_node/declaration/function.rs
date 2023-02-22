@@ -67,7 +67,7 @@ impl ty::TyFunctionDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameters::type_check(ctx.by_ref(), type_parameters, false),
+            TypeParameters::type_check(ctx.by_ref(), type_parameters, false, None),
             return err(warnings, errors),
             warnings,
             errors
@@ -89,7 +89,7 @@ impl ty::TyFunctionDeclaration {
 
         // type check the return type
         return_type.type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 return_type.type_id,
                 &return_type.span,
                 EnforceTypeArguments::Yes,
@@ -178,11 +178,10 @@ fn unify_return_statements(
 
     for stmt in return_statements.iter() {
         check!(
-            CompileResult::from(type_engine.unify_with_self(
+            CompileResult::from(type_engine.unify(
                 decl_engine,
                 stmt.return_type,
                 return_type,
-                ctx.self_type(),
                 &stmt.span,
                 "Return statement must return the declared function return type.",
                 None,

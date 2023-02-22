@@ -74,23 +74,6 @@ impl SubstTypes for TyAstNode {
     }
 }
 
-impl ReplaceSelfType for TyAstNode {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self.content {
-            TyAstNodeContent::ImplicitReturnExpression(ref mut exp) => {
-                exp.replace_self_type(engines, self_type)
-            }
-            TyAstNodeContent::Declaration(ref mut decl) => {
-                decl.replace_self_type(engines, self_type)
-            }
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.replace_self_type(engines, self_type)
-            }
-            TyAstNodeContent::SideEffect(_) => (),
-        }
-    }
-}
-
 impl ReplaceDecls for TyAstNode {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
         match self.content {
@@ -191,7 +174,7 @@ impl TyAstNode {
                     warnings,
                     errors
                 );
-                ok(!type_parameters.is_empty(), warnings, errors)
+                ok(!type_parameters.is_empty_excluding_self(), warnings, errors)
             }
             _ => ok(false, warnings, errors),
         }

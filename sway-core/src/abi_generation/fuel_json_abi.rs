@@ -243,7 +243,7 @@ impl TypeId {
         match self.is_generic_parameter(type_engine, resolved_type_id) {
             true => None,
             false => resolved_type_id.get_type_parameters(type_engine).map(|v| {
-                v.iter()
+                v.iter_excluding_self()
                     .map(|v| v.get_json_type_parameter(type_engine, types))
                     .collect::<Vec<_>>()
             }),
@@ -436,7 +436,7 @@ impl TypeId {
                             resolved_type_id
                                 .get_type_parameters(type_engine)
                                 .unwrap_or_default()
-                                .iter(),
+                                .iter_excluding_self(),
                         )
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
@@ -483,7 +483,7 @@ impl TypeId {
                 let resolved_params = resolved_params.unwrap_or_default();
                 let json_type_arguments = type_arguments
                     .iter()
-                    .zip(resolved_params.iter())
+                    .zip(resolved_params.iter_excluding_self())
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_json_type_str(type_engine, p.type_id),
@@ -522,7 +522,7 @@ impl TypeId {
             } => {
                 // Here, type_id for each type parameter should contain resolved types
                 let json_type_arguments = type_parameters
-                    .iter()
+                    .iter_excluding_self()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_json_type_str(type_engine, v.type_id),
@@ -542,7 +542,7 @@ impl TypeId {
 
                 Some(
                     type_parameters
-                        .iter()
+                        .iter_excluding_self()
                         .map(|arg| program_abi::TypeApplication {
                             name: "".to_string(),
                             type_id: arg.type_id.index(),
@@ -584,7 +584,6 @@ impl TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "u64".into(), // u64 is the default
             Contract => "contract".into(),

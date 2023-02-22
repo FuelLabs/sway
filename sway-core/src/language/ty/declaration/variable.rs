@@ -52,11 +52,3 @@ impl SubstTypes for TyVariableDeclaration {
         self.body.subst(type_mapping, engines)
     }
 }
-
-impl ReplaceSelfType for TyVariableDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.type_ascription.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type)
-    }
-}

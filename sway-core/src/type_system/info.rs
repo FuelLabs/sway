@@ -119,7 +119,6 @@ pub enum TypeInfo {
         call_path: CallPath,
         type_arguments: Option<Vec<TypeArgument>>,
     },
-    SelfType,
     B256,
     /// This means that specific type of a number is not yet known. It will be
     /// determined via inference at a later time.
@@ -214,7 +213,6 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery
             | TypeInfo::Unknown
-            | TypeInfo::SelfType
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice => {}
         }
@@ -439,7 +437,6 @@ impl DisplayWithEngines for TypeInfo {
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
-            SelfType => "Self".into(),
             B256 => "b256".into(),
             Numeric => "numeric".into(),
             Contract => "contract".into(),
@@ -451,7 +448,7 @@ impl DisplayWithEngines for TypeInfo {
             } => print_inner_types(
                 engines,
                 call_path.suffix.as_str().to_string(),
-                type_parameters.iter().map(|x| x.type_id),
+                type_parameters.iter_excluding_self().map(|x| x.type_id),
             ),
             Struct {
                 call_path,
@@ -460,7 +457,7 @@ impl DisplayWithEngines for TypeInfo {
             } => print_inner_types(
                 engines,
                 call_path.suffix.as_str().to_string(),
-                type_parameters.iter().map(|x| x.type_id),
+                type_parameters.iter_excluding_self().map(|x| x.type_id),
             ),
             ContractCaller { abi_name, address } => {
                 format!(
@@ -513,7 +510,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 ..
             } => {
                 let unconstrained_in_type_parameters = type_parameters
-                    .iter()
+                    .iter_excluding_self()
                     .map(|type_param| {
                         type_param
                             .type_id
@@ -537,7 +534,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 ..
             } => {
                 let unconstrained_in_type_parameters = type_parameters
-                    .iter()
+                    .iter_excluding_self()
                     .map(|type_param| {
                         type_param
                             .type_id
@@ -580,7 +577,6 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -611,15 +607,38 @@ impl TypeInfo {
             TypeInfo::Tuple(_) => 8,
             TypeInfo::ContractCaller { .. } => 9,
             TypeInfo::Custom { .. } => 10,
-            TypeInfo::SelfType => 11,
-            TypeInfo::B256 => 12,
-            TypeInfo::Numeric => 13,
-            TypeInfo::Contract => 14,
-            TypeInfo::ErrorRecovery => 15,
-            TypeInfo::Array(_, _) => 16,
-            TypeInfo::Storage { .. } => 17,
-            TypeInfo::RawUntypedPtr => 18,
-            TypeInfo::RawUntypedSlice => 19,
+            TypeInfo::B256 => 11,
+            TypeInfo::Numeric => 12,
+            TypeInfo::Contract => 13,
+            TypeInfo::ErrorRecovery => 14,
+            TypeInfo::Array(_, _) => 15,
+            TypeInfo::Storage { .. } => 16,
+            TypeInfo::RawUntypedPtr => 17,
+            TypeInfo::RawUntypedSlice => 18,
+        }
+    }
+
+    pub(crate) fn new_self_type(span: Span) -> TypeInfo {
+        TypeInfo::Custom {
+            call_path: CallPath {
+                prefixes: vec![],
+                suffix: Ident::new_with_override("Self", span),
+                is_absolute: false,
+            },
+            type_arguments: None,
+        }
+    }
+
+    pub(crate) fn is_self_type(&self) -> bool {
+        // TODO: make this check something better
+        match self {
+            TypeInfo::Custom { call_path, .. } => {
+                call_path.suffix.as_str() == "Self" || call_path.suffix.as_str() == "self"
+            }
+            TypeInfo::UnknownGeneric { name, .. } => {
+                name.as_str() == "Self" || name.as_str() == "self"
+            }
+            _ => false,
         }
     }
 
@@ -698,7 +717,7 @@ impl TypeInfo {
 
                 let type_arguments = {
                     let type_arguments = type_parameters
-                        .iter()
+                        .iter_excluding_self()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
@@ -753,7 +772,7 @@ impl TypeInfo {
 
                 let type_arguments = {
                     let type_arguments = type_parameters
-                        .iter()
+                        .iter_excluding_self()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
@@ -949,7 +968,6 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr
@@ -977,7 +995,7 @@ impl TypeInfo {
                     ..
                 } => {
                     inner_types.insert(type_id);
-                    for type_param in type_parameters.iter() {
+                    for type_param in type_parameters.iter_excluding_self() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
@@ -998,7 +1016,7 @@ impl TypeInfo {
                     ..
                 } => {
                     inner_types.insert(type_id);
-                    for type_param in type_parameters.iter() {
+                    for type_param in type_parameters.iter_excluding_self() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
@@ -1055,7 +1073,6 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(_)
                 | TypeInfo::Boolean
                 | TypeInfo::ContractCaller { .. }
-                | TypeInfo::SelfType
                 | TypeInfo::B256
                 | TypeInfo::Numeric
                 | TypeInfo::RawUntypedPtr
@@ -1076,7 +1093,7 @@ impl TypeInfo {
                 variant_types,
                 ..
             } => {
-                for type_param in type_parameters.iter() {
+                for type_param in type_parameters.iter_excluding_self() {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for variant in variant_types.iter() {
@@ -1088,7 +1105,7 @@ impl TypeInfo {
                 fields,
                 ..
             } => {
-                for type_param in type_parameters.iter() {
+                for type_param in type_parameters.iter_excluding_self() {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for field in fields.iter() {
@@ -1121,7 +1138,6 @@ impl TypeInfo {
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::Contract
@@ -1155,7 +1171,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Str(_)
             | TypeInfo::Contract
             | TypeInfo::Array(_, _)
@@ -1196,7 +1211,6 @@ impl TypeInfo {
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_) => {
                 errors.push(CompileError::Unimplemented(
@@ -1228,7 +1242,7 @@ impl TypeInfo {
                 type_parameters,
                 ..
             } => {
-                for type_parameter in type_parameters.iter() {
+                for type_parameter in type_parameters.iter_excluding_self() {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
@@ -1256,7 +1270,7 @@ impl TypeInfo {
                 type_parameters,
                 ..
             } => {
-                for type_parameter in type_parameters.iter() {
+                for type_parameter in type_parameters.iter_excluding_self() {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
@@ -1344,7 +1358,7 @@ impl TypeInfo {
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
             | TypeInfo::Placeholder(_) => {}
-            TypeInfo::Custom { .. } | TypeInfo::SelfType => {
+            TypeInfo::Custom { .. } => {
                 errors.push(CompileError::Internal(
                     "did not expect to find this type here",
                     span.clone(),
@@ -1546,11 +1560,11 @@ impl TypeInfo {
                     .map(|x| x.name.clone())
                     .collect::<Vec<_>>();
                 let l_types = l_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
@@ -1572,11 +1586,11 @@ impl TypeInfo {
                 let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
                 let l_types = l_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 let r_types = r_type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
@@ -1678,10 +1692,10 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 type_parameters, ..
-            } => !type_parameters.is_empty(),
+            } => !type_parameters.is_empty_excluding_self(),
             TypeInfo::Struct {
                 type_parameters, ..
-            } => !type_parameters.is_empty(),
+            } => !type_parameters.is_empty_excluding_self(),
             TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -1693,7 +1707,6 @@ impl TypeInfo {
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Custom { .. }
-            | TypeInfo::SelfType
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
             | TypeInfo::Contract

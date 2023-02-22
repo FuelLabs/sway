@@ -86,7 +86,7 @@ impl ty::TyMatchBranch {
         // unify the return type from the typed result with the type annotation
         if !typed_result.deterministically_aborts(decl_engine, true) {
             append!(
-                ctx.unify_with_self(typed_result.return_type, &typed_result.span),
+                ctx.unify_with_type_annotation(typed_result.return_type, &typed_result.span),
                 warnings,
                 errors
             );

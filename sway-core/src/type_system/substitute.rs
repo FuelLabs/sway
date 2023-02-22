@@ -62,6 +62,10 @@ impl TypeSubstMap {
         self.mapping.is_empty()
     }
 
+    pub(crate) fn extend(&mut self, other: TypeSubstMap) {
+        self.mapping.extend(other.mapping);
+    }
+
     /// Constructs a new [TypeSubstMap] from a list of [TypeParameter]s
     /// `type_parameters`. The [SourceType]s of the resulting [TypeSubstMap] are
     /// the [TypeId]s from `type_parameters` and the [DestinationType]s are the
@@ -73,7 +77,7 @@ impl TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let mapping = type_parameters
-            .iter()
+            .iter_including_self()
             .map(|x| {
                 (
                     x.type_id,
@@ -173,10 +177,13 @@ impl TypeSubstMap {
                 },
             ) => {
                 let type_parameters = type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let type_arguments = type_arguments
+                    .iter_including_self()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
@@ -193,10 +200,13 @@ impl TypeSubstMap {
                 },
             ) => {
                 let type_parameters = type_parameters
-                    .iter()
+                    .iter_including_self()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let type_arguments = type_arguments
+                    .iter_including_self()
+                    .map(|x| x.type_id)
+                    .collect::<Vec<_>>();
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
                     type_parameters,
@@ -244,7 +254,6 @@ impl TypeSubstMap {
             }
             (TypeInfo::Unknown, TypeInfo::Unknown)
             | (TypeInfo::Boolean, TypeInfo::Boolean)
-            | (TypeInfo::SelfType, TypeInfo::SelfType)
             | (TypeInfo::B256, TypeInfo::B256)
             | (TypeInfo::Numeric, TypeInfo::Numeric)
             | (TypeInfo::Contract, TypeInfo::Contract)
@@ -325,7 +334,7 @@ impl TypeSubstMap {
             TypeInfo::Struct {
                 fields,
                 call_path,
-                type_parameters,
+                mut type_parameters,
             } => {
                 let mut need_to_create_new = false;
                 let fields = fields
@@ -339,16 +348,20 @@ impl TypeSubstMap {
                         field
                     })
                     .collect::<Vec<_>>();
-                let type_parameters: TypeParameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
+                if let Some(type_param) = type_parameters.to_mut_self_type() {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
+                type_parameters
+                    .iter_mut_excluding_self()
+                    .for_each(|type_param| {
                         if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                             need_to_create_new = true;
                             type_param.type_id = type_id;
                         }
-                        type_param
-                    })
-                    .collect();
+                    });
                 if need_to_create_new {
                     Some(type_engine.insert(
                         decl_engine,
@@ -365,7 +378,7 @@ impl TypeSubstMap {
             TypeInfo::Enum {
                 variant_types,
                 call_path,
-                type_parameters,
+                mut type_parameters,
             } => {
                 let mut need_to_create_new = false;
                 let variant_types = variant_types
@@ -380,16 +393,20 @@ impl TypeSubstMap {
                         variant
                     })
                     .collect::<Vec<_>>();
-                let type_parameters: TypeParameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
+                if let Some(type_param) = type_parameters.to_mut_self_type() {
+                    if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+                        need_to_create_new = true;
+                        type_param.type_id = type_id;
+                    }
+                }
+                type_parameters
+                    .iter_mut_excluding_self()
+                    .for_each(|type_param| {
                         if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                             need_to_create_new = true;
                             type_param.type_id = type_id;
                         }
-                        type_param
-                    })
-                    .collect();
+                    });
                 if need_to_create_new {
                     Some(type_engine.insert(
                         decl_engine,
@@ -451,7 +468,6 @@ impl TypeSubstMap {
             | TypeInfo::UnsignedInteger(..)
             | TypeInfo::Boolean
             | TypeInfo::ContractCaller { .. }
-            | TypeInfo::SelfType
             | TypeInfo::B256
             | TypeInfo::Numeric
             | TypeInfo::RawUntypedPtr

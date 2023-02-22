@@ -76,19 +76,6 @@ impl DeclRef {
             .with_parent(decl_engine, self)
     }
 
-    pub(crate) fn replace_self_type_and_insert_new(
-        &self,
-        engines: Engines<'_>,
-        self_type: TypeId,
-    ) -> DeclRef {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine
-            .insert_wrapper(self.name.clone(), decl, self.decl_span.clone())
-            .with_parent(decl_engine, self)
-    }
-
     pub(crate) fn replace_decls_and_insert_new(
         &self,
         decl_mapping: &DeclMapping,
@@ -132,15 +119,6 @@ impl SubstTypes for DeclRef {
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self);
         decl.subst(type_mapping, engines);
-        decl_engine.replace(self, decl);
-    }
-}
-
-impl ReplaceSelfType for DeclRef {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
         decl_engine.replace(self, decl);
     }
 }

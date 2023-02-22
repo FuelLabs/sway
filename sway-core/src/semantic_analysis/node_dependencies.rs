@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_system::{TypeArgument, TypeParameters};
+use crate::type_system::{TypeArgument, TypeParameter};
 use crate::TypeEngine;
 use crate::{
     error::*,
@@ -633,7 +633,7 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_type_parameters(self, type_parameters: &TypeParameters) -> Self {
+    fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),
@@ -825,7 +825,6 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         } => name.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
-        TypeInfo::SelfType => "self",
         TypeInfo::B256 => "b256",
         TypeInfo::Numeric => "numeric",
         TypeInfo::Contract => "contract",

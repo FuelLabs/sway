@@ -1260,7 +1260,11 @@ impl<'eng> FnCompiler<'eng> {
                 .iter()
                 .map(|p| p.type_argument.type_id)
                 .collect(),
-            callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
+            callee
+                .type_parameters
+                .iter_excluding_self()
+                .map(|tp| tp.type_id)
+                .collect(),
         );
         let new_callee = match self.recreated_fns.get(&fn_key).copied() {
             Some(func) => func,

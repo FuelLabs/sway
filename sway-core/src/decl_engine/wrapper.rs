@@ -6,12 +6,7 @@ use std::{
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::ty,
-    type_system::{SubstTypes, TypeSubstMap},
-    ReplaceSelfType, TypeId,
-};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
@@ -112,23 +107,6 @@ impl SubstTypes for DeclWrapper {
             DeclWrapper::Abi(_) => {}
             DeclWrapper::Constant(_) => {}
             DeclWrapper::Enum(decl) => decl.subst(type_mapping, engines),
-        }
-    }
-}
-
-impl ReplaceSelfType for DeclWrapper {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        match self {
-            DeclWrapper::Unknown => {}
-            DeclWrapper::Function(decl) => decl.replace_self_type(engines, self_type),
-            DeclWrapper::Trait(decl) => decl.replace_self_type(engines, self_type),
-            DeclWrapper::TraitFn(decl) => decl.replace_self_type(engines, self_type),
-            DeclWrapper::ImplTrait(decl) => decl.replace_self_type(engines, self_type),
-            DeclWrapper::Struct(decl) => decl.replace_self_type(engines, self_type),
-            DeclWrapper::Storage(_) => {}
-            DeclWrapper::Abi(_) => {}
-            DeclWrapper::Constant(_) => {}
-            DeclWrapper::Enum(decl) => decl.replace_self_type(engines, self_type),
         }
     }
 }

@@ -55,17 +55,6 @@ impl SubstTypes for TyIntrinsicFunctionKind {
     }
 }
 
-impl ReplaceSelfType for TyIntrinsicFunctionKind {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        for arg in &mut self.arguments {
-            arg.replace_self_type(engines, self_type);
-        }
-        for targ in &mut self.type_arguments {
-            targ.type_id.replace_self_type(engines, self_type);
-        }
-    }
-}
-
 impl DisplayWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let targs = self

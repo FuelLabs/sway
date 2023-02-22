@@ -563,7 +563,7 @@ fn get_struct_type_info_from_type_id(
             variant_types,
             ..
         } => {
-            for param in type_parameters.iter() {
+            for param in type_parameters.iter_excluding_self() {
                 if let Ok(Some(type_info)) =
                     get_struct_type_info_from_type_id(type_engine, param.type_id)
                 {

@@ -27,7 +27,7 @@ impl ty::TyEnumDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameters::type_check(ctx.by_ref(), type_parameters, true),
+            TypeParameters::type_check(ctx.by_ref(), type_parameters, true, None),
             return err(warnings, errors),
             warnings,
             errors
@@ -56,6 +56,7 @@ impl ty::TyEnumDeclaration {
             attributes,
             visibility,
         };
+
         ok(decl, warnings, errors)
     }
 }
@@ -71,7 +72,7 @@ impl ty::TyEnumVariant {
         let decl_engine = ctx.decl_engine;
         let mut type_argument = variant.type_argument;
         type_argument.type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve_type(
                 type_argument.type_id,
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
