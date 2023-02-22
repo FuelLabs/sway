@@ -5,7 +5,7 @@ use sway_types::{ident::Ident, span::Span};
 pub struct EnumDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: TypeParameters,
     pub variants: Vec<EnumVariant>,
     pub(crate) span: Span,
     pub visibility: Visibility,

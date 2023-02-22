@@ -12,6 +12,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyTraitFn {
     pub name: Ident,
+    pub type_parameters: TypeParameters,
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeId,
@@ -37,6 +38,7 @@ impl HashWithEngines for TyTraitFn {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
         let TyTraitFn {
             name,
+            type_parameters,
             purity,
             parameters,
             return_type,
@@ -47,6 +49,7 @@ impl HashWithEngines for TyTraitFn {
         } = self;
         let type_engine = engines.te();
         name.hash(state);
+        type_parameters.hash(state, engines);
         parameters.hash(state, engines);
         type_engine.get(*return_type).hash(state, engines);
         purity.hash(state);
@@ -55,6 +58,7 @@ impl HashWithEngines for TyTraitFn {
 
 impl SubstTypes for TyTraitFn {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.type_parameters.subst(type_mapping, engines);
         self.parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -64,6 +68,7 @@ impl SubstTypes for TyTraitFn {
 
 impl ReplaceSelfType for TyTraitFn {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.type_parameters.replace_self_type(engines, self_type);
         self.parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -76,7 +81,7 @@ impl MonomorphizeHelper for TyTraitFn {
         &self.name
     }
 
-    fn type_parameters(&self) -> &[TypeParameter] {
-        &[]
+    fn type_parameters(&self) -> &TypeParameters {
+        &self.type_parameters
     }
 }

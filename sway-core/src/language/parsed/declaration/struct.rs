@@ -1,4 +1,4 @@
-use crate::{language::Visibility, transform, type_system::TypeParameter, TypeArgument};
+use crate::{language::Visibility, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
@@ -6,7 +6,7 @@ pub struct StructDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub fields: Vec<StructField>,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: TypeParameters,
     pub visibility: Visibility,
     pub(crate) span: Span,
 }

@@ -9,8 +9,7 @@ use sway_core::{
         ty,
     },
     transform::Attribute,
-    type_system::{TypeId, TypeInfo, TypeParameter},
-    TraitConstraint, TypeArgument, TypeEngine,
+    type_system::*,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};

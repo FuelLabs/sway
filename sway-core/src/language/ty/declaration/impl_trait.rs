@@ -11,7 +11,7 @@ pub type TyImplItem = TyTraitItem;
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
-    pub impl_type_parameters: Vec<TypeParameter>,
+    pub impl_type_parameters: TypeParameters,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub items: Vec<TyImplItem>,
@@ -59,9 +59,7 @@ impl HashWithEngines for TyImplTrait {
 
 impl SubstTypes for TyImplTrait {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+        self.impl_type_parameters.subst(type_mapping, engines);
         self.implementing_for.subst_inner(type_mapping, engines);
         self.items
             .iter_mut()
@@ -72,8 +70,7 @@ impl SubstTypes for TyImplTrait {
 impl ReplaceSelfType for TyImplTrait {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
+            .replace_self_type(engines, self_type);
         self.implementing_for.replace_self_type(engines, self_type);
         self.items
             .iter_mut()

@@ -15,7 +15,7 @@ use super::TyDeclaration;
 #[derive(Clone, Debug)]
 pub struct TyTraitDeclaration {
     pub name: Ident,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: TypeParameters,
     pub interface_surface: Vec<TyTraitInterfaceItem>,
     pub items: Vec<TyTraitItem>,
     pub supertraits: Vec<parsed::Supertrait>,
@@ -200,7 +200,7 @@ impl MonomorphizeHelper for TyTraitDeclaration {
         &self.name
     }
 
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &TypeParameters {
         &self.type_parameters
     }
 }

@@ -68,7 +68,7 @@ impl ty::TyFunctionDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, false),
+            TypeParameters::type_check(ctx.by_ref(), type_parameters, false),
             return err(warnings, errors),
             warnings,
             errors
@@ -219,7 +219,7 @@ fn test_function_selector_behavior() {
         span: Span::dummy(),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
-        type_parameters: vec![],
+        type_parameters: TypeParameters::new(),
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],
@@ -267,7 +267,7 @@ fn test_function_selector_behavior() {
         span: Span::dummy(),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
-        type_parameters: vec![],
+        type_parameters: TypeParameters::new(),
         visibility: Visibility::Public,
         is_contract_call: false,
         where_clause: vec![],

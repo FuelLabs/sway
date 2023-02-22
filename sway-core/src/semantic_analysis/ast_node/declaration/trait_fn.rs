@@ -31,8 +31,6 @@ impl ty::TyTraitFn {
         let mut fn_namespace = ctx.namespace.clone();
         let mut ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
-        // TODO: when we add type parameters to trait fns, type check them here
-
         // Type check the parameters.
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
@@ -59,6 +57,7 @@ impl ty::TyTraitFn {
 
         let trait_fn = ty::TyTraitFn {
             name,
+            type_parameters: TypeParameters::new(), // this is empty because right now these cannot take type params
             parameters: typed_parameters,
             return_type,
             return_type_span,
@@ -88,7 +87,7 @@ impl ty::TyTraitFn {
                 call_path_tree: None,
             },
             visibility: Visibility::Public,
-            type_parameters: vec![],
+            type_parameters: TypeParameters::new(),
             is_contract_call: mode == Mode::ImplAbiFn,
             where_clause: vec![],
         }

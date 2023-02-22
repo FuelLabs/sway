@@ -175,7 +175,7 @@ impl<'a> TypedTree<'a> {
                         self.collect_ty_struct_field(field);
                     }
 
-                    for type_param in &struct_decl.type_parameters {
+                    for type_param in struct_decl.type_parameters.iter() {
                         if let Some(mut token) = self
                             .tokens
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
@@ -202,7 +202,7 @@ impl<'a> TypedTree<'a> {
                             Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
                     }
 
-                    for type_param in &enum_decl.type_parameters {
+                    for type_param in enum_decl.type_parameters.iter() {
                         if let Some(mut token) = self
                             .tokens
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
@@ -232,7 +232,7 @@ impl<'a> TypedTree<'a> {
                     ..
                 }) = decl_engine.get_impl_trait(decl_id, decl_span)
                 {
-                    for param in impl_type_parameters {
+                    for param in impl_type_parameters.iter() {
                         self.collect_type_id(
                             param.type_id,
                             &TypedAstToken::TypedParameter(param.clone()),
@@ -1172,7 +1172,7 @@ impl<'a> TypedTree<'a> {
                     assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
                 }
 
-                for param in type_parameters {
+                for param in type_parameters.iter() {
                     self.collect_type_id(
                         param.type_id,
                         &TypedAstToken::TypedParameter(param.clone()),
@@ -1197,7 +1197,7 @@ impl<'a> TypedTree<'a> {
                     assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
                 }
 
-                for param in type_parameters {
+                for param in type_parameters.iter() {
                     self.collect_type_id(
                         param.type_id,
                         &TypedAstToken::TypedParameter(param.clone()),
@@ -1279,7 +1279,7 @@ impl<'a> TypedTree<'a> {
             self.collect_typed_fn_param_token(parameter);
         }
 
-        for type_param in &func_decl.type_parameters {
+        for type_param in func_decl.type_parameters.iter() {
             self.collect_type_id(
                 type_param.type_id,
                 &typed_token,

@@ -12,7 +12,7 @@ use std::{collections::HashMap, sync::Arc};
 use sway_core::{
     language::ty::TyDeclaration,
     transform::{AttributeKind, AttributesMap},
-    Engines, TypeParameter,
+    Engines, TypeParameters,
 };
 use sway_types::Spanned;
 use tower_lsp::lsp_types::{
@@ -124,7 +124,7 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     }
 
     /// Returns an optional [String] of the type parameters for the given [TypeParameter] vector.
-    fn type_param_string(&self, type_params: &Vec<TypeParameter>) -> Option<String> {
+    fn type_param_string(&self, type_params: &TypeParameters) -> Option<String> {
         if type_params.is_empty() {
             None
         } else {

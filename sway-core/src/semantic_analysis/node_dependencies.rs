@@ -1,13 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_system::{TypeArgument, TypeParameter};
-use crate::TypeEngine;
 use crate::{
     error::*,
     language::{parsed::*, CallPath},
-    type_system::AbiName,
-    TypeInfo,
+    type_system::*,
 };
 
 use sway_error::error::CompileError;
@@ -649,7 +646,7 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_type_parameters(self, type_parameters: &[TypeParameter]) -> Self {
+    fn gather_from_type_parameters(self, type_parameters: &TypeParameters) -> Self {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),

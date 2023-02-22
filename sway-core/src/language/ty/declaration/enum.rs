@@ -17,7 +17,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyEnumDeclaration {
     pub call_path: CallPath,
-    pub type_parameters: Vec<TypeParameter>,
+    pub type_parameters: TypeParameters,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
@@ -58,9 +58,7 @@ impl SubstTypes for TyEnumDeclaration {
         self.variants
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+        self.type_parameters.subst(type_mapping, engines);
     }
 }
 
@@ -69,9 +67,7 @@ impl ReplaceSelfType for TyEnumDeclaration {
         self.variants
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.type_parameters.replace_self_type(engines, self_type);
     }
 }
 
@@ -97,7 +93,7 @@ impl Spanned for TyEnumDeclaration {
 }
 
 impl MonomorphizeHelper for TyEnumDeclaration {
-    fn type_parameters(&self) -> &[TypeParameter] {
+    fn type_parameters(&self) -> &TypeParameters {
         &self.type_parameters
     }
 

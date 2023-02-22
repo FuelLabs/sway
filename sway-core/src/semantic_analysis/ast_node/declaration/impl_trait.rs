@@ -44,7 +44,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParameters::type_check(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
@@ -186,8 +186,8 @@ impl ty::TyImplTrait {
                 let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
-                        &[], // this is empty because abi definitions don't support generics,
-                        &[], // this is empty because abi definitions don't support generics,
+                        &TypeParameters::new(), // this is empty because abi definitions don't support generics,
+                        &TypeParameters::new(), // this is empty because abi definitions don't support generics,
                         &[], // this is empty because abi definitions don't support generics,
                         &abi.supertraits,
                         &abi.interface_surface,
@@ -202,7 +202,7 @@ impl ty::TyImplTrait {
                     errors
                 );
                 ty::TyImplTrait {
-                    impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
+                    impl_type_parameters: TypeParameters::new(), // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
@@ -465,7 +465,7 @@ impl ty::TyImplTrait {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_impl_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), impl_type_parameters, true),
+            TypeParameters::type_check(ctx.by_ref(), impl_type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
@@ -556,8 +556,8 @@ impl ty::TyImplTrait {
 #[allow(clippy::too_many_arguments)]
 fn type_check_trait_implementation(
     mut ctx: TypeCheckContext,
-    impl_type_parameters: &[TypeParameter],
-    trait_type_parameters: &[TypeParameter],
+    impl_type_parameters: &TypeParameters,
+    trait_type_parameters: &TypeParameters,
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
     trait_interface_surface: &[TyTraitInterfaceItem],
@@ -758,7 +758,7 @@ fn type_check_trait_implementation(
 
 fn type_check_impl_method(
     mut ctx: TypeCheckContext,
-    impl_type_parameters: &[TypeParameter],
+    impl_type_parameters: &TypeParameters,
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
@@ -974,16 +974,16 @@ fn type_check_impl_method(
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect::<HashSet<_>>();
-    let mut unconstrained_type_parameters_to_be_added =
+    let unconstrained_type_parameters_to_be_added: TypeParameters =
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
             .cloned()
             .into_iter()
             .map(|x| x.thing)
-            .collect::<Vec<_>>();
+            .collect();
     impl_method
         .type_parameters
-        .append(&mut unconstrained_type_parameters_to_be_added);
+        .extend(unconstrained_type_parameters_to_be_added);
 
     if errors.is_empty() {
         ok(impl_method, warnings, errors)
@@ -1028,7 +1028,7 @@ fn type_check_impl_method(
 /// ```
 fn check_for_unconstrained_type_parameters(
     engines: Engines<'_>,
-    type_parameters: &[TypeParameter],
+    type_parameters: &TypeParameters,
     trait_type_arguments: &[TypeArgument],
     self_type: TypeId,
     self_type_span: &Span,

@@ -589,7 +589,7 @@ fn normalize_err(
 
 pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
-    fn type_parameters(&self) -> &[TypeParameter];
+    fn type_parameters(&self) -> &TypeParameters;
 }
 
 /// This type is used to denote if, during monomorphization, the compiler

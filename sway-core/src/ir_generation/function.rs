@@ -16,7 +16,7 @@ use crate::{
     metadata::MetadataManager,
     type_system::{LogId, MessageId, TypeId, TypeInfo},
     types::DeterministicallyAborts,
-    TypeEngine,
+    TypeEngine, TypeParameters,
 };
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::{CompileError, Hint};
@@ -1266,7 +1266,7 @@ impl<'eng> FnCompiler<'eng> {
             Some(func) => func,
             None => {
                 let callee_fn_decl = ty::TyFunctionDeclaration {
-                    type_parameters: Vec::new(),
+                    type_parameters: TypeParameters::new(),
                     name: Ident::new(Span::from_string(format!(
                         "{}_{}",
                         callee.name,

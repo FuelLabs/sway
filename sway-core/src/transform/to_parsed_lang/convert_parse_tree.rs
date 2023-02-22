@@ -910,7 +910,7 @@ fn generic_params_opt_to_type_parameters(
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<TypeParameters, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -923,7 +923,7 @@ fn generic_params_opt_to_type_parameters(
         None => Vec::new(),
     };
 
-    let mut params = match generic_params_opt {
+    let mut params: TypeParameters = match generic_params_opt {
         Some(generic_params) => generic_params
             .parameters
             .into_inner()
@@ -944,8 +944,8 @@ fn generic_params_opt_to_type_parameters(
                     trait_constraints_span: Span::dummy(),
                 }
             })
-            .collect::<Vec<_>>(),
-        None => Vec::new(),
+            .collect(),
+        None => TypeParameters::new(),
     };
 
     let mut errors = Vec::new();
@@ -3188,7 +3188,7 @@ fn generic_args_to_type_parameters(
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
-) -> Result<Vec<TypeParameter>, ErrorEmitted> {
+) -> Result<TypeParameters, ErrorEmitted> {
     generic_args
         .parameters
         .into_inner()

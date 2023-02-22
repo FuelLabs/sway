@@ -68,7 +68,7 @@ impl TypeSubstMap {
     /// new [TypeId]s created from a transformation upon `type_parameters`.
     pub(crate) fn from_type_parameters(
         engines: Engines<'_>,
-        type_parameters: &[TypeParameter],
+        type_parameters: &TypeParameters,
     ) -> TypeSubstMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -339,7 +339,7 @@ impl TypeSubstMap {
                         field
                     })
                     .collect::<Vec<_>>();
-                let type_parameters = type_parameters
+                let type_parameters: TypeParameters = type_parameters
                     .into_iter()
                     .map(|mut type_param| {
                         if let Some(type_id) = self.find_match(type_param.type_id, engines) {
@@ -348,7 +348,7 @@ impl TypeSubstMap {
                         }
                         type_param
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
                 if need_to_create_new {
                     Some(type_engine.insert(
                         decl_engine,
@@ -380,7 +380,7 @@ impl TypeSubstMap {
                         variant
                     })
                     .collect::<Vec<_>>();
-                let type_parameters = type_parameters
+                let type_parameters: TypeParameters = type_parameters
                     .into_iter()
                     .map(|mut type_param| {
                         if let Some(type_id) = self.find_match(type_param.type_id, engines) {
@@ -389,7 +389,7 @@ impl TypeSubstMap {
                         }
                         type_param
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
                 if need_to_create_new {
                     Some(type_engine.insert(
                         decl_engine,

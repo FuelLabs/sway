@@ -94,12 +94,12 @@ pub enum TypeInfo {
     UnsignedInteger(IntegerBits),
     Enum {
         call_path: CallPath,
-        type_parameters: Vec<TypeParameter>,
+        type_parameters: TypeParameters,
         variant_types: Vec<ty::TyEnumVariant>,
     },
     Struct {
         call_path: CallPath,
-        type_parameters: Vec<TypeParameter>,
+        type_parameters: TypeParameters,
         fields: Vec<ty::TyStructField>,
     },
     Boolean,

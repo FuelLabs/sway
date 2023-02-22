@@ -93,7 +93,7 @@ fn generic_enum_resolution() {
         TypeInfo::Enum {
             call_path: result_name.clone().into(),
             variant_types,
-            type_parameters: vec![placeholder_type_param],
+            type_parameters: vec![placeholder_type_param].into(),
         },
     );
 
@@ -127,7 +127,7 @@ fn generic_enum_resolution() {
         TypeInfo::Enum {
             call_path: result_name.into(),
             variant_types,
-            type_parameters: vec![type_param],
+            type_parameters: vec![type_param].into(),
         },
     );
 

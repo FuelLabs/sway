@@ -27,8 +27,7 @@ use sway_core::{
         CallPathTree, Literal,
     },
     transform::{AttributeKind, AttributesMap},
-    type_system::{TypeArgument, TypeParameter},
-    TraitConstraint, TypeEngine, TypeInfo,
+    type_system::*,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
@@ -136,7 +135,7 @@ impl<'a> ParsedTree<'a> {
             self.collect_function_parameter(parameter);
         }
 
-        for type_param in &func.type_parameters {
+        for type_param in func.type_parameters.iter() {
             self.collect_type_parameter(type_param, AstToken::FunctionDeclaration(func.clone()));
         }
 
@@ -232,7 +231,7 @@ impl<'a> ParsedTree<'a> {
                     field.attributes.parse(self.tokens);
                 }
 
-                for type_param in &struct_dec.type_parameters {
+                for type_param in struct_dec.type_parameters.iter() {
                     self.collect_type_parameter(
                         type_param,
                         AstToken::Declaration(declaration.clone()),
@@ -250,7 +249,7 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for type_param in &enum_decl.type_parameters {
+                for type_param in enum_decl.type_parameters.iter() {
                     self.collect_type_parameter(
                         type_param,
                         AstToken::Declaration(declaration.clone()),
@@ -299,7 +298,7 @@ impl<'a> ParsedTree<'a> {
                 );
                 self.collect_type_arg(&impl_trait.implementing_for, &token);
 
-                for type_param in &impl_trait.impl_type_parameters {
+                for type_param in impl_trait.impl_type_parameters.iter() {
                     self.collect_type_parameter(
                         type_param,
                         AstToken::Declaration(declaration.clone()),
@@ -331,7 +330,7 @@ impl<'a> ParsedTree<'a> {
                     }
                 }
 
-                for type_param in &impl_self.impl_type_parameters {
+                for type_param in impl_self.impl_type_parameters.iter() {
                     self.collect_type_parameter(
                         type_param,
                         AstToken::Declaration(declaration.clone()),

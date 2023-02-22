@@ -27,7 +27,7 @@ impl ty::TyEnumDeclaration {
         // Type check the type parameters. This will also insert them into the
         // current namespace.
         let new_type_parameters = check!(
-            TypeParameter::type_check_type_params(ctx.by_ref(), type_parameters, true),
+            TypeParameters::type_check(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors

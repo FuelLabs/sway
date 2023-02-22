@@ -98,7 +98,7 @@ impl ReplaceSelfType for TypeId {
                             variant
                         })
                         .collect::<Vec<_>>();
-                    let type_parameters = type_parameters
+                    let type_parameters: TypeParameters = type_parameters
                         .into_iter()
                         .map(|mut type_param| {
                             if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
@@ -107,7 +107,7 @@ impl ReplaceSelfType for TypeId {
                             }
                             type_param
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
                     if need_to_create_new {
                         Some(type_engine.insert(
                             decl_engine,
@@ -139,7 +139,7 @@ impl ReplaceSelfType for TypeId {
                             field
                         })
                         .collect::<Vec<_>>();
-                    let type_parameters = type_parameters
+                    let type_parameters: TypeParameters = type_parameters
                         .into_iter()
                         .map(|mut type_param| {
                             if let Some(type_id) = helper(type_param.type_id, engines, self_type) {
@@ -148,7 +148,7 @@ impl ReplaceSelfType for TypeId {
                             }
                             type_param
                         })
-                        .collect::<Vec<_>>();
+                        .collect();
                     if need_to_create_new {
                         Some(type_engine.insert(
                             decl_engine,
@@ -288,10 +288,7 @@ impl TypeId {
         self.0
     }
 
-    pub(crate) fn get_type_parameters(
-        &self,
-        type_engine: &TypeEngine,
-    ) -> Option<Vec<TypeParameter>> {
+    pub(crate) fn get_type_parameters(&self, type_engine: &TypeEngine) -> Option<TypeParameters> {
         match type_engine.get(*self) {
             TypeInfo::Enum {
                 type_parameters, ..
