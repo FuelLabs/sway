@@ -217,6 +217,8 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::ImplTrait {
                 decl_id, decl_span, ..
             } => {
+                eprintln!("impl trait decl: {:#?}", decl_engine.get_impl_trait(decl_id, decl_span));
+
                 if let Ok(ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
@@ -251,9 +253,12 @@ impl<'a> TypedTree<'a> {
                         .try_unwrap()
                     {
                         token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+            
                         token.type_def = if let Some(decl_ref) = &trait_decl_ref {
                             if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, decl_span) {
                                 Some(TypeDefinition::Ident(trait_decl.name))
+                            } else if let Ok(abi_decl) = decl_engine.get_abi(decl_ref, decl_span) {
+                                Some(TypeDefinition::Ident(abi_decl.name))
                             } else {
                                 Some(TypeDefinition::TypeId(implementing_for.type_id))
                             }
@@ -302,6 +307,9 @@ impl<'a> TypedTree<'a> {
                 decl_id, decl_span, ..
             } => {
                 if let Ok(abi_decl) = decl_engine.get_abi(decl_id, decl_span) {
+                    eprintln!("abi decl: {:#?}", abi_decl);
+                    eprintln!("");
+
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_decl.name))
@@ -317,6 +325,9 @@ impl<'a> TypedTree<'a> {
                                 if let Ok(trait_fn) = decl_engine
                                     .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
                                 {
+                                    eprintln!("abi trait fn: {:#?}", trait_fn);
+                                    eprintln!("");
+                    
                                     self.collect_typed_trait_fn_token(&trait_fn, namespace);
                                 }
                             }
