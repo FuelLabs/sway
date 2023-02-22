@@ -18,11 +18,11 @@ use sway_core::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
             AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
             ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
-            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
-            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
-            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
-            TupleIndexExpression, UseStatement, WhileLoopExpression,
+            IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
+            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
+            ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TraitItem, TreeType, TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
         CallPathTree, Literal,
     },
@@ -172,8 +172,10 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &trait_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &trait_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
                 }
 
                 for func_dec in &trait_decl.methods {
@@ -281,8 +283,10 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_trait.functions {
-                    self.handle_function_declaration(func_dec);
+                for item in &impl_trait.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::ImplSelf(impl_self) => {
@@ -311,8 +315,10 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_self.functions {
-                    self.handle_function_declaration(func_dec);
+                for item in &impl_self.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {
@@ -324,8 +330,10 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &abi_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &abi_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
                 }
 
                 for supertrait in &abi_decl.supertraits {

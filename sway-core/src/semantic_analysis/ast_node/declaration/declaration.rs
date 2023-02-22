@@ -236,9 +236,9 @@ impl ty::TyDeclaration {
                 };
 
                 trait_decl
-                    .methods
+                    .items
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
+                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
@@ -260,7 +260,7 @@ impl ty::TyDeclaration {
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
-                        &impl_trait.methods,
+                        &impl_trait.items,
                         &impl_trait.span,
                         false,
                         engines,
@@ -275,8 +275,10 @@ impl ty::TyDeclaration {
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
                 };
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                impl_trait.items.iter_mut().for_each(|item| match item {
+                    ty::TyImplItem::Fn(method) => {
+                        method.replace_implementing_type(engines, impl_trait_decl.clone())
+                    }
                 });
                 impl_trait_decl
             }
@@ -293,7 +295,7 @@ impl ty::TyDeclaration {
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
                         impl_trait.implementing_for.type_id,
-                        &impl_trait.methods,
+                        &impl_trait.items,
                         &impl_trait.span,
                         true,
                         engines,
@@ -308,8 +310,10 @@ impl ty::TyDeclaration {
                     decl_id: decl_ref.id,
                     decl_span: decl_ref.decl_span,
                 };
-                impl_trait.methods.iter_mut().for_each(|method| {
-                    method.replace_implementing_type(engines, impl_trait_decl.clone())
+                impl_trait.items.iter_mut().for_each(|item| match item {
+                    ty::TyImplItem::Fn(method) => {
+                        method.replace_implementing_type(engines, impl_trait_decl.clone())
+                    }
                 });
                 impl_trait_decl
             }
@@ -375,9 +379,9 @@ impl ty::TyDeclaration {
                     decl_span: decl_ref.decl_span,
                 };
                 abi_decl
-                    .methods
+                    .items
                     .iter_mut()
-                    .for_each(|method| method.replace_implementing_type(engines, decl.clone()));
+                    .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),
