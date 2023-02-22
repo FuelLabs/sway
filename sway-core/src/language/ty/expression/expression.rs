@@ -111,7 +111,7 @@ impl CollectTypesMetadata for TyExpression {
                 };
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters {
+                for type_parameter in function_decl.type_parameters.iter() {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -152,7 +152,7 @@ impl CollectTypesMetadata for TyExpression {
                     type_parameters, ..
                 } = ctx.type_engine.get(self.return_type)
                 {
-                    for type_parameter in type_parameters {
+                    for type_parameter in type_parameters.iter() {
                         ctx.call_site_insert(type_parameter.type_id, span.clone());
                     }
                 }

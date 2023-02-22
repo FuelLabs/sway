@@ -18,7 +18,7 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct TypeParam {
+pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,
     pub name_ident: Ident,
@@ -26,9 +26,9 @@ pub struct TypeParam {
     pub(crate) trait_constraints_span: Span,
 }
 
-impl HashWithEngines for TypeParam {
+impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: Engines<'_>) {
-        let TypeParam {
+        let TypeParameter {
             type_id,
             name_ident,
             trait_constraints,
@@ -44,8 +44,8 @@ impl HashWithEngines for TypeParam {
     }
 }
 
-impl EqWithEngines for TypeParam {}
-impl PartialEqWithEngines for TypeParam {
+impl EqWithEngines for TypeParameter {}
+impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         let type_engine = engines.te();
         type_engine
@@ -56,9 +56,9 @@ impl PartialEqWithEngines for TypeParam {
     }
 }
 
-impl OrdWithEngines for TypeParam {
+impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
-        let TypeParam {
+        let TypeParameter {
             type_id: lti,
             name_ident: ln,
             trait_constraints: ltc,
@@ -67,7 +67,7 @@ impl OrdWithEngines for TypeParam {
             trait_constraints_span: _,
             initial_type_id: _,
         } = self;
-        let TypeParam {
+        let TypeParameter {
             type_id: rti,
             name_ident: rn,
             trait_constraints: rtc,
@@ -86,7 +86,7 @@ impl OrdWithEngines for TypeParam {
     }
 }
 
-impl SubstTypes for TypeParam {
+impl SubstTypes for TypeParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_id.subst(type_mapping, engines);
         self.trait_constraints
@@ -95,7 +95,7 @@ impl SubstTypes for TypeParam {
     }
 }
 
-impl ReplaceSelfType for TypeParam {
+impl ReplaceSelfType for TypeParameter {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);
         self.trait_constraints
@@ -104,70 +104,38 @@ impl ReplaceSelfType for TypeParam {
     }
 }
 
-impl Spanned for TypeParam {
+impl Spanned for TypeParameter {
     fn span(&self) -> Span {
         self.name_ident.span()
     }
 }
 
-impl DisplayWithEngines for TypeParam {
+impl DisplayWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(f, "{}: {}", self.name_ident, engines.help_out(self.type_id))
     }
 }
 
-impl fmt::Debug for TypeParam {
+impl fmt::Debug for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {:?}", self.name_ident, self.type_id)
     }
 }
 
-impl TypeParam {
-    /// Type check a list of [TypeParameter] and return a new list of
-    /// [TypeParameter]. This will also insert this new list into the current
-    /// namespace.
-    pub(crate) fn type_check_type_params(
-        mut ctx: TypeCheckContext,
-        type_params: Vec<TypeParam>,
-        disallow_trait_constraints: bool,
-    ) -> CompileResult<Vec<TypeParam>> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let mut new_type_params: Vec<TypeParam> = vec![];
-
-        for type_param in type_params.into_iter() {
-            if disallow_trait_constraints && !type_param.trait_constraints.is_empty() {
-                let errors = vec![CompileError::WhereClauseNotYetSupported {
-                    span: type_param.trait_constraints_span,
-                }];
-                return err(vec![], errors);
-            }
-            new_type_params.push(check!(
-                TypeParam::type_check(ctx.by_ref(), type_param),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-
-        if errors.is_empty() {
-            ok(new_type_params, warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
-    }
-
+impl TypeParameter {
     /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
     /// inserts into into the current namespace.
-    fn type_check(mut ctx: TypeCheckContext, type_parameter: TypeParam) -> CompileResult<Self> {
+    pub(super) fn type_check(
+        mut ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+    ) -> CompileResult<Self> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
-        let TypeParam {
+        let TypeParameter {
             initial_type_id,
             name_ident,
             mut trait_constraints,
@@ -215,7 +183,7 @@ impl TypeParam {
             .insert_symbol(name_ident.clone(), type_parameter_decl)
             .ok(&mut warnings, &mut errors);
 
-        let type_parameter = TypeParam {
+        let type_parameter = TypeParameter {
             name_ident,
             type_id,
             initial_type_id,
@@ -228,7 +196,7 @@ impl TypeParam {
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         mut ctx: TypeCheckContext,
-        type_parameters: &[TypeParam],
+        type_parameters: &TypeParameters,
         access_span: &Span,
     ) -> CompileResult<DeclMapping> {
         let mut warnings = vec![];
@@ -238,7 +206,7 @@ impl TypeParam {
         let mut impld_method_refs: MethodMap = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
-            let TypeParam {
+            let TypeParameter {
                 type_id,
                 trait_constraints,
                 ..

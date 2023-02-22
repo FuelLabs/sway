@@ -24,7 +24,7 @@ pub struct TyFunctionDeclaration {
     pub implementing_type: Option<TyDeclaration>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
-    pub type_parameters: Vec<TypeParam>,
+    pub type_parameters: TypeParameters,
     pub return_type: TypeArgument,
     pub visibility: Visibility,
     /// whether this function exists in another contract and requires a call to it or not
@@ -76,9 +76,7 @@ impl HashWithEngines for TyFunctionDeclaration {
 
 impl SubstTypes for TyFunctionDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+        self.type_parameters.subst(type_mapping, engines);
         self.parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -89,9 +87,7 @@ impl SubstTypes for TyFunctionDeclaration {
 
 impl ReplaceSelfType for TyFunctionDeclaration {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.type_parameters.replace_self_type(engines, self_type);
         self.parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
@@ -113,7 +109,7 @@ impl Spanned for TyFunctionDeclaration {
 }
 
 impl MonomorphizeHelper for TyFunctionDeclaration {
-    fn type_parameters(&self) -> &[TypeParam] {
+    fn type_parameters(&self) -> &TypeParameters {
         &self.type_parameters
     }
 
@@ -126,7 +122,7 @@ impl UnconstrainedTypeParameters for TyFunctionDeclaration {
     fn type_parameter_is_unconstrained(
         &self,
         engines: Engines<'_>,
-        type_parameter: &TypeParam,
+        type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
         let type_parameter_info = type_engine.get(type_parameter.type_id);

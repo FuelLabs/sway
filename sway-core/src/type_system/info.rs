@@ -89,17 +89,17 @@ pub enum TypeInfo {
     ///
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
-    Placeholder(TypeParam),
+    Placeholder(TypeParameter),
     Str(Length),
     UnsignedInteger(IntegerBits),
     Enum {
         call_path: CallPath,
-        type_parameters: Vec<TypeParam>,
+        type_parameters: TypeParameters,
         variant_types: Vec<ty::TyEnumVariant>,
     },
     Struct {
         call_path: CallPath,
-        type_parameters: Vec<TypeParam>,
+        type_parameters: TypeParameters,
         fields: Vec<ty::TyStructField>,
     },
     Boolean,
@@ -487,7 +487,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
     fn type_parameter_is_unconstrained(
         &self,
         engines: Engines<'_>,
-        type_parameter: &TypeParam,
+        type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
         let type_parameter_info = type_engine.get(type_parameter.type_id);

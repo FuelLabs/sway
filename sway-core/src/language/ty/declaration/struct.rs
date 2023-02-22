@@ -18,7 +18,7 @@ use crate::{
 pub struct TyStructDeclaration {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
-    pub type_parameters: Vec<TypeParam>,
+    pub type_parameters: TypeParameters,
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::AttributesMap,
@@ -58,9 +58,7 @@ impl SubstTypes for TyStructDeclaration {
         self.fields
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+        self.type_parameters.subst(type_mapping, engines);
     }
 }
 
@@ -69,9 +67,7 @@ impl ReplaceSelfType for TyStructDeclaration {
         self.fields
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
+        self.type_parameters.replace_self_type(engines, self_type);
     }
 }
 
@@ -97,7 +93,7 @@ impl Spanned for TyStructDeclaration {
 }
 
 impl MonomorphizeHelper for TyStructDeclaration {
-    fn type_parameters(&self) -> &[TypeParam] {
+    fn type_parameters(&self) -> &TypeParameters {
         &self.type_parameters
     }
 

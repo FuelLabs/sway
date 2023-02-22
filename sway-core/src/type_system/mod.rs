@@ -10,7 +10,7 @@ mod replace_self_type;
 mod substitute;
 mod trait_constraint;
 mod type_argument;
-mod type_param;
+mod type_parameter;
 mod unconstrained_type_parameters;
 mod unify;
 mod unify_check;
@@ -27,7 +27,7 @@ pub(crate) use replace_self_type::*;
 pub(crate) use substitute::*;
 pub(crate) use trait_constraint::*;
 pub use type_argument::*;
-pub use type_param::*;
+pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;
 
 use crate::error::*;
@@ -61,7 +61,7 @@ fn generic_enum_resolution() {
     );
     let placeholder_type = type_engine.insert(
         &decl_engine,
-        TypeInfo::Placeholder(TypeParam {
+        TypeInfo::Placeholder(TypeParameter {
             type_id: generic_type,
             initial_type_id: generic_type,
             name_ident: generic_name.clone(),
@@ -69,7 +69,7 @@ fn generic_enum_resolution() {
             trait_constraints_span: sp.clone(),
         }),
     );
-    let placeholder_type_param = TypeParam {
+    let placeholder_type_param = TypeParameter {
         type_id: placeholder_type,
         initial_type_id: placeholder_type,
         name_ident: generic_name.clone(),
@@ -93,7 +93,7 @@ fn generic_enum_resolution() {
         TypeInfo::Enum {
             call_path: result_name.clone().into(),
             variant_types,
-            type_parameters: vec![placeholder_type_param],
+            type_parameters: vec![placeholder_type_param].into(),
         },
     );
 
@@ -115,7 +115,7 @@ fn generic_enum_resolution() {
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
-    let type_param = TypeParam {
+    let type_param = TypeParameter {
         type_id: boolean_type,
         initial_type_id: boolean_type,
         name_ident: generic_name,
@@ -127,7 +127,7 @@ fn generic_enum_resolution() {
         TypeInfo::Enum {
             call_path: result_name.into(),
             variant_types,
-            type_parameters: vec![type_param],
+            type_parameters: vec![type_param].into(),
         },
     );
 

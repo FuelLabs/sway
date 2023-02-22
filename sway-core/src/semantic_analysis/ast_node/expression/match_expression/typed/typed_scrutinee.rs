@@ -17,7 +17,7 @@ impl ty::TyScrutinee {
         match scrutinee {
             Scrutinee::CatchAll { span } => {
                 let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
-                let dummy_type_param = TypeParam {
+                let dummy_type_param = TypeParameter {
                     type_id,
                     initial_type_id: type_id,
                     name_ident: BaseIdent::new_with_override("_", span.clone()),

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-use crate::type_system::{TypeArgument, TypeParam};
+use crate::type_system::{TypeArgument, TypeParameters};
 use crate::TypeEngine;
 use crate::{
     error::*,
@@ -633,7 +633,7 @@ impl Dependencies {
         self
     }
 
-    fn gather_from_type_parameters(self, type_parameters: &[TypeParam]) -> Self {
+    fn gather_from_type_parameters(self, type_parameters: &TypeParameters) -> Self {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),

@@ -347,8 +347,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParam>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParam>, Vec<ty::TyStructField>),
+        r: (Ident, TypeParameters, Vec<ty::TyStructField>),
+        e: (Ident, TypeParameters, Vec<ty::TyStructField>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];
@@ -396,8 +396,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParam>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParam>, Vec<ty::TyEnumVariant>),
+        r: (Ident, TypeParameters, Vec<ty::TyEnumVariant>),
+        e: (Ident, TypeParameters, Vec<ty::TyEnumVariant>),
     ) -> (Vec<CompileWarning>, Vec<TypeError>) {
         let mut warnings = vec![];
         let mut errors = vec![];

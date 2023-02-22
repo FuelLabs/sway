@@ -4,7 +4,7 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{
     language::ty::{TyConstantDeclaration, TyFunctionDeclaration, TyProgram, TyProgramKind},
     transform::AttributesMap,
-    TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParam,
+    TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
 };
 
 pub fn generate_json_abi_program(
@@ -710,7 +710,7 @@ fn generate_json_abi_attributes_map(
     }
 }
 
-impl TypeParam {
+impl TypeParameter {
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to
     /// append the current TypeParameter as a `program_abi::TypeDeclaration`.
     pub(self) fn get_json_type_parameter(

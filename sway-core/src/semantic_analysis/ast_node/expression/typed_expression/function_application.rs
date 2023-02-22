@@ -77,7 +77,7 @@ pub(crate) fn instantiate_function_application(
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
     let decl_mapping = check!(
-        TypeParam::gather_decl_mapping_from_trait_constraints(
+        TypeParameter::gather_decl_mapping_from_trait_constraints(
             ctx.by_ref(),
             &function_decl.type_parameters,
             &call_path_binding.span()

@@ -9,7 +9,7 @@ use sway_core::{
         ty,
     },
     transform::Attribute,
-    type_system::{TypeId, TypeInfo, TypeParam},
+    type_system::{TypeId, TypeInfo, TypeParameter},
     TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
@@ -56,7 +56,7 @@ pub enum TypedAstToken {
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
-    TypedParameter(TypeParam),
+    TypedParameter(TypeParameter),
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,

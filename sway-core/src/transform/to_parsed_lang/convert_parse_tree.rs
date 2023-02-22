@@ -855,7 +855,7 @@ fn generic_params_opt_to_type_parameters(
     engines: Engines<'_>,
     generic_params_opt: Option<GenericParams>,
     where_clause_opt: Option<WhereClause>,
-) -> Result<Vec<TypeParam>, ErrorEmitted> {
+) -> Result<TypeParameters, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -868,7 +868,7 @@ fn generic_params_opt_to_type_parameters(
         None => Vec::new(),
     };
 
-    let mut params = match generic_params_opt {
+    let mut params: TypeParameters = match generic_params_opt {
         Some(generic_params) => generic_params
             .parameters
             .into_inner()
@@ -881,7 +881,7 @@ fn generic_params_opt_to_type_parameters(
                         type_arguments: None,
                     },
                 );
-                TypeParam {
+                TypeParameter {
                     type_id: custom_type,
                     initial_type_id: custom_type,
                     name_ident: ident,
@@ -889,15 +889,15 @@ fn generic_params_opt_to_type_parameters(
                     trait_constraints_span: Span::dummy(),
                 }
             })
-            .collect::<Vec<_>>(),
-        None => Vec::new(),
+            .collect(),
+        None => TypeParameters::new(),
     };
 
     let mut errors = Vec::new();
     for (ty_name, bounds) in trait_constraints.into_iter() {
         let param_to_edit = match params
             .iter_mut()
-            .find(|TypeParam { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
+            .find(|TypeParameter { name_ident, .. }| name_ident.as_str() == ty_name.as_str())
         {
             Some(o) => o,
             None => {
@@ -3125,7 +3125,7 @@ fn generic_args_to_type_parameters(
     handler: &Handler,
     engines: Engines<'_>,
     generic_args: GenericArgs,
-) -> Result<Vec<TypeParam>, ErrorEmitted> {
+) -> Result<TypeParameters, ErrorEmitted> {
     generic_args
         .parameters
         .into_inner()
@@ -3265,7 +3265,7 @@ fn ty_to_type_parameter(
     handler: &Handler,
     engines: Engines<'_>,
     ty: Ty,
-) -> Result<TypeParam, ErrorEmitted> {
+) -> Result<TypeParameter, ErrorEmitted> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
 
@@ -3273,7 +3273,7 @@ fn ty_to_type_parameter(
         Ty::Path(path_type) => path_type_to_ident(context, handler, path_type)?,
         Ty::Infer { underscore_token } => {
             let unknown_type = type_engine.insert(decl_engine, TypeInfo::Unknown);
-            return Ok(TypeParam {
+            return Ok(TypeParameter {
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
@@ -3292,7 +3292,7 @@ fn ty_to_type_parameter(
             type_arguments: None,
         },
     );
-    Ok(TypeParam {
+    Ok(TypeParameter {
         type_id: custom_type,
         initial_type_id: custom_type,
         name_ident,
