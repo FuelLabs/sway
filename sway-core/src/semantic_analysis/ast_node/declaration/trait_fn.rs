@@ -96,6 +96,7 @@ impl ty::TyTraitFn {
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: mode == Mode::ImplAbiFn,
+            where_clause: vec![],
         }
     }
 }

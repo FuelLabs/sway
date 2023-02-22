@@ -30,6 +30,7 @@ pub struct TyFunctionDeclaration {
     /// whether this function exists in another contract and requires a call to it or not
     pub is_contract_call: bool,
     pub purity: Purity,
+    pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
 }
 
 impl EqWithEngines for TyFunctionDeclaration {}
@@ -62,6 +63,7 @@ impl HashWithEngines for TyFunctionDeclaration {
             span: _,
             attributes: _,
             implementing_type: _,
+            where_clause: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -213,6 +215,7 @@ impl TyFunctionDeclaration {
             span,
             visibility,
             purity,
+            where_clause,
             ..
         } = decl;
         TyFunctionDeclaration {
@@ -229,6 +232,7 @@ impl TyFunctionDeclaration {
             visibility,
             return_type,
             type_parameters: Default::default(),
+            where_clause,
         }
     }
 

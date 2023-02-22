@@ -1,7 +1,7 @@
 use crate::{Parse, ParseBracket, ParseResult, Parser};
 
 use sway_ast::attribute::Annotated;
-use sway_ast::{Braces, FnSignature, ItemAbi, ItemFn};
+use sway_ast::{Braces, ItemAbi, ItemFn, ItemTraitItem};
 
 impl Parse for ItemAbi {
     fn parse(parser: &mut Parser) -> ParseResult<ItemAbi> {
@@ -14,9 +14,12 @@ impl Parse for ItemAbi {
             }
             None => None,
         };
-        let abi_items: Braces<Vec<(Annotated<FnSignature>, _)>> = parser.parse()?;
-        for (fn_signature, _) in abi_items.get().iter() {
-            parser.ban_visibility_qualifier(&fn_signature.value.visibility)?;
+        let abi_items: Braces<Vec<(Annotated<ItemTraitItem>, _)>> = parser.parse()?;
+        for (annotated, _) in abi_items.get().iter() {
+            #[allow(irrefutable_let_patterns)]
+            if let ItemTraitItem::Fn(fn_signature) = &annotated.value {
+                parser.ban_visibility_qualifier(&fn_signature.visibility)?;
+            }
         }
         let abi_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>> = Braces::try_parse(parser)?;
         if let Some(abi_defs) = &abi_defs_opt {

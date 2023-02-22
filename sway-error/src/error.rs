@@ -31,24 +31,11 @@ impl fmt::Display for InterfaceName {
 pub enum CompileError {
     #[error("Variable \"{var_name}\" does not exist in this scope.")]
     UnknownVariable { var_name: Ident, span: Span },
-    #[error("Variable \"{var_name}\" does not exist in this scope.")]
-    UnknownVariablePath { var_name: Ident, span: Span },
-    #[error("Function \"{name}\" does not exist in this scope.")]
-    UnknownFunction { name: Ident, span: Span },
     #[error("Identifier \"{name}\" was used as a variable, but it is actually a {what_it_is}.")]
     NotAVariable {
         name: Ident,
         what_it_is: &'static str,
         span: Span,
-    },
-    #[error(
-        "Identifier \"{name}\" was called as if it was a function, but it is actually a \
-         {what_it_is}."
-    )]
-    NotAFunction {
-        name: String,
-        span: Span,
-        what_it_is: &'static str,
     },
     #[error("Unimplemented feature: {0}")]
     Unimplemented(&'static str, Span),
@@ -73,30 +60,6 @@ pub enum CompileError {
     )]
     InternalOwned(String, Span),
     #[error(
-        "Byte literal had length of {byte_length}. Byte literals must be 32 bytes long \
-        (256 binary digits or 64 hex digits)"
-    )]
-    InvalidByteLiteralLength { byte_length: usize, span: Span },
-    #[error("Expected an expression to follow operator \"{op}\"")]
-    ExpectedExprAfterOp { op: String, span: Span },
-    #[error("Expected an operator, but \"{op}\" is not a recognized operator. ")]
-    ExpectedOp { op: String, span: Span },
-    #[error(
-        "Program contains multiple contracts. A valid program should only contain at most one \
-         contract."
-    )]
-    MultipleContracts(Span),
-    #[error(
-        "Program contains multiple scripts. A valid program should only contain at most one \
-         script."
-    )]
-    MultipleScripts(Span),
-    #[error(
-        "Program contains multiple predicates. A valid program should only contain at most one \
-         predicate."
-    )]
-    MultiplePredicates(Span),
-    #[error(
         "Predicate declaration contains no main function. Predicates require a main function."
     )]
     NoPredicateMainFunction(Span),
@@ -106,15 +69,8 @@ pub enum CompileError {
     NoScriptMainFunction(Span),
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
-    #[error(
-        "Attempted to reassign to a symbol that is not a variable. Symbol {name} is not a mutable \
-         variable, it is a {kind}."
-    )]
-    ReassignmentToNonVariable {
-        name: Ident,
-        kind: &'static str,
-        span: Span,
-    },
+    #[error("Name \"{name}\" is defined multiple times.")]
+    MultipleDefinitionsOfName { name: Ident, span: Span },
     #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
     AssignmentToNonMutable { name: Ident, span: Span },
     #[error(
@@ -152,23 +108,18 @@ pub enum CompileError {
         args: String,
     },
     #[error(
-        "Asm opcode has multiple immediates specified, when any opcode has at most one immediate."
-    )]
-    MultipleImmediates(Span),
-    #[error(
         "expected: {expected} \n\
          found:    {given} \n\
-         help:     The definition of this function must \
+         help:     The definition of this {decl_type} must \
          match the one in the {interface_name} declaration."
     )]
     MismatchedTypeInInterfaceSurface {
         interface_name: InterfaceName,
         span: Span,
+        decl_type: String,
         given: String,
         expected: String,
     },
-    #[error("\"{name}\" is not a trait, so it cannot be \"impl'd\".")]
-    NotATrait { span: Span, name: Ident },
     #[error("Trait \"{name}\" cannot be found in the current scope.")]
     UnknownTrait { span: Span, name: Ident },
     #[error("Function \"{name}\" is not a part of {interface_name}'s interface surface.")]
@@ -197,38 +148,10 @@ pub enum CompileError {
     #[error("\"{name}\" needs type arguments.")]
     NeedsTypeArguments { name: Ident, span: Span },
     #[error(
-        "Struct with name \"{name}\" could not be found in this scope. Perhaps you need to import \
-         it?"
-    )]
-    StructNotFound { name: Ident, span: Span },
-    #[error(
         "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
     EnumNotFound { name: Ident, span: Span },
-    #[error(
-        "The name \"{name}\" does not refer to a struct, but this is an attempted struct \
-         declaration."
-    )]
-    DeclaredNonStructAsStruct { name: Ident, span: Span },
-    #[error(
-        "Attempted to access field \"{field_name}\" of non-struct \"{name}\". Field accesses are \
-         only valid on structs."
-    )]
-    AccessedFieldOfNonStruct {
-        field_name: Ident,
-        name: Ident,
-        span: Span,
-    },
-    #[error(
-        "Attempted to access a method on something that has no methods. \"{name}\" is a {thing}, \
-         not a type with methods."
-    )]
-    MethodOnNonValue {
-        name: Ident,
-        thing: Ident,
-        span: Span,
-    },
     #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
     StructMissingField {
         field_name: Ident,
@@ -310,8 +233,6 @@ pub enum CompileError {
          return type \"{r#type}\""
     )]
     NoElseBranch { span: Span, r#type: String },
-    #[error("Use of type `Self` outside of a context in which `Self` refers to a type.")]
-    UnqualifiedSelfType { span: Span },
     #[error(
         "Symbol \"{name}\" does not refer to a type, it refers to a {actually_is}. It cannot be \
          used in this position."
@@ -335,10 +256,6 @@ pub enum CompileError {
         ty: String,
         function_name: Ident,
     },
-    #[error("Expected block to implicitly return a value of type \"{ty}\".")]
-    ExpectedImplicitReturnFromBlockWithType { span: Span, ty: String },
-    #[error("Expected block to implicitly return a value.")]
-    ExpectedImplicitReturnFromBlock { span: Span },
     #[error(
         "Expected Module level doc comment. All other attributes are unsupported at this level."
     )]
@@ -355,11 +272,6 @@ pub enum CompileError {
     MissingImmediate { span: Span },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
-    #[error(
-        "This expression was expected to return a value but no return register was specified. \
-         Provide a register in the implicit return position of this asm expression to return it."
-    )]
-    InvalidAssemblyMismatchedReturn { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
     UnknownEnumVariant {
         enum_name: Ident,
@@ -398,20 +310,10 @@ pub enum CompileError {
     UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
-    #[error("This value is not valid within a \"str\" type.")]
-    InvalidStrType { raw: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
     #[error("Unknown type name \"{name}\".")]
     UnknownTypeName { name: String, span: Span },
-    #[error("Bytecode can only support programs with up to 2^12 words worth of opcodes. Try refactoring into contract calls? This is a temporary error and will be implemented in the future.")]
-    TooManyInstructions { span: Span },
-    #[error(
-        "No valid {} file (.{}) was found at {file_path}",
-        sway_types::constants::LANGUAGE_NAME,
-        sway_types::constants::DEFAULT_FILE_EXTENSION
-    )]
-    FileNotFound { span: Span, file_path: String },
     #[error("The file {file_path} could not be read: {stringified_error}")]
     FileCouldNotBeRead {
         span: Span,
@@ -469,9 +371,10 @@ pub enum CompileError {
         type_implementing_for: String,
         second_impl_span: Span,
     },
-    #[error("Duplicate definitions for the method \"{func_name}\" for type \"{type_implementing_for}\".")]
-    DuplicateMethodsDefinedForType {
-        func_name: String,
+    #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
+    DuplicateDeclDefinedForType {
+        decl_kind: String,
+        decl_name: String,
         type_implementing_for: String,
         span: Span,
     },
@@ -507,12 +410,6 @@ pub enum CompileError {
         type_chain: String, // Pretty list of symbols, e.g., "a, b and c".
         span: Span,
     },
-    #[error(
-        "The size of this type is not known. Try putting it on the heap or changing the type."
-    )]
-    TypeWithUnknownSize { span: Span },
-    #[error("File {file_path} generates an infinite dependency cycle.")]
-    InfiniteDependencies { file_path: String, span: Span },
     #[error("The GM (get-metadata) opcode, when called from an external context, will cause the VM to panic.")]
     GMFromExternalContext { span: Span },
     #[error("The MINT opcode cannot be used in an external context.")]
@@ -537,12 +434,6 @@ pub enum CompileError {
     ShadowsOtherSymbol { name: Ident },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
     GenericShadowsGeneric { name: Ident },
-    #[error(
-        "Match expression arm has mismatched types.\n\
-         expected: {expected}\n\
-         "
-    )]
-    MatchWrongType { expected: String, span: Span },
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,
@@ -604,8 +495,6 @@ pub enum CompileError {
     IntegerTooSmall { span: Span, ty: String },
     #[error("Literal value contains digits which are not valid for type {ty}.")]
     IntegerContainsInvalidDigit { span: Span, ty: String },
-    #[error("Unexpected alias after an asterisk in an import statement.")]
-    AsteriskWithAlias { span: Span },
     #[error("A trait cannot be a subtrait of an ABI.")]
     AbiAsSupertrait { span: Span },
     #[error(
@@ -616,8 +505,6 @@ pub enum CompileError {
         trait_name: Ident,
         span: Span,
     },
-    #[error("Cannot use `if let` on a non-enum type.")]
-    IfLetNonEnum { span: Span },
     #[error(
         "Contract ABI method parameter \"{param_name}\" is set multiple times for this contract ABI method call"
     )]
@@ -636,8 +523,6 @@ pub enum CompileError {
     MultipleStorageDeclarations { span: Span },
     #[error("Type {ty} can only be declared directly as a storage field")]
     InvalidStorageOnlyTypeDecl { ty: String, span: Span },
-    #[error("Expected identifier, found keyword \"{name}\" ")]
-    InvalidVariableName { name: Ident, span: Span },
     #[error(
         "Internal compiler error: Unexpected {decl_type} declaration found.\n\
         Please file an issue on the repository and include the code that triggered this error."
@@ -742,27 +627,18 @@ impl Spanned for CompileError {
         use CompileError::*;
         match self {
             UnknownVariable { span, .. } => span.clone(),
-            UnknownVariablePath { span, .. } => span.clone(),
-            UnknownFunction { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
-            NotAFunction { span, .. } => span.clone(),
             Unimplemented(_, span) => span.clone(),
             UnimplementedWithHelp(_, _, span) => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
             InternalOwned(_, span) => span.clone(),
-            InvalidByteLiteralLength { span, .. } => span.clone(),
-            ExpectedExprAfterOp { span, .. } => span.clone(),
-            ExpectedOp { span, .. } => span.clone(),
-            MultiplePredicates(span) => span.clone(),
-            MultipleScripts(span) => span.clone(),
-            MultipleContracts(span) => span.clone(),
             NoPredicateMainFunction(span) => span.clone(),
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
-            ReassignmentToNonVariable { span, .. } => span.clone(),
+            MultipleDefinitionsOfName { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -770,9 +646,7 @@ impl Spanned for CompileError {
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
-            MultipleImmediates(span) => span.clone(),
             MismatchedTypeInInterfaceSurface { span, .. } => span.clone(),
-            NotATrait { span, .. } => span.clone(),
             UnknownTrait { span, .. } => span.clone(),
             FunctionNotAPartOfInterfaceSurface { span, .. } => span.clone(),
             MissingInterfaceSurfaceMethods { span, .. } => span.clone(),
@@ -781,10 +655,6 @@ impl Spanned for CompileError {
             DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
-            StructNotFound { span, .. } => span.clone(),
-            DeclaredNonStructAsStruct { span, .. } => span.clone(),
-            AccessedFieldOfNonStruct { span, .. } => span.clone(),
-            MethodOnNonValue { span, .. } => span.clone(),
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
             MethodNotFound { span, .. } => span.clone(),
@@ -797,17 +667,13 @@ impl Spanned for CompileError {
             SymbolNotFound { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
-            UnqualifiedSelfType { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
             MissingEnumInstantiator { span, .. } => span.clone(),
             PathDoesNotReturn { span, .. } => span.clone(),
-            ExpectedImplicitReturnFromBlockWithType { span, .. } => span.clone(),
-            ExpectedImplicitReturnFromBlock { span, .. } => span.clone(),
             ExpectedModuleDocComment { span } => span.clone(),
             UnknownRegister { span, .. } => span.clone(),
             MissingImmediate { span, .. } => span.clone(),
             InvalidImmediateValue { span, .. } => span.clone(),
-            InvalidAssemblyMismatchedReturn { span, .. } => span.clone(),
             UnknownEnumVariant { span, .. } => span.clone(),
             UnrecognizedOp { span, .. } => span.clone(),
             UnableToInferGeneric { span, .. } => span.clone(),
@@ -822,9 +688,6 @@ impl Spanned for CompileError {
             AmbiguousPath { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
             UnknownTypeName { span, .. } => span.clone(),
-            InvalidStrType { span, .. } => span.clone(),
-            TooManyInstructions { span, .. } => span.clone(),
-            FileNotFound { span, .. } => span.clone(),
             FileCouldNotBeRead { span, .. } => span.clone(),
             ImportMustBeLibrary { span, .. } => span.clone(),
             MoreThanOneEnumInstantiator { span, .. } => span.clone(),
@@ -841,15 +704,13 @@ impl Spanned for CompileError {
             ConflictingImplsForTraitAndType {
                 second_impl_span, ..
             } => second_impl_span.clone(),
-            DuplicateMethodsDefinedForType { span, .. } => span.clone(),
+            DuplicateDeclDefinedForType { span, .. } => span.clone(),
             IncorrectNumberOfInterfaceSurfaceFunctionParameters { span, .. } => span.clone(),
             ArgumentParameterTypeMismatch { span, .. } => span.clone(),
             RecursiveCall { span, .. } => span.clone(),
             RecursiveCallChain { span, .. } => span.clone(),
             RecursiveType { span, .. } => span.clone(),
             RecursiveTypeChain { span, .. } => span.clone(),
-            TypeWithUnknownSize { span, .. } => span.clone(),
-            InfiniteDependencies { span, .. } => span.clone(),
             GMFromExternalContext { span, .. } => span.clone(),
             MintFromExternalContext { span, .. } => span.clone(),
             BurnFromExternalContext { span, .. } => span.clone(),
@@ -859,7 +720,6 @@ impl Spanned for CompileError {
             ArrayOutOfBounds { span, .. } => span.clone(),
             ShadowsOtherSymbol { name } => name.span(),
             GenericShadowsGeneric { name } => name.span(),
-            MatchWrongType { span, .. } => span.clone(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
@@ -882,10 +742,8 @@ impl Spanned for CompileError {
             IntegerTooLarge { span, .. } => span.clone(),
             IntegerTooSmall { span, .. } => span.clone(),
             IntegerContainsInvalidDigit { span, .. } => span.clone(),
-            AsteriskWithAlias { span, .. } => span.clone(),
             AbiAsSupertrait { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
-            IfLetNonEnum { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
@@ -893,7 +751,6 @@ impl Spanned for CompileError {
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
-            InvalidVariableName { span, .. } => span.clone(),
             UnexpectedDeclaration { span, .. } => span.clone(),
             ContractAddressMustBeKnown { span, .. } => span.clone(),
             ConvertParseTree { error } => error.span(),

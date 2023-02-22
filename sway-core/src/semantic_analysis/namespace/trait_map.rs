@@ -10,7 +10,10 @@ use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
     error::*,
-    language::CallPath,
+    language::{
+        ty::{self, TyImplItem},
+        CallPath,
+    },
     type_system::{SubstTypes, TypeId},
     ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
 };
@@ -65,16 +68,16 @@ impl OrdWithEngines for TraitKey {
     }
 }
 
-/// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
-type TraitMethods = im::HashMap<String, DeclRef>;
+/// Map of name to [TyImplItem](ty::TyImplItem)
+type TraitItems = im::HashMap<String, TyImplItem>;
 
 #[derive(Clone, Debug)]
 struct TraitEntry {
     key: TraitKey,
-    value: TraitMethods,
+    value: TraitItems,
 }
 
-/// Map of trait name and type to [TraitMethods].
+/// Map of trait name and type to [TraitItems].
 type TraitImpls = Vec<TraitEntry>;
 
 /// Map holding trait implementations for types.
@@ -88,20 +91,19 @@ pub(crate) struct TraitMap {
 
 impl TraitMap {
     /// Given a [TraitName] `trait_name`, [TypeId] `type_id`, and list of
-    /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) `methods`, inserts
-    /// `methods` into the [TraitMap] with the key `(trait_name, type_id)`.
+    /// [TyImplItem](ty::TyImplItem) `items`, inserts
+    /// `items` into the [TraitMap] with the key `(trait_name, type_id)`.
     ///
     /// This method is as conscious as possible of existing entries in the
-    /// [TraitMap], and tries to append `methods` to an existing list of
-    /// [TyFunctionDeclaration](ty::TyFunctionDeclaration) for the key
-    /// `(trait_name, type_id)` whenever possible.
+    /// [TraitMap], and tries to append `items` to an existing list of
+    /// declarations for the key `(trait_name, type_id)` whenever possible.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn insert(
         &mut self,
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclRef],
+        items: &[TyImplItem],
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -112,9 +114,13 @@ impl TraitMap {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
-        let mut trait_methods: TraitMethods = im::HashMap::new();
-        for decl_ref in methods.iter() {
-            trait_methods.insert(decl_ref.name.to_string(), decl_ref.clone());
+        let mut trait_items: TraitItems = im::HashMap::new();
+        for item in items.iter() {
+            match item {
+                TyImplItem::Fn(decl_ref) => {
+                    trait_items.insert(decl_ref.name.to_string(), item.clone());
+                }
+            }
         }
 
         // check to see if adding this trait will produce a conflicting definition
@@ -135,7 +141,7 @@ impl TraitMap {
                     name: map_trait_name,
                     type_id: map_type_id,
                 },
-            value: map_trait_methods,
+            value: map_trait_items,
         } in self.trait_impls.iter()
         {
             let CallPath {
@@ -188,13 +194,18 @@ impl TraitMap {
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset && (traits_are_subset || is_impl_self) {
-                for (name, decl_ref) in trait_methods.iter() {
-                    if map_trait_methods.get(name).is_some() {
-                        errors.push(CompileError::DuplicateMethodsDefinedForType {
-                            func_name: decl_ref.name.to_string(),
-                            type_implementing_for: engines.help_out(type_id).to_string(),
-                            span: decl_ref.name.span(),
-                        });
+                for (name, item) in trait_items.iter() {
+                    match item {
+                        ty::TyTraitItem::Fn(decl_ref) => {
+                            if map_trait_items.get(name).is_some() {
+                                errors.push(CompileError::DuplicateDeclDefinedForType {
+                                    decl_kind: "method".into(),
+                                    decl_name: decl_ref.name.to_string(),
+                                    type_implementing_for: engines.help_out(type_id).to_string(),
+                                    span: decl_ref.name.span(),
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -209,7 +220,7 @@ impl TraitMap {
         };
 
         // even if there is a conflicting definition, add the trait anyway
-        self.insert_inner(trait_name, type_id, trait_methods, engines);
+        self.insert_inner(trait_name, type_id, trait_items, engines);
 
         if errors.is_empty() {
             ok((), warnings, errors)
@@ -222,7 +233,7 @@ impl TraitMap {
         &mut self,
         trait_name: TraitName,
         type_id: TypeId,
-        trait_methods: TraitMethods,
+        trait_methods: TraitItems,
         engines: Engines<'_>,
     ) {
         let key = TraitKey {
@@ -564,7 +575,7 @@ impl TraitMap {
                     name: map_trait_name,
                     type_id: map_type_id,
                 },
-            value: map_trait_methods,
+            value: map_trait_items,
         } in self.trait_impls.iter()
         {
             for type_id in all_types.iter_mut() {
@@ -573,7 +584,7 @@ impl TraitMap {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         *type_id,
-                        map_trait_methods.clone(),
+                        map_trait_items.clone(),
                         engines,
                     );
                 } else if decider(&type_info, &type_engine.get(*map_type_id)) {
@@ -581,27 +592,27 @@ impl TraitMap {
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
-                    let trait_methods: TraitMethods = map_trait_methods
+                    let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
-                        .map(|(name, decl_ref)| {
-                            let mut decl = decl_engine.get(&decl_ref);
+                        .map(|(name, item)| {
+                            #[allow(clippy::infallible_destructuring_match)]
+                            let decl_ref = match &item {
+                                ty::TyTraitItem::Fn(decl_ref) => decl_ref,
+                            };
+                            let mut decl = decl_engine.get(decl_ref);
                             decl.subst(&type_mapping, engines);
                             decl.replace_self_type(engines, new_self_type);
-                            (
-                                name,
-                                decl_engine
-                                    .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
-                                    .with_parent(decl_engine, &decl_ref),
-                            )
+                            let new_ref = decl_engine
+                                .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
+                                .with_parent(decl_engine, decl_ref);
+                            let item = match item {
+                                ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
+                            };
+                            (name, item)
                         })
                         .collect();
-                    trait_map.insert_inner(
-                        map_trait_name.clone(),
-                        *type_id,
-                        trait_methods,
-                        engines,
-                    );
+                    trait_map.insert_inner(map_trait_name.clone(), *type_id, trait_items, engines);
                 }
             }
         }
@@ -633,13 +644,16 @@ impl TraitMap {
         }
         for entry in self.trait_impls.iter() {
             if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
-                let mut trait_methods = entry
+                let mut trait_items = entry
                     .value
                     .values()
                     .cloned()
                     .into_iter()
+                    .flat_map(|item| match item {
+                        ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                    })
                     .collect::<Vec<_>>();
-                methods.append(&mut trait_methods);
+                methods.append(&mut trait_items);
             }
         }
         methods
@@ -679,7 +693,15 @@ impl TraitMap {
             if &map_trait_name == trait_name
                 && are_equal_minus_dynamic_types(engines, type_id, e.key.type_id)
             {
-                let mut trait_methods = e.value.values().cloned().into_iter().collect::<Vec<_>>();
+                let mut trait_methods = e
+                    .value
+                    .values()
+                    .cloned()
+                    .into_iter()
+                    .flat_map(|item| match item {
+                        ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
+                    })
+                    .collect::<Vec<_>>();
                 methods.append(&mut trait_methods);
             }
         }

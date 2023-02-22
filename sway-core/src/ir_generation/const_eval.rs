@@ -102,7 +102,7 @@ pub(crate) fn compile_const_decl(
                 }
                 _otherwise => None,
             };
-            if let Some((name, value, is_configurable)) = decl_name_value {
+            if let Some((name, Some(value), is_configurable)) = decl_name_value {
                 let const_val = compile_constant_expression(
                     Engines::new(env.type_engine, env.decl_engine),
                     env.context,

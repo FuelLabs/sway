@@ -1,3 +1,4 @@
+//! The official standard library for the Sway smart contract language.
 library std;
 
 dep error_signals;

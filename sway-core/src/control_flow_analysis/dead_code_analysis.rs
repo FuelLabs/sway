@@ -1,7 +1,11 @@
 use super::*;
 use crate::{
     decl_engine::*,
-    language::{parsed::TreeType, ty, CallPath, Visibility},
+    language::{
+        parsed::TreeType,
+        ty::{self, TyImplItem},
+        CallPath, Visibility,
+    },
     type_system::TypeInfo,
     Engines, TypeEngine, TypeId,
 };
@@ -317,17 +321,21 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let ty::TyConstantDeclaration { name, value, .. } =
                 decl_engine.get_constant(decl_id, &span)?;
             graph.namespace.insert_constant(name, entry_node);
-            connect_expression(
-                engines,
-                &value.expression,
-                graph,
-                &[entry_node],
-                exit_node,
-                "constant declaration expression",
-                tree_type,
-                value.span.clone(),
-                options,
-            )
+            if let Some(value) = &value {
+                connect_expression(
+                    engines,
+                    &value.expression,
+                    graph,
+                    &[entry_node],
+                    exit_node,
+                    "constant declaration expression",
+                    tree_type,
+                    value.span.clone(),
+                    options,
+                )
+            } else {
+                Ok(leaves.to_vec())
+            }
         }
         FunctionDeclaration { decl_id, .. } => {
             let fn_decl = decl_engine.get_function(decl_id, &decl.span())?;
@@ -358,16 +366,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
-                trait_name,
-                methods,
-                ..
+                trait_name, items, ..
             } = decl_engine.get_impl_trait(decl_id, &span)?;
 
             connect_impl_trait(
                 engines,
                 &trait_name,
                 graph,
-                &methods,
+                &items,
                 entry_node,
                 tree_type,
                 options,
@@ -432,7 +438,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclRef],
+    items: &[TyImplItem],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -451,30 +457,34 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     };
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for method_decl_ref in methods {
-        let fn_decl = decl_engine.get_function(method_decl_ref, &trait_name.span())?;
-        let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
-            span: fn_decl.span.clone(),
-            method_name: fn_decl.name.clone(),
-            method_decl_ref: method_decl_ref.clone(),
-            engines,
-        });
-        if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
-            graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+    for item in items {
+        match item {
+            TyImplItem::Fn(method_decl_ref) => {
+                let fn_decl = decl_engine.get_function(method_decl_ref, &trait_name.span())?;
+                let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
+                    span: fn_decl.span.clone(),
+                    method_name: fn_decl.name.clone(),
+                    method_decl_ref: method_decl_ref.clone(),
+                    engines,
+                });
+                if matches!(tree_type, TreeType::Library { .. } | TreeType::Contract) {
+                    graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+                }
+                // connect the impl declaration node to the functions themselves, as all trait functions are
+                // public if the trait is in scope
+                connect_typed_fn_decl(
+                    engines,
+                    &fn_decl,
+                    graph,
+                    fn_decl_entry_node,
+                    fn_decl.span.clone(),
+                    None,
+                    tree_type,
+                    options,
+                )?;
+                methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
+            }
         }
-        // connect the impl declaration node to the functions themselves, as all trait functions are
-        // public if the trait is in scope
-        connect_typed_fn_decl(
-            engines,
-            &fn_decl,
-            graph,
-            fn_decl_entry_node,
-            fn_decl.span.clone(),
-            None,
-            tree_type,
-            options,
-        )?;
-        methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
     }
     // we also want to add an edge from the methods back to the trait, so if a method gets called,
     // the trait impl is considered used
@@ -536,14 +546,18 @@ fn connect_abi_declaration(
     // If a struct type is used as a return type in the interface surface
     // of the contract, then assume that any fields inside the struct can
     // be used outside of the contract.
-    for fn_decl_ref in decl.interface_surface.iter() {
-        let fn_decl = decl_engine.get_trait_fn(fn_decl_ref, &decl.span)?;
-        if let Some(TypeInfo::Struct { call_path, .. }) =
-            get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
-        {
-            if let Some(ns) = graph.namespace.get_struct(&call_path.suffix).cloned() {
-                for (_, field_ix) in ns.fields.iter() {
-                    graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
+    for item in decl.interface_surface.iter() {
+        match item {
+            ty::TyTraitInterfaceItem::TraitFn(fn_decl_ref) => {
+                let fn_decl = decl_engine.get_trait_fn(fn_decl_ref, &decl.span)?;
+                if let Some(TypeInfo::Struct { call_path, .. }) =
+                    get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
+                {
+                    if let Some(ns) = graph.namespace.get_struct(&call_path.suffix).cloned() {
+                        for (_, field_ix) in ns.fields.iter() {
+                            graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
+                        }
+                    }
                 }
             }
         }
@@ -1659,7 +1673,7 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::ImplTrait { decl_id, .. }),
             span,
         } => match decl_engine.get_impl_trait(decl_id, span) {
-            Ok(ty::TyImplTrait { methods, .. }) if methods.is_empty() => return None,
+            Ok(ty::TyImplTrait { items: methods, .. }) if methods.is_empty() => return None,
             _ => CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,
