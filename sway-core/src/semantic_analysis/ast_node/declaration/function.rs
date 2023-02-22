@@ -34,6 +34,7 @@ impl ty::TyFunctionDeclaration {
             type_parameters,
             visibility,
             purity,
+            where_clause,
         } = fn_decl;
 
         let type_engine = ctx.type_engine;
@@ -157,6 +158,7 @@ impl ty::TyFunctionDeclaration {
             visibility,
             is_contract_call,
             purity,
+            where_clause,
         };
 
         ok(function_decl, warnings, errors)
@@ -220,6 +222,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
     let selector_text = match decl.to_selector_name(&type_engine).value {
@@ -267,6 +270,7 @@ fn test_function_selector_behavior() {
         type_parameters: vec![],
         visibility: Visibility::Public,
         is_contract_call: false,
+        where_clause: vec![],
     };
 
     let selector_text = match decl.to_selector_name(&type_engine).value {

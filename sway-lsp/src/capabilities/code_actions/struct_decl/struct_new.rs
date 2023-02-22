@@ -110,9 +110,13 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
         if self
             .existing_impl_decl
             .clone()?
-            .methods
+            .items
             .iter()
-            .any(|method| method.span().as_str().contains("fn new"))
+            .any(|item| match item {
+                sway_core::language::ty::TyTraitItem::Fn(fn_decl) => {
+                    fn_decl.span().as_str().contains("fn new")
+                }
+            })
         {
             Some(CodeActionDisabled {
                 reason: format!("Struct {} already has a `new` function", self.decl_name()),

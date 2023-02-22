@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{token::Delimiter, ItemImpl};
+use sway_ast::{token::Delimiter, ItemImpl, ItemImplItem};
 use sway_types::Spanned;
 
 #[cfg(test)]
@@ -48,6 +48,18 @@ impl Format for ItemImpl {
         Self::close_curly_brace(formatted_code, formatter)?;
 
         Ok(())
+    }
+}
+
+impl Format for ItemImplItem {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        match self {
+            ItemImplItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+        }
     }
 }
 
@@ -94,6 +106,16 @@ impl CurlyBrace for ItemImpl {
         )?;
 
         Ok(())
+    }
+}
+
+impl LeafSpans for ItemImplItem {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = vec![];
+        match self {
+            ItemImplItem::Fn(fn_decl) => collected_spans.append(&mut fn_decl.leaf_spans()),
+        }
+        collected_spans
     }
 }
 

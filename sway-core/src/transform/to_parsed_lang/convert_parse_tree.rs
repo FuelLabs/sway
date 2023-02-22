@@ -13,8 +13,8 @@ use sway_ast::{
     CommaToken, Dependency, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField,
     ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition,
     IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn,
-    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, LitInt, LitIntType,
-    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemUse, LitInt,
+    LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Traits, Ty, TypeField, UseTree, WhereClause,
 };
@@ -183,7 +183,9 @@ fn item_to_ast_nodes(
             context, handler, engines, item_abi, attributes,
         )?)),
         ItemKind::Const(item_const) => decl(Declaration::ConstantDeclaration(
-            item_const_to_constant_declaration(context, handler, engines, item_const, attributes)?,
+            item_const_to_constant_declaration(
+                context, handler, engines, item_const, attributes, is_root,
+            )?,
         )),
         ItemKind::Storage(item_storage) => decl(Declaration::StorageDeclaration(
             item_storage_to_storage_declaration(
@@ -458,8 +460,16 @@ fn item_fn_to_function_declaration(
             handler,
             engines,
             item_fn.fn_signature.generics,
-            item_fn.fn_signature.where_clause_opt,
+            item_fn.fn_signature.where_clause_opt.clone(),
         )?,
+        where_clause: item_fn
+            .fn_signature
+            .where_clause_opt
+            .map(|where_clause| {
+                where_clause_to_trait_constraints(context, handler, engines, where_clause)
+            })
+            .transpose()?
+            .unwrap_or(vec![]),
     })
 }
 
@@ -497,6 +507,24 @@ fn get_attributed_purity(
     }
 }
 
+fn where_clause_to_trait_constraints(
+    context: &mut Context,
+    handler: &Handler,
+    engines: Engines<'_>,
+    where_clause: WhereClause,
+) -> Result<Vec<(Ident, Vec<TraitConstraint>)>, ErrorEmitted> {
+    where_clause
+        .bounds
+        .into_iter()
+        .map(|bound| {
+            Ok((
+                bound.ty_name,
+                traits_to_trait_constraints(context, handler, engines, bound.bounds)?,
+            ))
+        })
+        .collect()
+}
+
 fn item_trait_to_trait_declaration(
     context: &mut Context,
     handler: &Handler,
@@ -512,17 +540,20 @@ fn item_trait_to_trait_declaration(
         item_trait.generics,
         item_trait.where_clause_opt,
     )?;
-    let interface_surface = {
-        item_trait
-            .trait_items
-            .into_inner()
-            .into_iter()
-            .map(|(fn_signature, _)| {
-                let attributes = item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
-                fn_signature_to_trait_fn(context, handler, engines, fn_signature.value, attributes)
-            })
-            .collect::<Result<_, _>>()?
-    };
+    let interface_surface = item_trait
+        .trait_items
+        .into_inner()
+        .into_iter()
+        .map(|(annotated, _)| {
+            let attributes = item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+            match annotated.value {
+                ItemTraitItem::Fn(fn_sig) => {
+                    fn_signature_to_trait_fn(context, handler, engines, fn_sig, attributes)
+                        .map(TraitItem::TraitFn)
+                }
+            }
+        })
+        .collect::<Result<_, _>>()?;
     let methods = match item_trait.trait_defs_opt {
         None => Vec::new(),
         Some(trait_defs) => trait_defs
@@ -565,13 +596,18 @@ fn item_impl_to_declaration(
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
     let implementing_for = ty_to_type_argument(context, handler, engines, item_impl.ty)?;
-    let functions = item_impl
+    let items = item_impl
         .contents
         .into_inner()
         .into_iter()
         .map(|item| {
             let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
-            item_fn_to_function_declaration(context, handler, engines, item.value, attributes)
+            match item.value {
+                sway_ast::ItemImplItem::Fn(fn_item) => {
+                    item_fn_to_function_declaration(context, handler, engines, fn_item, attributes)
+                        .map(ImplItem::Fn)
+                }
+            }
         })
         .collect::<Result<_, _>>()?;
 
@@ -592,7 +628,7 @@ fn item_impl_to_declaration(
                 trait_name,
                 trait_type_arguments,
                 implementing_for,
-                functions,
+                items,
                 block_span,
             };
             Ok(Declaration::ImplTrait(impl_trait))
@@ -604,7 +640,7 @@ fn item_impl_to_declaration(
                 let impl_self = ImplSelf {
                     implementing_for,
                     impl_type_parameters,
-                    functions,
+                    items,
                     block_span,
                 };
                 Ok(Declaration::ImplSelf(impl_self))
@@ -653,24 +689,28 @@ fn item_abi_to_abi_declaration(
                 .abi_items
                 .into_inner()
                 .into_iter()
-                .map(|(fn_signature, _semicolon_token)| {
+                .map(|(annotated, _)| {
                     let attributes =
-                        item_attrs_to_map(context, handler, &fn_signature.attribute_list)?;
-                    let trait_fn = fn_signature_to_trait_fn(
-                        context,
-                        handler,
-                        engines,
-                        fn_signature.value,
-                        attributes,
-                    )?;
-                    error_if_self_param_is_not_allowed(
-                        context,
-                        handler,
-                        engines,
-                        &trait_fn.parameters,
-                        "an ABI method signature",
-                    )?;
-                    Ok(trait_fn)
+                        item_attrs_to_map(context, handler, &annotated.attribute_list)?;
+                    match annotated.value {
+                        ItemTraitItem::Fn(fn_signature) => {
+                            let trait_fn = fn_signature_to_trait_fn(
+                                context,
+                                handler,
+                                engines,
+                                fn_signature,
+                                attributes,
+                            )?;
+                            error_if_self_param_is_not_allowed(
+                                context,
+                                handler,
+                                engines,
+                                &trait_fn.parameters,
+                                "an ABI method signature",
+                            )?;
+                            Ok(TraitItem::TraitFn(trait_fn))
+                        }
+                    }
                 })
                 .collect::<Result<_, _>>()?
         },
@@ -714,17 +754,32 @@ pub(crate) fn item_const_to_constant_declaration(
     engines: Engines<'_>,
     item_const: ItemConst,
     attributes: AttributesMap,
+    is_root: bool,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
+
     let type_ascription = match item_const.ty_opt {
         Some((_colon_token, ty)) => ty_to_type_argument(context, handler, engines, ty)?,
         None => engines.te().insert(engines.de(), TypeInfo::Unknown).into(),
     };
 
+    let expr = match item_const.expr_opt {
+        Some(expr) => Some(expr_to_expression(context, handler, engines, expr)?),
+        None => {
+            if is_root {
+                let err = ConvertParseTreeError::ConstantRequiresExpression { span: span.clone() };
+                if let Some(errors) = emit_all(handler, vec![err]) {
+                    return Err(errors);
+                }
+            }
+            None
+        }
+    };
+
     Ok(ConstantDeclaration {
         name: item_const.name,
         type_ascription,
-        value: expr_to_expression(context, handler, engines, item_const.expr)?,
+        value: expr,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
         attributes,
@@ -911,14 +966,11 @@ fn generic_params_opt_to_type_parameters(
 
         param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
 
-        param_to_edit.trait_constraints.extend(
-            traits_to_call_paths(context, handler, engines, bounds)?
-                .into_iter()
-                .map(|(trait_name, type_arguments)| TraitConstraint {
-                    trait_name,
-                    type_arguments,
-                }),
-        );
+        param_to_edit
+            .trait_constraints
+            .extend(traits_to_trait_constraints(
+                context, handler, engines, bounds,
+            )?);
     }
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1200,12 +1252,12 @@ fn fn_signature_to_trait_fn(
     Ok(trait_fn)
 }
 
-fn traits_to_call_paths(
+fn traits_to_trait_constraints(
     context: &mut Context,
     handler: &Handler,
     engines: Engines<'_>,
     traits: Traits,
-) -> Result<Vec<(CallPath, Vec<TypeArgument>)>, ErrorEmitted> {
+) -> Result<Vec<TraitConstraint>, ErrorEmitted> {
     let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
         context,
         handler,
@@ -1217,7 +1269,13 @@ fn traits_to_call_paths(
             path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
-    Ok(parsed_traits)
+    Ok(parsed_traits
+        .into_iter()
+        .map(|(trait_name, type_arguments)| TraitConstraint {
+            trait_name,
+            type_arguments,
+        })
+        .collect())
 }
 
 fn traits_to_supertraits(
@@ -2101,7 +2159,12 @@ fn configurable_field_to_constant_declaration(
     Ok(ConstantDeclaration {
         name: configurable_field.name,
         type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
-        value: expr_to_expression(context, handler, engines, configurable_field.initializer)?,
+        value: Some(expr_to_expression(
+            context,
+            handler,
+            engines,
+            configurable_field.initializer,
+        )?),
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,

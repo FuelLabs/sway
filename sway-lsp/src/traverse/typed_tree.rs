@@ -15,7 +15,7 @@ use sway_core::{
     },
     namespace,
     type_system::TypeArgument,
-    Engines, TypeId, TypeInfo,
+    Engines, TraitConstraint, TypeId, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -116,17 +116,7 @@ impl<'a> TypedTree<'a> {
                 decl_id, decl_span, ..
             } => {
                 if let Ok(const_decl) = decl_engine.get_constant(decl_id, decl_span) {
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&const_decl.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
-                    }
-
-                    self.collect_type_argument(&const_decl.type_ascription, namespace);
-                    self.handle_expression(&const_decl.value, namespace);
+                    self.collect_const_decl(&const_decl, namespace);
                 }
             }
             ty::TyDeclaration::FunctionDeclaration {
@@ -149,11 +139,15 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_ref in &trait_decl.interface_surface {
-                        if let Ok(trait_fn) =
-                            decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                        {
-                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                    for item in &trait_decl.interface_surface {
+                        match item {
+                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                                if let Ok(trait_fn) = decl_engine
+                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
+                                {
+                                    self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                                }
+                            }
                         }
                     }
                     for supertrait in trait_decl.supertraits {
@@ -228,7 +222,7 @@ impl<'a> TypedTree<'a> {
                     trait_name,
                     trait_type_arguments,
                     trait_decl_ref,
-                    methods,
+                    items,
                     implementing_for,
                     ..
                 }) = decl_engine.get_impl_trait(decl_id, decl_span)
@@ -277,9 +271,14 @@ impl<'a> TypedTree<'a> {
                         );
                     }
 
-                    for method_ref in methods {
-                        if let Ok(method) = decl_engine.get_function(&method_ref, decl_span) {
-                            self.collect_typed_fn_decl(&method, namespace);
+                    for item in items {
+                        match item {
+                            ty::TyTraitItem::Fn(method_ref) => {
+                                if let Ok(method) = decl_engine.get_function(&method_ref, decl_span)
+                                {
+                                    self.collect_typed_fn_decl(&method, namespace);
+                                }
+                            }
                         }
                     }
 
@@ -312,11 +311,15 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_ref in &abi_decl.interface_surface {
-                        if let Ok(trait_fn) =
-                            decl_engine.get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                        {
-                            self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                    for item in &abi_decl.interface_surface {
+                        match item {
+                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                                if let Ok(trait_fn) = decl_engine
+                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
+                                {
+                                    self.collect_typed_trait_fn_token(&trait_fn, namespace);
+                                }
+                            }
                         }
                     }
 
@@ -1046,6 +1049,37 @@ impl<'a> TypedTree<'a> {
         self.collect_type_argument(&param.type_argument, namespace);
     }
 
+    fn collect_trait_constraint(
+        &self,
+        trait_constraint @ TraitConstraint {
+            trait_name,
+            type_arguments,
+        }: &TraitConstraint,
+        namespace: &namespace::Module,
+    ) {
+        let typed = TypedAstToken::TypedTraitConstraint(trait_constraint.clone());
+        self.collect_call_path_prefixes(&trait_name.prefixes, typed.clone(), namespace);
+
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&trait_name.suffix))
+            .try_unwrap()
+        {
+            token.typed = Some(typed);
+            if let Some(trait_def_ident) = namespace
+                .submodule(&trait_name.prefixes)
+                .and_then(|module| module.symbols().get(&trait_name.suffix))
+                .and_then(|decl| decl.get_decl_ident())
+            {
+                token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
+            }
+        }
+
+        for type_arg in type_arguments {
+            self.collect_type_argument(type_arg, namespace);
+        }
+    }
+
     fn collect_type_argument(&self, type_arg: &TypeArgument, namespace: &namespace::Module) {
         if let Some(call_path_tree) = &type_arg.call_path_tree {
             self.collect_call_path_tree(call_path_tree, type_arg, namespace);
@@ -1242,6 +1276,27 @@ impl<'a> TypedTree<'a> {
         }
     }
 
+    fn collect_const_decl(
+        &self,
+        const_decl: &ty::TyConstantDeclaration,
+        namespace: &namespace::Module,
+    ) {
+        if let Some(mut token) = self
+            .tokens
+            .try_get_mut(&to_ident_key(&const_decl.name))
+            .try_unwrap()
+        {
+            token.typed = Some(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
+            token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
+        }
+
+        self.collect_type_argument(&const_decl.type_ascription, namespace);
+
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value, namespace);
+        }
+    }
+
     fn collect_typed_fn_decl(
         &self,
         func_decl: &ty::TyFunctionDeclaration,
@@ -1274,6 +1329,24 @@ impl<'a> TypedTree<'a> {
         }
 
         self.collect_type_argument(&func_decl.return_type, namespace);
+
+        for (ident, trait_constraints) in &func_decl.where_clause {
+            for constraint in trait_constraints {
+                self.collect_trait_constraint(constraint, namespace);
+            }
+
+            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
+                token.typed = Some(typed_token.clone());
+                if let Some(param_decl_ident) = func_decl
+                    .type_parameters
+                    .iter()
+                    .find(|type_param| type_param.name_ident.as_str() == ident.as_str())
+                    .map(|type_param| type_param.name_ident.clone())
+                {
+                    token.type_def = Some(TypeDefinition::Ident(param_decl_ident));
+                }
+            }
+        }
     }
 
     fn collect_ty_enum_variant(&self, enum_variant: &TyEnumVariant, namespace: &namespace::Module) {

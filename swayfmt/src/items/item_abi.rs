@@ -31,15 +31,15 @@ impl Format for ItemAbi {
 
         let abi_items = self.abi_items.get();
 
-        // add pre fn_signature comments
+        // add pre item comments
         let end = if let Some(first_abi_item) = abi_items.first() {
-            let fn_signature = &first_abi_item.0;
-            if let Some(first_attr) = fn_signature.attribute_list.first() {
+            let item = &first_abi_item.0;
+            if let Some(first_attr) = item.attribute_list.first() {
                 // if there are existing abi items, we want to write comments until before the first attr
                 first_attr.span().start()
             } else {
-                // otherwise, write until before the fn signature
-                fn_signature.value.span().start()
+                // otherwise, write until before the item
+                item.value.span().start()
             }
         } else {
             // if there are no abi_items, write until closing brace
@@ -50,11 +50,11 @@ impl Format for ItemAbi {
 
         let mut prev_end = None;
         // abi_items
-        for (fn_signature, semicolon) in self.abi_items.get().iter() {
+        for (annotated, semicolon) in self.abi_items.get().iter() {
             if let Some(end) = prev_end {
                 write_comments(
                     formatted_code,
-                    end..fn_signature.value.span().start(),
+                    end..annotated.value.span().start(),
                     formatter,
                 )?;
             }
@@ -64,14 +64,14 @@ impl Format for ItemAbi {
                 "{}",
                 formatter.shape.indent.to_string(&formatter.config)?,
             )?;
-            fn_signature.format(formatted_code, formatter)?;
+            annotated.format(formatted_code, formatter)?;
             writeln!(
                 formatted_code,
                 "{}",
                 semicolon.ident().as_str() // SemicolonToken
             )?;
 
-            prev_end = Some(fn_signature.value.span().end());
+            prev_end = Some(annotated.value.span().end());
         }
 
         let last_abi_item = abi_items.last();
@@ -84,7 +84,10 @@ impl Format for ItemAbi {
             // If there are ABI items but no attributes:
             // we start from the last item.
             else {
-                last_abi_item.0.value.span().end()
+                let span = match &last_abi_item.0.value {
+                    sway_ast::ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
+                };
+                span.end()
             }
         }
         // If there are no ABI items:
