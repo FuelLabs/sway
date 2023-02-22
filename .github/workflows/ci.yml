@@ -69,7 +69,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Check Sway examples formatting
-        run: cargo run --locked -p forc-fmt -- --check --path ./examples/Forc.toml
+        run: cargo run --locked -p forc-fmt -- --check --path ./examples
 
   build-mdbook:
     runs-on: ubuntu-latest
