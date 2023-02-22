@@ -465,6 +465,15 @@ impl TyProgramKind {
             TyProgramKind::Script { .. } => parsed::TreeType::Script,
         }
     }
+    /// Used for project titles in `forc doc`.
+    pub fn as_title_str(&self) -> &str {
+        match self {
+            TyProgramKind::Contract { .. } => "Contract",
+            TyProgramKind::Library { .. } => "Library",
+            TyProgramKind::Predicate { .. } => "Predicate",
+            TyProgramKind::Script { .. } => "Script",
+        }
+    }
 }
 
 fn disallow_impure_functions(
