@@ -107,6 +107,8 @@ pub enum ConvertParseTreeError {
     RefExprNotYetSupported { span: Span },
     #[error("Deref expressions are not supported yet.")]
     DerefExprNotYetSupported { span: Span },
+    #[error("Constant requires expression.")]
+    ConstantRequiresExpression { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -164,6 +166,7 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
             ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
+            ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
         }
     }
 }
