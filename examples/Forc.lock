@@ -80,7 +80,17 @@ source = 'member'
 dependencies = ['std']
 
 [[package]]
+name = 'option'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
 name = 'ownership'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'result'
 source = 'member'
 dependencies = ['std']
 
