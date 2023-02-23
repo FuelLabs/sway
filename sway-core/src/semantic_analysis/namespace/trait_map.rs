@@ -15,6 +15,27 @@ struct TraitSuffix {
     name: Ident,
     args: Vec<TypeArgument>,
 }
+impl DisplayWithEngines for TraitSuffix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}",
+            self.name,
+            if self.args.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "<{}>",
+                    self.args
+                        .iter()
+                        .map(|arg| engines.help_out(arg).to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            }
+        )
+    }
+}
 impl PartialEqWithEngines for TraitSuffix {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name && self.args.eq(&other.args, engines)
@@ -51,7 +72,38 @@ struct TraitKey {
     name: TraitName,
     type_id: TypeId,
 }
-
+impl DisplayWithEngines for TraitKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: Engines<'_>) -> std::fmt::Result {
+        let TraitKey {
+            name:
+                CallPath {
+                    prefixes,
+                    suffix,
+                    is_absolute: _,
+                },
+            type_id,
+        } = self;
+        let type_engine = engines.te();
+        write!(
+            f,
+            "({}{}, {})",
+            if prefixes.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    "{}::",
+                    prefixes
+                        .iter()
+                        .map(|name| name.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::")
+                )
+            },
+            engines.help_out(suffix),
+            engines.help_out(type_engine.get(*type_id))
+        )
+    }
+}
 impl OrdWithEngines for TraitKey {
     fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> std::cmp::Ordering {
         self.name
@@ -105,7 +157,6 @@ impl TraitMap {
         let mut errors = vec![];
 
         let type_engine = engines.te();
-        let decl_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
         for decl_ref in methods.iter() {
@@ -113,17 +164,14 @@ impl TraitMap {
         }
 
         // check to see if adding this trait will produce a conflicting definition
-        let trait_type_id = type_engine.insert(
-            decl_engine,
-            TypeInfo::Custom {
-                call_path: trait_name.suffix.clone().into(),
-                type_arguments: if trait_type_args.is_empty() {
-                    None
-                } else {
-                    Some(trait_type_args.clone())
-                },
+        let trait_type_info = TypeInfo::Custom {
+            call_path: trait_name.suffix.clone().into(),
+            type_arguments: if trait_type_args.is_empty() {
+                None
+            } else {
+                Some(trait_type_args.clone())
             },
-        );
+        };
         for TraitEntry {
             key:
                 TraitKey {
@@ -141,24 +189,19 @@ impl TraitMap {
                     },
                 ..
             } = map_trait_name;
-            let map_trait_type_id = type_engine.insert(
-                decl_engine,
-                TypeInfo::Custom {
-                    call_path: map_trait_name_suffix.clone().into(),
-                    type_arguments: if map_trait_type_args.is_empty() {
-                        None
-                    } else {
-                        Some(map_trait_type_args.to_vec())
-                    },
+            let map_trait_type_info = TypeInfo::Custom {
+                call_path: map_trait_name_suffix.clone().into(),
+                type_arguments: if map_trait_type_args.is_empty() {
+                    None
+                } else {
+                    Some(map_trait_type_args.to_vec())
                 },
-            );
+            };
 
             let types_are_subset = type_engine
                 .get(type_id)
                 .is_subset_of(&type_engine.get(*map_type_id), engines);
-            let traits_are_subset = type_engine
-                .get(trait_type_id)
-                .is_subset_of(&type_engine.get(map_trait_type_id), engines);
+            let traits_are_subset = trait_type_info.is_subset_of(&map_trait_type_info, engines);
 
             if types_are_subset && traits_are_subset && !is_impl_self {
                 let trait_name_str = format!(
@@ -328,6 +371,7 @@ impl TraitMap {
     /// extending existing entries when possible.
     pub(crate) fn extend(&mut self, other: TraitMap, engines: Engines<'_>) {
         for oe in other.trait_impls.into_iter() {
+            println!("      inserting for:  {}", engines.help_out(oe.key.clone()),);
             let pos = self
                 .trait_impls
                 .binary_search_by(|se| se.key.cmp(&oe.key, engines.te()));
@@ -624,7 +668,15 @@ impl TraitMap {
         {
             return methods;
         }
+        // println!(
+        //     "looking for: {}",
+        //     engines.help_out(type_engine.get(type_id))
+        // );
         for entry in self.trait_impls.iter() {
+            // println!(
+            //     " --> {}",
+            //     engines.help_out(type_engine.get(entry.key.type_id))
+            // );
             if are_equal_minus_dynamic_types(engines, type_id, entry.key.type_id) {
                 let mut trait_methods = entry
                     .value

@@ -180,6 +180,60 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
+        // // Filter the list of methods into a list of possible methods.
+        // let possible_methods: Vec<DeclRef> = methods
+        //     .into_iter()
+        //     .filter(|decl_ref| {
+        //         let method = check!(
+        //             CompileResult::from(decl_engine.get_function(decl_ref, &decl_ref.span())),
+        //             return false,
+        //             warnings,
+        //             errors
+        //         );
+        //         &method.name == method_name
+        //             && method.parameters.len() == args_buf.len()
+        //             && method.parameters.iter().zip(args_buf.iter()).all(|(p, a)| {
+        //                 are_equal_minus_dynamic_types(
+        //                     engines,
+        //                     p.type_argument.type_id,
+        //                     a.return_type,
+        //                 )
+        //             })
+        //     })
+        //     .collect();
+
+        // // Given the list of possible methods, determine if there is one, zero,
+        // // or multiple matches.
+        // let matching_method = match possible_methods.get(0) {
+        //     Some(matching_method) if possible_methods.len() == 1 => matching_method,
+        //     Some(_) => {
+        //         // Case where multiple methods exist with the same name.
+        //         // This is the case of https://github.com/FuelLabs/sway/issues/3633
+        //         // where multiple generic trait impls use the same method name
+        //         // but with different parameter types.
+        //         panic!();
+        //         errors.push(CompileError::MultipleMethodsPossible {
+        //             method_name: method_name.clone(),
+        //             span: method_name.span(),
+        //         });
+        //         return err(warnings, errors);
+        //     }
+        //     None => {
+        //         errors.push(CompileError::MethodNotFound {
+        //             method_name: method_name.clone(),
+        //             type_name: engines.help_out(type_id).to_string(),
+        //             span: method_name.span(),
+        //         });
+        //         return err(warnings, errors);
+        //     }
+        // };
+
+        // if errors.is_empty() {
+        //     ok(matching_method.clone(), warnings, errors)
+        // } else {
+        //     err(warnings, errors)
+        // }
+
         let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
 
         for decl_ref in methods.into_iter() {

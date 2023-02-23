@@ -30,6 +30,8 @@ impl ty::TyTraitDeclaration {
             span,
         } = trait_decl;
 
+        println!("trait {}", name);
+
         if !is_upper_camel_case(name.as_str()) {
             warnings.push(CompileWarning {
                 span: name.span(),

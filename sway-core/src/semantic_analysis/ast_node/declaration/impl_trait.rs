@@ -83,6 +83,12 @@ impl ty::TyImplTrait {
             errors
         );
 
+        println!(
+            "impl trait {} {}",
+            trait_name,
+            engines.help_out(type_engine.get(implementing_for.type_id))
+        );
+
         // check to see if this type is supported in impl blocks
         check!(
             type_engine
@@ -553,6 +559,11 @@ impl ty::TyImplTrait {
             return err(warnings, errors),
             warnings,
             errors
+        );
+
+        println!(
+            "impl self {}",
+            engines.help_out(type_engine.get(implementing_for.type_id))
         );
 
         // check to see if this type is supported in impl blocks

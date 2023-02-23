@@ -1,0 +1,3 @@
+the self blocks are getting inserted in different names
+      inserting for:  (core::raw_slice::raw_ptr::r#Self, raw untyped ptr)
+      inserting for:  (core::raw_ptr::r#Self, raw untyped ptr)
