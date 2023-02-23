@@ -351,11 +351,11 @@ impl Display for DirectOp {
                 else_branch,
             } => format!(
                 "if.true\n{}{}",
-                indented(&true_branch),
+                indented(true_branch),
                 if else_branch.is_empty() {
                     "".into()
                 } else {
-                    format!("else\n{}\nend", indented(&else_branch))
+                    format!("else\n{}\nend", indented(else_branch))
                 }
             ),
 

@@ -135,8 +135,6 @@ pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
 ) -> Result<VMExecutionResult> {
-    // todo build and test all three targets on every test case when
-    // feature-complete codegen is complete
     match script.build_target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();

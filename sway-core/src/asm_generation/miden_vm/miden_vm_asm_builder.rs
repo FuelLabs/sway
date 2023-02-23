@@ -93,7 +93,7 @@ impl std::fmt::Debug for MidenVMAsmBuilder<'_> {
             .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join("\n");
-        write!(f, "Stack size: {}\n", self.stack_manager.size())?;
+        writeln!(f, "Stack size: {}", self.stack_manager.size())?;
         write!(f, "{ops}")
     }
 }
@@ -136,7 +136,7 @@ impl<'ir> AsmBuilder for MidenVMAsmBuilder<'ir> {
 #[allow(dead_code)]
 impl<'ir> MidenVMAsmBuilder<'ir> {
     pub fn new(program_kind: ProgramKind, context: &'ir Context) -> Self {
-        let b = MidenVMAsmBuilder {
+        MidenVMAsmBuilder {
             procedure_map: Default::default(),
             buf: Default::default(),
             func_label_map: Default::default(),
@@ -146,13 +146,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
             label_idx: 0,
             stack_manager: Default::default(),
             active_procedure: None,
-        };
-        // todo figure out how below works
-        /*
-        let s = b.generate_function();
-        b.sections.push(s);
-        */
-        b
+        }
     }
 
     #[allow(unreachable_code)]
@@ -184,13 +178,13 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
 
     fn finalize_procedure_map(&self) -> Vec<DirectOp> {
         let mut buf: Vec<DirectOp> = Vec::with_capacity(self.procedure_map.len());
-        for (ref proc_name, ref proc) in &self.procedure_map {
+        for (ref proc_name, proc) in &self.procedure_map {
             buf.push(DirectOp::procedure_decl(
                 proc_name.to_string(),
                 proc.number_of_locals,
             ));
             for op in &proc.ops {
-                buf.append(&mut self.render_op(&op))
+                buf.append(&mut self.render_op(op))
             }
         }
         buf
@@ -202,7 +196,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
         // main fn is a call into one of the procedure_map fns
         program.push(DirectOp::begin());
         for op in &self.buf {
-            program.append(&mut self.render_op(&op))
+            program.append(&mut self.render_op(op))
         }
         program.push(DirectOp::end());
 
@@ -241,9 +235,9 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
         // generate the body
         // generate the `else`
         // generate the else block
-        let condition = self.push_value_to_stack(&cond_value);
-        let true_branch = self.compile_branch(&true_block);
-        let else_branch = self.compile_branch(&true_block);
+        self.push_value_to_stack(cond_value);
+        self.compile_branch(true_block);
+        self.compile_branch(true_block);
         // todo need to figure out how to handle the compile results here
 
         /*
@@ -273,7 +267,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
 
         todo!(
             "Unable to compile fn call {}, need to design function calls.",
-            function.get_name(&self.context)
+            function.get_name(self.context)
         )
     }
     pub(super) fn compile_instruction(&mut self, instr_val: &Value) {
@@ -537,10 +531,10 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
     }
 
     pub fn compile_function(&mut self, function: Function) -> CompileResult<()> {
-        if function.get_name(&self.context).to_lowercase() != "main" {
+        if function.get_name(self.context).to_lowercase() != "main" {
             self.set_active_procedure(&function);
         }
-        self.compile_code_block(function.block_iter(&self.context));
+        self.compile_code_block(function.block_iter(self.context));
         self.end_active_procedure();
         ok((), vec![], vec![])
     }
@@ -569,7 +563,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
     }
 
     fn compile_value_access(&mut self, ret_val: &Value) {
-        self.push_op(MidenAsmOp::access_value(ret_val.clone()));
+        self.push_op(MidenAsmOp::access_value(*ret_val));
     }
 
     fn push_op(&mut self, op: MidenAsmOp) {
@@ -587,9 +581,9 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
 
     fn set_active_procedure(&mut self, function: &Function) {
         self.procedure_map.insert(
-            function.get_name(&self.context).into(),
+            function.get_name(self.context).into(),
             Procedure {
-                number_of_locals: function.num_args(&self.context) as u32,
+                number_of_locals: function.num_args(self.context) as u32,
                 ops: Default::default(),
             },
         );
@@ -606,12 +600,12 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
                 // TODO: configurables, instructions, etc
                 //        todo!("check chained or-else stuff in fuel asm builder")
                 let rendered = val
-                    .get_constant(&self.context)
-                    .map(|constant| self.render_constant(&constant))
-                    .or_else(|| val.get_configurable(&self.context).map(|config| todo!()))
+                    .get_constant(self.context)
+                    .map(|constant| self.render_constant(constant))
+                    .or_else(|| val.get_configurable(self.context).map(|config| todo!()))
                     .or_else(|| todo!());
                 if let Some(rendered) = rendered {
-                    return rendered;
+                    rendered
                 } else {
                     panic!("Not sure what this value is -- is'nt a constant or a configurable. {val:?}")
                 }
@@ -622,7 +616,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
     fn render_op(&self, op: &MidenAsmOp) -> Vec<DirectOp> {
         match op {
             MidenAsmOp::DirectOp(a) => vec![a.clone()],
-            MidenAsmOp::AbstractOp(op) => self.render_abstract_op(&op),
+            MidenAsmOp::AbstractOp(op) => self.render_abstract_op(op),
         }
     }
 
