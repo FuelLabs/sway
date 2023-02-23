@@ -1310,6 +1310,35 @@ async fn go_to_definition_for_enums() {
     definition_check_with_req_offset(&mut service, &mut go_to, 25, 23, &mut i).await;
 }
 
+#[tokio::test]
+async fn go_to_definition_for_abi() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 5,
+        req_char: 29,
+        def_line: 2,
+        def_start_char: 7,
+        def_end_char: 12,
+        def_path: uri.as_str(),
+    };
+    // Return type
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    // Abi name
+    go_to.def_line = 4;
+    go_to.def_start_char = 4;
+    go_to.def_end_char = 14;
+    definition_check_with_req_offset(&mut service, &mut go_to, 15, 15, &mut i).await;
+}
+
 //------------------- HOVER DOCUMENTATION -------------------//
 
 #[tokio::test]
