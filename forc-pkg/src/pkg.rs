@@ -25,6 +25,7 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 use sway_core::{
     abi_generation::{evm_json_abi, fuel_json_abi},
@@ -99,6 +100,9 @@ pub struct BuiltPackage {
     source_map: SourceMap,
     pub pkg_name: String,
     pub built_pkg_descriptor: BuiltPackageDescriptor,
+    /// If this pkg is a contract dependency of another pkg in the build graph, this points to the
+    /// version of this pkg compiled without tests.
+    pub pkg_without_tests: Option<Arc<BuiltPackage>>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -2679,6 +2683,7 @@ pub fn compile(
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 built_pkg_descriptor,
+                pkg_without_tests: None,
             };
             Ok((built_package, namespace))
         }
@@ -2967,6 +2972,8 @@ pub fn build(
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine);
+    let include_tests = profile.include_tests;
+    let mut const_inject_map = const_inject_map.clone();
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
@@ -2978,6 +2985,61 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let is_contract_dependency = is_contract_dependency(plan.graph(), node);
+        // If we are building a contract and tests are enabled or we are building a contract
+        // dependency, we need the tests exlcuded version.
+        let contract_without_tests = if (include_tests
+            && matches!(manifest.program_type(), Ok(TreeType::Contract)))
+            || is_contract_dependency
+        {
+            // We will build a contract with tests enabled, we will also need the same contract with tests
+            // disabled for:
+            //
+            //   1. Interpreter deployment in `forc-test`.
+            //   2. Contract ID injection in `forc-pkg` if this is a contract dependency to any
+            //      other pkg, so that injected contract id is not effected by the tests.
+            //
+            let dep_namespace = match dependency_namespace(
+                &lib_namespace_map,
+                &compiled_contract_deps,
+                &plan.graph,
+                node,
+                manifest.config_time_constants(),
+                engines,
+            ) {
+                Ok(o) => o,
+                Err(errs) => {
+                    print_on_failure(profile.terse, &[], &errs);
+                    bail!("Failed to compile {}", pkg.name);
+                }
+            };
+            let profile = BuildProfile {
+                include_tests: false,
+                ..profile.clone()
+            };
+            let (built_package_without_tests, _) = compile(
+                pkg,
+                manifest,
+                target,
+                &profile,
+                dep_namespace,
+                engines,
+                &mut source_map,
+            )?;
+            let contract_id = contract_id(&built_package_without_tests, &fuel_tx::Salt::zeroed());
+            let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
+            let contract_id_value = format!("0x{contract_id}");
+            let contract_id_constant = ConfigTimeConstant {
+                r#type: "b256".to_string(),
+                value: contract_id_value.clone(),
+                public: true,
+            };
+            let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
+            const_inject_map.insert(pkg.clone(), constant_declarations);
+            Some(built_package_without_tests)
+        } else {
+            None
+        };
         let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(
@@ -3003,30 +3065,23 @@ pub fn build(
                 bail!("Failed to compile {}", pkg.name);
             }
         };
-        // If this node is a contract dependency of any other node in the graph, we need to build
-        // it with tests disabled so that the contract id injected into the namepsace is not
-        // effected by the tests in that file.
-        let profile = if is_contract_dependency(plan.graph(), node) {
-            BuildProfile {
-                include_tests: false,
-                ..profile.clone()
-            }
-        } else {
-            profile.clone()
-        };
         let res = compile(
             pkg,
             manifest,
             target,
-            &profile,
-            dep_namespace,
+            profile,
+            dep_namespace.clone(),
             engines,
             &mut source_map,
         )?;
         let (mut built_package, namespace) = res;
-        // If the current node is a contract dependency, collect the contract_id
-        if is_contract_dependency(plan.graph(), node) {
-            compiled_contract_deps.insert(node, built_package.clone());
+        if let Some(built_pkg_without_tests) = contract_without_tests {
+            built_package.pkg_without_tests = Some(Arc::new(built_pkg_without_tests.clone()));
+            // If the current node is a contract dependency, collect the compiled contract without
+            // tests.
+            if is_contract_dependency {
+                compiled_contract_deps.insert(node, built_pkg_without_tests);
+            }
         }
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
