@@ -12,7 +12,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyConstantDeclaration {
     pub name: Ident,
-    pub value: TyExpression,
+    pub value: Option<TyExpression>,
     pub visibility: Visibility,
     pub is_configurable: bool,
     pub attributes: transform::AttributesMap,

@@ -7,7 +7,11 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     error::*,
-    language::{parsed::*, ty, *},
+    language::{
+        parsed::*,
+        ty::{self, TyImplItem, TyTraitInterfaceItem},
+        *,
+    },
     semantic_analysis::{Mode, TypeCheckContext},
     type_system::*,
 };
@@ -25,7 +29,7 @@ impl ty::TyImplTrait {
             trait_name,
             mut trait_type_arguments,
             mut implementing_for,
-            functions,
+            items,
             block_span,
         } = impl_trait;
 
@@ -122,7 +126,7 @@ impl ty::TyImplTrait {
                     errors
                 );
 
-                let new_methods = check!(
+                let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
                         &new_impl_type_parameters,
@@ -130,8 +134,8 @@ impl ty::TyImplTrait {
                         &trait_type_arguments,
                         &trait_decl.supertraits,
                         &trait_decl.interface_surface,
-                        &trait_decl.methods,
-                        &functions,
+                        &trait_decl.items,
+                        &items,
                         &trait_name,
                         &block_span,
                         false,
@@ -150,7 +154,7 @@ impl ty::TyImplTrait {
                         trait_decl.span.clone(),
                     )),
                     span: block_span,
-                    methods: new_methods,
+                    items: new_items,
                     implementing_for,
                 }
             }
@@ -179,7 +183,7 @@ impl ty::TyImplTrait {
 
                 let mut ctx = ctx.with_mode(Mode::ImplAbiFn);
 
-                let new_methods = check!(
+                let new_items = check!(
                     type_check_trait_implementation(
                         ctx.by_ref(),
                         &[], // this is empty because abi definitions don't support generics,
@@ -187,8 +191,8 @@ impl ty::TyImplTrait {
                         &[], // this is empty because abi definitions don't support generics,
                         &abi.supertraits,
                         &abi.interface_surface,
-                        &abi.methods,
-                        &functions,
+                        &abi.items,
+                        &items,
                         &trait_name,
                         &block_span,
                         true
@@ -203,7 +207,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
                     trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
                     span: block_span,
-                    methods: new_methods,
+                    items: new_items,
                     implementing_for,
                 }
             }
@@ -224,7 +228,7 @@ impl ty::TyImplTrait {
     fn gather_storage_only_types(
         engines: Engines<'_>,
         impl_typ: TypeId,
-        methods: &[ty::TyFunctionDeclaration],
+        items: &[TyImplItem],
         access_span: &Span,
     ) -> Result<(), CompileError> {
         fn ast_node_contains_get_storage_index(
@@ -367,7 +371,13 @@ impl ty::TyImplTrait {
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
                         decl_engine.get_constant(decl_id, access_span)?;
-                    expr_contains_get_storage_index(decl_engine, &expr, access_span)
+                    decl_engine.get_constant(decl_id, access_span)?;
+                    match expr {
+                        Some(expr) => {
+                            expr_contains_get_storage_index(decl_engine, &expr, access_span)
+                        }
+                        None => Ok(false),
+                    }
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
@@ -404,9 +414,13 @@ impl ty::TyImplTrait {
         let type_engine = engines.te();
         let decl_engine = engines.de();
 
-        for method in methods.iter() {
-            let contains_get_storage_index =
-                codeblock_contains_get_storage_index(decl_engine, &method.body, access_span)?;
+        for item in items.iter() {
+            let contains_get_storage_index = match item {
+                ty::TyTraitItem::Fn(fn_decl) => {
+                    let method = decl_engine.get_function(fn_decl, &fn_decl.span())?;
+                    codeblock_contains_get_storage_index(decl_engine, &method.body, access_span)?
+                }
+            };
             if contains_get_storage_index {
                 type_engine.set_type_as_storage_only(impl_typ);
                 return Ok(());
@@ -426,7 +440,7 @@ impl ty::TyImplTrait {
         let ImplSelf {
             impl_type_parameters,
             mut implementing_for,
-            functions,
+            items,
             block_span,
         } = impl_self;
 
@@ -494,15 +508,21 @@ impl ty::TyImplTrait {
             .with_help_text("")
             .with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
 
-        // type check the methods inside of the impl block
-        let mut methods = vec![];
-        for fn_decl in functions.into_iter() {
-            methods.push(check!(
-                ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
-                continue,
-                warnings,
-                errors
-            ));
+        // type check the items inside of the impl block
+        let mut new_items = vec![];
+
+        for item in items.into_iter() {
+            match item {
+                ImplItem::Fn(fn_decl) => {
+                    let fn_decl = check!(
+                        ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
+                        continue,
+                        warnings,
+                        errors
+                    );
+                    new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
+                }
+            }
         }
         if !errors.is_empty() {
             return err(warnings, errors);
@@ -512,7 +532,7 @@ impl ty::TyImplTrait {
             CompileResult::from(Self::gather_storage_only_types(
                 engines,
                 implementing_for.type_id,
-                &methods,
+                &new_items,
                 &implementing_for.span,
             )),
             return err(warnings, errors),
@@ -520,18 +540,13 @@ impl ty::TyImplTrait {
             errors
         );
 
-        let methods_ids = methods
-            .iter()
-            .map(|d| decl_engine.insert(d.clone()))
-            .collect::<Vec<_>>();
-
         let impl_trait = ty::TyImplTrait {
             impl_type_parameters: new_impl_type_parameters,
             trait_name,
             trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
             trait_decl_ref: None,
             span: block_span,
-            methods: methods_ids,
+            items: new_items,
             implementing_for,
         };
         ok(impl_trait, warnings, errors)
@@ -545,13 +560,13 @@ fn type_check_trait_implementation(
     trait_type_parameters: &[TypeParameter],
     trait_type_arguments: &[TypeArgument],
     trait_supertraits: &[Supertrait],
-    trait_interface_surface: &[DeclRef],
-    trait_methods: &[DeclRef],
-    impl_methods: &[FunctionDeclaration],
+    trait_interface_surface: &[TyTraitInterfaceItem],
+    trait_items: &[TyImplItem],
+    impl_items: &[ImplItem],
     trait_name: &CallPath,
     block_span: &Span,
     is_contract: bool,
-) -> CompileResult<Vec<DeclRef>> {
+) -> CompileResult<Vec<TyImplItem>> {
     let mut errors = vec![];
     let mut warnings = vec![];
 
@@ -598,6 +613,7 @@ fn type_check_trait_implementation(
         &supertrait_impld_method_refs
             .values()
             .cloned()
+            .map(TyImplItem::Fn)
             .collect::<Vec<_>>(),
         &trait_name.span(),
         false,
@@ -616,48 +632,59 @@ fn type_check_trait_implementation(
     // interface surface.
     let mut impld_method_refs: MethodMap = BTreeMap::new();
 
-    for decl_ref in trait_interface_surface.iter() {
-        let method = check!(
-            CompileResult::from(decl_engine.get_trait_fn(decl_ref, block_span)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        let name = method.name.clone();
+    for item in trait_interface_surface.iter() {
+        match item {
+            TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                let method = check!(
+                    CompileResult::from(decl_engine.get_trait_fn(decl_ref, block_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                let name = method.name.clone();
 
-        // Add this method to the checklist.
-        method_checklist.insert(name.clone(), method);
+                // Add this method to the checklist.
+                method_checklist.insert(name.clone(), method);
 
-        // Add this method to the "stub methods".
-        stub_method_refs.insert(name, decl_ref.clone());
+                // Add this method to the "stub methods".
+                stub_method_refs.insert(name, decl_ref.clone());
+            }
+        }
     }
 
-    for impl_method in impl_methods {
-        let impl_method = check!(
-            type_check_impl_method(
-                ctx.by_ref(),
-                impl_type_parameters,
-                impl_method,
-                trait_name,
-                is_contract,
-                &impld_method_refs,
-                &method_checklist
-            ),
-            ty::TyFunctionDeclaration::error(impl_method.clone()),
-            warnings,
-            errors
-        );
-        let name = impl_method.name.clone();
-        let decl_ref = decl_engine.insert(impl_method);
+    for item in impl_items {
+        match item {
+            ImplItem::Fn(impl_method) => {
+                let impl_method = check!(
+                    type_check_impl_method(
+                        ctx.by_ref(),
+                        impl_type_parameters,
+                        impl_method,
+                        trait_name,
+                        is_contract,
+                        &impld_method_refs,
+                        &method_checklist
+                    ),
+                    ty::TyFunctionDeclaration::error(impl_method.clone()),
+                    warnings,
+                    errors
+                );
 
-        // Remove this method from the checklist.
-        method_checklist.remove(&name);
+                // Remove this method from the checklist.
+                let name = impl_method.name.clone();
+                method_checklist.remove(&name);
 
-        // Add this method to the "impld methods".
-        impld_method_refs.insert(name, decl_ref);
+                // Add this method to the "impld methods".
+                let decl_ref = decl_engine.insert(impl_method);
+                impld_method_refs.insert(name, decl_ref);
+            }
+        }
     }
 
-    let mut all_method_refs: Vec<DeclRef> = impld_method_refs.values().cloned().collect();
+    let mut all_items_refs: Vec<TyImplItem> = impld_method_refs
+        .values()
+        .map(|decl_ref| TyImplItem::Fn(decl_ref.clone()))
+        .collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -679,21 +706,25 @@ fn type_check_trait_implementation(
     impld_method_refs.extend(supertrait_impld_method_refs);
     let decl_mapping =
         DeclMapping::from_stub_and_impld_decl_refs(stub_method_refs, impld_method_refs);
-    for decl_ref in trait_methods.iter() {
-        let mut method = check!(
-            CompileResult::from(decl_engine.get_function(decl_ref, block_span)),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-        method.replace_decls(&decl_mapping, engines);
-        method.subst(&type_mapping, engines);
-        method.replace_self_type(engines, ctx.self_type());
-        all_method_refs.push(
-            decl_engine
-                .insert(method)
-                .with_parent(decl_engine, decl_ref),
-        );
+    for item in trait_items.iter() {
+        match item {
+            TyImplItem::Fn(decl_ref) => {
+                let mut method = check!(
+                    CompileResult::from(decl_engine.get_function(decl_ref, block_span)),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                method.replace_decls(&decl_mapping, engines);
+                method.subst(&type_mapping, engines);
+                method.replace_self_type(engines, ctx.self_type());
+                all_items_refs.push(TyImplItem::Fn(
+                    decl_engine
+                        .insert(method)
+                        .with_parent(decl_engine, decl_ref),
+                ));
+            }
+        }
     }
 
     // check that the implementation checklist is complete
@@ -709,7 +740,7 @@ fn type_check_trait_implementation(
     }
 
     if errors.is_empty() {
-        ok(all_method_refs, warnings, errors)
+        ok(all_items_refs, warnings, errors)
     } else {
         err(warnings, errors)
     }
@@ -828,6 +859,7 @@ fn type_check_impl_method(
             errors.push(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
                 span: impl_method_param.type_argument.span.clone(),
+                decl_type: "function".to_string(),
                 given: engines
                     .help_out(impl_method_param.type_argument.type_id)
                     .to_string(),
@@ -895,6 +927,7 @@ fn type_check_impl_method(
         errors.push(CompileError::MismatchedTypeInInterfaceSurface {
             interface_name: interface_name(),
             span: impl_method.return_type.span.clone(),
+            decl_type: "function".to_string(),
             expected: engines
                 .help_out(impl_method_signature.return_type)
                 .to_string(),

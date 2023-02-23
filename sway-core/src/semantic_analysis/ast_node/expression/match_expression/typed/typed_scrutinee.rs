@@ -77,7 +77,17 @@ fn type_check_variable(
                 warnings,
                 errors
             );
-            let value = match constant_decl.value.extract_literal_value() {
+            let value = match constant_decl.value {
+                Some(ref value) => value,
+                None => {
+                    errors.push(CompileError::Internal(
+                        "constant value does not contain expression",
+                        span,
+                    ));
+                    return err(warnings, errors);
+                }
+            };
+            let literal = match value.extract_literal_value() {
                 Some(value) => value,
                 None => {
                     errors.push(CompileError::Unimplemented(
@@ -88,8 +98,8 @@ fn type_check_variable(
                 }
             };
             ty::TyScrutinee {
-                type_id: constant_decl.value.return_type,
-                variant: ty::TyScrutineeVariant::Constant(name, value, constant_decl),
+                type_id: value.return_type,
+                variant: ty::TyScrutineeVariant::Constant(name, literal, constant_decl),
                 span,
             }
         }
