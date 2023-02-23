@@ -328,9 +328,10 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::GenericTypeForFunctionScope { name, .. } => {
+            ty::TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
                 if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(*type_id));
                 }
             }
             ty::TyDeclaration::ErrorRecovery(_) => {}
@@ -345,8 +346,7 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
-                            token.type_def =
-                                Some(TypeDefinition::TypeId(field.type_argument.type_id));
+                            token.type_def = Some(TypeDefinition::Ident(field.name.clone()));
                         }
 
                         self.collect_type_argument(&field.type_argument, namespace);
