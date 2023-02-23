@@ -416,7 +416,7 @@ You will require the plugin <a href="https://github.com/FuelLabs/forc-wallet">fo
 </blockquote>
 <pre><code class="language-sh">forc deploy --unsigned
 </code></pre>
-<p>where <code>--url</code> parameter is the URL where your local node is hosted.</p>
+<p>where <code>--node-url</code> parameter is the URL where your local node is hosted.</p>
 <blockquote>
 <p><strong>Note</strong>
 You can't use the same terminal session that is running fuel-core to run any other commands as this will end your fuel-core process.</p>
@@ -433,6 +433,18 @@ TransactionId(HexFormatted(7cef24ea33513733ab78c5daa5328d622d4b38187d0f0d1857b27
 </code></pre>
 <p>Note the contract ID — you will need it if you want to build out a frontend to interact with this contract.</p>
 <p>If <code>forc-deploy</code> emits a <code>no such subcommand</code> error, try to install it with <a href="introduction/../introduction/installation.html">fuelup</a> or <a href="https://github.com/FuelLabs/sway/releases">manually</a>.</p>
+<h2 id="deploying-the-contract-with-salt"><a class="header" href="#deploying-the-contract-with-salt">Deploying the contract with Salt</a></h2>
+<p>You can pass a &quot;Salt&quot; using the <code>--salt</code> flag passed to your <code>forc deploy</code> command as a 256-bit hexadecimal literal, to redeploy a contract that has been deployed already. This is useful for multiple deployments of the same contract.</p>
+<p>To add a &quot;Salt&quot; while deploying your contract, you can run the following command:</p>
+<pre><code class="language-bash">forc deploy --unsigned --salt &lt;Salt&gt; --node-url &lt;key&gt; --gas-price 1
+</code></pre>
+<h3 id="randomised-salt"><a class="header" href="#randomised-salt">Randomised Salt</a></h3>
+<p>Salt is <code>0x0000000000000000000000000000000000000000000000000000000000000000</code> by default. If you do not want to pass a salt manually, you can also use the --random-salt flag to randomise your salt as follows:</p>
+<pre><code class="language-bash">forc deploy --unsigned --random-salt --node-url &lt;key&gt; --gas-price 1
+</code></pre>
+<blockquote>
+<p>Note: To be able to use the <code>forc deploy</code> and <code>forc run</code> commands, you require the <code>forc client</code> plugin that lets you interact with a Fuel node. You can read more about <code>forc client</code> <a href="introduction/../forc/plugins/forc_client/index.html">here</a>.</p>
+</blockquote>
 <h2 id="testing-your-contract"><a class="header" href="#testing-your-contract">Testing Your Contract</a></h2>
 <p>We will cover how to test your contract later but, if you are eager to take a look, see <a href="introduction/../testing/unit-testing.html">Unit Testing</a> and <a href="introduction/../testing/testing-with-rust.html">Testing with Rust</a>.</p>
 <h2 id="next-steps"><a class="header" href="#next-steps">Next Steps</a></h2>
