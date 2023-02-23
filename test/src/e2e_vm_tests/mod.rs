@@ -678,6 +678,7 @@ fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
         Some(target) => match target {
             "fuel" => Ok(BuildTarget::Fuel),
             "evm" => Ok(BuildTarget::EVM),
+            "miden-vm" | "midenvm" => Ok(BuildTarget::MidenVM),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
         },
         None => Err(anyhow!("Invalid TOML value")),

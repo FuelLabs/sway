@@ -346,7 +346,7 @@ impl Display for DirectOp {
             End => "end".into(),
             Exec(name) => format!("exec.{name}"),
             If {
-                condition,
+                condition: _,
                 true_branch,
                 else_branch,
             } => format!(

@@ -155,6 +155,7 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
         b
     }
 
+    #[allow(unreachable_code)]
     pub fn finalize(&self) -> AsmBuilderResult {
         AsmBuilderResult::MidenVM(MidenVMAsmBuilderResult { ops: todo!() })
     }
@@ -269,16 +270,6 @@ impl<'ir> MidenVMAsmBuilder<'ir> {
 
         // The `args` are already on the top of the stack, in the correct order. Load them into local memory
         // let mut arg_mapping = Vec::new();
-        let mut local_mem_counter = 0;
-        for arg in args {}
-
-        dbg!(&self);
-        /*
-        for arg in args {
-            // compile the arg
-
-        }
-            */
 
         todo!(
             "Unable to compile fn call {}, need to design function calls.",
