@@ -5,9 +5,9 @@ dependencies = ['std']
 
 [[package]]
 name = 'core'
-source = 'path+from-root-B0D5F718107CCC86'
+source = 'path+from-root-894BF76E6DA2FFD3'
 
 [[package]]
 name = 'std'
-source = 'git+https://github.com/fuellabs/sway?tag=v0.35.2#f05ecaf2de1ebe3b3da80ecd8eb6053a84145cf4'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.35.3#5d2b10bd83791d2eaff04206dbd45bfdd9cf23ff'
 dependencies = ['core']
