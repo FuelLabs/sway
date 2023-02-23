@@ -1,7 +1,7 @@
 // ANCHOR: body
 contract;
 
-use std::{auth::{AuthError, msg_sender}, hash::sha256};
+use std::{auth::msg_sender, hash::sha256};
 
 ////////////////////////////////////////
 // Event declarations
@@ -54,10 +54,8 @@ storage {
 impl Token for Contract {
     #[storage(read, write)]
     fn mint(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result<Identity, AuthError> = msg_sender();
-        let sender: Address = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender: Address = match sender {
             Identity::Address(addr) => {
                 assert(addr == MINTER);
                 addr
@@ -71,10 +69,8 @@ impl Token for Contract {
 
     #[storage(read, write)]
     fn send(receiver: Address, amount: u64) {
-        // Note: The return type of `msg_sender()` can be inferred by the
-        // compiler. It is shown here for explicitness.
-        let sender: Result<Identity, AuthError> = msg_sender();
-        let sender = match sender.unwrap() {
+        let sender = msg_sender().unwrap();
+        let sender = match sender {
             Identity::Address(addr) => addr,
             _ => revert(0),
         };

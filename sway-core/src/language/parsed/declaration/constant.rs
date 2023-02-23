@@ -9,7 +9,7 @@ pub struct ConstantDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
     pub type_ascription: TypeArgument,
-    pub value: Expression,
+    pub value: Option<Expression>,
     pub visibility: Visibility,
     pub is_configurable: bool,
     pub span: Span,

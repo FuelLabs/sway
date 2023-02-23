@@ -16,19 +16,19 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, ArrayIndexExpression, AstNode,
-            AstNodeContent, CodeBlock, Declaration, DelineatedPathExpression, Expression,
-            ExpressionKind, FunctionApplicationExpression, FunctionDeclaration, FunctionParameter,
-            IfExpression, ImportType, IntrinsicFunctionExpression, LazyOperatorExpression,
-            MatchExpression, MethodApplicationExpression, MethodName, ParseModule, ParseProgram,
-            ParseSubmodule, ReassignmentTarget, Scrutinee, StorageAccessExpression,
-            StructExpression, StructScrutineeField, SubfieldExpression, TraitFn, TreeType,
-            TupleIndexExpression, UseStatement, WhileLoopExpression,
+            AstNodeContent, CodeBlock, ConstantDeclaration, Declaration, DelineatedPathExpression,
+            Expression, ExpressionKind, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImportType, IntrinsicFunctionExpression,
+            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
+            ParseModule, ParseProgram, ParseSubmodule, ReassignmentTarget, Scrutinee,
+            StorageAccessExpression, StructExpression, StructScrutineeField, SubfieldExpression,
+            TraitFn, TraitItem, TreeType, TupleIndexExpression, UseStatement, WhileLoopExpression,
         },
-        Literal,
+        CallPathTree, Literal,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
-    TypeEngine, TypeInfo,
+    TraitConstraint, TypeEngine, TypeInfo,
 };
 use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
@@ -106,7 +106,23 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
-    fn handle_function_declation(&self, func: &FunctionDeclaration) {
+    fn handle_const_declaration(&self, const_decl: &ConstantDeclaration) {
+        let token = Token::from_parsed(
+            AstToken::ConstantDeclaration(const_decl.clone()),
+            SymbolKind::Const,
+        );
+        self.tokens
+            .insert(to_ident_key(&const_decl.name), token.clone());
+
+        self.collect_type_arg(&const_decl.type_ascription, &token);
+        if let Some(value) = &const_decl.value {
+            self.handle_expression(value);
+        }
+
+        const_decl.attributes.parse(self.tokens);
+    }
+
+    fn handle_function_declaration(&self, func: &FunctionDeclaration) {
         let token = Token::from_parsed(
             AstToken::FunctionDeclaration(func.clone()),
             SymbolKind::Function,
@@ -122,6 +138,13 @@ impl<'a> ParsedTree<'a> {
 
         for type_param in &func.type_parameters {
             self.collect_type_parameter(type_param, AstToken::FunctionDeclaration(func.clone()));
+        }
+
+        for (ident, constraints) in &func.where_clause {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+            for constr in constraints {
+                self.collect_trait_constraint(constr, &token)
+            }
         }
 
         self.collect_type_arg(&func.return_type, &token);
@@ -161,7 +184,7 @@ impl<'a> ParsedTree<'a> {
                 self.handle_expression(&variable.body);
             }
             Declaration::FunctionDeclaration(func) => {
-                self.handle_function_declation(func);
+                self.handle_function_declaration(func);
             }
             Declaration::TraitDeclaration(trait_decl) => {
                 self.tokens.insert(
@@ -172,12 +195,14 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &trait_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &trait_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
                 }
 
                 for func_dec in &trait_decl.methods {
-                    self.handle_function_declation(func_dec);
+                    self.handle_function_declaration(func_dec);
                 }
 
                 for supertrait in &trait_decl.supertraits {
@@ -267,15 +292,12 @@ impl<'a> ParsedTree<'a> {
 
                 let token = Token::from_parsed(
                     AstToken::Declaration(declaration.clone()),
-                    type_info_to_symbol_kind(self.type_engine, &impl_trait.type_implementing_for),
+                    type_info_to_symbol_kind(
+                        self.type_engine,
+                        &self.type_engine.get(impl_trait.implementing_for.type_id),
+                    ),
                 );
-
-                self.collect_type_info_token(
-                    &token,
-                    &impl_trait.type_implementing_for,
-                    Some(impl_trait.type_implementing_for_span.clone()),
-                    Some(SymbolKind::Variant),
-                );
+                self.collect_type_arg(&impl_trait.implementing_for, &token);
 
                 for type_param in &impl_trait.impl_type_parameters {
                     self.collect_type_parameter(
@@ -284,15 +306,17 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_trait.functions {
-                    self.handle_function_declation(func_dec);
+                for item in &impl_trait.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::ImplSelf(impl_self) => {
                 if let TypeInfo::Custom {
                     call_path,
                     type_arguments,
-                } = &impl_self.type_implementing_for
+                } = &self.type_engine.get(impl_self.implementing_for.type_id)
                 {
                     let token = Token::from_parsed(
                         AstToken::Declaration(declaration.clone()),
@@ -314,8 +338,10 @@ impl<'a> ParsedTree<'a> {
                     );
                 }
 
-                for func_dec in &impl_self.functions {
-                    self.handle_function_declation(func_dec);
+                for item in &impl_self.items {
+                    match item {
+                        ImplItem::Fn(fn_decl) => self.handle_function_declaration(fn_decl),
+                    }
                 }
             }
             Declaration::AbiDeclaration(abi_decl) => {
@@ -327,24 +353,26 @@ impl<'a> ParsedTree<'a> {
                     ),
                 );
 
-                for trait_fn in &abi_decl.interface_surface {
-                    self.collect_trait_fn(trait_fn);
+                for item in &abi_decl.interface_surface {
+                    match item {
+                        TraitItem::TraitFn(trait_fn) => self.collect_trait_fn(trait_fn),
+                    }
+                }
+
+                for supertrait in &abi_decl.supertraits {
+                    self.tokens.insert(
+                        to_ident_key(&supertrait.name.suffix),
+                        Token::from_parsed(
+                            AstToken::Declaration(declaration.clone()),
+                            SymbolKind::Trait,
+                        ),
+                    );
                 }
 
                 abi_decl.attributes.parse(self.tokens);
             }
             Declaration::ConstantDeclaration(const_decl) => {
-                let token = Token::from_parsed(
-                    AstToken::Declaration(declaration.clone()),
-                    SymbolKind::Const,
-                );
-                self.tokens
-                    .insert(to_ident_key(&const_decl.name), token.clone());
-
-                self.collect_type_arg(&const_decl.type_ascription, &token);
-                self.handle_expression(&const_decl.value);
-
-                const_decl.attributes.parse(self.tokens);
+                self.handle_const_declaration(const_decl);
             }
             Declaration::StorageDeclaration(storage_decl) => {
                 for field in &storage_decl.fields {
@@ -581,8 +609,12 @@ impl<'a> ParsedTree<'a> {
                     self.handle_expression(&branch.result);
                 }
             }
-            ExpressionKind::Asm(_) => {
-                //TODO handle asm expressions
+            ExpressionKind::Asm(asm) => {
+                for register in &asm.registers {
+                    if let Some(initializer) = &register.initializer {
+                        self.handle_expression(initializer);
+                    }
+                }
             }
             ExpressionKind::MethodApplication(method_application_expression) => {
                 let MethodApplicationExpression {
@@ -760,17 +792,20 @@ impl<'a> ParsedTree<'a> {
                 kind_binding,
                 arguments,
             }) => {
-                self.tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(
-                        AstToken::Intrinsic(kind_binding.inner.clone()),
-                        SymbolKind::Function,
-                    ),
+                let token = Token::from_parsed(
+                    AstToken::Intrinsic(kind_binding.inner.clone()),
+                    SymbolKind::Function,
                 );
 
                 for argument in arguments {
                     self.handle_expression(argument);
                 }
+
+                for type_arg in &kind_binding.type_arguments.to_vec() {
+                    self.collect_type_arg(type_arg, &token);
+                }
+
+                self.tokens.insert(to_ident_key(name), token);
             }
             ExpressionKind::WhileLoop(WhileLoopExpression {
                 body, condition, ..
@@ -808,6 +843,17 @@ impl<'a> ParsedTree<'a> {
         }
     }
 
+    fn collect_trait_constraint(&self, constraint: &TraitConstraint, token: &Token) {
+        for prefix in &constraint.trait_name.prefixes {
+            self.tokens.insert(to_ident_key(prefix), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&constraint.trait_name.suffix), token.clone());
+        for type_arg in &constraint.type_arguments {
+            self.collect_type_arg(type_arg, token)
+        }
+    }
+
     fn collect_type_arg(&self, type_argument: &TypeArgument, token: &Token) {
         let mut token = token.clone();
         let type_info = self.type_engine.get(type_argument.type_id);
@@ -823,29 +869,26 @@ impl<'a> ParsedTree<'a> {
                     self.collect_type_arg(type_arg, &token);
                 }
             }
-            TypeInfo::Custom {
-                call_path,
-                type_arguments,
-            } => {
-                if let Some(type_args) = type_arguments {
-                    for type_arg in type_args {
-                        self.collect_type_arg(type_arg, &token);
-                    }
-                }
-
-                let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
-                token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(call_path.suffix.span())), token);
-            }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(self.type_engine, &type_info);
                 token.kind = symbol_kind;
-                token.type_def = Some(TypeDefinition::TypeId(type_argument.type_id));
-                self.tokens
-                    .insert(to_ident_key(&Ident::new(type_argument.span.clone())), token);
+
+                if let Some(tree) = &type_argument.call_path_tree {
+                    self.collect_call_path_tree(tree, &token);
+                }
             }
+        }
+    }
+
+    fn collect_call_path_tree(&self, tree: &CallPathTree, token: &Token) {
+        for ident in &tree.call_path.prefixes {
+            self.tokens.insert(to_ident_key(ident), token.clone());
+        }
+        self.tokens
+            .insert(to_ident_key(&tree.call_path.suffix), token.clone());
+
+        for child in &tree.children {
+            self.collect_call_path_tree(child, token);
         }
     }
 

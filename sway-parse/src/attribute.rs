@@ -1,9 +1,9 @@
 use crate::priv_prelude::{Peek, Peeker};
 use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
-use sway_ast::attribute::{Annotated, Attribute, AttributeDecl};
+use sway_ast::attribute::{Annotated, Attribute, AttributeDecl, AttributeHashKind};
 use sway_ast::brackets::{Parens, SquareBrackets};
-use sway_ast::keywords::{HashToken, StorageToken, Token};
+use sway_ast::keywords::{HashBangToken, HashToken, StorageToken, Token};
 use sway_ast::punctuated::Punctuated;
 use sway_ast::token::{DocComment, DocStyle};
 use sway_error::parser_error::ParseErrorKind;
@@ -39,7 +39,7 @@ impl<T: Parse> Parse for Annotated<T> {
             // start supporting them and remove `Ident::new_no_trim`.
             let value = Ident::new_no_trim(doc_comment.content_span.clone());
             attribute_list.push(AttributeDecl {
-                hash_token: HashToken::new(doc_comment.span.clone()),
+                hash_kind: AttributeHashKind::Outer(HashToken::new(doc_comment.span.clone())),
                 attribute: SquareBrackets::new(
                     Punctuated::single(Attribute {
                         name: Ident::new_with_override(
@@ -72,9 +72,21 @@ impl<T: Parse> Parse for Annotated<T> {
 impl Parse for AttributeDecl {
     fn parse(parser: &mut Parser) -> ParseResult<Self> {
         Ok(AttributeDecl {
-            hash_token: parser.parse()?,
+            hash_kind: parser.parse()?,
             attribute: parser.parse()?,
         })
+    }
+}
+
+impl Parse for AttributeHashKind {
+    fn parse(parser: &mut Parser) -> ParseResult<Self> {
+        match parser.take::<HashBangToken>() {
+            Some(hash_bang_token) => Ok(AttributeHashKind::Inner(hash_bang_token)),
+            None => match parser.take::<HashToken>() {
+                Some(hash_token) => Ok(AttributeHashKind::Outer(hash_token)),
+                None => Err(parser.emit_error(ParseErrorKind::ExpectedAnAttribute)),
+            },
+        }
     }
 }
 

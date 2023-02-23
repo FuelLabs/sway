@@ -91,11 +91,12 @@ impl ty::TyTraitFn {
                 type_id: self.return_type,
                 initial_type_id: self.return_type,
                 span: self.return_type_span.clone(),
-                name_spans: None,
+                call_path_tree: None,
             },
             visibility: Visibility::Public,
             type_parameters: vec![],
             is_contract_call: mode == Mode::ImplAbiFn,
+            where_clause: vec![],
         }
     }
 }

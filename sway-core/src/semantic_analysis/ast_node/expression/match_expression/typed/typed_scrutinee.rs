@@ -70,14 +70,24 @@ fn type_check_variable(
 
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
-        Some(ty::TyDeclaration::ConstantDeclaration(decl_id)) => {
+        Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
             let constant_decl = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id.clone(), &span)),
+                CompileResult::from(decl_engine.get_constant(decl_id, &span)),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            let value = match constant_decl.value.extract_literal_value() {
+            let value = match constant_decl.value {
+                Some(ref value) => value,
+                None => {
+                    errors.push(CompileError::Internal(
+                        "constant value does not contain expression",
+                        span,
+                    ));
+                    return err(warnings, errors);
+                }
+            };
+            let literal = match value.extract_literal_value() {
                 Some(value) => value,
                 None => {
                     errors.push(CompileError::Unimplemented(
@@ -88,8 +98,8 @@ fn type_check_variable(
                 }
             };
             ty::TyScrutinee {
-                type_id: constant_decl.value.return_type,
-                variant: ty::TyScrutineeVariant::Constant(name, value, constant_decl),
+                type_id: value.return_type,
+                variant: ty::TyScrutineeVariant::Constant(name, literal, constant_decl),
                 span,
             }
         }
@@ -325,7 +335,7 @@ fn type_check_tuple(
                     type_id: x.type_id,
                     initial_type_id: x.type_id,
                     span: span.clone(),
-                    name_spans: None,
+                    call_path_tree: None,
                 })
                 .collect(),
         ),

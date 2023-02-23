@@ -1,5 +1,5 @@
 use crate::{
-    comments::maybe_write_comments_from_map,
+    comments::write_comments,
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
@@ -7,8 +7,8 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::{fmt::Write, ops::Range};
-use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, Traits};
+use std::fmt::Write;
+use sway_ast::{keywords::Token, token::Delimiter, ItemTrait, ItemTraitItem, Traits};
 use sway_types::Spanned;
 
 impl Format for ItemTrait {
@@ -62,18 +62,21 @@ impl Format for ItemTrait {
         let trait_items = self.trait_items.get();
 
         if trait_items.is_empty() {
-            let range: Range<usize> = self.trait_items.span().into();
-            maybe_write_comments_from_map(formatted_code, range, formatter)?;
+            write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for (fn_signature, semicolon_token) in trait_items {
-                // format `Annotated<FnSignature>`
-                write!(
-                    formatted_code,
-                    "{}",
-                    formatter.shape.indent.to_string(&formatter.config)?,
-                )?;
-                fn_signature.format(formatted_code, formatter)?;
-                writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+            for (annotated, semicolon_token) in trait_items {
+                match &annotated.value {
+                    sway_ast::ItemTraitItem::Fn(fn_signature) => {
+                        // format `Annotated<FnSignature>`
+                        write!(
+                            formatted_code,
+                            "{}",
+                            formatter.shape.indent.to_string(&formatter.config)?,
+                        )?;
+                        fn_signature.format(formatted_code, formatter)?;
+                        writeln!(formatted_code, "{}", semicolon_token.ident().as_str())?;
+                    }
+                }
             }
         }
         formatted_code.pop(); // pop last ending newline
@@ -93,6 +96,18 @@ impl Format for ItemTrait {
             Self::close_curly_brace(formatted_code, formatter)?;
         };
         Ok(())
+    }
+}
+
+impl Format for ItemTraitItem {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        match self {
+            ItemTraitItem::Fn(fn_decl) => fn_decl.format(formatted_code, formatter),
+        }
     }
 }
 
@@ -161,6 +176,16 @@ impl LeafSpans for ItemTrait {
         if let Some(trait_defs) = &self.trait_defs_opt {
             collected_spans.append(&mut trait_defs.leaf_spans());
         }
+        collected_spans
+    }
+}
+
+impl LeafSpans for ItemTraitItem {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        let mut collected_spans = Vec::new();
+        match &self {
+            ItemTraitItem::Fn(fn_sig) => collected_spans.append(&mut fn_sig.leaf_spans()),
+        };
         collected_spans
     }
 }

@@ -3,86 +3,18 @@
 use forc_tracing::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
+use test_macros::fmt_test_expr;
 
-/// convenience macro for generating test cases
-/// provide a known good, and then some named test cases that should evaluate to
-/// that known good. e.g.:
-/// ```
-///       // test suite name          known good
-///fmt_test!(field_proj_foobar       "foo.bar.baz.quux",
-///       // test case name           should format to known good
-///          intermediate_whitespace "foo . bar . baz . quux");
-/// ```
-macro_rules! fmt_test {
-    ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
-        fmt_test_inner!($scope $desired_output,
-                                $($name $y)+
-                                ,
-                                remove_trailing_whitespace format!("{} \n\n\t ", $desired_output).as_str(),
-                                remove_beginning_whitespace format!("  \n\t{}", $desired_output).as_str(),
-                                identity $desired_output, /* test return is valid */
-                                remove_beginning_and_trailing_whitespace format!("  \n\t  {} \n\t   ", $desired_output).as_str()
-                       );
-    };
-}
-
-macro_rules! fmt_test_inner {
-    ($scope:ident $desired_output:expr, $($name:ident $y:expr),+) => {
-        $(
-        paste! {
-            #[test]
-            fn [<$scope _ $name>] () {
-                let formatted_code = crate::parse::parse_format::<sway_ast::Expr>($y);
-                let changeset = diff_lines(&formatted_code, $desired_output);
-                let count_of_updates = changeset.diff().len();
-                if count_of_updates != 0 {
-                    println!("FAILED: {count_of_updates} diff items.");
-                }
-                for diff in changeset.diff() {
-                    match diff {
-                        DiffOp::Equal(old) => {
-                            for o in old {
-                                println!("{}", o)
-                            }
-                        }
-                        DiffOp::Insert(new) => {
-                            for n in new {
-                                println_green(&format!("+{}", n));
-                            }
-                        }
-                        DiffOp::Remove(old) => {
-                            for o in old {
-                                println_red(&format!("-{}", o));
-                            }
-                        }
-                        DiffOp::Replace(old, new) => {
-                            for o in old {
-                                println_red(&format!("-{}", o));
-                            }
-                            for n in new {
-                                println_green(&format!("+{}", n));
-                            }
-                        }
-                    }
-                }
-                println!("{formatted_code}");
-                assert_eq!(&formatted_code, $desired_output)
-            }
-        }
-    )+
-}
-}
-
-fmt_test!(  literal "5", extra_whitespace "  5 "
+fmt_test_expr!(  literal "5", extra_whitespace "  5 "
 );
 
-fmt_test!(  path_foo_bar            "foo::bar::baz::quux::quuz",
+fmt_test_expr!(  path_foo_bar            "foo::bar::baz::quux::quuz",
             intermediate_whitespace "foo :: bar :: baz :: quux :: quuz");
 
-fmt_test!(  field_proj_foobar       "foo.bar.baz.quux",
+fmt_test_expr!(  field_proj_foobar       "foo.bar.baz.quux",
             intermediate_whitespace "foo . bar . baz . quux");
 
-fmt_test!(  abi_cast                "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
+fmt_test_expr!(  abi_cast                "abi(MyAbi, 0x1111111111111111111111111111111111111111111111111111111111111111)",
             intermediate_whitespace " abi (
                   MyAbi
                    ,
@@ -90,24 +22,24 @@ fmt_test!(  abi_cast                "abi(MyAbi, 0x111111111111111111111111111111
                                   )  "
 );
 
-fmt_test!(  basic_func_app          "foo()",
+fmt_test_expr!(  basic_func_app          "foo()",
             intermediate_whitespace " foo (
 
             ) "
 );
 
-fmt_test!(  nested_args_func_app    "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
+fmt_test_expr!(  nested_args_func_app    "foo(a_struct { hello: \"hi\" }, a_var, foo.bar.baz.quux)",
             intermediate_whitespace "foo(a_struct {
                     hello  :  \"hi\"
             }, a_var  , foo . bar . baz . quux)"
 );
 
-fmt_test!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
+fmt_test_expr!(  multiline_tuple         "(\n    \"reallyreallylongstring\",\n    \"yetanotherreallyreallyreallylongstring\",\n    \"okaynowthatsjustaridiculouslylongstringrightthere\",\n)",
             intermediate_whitespace "(\"reallyreallylongstring\",             \"yetanotherreallyreallyreallylongstring\",
             \"okaynowthatsjustaridiculouslylongstringrightthere\")"
 );
 
-fmt_test!(  nested_tuple
+fmt_test_expr!(  nested_tuple
 "(
     (
         0x0000000000000000000000000000000000000000000000000000000000,
@@ -131,15 +63,15 @@ fmt_test!(  nested_tuple
 )"
 );
 
-fmt_test!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
+fmt_test_expr!(  multiline_match_stmt    "match foo {\n    Foo::foo => {}\n    Foo::bar => {}\n}",
             intermediate_whitespace "  match   \n  foo  {   \n\n    Foo :: foo  => {        }\n     Foo :: bar  =>  { }   \n}\n"
 );
 
-fmt_test!(  if_else_block           "if foo {\n    foo();\n} else if bar { bar(); } else { baz(); }",
+fmt_test_expr!(  if_else_block           "if foo {\n    foo();\n} else if bar { bar(); } else { baz(); }",
             intermediate_whitespace "   if    foo  {   \n       foo( ) ; \n }    else  if   bar  { \n     bar( ) ; \n }  else  { \n    baz(\n) ; \n }\n\n"
 );
 
-fmt_test!(  long_conditional_stmt
+fmt_test_expr!(  long_conditional_stmt
 "if really_long_var_name > other_really_long_var
     || really_long_var_name <= 0
     && other_really_long_var != 0
@@ -155,10 +87,10 @@ other_really_long_var
 0  &&   other_really_long_var    !=    0 {  foo();  }else{bar();}"
 );
 
-fmt_test!(  if_else_inline_1    "if foo { break; } else { continue; }",
+fmt_test_expr!(  if_else_inline_1    "if foo { break; } else { continue; }",
             intermediate_whitespace "if  foo { \n        break; \n}    else  {\n    continue;    \n}");
 
-fmt_test!(  if_else_inline_2
+fmt_test_expr!(  if_else_inline_2
 "if foo { let x = 1; } else { bar(y); }"
  ,
             
@@ -169,7 +101,7 @@ fmt_test!(  if_else_inline_2
     bar(y)   ;
 }    ");
 
-fmt_test!(  if_else_multiline
+fmt_test_expr!(  if_else_multiline
 "if foo {
     let really_long_variable = 1;
 } else {
@@ -183,11 +115,11 @@ fmt_test!(  if_else_multiline
     bar(y)   ;
 }    ");
 
-fmt_test!(  small_if_let "if let Result::Ok(x) = x { 100 } else { 1 }",
+fmt_test_expr!(  small_if_let "if let Result::Ok(x) = x { 100 } else { 1 }",
             intermediate_whitespace "if    let    Result   ::   Ok( x ) =    x {     100 }   else  {    1 }"
 );
 
-fmt_test!(  match_nested_conditional
+fmt_test_expr!(  match_nested_conditional
 "match foo {
     Foo::foo => {
         if really_long_var > other_really_long_var {
@@ -215,7 +147,7 @@ fmt_test!(  match_nested_conditional
 }"
 );
 
-fmt_test!(  match_branch_kind
+fmt_test_expr!(  match_branch_kind
 "match foo {
     Foo::foo => {
         foo();
@@ -237,11 +169,47 @@ fmt_test!(  match_branch_kind
 quux();\n    }\n\n\n}"
 );
 
-fmt_test!(  basic_array             "[1, 2, 3, 4, 5]",
+fmt_test_expr!(  match_branch_kind_tuple_long
+"match (foo, bar) {
+    (
+        VeryLongFoo::SomeLongFoo(some_foo),
+        VeryLongBar::SomeLongBar(some_bar),
+    ) => {
+        foo();
+    }
+    (
+        VeryLongFoo::OtherLongFoo(other_foo),
+        VeryLongBar::OtherLongBar(other_bar),
+    ) => {
+        bar();
+    }
+    _ => {
+        revert(0)
+    }
+}",
+            intermediate_whitespace
+"match (foo, bar) {
+    (
+        VeryLongFoo::SomeLongFoo(some_foo), \n  \n VeryLongBar::SomeLongBar(some_bar)) => \n 
+    \n{
+    \n
+        foo();
+    }
+    (VeryLongFoo::OtherLongFoo(other_foo), VeryLongBar::OtherLongBar(other_bar) \n ) => {
+        bar();
+    \n
+    }
+    _ \n=> {
+      \n  revert(0)
+    }
+}"
+);
+
+fmt_test_expr!(  basic_array             "[1, 2, 3, 4, 5]",
             intermediate_whitespace " \n [ 1 , 2 , 3 , 4 , 5 ]  \n"
 );
 
-fmt_test!(  long_array
+fmt_test_expr!(  long_array
 "[
     \"hello_there_this_is_a_very_long_string\",
     \"and_yet_another_very_long_string_just_because\",
@@ -255,7 +223,7 @@ intermediate_whitespace
  ]    \n"
 );
 
-fmt_test!(  nested_array
+fmt_test_expr!(  nested_array
 "[
     [
         0x0000000000000000000000000000000000000000000000000000000000,

@@ -21,11 +21,11 @@ impl FinalProgram {
                 program_kind: kind,
                 entries: entries
                     .into_iter()
-                    .map(|(selector, imm, fn_name, test_decl_id)| FinalizedEntry {
+                    .map(|(selector, imm, fn_name, test_decl_ref)| FinalizedEntry {
                         imm,
                         fn_name,
                         selector,
-                        test_decl_id,
+                        test_decl_ref,
                     })
                     .collect(),
                 abi: None,
