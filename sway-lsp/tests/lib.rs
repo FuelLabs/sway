@@ -1449,25 +1449,24 @@ async fn hover_docs_for_enums() {
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
 
-// #[tokio::test]
-// async fn hover_docs_for_abis() {
-//     let (mut service, _) = LspService::new(Backend::new);
-//     let uri = init_and_open(
-//         &mut service,
-//         test_fixtures_dir().join("tokens/abi/src/main.sw"),
-//     )
-//     .await;
+#[tokio::test]
+async fn hover_docs_for_abis() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
 
-//     let mut i = 0..;
-//     let mut hover = HoverDocumentation {
-//         req_uri: &uri,
-//         req_line: 16,
-//         req_char: 19,
-//         documentation: "```sway\nstruct TestStruct\n```\n---\n Docs for MyContract",
-//     };
-//     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
-// }
-
+    let mut i = 0..;
+    let hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 16,
+        req_char: 14,
+        documentation: "```sway\nabi MyContract\n```\n---\n Docs for MyContract",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
 
 #[tokio::test]
 async fn hover_docs_with_code_examples() {

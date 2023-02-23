@@ -27,7 +27,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    namespace, BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
