@@ -7,6 +7,7 @@
 pub mod lock;
 pub mod manifest;
 mod pkg;
+pub mod source;
 
 pub use lock::Lock;
 pub use manifest::{
