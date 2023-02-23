@@ -27,7 +27,7 @@ use sway_core::{
         parsed::{AstNode, ParseProgram},
         ty,
     },
-    namespace, BuildTarget, CompileResult, Engines, TypeEngine,
+    BuildTarget, CompileResult, Engines, TypeEngine,
 };
 use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
@@ -187,10 +187,11 @@ impl Session {
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree = TypedTree::new(engines, &self.token_map);
+                let typed_tree =
+                    TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
-                    typed_tree.traverse_node(node, namespace)
+                self.parse_ast_to_typed_tokens(typed_program, |node| {
+                    typed_tree.traverse_node(node)
                 });
 
                 self.save_lexed_program(lexed.to_owned().clone());
@@ -203,7 +204,7 @@ impl Session {
                 let dependency = Dependency::new(&self.token_map);
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
-                self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
+                self.parse_ast_to_typed_tokens(typed_program, |node| {
                     dependency.collect_typed_declaration(node)
                 });
             }
@@ -361,31 +362,15 @@ impl Session {
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode, &namespace::Module),
-    ) {
-        let root_nodes = typed_program
-            .root
-            .all_nodes
-            .iter()
-            .map(|node| (node, &typed_program.root.namespace));
+    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
+        let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| {
-                submodule
-                    .module
-                    .all_nodes
-                    .iter()
-                    .map(|node| (node, &submodule.module.namespace))
-            });
+            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|(node, namespace)| f(node, namespace));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Get a reference to the [ty::TyProgram] AST.

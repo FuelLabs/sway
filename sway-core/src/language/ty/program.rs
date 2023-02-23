@@ -108,7 +108,7 @@ impl TyProgram {
                 // the user
                 TyAstNodeContent::Declaration(TyDeclaration::ImplTrait { decl_id, .. }) => {
                     let TyImplTrait {
-                        methods,
+                        items,
                         implementing_for,
                         span,
                         trait_decl_ref,
@@ -124,10 +124,14 @@ impl TyProgram {
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
                             if decl_engine.get_abi(&trait_decl_ref, &span).is_ok() {
-                                for method_ref in methods {
-                                    match decl_engine.get_function(&method_ref, &span) {
-                                        Ok(method) => abi_entries.push(method),
-                                        Err(err) => errors.push(err),
+                                for item in items {
+                                    match item {
+                                        TyImplItem::Fn(method_ref) => {
+                                            match decl_engine.get_function(&method_ref, &span) {
+                                                Ok(method) => abi_entries.push(method),
+                                                Err(err) => errors.push(err),
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -463,6 +467,15 @@ impl TyProgramKind {
             TyProgramKind::Library { name } => parsed::TreeType::Library { name: name.clone() },
             TyProgramKind::Predicate { .. } => parsed::TreeType::Predicate,
             TyProgramKind::Script { .. } => parsed::TreeType::Script,
+        }
+    }
+    /// Used for project titles in `forc doc`.
+    pub fn as_title_str(&self) -> &str {
+        match self {
+            TyProgramKind::Contract { .. } => "Contract",
+            TyProgramKind::Library { .. } => "Library",
+            TyProgramKind::Predicate { .. } => "Predicate",
+            TyProgramKind::Script { .. } => "Script",
         }
     }
 }
