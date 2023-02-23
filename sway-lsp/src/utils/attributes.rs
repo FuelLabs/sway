@@ -10,6 +10,7 @@ pub fn attributes_map(token: &Token) -> Option<&transform::AttributesMap> {
             Declaration::StructDeclaration(decl) => Some(&decl.attributes),
             Declaration::ConstantDeclaration(decl) => Some(&decl.attributes),
             Declaration::StorageDeclaration(decl) => Some(&decl.attributes),
+            Declaration::AbiDeclaration(decl) => Some(&decl.attributes),
             _ => None,
         },
         AstToken::ConstantDeclaration(decl) => Some(&decl.attributes),

@@ -175,7 +175,9 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
             SymbolKind::BuiltinType
         }
         TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
-        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
+            SymbolKind::Struct
+        }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);
