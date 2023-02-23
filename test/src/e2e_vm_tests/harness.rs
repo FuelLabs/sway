@@ -127,6 +127,7 @@ pub(crate) async fn runs_on_node(
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>),
     Evm(revm::ExecutionResult),
+    MidenVM(miden::ExecutionTrace),
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -134,6 +135,8 @@ pub(crate) fn runs_in_vm(
     script: BuiltPackage,
     script_data: Option<Vec<u8>>,
 ) -> Result<VMExecutionResult> {
+    // todo build and test all three targets on every test case when
+    // feature-complete codegen is complete
     match script.build_target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();
@@ -189,6 +192,25 @@ pub(crate) fn runs_in_vm(
                 }
             }
         }
+        BuildTarget::MidenVM => {
+            use miden::{Assembler, ProgramInputs};
+
+            // instantiate the assembler
+            let assembler = Assembler::default();
+
+            let bytecode_str = std::str::from_utf8(&script.bytecode)?;
+
+            // compile Miden assembly source code into a program
+            let program = assembler.compile(bytecode_str).unwrap();
+
+            // execute the program with no inputs
+            let _trace = miden::execute(&program, &ProgramInputs::none()).unwrap();
+
+            let execution_trace = miden::execute(&program, &ProgramInputs::none())
+                .map_err(|e| anyhow::anyhow!("Failed to execute on midenVM: {e:?}"))?;
+
+            Ok(VMExecutionResult::MidenVM(execution_trace))
+        }
     }
 }
 
@@ -201,7 +223,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_target: run_config.build_target,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
+                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
             )),
             locked: run_config.locked,
             terse: false,
@@ -289,6 +311,7 @@ fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
     let json_abi = match &built_package.json_abi_program {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
+        ProgramABI::MidenVM(_) => todo!(),
     };
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let file = std::fs::File::create(format!(

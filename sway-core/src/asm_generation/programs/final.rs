@@ -39,6 +39,16 @@ impl FinalProgram {
                 entries: vec![],
                 abi: Some(ProgramABI::Evm(abi)),
             },
+            FinalProgram::MidenVM { ops } => FinalizedAsm {
+                data_section: DataSection {
+                    ..Default::default()
+                },
+                program_section: InstructionSet::MidenVM { ops },
+                // should this be a script? :think:
+                program_kind: super::ProgramKind::Script,
+                entries: vec![],
+                abi: None, /* TODO? */
+            },
         }
     }
 }
@@ -80,6 +90,7 @@ impl std::fmt::Display for FinalProgram {
 
                 Ok(())
             }
+            FinalProgram::MidenVM { ops } => write!(f, "{ops:?}"),
         }
     }
 }

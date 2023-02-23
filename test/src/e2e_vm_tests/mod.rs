@@ -158,6 +158,7 @@ impl TestContext {
                             panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
                         }
                     },
+                    harness::VMExecutionResult::MidenVM(_trace) => todo!("Assert output"),
                 };
 
                 if result != res {
