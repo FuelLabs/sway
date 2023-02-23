@@ -126,8 +126,11 @@ fn impl_trait_methods(
 ) -> Vec<ty::TyFunctionDeclaration> {
     match decl_engine.get_impl_trait(impl_trait_decl_id, span) {
         Ok(impl_trait) => impl_trait
-            .methods
+            .items
             .iter()
+            .flat_map(|item| match item {
+                ty::TyImplItem::Fn(fn_decl) => Some(fn_decl),
+            })
             .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, &fn_decl.id, span))
             .collect(),
         Err(_) => vec![],

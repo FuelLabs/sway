@@ -1,6 +1,6 @@
 use crate::{
     descriptor::Descriptor,
-    render::{split_at_markdown_header, DocLink, ItemBody, ItemHeader, Renderable},
+    render::{split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable},
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
@@ -50,35 +50,7 @@ impl Document {
         }
     }
     fn preview_opt(&self) -> Option<String> {
-        const MAX_PREVIEW_CHARS: usize = 100;
-        const CLOSING_PARAGRAPH_TAG: &str = "</p>";
-
-        self.raw_attributes.as_ref().map(|description| {
-            let preview = split_at_markdown_header(description);
-            if preview.chars().count() > MAX_PREVIEW_CHARS
-                && preview.contains(CLOSING_PARAGRAPH_TAG)
-            {
-                match preview.find(CLOSING_PARAGRAPH_TAG) {
-                    Some(index) => {
-                        // We add 1 here to get the index of the char after the closing tag.
-                        // This ensures we retain the closing tag and don't break the html.
-                        let (preview, _) =
-                            preview.split_at(index + CLOSING_PARAGRAPH_TAG.len() + 1);
-                        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
-                            match preview.find('\n') {
-                                Some(index) => preview.split_at(index).0.to_string(),
-                                None => unreachable!("Previous logic prevents this panic"),
-                            }
-                        } else {
-                            preview.to_string()
-                        }
-                    }
-                    None => unreachable!("Previous logic prevents this panic"),
-                }
-            } else {
-                preview.to_string()
-            }
-        })
+        create_preview(self.raw_attributes.clone())
     }
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
@@ -95,7 +67,7 @@ impl Document {
                 let desc = Descriptor::from_typed_decl(
                     decl_engine,
                     decl,
-                    ModuleInfo::from_vec(vec![project_name.to_owned()]),
+                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], None),
                     document_private_items,
                 )?;
 
@@ -108,7 +80,10 @@ impl Document {
         if !no_deps && !typed_program.root.submodules.is_empty() {
             // this is the same process as before but for dependencies
             for (_, ref typed_submodule) in &typed_program.root.submodules {
-                let module_prefix = ModuleInfo::from_vec(vec![project_name.to_owned()]);
+                let attributes = (!typed_submodule.module.attributes.is_empty())
+                    .then(|| typed_submodule.module.attributes.to_html_string());
+                let module_prefix =
+                    ModuleInfo::from_ty_module(vec![project_name.to_owned()], attributes);
                 Document::from_ty_submodule(
                     decl_engine,
                     typed_submodule,
@@ -130,7 +105,7 @@ impl Document {
     ) -> Result<()> {
         let mut new_submodule_prefix = module_prefix.to_owned();
         new_submodule_prefix
-            .0
+            .module_prefixes
             .push(typed_submodule.library_name.as_str().to_owned());
         for ast_node in &typed_submodule.module.all_nodes {
             if let TyAstNodeContent::Declaration(ref decl) = ast_node.content {
@@ -173,13 +148,16 @@ impl Renderable for Document {
 
 pub(crate) type ModulePrefix = String;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct ModuleInfo(pub(crate) Vec<ModulePrefix>);
+pub(crate) struct ModuleInfo {
+    pub(crate) module_prefixes: Vec<ModulePrefix>,
+    pub(crate) attributes: Option<String>,
+}
 impl ModuleInfo {
     /// The current module.
     ///
     /// Panics if there are no modules.
     pub(crate) fn location(&self) -> &str {
-        self.0
+        self.module_prefixes
             .last()
             .expect("Expected Some module location, found None")
     }
@@ -187,7 +165,7 @@ impl ModuleInfo {
     ///
     /// Panics if the project root is missing.
     pub(crate) fn project_name(&self) -> &str {
-        self.0
+        self.module_prefixes
             .first()
             .expect("Expected root module, project root missing")
     }
@@ -197,7 +175,7 @@ impl ModuleInfo {
     pub(crate) fn parent(&self) -> Option<&String> {
         match self.has_parent() {
             true => {
-                let mut iter = self.0.iter();
+                let mut iter = self.module_prefixes.iter();
                 iter.next_back();
                 iter.next_back()
             }
@@ -226,7 +204,7 @@ impl ModuleInfo {
     ///
     /// Example: `module::submodule`
     fn to_path_literal_prefix(&self, location: &str) -> String {
-        let mut iter = self.0.iter();
+        let mut iter = self.module_prefixes.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
                 break;
@@ -239,7 +217,7 @@ impl ModuleInfo {
     ///
     /// This is only used for full path syntax, e.g `module/submodule/file_name.html`.
     pub(crate) fn to_file_path_string(&self, file_name: &str, location: &str) -> Result<String> {
-        let mut iter = self.0.iter();
+        let mut iter = self.module_prefixes.iter();
         for prefix in iter.by_ref() {
             if prefix == location {
                 break;
@@ -265,12 +243,47 @@ impl ModuleInfo {
     }
     /// The depth of a module as `usize`.
     pub(crate) fn depth(&self) -> usize {
-        self.0.len()
+        self.module_prefixes.len()
     }
     /// Create a new [ModuleInfo] from a vec.
-    pub(crate) fn from_vec(vec: Vec<String>) -> Self {
-        Self(vec)
+    pub(crate) fn from_ty_module(module_prefixes: Vec<String>, attributes: Option<String>) -> Self {
+        Self {
+            module_prefixes,
+            attributes,
+        }
     }
+    pub(crate) fn preview_opt(&self) -> Option<String> {
+        create_preview(self.attributes.clone())
+    }
+}
+
+/// Create a docstring preview from raw html attributes.
+///
+/// Returns `None` if there are no attributes.
+fn create_preview(raw_attributes: Option<String>) -> Option<String> {
+    const MAX_PREVIEW_CHARS: usize = 100;
+    const CLOSING_PARAGRAPH_TAG: &str = "</p>";
+
+    raw_attributes.as_ref().map(|description| {
+        let preview = split_at_markdown_header(description);
+        if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains(CLOSING_PARAGRAPH_TAG) {
+            let closing_tag_index = preview
+                .find(CLOSING_PARAGRAPH_TAG)
+                .expect("closing tag out of range");
+            // We add 1 here to get the index of the char after the closing tag.
+            // This ensures we retain the closing tag and don't break the html.
+            let (preview, _) =
+                preview.split_at(closing_tag_index + CLOSING_PARAGRAPH_TAG.len() + 1);
+            if preview.chars().count() > MAX_PREVIEW_CHARS && preview.contains('\n') {
+                let newline_index = preview.find('\n').expect("new line char out of range");
+                preview.split_at(newline_index).0.to_string()
+            } else {
+                preview.to_string()
+            }
+        } else {
+            preview.to_string()
+        }
+    })
 }
 
 #[cfg(test)]
@@ -283,12 +296,12 @@ mod tests {
         let module = String::from("module_name");
         let mut module_vec = vec![project.clone(), module];
 
-        let module_info = ModuleInfo::from_vec(module_vec.clone());
+        let module_info = ModuleInfo::from_ty_module(module_vec.clone(), None);
         let project_opt = module_info.parent();
         assert_eq!(Some(&project), project_opt);
 
         module_vec.pop();
-        let module_info = ModuleInfo::from_vec(module_vec);
+        let module_info = ModuleInfo::from_ty_module(module_vec, None);
         let project_opt = module_info.parent();
         assert_eq!(None, project_opt);
     }

@@ -2,15 +2,15 @@ use sway_ast::Intrinsic;
 use sway_core::{
     language::{
         parsed::{
-            Declaration, EnumVariant, Expression, FunctionDeclaration, FunctionParameter,
-            ReassignmentExpression, Scrutinee, StorageField, StructExpressionField, StructField,
-            Supertrait, TraitFn, TreeType, UseStatement,
+            ConstantDeclaration, Declaration, EnumVariant, Expression, FunctionDeclaration,
+            FunctionParameter, ReassignmentExpression, Scrutinee, StorageField,
+            StructExpressionField, StructField, Supertrait, TraitFn, TreeType, UseStatement,
         },
         ty,
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    TypeArgument, TypeEngine,
+    TraitConstraint, TypeArgument, TypeEngine,
 };
 use sway_types::{Ident, Span, Spanned};
 use tower_lsp::lsp_types::{Position, Range};
@@ -29,6 +29,7 @@ pub enum AstToken {
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
+    ConstantDeclaration(ConstantDeclaration),
     Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
@@ -46,6 +47,7 @@ pub enum TypedAstToken {
     TypedDeclaration(ty::TyDeclaration),
     TypedExpression(ty::TyExpression),
     TypedScrutinee(ty::TyScrutinee),
+    TypedConstantDeclaration(ty::TyConstantDeclaration),
     TypedFunctionDeclaration(ty::TyFunctionDeclaration),
     TypedFunctionParameter(ty::TyFunctionParameter),
     TypedStructField(ty::TyStructField),
@@ -57,6 +59,7 @@ pub enum TypedAstToken {
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
     TypedParameter(TypeParameter),
+    TypedTraitConstraint(TraitConstraint),
     TypedProgramKind(ty::TyProgramKind),
     TypedLibraryName(Ident),
     TypedIncludeStatement,
@@ -172,7 +175,9 @@ pub fn type_info_to_symbol_kind(type_engine: &TypeEngine, type_info: &TypeInfo) 
             SymbolKind::BuiltinType
         }
         TypeInfo::Numeric | TypeInfo::Str(..) => SymbolKind::NumericLiteral,
-        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } => SymbolKind::Struct,
+        TypeInfo::Custom { .. } | TypeInfo::Struct { .. } | TypeInfo::Contract => {
+            SymbolKind::Struct
+        }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
             let type_info = type_engine.get(elem_ty.type_id);

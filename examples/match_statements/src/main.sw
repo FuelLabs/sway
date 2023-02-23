@@ -1,45 +1,48 @@
 script;
 
-fn foo() {}
-    // do something
-fn bar() {}
-
-    // do something
-enum SomeEnum {
-    A: u64,
-    B: bool,
-    C: b256,
+// helper functions for our example
+fn on_even(num: u64) {
+    // do something with even numbers
+}
+fn on_odd(num: u64) {
+    // do something with odd numbers
 }
 
-fn main() -> u64 {
-    let x = 5;
-
-    // Match as an expression.
-    let a = match 8 {
-        7 => 4,
-        9 => 5,
-        8 => 6,
-        _ => 100,
+fn main(num: u64) -> u64 {
+    // Match as an expression
+    let isEven = match num % 2 {
+        0 => true,
+        _ => false,
     };
 
-    // Match as a statement for control flow.
+    // Match as control flow
+    let x = 12;
     match x {
-        5 => foo(),
-        _ => bar(),
+        5 => on_odd(x),
+        _ => on_even(x),
     };
 
     // Match an enum
-    let e = SomeEnum::A(42);
-    let v = match e {
-        SomeEnum::A(val) => val,
-        SomeEnum::B(true) => 1,
-        SomeEnum::B(false) => 0,
-        _ => 0,
+    enum Weather {
+        Sunny: (),
+        Rainy: (),
+        Cloudy: (),
+        Snowy: (),
+    }
+    let currentWeather = Weather::Sunny;
+    let avgTemp = match currentWeather {
+        Weather::Sunny => 80,
+        Weather::Rainy => 50,
+        Weather::Cloudy => 60,
+        Weather::Snowy => 20,
     };
 
-    // Match as expression used for a return.
-    match 42 {
-        0 => 24,
-        foo => foo,
+    // match expression used for a return
+    let outsideTemp = Weather::Sunny;
+    match outsideTemp {
+        Weather::Sunny => 80,
+        Weather::Rainy => 50,
+        Weather::Cloudy => 60,
+        Weather::Snowy => 20,
     }
 }

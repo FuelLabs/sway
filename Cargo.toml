@@ -11,7 +11,6 @@ members = [
     "forc-test",
     "forc-tracing",
     "forc-util",
-    "scripts/examples-checker",
     "scripts/mdbook-forc-documenter",
     "sway-ast",
     "sway-core",

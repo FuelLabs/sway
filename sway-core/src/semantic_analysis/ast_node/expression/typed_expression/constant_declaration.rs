@@ -15,7 +15,7 @@ pub(crate) fn instantiate_constant_decl(
 ) -> CompileResult<ty::TyExpression> {
     ok(
         ty::TyExpression {
-            return_type: const_decl.value.return_type,
+            return_type: const_decl.type_ascription.type_id,
             span: call_path_binding.span(),
             expression: ty::TyExpressionVariant::VariableExpression {
                 name: const_decl.name.clone(),
