@@ -133,7 +133,14 @@ impl Descriptor {
                         (!trait_decl.interface_surface.is_empty()).then_some(Context::new(
                             module_info.clone(),
                             ContextType::RequiredMethods(
-                                trait_decl.interface_surface.to_methods(decl_engine)?,
+                                trait_decl
+                                    .interface_surface
+                                    .into_iter()
+                                    .flat_map(|item| match item {
+                                        TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .to_methods(decl_engine)?,
                             ),
                         ));
 
