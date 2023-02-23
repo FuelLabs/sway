@@ -10,8 +10,7 @@ use crate::{
 use super::{
     items::{GlobImport, Items, SymbolMap},
     root::Root,
-    trait_map::TraitMap,
-    ModuleName, Path,
+    ModuleName, Path, TraitMap,
 };
 
 use std::collections::BTreeMap;

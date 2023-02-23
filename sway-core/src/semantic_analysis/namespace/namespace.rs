@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
-    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
+    are_equal_minus_dynamic_types, module::Module, root::Root,
+    submodule_namespace::SubmoduleNamespace, Path, PathBuf,
 };
 
 use sway_error::error::CompileError;

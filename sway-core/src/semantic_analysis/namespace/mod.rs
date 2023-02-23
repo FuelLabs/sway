@@ -10,7 +10,7 @@ pub use items::Items;
 pub use module::Module;
 pub use namespace::Namespace;
 pub use root::Root;
-pub(super) use trait_map::TraitMap;
+pub(super) use trait_map::map::*;
 
 use sway_types::Ident;
 
