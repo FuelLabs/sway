@@ -363,14 +363,14 @@ impl Session {
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
     fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
-        let root_nodes = typed_program.root.all_nodes.iter().map(|node| node);
+        let root_nodes = typed_program.root.all_nodes.iter();
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter().map(|node| node));
+            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter());
 
-        root_nodes.chain(sub_nodes).for_each(|node| f(node));
+        root_nodes.chain(sub_nodes).for_each(f);
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
