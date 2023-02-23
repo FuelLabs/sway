@@ -3026,16 +3026,22 @@ pub fn build(
                 engines,
                 &mut source_map,
             )?;
-            let contract_id = contract_id(&built_package_without_tests, &fuel_tx::Salt::zeroed());
-            let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
-            let contract_id_value = format!("0x{contract_id}");
-            let contract_id_constant = ConfigTimeConstant {
-                r#type: "b256".to_string(),
-                value: contract_id_value.clone(),
-                public: true,
-            };
-            let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
-            const_inject_map.insert(pkg.clone(), constant_declarations);
+            // If this contract is built because tests are enabled we need to insert CONTRACT_ID
+            // for the contract.
+            if !is_contract_dependency {
+                // `forc-test` interpreter deployments are done with zeroed salt.
+                let contract_id =
+                    contract_id(&built_package_without_tests, &fuel_tx::Salt::zeroed());
+                let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
+                let contract_id_value = format!("0x{contract_id}");
+                let contract_id_constant = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value.clone(),
+                    public: true,
+                };
+                let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
+                const_inject_map.insert(pkg.clone(), constant_declarations);
+            }
             Some(built_package_without_tests)
         } else {
             None
