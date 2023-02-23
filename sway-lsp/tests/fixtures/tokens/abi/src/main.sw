@@ -2,6 +2,7 @@ contract;
 
 struct Empty{}
 
+/// Docs for MyContract
 abi MyContract {
     fn test_function() -> Empty;
 }
