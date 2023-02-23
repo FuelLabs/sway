@@ -187,10 +187,10 @@ impl Session {
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree = TypedTree::new(engines, &self.token_map);
+                let typed_tree = TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
-                self.parse_ast_to_typed_tokens(typed_program, |node, namespace| {
-                    typed_tree.traverse_node(node, namespace)
+                self.parse_ast_to_typed_tokens(typed_program, |node| {
+                    typed_tree.traverse_node(node)
                 });
 
                 self.save_lexed_program(lexed.to_owned().clone());
@@ -203,7 +203,7 @@ impl Session {
                 let dependency = Dependency::new(&self.token_map);
                 self.parse_ast_to_tokens(&parsed, |an| dependency.collect_parsed_declaration(an));
 
-                self.parse_ast_to_typed_tokens(typed_program, |node, _module| {
+                self.parse_ast_to_typed_tokens(typed_program, |node| {
                     dependency.collect_typed_declaration(node)
                 });
             }
@@ -364,13 +364,13 @@ impl Session {
     fn parse_ast_to_typed_tokens(
         &self,
         typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode, &namespace::Module),
+        f: impl Fn(&ty::TyAstNode),
     ) {
         let root_nodes = typed_program
             .root
             .all_nodes
             .iter()
-            .map(|node| (node, &typed_program.root.namespace));
+            .map(|node| node);
         let sub_nodes = typed_program
             .root
             .submodules
@@ -380,12 +380,12 @@ impl Session {
                     .module
                     .all_nodes
                     .iter()
-                    .map(|node| (node, &submodule.module.namespace))
+                    .map(|node| node)
             });
 
         root_nodes
             .chain(sub_nodes)
-            .for_each(|(node, namespace)| f(node, namespace));
+            .for_each(|node| f(node));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
