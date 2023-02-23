@@ -1310,6 +1310,36 @@ async fn go_to_definition_for_enums() {
     definition_check_with_req_offset(&mut service, &mut go_to, 25, 23, &mut i).await;
 }
 
+#[tokio::test]
+async fn go_to_definition_for_abi() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
+    let mut i = 0..;
+
+    let mut go_to = GotoDefinition {
+        req_uri: &uri,
+        req_line: 6,
+        req_char: 29,
+        def_line: 2,
+        def_start_char: 7,
+        def_end_char: 12,
+        def_path: uri.as_str(),
+    };
+    // Return type
+    let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;
+
+    // Abi name
+    go_to.def_line = 5;
+    go_to.def_start_char = 4;
+    go_to.def_end_char = 14;
+    definition_check_with_req_offset(&mut service, &mut go_to, 9, 11, &mut i).await;
+    definition_check_with_req_offset(&mut service, &mut go_to, 16, 15, &mut i).await;
+}
+
 //------------------- HOVER DOCUMENTATION -------------------//
 
 #[tokio::test]
@@ -1418,6 +1448,26 @@ async fn hover_docs_for_enums() {
     hover.documentation = " Docs for variants";
     let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
 }
+
+#[tokio::test]
+async fn hover_docs_for_abis() {
+    let (mut service, _) = LspService::new(Backend::new);
+    let uri = init_and_open(
+        &mut service,
+        test_fixtures_dir().join("tokens/abi/src/main.sw"),
+    )
+    .await;
+
+    let mut i = 0..;
+    let hover = HoverDocumentation {
+        req_uri: &uri,
+        req_line: 16,
+        req_char: 14,
+        documentation: "```sway\nabi MyContract\n```\n---\n Docs for MyContract",
+    };
+    let _ = lsp::hover_request(&mut service, &hover, &mut i).await;
+}
+
 #[tokio::test]
 async fn hover_docs_with_code_examples() {
     let (mut service, _) = LspService::new(Backend::new);
