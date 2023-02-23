@@ -1705,44 +1705,52 @@ impl<'eng> FnCompiler<'eng> {
             is_configurable,
             ..
         } = ast_const_decl;
-        let const_expr_val = compile_constant_expression(
-            Engines::new(self.type_engine, self.decl_engine),
-            context,
-            md_mgr,
-            self.module,
-            None,
-            Some(self),
-            &name,
-            &value,
-            is_configurable,
-        )?;
-        let local_name = self.lexical_map.insert(name.as_str().to_owned());
-        let return_type =
-            convert_resolved_typeid(self.type_engine, context, &value.return_type, &value.span)?;
+        if let Some(value) = value {
+            let const_expr_val = compile_constant_expression(
+                Engines::new(self.type_engine, self.decl_engine),
+                context,
+                md_mgr,
+                self.module,
+                None,
+                Some(self),
+                &name,
+                &value,
+                is_configurable,
+            )?;
+            let local_name = self.lexical_map.insert(name.as_str().to_owned());
+            let return_type = convert_resolved_typeid(
+                self.type_engine,
+                context,
+                &value.return_type,
+                &value.span,
+            )?;
 
-        // We compile consts the same as vars are compiled. This is because ASM generation
-        // cannot handle
-        //    1. initializing aggregates
-        //    2. get_ptr()
-        // into the data section.
-        let local_var = self
-            .function
-            .new_local_var(context, local_name, return_type, None)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+            // We compile consts the same as vars are compiled. This is because ASM generation
+            // cannot handle
+            //    1. initializing aggregates
+            //    2. get_ptr()
+            // into the data section.
+            let local_var = self
+                .function
+                .new_local_var(context, local_name, return_type, None)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
 
-        // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
-        // otherwise use a store.
-        let var_ty = local_var.get_type(context);
-        if ir_type_size_in_bytes(context, &var_ty) > 0 {
-            let local_val = self
-                .current_block
-                .ins(context)
-                .get_local(local_var)
-                .add_metadatum(context, span_md_idx);
-            self.current_block
-                .ins(context)
-                .store(local_val, const_expr_val)
-                .add_metadatum(context, span_md_idx);
+            // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
+            // otherwise use a store.
+            let var_ty = local_var.get_type(context);
+            if ir_type_size_in_bytes(context, &var_ty) > 0 {
+                let local_val = self
+                    .current_block
+                    .ins(context)
+                    .get_local(local_var)
+                    .add_metadatum(context, span_md_idx);
+                self.current_block
+                    .ins(context)
+                    .store(local_val, const_expr_val)
+                    .add_metadatum(context, span_md_idx);
+            }
         }
         Ok(())
     }

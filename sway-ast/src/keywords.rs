@@ -104,6 +104,14 @@ macro_rules! define_token (
             span: Span,
         }
 
+        impl Default for $ty_name {
+            fn default() -> Self {
+                Self {
+                    span: Span::dummy()
+                }
+            }
+        }
+
         impl Spanned for $ty_name {
             fn span(&self) -> Span {
                 self.span.clone()

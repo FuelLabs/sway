@@ -373,12 +373,16 @@ impl CollectTypesMetadata for TyDeclaration {
                 decl_id, decl_span, ..
             } => match decl_engine.get_constant(decl_id, decl_span) {
                 Ok(TyConstantDeclaration { value, .. }) => {
-                    check!(
-                        value.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    )
+                    if let Some(value) = value {
+                        check!(
+                            value.collect_types_metadata(ctx),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        )
+                    } else {
+                        return ok(vec![], warnings, errors);
+                    }
                 }
                 Err(e) => {
                     errors.push(e);

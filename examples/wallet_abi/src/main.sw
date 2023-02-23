@@ -4,7 +4,7 @@ library wallet_abi;
 // ANCHOR: abi
 abi Wallet {
     // ANCHOR: receive_funds
-    #[storage(read, write)]
+    #[storage(read, write), payable]
     fn receive_funds();
     // ANCHOR_END: receive_funds
 

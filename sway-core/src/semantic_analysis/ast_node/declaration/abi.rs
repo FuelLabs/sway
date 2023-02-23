@@ -3,7 +3,10 @@ use sway_types::Spanned;
 
 use crate::{
     error::*,
-    language::{parsed::*, ty},
+    language::{
+        parsed::*,
+        ty::{self, TyTraitItem},
+    },
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     CompileResult,
 };
@@ -48,26 +51,32 @@ impl ty::TyAbiDeclaration {
 
         // Type check the interface surface.
         let mut new_interface_surface = vec![];
-        for method in interface_surface.into_iter() {
-            let method = check!(
-                ty::TyTraitFn::type_check(ctx.by_ref(), method),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            for param in &method.parameters {
-                if param.is_reference || param.is_mutable {
-                    errors.push(CompileError::RefMutableNotAllowedInContractAbi {
-                        param_name: param.name.clone(),
-                        span: param.name.span(),
-                    })
+        for item in interface_surface.into_iter() {
+            match item {
+                TraitItem::TraitFn(method) => {
+                    let method = check!(
+                        ty::TyTraitFn::type_check(ctx.by_ref(), method),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    for param in &method.parameters {
+                        if param.is_reference || param.is_mutable {
+                            errors.push(CompileError::RefMutableNotAllowedInContractAbi {
+                                param_name: param.name.clone(),
+                                span: param.name.span(),
+                            })
+                        }
+                    }
+                    new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
+                        ctx.decl_engine.insert(method),
+                    ));
                 }
             }
-            new_interface_surface.push(ctx.decl_engine.insert(method));
         }
 
         // Type check the methods.
-        let mut new_methods = vec![];
+        let mut new_items = vec![];
         for method in methods.into_iter() {
             let method = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
@@ -83,7 +92,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(ctx.decl_engine.insert(method));
+            new_items.push(TyTraitItem::Fn(ctx.decl_engine.insert(method)));
         }
 
         // Compared to regular traits, we do not insert recursively methods of ABI supertraits
@@ -92,7 +101,7 @@ impl ty::TyAbiDeclaration {
         let abi_decl = ty::TyAbiDeclaration {
             interface_surface: new_interface_surface,
             supertraits,
-            methods: new_methods,
+            items: new_items,
             name,
             span,
             attributes,

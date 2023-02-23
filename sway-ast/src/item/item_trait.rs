@@ -1,6 +1,11 @@
 use crate::priv_prelude::*;
 
 #[derive(Clone, Debug)]
+pub enum ItemTraitItem {
+    Fn(FnSignature),
+}
+
+#[derive(Clone, Debug)]
 pub struct ItemTrait {
     pub visibility: Option<PubToken>,
     pub trait_token: TraitToken,
@@ -8,7 +13,7 @@ pub struct ItemTrait {
     pub generics: Option<GenericParams>,
     pub where_clause_opt: Option<WhereClause>,
     pub super_traits: Option<(ColonToken, Traits)>,
-    pub trait_items: Braces<Vec<(Annotated<FnSignature>, SemicolonToken)>>,
+    pub trait_items: Braces<Vec<(Annotated<ItemTraitItem>, SemicolonToken)>>,
     pub trait_defs_opt: Option<Braces<Vec<Annotated<ItemFn>>>>,
 }
 
@@ -23,6 +28,14 @@ impl Spanned for ItemTrait {
             None => self.trait_items.span(),
         };
         Span::join(start, end)
+    }
+}
+
+impl Spanned for ItemTraitItem {
+    fn span(&self) -> Span {
+        match self {
+            ItemTraitItem::Fn(fn_decl) => fn_decl.span(),
+        }
     }
 }
 

@@ -11,7 +11,7 @@ mod variable;
 pub(crate) use abi::*;
 pub use constant::*;
 pub use function::*;
-pub(crate) use impl_trait::*;
+pub use impl_trait::*;
 pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
