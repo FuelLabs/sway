@@ -240,10 +240,10 @@ impl<V> StorageVec<V> {
     ///
     /// * `value` - The item being added to the end of the vector.
     ///
-    /// ### Storage Access
+    /// ### Number of Number of Storage Accesseses
     ///
-    /// * Reads - `1`
-    /// * Writes - `2`
+    /// * Reads: `1`
+    /// * Writes: `2`
     ///
     /// ### Examples
     ///
@@ -275,10 +275,10 @@ impl<V> StorageVec<V> {
 
     /// Removes the last element of the vector and returns it, `None` if empty.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `2`
-    /// * Writes - `1`
+    /// * Reads: `2`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -320,9 +320,9 @@ impl<V> StorageVec<V> {
     ///
     /// * `index` - The index of the vec to retrieve the item from.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `2`
+    /// * Reads: `2`
     ///
     /// ### Examples
     ///
@@ -342,8 +342,10 @@ impl<V> StorageVec<V> {
     /// ```
     #[storage(read)]
     pub fn get(self, index: u64) -> Option<V> {
+        let len = get::<u64>(__get_storage_key()).unwrap_or(0);
+
         // if the index is larger or equal to len, there is no item to return
-        if get::<u64>(__get_storage_key()).unwrap_or(0) <= index {
+        if len <= index {
             return Option::None;
         }
 
@@ -363,10 +365,10 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger or equal to length of the vec.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `2 + N` where `N` is `self.len() - index`
-    /// * Writes - `N` where `N` is `self.len() - index`
+    /// * Reads: `2 + self.len() - index`
+    /// * Writes: `self.len() - index`
     ///
     /// ### Examples
     ///
@@ -425,10 +427,10 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger or equal to length of the vec.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `3`
-    /// * Writes - `2`
+    /// * Reads: `3`
+    /// * Writes: `2`
     ///
     /// ### Examples
     ///
@@ -480,10 +482,10 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than or equal to the length of the vec.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `1`
-    /// * Writes - `1`
+    /// * Reads: `1`
+    /// * Writes: `1`
     ///
     /// ### Examples
     ///
@@ -529,10 +531,10 @@ impl<V> StorageVec<V> {
     ///
     /// Reverts if index is larger than the length of the vec.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `1` if `index` is `self.len()` else `1 + N` where `N` is `self.len() - index`
-    /// * Writes - `2` if `index` is `self.len()` else `2 + N` where `N` is `self.len() - index`
+    /// * Reads: `if self.len() == index { 1 } else { 1 + self.len() - index }`
+    /// * Writes: `if self.len() == index { 2 } else { 2 + self.len() - index }`
     ///
     /// ### Examples
     ///
@@ -594,9 +596,9 @@ impl<V> StorageVec<V> {
 
     /// Returns the length of the vector.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `1`
+    /// * Reads: `1`
     ///
     /// ### Examples
     ///
@@ -622,9 +624,9 @@ impl<V> StorageVec<V> {
 
     /// Checks whether the len is zero or not.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Reads - `1`
+    /// * Reads: `1`
     ///
     /// ### Examples
     ///
@@ -654,9 +656,9 @@ impl<V> StorageVec<V> {
 
     /// Sets the len to zero.
     ///
-    /// ### Storage Access
+    /// ### Number of Storage Accesses
     ///
-    /// * Clears - `1`
+    /// * Clears: `1`
     ///
     /// ### Examples
     ///
