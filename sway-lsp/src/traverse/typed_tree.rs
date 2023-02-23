@@ -331,7 +331,7 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
                 if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
                     token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                    token.type_def = Some(TypeDefinition::TypeId(type_id.clone()));
+                    token.type_def = Some(TypeDefinition::TypeId(*type_id));
                 }
             }
             ty::TyDeclaration::ErrorRecovery(_) => {}
