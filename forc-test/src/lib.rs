@@ -1,9 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashSet, fs, path::PathBuf, sync::Arc};
 
 use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
@@ -12,10 +7,10 @@ use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::gas::GasCosts;
 use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
 use pkg::TestPassCondition;
-use pkg::{Built, BuiltPackage, CONTRACT_ID_CONSTANT_NAME};
+use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
-use sway_core::{language::parsed::TreeType, BuildTarget};
-use sway_types::{ConfigTimeConstant, Span};
+use sway_core::BuildTarget;
+use sway_types::Span;
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -126,18 +121,15 @@ impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
     ///
     /// Contracts are already compiled once without tests included to do `CONTRACT_ID` injection. `built_contracts` map holds already compiled contracts so that they can be matched with their "tests included" version.
-    pub(crate) fn from_built(
-        built: Built,
-        built_contracts: HashMap<pkg::Pinned, BuiltPackage>,
-    ) -> anyhow::Result<BuiltTests> {
+    pub(crate) fn from_built(built: Built) -> anyhow::Result<BuiltTests> {
         let built = match built {
             Built::Package(built_pkg) => {
-                BuiltTests::Package(PackageTests::from_built_pkg(*built_pkg, &built_contracts)?)
+                BuiltTests::Package(PackageTests::from_built_pkg(*built_pkg)?)
             }
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_values()
-                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, &built_contracts))
+                    .map(PackageTests::from_built_pkg)
                     .collect::<anyhow::Result<_>>()?;
                 BuiltTests::Workspace(pkg_tests)
             }
@@ -161,16 +153,13 @@ impl<'a> PackageTests {
     /// Construct a `PackageTests` from `BuiltPackage`.
     ///
     /// If the `BuiltPackage` is a contract, match the contract with the contract's
-    fn from_built_pkg(
-        built_pkg: BuiltPackage,
-        built_contracts: &HashMap<pkg::Pinned, BuiltPackage>,
-    ) -> anyhow::Result<PackageTests> {
+    fn from_built_pkg(built_pkg: BuiltPackage) -> anyhow::Result<PackageTests> {
         let tree_type = &built_pkg.tree_type;
         let package_test = match tree_type {
             sway_core::language::parsed::TreeType::Contract => {
-                let built_pkg_descriptor = &built_pkg.built_pkg_descriptor;
-                let built_contract_without_tests = built_contracts
-                    .get(&built_pkg_descriptor.pinned)
+                let built_contract_without_tests = &*built_pkg
+                    .clone()
+                    .pkg_without_tests
                     .ok_or_else(|| anyhow::anyhow!("missing built contract without tests"))?;
                 let contract_to_test = ContractToTest {
                     tests_included: built_pkg,
@@ -268,12 +257,6 @@ impl Opts {
             member_filter: Default::default(),
         }
     }
-
-    /// Patch this set of test options, so that it will build the package at the given `path`.
-    pub(crate) fn with_path(&mut self, path: &std::path::Path) -> Opts {
-        self.pkg.path = path.to_str().map(ToString::to_string);
-        self.clone()
-    }
 }
 
 impl TestResult {
@@ -354,67 +337,11 @@ impl BuiltTests {
     }
 }
 
-/// Build all contracts in the given buld plan without tests.
-fn build_contracts_without_tests(
-    opts: &Opts,
-    build_plan: &pkg::BuildPlan,
-) -> Vec<(pkg::Pinned, anyhow::Result<BuiltPackage>)> {
-    let manifest_map = build_plan.manifest_map();
-    build_plan
-        .member_pinned_pkgs()
-        .map(|pinned_pkg| {
-            let pkg_manifest = manifest_map
-                .get(&pinned_pkg.id())
-                .expect("missing manifest for member to test");
-            (pinned_pkg, pkg_manifest)
-        })
-        .filter(|(_, pkg_manifest)| matches!(pkg_manifest.program_type(), Ok(TreeType::Contract)))
-        .map(|(pinned_pkg, pkg_manifest)| {
-            let pkg_path = pkg_manifest.dir();
-            let build_opts_without_tests = opts
-                .clone()
-                .with_path(pkg_path)
-                .into_build_opts()
-                .include_tests(false);
-            let built_pkg =
-                pkg::build_with_options(build_opts_without_tests).and_then(|pkg| pkg.expect_pkg());
-            (pinned_pkg, built_pkg)
-        })
-        .collect()
-}
-
 /// First builds the package or workspace, ready for execution.
-///
-/// If the workspace contains contracts, those contracts will be built first without tests
-/// in order to determine their `CONTRACT_ID`s and enable contract calling.
 pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.clone().into_build_opts();
-
-    let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
-    let mut const_inject_map = HashMap::new();
-    let mut built_contracts = HashMap::new();
-    let built_contracts_without_tests = build_contracts_without_tests(&opts, &build_plan);
-    for (pinned_contract, built_contract) in built_contracts_without_tests {
-        let built_contract = built_contract?;
-        let contract_id = pkg::contract_id(&built_contract, &fuel_tx::Salt::zeroed());
-        built_contracts.insert(pinned_contract.clone(), built_contract);
-
-        // Construct namespace with contract id
-        let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
-        let contract_id_value = format!("0x{contract_id}");
-        let contract_id_constant = ConfigTimeConstant {
-            r#type: "b256".to_string(),
-            value: contract_id_value.clone(),
-            public: true,
-        };
-        let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
-        const_inject_map.insert(pinned_contract, constant_declarations);
-    }
-
-    // Injection map is collected in the previous pass, we should build the workspace/package with injection map.
-    let build_opts_with_injection = build_opts.const_injection_map(const_inject_map);
-    let built = pkg::build_with_options(build_opts_with_injection)?;
-    BuiltTests::from_built(built, built_contracts)
+    let build_opts = opts.into_build_opts();
+    let built = pkg::build_with_options(build_opts)?;
+    BuiltTests::from_built(built)
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
