@@ -6,7 +6,7 @@ enum MyContractError {
 
 fn divide(numerator: u64, denominator: u64) -> Result<u64, MyContractError> {
     if (denominator == 0) {
-        return Result::Err(MyContractError::MyErrorMessage);
+        return Result::Err(MyContractError::DivisionByZero);
     } else {
         Result::Ok(numerator / denominator)
     }
