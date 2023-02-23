@@ -619,7 +619,7 @@ impl Renderable for Context {
                     for param in &method.parameters {
                         let mut param_str = String::new();
                         if param.is_reference {
-                            write!(param_str, "&")?;
+                            write!(param_str, "ref ")?;
                         }
                         if param.is_mutable {
                             write!(param_str, "mut ")?;
