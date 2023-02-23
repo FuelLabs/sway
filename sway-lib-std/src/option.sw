@@ -77,13 +77,15 @@ library option;
 use ::result::Result;
 use ::revert::revert;
 
-/// The `Option` type. See the module level documentation for more.
+// ANCHOR: docs_option
+/// `Option` is a type that represents an optional value.
 pub enum Option<T> {
     /// No value.
     None: (),
     /// Some value of type `T`.
     Some: T,
 }
+// ANCHOR_END: docs_option
 
 // Type implementation
 //
