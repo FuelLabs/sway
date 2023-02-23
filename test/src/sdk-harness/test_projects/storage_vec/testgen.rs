@@ -1,10 +1,15 @@
 #[macro_export]
 macro_rules! testgen {
     (
+        // Name of the module to create.
         $module_name:ident,
+        // Path to the contract ABI (string literal required for `abigen!`).
         $abi_path:expr,
+        // Type to test, as a string literal (required for binary and storage file names).
         $type_label:expr,
+        // Type to test, as a Rust type declaration (required for function signatures).
         $type_declaration:ty,
+        // Arguments of type `$type_declaration` to use in tests.
         $arg0:expr,
         $arg1:expr,
         $arg2:expr,
