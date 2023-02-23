@@ -10,7 +10,7 @@ use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
     ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
+    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
     PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
@@ -292,7 +292,9 @@ impl Parse for ItemTrait {
         self.trait_items
             .get()
             .iter()
-            .for_each(|item| item.0.value.parse(tokens));
+            .for_each(|(annotated, _)| match &annotated.value {
+                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(tokens),
+            });
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
             trait_defs_opt
@@ -320,7 +322,9 @@ impl Parse for ItemImpl {
         self.contents
             .get()
             .iter()
-            .for_each(|item| item.value.parse(tokens));
+            .for_each(|item| match &item.value {
+                ItemImplItem::Fn(fn_decl) => fn_decl.parse(tokens),
+            });
     }
 }
 
@@ -328,9 +332,12 @@ impl Parse for ItemAbi {
     fn parse(&self, tokens: &TokenMap) {
         insert_keyword(tokens, self.abi_token.span());
 
-        self.abi_items.get().iter().for_each(|item| {
-            item.0.value.parse(tokens);
-        });
+        self.abi_items
+            .get()
+            .iter()
+            .for_each(|(annotated, _)| match &annotated.value {
+                sway_ast::ItemTraitItem::Fn(fn_sig) => fn_sig.parse(tokens),
+            });
 
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
             abi_defs_opt
@@ -352,7 +359,9 @@ impl Parse for ItemConst {
             ty.parse(tokens);
         }
 
-        self.expr.parse(tokens);
+        if let Some(expr) = self.expr_opt.as_ref() {
+            expr.parse(tokens);
+        }
     }
 }
 

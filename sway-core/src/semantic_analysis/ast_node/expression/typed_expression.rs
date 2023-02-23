@@ -21,7 +21,7 @@ use crate::{
     error::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclRef},
+        ty::{self, GetDeclRef, TyImplItem},
         *,
     },
     semantic_analysis::*,
@@ -1147,6 +1147,7 @@ impl ty::TyExpression {
         let mut const_probe_errors = vec![];
         let maybe_const = {
             let mut call_path_binding = unknown_call_path_binding.clone();
+
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
                 .flat_map(|unknown_decl| {
                     unknown_decl.expect_const(decl_engine, &call_path_binding.span())
@@ -1269,7 +1270,7 @@ impl ty::TyExpression {
         let ty::TyAbiDeclaration {
             name,
             interface_surface,
-            mut methods,
+            items,
             span,
             ..
         } = match abi {
@@ -1347,23 +1348,28 @@ impl ty::TyExpression {
         );
 
         // Retrieve the interface surface for this abi.
-        let mut abi_methods = vec![];
-        for decl_ref in interface_surface.into_iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            abi_methods.push(
-                decl_engine
-                    .insert(method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, &decl_ref),
-            );
+        let mut abi_items = vec![];
+
+        for item in interface_surface.into_iter() {
+            match item {
+                ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    let method = check!(
+                        CompileResult::from(decl_engine.get_trait_fn(&decl_ref, &name.span())),
+                        return err(warnings, errors),
+                        warnings,
+                        errors
+                    );
+                    abi_items.push(TyImplItem::Fn(
+                        decl_engine
+                            .insert(method.to_dummy_func(Mode::ImplAbiFn))
+                            .with_parent(decl_engine, &decl_ref),
+                    ));
+                }
+            }
         }
 
-        // Retrieve the methods for this abi.
-        abi_methods.append(&mut methods);
+        // Retrieve the items for this abi.
+        abi_items.append(&mut items.into_iter().collect::<Vec<_>>());
 
         // Insert the abi methods into the namespace.
         check!(
@@ -1371,7 +1377,7 @@ impl ty::TyExpression {
                 abi_name.clone(),
                 vec![],
                 return_type,
-                &abi_methods,
+                &abi_items,
                 &span,
                 false,
                 engines,
