@@ -1336,6 +1336,7 @@ async fn go_to_definition_for_abi() {
     go_to.def_line = 4;
     go_to.def_start_char = 4;
     go_to.def_end_char = 14;
+    definition_check_with_req_offset(&mut service, &mut go_to, 8, 11, &mut i).await;
     definition_check_with_req_offset(&mut service, &mut go_to, 15, 15, &mut i).await;
 }
 

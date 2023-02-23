@@ -222,11 +222,6 @@ impl<'a> TypedTree<'a> {
             ty::TyDeclaration::ImplTrait {
                 decl_id, decl_span, ..
             } => {
-                eprintln!(
-                    "impl trait decl: {:#?}",
-                    decl_engine.get_impl_trait(decl_id, decl_span)
-                );
-
                 if let Ok(ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
@@ -312,9 +307,6 @@ impl<'a> TypedTree<'a> {
                 decl_id, decl_span, ..
             } => {
                 if let Ok(abi_decl) = decl_engine.get_abi(decl_id, decl_span) {
-                    eprintln!("abi decl: {:#?}", abi_decl);
-                    eprintln!("");
-
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_decl.name))
@@ -330,9 +322,6 @@ impl<'a> TypedTree<'a> {
                                 if let Ok(trait_fn) = decl_engine
                                     .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
                                 {
-                                    eprintln!("abi trait fn: {:#?}", trait_fn);
-                                    eprintln!("");
-
                                     self.collect_typed_trait_fn_token(&trait_fn);
                                 }
                             }
@@ -1077,7 +1066,6 @@ impl<'a> TypedTree<'a> {
     }
 
     fn collect_type_argument(&self, type_arg: &TypeArgument) {
-        eprintln!("collect_type_argument: {:#?}", type_arg);
         if let Some(call_path_tree) = &type_arg.call_path_tree {
             self.collect_call_path_tree(call_path_tree, type_arg);
         } else {
@@ -1273,11 +1261,7 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_typed_fn_decl(
-        &self,
-        func_decl: &ty::TyFunctionDeclaration,
-    ) {
-        eprintln!("collect_typed_fn_decl: {:#?}", func_decl);
+    fn collect_typed_fn_decl(&self, func_decl: &ty::TyFunctionDeclaration) {
         let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.clone());
         if let Some(mut token) = self
             .tokens

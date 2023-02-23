@@ -187,7 +187,8 @@ impl Session {
                 // Finally, create runnables and populate our token_map with typed ast nodes.
                 self.create_runnables(typed_program);
 
-                let typed_tree = TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
+                let typed_tree =
+                    TypedTree::new(engines, &self.token_map, &typed_program.root.namespace);
                 typed_tree.collect_module_spans(typed_program);
                 self.parse_ast_to_typed_tokens(typed_program, |node| {
                     typed_tree.traverse_node(node)
@@ -361,31 +362,15 @@ impl Session {
     }
 
     /// Parse the [ty::TyProgram] AST to populate the [TokenMap] with typed AST nodes.
-    fn parse_ast_to_typed_tokens(
-        &self,
-        typed_program: &ty::TyProgram,
-        f: impl Fn(&ty::TyAstNode),
-    ) {
-        let root_nodes = typed_program
-            .root
-            .all_nodes
-            .iter()
-            .map(|node| node);
+    fn parse_ast_to_typed_tokens(&self, typed_program: &ty::TyProgram, f: impl Fn(&ty::TyAstNode)) {
+        let root_nodes = typed_program.root.all_nodes.iter().map(|node| node);
         let sub_nodes = typed_program
             .root
             .submodules
             .iter()
-            .flat_map(|(_, submodule)| {
-                submodule
-                    .module
-                    .all_nodes
-                    .iter()
-                    .map(|node| node)
-            });
+            .flat_map(|(_, submodule)| submodule.module.all_nodes.iter().map(|node| node));
 
-        root_nodes
-            .chain(sub_nodes)
-            .for_each(|node| f(node));
+        root_nodes.chain(sub_nodes).for_each(|node| f(node));
     }
 
     /// Get a reference to the [ty::TyProgram] AST.
