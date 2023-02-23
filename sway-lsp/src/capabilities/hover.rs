@@ -169,7 +169,10 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                _ => Some(format!("{} {}", decl.friendly_type_name(), &token_name)),
+                ty::TyDeclaration::AbiDeclaration { .. } => {
+                    Some(format!("{} {}", decl.friendly_type_name(), &token_name))
+                }
+                _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
                 Some(extract_fn_signature(&func.span()))
