@@ -60,7 +60,7 @@ impl From<u64> for MidenStackValue {
 pub enum MidenAsmOp {
     DirectOp(DirectOp),
     /// This is an abstract Op. Meaning, this doesn't correspond to an
-    /// individual miden vm asm op.     
+    /// individual MidenVM asm op.     
     AbstractOp(AbstractOp),
     /*
     Assert,
