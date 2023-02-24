@@ -213,6 +213,7 @@ pub struct BuildProfile {
     pub terse: bool,
     pub time_phases: bool,
     pub include_tests: bool,
+    pub error_on_warnings: bool,
 }
 
 impl Dependency {
@@ -604,6 +605,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            error_on_warnings: false,
         }
     }
 
@@ -617,6 +619,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            error_on_warnings: false,
         }
     }
 }
