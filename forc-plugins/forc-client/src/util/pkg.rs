@@ -26,7 +26,7 @@ pub(crate) fn built_pkgs_with_manifest(
         //
         // For indivual members of the workspace, member nodes would be iterating
         // over all the members but only the relevant member would be built.
-        if let Some(built_pkg) = built_pkgs.remove(pkg_name) {
+        if let Some((built_pkg, _)) = built_pkgs.remove(pkg_name) {
             let member_manifest = member_manifests
                 .remove(pkg_name)
                 .expect("Member manifest file is missing");

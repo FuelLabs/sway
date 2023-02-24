@@ -126,13 +126,13 @@ impl BuiltTests {
     pub(crate) fn from_built(built: Built) -> anyhow::Result<BuiltTests> {
         let built = match built {
             Built::Package(built_pkg) => {
-                BuiltTests::Package(PackageTests::from_built_pkg(*built_pkg)?)
+                BuiltTests::Package(PackageTests::from_built_pkg(*built_pkg))
             }
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_values()
                     .map(PackageTests::from_built_pkg)
-                    .collect::<anyhow::Result<_>>()?;
+                    .collect();
                 BuiltTests::Workspace(pkg_tests)
             }
         };
@@ -155,23 +155,18 @@ impl<'a> PackageTests {
     /// Construct a `PackageTests` from `BuiltPackage`.
     ///
     /// If the `BuiltPackage` is a contract, match the contract with the contract's
-    fn from_built_pkg(built_pkg: BuiltPackage) -> anyhow::Result<PackageTests> {
-        let tree_type = &built_pkg.tree_type;
-        let package_test = match tree_type {
-            sway_core::language::parsed::TreeType::Contract => {
-                let built_contract_without_tests = &*built_pkg
-                    .clone()
-                    .pkg_without_tests
-                    .ok_or_else(|| anyhow::anyhow!("missing built contract without tests"))?;
+    fn from_built_pkg(built_pkg: (BuiltPackage, Option<BuiltPackage>)) -> PackageTests {
+        let (built_pkg, built_pkg_without_tests) = built_pkg;
+        match built_pkg_without_tests {
+            Some(contract_without_tests) => {
                 let contract_to_test = ContractToTest {
                     tests_included: built_pkg,
-                    tests_excluded: built_contract_without_tests.clone(),
+                    tests_excluded: contract_without_tests,
                 };
                 PackageTests::Contract(contract_to_test)
             }
-            _ => PackageTests::NonContract(built_pkg),
-        };
-        Ok(package_test)
+            None => PackageTests::NonContract(built_pkg),
+        }
     }
 
     /// Run all tests for this package and collect their results.

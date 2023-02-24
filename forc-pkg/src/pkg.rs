@@ -26,7 +26,6 @@ use std::{
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 use sway_core::{
     abi_generation::{evm_json_abi, fuel_json_abi},
@@ -108,9 +107,6 @@ pub struct BuiltPackage {
     source_map: SourceMap,
     pub pkg_name: String,
     pub built_pkg_descriptor: BuiltPackageDescriptor,
-    /// If this pkg is a contract dependency of another pkg in the build graph, this points to the
-    /// version of this pkg compiled without tests.
-    pub pkg_without_tests: Option<Arc<BuiltPackage>>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -154,11 +150,15 @@ pub struct PkgTestEntry {
 /// The result of successfully compiling a workspace.
 ///
 /// This is a map from each member package name to its associated built package.
-pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
+pub type BuiltWorkspace = HashMap<String, (BuiltPackage, Option<BuiltPackage>)>;
 
 #[derive(Debug)]
 pub enum Built {
-    Package(Box<BuiltPackage>),
+    /// Represents a standalone package build, containts the tests excluded version for contract
+    /// packages.
+    Package(Box<(BuiltPackage, Option<BuiltPackage>)>),
+    /// Represents a workspace build, contains each member's built package and the tests exluded
+    /// version for contract members.
     Workspace(BuiltWorkspace),
 }
 
@@ -480,18 +480,18 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between package names and their corresponding `BuiltPackage`.
-    pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
+    /// Returns a map between package names and their corresponding built package.
+    pub fn into_members(self) -> Result<HashMap<String, BuildResult>> {
         match self {
             Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
+                Ok(std::iter::once((built_pkg.0.pkg_name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
         }
     }
 
     /// Tries to retrieve the `Built` as a `BuiltPackage`.
-    pub fn expect_pkg(self) -> Result<BuiltPackage> {
+    pub fn expect_pkg(self) -> Result<BuildResult> {
         match self {
             Built::Package(built_pkg) => Ok(*built_pkg),
             Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
@@ -1787,7 +1787,6 @@ pub fn compile(
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 built_pkg_descriptor,
-                pkg_without_tests: None,
             };
             Ok((built_package, namespace))
         }
@@ -1991,7 +1990,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         const_inject_map,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
-    for (node_ix, built_package) in built_packages.into_iter() {
+    for (node_ix, (built_package, built_package_without_tests)) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
@@ -2007,7 +2006,10 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             built_package.write_debug_info(outfile.as_ref())?;
         }
         built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
-        built_workspace.insert(pinned.name.clone(), built_package);
+        built_workspace.insert(
+            pinned.name.clone(),
+            (built_package, built_package_without_tests),
+        );
     }
 
     match curr_manifest {
@@ -2056,6 +2058,14 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
     Ok(())
 }
 
+/// Represents the result of building a package.
+///
+/// For non-contract packages second element of the tuple will always be `None`.
+///
+/// For contract packages second element of the tuple will hold the contract re-compiled without
+/// thte tests included.
+type BuildResult = (BuiltPackage, Option<BuiltPackage>);
+
 /// Build an entire forc package and return the built_package output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2067,7 +2077,7 @@ pub fn build(
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
-) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+) -> anyhow::Result<Vec<(NodeIx, BuildResult)>> {
     #[allow(clippy::too_many_arguments)]
     fn compile_util(
         lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
@@ -2162,7 +2172,9 @@ pub fn build(
             )?;
             // If this contract is built because tests are enabled we need to insert CONTRACT_ID
             // for the contract.
-            if !is_contract_dependency {
+            if is_contract_dependency {
+                compiled_contract_deps.insert(node, built_contract_without_tests.clone());
+            } else {
                 // `forc-test` interpreter deployments are done with zeroed salt.
                 let contract_id =
                     contract_id(&built_contract_without_tests, &fuel_tx::Salt::zeroed());
@@ -2202,14 +2214,6 @@ pub fn build(
             target,
             &mut source_map,
         )?;
-        if let Some(built_pkg_without_tests) = contract_without_tests {
-            built_package.pkg_without_tests = Some(Arc::new(built_pkg_without_tests.clone()));
-            // If the current node is a contract dependency, collect the compiled contract without
-            // tests.
-            if is_contract_dependency {
-                compiled_contract_deps.insert(node, built_pkg_without_tests);
-            }
-        }
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
             namespace.name = Some(name.clone());
@@ -2220,7 +2224,7 @@ pub fn build(
             standardize_json_abi_types(json_abi_program);
         }
         if outputs.contains(&node) {
-            built_packages.push((node, built_package));
+            built_packages.push((node, (built_package, contract_without_tests)));
         }
     }
 
