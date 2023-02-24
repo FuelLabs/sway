@@ -30,7 +30,7 @@ impl ty::TyTraitFn {
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
-        let mut fn_ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+        let mut ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
 
         // TODO: when we add type parameters to trait fns, type check them here
 
@@ -38,7 +38,7 @@ impl ty::TyTraitFn {
         let mut typed_parameters = vec![];
         for param in parameters.into_iter() {
             typed_parameters.push(check!(
-                ty::TyFunctionParameter::type_check_interface_parameter(fn_ctx.by_ref(), param),
+                ty::TyFunctionParameter::type_check_interface_parameter(ctx.by_ref(), param),
                 continue,
                 warnings,
                 errors
@@ -47,7 +47,7 @@ impl ty::TyTraitFn {
 
         // Type check the return type.
         let return_type = check!(
-            fn_ctx.resolve_type_with_self(
+            ctx.resolve_type_with_self(
                 type_engine.insert(decl_engine, return_type),
                 &return_type_span,
                 EnforceTypeArguments::Yes,
@@ -66,11 +66,6 @@ impl ty::TyTraitFn {
             purity,
             attributes,
         };
-
-        // Retrieve the implemented traits for the type of the return type and
-        // insert them in the broader namespace.
-        ctx.namespace
-            .insert_trait_implementation_for_type(engines, trait_fn.return_type);
 
         ok(trait_fn, warnings, errors)
     }
