@@ -2068,6 +2068,46 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+    #[allow(clippy::too_many_arguments)]
+    fn compile_util(
+        lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+        compiled_contract_deps: &HashMap<NodeIx, BuiltPackage>,
+        profile: &BuildProfile,
+        plan: &BuildPlan,
+        node: NodeIx,
+        constants: BTreeMap<String, ConfigTimeConstant>,
+        engines: Engines<'_>,
+        target: BuildTarget,
+        source_map: &mut SourceMap,
+    ) -> Result<(BuiltPackage, sway_core::namespace::Root)> {
+        let graph = plan.graph();
+        let pkg = &graph[node];
+        let manifest = &plan.manifest_map()[&pkg.id()];
+
+        let dep_namespace = match dependency_namespace(
+            lib_namespace_map,
+            compiled_contract_deps,
+            graph,
+            node,
+            constants,
+            engines,
+        ) {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(profile.terse, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
+        compile(
+            pkg,
+            manifest,
+            target,
+            profile,
+            dep_namespace,
+            engines,
+            source_map,
+        )
+    }
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2105,31 +2145,19 @@ pub fn build(
             //   2. Contract ID injection in `forc-pkg` if this is a contract dependency to any
             //      other pkg, so that injected contract id is not effected by the tests.
             //
-            let dep_namespace = match dependency_namespace(
-                &lib_namespace_map,
-                &compiled_contract_deps,
-                &plan.graph,
-                node,
-                manifest.config_time_constants(),
-                engines,
-            ) {
-                Ok(o) => o,
-                Err(errs) => {
-                    print_on_failure(profile.terse, &[], &errs);
-                    bail!("Failed to compile {}", pkg.name);
-                }
-            };
             let profile = BuildProfile {
                 include_tests: false,
                 ..profile.clone()
             };
-            let (built_package_without_tests, _) = compile(
-                pkg,
-                manifest,
-                target,
+            let (built_contract_without_tests, _) = compile_util(
+                &lib_namespace_map,
+                &compiled_contract_deps,
                 &profile,
-                dep_namespace,
+                plan,
+                node,
+                manifest.config_time_constants(),
                 engines,
+                target,
                 &mut source_map,
             )?;
             // If this contract is built because tests are enabled we need to insert CONTRACT_ID
@@ -2137,7 +2165,7 @@ pub fn build(
             if !is_contract_dependency {
                 // `forc-test` interpreter deployments are done with zeroed salt.
                 let contract_id =
-                    contract_id(&built_package_without_tests, &fuel_tx::Salt::zeroed());
+                    contract_id(&built_contract_without_tests, &fuel_tx::Salt::zeroed());
                 let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
                 let contract_id_value = format!("0x{contract_id}");
                 let contract_id_constant = ConfigTimeConstant {
@@ -2148,7 +2176,7 @@ pub fn build(
                 let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
             }
-            Some(built_package_without_tests)
+            Some(built_contract_without_tests)
         } else {
             None
         };
@@ -2163,30 +2191,17 @@ pub fn build(
         } else {
             manifest.config_time_constants()
         };
-        let dep_namespace = match dependency_namespace(
+        let (mut built_package, namespace) = compile_util(
             &lib_namespace_map,
             &compiled_contract_deps,
-            &plan.graph,
+            profile,
+            plan,
             node,
             constants,
             engines,
-        ) {
-            Ok(o) => o,
-            Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs);
-                bail!("Failed to compile {}", pkg.name);
-            }
-        };
-        let res = compile(
-            pkg,
-            manifest,
             target,
-            profile,
-            dep_namespace.clone(),
-            engines,
             &mut source_map,
         )?;
-        let (mut built_package, namespace) = res;
         if let Some(built_pkg_without_tests) = contract_without_tests {
             built_package.pkg_without_tests = Some(Arc::new(built_pkg_without_tests.clone()));
             // If the current node is a contract dependency, collect the compiled contract without
