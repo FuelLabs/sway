@@ -78,8 +78,9 @@ impl TypeEngine {
         decl_engine: &DeclEngine,
         ti: &TypeInfo,
     ) -> bool {
+        let unify_check = UnifyCheck::new(Engines::new(self, decl_engine));
         self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
+            .exists(|x| unify_check.check_type_info(ti, x))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set

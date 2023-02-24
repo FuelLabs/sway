@@ -4,7 +4,7 @@ use crate::{
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace,
+    Ident, Namespace, TypeInfo,
 };
 
 use super::{
@@ -349,6 +349,7 @@ impl Module {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = engines.te();
         let decl_engine = engines.de();
 
         let src_ns = check!(
@@ -375,13 +376,21 @@ impl Module {
 
                 let type_id = decl.return_type(engines, &item.span()).value;
                 //  if this is an enum or struct or function, import its implementations
-                if let Some(type_id) = type_id {
-                    impls_to_insert.extend(
-                        src_ns
-                            .implemented_traits
-                            .filter_by_type_item_import(type_id, engines),
-                        engines,
-                    );
+                match type_id.map(|type_id| (type_id, type_engine.get(type_id))) {
+                    Some((_, TypeInfo::Unknown))
+                    | Some((_, TypeInfo::UnknownGeneric { .. }))
+                    | Some((_, TypeInfo::ErrorRecovery))
+                    | Some((_, TypeInfo::Placeholder(_)))
+                    | Some((_, TypeInfo::Custom { .. })) => {}
+                    Some((type_id, _)) => {
+                        impls_to_insert.extend(
+                            src_ns
+                                .implemented_traits
+                                .filter_by_type_item_import(type_id, engines),
+                            engines,
+                        );
+                    }
+                    _ => {}
                 }
                 // no matter what, import it this way though.
                 let dst_ns = &mut self[dst];

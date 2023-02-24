@@ -7,10 +7,7 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{
-    module::Module, root::Root, submodule_namespace::SubmoduleNamespace,
-    trait_map::are_equal_minus_dynamic_types, Path, PathBuf,
-};
+use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
@@ -243,12 +240,10 @@ impl Namespace {
                         errors
                     );
                     if method.parameters.len() == args_buf.len()
-                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                            !are_equal_minus_dynamic_types(
-                                engines,
-                                p.type_argument.type_id,
-                                a.return_type,
-                            )
+                        && method.parameters.iter().zip(args_buf.iter()).all(|(p, a)| {
+                            type_engine
+                                .get(p.type_argument.type_id)
+                                .eq(&type_engine.get(a.return_type), engines)
                         })
                     {
                         maybe_method_decl_ref = Some(decl_ref);

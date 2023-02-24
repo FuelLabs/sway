@@ -1,14 +1,25 @@
 use crate::{engine_threading::*, type_system::*};
 
 /// Helper struct to aid in type coercion.
-pub(super) struct UnifyCheck<'a> {
+pub(crate) struct UnifyCheck<'a> {
     engines: Engines<'a>,
+    strict: bool,
 }
 
 impl<'a> UnifyCheck<'a> {
     /// Creates a new [UnifyCheck].
-    pub(super) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
-        UnifyCheck { engines }
+    pub(crate) fn new(engines: Engines<'a>) -> UnifyCheck<'a> {
+        UnifyCheck {
+            engines,
+            strict: false,
+        }
+    }
+
+    pub(crate) fn set_strict(self) -> UnifyCheck<'a> {
+        UnifyCheck {
+            engines: self.engines,
+            strict: true,
+        }
     }
 
     /// Given two [TypeId]'s `left` and `right`, check to see if `left` can be
@@ -89,34 +100,40 @@ impl<'a> UnifyCheck<'a> {
     /// constraints---if the trait constraints of `right` can be coerced into
     /// the trait constraints of `left`, then we know that `right` has unique
     /// methods.
-    pub(super) fn check(&self, left: TypeId, right: TypeId) -> bool {
-        use TypeInfo::*;
-
+    pub(crate) fn check(&self, left: TypeId, right: TypeId) -> bool {
         if left == right {
             return true;
         }
-
         let left = self.engines.te().get(left);
         let right = self.engines.te().get(right);
+        self.check_type_info(&left, &right)
+    }
+
+    pub(crate) fn check_type_info(&self, left: &TypeInfo, right: &TypeInfo) -> bool {
+        use TypeInfo::*;
         match (left, right) {
+            (ErrorRecovery, _) => true,
+            (_, ErrorRecovery) => true,
+
+            (Placeholder(_), Placeholder(_)) => true,
             // the placeholder type can be coerced into any type
-            (Placeholder(_), _) => true,
+            (Placeholder(_), _) if !self.strict => true,
             // any type can be coerced into the placeholder type
             (_, Placeholder(_)) => true,
 
             (
                 UnknownGeneric {
-                    name: ln,
+                    name: _, //ln,
                     trait_constraints: ltc,
                 },
                 UnknownGeneric {
-                    name: rn,
+                    name: _, //rn,
                     trait_constraints: rtc,
                 },
-            ) => {
+            ) if !self.strict => {
                 // TODO: this requirement on the trait constraints should be
                 // loosened to match the description above
-                ln == rn && rtc.eq(&ltc, self.engines)
+                rtc.eq(ltc, self.engines) // && ln == rn // TODO might need to add this later
             }
             // any type can be coerced into generic
             (_, UnknownGeneric { .. }) => true,
@@ -127,13 +144,14 @@ impl<'a> UnifyCheck<'a> {
             (Boolean, Boolean) => true,
             (SelfType, SelfType) => true,
             (B256, B256) => true,
-            (Numeric, Numeric) => true,
+            (Numeric, Numeric) if !self.strict => true,
             (Contract, Contract) => true,
             (RawUntypedPtr, RawUntypedPtr) => true,
             (RawUntypedSlice, RawUntypedSlice) => true,
-            (UnsignedInteger(_), UnsignedInteger(_)) => true,
-            (Numeric, UnsignedInteger(_)) => true,
-            (UnsignedInteger(_), Numeric) => true,
+            (UnsignedInteger(l), UnsignedInteger(r)) if self.strict => l == r,
+            (UnsignedInteger(_), UnsignedInteger(_)) if !self.strict => true,
+            (Numeric, UnsignedInteger(_)) if !self.strict => true,
+            (UnsignedInteger(_), Numeric) if !self.strict => true,
             (Str(l), Str(r)) => l.val() == r.val(),
 
             (Array(l0, l1), Array(r0, r1)) => {
@@ -238,27 +256,26 @@ impl<'a> UnifyCheck<'a> {
             // For contract callers, they can be coerced if they have the same
             // name and at least one has an address of `None`
             (
-                ref r @ ContractCaller {
+                ContractCaller {
                     abi_name: ref ran,
                     address: ref ra,
                 },
-                ref e @ ContractCaller {
+                ContractCaller {
                     abi_name: ref ean,
                     address: ref ea,
                 },
             ) => {
-                r.eq(e, self.engines)
-                    || (ran == ean && ra.is_none())
-                    || matches!(ran, AbiName::Deferred)
-                    || (ran == ean && ea.is_none())
-                    || matches!(ean, AbiName::Deferred)
+                (ran == ean || matches!(ran, AbiName::Deferred) || matches!(ean, AbiName::Deferred))
+                    && (ra.is_none()
+                        || ea.is_none()
+                        || ra
+                            .clone()
+                            .zip(ra.clone())
+                            .map(|(ra, ea)| self.check(ra.return_type, ea.return_type))
+                            .unwrap_or(false))
             }
 
-            // this is kinda a hack
-            (ErrorRecovery, _) => true,
-            (_, ErrorRecovery) => true,
-
-            (a, b) => a.eq(&b, self.engines),
+            (a, b) => a.eq(b, self.engines),
         }
     }
 
