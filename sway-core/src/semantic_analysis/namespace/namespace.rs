@@ -216,20 +216,6 @@ impl Namespace {
                         warnings,
                         errors
                     );
-                    // println!("method.name: {}", method.name);
-                    // println!(
-                    //     "method.parameters: [{}]",
-                    //     method
-                    //         .parameters
-                    //         .iter()
-                    //         .map(|x| format!(
-                    //             "{}: {}",
-                    //             x.name,
-                    //             engines.help_out(x.type_argument.type_id)
-                    //         ))
-                    //         .collect::<Vec<_>>()
-                    //         .join(", ")
-                    // );
                     &method.name == method_name
                         && method.parameters.len() == args_buf.len()
                         && method.parameters.iter().zip(args_buf.iter()).all(|(p, a)| {
