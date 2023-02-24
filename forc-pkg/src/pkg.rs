@@ -2203,10 +2203,19 @@ pub fn build(
         } else {
             manifest.config_time_constants()
         };
+        // Build all non member nodes with tests disabled by overriding the current profile.
+        let profile = if !plan.member_nodes().any(|member| member == node) {
+            BuildProfile {
+                include_tests: false,
+                ..profile.clone()
+            }
+        } else {
+            profile.clone()
+        };
         let (mut built_package, namespace) = compile_util(
             &lib_namespace_map,
             &compiled_contract_deps,
-            profile,
+            &profile,
             plan,
             node,
             constants,
