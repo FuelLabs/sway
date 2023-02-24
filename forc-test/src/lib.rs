@@ -211,7 +211,10 @@ impl<'a> PackageTests {
                     .find_map(|receipt| match receipt {
                         tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
                         _ => None,
-                    }).ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("missing used gas information from test execution")
+                    })?;
 
                 // Only retain `Log` and `LogData` receipts.
                 let logs = receipts
