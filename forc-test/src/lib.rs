@@ -99,6 +99,8 @@ pub struct Opts {
     ///
     /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     pub release: bool,
+    /// Should warnings be treated as errors?
+    pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
 }
@@ -251,6 +253,7 @@ impl Opts {
             build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
+            error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
             tests: true,
             const_inject_map,

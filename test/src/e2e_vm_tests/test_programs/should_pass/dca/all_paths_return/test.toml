@@ -1,0 +1,7 @@
+category = "compile"
+
+# check: $()return 2;
+# nextln: $()This code is unreachable.
+
+# check: $()return 21;
+# nextln: $()This code is unreachable.

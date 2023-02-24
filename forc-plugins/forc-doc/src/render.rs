@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 use sway_core::language::ty::{
     TyDeclaration::{self, *},
-    TyEnumVariant, TyStorageField, TyStructField, TyTraitFn,
+    TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
 };
 use sway_core::transform::{AttributeKind, AttributesMap};
 use sway_lsp::utils::markdown::format_docs;
@@ -29,14 +29,22 @@ pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
-    pub fn from(raw: Documentation, forc_version: Option<String>) -> Result<RenderedDocumentation> {
+    pub fn from(
+        raw: Documentation,
+        root_attributes: Option<AttributesMap>,
+        program_kind: TyProgramKind,
+        forc_version: Option<String>,
+    ) -> Result<RenderedDocumentation> {
         let mut rendered_docs: RenderedDocumentation = Default::default();
         let root_module = match raw.first() {
-            Some(doc) => ModuleInfo::from_vec(vec![doc.module_info.project_name().to_owned()]),
+            Some(doc) => ModuleInfo::from_ty_module(
+                vec![doc.module_info.project_name().to_owned()],
+                root_attributes.map(|attrs_map| attrs_map.to_html_string()),
+            ),
             None => panic!("Project does not contain a root module"),
         };
         let mut all_docs = DocLinks {
-            style: DocStyle::AllDoc,
+            style: DocStyle::AllDoc(program_kind.as_title_str().to_string()),
             links: Default::default(),
         };
         let mut module_map: BTreeMap<ModulePrefix, BTreeMap<BlockTitle, Vec<DocLink>>> =
@@ -138,7 +146,7 @@ impl RenderedDocumentation {
                     name: location.clone(),
                     module_info: doc.module_info.to_owned(),
                     html_filename: INDEX_FILENAME.to_owned(),
-                    preview_opt: None,
+                    preview_opt: doc.module_info.preview_opt(),
                 };
                 match module_map.get_mut(parent_module) {
                     Some(doc_links) => match doc_links.get_mut(&BlockTitle::Modules) {
@@ -227,7 +235,7 @@ impl RenderedDocumentation {
                         version_opt: forc_version,
                         module_info: root_module.clone(),
                         module_docs: DocLinks {
-                            style: DocStyle::ProjectIndex,
+                            style: DocStyle::ProjectIndex(program_kind.as_title_str().to_string()),
                             links: doc_links.to_owned(),
                         },
                     }
@@ -320,6 +328,7 @@ impl Renderable for ItemHeader {
         let normalize = module_info.to_html_shorthand_path_string("assets/normalize.css");
         let swaydoc = module_info.to_html_shorthand_path_string("assets/swaydoc.css");
         let ayu = module_info.to_html_shorthand_path_string("assets/ayu.css");
+        let ayu_hjs = module_info.to_html_shorthand_path_string("assets/ayu.min.css");
 
         Ok(box_html! {
             head {
@@ -339,6 +348,7 @@ impl Renderable for ItemHeader {
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
+                link(rel="stylesheet", href=ayu_hjs);
                 // TODO: Add links for fonts
             }
         })
@@ -375,7 +385,7 @@ impl Renderable for ItemBody {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
-            module_info: _,
+            module_info,
             ty_decl,
             item_name,
             code_str,
@@ -388,6 +398,7 @@ impl Renderable for ItemBody {
         let sidebar = sidebar.render()?;
         let item_context = (item_context.context.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render() });
+        let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -453,6 +464,10 @@ impl Renderable for ItemBody {
                         }
                     }
                 }
+                script(src=sway_hjs);
+                script {
+                    : "hljs.highlightAll();";
+                }
             }
         })
     }
@@ -485,7 +500,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -501,7 +516,7 @@ impl ItemContext {
                         .iter()
                         .map(|field| DocLink {
                             name: field.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}storagefield.{}",
                                 IDENTITY,
@@ -517,7 +532,7 @@ impl ItemContext {
                         .iter()
                         .map(|variant| DocLink {
                             name: variant.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!("{}variant.{}", IDENTITY, variant.name.as_str()),
                             preview_opt: None,
                         })
@@ -529,7 +544,7 @@ impl ItemContext {
                         .iter()
                         .map(|method| DocLink {
                             name: method.name.as_str().to_string(),
-                            module_info: ModuleInfo::from_vec(vec![]),
+                            module_info: ModuleInfo::from_ty_module(vec![], None),
                             html_filename: format!(
                                 "{}structfield.{}",
                                 IDENTITY,
@@ -749,7 +764,7 @@ struct DocLinks {
 impl Renderable for DocLinks {
     fn render(self) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
-            DocStyle::AllDoc => box_html! {
+            DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
@@ -777,7 +792,7 @@ impl Renderable for DocLinks {
             }
             .into_string()
             .unwrap(),
-            DocStyle::ProjectIndex => box_html! {
+            DocStyle::ProjectIndex(_) => box_html! {
                 @ for (title, list_items) in self.links {
                     @ if !list_items.is_empty() {
                         h3(id=format!("{}", title.html_title_string())) { : title.as_str(); }
@@ -914,7 +929,7 @@ impl SidebarNav for AllDocIndex {
     fn sidebar(&self) -> Sidebar {
         Sidebar {
             version_opt: None,
-            style: DocStyle::AllDoc,
+            style: self.all_docs.style.clone(),
             module_info: self.project_name.clone(),
             href_path: INDEX_FILENAME.to_owned(),
             nav: self.all_docs.clone(),
@@ -940,6 +955,7 @@ impl Renderable for AllDocIndex {
                 link(rel="stylesheet", type="text/css", href="assets/normalize.css");
                 link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
+                link(rel="stylesheet", href="assets/ayu.min.css");
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -974,6 +990,10 @@ impl Renderable for AllDocIndex {
                         }
                     }
                 }
+                script(src="assets/highlight.js");
+                script {
+                    : "hljs.highlightAll();";
+                }
             }
         })
     }
@@ -989,7 +1009,7 @@ pub(crate) struct ModuleIndex {
 impl SidebarNav for ModuleIndex {
     fn sidebar(&self) -> Sidebar {
         let style = match self.module_info.is_root_module() {
-            true => DocStyle::ProjectIndex,
+            true => self.module_docs.style.clone(),
             false => DocStyle::ModuleIndex,
         };
         Sidebar {
@@ -1006,8 +1026,8 @@ impl Renderable for ModuleIndex {
         let doc_links = self.module_docs.clone().render()?;
         let sidebar = self.sidebar().render()?;
         let title_prefix = match self.module_docs.style {
-            DocStyle::ProjectIndex => "Project ",
-            DocStyle::ModuleIndex => "Module ",
+            DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
+            DocStyle::ModuleIndex => "Module ".to_string(),
             _ => unreachable!("Module Index can only be either a project or module at this time."),
         };
 
@@ -1023,6 +1043,12 @@ impl Renderable for ModuleIndex {
         let ayu = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.css");
+        let sway_hjs = self
+            .module_info
+            .to_html_shorthand_path_string("assets/highlight.js");
+        let ayu_hjs = self
+            .module_info
+            .to_html_shorthand_path_string("assets/ayu.min.css");
 
         Ok(box_html! {
             head {
@@ -1042,6 +1068,7 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
+                link(rel="stylesheet", href=ayu_hjs);
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -1079,9 +1106,23 @@ impl Renderable for ModuleIndex {
                                     }
                                 }
                             }
+                            @ if self.module_info.attributes.is_some() {
+                                details(class="swaydoc-toggle top-doc", open) {
+                                    summary(class="hideme") {
+                                        span { : "Expand description" }
+                                    }
+                                    div(class="docblock") {
+                                        : Raw(self.module_info.attributes.unwrap())
+                                    }
+                                }
+                            }
                             : doc_links;
                         }
                     }
+                }
+                script(src=sway_hjs);
+                script {
+                    : "hljs.highlightAll();";
                 }
             }
         })
@@ -1094,8 +1135,8 @@ trait SidebarNav {
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 enum DocStyle {
-    AllDoc,
-    ProjectIndex,
+    AllDoc(String),
+    ProjectIndex(String),
     ModuleIndex,
     Item,
 }
@@ -1115,8 +1156,8 @@ impl Renderable for Sidebar {
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");
         let location_with_prefix = match &self.style {
-            DocStyle::AllDoc | DocStyle::ProjectIndex => {
-                format!("Project {}", self.module_info.location())
+            DocStyle::AllDoc(project_kind) | DocStyle::ProjectIndex(project_kind) => {
+                format!("{project_kind} {}", self.module_info.location())
             }
             DocStyle::ModuleIndex | DocStyle::Item => format!(
                 "{} {}",
@@ -1125,15 +1166,17 @@ impl Renderable for Sidebar {
             ),
         };
         let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
-            DocStyle::AllDoc | DocStyle::Item => (self.href_path.clone(), self.href_path.clone()),
-            DocStyle::ProjectIndex => (IDENTITY.to_owned(), IDENTITY.to_owned()),
+            DocStyle::AllDoc(_) | DocStyle::Item => {
+                (self.href_path.clone(), self.href_path.clone())
+            }
+            DocStyle::ProjectIndex(_) => (IDENTITY.to_owned(), IDENTITY.to_owned()),
             DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
-            DocStyle::ProjectIndex => {
+            DocStyle::ProjectIndex(_) => {
                 let nav_links = self.nav.links;
                 let version = match self.version_opt {
                     Some(ref v) => v.as_str(),
@@ -1217,7 +1260,6 @@ impl DocStrings for AttributesMap {
 
         let mut options = ComrakOptions::default();
         options.render.hardbreaks = true;
-        options.render.github_pre_lang = true;
         options.extension.strikethrough = true;
         options.extension.table = true;
         options.extension.autolink = true;
