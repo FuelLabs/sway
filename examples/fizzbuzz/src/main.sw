@@ -1,26 +1,45 @@
-contract;
+script;
 
-enum FizzBuzzResult {
-    Fizz: (),
-    Buzz: (),
-    FizzBuzz: (),
-    Other: u64,
+struct Something {
+    a: u32,
+    b: Something2,
 }
 
-abi FizzBuzz {
-    fn fizzbuzz(input: u64) -> FizzBuzzResult;
+struct Something2 {
+    c: u32,
 }
 
-impl FizzBuzz for Contract {
-    fn fizzbuzz(input: u64) -> FizzBuzzResult {
-        if input % 15 == 0 {
-            FizzBuzzResult::FizzBuzz
-        } else if input % 3 == 0 {
-            FizzBuzzResult::Fizz
-        } else if input % 5 == 0 {
-            FizzBuzzResult::Buzz
-        } else {
-            FizzBuzzResult::Other(input)
+struct Foo {
+    lol: u32,
+    something: Something,
+}
+
+impl Foo {
+    pub fn new() -> Self {
+        Self {
+            lol: 1,
+            something: Something {
+                a: 2,
+                b: Something2 { c: 3 },
+            },
         }
     }
+    pub fn bar(i: u8) -> u8 {
+        i
+    }
+    pub fn baz() -> u8 {
+        99
+    }
+    pub fn foo(j: Foo) -> Foo {
+        j
+    }
+}
+
+fn main() {
+    let fooo = Foo::new();
+    fooo
+}
+
+fn otherfn(fooo: Foo) {
+    let x = fooo.something.a;
 }

@@ -39,6 +39,7 @@ pub enum AstToken {
     TreeType(TreeType),
     IncludeStatement,
     UseStatement(UseStatement),
+    ErrorRecovery(Span),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].

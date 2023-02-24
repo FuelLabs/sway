@@ -1263,6 +1263,7 @@ impl<'a> TypedTree<'a> {
 
     fn collect_typed_fn_decl(&self, func_decl: &ty::TyFunctionDeclaration) {
         let typed_token = TypedAstToken::TypedFunctionDeclaration(func_decl.clone());
+
         if let Some(mut token) = self
             .tokens
             .try_get_mut(&to_ident_key(&func_decl.name))
@@ -1271,6 +1272,8 @@ impl<'a> TypedTree<'a> {
             token.typed = Some(typed_token.clone());
             token.type_def = Some(TypeDefinition::Ident(func_decl.name.clone()));
         }
+
+        // func_decl.span()
 
         for node in &func_decl.body.contents {
             self.traverse_node(node);

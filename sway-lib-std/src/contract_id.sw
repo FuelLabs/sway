@@ -1,4 +1,3 @@
-//! A wrapper around the `b256` type to help enhance type-safety.
 library contract_id;
 
 use ::intrinsics::size_of_val;

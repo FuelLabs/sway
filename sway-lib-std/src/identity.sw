@@ -1,5 +1,3 @@
-//! A wrapper type with two variants, `Address` and `ContractId`.
-//! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library identity;
 
 use ::address::Address;

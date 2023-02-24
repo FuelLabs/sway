@@ -447,8 +447,16 @@ impl<'a> ParsedTree<'a> {
     fn handle_expression(&self, expression: &Expression) {
         let span = &expression.span;
         match &expression.kind {
-            ExpressionKind::Error(_part_spans) => {
-                // FIXME(Centril): Left for @JoshuaBatty to use.
+            ExpressionKind::Error(part_spans) => {
+                for span in part_spans.iter() {
+                    self.tokens.insert(
+                        to_ident_key(&Ident::new(span.clone())),
+                        Token::from_parsed(
+                            AstToken::ErrorRecovery(span.clone()),
+                            SymbolKind::Unknown,
+                        ),
+                    );
+                }
             }
             ExpressionKind::Literal(value) => {
                 let symbol_kind = literal_to_symbol_kind(value);

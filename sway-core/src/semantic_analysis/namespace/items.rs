@@ -146,6 +146,7 @@ impl Items {
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDeclaration, CompileError> {
+        // TODO: Use this?
         self.symbols
             .get(name)
             .ok_or_else(|| CompileError::SymbolNotFound {
@@ -162,7 +163,8 @@ impl Items {
         self.implemented_traits.insert_for_type(engines, type_id);
     }
 
-    pub(crate) fn get_methods_for_type(
+    pub fn get_methods_for_type(
+        // TODO: use this
         &self,
         engines: Engines<'_>,
         type_id: TypeId,

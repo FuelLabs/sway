@@ -6,7 +6,9 @@ use crate::{
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::TextDocument, sync::SyncWorkspace, token::get_range_from_span,
+        document::TextDocument,
+        sync::SyncWorkspace,
+        token::{self, get_range_from_span, Token, TypedAstToken},
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
@@ -19,6 +21,7 @@ use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
+use serde_json::json;
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -29,7 +32,7 @@ use sway_core::{
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::{Span, Spanned};
+use sway_types::{BaseIdent, Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
@@ -244,10 +247,33 @@ impl Session {
             })
     }
 
-    pub fn completion_items(&self) -> Option<Vec<CompletionItem>> {
-        Some(capabilities::completion::to_completion_items(
-            self.token_map(),
-        ))
+    pub fn completion_items(
+        &self,
+        uri: &Url,
+        position: Position,
+        trigger_char: String,
+    ) -> Option<Vec<CompletionItem>> {
+        let shifted_position = Position {
+            line: position.line,
+            character: position.character - trigger_char.len() as u32 - 1,
+        };
+        let (ident_to_complete, _) = self.token_map.token_at_position(uri, shifted_position)?;
+        let fn_tokens = self
+            .token_map
+            .tokens_at_position(uri, shifted_position, Some(true));
+        let (_, fn_token) = fn_tokens.first()?;
+        let compiled_program = &*self.compiled_program.read();
+
+        if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
+            return Some(capabilities::completion::to_completion_items(
+                &compiled_program.typed.clone().unwrap().root.namespace,
+                Engines::new(&*self.type_engine.read(), &*self.decl_engine.read()),
+                &ident_to_complete,
+                &fn_decl,
+                position,
+            ));
+        }
+        None
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
