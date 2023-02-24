@@ -153,12 +153,14 @@ impl Namespace {
     ///
     /// This function will generate a missing method error if the method is not
     /// found.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &mut self,
         mut type_id: TypeId,
         method_prefix: &Path,
         method_name: &Ident,
         self_type: TypeId,
+        method_may_have_self_type: bool,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
     ) -> CompileResult<DeclRef> {
@@ -175,6 +177,7 @@ impl Namespace {
             return err(warnings, errors);
         }
 
+        // Replace with the "self" type if necessary.
         type_id.replace_self_type(engines, self_type);
 
         // resolve the type
@@ -204,25 +207,63 @@ impl Namespace {
         // grab the local methods from the local module
         let methods = dedup_methods(engines, local_module.get_methods_for_type(engines, type_id));
 
+        // println!("# methods: {}", methods.len());
+
         // Filter the list of methods into a list of possible methods.
         let unify_checker = UnifyCheck::new(engines);
-        let possible_methods: Vec<DeclRef> =
-            methods
-                .into_iter()
-                .filter(|decl_ref| {
-                    let method = check!(
-                        CompileResult::from(decl_engine.get_function(decl_ref, &decl_ref.span())),
-                        return false,
-                        warnings,
-                        errors
-                    );
-                    &method.name == method_name
-                        && method.parameters.len() == args_buf.len()
-                        && method.parameters.iter().zip(args_buf.iter()).all(|(p, a)| {
-                            unify_checker.check(a.return_type, p.type_argument.type_id)
-                        })
-                })
-                .collect();
+        let possible_methods: Vec<DeclRef> = methods
+            .into_iter()
+            .filter(|decl_ref| {
+                let method = check!(
+                    CompileResult::from(decl_engine.get_function(decl_ref, &decl_ref.span())),
+                    return false,
+                    warnings,
+                    errors
+                );
+                let is_first_param_self = method
+                    .parameters
+                    .get(0)
+                    .map(|f| f.is_self())
+                    .unwrap_or(false);
+                let args_buf_to_check = if method_may_have_self_type && !is_first_param_self {
+                    args_buf.clone().split_off(1)
+                } else {
+                    args_buf.clone()
+                };
+                // println!(
+                //     "{}, [{}]",
+                //     method.name,
+                //     method
+                //         .parameters
+                //         .iter()
+                //         .map(|p| {
+                //             format!(
+                //                 "{}: {}",
+                //                 p.name,
+                //                 engines.help_out(type_engine.get(p.type_argument.type_id))
+                //             )
+                //         })
+                //         .collect::<Vec<_>>()
+                //         .join(", ")
+                // );
+                &method.name == method_name
+                    && args_buf_to_check.len() == method.parameters.len()
+                    && args_buf_to_check
+                        .iter()
+                        .zip(method.parameters.iter())
+                        .all(|(a, p)| unify_checker.check(a.return_type, p.type_argument.type_id))
+            })
+            .collect();
+
+        // println!("# possible_methods: {}", possible_methods.len());
+        // println!(
+        //     "args_buf: {}",
+        //     args_buf
+        //         .iter()
+        //         .map(|p| engines.help_out(type_engine.get(p.return_type)).to_string())
+        //         .collect::<Vec<_>>()
+        //         .join(", ")
+        // );
 
         // Given the list of possible methods, determine if there is one, zero,
         // or multiple matches.

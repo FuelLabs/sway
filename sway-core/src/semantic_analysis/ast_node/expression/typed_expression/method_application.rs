@@ -1,7 +1,9 @@
 use crate::{
     decl_engine::DeclRef,
+    engine_threading::WithEngines,
     error::*,
     language::{parsed::*, ty, *},
+    namespace::TraitMap,
     semantic_analysis::*,
     type_system::*,
 };
@@ -41,6 +43,11 @@ pub(crate) fn type_check_method_application(
             errors
         ));
     }
+
+    // println!("checking for {}", method_name_binding.inner.easy_name());
+
+    // let x: WithEngines<&TraitMap> = engines.help_out(&ctx.namespace.implemented_traits);
+    // println!("{x}");
 
     // resolve the method name to a typed function declaration and type_check
     let decl_ref = check!(
@@ -454,6 +461,7 @@ pub(crate) fn resolve_method_name(
                     &type_info_prefix,
                     method_name,
                     ctx.self_type(),
+                    false,
                     &arguments,
                     engines,
                 ),
@@ -479,6 +487,7 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     &call_path.suffix,
                     ctx.self_type(),
+                    false,
                     &arguments,
                     engines,
                 ),
@@ -488,30 +497,14 @@ pub(crate) fn resolve_method_name(
             )
         }
         MethodName::FromModule { method_name } => {
-            let mut arguments = arguments;
-
             // find the module that the symbol is in
             let module_path = ctx.namespace.find_module_path(vec![]);
 
-            // Find the type of the LHS (aka the first argument).
-            //
-            // If the LHS "self" is a contract caller, then we need to remove
-            // that type from the arguments. Contracts cannot take "self" so
-            // they will be expecting these arguments to not have this.
-            //
-            // NOTE: This is a little hacky.
-            let type_id = match arguments
+            // find the type of the first argument
+            let type_id = arguments
                 .get(0)
-                .cloned()
-                .map(|x| (x.return_type, type_engine.get(x.return_type)))
-            {
-                Some((type_id, TypeInfo::ContractCaller { .. })) => {
-                    arguments = arguments.split_off(1);
-                    type_id
-                }
-                Some((type_id, _)) => type_id,
-                None => type_engine.insert(decl_engine, TypeInfo::Unknown),
-            };
+                .map(|x| x.return_type)
+                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
             // find the method
             check!(
@@ -520,6 +513,7 @@ pub(crate) fn resolve_method_name(
                     &module_path,
                     method_name,
                     ctx.self_type(),
+                    true,
                     &arguments,
                     engines,
                 ),
