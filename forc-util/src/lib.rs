@@ -232,17 +232,25 @@ pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[C
 
 pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
     let e_len = errors.len();
+    let w_len = warnings.len();
 
     if !terse_mode {
         warnings.iter().for_each(format_warning);
         errors.iter().for_each(format_err);
     }
 
-    println_red_err(&format!(
-        "  Aborting due to {} {}.",
-        e_len,
-        if e_len > 1 { "errors" } else { "error" }
-    ));
+    if e_len == 0 && w_len > 0 {
+        println_red_err(&format!(
+            "  Aborting. {} warning(s) treated as error(s).",
+            warnings.len()
+        ));
+    } else {
+        println_red_err(&format!(
+            "  Aborting due to {} {}.",
+            e_len,
+            if e_len > 1 { "errors" } else { "error" }
+        ));
+    }
 }
 
 fn format_err(err: &CompileError) {

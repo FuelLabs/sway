@@ -230,9 +230,6 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 options,
             )?;
 
-            for leaf in return_contents.clone() {
-                graph.add_edge(this_index, leaf, "".into());
-            }
             // connect return to the exit node
             if let Some(exit_node) = exit_node {
                 graph.add_edge(this_index, exit_node, "return".into());
@@ -1040,7 +1037,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 engines,
                 &then.expression,
                 graph,
-                leaves,
+                &condition_expr,
                 exit_node,
                 "then branch",
                 tree_type,
@@ -1053,7 +1050,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     engines,
                     &else_expr.expression,
                     graph,
-                    leaves,
+                    &condition_expr,
                     exit_node,
                     "else branch",
                     tree_type,
@@ -1061,10 +1058,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     options,
                 )?
             } else {
-                vec![]
+                condition_expr
             };
 
-            Ok([condition_expr, then_expr, else_expr].concat())
+            Ok([then_expr, else_expr].concat())
         }
         CodeBlock(a @ ty::TyCodeBlock { .. }) => {
             connect_code_block(engines, a, graph, leaves, exit_node, tree_type, options)

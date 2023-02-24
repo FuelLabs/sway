@@ -57,6 +57,7 @@ library result;
 
 use ::revert::revert;
 
+// ANCHOR: docs_result
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 pub enum Result<T, E> {
     /// Contains the success value.
@@ -64,6 +65,8 @@ pub enum Result<T, E> {
     /// Contains the error value.
     Err: E,
 }
+// ANCHOR_END: docs_result
+
 
 // Type implementation
 //
