@@ -26,7 +26,6 @@ impl ty::TyTraitFn {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
-        let engines = ctx.engines();
 
         // Create a namespace for the trait function.
         let mut fn_namespace = ctx.namespace.clone();
