@@ -488,14 +488,30 @@ pub(crate) fn resolve_method_name(
             )
         }
         MethodName::FromModule { method_name } => {
+            let mut arguments = arguments;
+
             // find the module that the symbol is in
             let module_path = ctx.namespace.find_module_path(vec![]);
 
-            // find the type of the first argument
-            let type_id = arguments
+            // Find the type of the LHS (aka the first argument).
+            //
+            // If the LHS "self" is a contract caller, then we need to remove
+            // that type from the arguments. Contracts cannot take "self" so
+            // they will be expecting these arguments to not have this.
+            //
+            // NOTE: This is a little hacky.
+            let type_id = match arguments
                 .get(0)
-                .map(|x| x.return_type)
-                .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
+                .cloned()
+                .map(|x| (x.return_type, type_engine.get(x.return_type)))
+            {
+                Some((type_id, TypeInfo::ContractCaller { .. })) => {
+                    arguments = arguments.split_off(1);
+                    type_id
+                }
+                Some((type_id, _)) => type_id,
+                None => type_engine.insert(decl_engine, TypeInfo::Unknown),
+            };
 
             // find the method
             check!(

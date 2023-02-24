@@ -256,20 +256,23 @@ impl<'a> UnifyCheck<'a> {
             // For contract callers, they can be coerced if they have the same
             // name and at least one has an address of `None`
             (
-                ref r @ ContractCaller {
+                ContractCaller {
                     abi_name: ref ran,
                     address: ref ra,
                 },
-                ref e @ ContractCaller {
+                ContractCaller {
                     abi_name: ref ean,
                     address: ref ea,
                 },
             ) => {
-                r.eq(e, self.engines)
-                    || (ran == ean && ra.is_none())
-                    || matches!(ran, AbiName::Deferred)
-                    || (ran == ean && ea.is_none())
-                    || matches!(ean, AbiName::Deferred)
+                (ran == ean || matches!(ran, AbiName::Deferred) || matches!(ean, AbiName::Deferred))
+                    && (ra.is_none()
+                        || ea.is_none()
+                        || ra
+                            .clone()
+                            .zip(ra.clone())
+                            .map(|(ra, ea)| self.check(ra.return_type, ea.return_type))
+                            .unwrap_or(false))
             }
 
             (a, b) => a.eq(b, self.engines),

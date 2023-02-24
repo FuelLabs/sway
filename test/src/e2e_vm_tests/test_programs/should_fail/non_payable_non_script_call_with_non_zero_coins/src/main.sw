@@ -19,7 +19,7 @@ impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId) {
         let sender = msg_sender().unwrap();
-        let bal = storage.balances.get(sender);
+        let bal = storage.balances.get(sender).unwrap();
 
         assert(bal > 0);
 
