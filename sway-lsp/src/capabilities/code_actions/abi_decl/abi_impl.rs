@@ -1,5 +1,5 @@
 use sway_core::{
-    language::ty::{TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
+    language::ty::{self, TyAbiDeclaration, TyFunctionParameter, TyTraitFn},
     Engines,
 };
 use sway_types::Spanned;
@@ -67,19 +67,21 @@ impl AbiImplCodeAction<'_> {
             self.decl
                 .interface_surface
                 .iter()
-                .filter_map(|function_decl_ref| {
-                    decl_engine
-                        .get_trait_fn(function_decl_ref, &function_decl_ref.span())
-                        .ok()
-                        .map(|function_decl| {
-                            self.fn_signature_string(
-                                function_decl.name.to_string(),
-                                self.params_string(&function_decl.parameters),
-                                &function_decl.attributes,
-                                self.return_type_string(&function_decl),
-                                None,
-                            )
-                        })
+                .filter_map(|item| {
+                    match item {
+                        ty::TyTraitInterfaceItem::TraitFn(function_decl_ref) => decl_engine
+                            .get_trait_fn(function_decl_ref, &function_decl_ref.span())
+                            .ok()
+                            .map(|function_decl| {
+                                self.fn_signature_string(
+                                    function_decl.name.to_string(),
+                                    self.params_string(&function_decl.parameters),
+                                    &function_decl.attributes,
+                                    self.return_type_string(&function_decl),
+                                    None,
+                                )
+                            }),
+                    }
                 })
                 .collect::<Vec<String>>()
                 .join("\n")

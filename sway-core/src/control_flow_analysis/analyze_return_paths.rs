@@ -3,8 +3,10 @@
 
 use crate::{
     control_flow_analysis::*,
-    decl_engine::DeclRef,
-    language::{ty, CallPath},
+    language::{
+        ty::{self, TyImplItem},
+        CallPath,
+    },
     type_system::*,
     Engines,
 };
@@ -206,16 +208,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ImplTrait { decl_id, .. } => {
             let ty::TyImplTrait {
-                trait_name,
-                methods,
-                ..
+                trait_name, items, ..
             } = decl_engine.get_impl_trait(decl_id, &span)?;
             let entry_node = graph.add_node(node.into());
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
 
-            connect_impl_trait(engines, &trait_name, graph, &methods, entry_node)?;
+            connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
             Ok(leaves.to_vec())
         }
         ErrorRecovery(_) => Ok(leaves.to_vec()),
@@ -231,31 +231,35 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclRef],
+    items: &[TyImplItem],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for method_decl_ref in methods {
-        let fn_decl = decl_engine.get_function(method_decl_ref, &trait_name.span())?;
-        let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
-            span: fn_decl.span.clone(),
-            method_name: fn_decl.name.clone(),
-            method_decl_ref: method_decl_ref.clone(),
-            engines,
-        });
-        graph.add_edge(entry_node, fn_decl_entry_node, "".into());
-        // connect the impl declaration node to the functions themselves, as all trait functions are
-        // public if the trait is in scope
-        connect_typed_fn_decl(
-            engines,
-            &fn_decl,
-            graph,
-            fn_decl_entry_node,
-            fn_decl.span.clone(),
-        )?;
-        methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
+    for item in items {
+        match item {
+            TyImplItem::Fn(method_decl_ref) => {
+                let fn_decl = decl_engine.get_function(method_decl_ref, &trait_name.span())?;
+                let fn_decl_entry_node = graph.add_node(ControlFlowGraphNode::MethodDeclaration {
+                    span: fn_decl.span.clone(),
+                    method_name: fn_decl.name.clone(),
+                    method_decl_ref: method_decl_ref.clone(),
+                    engines,
+                });
+                graph.add_edge(entry_node, fn_decl_entry_node, "".into());
+                // connect the impl declaration node to the functions themselves, as all trait functions are
+                // public if the trait is in scope
+                connect_typed_fn_decl(
+                    engines,
+                    &fn_decl,
+                    graph,
+                    fn_decl_entry_node,
+                    fn_decl.span.clone(),
+                )?;
+                methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
+            }
+        }
     }
     // Now, insert the methods into the trait method namespace.
     graph
