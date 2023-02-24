@@ -170,6 +170,8 @@ pub enum CompileError {
         type_name: String,
         span: Span,
     },
+    #[error("Multiple possibilities found for method \"{method_name}\".")]
+    MultipleMethodsPossible { method_name: Ident, span: Span },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
     #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
@@ -658,6 +660,7 @@ impl Spanned for CompileError {
             StructMissingField { span, .. } => span.clone(),
             StructDoesNotHaveField { span, .. } => span.clone(),
             MethodNotFound { span, .. } => span.clone(),
+            MultipleMethodsPossible { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
             NotATuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),

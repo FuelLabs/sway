@@ -1,7 +1,7 @@
 use std::{
     cmp::Ordering,
     fmt,
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, Hash, Hasher},
 };
 
 use crate::{decl_engine::DeclEngine, TypeEngine};
@@ -209,5 +209,19 @@ impl<T: OrdWithEngines> OrdWithEngines for [T] {
             .map(|(x, y)| x.cmp(y, type_engine))
             .find(|o| o.is_ne())
             .unwrap_or_else(|| self.len().cmp(&other.len()))
+    }
+}
+
+pub(crate) fn make_hasher<'a: 'b, 'b, K>(
+    hash_builder: &'a impl BuildHasher,
+    engines: Engines<'b>,
+) -> impl Fn(&K) -> u64 + 'b
+where
+    K: HashWithEngines + ?Sized,
+{
+    move |key: &K| {
+        let mut state = hash_builder.build_hasher();
+        key.hash(&mut state, engines);
+        state.finish()
     }
 }

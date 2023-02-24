@@ -7,15 +7,13 @@ use crate::{
     CompileResult, Ident,
 };
 
-use super::{
-    are_equal_minus_dynamic_types, module::Module, root::Root,
-    submodule_namespace::SubmoduleNamespace, Path, PathBuf,
-};
+use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
 
+use hashbrown::{hash_map::RawEntryMut, HashMap};
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Spanned};
 
-use std::{cmp::Ordering, collections::VecDeque};
+use std::collections::VecDeque;
 
 /// The set of items that represent the namespace context passed throughout type checking.
 #[derive(Clone, Debug)]
@@ -177,17 +175,6 @@ impl Namespace {
             return err(warnings, errors);
         }
 
-        // grab the local module
-        let local_module = check!(
-            self.root().check_submodule(&self.mod_path),
-            return err(warnings, errors),
-            warnings,
-            errors
-        );
-
-        // grab the local methods from the local module
-        let local_methods = local_module.get_methods_for_type(engines, type_id);
-
         type_id.replace_self_type(engines, self_type);
 
         // resolve the type
@@ -206,83 +193,81 @@ impl Namespace {
             errors
         );
 
-        // grab the module where the type itself is declared
-        let type_module = check!(
-            self.root().check_submodule(method_prefix),
+        // grab the local module
+        let local_module = check!(
+            self.root().check_submodule(&self.mod_path),
             return err(warnings, errors),
             warnings,
             errors
         );
 
-        // grab the methods from where the type is declared
-        let mut type_methods = type_module.get_methods_for_type(engines, type_id);
+        // grab the local methods from the local module
+        let methods = dedup_methods(engines, local_module.get_methods_for_type(engines, type_id));
 
-        let mut methods = local_methods;
-        methods.append(&mut type_methods);
-
-        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
-
-        for decl_ref in methods.into_iter() {
-            if &decl_ref.name == method_name {
-                matching_method_decl_refs.push(decl_ref);
-            }
-        }
-
-        let matching_method_decl_ref = match matching_method_decl_refs.len().cmp(&1) {
-            Ordering::Equal => matching_method_decl_refs.get(0).cloned(),
-            Ordering::Greater => {
-                // Case where multiple methods exist with the same name
-                // This is the case of https://github.com/FuelLabs/sway/issues/3633
-                // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
-                for decl_ref in matching_method_decl_refs.clone().into_iter() {
+        // Filter the list of methods into a list of possible methods.
+        let unify_checker = UnifyCheck::new(engines);
+        let possible_methods: Vec<DeclRef> =
+            methods
+                .into_iter()
+                .filter(|decl_ref| {
                     let method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-                        return err(warnings, errors),
+                        CompileResult::from(decl_engine.get_function(decl_ref, &decl_ref.span())),
+                        return false,
                         warnings,
                         errors
                     );
-                    if method.parameters.len() == args_buf.len()
-                        && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
-                            !are_equal_minus_dynamic_types(
-                                engines,
-                                p.type_argument.type_id,
-                                a.return_type,
-                            )
+                    // println!("method.name: {}", method.name);
+                    // println!(
+                    //     "method.parameters: [{}]",
+                    //     method
+                    //         .parameters
+                    //         .iter()
+                    //         .map(|x| format!(
+                    //             "{}: {}",
+                    //             x.name,
+                    //             engines.help_out(x.type_argument.type_id)
+                    //         ))
+                    //         .collect::<Vec<_>>()
+                    //         .join(", ")
+                    // );
+                    &method.name == method_name
+                        && method.parameters.len() == args_buf.len()
+                        && method.parameters.iter().zip(args_buf.iter()).all(|(p, a)| {
+                            unify_checker.check(a.return_type, p.type_argument.type_id)
                         })
-                    {
-                        maybe_method_decl_ref = Some(decl_ref);
-                        break;
-                    }
-                }
-                if let Some(matching_method_decl_ref) = maybe_method_decl_ref {
-                    // In case one or more methods match the parameter types we return the first match.
-                    Some(matching_method_decl_ref)
-                } else {
-                    // When we can't match any method with parameter types we still return the first method found
-                    // This was the behavior before introducing the parameter type matching
-                    matching_method_decl_refs.get(0).cloned()
-                }
+                })
+                .collect();
+
+        // Given the list of possible methods, determine if there is one, zero,
+        // or multiple matches.
+        let matching_method = match possible_methods.get(0) {
+            Some(matching_method) if possible_methods.len() == 1 => matching_method,
+            Some(_) => {
+                // Case where multiple methods exist with the same name.
+                // This is the case of https://github.com/FuelLabs/sway/issues/3633
+                // where multiple generic trait impls use the same method name
+                // but with different parameter types.
+                errors.push(CompileError::MultipleMethodsPossible {
+                    method_name: method_name.clone(),
+                    span: method_name.span(),
+                });
+                return err(warnings, errors);
             }
-            Ordering::Less => None,
+            None => {
+                errors.push(CompileError::MethodNotFound {
+                    method_name: method_name.clone(),
+                    type_name: engines.help_out(type_id).to_string(),
+                    span: method_name.span(),
+                });
+                return err(warnings, errors);
+            }
         };
 
-        if let Some(method_decl_ref) = matching_method_decl_ref {
-            return ok(method_decl_ref, warnings, errors);
+        if errors.is_empty() {
+            ok(matching_method.clone(), warnings, errors)
+        } else {
+            err(warnings, errors)
         }
-
-        if !args_buf
-            .get(0)
-            .map(|x| type_engine.get(x.return_type))
-            .eq(&Some(TypeInfo::ErrorRecovery), engines)
-        {
-            errors.push(CompileError::MethodNotFound {
-                method_name: method_name.clone(),
-                type_name: engines.help_out(type_id).to_string(),
-                span: method_name.span(),
-            });
-        }
-        err(warnings, errors)
     }
 
     /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
@@ -374,6 +359,24 @@ impl Namespace {
         self.implemented_traits
             .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
     }
+}
+
+fn dedup_methods(engines: Engines<'_>, methods: Vec<DeclRef>) -> Vec<DeclRef> {
+    let mut hashed_methods: HashMap<DeclRef, bool> = HashMap::new();
+    for decl_ref in methods.into_iter() {
+        let hash_builder = hashed_methods.hasher().clone();
+        let hasher = make_hasher(&hash_builder, engines)(&decl_ref);
+        match hashed_methods
+            .raw_entry_mut()
+            .from_hash(hasher, |x| x.eq(&decl_ref, engines))
+        {
+            RawEntryMut::Occupied(_) => {}
+            RawEntryMut::Vacant(v) => {
+                v.insert_with_hasher(hasher, decl_ref, true, make_hasher(&hash_builder, engines));
+            }
+        }
+    }
+    hashed_methods.keys().cloned().into_iter().collect()
 }
 
 impl std::ops::Deref for Namespace {

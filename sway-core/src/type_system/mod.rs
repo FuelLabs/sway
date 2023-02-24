@@ -29,6 +29,7 @@ pub use trait_constraint::*;
 pub use type_argument::*;
 pub use type_parameter::*;
 pub(crate) use unconstrained_type_parameters::*;
+pub(crate) use unify_check::*;
 
 use crate::error::*;
 use std::fmt::Debug;
