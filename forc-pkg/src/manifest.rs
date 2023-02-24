@@ -213,6 +213,7 @@ pub struct BuildProfile {
     pub terse: bool,
     pub time_phases: bool,
     pub include_tests: bool,
+    pub error_on_warnings: bool,
 }
 
 impl Dependency {
@@ -604,6 +605,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            error_on_warnings: false,
         }
     }
 
@@ -617,6 +619,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            error_on_warnings: false,
         }
     }
 }
@@ -871,4 +874,28 @@ impl std::ops::Deref for WorkspaceManifestFile {
     fn deref(&self) -> &Self::Target {
         &self.manifest
     }
+}
+
+/// Attempt to find a `Forc.toml` with the given project name within the given directory.
+///
+/// Returns the path to the package on success, or `None` in the case it could not be found.
+pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .find_map(|entry| {
+            let path = entry.path();
+            let manifest = PackageManifest::from_file(path).ok()?;
+            if manifest.project.name == pkg_name {
+                Some(path.to_path_buf())
+            } else {
+                None
+            }
+        })
+}
+
+/// The same as [find_within], but returns the package's project directory.
+pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
+    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
