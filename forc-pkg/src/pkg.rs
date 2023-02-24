@@ -257,6 +257,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Warnings must be treated as compiler errors.
+    pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
     /// List of constants to inject for each package.
@@ -1750,7 +1752,9 @@ pub fn compile(
         Some(CompiledBytecode {
             bytecode: bytes,
             config_const_offsets: config_offsets,
-        }) if bc_res.errors.is_empty() => {
+        }) if bc_res.errors.is_empty()
+            && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
+        {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
@@ -1874,6 +1878,7 @@ fn build_profile_from_opts(
         release,
         time_phases,
         tests,
+        error_on_warnings,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -1917,6 +1922,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))
 }
