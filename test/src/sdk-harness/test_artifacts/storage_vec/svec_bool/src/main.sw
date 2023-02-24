@@ -4,25 +4,34 @@ use std::storage::StorageVec;
 
 abi MyContract {
     #[storage(read, write)]
-    fn bool_push(value: bool);
+    fn push(value: bool);
+
+    #[storage(read, write)]
+    fn pop() -> bool;
+
     #[storage(read)]
-    fn bool_get(index: u64) -> bool;
+    fn get(index: u64) -> bool;
+
     #[storage(read, write)]
-    fn bool_pop() -> bool;
+    fn remove(index: u64) -> bool;
+
     #[storage(read, write)]
-    fn bool_remove(index: u64) -> bool;
+    fn swap_remove(index: u64) -> bool;
+
     #[storage(read, write)]
-    fn bool_swap_remove(index: u64) -> bool;
+    fn set(index: u64, value: bool);
+
     #[storage(read, write)]
-    fn bool_set(index: u64, value: bool);
-    #[storage(read, write)]
-    fn bool_insert(index: u64, value: bool);
+    fn insert(index: u64, value: bool);
+
     #[storage(read)]
-    fn bool_len() -> u64;
+    fn len() -> u64;
+
     #[storage(read)]
-    fn bool_is_empty() -> bool;
+    fn is_empty() -> bool;
+
     #[storage(write)]
-    fn bool_clear();
+    fn clear();
 }
 
 storage {
@@ -31,43 +40,52 @@ storage {
 
 impl MyContract for Contract {
     #[storage(read, write)]
-    fn bool_push(value: bool) {
+    fn push(value: bool) {
         storage.my_vec.push(value);
     }
-    #[storage(read)]
-    fn bool_get(index: u64) -> bool {
-        storage.my_vec.get(index).unwrap()
-    }
+
     #[storage(read, write)]
-    fn bool_pop() -> bool {
+    fn pop() -> bool {
         storage.my_vec.pop().unwrap()
     }
+
+    #[storage(read)]
+    fn get(index: u64) -> bool {
+        storage.my_vec.get(index).unwrap()
+    }
+
     #[storage(read, write)]
-    fn bool_remove(index: u64) -> bool {
+    fn remove(index: u64) -> bool {
         storage.my_vec.remove(index)
     }
+
     #[storage(read, write)]
-    fn bool_swap_remove(index: u64) -> bool {
+    fn swap_remove(index: u64) -> bool {
         storage.my_vec.swap_remove(index)
     }
+
     #[storage(read, write)]
-    fn bool_set(index: u64, value: bool) {
+    fn set(index: u64, value: bool) {
         storage.my_vec.set(index, value);
     }
+
     #[storage(read, write)]
-    fn bool_insert(index: u64, value: bool) {
+    fn insert(index: u64, value: bool) {
         storage.my_vec.insert(index, value);
     }
+
     #[storage(read)]
-    fn bool_len() -> u64 {
+    fn len() -> u64 {
         storage.my_vec.len()
     }
+
     #[storage(read)]
-    fn bool_is_empty() -> bool {
+    fn is_empty() -> bool {
         storage.my_vec.is_empty()
     }
+
     #[storage(write)]
-    fn bool_clear() {
+    fn clear() {
         storage.my_vec.clear();
     }
 }
