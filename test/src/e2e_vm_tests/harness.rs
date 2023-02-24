@@ -205,7 +205,7 @@ pub(crate) fn runs_in_vm(
             let _trace = miden::execute(&program, &ProgramInputs::none()).unwrap();
 
             let execution_trace = miden::execute(&program, &ProgramInputs::none())
-                .map_err(|e| anyhow::anyhow!("Failed to execute on midenVM: {e:?}"))?;
+                .map_err(|e| anyhow::anyhow!("Failed to execute on MidenVM: {e:?}"))?;
 
             Ok(VMExecutionResult::MidenVM(execution_trace))
         }
