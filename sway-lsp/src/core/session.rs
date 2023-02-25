@@ -8,7 +8,7 @@ use crate::{
     core::{
         document::TextDocument,
         sync::SyncWorkspace,
-        token::{self, get_range_from_span, Token, TypedAstToken},
+        token::{get_range_from_span, TypedAstToken},
         token_map::TokenMap,
     },
     error::{DocumentError, LanguageServerError},
@@ -21,7 +21,6 @@ use dashmap::DashMap;
 use forc_pkg as pkg;
 use parking_lot::RwLock;
 use pkg::{manifest::ManifestFile, Programs};
-use serde_json::json;
 use std::{fs::File, io::Write, path::PathBuf, sync::Arc, vec};
 use sway_core::{
     decl_engine::DeclEngine,
@@ -32,7 +31,7 @@ use sway_core::{
     },
     BuildTarget, CompileResult, Engines, TypeEngine,
 };
-use sway_types::{BaseIdent, Span, Spanned};
+use sway_types::{Span, Spanned};
 use sway_utils::helpers::get_sway_files;
 use tower_lsp::lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
@@ -83,6 +82,7 @@ impl Session {
         *self.decl_engine.write() = <_>::default();
 
         let manifest_dir = PathBuf::from(uri.path());
+
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;

@@ -1,13 +1,10 @@
-use crate::core::{
-    token::{AstToken, SymbolKind, Token, TypedAstToken},
-    token_map::TokenMap,
-};
 use sway_core::{
-    language::ty::{TyAstNode, TyAstNodeContent, TyDeclaration, TyFunctionDeclaration},
-    namespace::{Items, Module},
-    Engines, TypeEngine, TypeId, TypeInfo,
+    decl_engine::DeclRef,
+    language::ty::{TyAstNodeContent, TyDeclaration, TyFunctionDeclaration, TyFunctionParameter},
+    namespace::Items,
+    Engines, TypeId, TypeInfo,
 };
-use sway_types::{BaseIdent, Ident};
+use sway_types::Ident;
 use tower_lsp::lsp_types::{
     CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
     Range, TextEdit,
@@ -20,7 +17,7 @@ pub(crate) fn to_completion_items(
     fn_decl: &TyFunctionDeclaration,
     position: Position,
 ) -> Vec<CompletionItem> {
-    type_id_of_raw_ident(engines, ident_to_complete, fn_decl)
+    type_id_of_raw_ident(engines, namespace, ident_to_complete, fn_decl)
         .and_then(|type_id| {
             Some(completion_items_for_type_id(
                 engines, namespace, type_id, position,
@@ -52,10 +49,31 @@ fn completion_items_for_type_id(
             };
             completion_items.push(item);
         }
+    }
 
-        let methods = namespace.get_methods_for_type(engines, type_id);
+    for method in namespace.get_methods_for_type(engines, type_id) {
+        let params = parameters_of_fn(engines, &method);
 
-        for method in methods {
+        // Only show methods that take `self` as the first parameter.
+        if params
+            .first()
+            .and_then(|p| Some(p.is_self()))
+            .unwrap_or_default()
+        {
+            let params_short = match params.is_empty() {
+                true => "()".to_string(),
+                false => "(…)".to_string(),
+            };
+            let params_str = params
+                .iter()
+                .filter_map(|p| {
+                    if p.is_self() {
+                        return None;
+                    }
+                    Some(p.name.as_str())
+                })
+                .collect::<Vec<&str>>()
+                .join(", ");
             let decl_string = method.decl_span.clone().str();
             let signature = decl_string
                 .split_at(decl_string.find("{").unwrap())
@@ -63,19 +81,16 @@ fn completion_items_for_type_id(
                 .split_at(decl_string.find("fn").unwrap())
                 .1
                 .to_string();
-            let params = match signature.contains("()") {
-                true => "()".to_string(),
-                false => "(…)".to_string(),
-            };
+
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::METHOD),
-                label: format!("{}{}", method.name.as_str(), params),
+                label: format!("{}{}", method.name.as_str(), params_short),
                 text_edit: Some(CompletionTextEdit::Edit(TextEdit {
                     range: Range {
                         start: position,
                         end: position,
                     },
-                    new_text: format!("{}()", method.name.as_str()),
+                    new_text: format!("{}({})", method.name.as_str(), params_str),
                 })),
                 label_details: Some(CompletionItemLabelDetails {
                     description: Some(signature),
@@ -86,6 +101,7 @@ fn completion_items_for_type_id(
             completion_items.push(item);
         }
     }
+
     completion_items
 }
 
@@ -95,6 +111,7 @@ fn completion_items_for_type_id(
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: Engines,
+    namespace: &Items,
     ident: &Ident,
     fn_decl: &TyFunctionDeclaration,
 ) -> Option<TypeId> {
@@ -107,26 +124,63 @@ fn type_id_of_raw_ident(
 
     // Otherwise, start with the first part of the ident and follow the subsequent types.
     let parts = full_ident.split(".").collect::<Vec<&str>>();
-
-    // TODO: handle get().a.b().c
-
     let mut curr_type_id = type_id_of_local_ident(parts[0], fn_decl);
     let mut i = 1;
+
     while (i < parts.len()) && curr_type_id.is_some() {
-        let curr_type = engines.te().get(curr_type_id.unwrap());
-        if let TypeInfo::Struct { fields, .. } = curr_type {
+        if parts[i].ends_with(")") {
+            let method_name = parts[i].split_at(parts[i].find("(").unwrap_or(0)).0;
+            curr_type_id = namespace
+                .get_methods_for_type(engines, curr_type_id?)
+                .iter()
+                .find_map(|decl_ref| {
+                    if decl_ref.name.as_str() == method_name {
+                        return return_type_id_of_fn(engines, decl_ref);
+                    }
+                    None
+                });
+        } else if let TypeInfo::Struct { fields, .. } = engines.te().get(curr_type_id.unwrap()) {
             curr_type_id = fields
                 .iter()
                 .find(|field| field.name.to_string() == parts[i])
                 .and_then(|field| Some(field.type_argument.type_id));
-
-            i += 1;
-        } else {
-            // If it can't be found, break out of the loop.
-            curr_type_id = None;
         }
+        i += 1;
     }
     curr_type_id
+}
+
+/// Returns the [TypeId] of a function or trait function given its [DeclRef].
+fn return_type_id_of_fn(engines: Engines, decl_ref: &DeclRef) -> Option<TypeId> {
+    return engines
+        .de()
+        .get_function(&decl_ref.id, &decl_ref.decl_span)
+        .ok()
+        .and_then(|decl| Some(decl.return_type.type_id))
+        .or_else(|| {
+            engines
+                .de()
+                .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
+                .ok()
+                .and_then(|decl| Some(decl.return_type))
+        });
+}
+
+/// Returns the parameters of a function or trait function given its [DeclRef].
+fn parameters_of_fn(engines: Engines, decl_ref: &DeclRef) -> Vec<TyFunctionParameter> {
+    return engines
+        .de()
+        .get_function(&decl_ref.id, &decl_ref.decl_span)
+        .ok()
+        .and_then(|decl| Some(decl.parameters))
+        .or_else(|| {
+            engines
+                .de()
+                .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
+                .ok()
+                .and_then(|decl| Some(decl.parameters))
+        })
+        .unwrap_or_default();
 }
 
 /// Returns the [TypeId] of an ident by looking for its instantiation within the scope of the

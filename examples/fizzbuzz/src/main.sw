@@ -24,20 +24,20 @@ impl Foo {
             },
         }
     }
-    pub fn bar(i: u8) -> u8 {
+    pub fn bar(&self, i: u8) -> u8 {
         i
     }
-    pub fn baz() -> u8 {
+    pub fn baz(self) -> u8 {
         99
     }
-    pub fn foo(j: Foo) -> Foo {
+    pub fn foo(&self, j: Foo) -> Foo {
         j
     }
 }
 
 fn main() {
     let fooo = Foo::new();
-    fooo
+    fooo.foo(fooo).
 }
 
 fn otherfn(fooo: Foo) {
