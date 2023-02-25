@@ -46,6 +46,9 @@ pub struct BuildProfile {
     ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     #[clap(long)]
     pub release: bool,
+    /// Treat warnings as errors.
+    #[clap(long)]
+    pub error_on_warnings: bool,
 }
 
 /// Options related to printing stages of compiler output.

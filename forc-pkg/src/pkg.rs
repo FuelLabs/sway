@@ -2,14 +2,15 @@ use crate::{
     lock::Lock,
     manifest::{
         BuildProfile, ConfigTimeConstant, Dependency, ManifestFile, MemberManifestFiles,
-        PackageManifest, PackageManifestFile,
+        PackageManifestFile,
     },
+    source::{self, Source},
     CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    default_output_directory, find_file_name, git_checkouts_directory, kebab_to_snake_case,
-    print_on_failure, print_on_success, user_forc_directory,
+    default_output_directory, find_file_name, kebab_to_snake_case, print_on_failure,
+    print_on_success, user_forc_directory,
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
@@ -48,14 +49,29 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
-use url::Url;
 
 type GraphIx = u32;
 type Node = Pinned;
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Edge {
-    /// The name of the dependency as declared under `[dependencies]` or `[contract-dependencies]`.
-    /// This may differ from the package name as declared under the dependency package's manifest.
+    /// The name specified on the left hand side of the `=` in a depenedency declaration under
+    /// `[dependencies]` or `[contract-dependencies]` within a forc manifest.
+    ///
+    /// The name of a dependency may differ from the package name in the case that the dependency's
+    /// `package` field is specified.
+    ///
+    /// For example, in the following, `foo` is assumed to be both the package name and the dependency
+    /// name:
+    ///
+    /// ```toml
+    /// foo = { git = "https://github.com/owner/repo", branch = "master" }
+    /// ```
+    ///
+    /// In the following case however, `foo` is the package name, but the dependency name is `foo-alt`:
+    ///
+    /// ```toml
+    /// foo-alt = { git = "https://github.com/owner/repo", branch = "master", package = "foo" }
+    /// ```
     pub name: String,
     pub kind: DepKind,
 }
@@ -68,14 +84,6 @@ pub enum DepKind {
     Contract { salt: fuel_tx::Salt },
 }
 
-impl fmt::Display for DepKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DepKind::Library => write!(f, "library"),
-            DepKind::Contract { .. } => write!(f, "contract"),
-        }
-    }
-}
 pub type Graph = petgraph::stable_graph::StableGraph<Node, Edge, Directed, GraphIx>;
 pub type EdgeIx = petgraph::graph::EdgeIndex<GraphIx>;
 pub type NodeIx = petgraph::graph::NodeIndex<GraphIx>;
@@ -83,7 +91,7 @@ pub type ManifestMap = HashMap<PinnedId, PackageManifestFile>;
 
 /// A unique ID for a pinned package.
 ///
-/// The internal value is produced by hashing the package's name and `SourcePinned`.
+/// The internal value is produced by hashing the package's name and `source::Pinned`.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct PinnedId(u64);
 
@@ -163,100 +171,7 @@ pub struct Pkg {
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct Pinned {
     pub name: String,
-    pub source: SourcePinned,
-}
-
-/// Specifies a base source for a package.
-///
-/// - For registry packages, this includes a base version.
-/// - For git packages, this includes a base git reference like a branch or tag.
-///
-/// Note that a `Source` does not specify a specific, pinned version. Rather, it specifies a source
-/// at which the current latest version may be located.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub enum Source {
-    /// Used to refer to the root project.
-    Member(PathBuf),
-    /// A git repo with a `Forc.toml` manifest at its root.
-    Git(SourceGit),
-    /// A path to a directory with a `Forc.toml` manifest at its root.
-    Path(PathBuf),
-    /// A forc project hosted on the official registry.
-    Registry(SourceRegistry),
-}
-
-/// A git repo with a `Forc.toml` manifest at its root.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct SourceGit {
-    /// The URL at which the repository is located.
-    pub repo: Url,
-    /// A git reference, e.g. a branch or tag.
-    pub reference: GitReference,
-}
-
-/// Used to distinguish between types of git references.
-///
-/// For the most part, `GitReference` is useful to refine the `refspecs` used to fetch remote
-/// repositories.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub enum GitReference {
-    Branch(String),
-    Tag(String),
-    Rev(String),
-    DefaultBranch,
-}
-
-/// A package from the official registry.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct SourceRegistry {
-    /// The base version specified for the package.
-    pub version: semver::Version,
-}
-
-/// A pinned instance of a git source.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub struct SourceGitPinned {
-    /// The git source that is being pinned.
-    pub source: SourceGit,
-    /// The hash to which we have pinned the source.
-    pub commit_hash: String,
-}
-
-/// A pinned instance of a path source.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub struct SourcePathPinned {
-    /// The ID of the package that is the root of the subgraph of path dependencies that this
-    /// package is a part of.
-    ///
-    /// In other words, when traversing the parents of this package, this is the ID of the first
-    /// non-path ancestor package.
-    ///
-    /// As a result, this will always be either a git package or the root package.
-    ///
-    /// This allows for disambiguating path dependencies of the same name that have different path
-    /// roots.
-    pub path_root: PinnedId,
-}
-
-/// A pinned instance of the registry source.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub struct SourceRegistryPinned {
-    /// The registry package with base version.
-    pub source: SourceRegistry,
-    /// The pinned version.
-    pub version: semver::Version,
-}
-
-/// A pinned instance of the package source.
-///
-/// Specifies an exact version to use, or an exact commit in the case of git dependencies. The
-/// pinned version or commit is updated upon creation of the lock file and on `forc update`.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub enum SourcePinned {
-    Member,
-    Git(SourceGitPinned),
-    Path(SourcePathPinned),
-    Registry(SourceRegistryPinned),
+    pub source: source::Pinned,
 }
 
 /// Represents the full build plan for a project.
@@ -270,33 +185,6 @@ pub struct BuildPlan {
 /// Error returned upon failed parsing of `PinnedId::from_str`.
 #[derive(Clone, Debug)]
 pub struct PinnedIdParseError;
-
-/// Error returned upon failed parsing of `SourcePathPinned::from_str`.
-#[derive(Clone, Debug)]
-pub struct SourcePathPinnedParseError;
-
-/// Error returned upon failed parsing of `SourceGitPinned::from_str`.
-#[derive(Clone, Debug)]
-pub enum SourceGitPinnedParseError {
-    Prefix,
-    Url,
-    Reference,
-    CommitHash,
-}
-
-/// Represents the Head's commit hash and time (in seconds) from epoch
-type HeadWithTime = (String, i64);
-
-/// Everything needed to recognize a checkout in offline mode
-///
-/// Since we are omiting `.git` folder to save disk space, we need an indexing file
-/// to recognize a checkout while searching local checkouts in offline mode
-#[derive(Serialize, Deserialize)]
-pub struct GitSourceIndex {
-    /// Type of the git reference
-    pub git_reference: GitReference,
-    pub head_with_time: HeadWithTime,
-}
 
 #[derive(Default, Clone)]
 pub struct PkgOpts {
@@ -369,6 +257,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Warnings must be treated as compiler errors.
+    pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
     /// List of constants to inject for each package.
@@ -383,6 +273,13 @@ pub struct MemberFilter {
     pub build_scripts: bool,
     pub build_predicates: bool,
     pub build_libraries: bool,
+}
+
+/// Contains the lexed, parsed, and typed compilation stages of a program.
+pub struct Programs {
+    pub lexed: LexedProgram,
+    pub parsed: ParseProgram,
+    pub typed: Option<ty::TyProgram>,
 }
 
 impl Default for MemberFilter {
@@ -468,15 +365,6 @@ impl BuildOpts {
         Self {
             const_inject_map,
             ..self
-        }
-    }
-}
-
-impl GitSourceIndex {
-    pub fn new(time: i64, git_reference: GitReference, commit_hash: String) -> GitSourceIndex {
-        GitSourceIndex {
-            git_reference,
-            head_with_time: (commit_hash, time),
         }
     }
 }
@@ -606,31 +494,6 @@ impl Built {
         }
     }
 }
-const DEFAULT_REMOTE_NAME: &str = "origin";
-
-/// Error returned upon failed parsing of `SourcePinned::from_str`.
-#[derive(Clone, Debug)]
-pub struct SourcePinnedParseError;
-
-/// The name specified on the left hand side of the `=` in a depenedency declaration under
-/// `[dependencies]` within a forc manifest.
-///
-/// The name of a dependency may differ from the package name in the case that the dependency's
-/// `package` field is specified.
-///
-/// For example, in the following, `foo` is assumed to be both the package name and the dependency
-/// name:
-///
-/// ```toml
-/// foo = { git = "https://github.com/owner/repo", branch = "master" }
-/// ```
-///
-/// In the following case however, `foo` is the package name, but the dependency name is `foo-alt`:
-///
-/// ```toml
-/// foo-alt = { git = "https://github.com/owner/repo", branch = "master", package = "foo" }
-/// ```
-pub type DependencyName = String;
 
 impl BuildPlan {
     /// Create a new build plan for the project from the build options provided.
@@ -793,7 +656,7 @@ impl BuildPlan {
         self.compilation_order()
             .iter()
             .cloned()
-            .filter(|&n| self.graph[n].source == SourcePinned::Member)
+            .filter(|&n| self.graph[n].source == source::Pinned::Member)
     }
 
     /// Produce an iterator yielding all workspace member pinned pkgs in order of compilation.
@@ -842,6 +705,20 @@ impl BuildPlan {
                 .build_profiles()
                 .map(|(n, p)| (n.clone(), p.clone()))
         })
+    }
+}
+
+impl Programs {
+    pub fn new(
+        lexed: LexedProgram,
+        parsed: ParseProgram,
+        typed: Option<ty::TyProgram>,
+    ) -> Programs {
+        Programs {
+            lexed,
+            parsed,
+            typed,
+        }
     }
 }
 
@@ -906,7 +783,7 @@ fn validate_pkg_version(pkg_manifest: &PackageManifestFile) -> Result<()> {
 
 fn member_nodes(g: &Graph) -> impl Iterator<Item = NodeIx> + '_ {
     g.node_indices()
-        .filter(|&n| g[n].source == SourcePinned::Member)
+        .filter(|&n| g[n].source == source::Pinned::Member)
 }
 
 /// Validates the state of the pinned package graph against the given ManifestFile.
@@ -990,7 +867,8 @@ fn validate_dep(
     let dep_entry = node_manifest
         .dep(dep_name)
         .ok_or_else(|| anyhow!("no entry in parent manifest"))?;
-    let dep_source = dep_to_source_patched(node_manifest, dep_name, dep_entry, manifests)?;
+    let dep_source =
+        Source::from_manifest_dep_patched(node_manifest, dep_name, dep_entry, manifests)?;
     let dep_pkg = graph[dep_node].unpinned(&dep_path);
     if dep_pkg.source != dep_source {
         bail!("dependency node's source does not match manifest entry");
@@ -1034,7 +912,7 @@ fn validate_dep_manifest(
 
 /// Returns the canonical, local path to the given dependency node if it exists, `None` otherwise.
 ///
-/// Also returns `None` in the case that the dependency is a `Path` dependency and the path root is
+/// Also returns `Err` in the case that the dependency is a `Path` dependency and the path root is
 /// invalid.
 fn dep_path(
     graph: &Graph,
@@ -1044,22 +922,10 @@ fn dep_path(
 ) -> Result<PathBuf> {
     let dep = &graph[dep_node];
     let dep_name = &dep.name;
-    match &dep.source {
-        SourcePinned::Git(git) => {
-            let repo_path = git_commit_path(&dep.name, &git.source.repo, &git.commit_hash);
-            // Co-ordinate access to the git checkout directory using an advisory file lock.
-            let lock = path_lock(&repo_path)?;
-            let _guard = lock.read()?;
-            find_dir_within(&repo_path, &dep.name).ok_or_else(|| {
-                anyhow!(
-                    "failed to find package `{}` in {}",
-                    dep.name,
-                    git.to_string()
-                )
-            })
-        }
-        SourcePinned::Path(src) => {
-            validate_path_root(graph, dep_node, src.path_root)?;
+    match dep.source.dep_path(&dep.name)? {
+        source::DependencyPath::ManifestPath(path) => Ok(path),
+        source::DependencyPath::Root(path_root) => {
+            validate_path_root(graph, dep_node, path_root)?;
 
             // Check if the path is directly from the dependency.
             if let Some(path) = node_manifest.dep_path(dep_name) {
@@ -1087,8 +953,7 @@ fn dep_path(
                 node_manifest.project.name
             )
         }
-        SourcePinned::Registry(_reg) => unreachable!("registry dependencies not yet supported"),
-        SourcePinned::Member => {
+        source::DependencyPath::Member => {
             // If a node has a root dependency it is a member of the workspace.
             manifests
                 .values()
@@ -1143,61 +1008,10 @@ fn has_parent(graph: &Graph, node: NodeIx) -> bool {
         .is_some()
 }
 
-impl GitReference {
-    /// Resolves the parsed forc git reference to the associated git ID.
-    pub fn resolve(&self, repo: &git2::Repository) -> Result<git2::Oid> {
-        // Find the commit associated with this tag.
-        fn resolve_tag(repo: &git2::Repository, tag: &str) -> Result<git2::Oid> {
-            let refname = format!("refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{tag}");
-            let id = repo.refname_to_id(&refname)?;
-            let obj = repo.find_object(id, None)?;
-            let obj = obj.peel(git2::ObjectType::Commit)?;
-            Ok(obj.id())
-        }
-
-        // Resolve to the target for the given branch.
-        fn resolve_branch(repo: &git2::Repository, branch: &str) -> Result<git2::Oid> {
-            let name = format!("{DEFAULT_REMOTE_NAME}/{branch}");
-            let b = repo
-                .find_branch(&name, git2::BranchType::Remote)
-                .with_context(|| format!("failed to find branch `{branch}`"))?;
-            b.get()
-                .target()
-                .ok_or_else(|| anyhow::format_err!("branch `{}` did not have a target", branch))
-        }
-
-        // Use the HEAD commit when default branch is specified.
-        fn resolve_default_branch(repo: &git2::Repository) -> Result<git2::Oid> {
-            let head_id =
-                repo.refname_to_id(&format!("refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"))?;
-            let head = repo.find_object(head_id, None)?;
-            Ok(head.peel(git2::ObjectType::Commit)?.id())
-        }
-
-        // Find the commit for the given revision.
-        fn resolve_rev(repo: &git2::Repository, rev: &str) -> Result<git2::Oid> {
-            let obj = repo.revparse_single(rev)?;
-            match obj.as_tag() {
-                Some(tag) => Ok(tag.target_id()),
-                None => Ok(obj.id()),
-            }
-        }
-
-        match self {
-            GitReference::Tag(s) => {
-                resolve_tag(repo, s).with_context(|| format!("failed to find tag `{s}`"))
-            }
-            GitReference::Branch(s) => resolve_branch(repo, s),
-            GitReference::DefaultBranch => resolve_default_branch(repo),
-            GitReference::Rev(s) => resolve_rev(repo, s),
-        }
-    }
-}
-
 impl Pinned {
     /// Retrieve the unique ID for the pinned package.
     ///
-    /// The internal value is produced by hashing the package's name and `SourcePinned`.
+    /// The internal value is produced by hashing the package's name and `source::Pinned`.
     pub fn id(&self) -> PinnedId {
         PinnedId::new(&self.name, &self.source)
     }
@@ -1205,10 +1019,10 @@ impl Pinned {
     /// Retrieve the unpinned version of this source.
     pub fn unpinned(&self, path: &Path) -> Pkg {
         let source = match &self.source {
-            SourcePinned::Member => Source::Member(path.to_owned()),
-            SourcePinned::Git(git) => Source::Git(git.source.clone()),
-            SourcePinned::Path(_) => Source::Path(path.to_owned()),
-            SourcePinned::Registry(reg) => Source::Registry(reg.source.clone()),
+            source::Pinned::Member => Source::Member(path.to_owned()),
+            source::Pinned::Git(git) => Source::Git(git.source.clone()),
+            source::Pinned::Path(_) => Source::Path(path.to_owned()),
+            source::Pinned::Registry(reg) => Source::Registry(reg.source.clone()),
         };
         let name = self.name.clone();
         Pkg { name, source }
@@ -1217,7 +1031,7 @@ impl Pinned {
 
 impl PinnedId {
     /// Hash the given name and pinned source to produce a unique pinned package ID.
-    pub fn new(name: &str, source: &SourcePinned) -> Self {
+    pub fn new(name: &str, source: &source::Pinned) -> Self {
         let mut hasher = hash_map::DefaultHasher::default();
         name.hash(&mut hasher);
         source.hash(&mut hasher);
@@ -1225,12 +1039,13 @@ impl PinnedId {
     }
 }
 
-impl SourcePathPinned {
-    pub const PREFIX: &'static str = "path";
-}
-
-impl SourceGitPinned {
-    pub const PREFIX: &'static str = "git";
+impl fmt::Display for DepKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DepKind::Library => write!(f, "library"),
+            DepKind::Contract { .. } => write!(f, "contract"),
+        }
+    }
 }
 
 impl fmt::Display for PinnedId {
@@ -1240,174 +1055,12 @@ impl fmt::Display for PinnedId {
     }
 }
 
-impl fmt::Display for SourcePathPinned {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // path+from-root-<id>
-        write!(f, "{}+from-root-{}", Self::PREFIX, self.path_root)
-    }
-}
-
-impl fmt::Display for SourceGitPinned {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // git+<url/to/repo>?<ref_kind>=<ref_string>#<commit>
-        write!(
-            f,
-            "{}+{}?{}#{}",
-            Self::PREFIX,
-            self.source.repo,
-            self.source.reference,
-            self.commit_hash
-        )
-    }
-}
-
-impl fmt::Display for GitReference {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            GitReference::Branch(ref s) => write!(f, "branch={s}"),
-            GitReference::Tag(ref s) => write!(f, "tag={s}"),
-            GitReference::Rev(ref _s) => write!(f, "rev"),
-            GitReference::DefaultBranch => write!(f, "default-branch"),
-        }
-    }
-}
-
-impl fmt::Display for SourcePinned {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            SourcePinned::Member => write!(f, "member"),
-            SourcePinned::Path(src) => src.fmt(f),
-            SourcePinned::Git(src) => src.fmt(f),
-            SourcePinned::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
-        }
-    }
-}
-
 impl FromStr for PinnedId {
     type Err = PinnedIdParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(
             u64::from_str_radix(s, 16).map_err(|_| PinnedIdParseError)?,
         ))
-    }
-}
-
-impl FromStr for SourcePathPinned {
-    type Err = SourcePathPinnedParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // path+from-root-<id>
-        let s = s.trim();
-
-        // Check for prefix at the start.
-        let prefix_plus = format!("{}+", Self::PREFIX);
-        if s.find(&prefix_plus) != Some(0) {
-            return Err(SourcePathPinnedParseError);
-        }
-        let s = &s[prefix_plus.len()..];
-
-        // Parse the `from-root-*` section.
-        let path_root = s
-            .split("from-root-")
-            .nth(1)
-            .ok_or(SourcePathPinnedParseError)?
-            .parse()
-            .map_err(|_| SourcePathPinnedParseError)?;
-
-        Ok(Self { path_root })
-    }
-}
-
-impl FromStr for SourceGitPinned {
-    type Err = SourceGitPinnedParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // git+<url/to/repo>?<reference>#<commit>
-        let s = s.trim();
-
-        // Check for "git+" at the start.
-        let prefix_plus = format!("{}+", Self::PREFIX);
-        if s.find(&prefix_plus) != Some(0) {
-            return Err(SourceGitPinnedParseError::Prefix);
-        }
-        let s = &s[prefix_plus.len()..];
-
-        // Parse the `repo` URL.
-        let repo_str = s.split('?').next().ok_or(SourceGitPinnedParseError::Url)?;
-        let repo = Url::parse(repo_str).map_err(|_| SourceGitPinnedParseError::Url)?;
-        let s = &s[repo_str.len() + "?".len()..];
-
-        // Parse the git reference and commit hash. This can be any of either:
-        // - `branch=<branch-name>#<commit-hash>`
-        // - `tag=<tag-name>#<commit-hash>`
-        // - `rev#<commit-hash>`
-        // - `default#<commit-hash>`
-        let mut s_iter = s.split('#');
-        let reference = s_iter.next().ok_or(SourceGitPinnedParseError::Reference)?;
-        let commit_hash = s_iter
-            .next()
-            .ok_or(SourceGitPinnedParseError::CommitHash)?
-            .to_string();
-        validate_git_commit_hash(&commit_hash)
-            .map_err(|_| SourceGitPinnedParseError::CommitHash)?;
-
-        const BRANCH: &str = "branch=";
-        const TAG: &str = "tag=";
-        let reference = if reference.find(BRANCH) == Some(0) {
-            GitReference::Branch(reference[BRANCH.len()..].to_string())
-        } else if reference.find(TAG) == Some(0) {
-            GitReference::Tag(reference[TAG.len()..].to_string())
-        } else if reference == "rev" {
-            GitReference::Rev(commit_hash.to_string())
-        } else if reference == "default-branch" {
-            GitReference::DefaultBranch
-        } else {
-            return Err(SourceGitPinnedParseError::Reference);
-        };
-
-        let source = SourceGit { repo, reference };
-        Ok(Self {
-            source,
-            commit_hash,
-        })
-    }
-}
-
-impl FromStr for SourcePinned {
-    type Err = SourcePinnedParseError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let source = if s == "root" || s == "member" {
-            // Also check `"root"` to support reading the legacy `Forc.lock` format and to
-            // avoid breaking old projects.
-            SourcePinned::Member
-        } else if let Ok(src) = SourcePathPinned::from_str(s) {
-            SourcePinned::Path(src)
-        } else if let Ok(src) = SourceGitPinned::from_str(s) {
-            SourcePinned::Git(src)
-        } else {
-            // TODO: Try parse registry source.
-            return Err(SourcePinnedParseError);
-        };
-        Ok(source)
-    }
-}
-
-fn validate_git_commit_hash(commit_hash: &str) -> Result<()> {
-    const LEN: usize = 40;
-    if commit_hash.len() != LEN {
-        bail!(
-            "invalid hash length: expected {}, found {}",
-            LEN,
-            commit_hash.len()
-        );
-    }
-    if !commit_hash.chars().all(|c| c.is_ascii_alphanumeric()) {
-        bail!("hash contains one or more non-ascii-alphanumeric characters");
-    }
-    Ok(())
-}
-
-impl Default for GitReference {
-    fn default() -> Self {
-        Self::DefaultBranch
     }
 }
 
@@ -1531,7 +1184,7 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
     loop {
         let pkg = &graph[node];
         match &pkg.source {
-            SourcePinned::Path(src) => {
+            source::Pinned::Path(src) => {
                 let parent = graph
                     .edges_directed(node, Direction::Incoming)
                     .next()
@@ -1544,22 +1197,11 @@ fn find_path_root(graph: &Graph, mut node: NodeIx) -> Result<NodeIx> {
                     })?;
                 node = parent;
             }
-            SourcePinned::Git(_) | SourcePinned::Registry(_) | SourcePinned::Member => {
+            source::Pinned::Git(_) | source::Pinned::Registry(_) | source::Pinned::Member => {
                 return Ok(node);
             }
         }
     }
-}
-
-/// Produce a unique ID for a particular fetch pass.
-///
-/// This is used in the temporary git directory and allows for avoiding contention over the git
-/// repo directory.
-pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
-    let mut hasher = hash_map::DefaultHasher::new();
-    path.hash(&mut hasher);
-    timestamp.hash(&mut hasher);
-    hasher.finish()
 }
 
 /// Given an empty or partially completed `graph`, complete the graph.
@@ -1614,7 +1256,7 @@ fn fetch_pkg_graph(
         Ok(proj_node) => proj_node,
         Err(_) => {
             let name = proj_manifest.project.name.clone();
-            let source = SourcePinned::Member;
+            let source = source::Pinned::Member;
             let pkg = Pinned { name, source };
             let pkg_id = pkg.id();
             manifest_map.insert(pkg_id, proj_manifest.clone());
@@ -1624,7 +1266,7 @@ fn fetch_pkg_graph(
 
     // Traverse the rest of the graph from the root.
     let fetch_ts = std::time::Instant::now();
-    let fetch_id = fetch_id(proj_manifest.dir(), fetch_ts);
+    let fetch_id = source::fetch_id(proj_manifest.dir(), fetch_ts);
     let path_root = graph[proj_node].id();
     let mut fetched = graph
         .node_indices()
@@ -1686,15 +1328,25 @@ fn fetch_deps(
     for (dep_name, dep, dep_kind) in deps {
         let name = dep.package().unwrap_or(&dep_name).to_string();
         let parent_manifest = &manifest_map[&parent_id];
-        let source = dep_to_source_patched(parent_manifest, &name, &dep, member_manifests)
-            .context("Failed to source dependency")?;
+        let source =
+            Source::from_manifest_dep_patched(parent_manifest, &name, &dep, member_manifests)
+                .context("Failed to source dependency")?;
 
         // If we haven't yet fetched this dependency, fetch it, pin it and add it to the graph.
         let dep_pkg = Pkg { name, source };
         let dep_node = match fetched.entry(dep_pkg) {
             hash_map::Entry::Occupied(entry) => *entry.get(),
             hash_map::Entry::Vacant(entry) => {
-                let dep_pinned = pin_pkg(fetch_id, path_root, entry.key(), manifest_map, offline)?;
+                let pkg = entry.key();
+                let ctx = source::PinCtx {
+                    fetch_id,
+                    path_root,
+                    name: &pkg.name,
+                    offline,
+                };
+                let source = pkg.source.pin(ctx, manifest_map)?;
+                let name = pkg.name.clone();
+                let dep_pinned = Pinned { name, source };
                 let dep_node = graph.add_node(dep_pinned);
                 added.insert(dep_node);
                 *entry.insert(dep_node)
@@ -1723,8 +1375,10 @@ fn fetch_deps(
         })?;
 
         let path_root = match dep_pinned.source {
-            SourcePinned::Member | SourcePinned::Git(_) | SourcePinned::Registry(_) => dep_pkg_id,
-            SourcePinned::Path(_) => path_root,
+            source::Pinned::Member | source::Pinned::Git(_) | source::Pinned::Registry(_) => {
+                dep_pkg_id
+            }
+            source::Pinned::Path(_) => path_root,
         };
 
         // Fetch the children.
@@ -1741,263 +1395,6 @@ fn fetch_deps(
         )?);
     }
     Ok(added)
-}
-
-/// The name to use for a package's git repository under the user's forc directory.
-fn git_repo_dir_name(name: &str, repo: &Url) -> String {
-    let repo_url_hash = hash_url(repo);
-    format!("{name}-{repo_url_hash:x}")
-}
-
-fn hash_url(url: &Url) -> u64 {
-    let mut hasher = hash_map::DefaultHasher::new();
-    url.hash(&mut hasher);
-    hasher.finish()
-}
-
-/// A temporary directory that we can use for cloning a git-sourced package's repo and discovering
-/// the current HEAD for the given git reference.
-///
-/// The resulting directory is:
-///
-/// ```ignore
-/// $HOME/.forc/git/checkouts/tmp/<fetch_id>-name-<repo_url_hash>
-/// ```
-///
-/// A unique `fetch_id` may be specified to avoid contention over the git repo directory in the
-/// case that multiple processes or threads may be building different projects that may require
-/// fetching the same dependency.
-fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
-    let repo_dir_name = format!("{:x}-{}", fetch_id, git_repo_dir_name(name, repo));
-    git_checkouts_directory().join("tmp").join(repo_dir_name)
-}
-
-/// Given a git reference, build a list of `refspecs` required for the fetch opration.
-///
-/// Also returns whether or not our reference implies we require fetching tags.
-fn git_ref_to_refspecs(reference: &GitReference) -> (Vec<String>, bool) {
-    let mut refspecs = vec![];
-    let mut tags = false;
-    match reference {
-        GitReference::Branch(s) => {
-            refspecs.push(format!(
-                "+refs/heads/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/{s}"
-            ));
-        }
-        GitReference::Tag(s) => {
-            refspecs.push(format!(
-                "+refs/tags/{s}:refs/remotes/{DEFAULT_REMOTE_NAME}/tags/{s}"
-            ));
-        }
-        GitReference::Rev(s) => {
-            if s.starts_with("refs/") {
-                refspecs.push(format!("+{s}:{s}"));
-            } else {
-                // We can't fetch the commit directly, so we fetch all branches and tags in order
-                // to find it.
-                refspecs.push(format!(
-                    "+refs/heads/*:refs/remotes/{DEFAULT_REMOTE_NAME}/*"
-                ));
-                refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
-                tags = true;
-            }
-        }
-        GitReference::DefaultBranch => {
-            refspecs.push(format!("+HEAD:refs/remotes/{DEFAULT_REMOTE_NAME}/HEAD"));
-        }
-    }
-    (refspecs, tags)
-}
-
-/// Initializes a temporary git repo for the package and fetches only the reference associated with
-/// the given source.
-fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &SourceGit, f: F) -> Result<O>
-where
-    F: FnOnce(git2::Repository) -> Result<O>,
-{
-    // Clear existing temporary directory if it exists.
-    let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
-    if repo_dir.exists() {
-        let _ = std::fs::remove_dir_all(&repo_dir);
-    }
-
-    // Initialise the repository.
-    let repo = git2::Repository::init(&repo_dir)
-        .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
-
-    // Fetch the necessary references.
-    let (refspecs, tags) = git_ref_to_refspecs(&source.reference);
-
-    // Fetch the refspecs.
-    let mut fetch_opts = git2::FetchOptions::new();
-    if tags {
-        fetch_opts.download_tags(git2::AutotagOption::All);
-    }
-    repo.remote_anonymous(source.repo.as_str())?
-        .fetch(&refspecs, Some(&mut fetch_opts), None)
-        .with_context(|| {
-            format!(
-                "failed to fetch `{}`. Check your connection or run in `--offline` mode",
-                &source.repo
-            )
-        })?;
-
-    // Call the user function.
-    let output = f(repo)?;
-
-    // Clean up the temporary directory.
-    let _ = std::fs::remove_dir_all(&repo_dir);
-    Ok(output)
-}
-
-/// Pin the given git-sourced package.
-///
-/// This clones the repository to a temporary directory in order to determine the commit at the
-/// HEAD of the given git reference.
-pub fn pin_git(fetch_id: u64, name: &str, source: SourceGit) -> Result<SourceGitPinned> {
-    let commit_hash = with_tmp_git_repo(fetch_id, name, &source, |repo| {
-        // Resolve the reference to the commit ID.
-        let commit_id = source
-            .reference
-            .resolve(&repo)
-            .with_context(|| "failed to resolve reference".to_string())?;
-        Ok(format!("{commit_id}"))
-    })?;
-    Ok(SourceGitPinned {
-        source,
-        commit_hash,
-    })
-}
-
-/// Given a package source, attempt to determine the pinned version or commit.
-///
-/// Also updates the `path_map` with a path to the local copy of the source.
-///
-/// The `path_root` is required for `Path` dependencies and must specify the package that is the
-/// root of the current subgraph of path dependencies.
-fn pin_pkg(
-    fetch_id: u64,
-    path_root: PinnedId,
-    pkg: &Pkg,
-    manifest_map: &mut ManifestMap,
-    offline: bool,
-) -> Result<Pinned> {
-    let name = pkg.name.clone();
-    let pinned = match &pkg.source {
-        Source::Member(path) => {
-            let source = SourcePinned::Member;
-            let pinned = Pinned { name, source };
-            let id = pinned.id();
-            let manifest = PackageManifestFile::from_dir(path)?;
-            manifest_map.insert(id, manifest);
-            pinned
-        }
-        Source::Path(path) => {
-            let path_pinned = SourcePathPinned { path_root };
-            let source = SourcePinned::Path(path_pinned);
-            let pinned = Pinned { name, source };
-            let id = pinned.id();
-            let manifest = PackageManifestFile::from_dir(path)?;
-            manifest_map.insert(id, manifest);
-            pinned
-        }
-        Source::Git(ref git_source) => {
-            // If the git source directly specifies a full commit hash, we should check
-            // to see if we have a local copy. Otherwise we cannot know what commit we should pin
-            // to without fetching the repo into a temporary directory.
-            let (pinned_git, repo_path) = if offline {
-                let (local_path, commit_hash) = search_git_source_locally(&name, git_source)?
-                    .ok_or_else(|| {
-                        anyhow!(
-                            "Unable to fetch pkg {:?} from  {:?} in offline mode",
-                            name,
-                            git_source.repo
-                        )
-                    })?;
-                let pinned_git = SourceGitPinned {
-                    source: git_source.clone(),
-                    commit_hash,
-                };
-                (pinned_git, local_path)
-            } else if let GitReference::DefaultBranch | GitReference::Branch(_) =
-                git_source.reference
-            {
-                // If the reference is to a branch or to the default branch we need to fetch
-                // from remote even though we may have it locally. Because remote may contain a
-                // newer commit.
-                let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-                let repo_path =
-                    git_commit_path(&name, &pinned_git.source.repo, &pinned_git.commit_hash);
-                (pinned_git, repo_path)
-            } else {
-                // If we are in online mode and the reference is to a specific commit (tag or
-                // rev) we can first search it locally and re-use it.
-                match search_git_source_locally(&name, git_source) {
-                    Ok(Some((local_path, commit_hash))) => {
-                        let pinned_git = SourceGitPinned {
-                            source: git_source.clone(),
-                            commit_hash,
-                        };
-                        (pinned_git, local_path)
-                    }
-                    _ => {
-                        // If the checkout we are looking for does not exists locally or an
-                        // error happened during the search fetch it
-                        let pinned_git = pin_git(fetch_id, &name, git_source.clone())?;
-                        let repo_path = git_commit_path(
-                            &name,
-                            &pinned_git.source.repo,
-                            &pinned_git.commit_hash,
-                        );
-                        (pinned_git, repo_path)
-                    }
-                }
-            };
-            let source = SourcePinned::Git(pinned_git.clone());
-            let pinned = Pinned { name, source };
-            let id = pinned.id();
-            if let hash_map::Entry::Vacant(entry) = manifest_map.entry(id) {
-                // Co-ordinate access to the git checkout directory using an advisory file lock.
-                let mut lock = path_lock(&repo_path)?;
-
-                // TODO: Here we assume that if the local path already exists, that it contains the
-                // full and correct source for that commit and hasn't been tampered with. This is
-                // probably fine for most cases as users should never be touching these
-                // directories, however we should add some code to validate this. E.g. can we
-                // recreate the git hash by hashing the directory or something along these lines
-                // using git?
-                {
-                    let _guard = lock.write()?;
-                    if !repo_path.exists() {
-                        info!("  Fetching {}", pinned_git.to_string());
-                        fetch_git(fetch_id, &pinned.name, &pinned_git)?;
-                    }
-                }
-                let path = {
-                    let _guard = lock.read()?;
-                    find_dir_within(&repo_path, &pinned.name).ok_or_else(|| {
-                        anyhow!(
-                            "failed to find package `{}` in {}",
-                            pinned.name,
-                            pinned_git.to_string()
-                        )
-                    })?
-                };
-                let manifest = PackageManifestFile::from_dir(&path)?;
-                entry.insert(manifest);
-            }
-            pinned
-        }
-        Source::Registry(ref _source) => {
-            if offline {
-                bail!("Unable to fetch pkg {:?} in offline mode", name);
-            }
-            // TODO: determine registry pkg git URL, fetch to determine latest available
-            // semver-compatible version
-            bail!("registry dependencies are not yet supported");
-        }
-    };
-    Ok(pinned)
 }
 
 /// Given a path to a directory we wish to lock, produce a path for an associated lock file.
@@ -2032,7 +1429,7 @@ fn fd_lock_path(path: &Path) -> PathBuf {
 /// Create an advisory lock over the given path.
 ///
 /// See [fd_lock_path] for details.
-fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+pub(crate) fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
     let lock_path = fd_lock_path(path);
     let lock_dir = lock_path
         .parent()
@@ -2040,301 +1437,6 @@ fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
     std::fs::create_dir_all(lock_dir).context("failed to create forc advisory lock directory")?;
     let lock_file = File::create(&lock_path).context("failed to create advisory lock file")?;
     Ok(fd_lock::RwLock::new(lock_file))
-}
-
-/// The path to which a git package commit should be checked out.
-///
-/// The resulting directory is:
-///
-/// ```ignore
-/// $HOME/.forc/git/checkouts/name-<repo_url_hash>/<commit_hash>
-/// ```
-///
-/// where `<repo_url_hash>` is a hash of the source repository URL.
-pub fn git_commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
-    let repo_dir_name = git_repo_dir_name(name, repo);
-    git_checkouts_directory()
-        .join(repo_dir_name)
-        .join(commit_hash)
-}
-
-/// Fetch the repo at the given git package's URL and checkout the pinned commit.
-///
-/// Returns the location of the checked out commit.
-///
-/// NOTE: This function assumes that the caller has aquired an advisory lock to co-ordinate access
-/// to the git repository checkout path.
-pub fn fetch_git(fetch_id: u64, name: &str, pinned: &SourceGitPinned) -> Result<PathBuf> {
-    let path = git_commit_path(name, &pinned.source.repo, &pinned.commit_hash);
-    // Checkout the pinned hash to the path.
-    with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
-        // Change HEAD to point to the pinned commit.
-        let id = git2::Oid::from_str(&pinned.commit_hash)?;
-        repo.set_head_detached(id)?;
-
-        // If the directory exists, remove it. Note that we already check for an existing,
-        // cached checkout directory for re-use prior to reaching the `fetch_git` function.
-        if path.exists() {
-            let _ = fs::remove_dir_all(&path);
-        }
-        fs::create_dir_all(&path)?;
-
-        // Checkout HEAD to the target directory.
-        let mut checkout = git2::build::CheckoutBuilder::new();
-        checkout.force().target_dir(&path);
-        repo.checkout_head(Some(&mut checkout))?;
-
-        // Fetch HEAD time and create an index
-        let current_head = repo.revparse_single("HEAD")?;
-        let head_commit = current_head
-            .as_commit()
-            .ok_or_else(|| anyhow!("Cannot get commit from {}", current_head.id().to_string()))?;
-        let head_time = head_commit.time().seconds();
-        let source_index = GitSourceIndex::new(
-            head_time,
-            pinned.source.reference.clone(),
-            pinned.commit_hash.clone(),
-        );
-
-        // Write the index file
-        fs::write(
-            path.join(".forc_index"),
-            serde_json::to_string(&source_index)?,
-        )?;
-        Ok(())
-    })?;
-    Ok(path)
-}
-
-/// Search local checkout dir for git sources, for non-branch git references tries to find the
-/// exact match. For branch references, tries to find the most recent repo present locally with the given repo
-fn search_git_source_locally(
-    name: &str,
-    git_source: &SourceGit,
-) -> Result<Option<(PathBuf, String)>> {
-    // In the checkouts dir iterate over dirs whose name starts with `name`
-    let checkouts_dir = git_checkouts_directory();
-    match &git_source.reference {
-        GitReference::Branch(branch) => {
-            // Collect repos from this branch with their HEAD time
-            let repos_from_branch = collect_local_repos_with_branch(checkouts_dir, name, branch)?;
-            // Get the newest repo by their HEAD commit times
-            let newest_branch_repo = repos_from_branch
-                .into_iter()
-                .max_by_key(|&(_, (_, time))| time)
-                .map(|(repo_path, (hash, _))| (repo_path, hash));
-            Ok(newest_branch_repo)
-        }
-        _ => find_exact_local_repo_with_reference(checkouts_dir, name, &git_source.reference),
-    }
-}
-
-/// Search and collect repos from checkouts_dir that are from given branch and for the given package
-fn collect_local_repos_with_branch(
-    checkouts_dir: PathBuf,
-    package_name: &str,
-    branch_name: &str,
-) -> Result<Vec<(PathBuf, HeadWithTime)>> {
-    let mut list_of_repos = Vec::new();
-    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
-        // Check if the repo's HEAD commit to verify it is from desired branch
-        if let GitReference::Branch(branch) = repo_index.git_reference {
-            if branch == branch_name {
-                list_of_repos.push((repo_dir_path, repo_index.head_with_time));
-            }
-        }
-        Ok(())
-    })?;
-    Ok(list_of_repos)
-}
-
-/// Search an exact reference in locally available repos
-fn find_exact_local_repo_with_reference(
-    checkouts_dir: PathBuf,
-    package_name: &str,
-    git_reference: &GitReference,
-) -> Result<Option<(PathBuf, String)>> {
-    let mut found_local_repo = None;
-    if let GitReference::Tag(tag) = git_reference {
-        found_local_repo = find_repo_with_tag(tag, package_name, checkouts_dir)?;
-    } else if let GitReference::Rev(rev) = git_reference {
-        found_local_repo = find_repo_with_rev(rev, package_name, checkouts_dir)?;
-    }
-    Ok(found_local_repo)
-}
-
-/// Search and find the match repo between the given tag and locally available options
-fn find_repo_with_tag(
-    tag: &str,
-    package_name: &str,
-    checkouts_dir: PathBuf,
-) -> Result<Option<(PathBuf, String)>> {
-    let mut found_local_repo = None;
-    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
-        // Get current head of the repo
-        let current_head = repo_index.head_with_time.0;
-        if let GitReference::Tag(curr_repo_tag) = repo_index.git_reference {
-            if curr_repo_tag == tag {
-                found_local_repo = Some((repo_dir_path, current_head))
-            }
-        }
-        Ok(())
-    })?;
-    Ok(found_local_repo)
-}
-
-/// Search and find the match repo between the given rev and locally available options
-fn find_repo_with_rev(
-    rev: &str,
-    package_name: &str,
-    checkouts_dir: PathBuf,
-) -> Result<Option<(PathBuf, String)>> {
-    let mut found_local_repo = None;
-    with_search_checkouts(checkouts_dir, package_name, |repo_index, repo_dir_path| {
-        // Get current head of the repo
-        let current_head = repo_index.head_with_time.0;
-        if let GitReference::Rev(curr_repo_rev) = repo_index.git_reference {
-            if curr_repo_rev == rev {
-                found_local_repo = Some((repo_dir_path, current_head));
-            }
-        }
-        Ok(())
-    })?;
-    Ok(found_local_repo)
-}
-
-/// Search local checkouts directory and apply the given function. This is used for iterating over
-/// possible options of a given package.
-fn with_search_checkouts<F>(checkouts_dir: PathBuf, package_name: &str, mut f: F) -> Result<()>
-where
-    F: FnMut(GitSourceIndex, PathBuf) -> Result<()>,
-{
-    for entry in fs::read_dir(checkouts_dir)? {
-        let entry = entry?;
-        let folder_name = entry
-            .file_name()
-            .into_string()
-            .map_err(|_| anyhow!("invalid folder name"))?;
-        if folder_name.starts_with(package_name) {
-            // Search if the dir we are looking starts with the name of our package
-            for repo_dir in fs::read_dir(entry.path())? {
-                // Iterate over all dirs inside the `name-***` directory and try to open repo from
-                // each dirs inside this one
-                let repo_dir = repo_dir
-                    .map_err(|e| anyhow!("Cannot find local repo at checkouts dir {}", e))?;
-                if repo_dir.file_type()?.is_dir() {
-                    // Get the path of the current repo
-                    let repo_dir_path = repo_dir.path();
-                    // Get the index file from the found path
-                    if let Ok(index_file) = fs::read_to_string(repo_dir_path.join(".forc_index")) {
-                        let index = serde_json::from_str(&index_file)?;
-                        f(index, repo_dir_path)?;
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Given the path to a package and a `Dependency` parsed from one of its forc dependencies,
-/// produce the `Source` for that dependendency.
-fn dep_to_source(
-    pkg_path: &Path,
-    dep: &Dependency,
-    member_manifests: &MemberManifestFiles,
-) -> Result<Source> {
-    let source = match dep {
-        Dependency::Simple(ref ver_str) => {
-            bail!(
-                "Unsupported dependency declaration in \"{}\": `{}` - \
-                currently only `git` and `path` dependencies are supported",
-                pkg_path.display(),
-                ver_str
-            )
-        }
-        Dependency::Detailed(ref det) => match (&det.path, &det.version, &det.git) {
-            (Some(relative_path), _, _) => {
-                let path = pkg_path.join(relative_path);
-                let canonical_path = path.canonicalize().map_err(|e| {
-                    anyhow!("Failed to canonicalize dependency path {:?}: {}", path, e)
-                })?;
-                // Check if path is a member of a workspace.
-                if member_manifests
-                    .values()
-                    .any(|pkg_manifest| pkg_manifest.dir() == canonical_path)
-                {
-                    Source::Member(canonical_path)
-                } else {
-                    Source::Path(canonical_path)
-                }
-            }
-            (_, _, Some(repo)) => {
-                let reference = match (&det.branch, &det.tag, &det.rev) {
-                    (Some(branch), None, None) => GitReference::Branch(branch.clone()),
-                    (None, Some(tag), None) => GitReference::Tag(tag.clone()),
-                    (None, None, Some(rev)) => GitReference::Rev(rev.clone()),
-                    (None, None, None) => GitReference::DefaultBranch,
-                    _ => bail!(
-                        "git dependencies support at most one reference: \
-                            either `branch`, `tag` or `rev`"
-                    ),
-                };
-                let repo = Url::parse(repo)?;
-                let source = SourceGit { repo, reference };
-                Source::Git(source)
-            }
-            _ => {
-                bail!("unsupported set of fields for dependency: {:?}", dep);
-            }
-        },
-    };
-    Ok(source)
-}
-
-/// If a patch exists for the given dependency source within the given project manifest, this
-/// returns the patch.
-fn dep_source_patch<'manifest>(
-    manifest: &'manifest PackageManifestFile,
-    dep_name: &str,
-    dep_source: &Source,
-) -> Option<&'manifest Dependency> {
-    if let Source::Git(git) = dep_source {
-        if let Some(patches) = manifest.patch(git.repo.as_str()) {
-            if let Some(patch) = patches.get(dep_name) {
-                return Some(patch);
-            }
-        }
-    }
-    None
-}
-
-/// If a patch exists for the given dependency within the given manifest, this returns a new
-/// `Source` with the patch applied.
-///
-/// If no patch exists, this returns the original `Source`.
-fn apply_patch(
-    manifest: &PackageManifestFile,
-    dep_name: &str,
-    dep_source: &Source,
-    member_manifests: &MemberManifestFiles,
-) -> Result<Source> {
-    match dep_source_patch(manifest, dep_name, dep_source) {
-        Some(patch) => dep_to_source(manifest.dir(), patch, member_manifests),
-        None => Ok(dep_source.clone()),
-    }
-}
-
-/// Converts the `Dependency` to a `Source` with any relevant patches in the given manifest
-/// applied.
-fn dep_to_source_patched(
-    manifest: &PackageManifestFile,
-    dep_name: &str,
-    dep: &Dependency,
-    member_manifests: &MemberManifestFiles,
-) -> Result<Source> {
-    let unpatched = dep_to_source(manifest.dir(), dep, member_manifests)?;
-    apply_patch(manifest, dep_name, &unpatched, member_manifests)
 }
 
 /// Given a `forc_pkg::BuildProfile`, produce the necessary `sway_core::BuildConfig` required for
@@ -2564,8 +1666,9 @@ pub fn compile(
         sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
     );
     let terse_mode = build_profile.terse;
+    let reverse_errors = build_profile.reverse_errors;
     let fail = |warnings, errors| {
-        print_on_failure(terse_mode, warnings, errors);
+        print_on_failure(terse_mode, warnings, errors, reverse_errors);
         bail!("Failed to compile {}", pkg.name);
     };
 
@@ -2646,7 +1749,9 @@ pub fn compile(
         Some(CompiledBytecode {
             bytecode: bytes,
             config_const_offsets: config_offsets,
-        }) if bc_res.errors.is_empty() => {
+        }) if bc_res.errors.is_empty()
+            && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
+        {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
@@ -2770,6 +1875,7 @@ fn build_profile_from_opts(
         release,
         time_phases,
         tests,
+        error_on_warnings,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2813,6 +1919,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2992,7 +2099,7 @@ pub fn build(
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs, bool);
+                print_on_failure(profile.terse, &[], &errs, profile.reverse_errors);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
@@ -3161,27 +2268,6 @@ fn update_json_type_declaration(
     }
 }
 
-/// Contains the lexed, parsed, and typed compilation stages of a program.
-pub struct Programs {
-    pub lexed: LexedProgram,
-    pub parsed: ParseProgram,
-    pub typed: Option<ty::TyProgram>,
-}
-
-impl Programs {
-    pub fn new(
-        lexed: LexedProgram,
-        parsed: ParseProgram,
-        typed: Option<ty::TyProgram>,
-    ) -> Programs {
-        Programs {
-            lexed,
-            parsed,
-            typed,
-        }
-    }
-}
-
 /// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependancies and project.
 /// The final item in the returned vector is the project.
@@ -3281,108 +2367,6 @@ pub fn parse(
     Ok(sway_core::parse(source, engines, Some(&sway_build_config)))
 }
 
-/// Attempt to find a `Forc.toml` with the given project name within the given directory.
-///
-/// Returns the path to the package on success, or `None` in the case it could not be found.
-pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
-    walkdir::WalkDir::new(dir)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
-        .find_map(|entry| {
-            let path = entry.path();
-            let manifest = PackageManifest::from_file(path).ok()?;
-            if manifest.project.name == pkg_name {
-                Some(path.to_path_buf())
-            } else {
-                None
-            }
-        })
-}
-
-/// The same as [find_within], but returns the package's project directory.
-pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
-    find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
-}
-
-#[test]
-fn test_root_pkg_order() {
-    let current_dir = env!("CARGO_MANIFEST_DIR");
-    let manifest_dir = PathBuf::from(current_dir)
-        .parent()
-        .unwrap()
-        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
-    let member_manifests = manifest_file.member_manifests().unwrap();
-    let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan =
-        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
-    let graph = build_plan.graph();
-    let order: Vec<String> = build_plan
-        .member_nodes()
-        .map(|order| graph[order].name.clone())
-        .collect();
-    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
-}
-
-#[test]
-fn test_source_git_pinned_parsing() {
-    let strings = [
-        "git+https://github.com/foo/bar?branch=baz#64092602dd6158f3e41d775ed889389440a2cd86",
-        "git+https://github.com/fuellabs/sway-lib-std?tag=v0.1.0#0000000000000000000000000000000000000000",
-        "git+https://github.com/fuellabs/sway-lib-core?tag=v0.0.1#0000000000000000000000000000000000000000",
-        "git+https://some-git-host.com/owner/repo?rev#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
-        "git+https://some-git-host.com/owner/repo?default-branch#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    ];
-
-    let expected = [
-        SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/foo/bar").unwrap(),
-                reference: GitReference::Branch("baz".to_string()),
-            },
-            commit_hash: "64092602dd6158f3e41d775ed889389440a2cd86".to_string(),
-        },
-        SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-std").unwrap(),
-                reference: GitReference::Tag("v0.1.0".to_string()),
-            },
-            commit_hash: "0000000000000000000000000000000000000000".to_string(),
-        },
-        SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://github.com/fuellabs/sway-lib-core").unwrap(),
-                reference: GitReference::Tag("v0.0.1".to_string()),
-            },
-            commit_hash: "0000000000000000000000000000000000000000".to_string(),
-        },
-        SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
-                reference: GitReference::Rev(
-                    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
-                ),
-            },
-            commit_hash: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".to_string(),
-        },
-        SourceGitPinned {
-            source: SourceGit {
-                repo: Url::parse("https://some-git-host.com/owner/repo").unwrap(),
-                reference: GitReference::DefaultBranch,
-            },
-            commit_hash: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string(),
-        },
-    ];
-
-    for (&string, expected) in strings.iter().zip(&expected) {
-        let parsed = SourceGitPinned::from_str(string).unwrap();
-        assert_eq!(&parsed, expected);
-        let serialized = expected.to_string();
-        assert_eq!(&serialized, string);
-    }
-}
-
 /// Format an error message for an absent `Forc.toml`.
 pub fn manifest_file_missing(dir: &Path) -> anyhow::Error {
     let message = format!(
@@ -3418,4 +2402,24 @@ pub fn wrong_program_type(
 pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     let message = format!("could not get a response from node at the URL {node_url}. Start a node with `fuel-core`. See https://github.com/FuelLabs/fuel-core#running for more information");
     Error::msg(message)
+}
+
+#[test]
+fn test_root_pkg_order() {
+    let current_dir = env!("CARGO_MANIFEST_DIR");
+    let manifest_dir = PathBuf::from(current_dir)
+        .parent()
+        .unwrap()
+        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+    let member_manifests = manifest_file.member_manifests().unwrap();
+    let lock_path = manifest_file.lock_path().unwrap();
+    let build_plan =
+        BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false).unwrap();
+    let graph = build_plan.graph();
+    let order: Vec<String> = build_plan
+        .member_nodes()
+        .map(|order| graph[order].name.clone())
+        .collect();
+    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
 }

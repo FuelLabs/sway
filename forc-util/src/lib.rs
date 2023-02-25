@@ -237,6 +237,7 @@ pub fn print_on_failure(
     reverse_errors: bool,
 ) {
     let e_len = errors.len();
+    let w_len = warnings.len();
 
     if !terse_mode {
         if reverse_errors {
@@ -248,11 +249,18 @@ pub fn print_on_failure(
         }
     }
 
-    println_red_err(&format!(
-        "  Aborting due to {} {}.",
-        e_len,
-        if e_len > 1 { "errors" } else { "error" }
-    ));
+    if e_len == 0 && w_len > 0 {
+        println_red_err(&format!(
+            "  Aborting. {} warning(s) treated as error(s).",
+            warnings.len()
+        ));
+    } else {
+        println_red_err(&format!(
+            "  Aborting due to {} {}.",
+            e_len,
+            if e_len > 1 { "errors" } else { "error" }
+        ));
+    }
 }
 
 fn format_err(err: &CompileError) {
