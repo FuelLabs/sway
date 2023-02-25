@@ -167,6 +167,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         build_target: BuildTarget::default(),
         build_profile: cmd.build_profile.build_profile.clone(),
         release: cmd.build_profile.release,
+        error_on_warnings: cmd.build_profile.error_on_warnings,
         time_phases: cmd.print.time_phases,
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
