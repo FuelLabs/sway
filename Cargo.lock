@@ -1702,6 +1702,7 @@ dependencies = [
 name = "forc-pkg"
 version = "0.35.3"
 dependencies = [
+ "ansi_term",
  "anyhow",
  "fd-lock",
  "forc-tracing",

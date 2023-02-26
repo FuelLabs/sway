@@ -9,8 +9,8 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    default_output_directory, find_file_name, kebab_to_snake_case, print_on_failure,
-    print_on_success, user_forc_directory,
+    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
+    print_on_failure, print_warnings, user_forc_directory,
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
@@ -1751,7 +1751,7 @@ pub fn compile(
         }) if bc_res.errors.is_empty()
             && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
         {
-            print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+            print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
                 if let Some(ref mut configurables) = json_abi_program.configurables {
@@ -2077,6 +2077,14 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let program_ty = manifest.program_type().ok();
+
+        print_compiling(
+            program_ty.as_ref(),
+            &pkg.name,
+            &pkg.source.display_compiling(manifest.dir()),
+        );
+
         let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(

@@ -1,6 +1,5 @@
 use crate::{pkg, source, DepKind, Edge};
 use anyhow::{anyhow, Result};
-use forc_tracing::{println_green, println_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -346,8 +345,15 @@ where
 {
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
-            let name = name_or_git_unique_string(pkg);
-            println_red(&format!("  Removing {name}"));
+            let src = match pkg.source.starts_with(source::git::Pinned::PREFIX) {
+                true => format!(" {}", pkg.source),
+                false => "".to_string(),
+            };
+            tracing::info!(
+                "  {} {}{src}",
+                ansi_term::Colour::Red.bold().paint("Removing"),
+                ansi_term::Style::new().bold().paint(&pkg.name)
+            );
         }
     }
 }
@@ -358,17 +364,16 @@ where
 {
     for pkg in removed {
         if !member_names.contains(&pkg.name) {
-            let name = name_or_git_unique_string(pkg);
-            println_green(&format!("    Adding {name}"));
+            let src = match pkg.source.starts_with(source::git::Pinned::PREFIX) {
+                true => format!(" {}", pkg.source),
+                false => "".to_string(),
+            };
+            tracing::info!(
+                "    {} {}{src}",
+                ansi_term::Colour::Green.bold().paint("Adding"),
+                ansi_term::Style::new().bold().paint(&pkg.name)
+            );
         }
-    }
-}
-
-// Only includes source after the name for git sources for friendlier printing.
-fn name_or_git_unique_string(pkg: &PkgLock) -> Cow<str> {
-    match pkg.source.starts_with(source::git::Pinned::PREFIX) {
-        true => Cow::Owned(pkg.unique_string()),
-        false => Cow::Borrowed(&pkg.name),
     }
 }
 
