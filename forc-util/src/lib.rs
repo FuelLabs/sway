@@ -185,8 +185,13 @@ pub fn program_type_str(ty: &TreeType) -> &'static str {
     }
 }
 
-pub fn print_compiling(ty: &TreeType, name: &str, src: &dyn std::fmt::Display) {
-    let ty = program_type_str(ty);
+pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Display) {
+    // NOTE: We can only print the program type if we can parse the program, so
+    // program type must be optional.
+    let ty = match ty {
+        Some(ty) => format!("{} ", program_type_str(ty)),
+        None => "".to_string(),
+    };
     tracing::error!(
         " {} {ty} {} ({src})",
         Colour::Green.bold().paint("Compiling"),

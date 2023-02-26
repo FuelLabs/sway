@@ -2077,12 +2077,10 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
-        let program_ty = manifest
-            .program_type()
-            .map_err(|e| anyhow!("Failed to compile {}: {e}", pkg.name))?;
+        let program_ty = manifest.program_type().ok();
 
         print_compiling(
-            &program_ty,
+            program_ty.as_ref(),
             &pkg.name,
             &pkg.source.display_compiling(manifest.dir()),
         );
