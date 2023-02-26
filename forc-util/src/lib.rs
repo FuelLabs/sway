@@ -4,6 +4,7 @@ use annotate_snippets::{
     display_list::{DisplayList, FormatOptions},
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
+use ansi_term::Colour;
 use anyhow::{bail, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
 use std::ffi::OsStr;
@@ -186,8 +187,11 @@ pub fn program_type_str(ty: &TreeType) -> &'static str {
 
 pub fn print_compiling(ty: &TreeType, name: &str, src: &dyn std::fmt::Display) {
     let ty = program_type_str(ty);
-    let string = format!(" Compiling {ty} {name} ({src})");
-    forc_tracing::println_green(&string)
+    tracing::error!(
+        " {} {ty} {} ({src})",
+        Colour::Green.bold().paint("Compiling"),
+        ansi_term::Style::new().bold().paint(name)
+    );
 }
 
 pub fn print_warnings(
