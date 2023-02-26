@@ -434,7 +434,7 @@ impl BuiltPackage {
             }
         }
 
-        info!("  Bytecode size is {} bytes.", self.bytecode.len());
+        info!("      Bytecode size: {} bytes", self.bytecode.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -458,7 +458,7 @@ impl BuiltPackage {
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
-                info!("  Predicate root: {}", root);
+                info!("      Predicate root: {}", root);
             }
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
@@ -466,7 +466,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("  Script bytecode hash: {}", bytecode_hash);
+                info!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -1971,6 +1971,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     // Build it!
     let mut built_workspace = HashMap::new();
+    let build_start = std::time::Instant::now();
     let built_packages = build(
         &build_plan,
         *build_target,
@@ -1979,7 +1980,11 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         const_inject_map,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+
+    let finished = ansi_term::Colour::Green.bold().paint("Finished");
+    info!("  {finished} {profile_name} in {:?}", build_start.elapsed());
     for (node_ix, built_package) in built_packages.into_iter() {
+        print_pkg_summary_header(&built_package);
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
@@ -2007,6 +2012,18 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         }
         None => Ok(Built::Workspace(built_workspace)),
     }
+}
+
+fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
+    let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
+    // The ansi_term formatters ignore the `std::fmt` right-align
+    // formatter, so we manually calculate the padding to align the program
+    // type and name around the 10th column ourselves.
+    let padded_ty_str = format!("{:>10}", prog_ty_str);
+    let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
+    let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
+    let name_ansi = ansi_term::Style::new().bold().paint(&built_pkg.pkg_name);
+    info!("{padding}{ty_ansi} {name_ansi}");
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
