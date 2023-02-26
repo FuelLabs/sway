@@ -82,9 +82,7 @@ impl<'a> ParsedTree<'a> {
             self.tokens.insert(
                 to_ident_key(library_name),
                 Token::from_parsed(
-                    AstToken::TreeType(TreeType::Library {
-                        name: library_name.clone(),
-                    }),
+                    AstToken::LibraryName(library_name.clone()),
                     SymbolKind::Module,
                 ),
             );
@@ -94,15 +92,11 @@ impl<'a> ParsedTree<'a> {
     }
 
     fn collect_tree_type(&self, tree_type: &TreeType) {
-        use TreeType::*;
-        match tree_type {
-            Library { name } => {
-                self.tokens.insert(
-                    to_ident_key(name),
-                    Token::from_parsed(AstToken::TreeType(tree_type.clone()), SymbolKind::Module),
-                );
-            }
-            Script | Contract | Predicate => {}
+        if let TreeType::Library { name } = tree_type {
+            self.tokens.insert(
+                to_ident_key(name),
+                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
+            );
         }
     }
 

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
 
 use crate::core::{
     token::{
@@ -87,15 +87,11 @@ impl<'a> TypedTree<'a> {
     }
 
     fn collect_program_kind(&self, program_kind: &TyProgramKind) {
-        use TyProgramKind::*;
-        match program_kind {
-            Library { name } => {
-                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
-                    token.typed = Some(TypedAstToken::TypedProgramKind(program_kind.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
-                }
+        if let TyProgramKind::Library { name } = program_kind {
+            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                token.typed = Some(TypedAstToken::TypedProgramKind(program_kind.clone()));
+                token.type_def = Some(TypeDefinition::Ident(name.clone()));
             }
-            Script { .. } | Contract { .. } | Predicate { .. } => {}
         }
     }
 

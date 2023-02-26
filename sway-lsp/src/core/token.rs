@@ -36,7 +36,7 @@ pub enum AstToken {
     Keyword(Ident),
     Intrinsic(Intrinsic),
     Attribute(Attribute),
-    TreeType(TreeType),
+    LibraryName(Ident),
     IncludeStatement,
     UseStatement(UseStatement),
 }
