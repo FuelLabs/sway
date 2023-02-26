@@ -190,7 +190,12 @@ impl source::Fetch for Pinned {
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
-                info!("  Fetching {}", self);
+                info!(
+                    "  {} {} {}",
+                    ansi_term::Color::Green.bold().paint("Fetching"),
+                    ansi_term::Style::new().bold().paint(ctx.name),
+                    self
+                );
                 fetch(ctx.fetch_id(), ctx.name(), self)?;
             }
         }
