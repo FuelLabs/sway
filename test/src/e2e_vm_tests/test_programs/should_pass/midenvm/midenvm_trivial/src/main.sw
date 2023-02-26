@@ -1,3 +1,3 @@
 script;
 
-fn main() -> u64 { 0 }
+fn main() -> u64 { 42 }

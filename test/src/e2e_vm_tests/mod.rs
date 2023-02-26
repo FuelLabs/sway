@@ -158,7 +158,13 @@ impl TestContext {
                             panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
                         }
                     },
-                    harness::VMExecutionResult::MidenVM(_trace) => todo!("Assert output"),
+                    harness::VMExecutionResult::MidenVM(trace) => {
+                        let outputs = trace.program_outputs();
+                        let stack = outputs.stack();
+                        // for now, just test primitive u64s.
+                        // Later on, we can test stacks that have more elements in them.
+                        TestResult::Return(stack[0])
+                    }
                 };
 
                 if result != res {
