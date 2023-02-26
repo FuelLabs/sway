@@ -5,7 +5,7 @@ use annotate_snippets::{
     snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
 };
 use anyhow::{bail, Result};
-use forc_tracing::{println_green_err, println_red_err, println_yellow_err};
+use forc_tracing::{println_red_err, println_yellow_err};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -175,59 +175,47 @@ pub fn git_checkouts_directory() -> PathBuf {
     user_forc_directory().join("git").join("checkouts")
 }
 
-pub fn print_on_success(
+pub fn program_type_str(ty: &TreeType) -> &'static str {
+    match ty {
+        TreeType::Script {} => "script",
+        TreeType::Contract {} => "contract",
+        TreeType::Predicate {} => "predicate",
+        TreeType::Library { .. } => "library",
+    }
+}
+
+pub fn print_compiling(ty: &TreeType, name: &str, src: &dyn std::fmt::Display) {
+    let ty = program_type_str(ty);
+    let string = format!(" Compiling {ty} {name} ({src})");
+    forc_tracing::println_green(&string)
+}
+
+pub fn print_warnings(
     terse_mode: bool,
     proj_name: &str,
     warnings: &[CompileWarning],
     tree_type: &TreeType,
 ) {
-    let type_str = match &tree_type {
-        TreeType::Script {} => "script",
-        TreeType::Contract {} => "contract",
-        TreeType::Predicate {} => "predicate",
-        TreeType::Library { .. } => "library",
-    };
+    if warnings.is_empty() {
+        return;
+    }
+    let type_str = program_type_str(tree_type);
 
     if !terse_mode {
         warnings.iter().for_each(format_warning);
     }
 
-    if warnings.is_empty() {
-        println_green_err(&format!("  Compiled {type_str} {proj_name:?}."));
-    } else {
-        println_yellow_err(&format!(
-            "  Compiled {} {:?} with {} {}.",
-            type_str,
-            proj_name,
-            warnings.len(),
-            if warnings.len() > 1 {
-                "warnings"
-            } else {
-                "warning"
-            }
-        ));
-    }
-}
-
-pub fn print_on_success_library(terse_mode: bool, proj_name: &str, warnings: &[CompileWarning]) {
-    if !terse_mode {
-        warnings.iter().for_each(format_warning);
-    }
-
-    if warnings.is_empty() {
-        println_green_err(&format!("  Compiled library {proj_name:?}."));
-    } else {
-        println_yellow_err(&format!(
-            "  Compiled library {:?} with {} {}.",
-            proj_name,
-            warnings.len(),
-            if warnings.len() > 1 {
-                "warnings"
-            } else {
-                "warning"
-            }
-        ));
-    }
+    println_yellow_err(&format!(
+        "  Compiled {} {:?} with {} {}.",
+        type_str,
+        proj_name,
+        warnings.len(),
+        if warnings.len() > 1 {
+            "warnings"
+        } else {
+            "warning"
+        }
+    ));
 }
 
 pub fn print_on_failure(terse_mode: bool, warnings: &[CompileWarning], errors: &[CompileError]) {
