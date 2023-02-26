@@ -2019,7 +2019,7 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     // The ansi_term formatters ignore the `std::fmt` right-align
     // formatter, so we manually calculate the padding to align the program
     // type and name around the 10th column ourselves.
-    let padded_ty_str = format!("{:>10}", prog_ty_str);
+    let padded_ty_str = format!("{prog_ty_str:>10}");
     let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
     let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
     let name_ansi = ansi_term::Style::new().bold().paint(&built_pkg.pkg_name);
