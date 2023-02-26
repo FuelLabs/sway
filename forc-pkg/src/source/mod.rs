@@ -98,6 +98,12 @@ pub(crate) enum DependencyPath {
     Root(PinnedId),
 }
 
+/// A wrapper type for providing `Display` implementations for compiling msgs.
+pub struct DisplayCompiling<'a, T> {
+    source: &'a T,
+    manifest_dir: &'a Path,
+}
+
 /// Error returned upon failed parsing of `SourcePinned::from_str`.
 #[derive(Clone, Debug)]
 pub struct PinnedParseError;
@@ -253,6 +259,19 @@ impl Pinned {
             _ => None,
         }
     }
+
+    /// Wrap `self` in some type able to be formatted for the compiling output.
+    ///
+    /// This refers to `<source>` in the following:
+    /// ```ignore
+    /// Compiling <kind> <name> (<source>)
+    /// ```
+    pub fn display_compiling<'a>(&'a self, manifest_dir: &'a Path) -> DisplayCompiling<'a, Self> {
+        DisplayCompiling {
+            source: self,
+            manifest_dir,
+        }
+    }
 }
 
 impl<'a> PinCtx<'a> {
@@ -276,7 +295,18 @@ impl fmt::Display for Pinned {
             Self::Member => write!(f, "member"),
             Self::Path(src) => src.fmt(f),
             Self::Git(src) => src.fmt(f),
-            Self::Registry(_reg) => unimplemented!("pkg registries not yet implemented"),
+            Self::Registry(_reg) => todo!("pkg registries not yet implemented"),
+        }
+    }
+}
+
+impl<'a> fmt::Display for DisplayCompiling<'a, Pinned> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.source {
+            Pinned::Member => self.manifest_dir.display().fmt(f),
+            Pinned::Path(_src) => self.manifest_dir.display().fmt(f),
+            Pinned::Git(src) => src.fmt(f),
+            Pinned::Registry(_src) => todo!("registry dependencies not yet implemented"),
         }
     }
 }
