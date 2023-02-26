@@ -193,7 +193,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         None => "".to_string(),
     };
     tracing::error!(
-        " {} {ty} {} ({src})",
+        " {} {ty}{} ({src})",
         Colour::Green.bold().paint("Compiling"),
         ansi_term::Style::new().bold().paint(name)
     );
