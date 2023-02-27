@@ -54,7 +54,7 @@ impl<'a> TypedTree<'a> {
         self.collect_module(&typed_program.root);
     }
 
-    pub fn collect_module(&self, typed_module: &TyModule) {
+    fn collect_module(&self, typed_module: &TyModule) {
         for (
             _,
             TySubmodule {
@@ -370,15 +370,6 @@ impl<'a> TypedTree<'a> {
                     is_absolute: _,
                 },
             ) => {
-                if let Some(alias) = alias {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(alias.clone()));
-                    }
-                }
-
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
                     if let Some(mut token) =
                         self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
@@ -403,13 +394,37 @@ impl<'a> TypedTree<'a> {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
+                            let mut symbol_kind = SymbolKind::Unknown;
+                            let mut type_def = None;
+
                             if let Some(decl_ident) = self
                                 .namespace
                                 .submodule(call_path)
                                 .and_then(|module| module.symbols().get(item))
                                 .and_then(|decl| decl.get_decl_ident())
                             {
-                                token.type_def = Some(TypeDefinition::Ident(decl_ident));
+                                // Update the symbol kind to match the declarations symbol kind
+                                if let Some(decl) =
+                                    self.tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap()
+                                {
+                                    symbol_kind = decl.value().kind.clone();
+                                }
+                                type_def = Some(TypeDefinition::Ident(decl_ident));
+                            }
+
+                            token.kind = symbol_kind.clone();
+                            token.type_def = type_def.clone();
+
+                            if let Some(alias) = alias {
+                                if let Some(mut token) =
+                                    self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
+                                {
+                                    token.typed = Some(TypedAstToken::TypedUseStatement(
+                                        use_statement.clone(),
+                                    ));
+                                    token.kind = symbol_kind;
+                                    token.type_def = type_def;
+                                }
                             }
                         }
                     }
