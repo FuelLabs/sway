@@ -21,6 +21,7 @@ fuel-vm = { workspace = true, features = ["random"] }
 futures = "0.3.24"
 gag = "1.0"
 hex = "0.4.3"
+miden = "0.3.0"
 prettydiff = "0.6"
 rand = "0.8"
 regex = "1.7"

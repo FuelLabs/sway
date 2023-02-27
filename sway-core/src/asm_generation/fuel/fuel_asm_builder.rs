@@ -2072,8 +2072,8 @@ impl<'ir> FuelAsmBuilder<'ir> {
             })
     }
 
-    // Same as `opt_value_to_register` but returns a new register if no register is found or if
-    // `value` is not a constant.
+    /// Same as [`opt_value_to_register`] but returns a new register if no register is found or if
+    /// `value` is not a constant.
     pub(super) fn value_to_register(&mut self, value: &Value) -> VirtualRegister {
         match self.opt_value_to_register(value) {
             Some(reg) => reg,

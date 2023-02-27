@@ -76,7 +76,7 @@ pub(crate) fn insert_supertraits_into_namespace(
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 check!(
-                    trait_decl.insert_interface_surface_and_methods_into_namespace(
+                    trait_decl.insert_interface_surface_and_items_into_namespace(
                         ctx.by_ref(),
                         &supertrait.name,
                         &type_arguments,

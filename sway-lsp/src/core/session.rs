@@ -75,10 +75,6 @@ impl Session {
     }
 
     pub fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
-        *self.type_engine.write() = <_>::default();
-
-        *self.decl_engine.write() = <_>::default();
-
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
@@ -146,6 +142,9 @@ impl Session {
             warnings: vec![],
             errors: vec![],
         };
+
+        *self.type_engine.write() = <_>::default();
+        *self.decl_engine.write() = <_>::default();
         let type_engine = &*self.type_engine.read();
         let decl_engine = &*self.decl_engine.read();
         let engines = Engines::new(type_engine, decl_engine);
