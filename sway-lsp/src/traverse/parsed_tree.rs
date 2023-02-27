@@ -59,8 +59,14 @@ impl<'a> ParsedTree<'a> {
         };
     }
 
+    /// Collects the library name and the module name from the dep statement
     pub fn collect_module_spans(&self, parse_program: &ParseProgram) {
-        self.collect_tree_type(&parse_program.kind);
+        if let TreeType::Library { name } = &parse_program.kind {
+            self.tokens.insert(
+                to_ident_key(name),
+                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
+            );
+        }
         self.collect_parse_module(&parse_program.root);
     }
 
@@ -88,15 +94,6 @@ impl<'a> ParsedTree<'a> {
             );
 
             self.collect_parse_module(module);
-        }
-    }
-
-    fn collect_tree_type(&self, tree_type: &TreeType) {
-        if let TreeType::Library { name } = tree_type {
-            self.tokens.insert(
-                to_ident_key(name),
-                Token::from_parsed(AstToken::LibraryName(name.clone()), SymbolKind::Module),
-            );
         }
     }
 

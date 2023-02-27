@@ -49,8 +49,14 @@ impl<'a> TypedTree<'a> {
         };
     }
 
+    /// Collects the library name and the module name from the dep statement
     pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        self.collect_program_kind(&typed_program.kind);
+        if let TyProgramKind::Library { name } = &typed_program.kind {
+            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                token.typed = Some(TypedAstToken::TypedProgramKind(typed_program.kind.clone()));
+                token.type_def = Some(TypeDefinition::Ident(name.clone()));
+            }
+        }
         self.collect_module(&typed_program.root);
     }
 
@@ -72,7 +78,6 @@ impl<'a> TypedTree<'a> {
                 token.typed = Some(TypedAstToken::TypedIncludeStatement);
                 token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
             }
-
             if let Some(mut token) = self
                 .tokens
                 .try_get_mut(&to_ident_key(library_name))
@@ -81,17 +86,7 @@ impl<'a> TypedTree<'a> {
                 token.typed = Some(TypedAstToken::TypedLibraryName(library_name.clone()));
                 token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
             }
-
             self.collect_module(module);
-        }
-    }
-
-    fn collect_program_kind(&self, program_kind: &TyProgramKind) {
-        if let TyProgramKind::Library { name } = program_kind {
-            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
-                token.typed = Some(TypedAstToken::TypedProgramKind(program_kind.clone()));
-                token.type_def = Some(TypeDefinition::Ident(name.clone()));
-            }
         }
     }
 
@@ -415,6 +410,7 @@ impl<'a> TypedTree<'a> {
                             token.kind = symbol_kind.clone();
                             token.type_def = type_def.clone();
 
+                            // the alias should take on the same symbol kind and type definition
                             if let Some(alias) = alias {
                                 if let Some(mut token) =
                                     self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
