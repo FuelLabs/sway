@@ -103,7 +103,9 @@ impl<'a> TypedTree<'a> {
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
 
+                eprintln!("var type ascription: {:#?}", &variable.type_ascription);
                 self.collect_type_argument(&variable.type_ascription);
+
 
                 self.handle_expression(&variable.body);
             }

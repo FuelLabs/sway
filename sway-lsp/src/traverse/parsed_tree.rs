@@ -1020,7 +1020,6 @@ impl<'a> ParsedTree<'a> {
                 SymbolKind::ValueParam,
             ),
         );
-
         self.collect_type_arg(&parameter.type_argument);
     }
 
