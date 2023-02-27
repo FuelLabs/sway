@@ -2227,7 +2227,7 @@ pub fn build(
         } else {
             None
         };
-      
+
         let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(

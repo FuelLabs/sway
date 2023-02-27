@@ -196,7 +196,7 @@ pub(crate) fn runs_in_vm(
             // instantiate the assembler
             let assembler = Assembler::default();
 
-            let bytecode_str = std::str::from_utf8(&script.bytecode)?;
+            let bytecode_str = std::str::from_utf8(&script.bytecode.bytes)?;
 
             // compile Miden assembly source code into a program
             let program = assembler.compile(bytecode_str).unwrap();
