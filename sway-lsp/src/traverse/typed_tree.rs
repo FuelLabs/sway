@@ -170,8 +170,7 @@ impl<'a> TypedTree<'a> {
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
                             .try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedParameter(type_param.clone()));
+                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -197,8 +196,7 @@ impl<'a> TypedTree<'a> {
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
                             .try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedParameter(type_param.clone()));
+                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -484,7 +482,7 @@ impl<'a> TypedTree<'a> {
                         if let Some(mut token) =
                             self.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
                         {
-                            token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                            token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
                             token.type_def = Some(TypeDefinition::Ident(impl_type_name));
                         }
                         prefixes
@@ -494,10 +492,7 @@ impl<'a> TypedTree<'a> {
                 } else {
                     &call_path.prefixes
                 };
-                self.collect_call_path_prefixes(
-                    prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -520,7 +515,7 @@ impl<'a> TypedTree<'a> {
                     if let Some(mut token) =
                         self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedExpression(exp.clone()));
+                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
                     }
                     self.handle_expression(exp);
                 }
@@ -544,10 +539,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(call_path) = call_path {
-                    self.collect_call_path_prefixes(
-                        &call_path.prefixes,
-                        TypedAstToken::TypedExpression(expression.clone()),
-                    );
+                    self.collect_call_path_prefixes(&call_path.prefixes);
                 }
 
                 let span = if let Some(call_path) = call_path {
@@ -597,10 +589,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_type_argument(type_arg);
                 }
 
-                self.collect_call_path_prefixes(
-                    &call_path_binding.inner.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
 
                 for field in fields {
                     if let Some(mut token) = self
@@ -715,10 +704,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_type_argument(type_arg);
                 }
 
-                self.collect_call_path_prefixes(
-                    &call_path_binding.inner.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -738,10 +724,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::AbiCast {
                 abi_name, address, ..
             } => {
-                self.collect_call_path_prefixes(
-                    &abi_name.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&abi_name.prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -916,10 +899,7 @@ impl<'a> TypedTree<'a> {
                 } else {
                     &call_path.prefixes
                 };
-                self.collect_call_path_prefixes(
-                    prefixes,
-                    TypedAstToken::TypedScrutinee(scrutinee.clone()),
-                );
+                self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -963,10 +943,10 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_call_path_prefixes(&self, prefixes: &[Ident], typed: TypedAstToken) {
+    fn collect_call_path_prefixes(&self, prefixes: &[Ident]) {
         for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
             if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
-                token.typed = Some(typed.clone());
+                token.typed = Some(TypedAstToken::Ident(ident.clone()));
 
                 if let Some(name) = self
                     .namespace
@@ -1045,15 +1025,16 @@ impl<'a> TypedTree<'a> {
             type_arguments,
         }: &TraitConstraint,
     ) {
-        let typed = TypedAstToken::TypedTraitConstraint(trait_constraint.clone());
-        self.collect_call_path_prefixes(&trait_name.prefixes, typed.clone());
+        self.collect_call_path_prefixes(&trait_name.prefixes);
 
         if let Some(mut token) = self
             .tokens
             .try_get_mut(&to_ident_key(&trait_name.suffix))
             .try_unwrap()
         {
-            token.typed = Some(typed);
+            token.typed = Some(TypedAstToken::TypedTraitConstraint(
+                trait_constraint.clone(),
+            ));
             if let Some(trait_def_ident) = self
                 .namespace
                 .submodule(&trait_name.prefixes)
@@ -1085,10 +1066,7 @@ impl<'a> TypedTree<'a> {
         let type_engine = self.engines.te();
         let type_info = type_engine.get(type_arg.type_id);
 
-        self.collect_call_path_prefixes(
-            &tree.call_path.prefixes,
-            TypedAstToken::TypedArgument(type_arg.clone()),
-        );
+        self.collect_call_path_prefixes(&tree.call_path.prefixes);
         self.collect_type_id(
             type_arg.type_id,
             &TypedAstToken::TypedArgument(type_arg.clone()),
@@ -1121,10 +1099,7 @@ impl<'a> TypedTree<'a> {
                 if let Some(child_tree) = tree.children.first() {
                     let abi_call_path = &child_tree.call_path;
 
-                    self.collect_call_path_prefixes(
-                        &abi_call_path.prefixes,
-                        TypedAstToken::TypedArgument(type_arg.clone()),
-                    );
+                    self.collect_call_path_prefixes(&abi_call_path.prefixes);
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_call_path.suffix))
