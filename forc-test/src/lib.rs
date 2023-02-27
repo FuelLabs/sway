@@ -75,7 +75,7 @@ pub enum PackageTests {
 pub struct ContractToTest {
     /// Tests included contract.
     pub pkg: pkg::BuiltPackage,
-    /// Bytecode of the contract without tests. 
+    /// Bytecode of the contract without tests.
     pub without_tests_bytecode: pkg::BuiltPackageBytecode,
 }
 
@@ -346,7 +346,10 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
-fn deploy_test_contract(built_pkg: &pkg::BuiltPackage, without_tests_bytecode: &pkg::BuiltPackageBytecode) -> anyhow::Result<TestSetup> {
+fn deploy_test_contract(
+    built_pkg: &pkg::BuiltPackage,
+    without_tests_bytecode: &pkg::BuiltPackageBytecode,
+) -> anyhow::Result<TestSetup> {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
     storage_slots.sort();
