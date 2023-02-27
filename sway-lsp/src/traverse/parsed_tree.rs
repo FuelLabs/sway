@@ -127,7 +127,7 @@ impl<'a> ParsedTree<'a> {
         }
 
         for type_param in &func.type_parameters {
-            self.collect_type_parameter(type_param, AstToken::FunctionDeclaration(func.clone()));
+            self.collect_type_parameter(type_param);
         }
 
         for (ident, constraints) in &func.where_clause {
@@ -197,7 +197,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens.insert(
                         to_ident_key(&supertrait.name.suffix),
                         Token::from_parsed(
-                            AstToken::Declaration(declaration.clone()),
+                            AstToken::Supertrait(supertrait.clone()),
                             SymbolKind::Trait,
                         ),
                     );
@@ -222,10 +222,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for type_param in &struct_dec.type_parameters {
-                    self.collect_type_parameter(
-                        type_param,
-                        AstToken::Declaration(declaration.clone()),
-                    );
+                    self.collect_type_parameter(type_param);
                 }
 
                 struct_dec.attributes.parse(self.tokens);
@@ -240,10 +237,7 @@ impl<'a> ParsedTree<'a> {
                 );
 
                 for type_param in &enum_decl.type_parameters {
-                    self.collect_type_parameter(
-                        type_param,
-                        AstToken::Declaration(declaration.clone()),
-                    );
+                    self.collect_type_parameter(type_param);
                 }
 
                 for variant in &enum_decl.variants {
@@ -283,10 +277,7 @@ impl<'a> ParsedTree<'a> {
                 self.collect_type_arg(&impl_trait.implementing_for);
 
                 for type_param in &impl_trait.impl_type_parameters {
-                    self.collect_type_parameter(
-                        type_param,
-                        AstToken::Declaration(declaration.clone()),
-                    );
+                    self.collect_type_parameter(type_param);
                 }
 
                 for item in &impl_trait.items {
@@ -316,10 +307,7 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 for type_param in &impl_self.impl_type_parameters {
-                    self.collect_type_parameter(
-                        type_param,
-                        AstToken::Declaration(declaration.clone()),
-                    );
+                    self.collect_type_parameter(type_param);
                 }
 
                 for item in &impl_self.items {
@@ -1042,10 +1030,13 @@ impl<'a> ParsedTree<'a> {
         trait_fn.attributes.parse(self.tokens);
     }
 
-    fn collect_type_parameter(&self, type_param: &TypeParameter, token: AstToken) {
+    fn collect_type_parameter(&self, type_param: &TypeParameter) {
         self.tokens.insert(
             to_ident_key(&type_param.name_ident),
-            Token::from_parsed(token, SymbolKind::TypeParameter),
+            Token::from_parsed(
+                AstToken::TypeParameter(type_param.clone()),
+                SymbolKind::TypeParameter,
+            ),
         );
     }
 }

@@ -40,6 +40,8 @@ pub enum AstToken {
     IncludeStatement,
     UseStatement(UseStatement),
     TypeArgument(TypeArgument),
+    TypeParameter(TypeParameter),
+    Supertrait(Supertrait),
     Ident(Ident),
 }
 
