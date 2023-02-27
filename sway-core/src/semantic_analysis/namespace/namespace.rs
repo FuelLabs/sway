@@ -361,18 +361,18 @@ impl Namespace {
         )
     }
 
-    pub(crate) fn get_methods_for_type_and_trait_name(
+    pub(crate) fn get_items_for_type_and_trait_name(
         &mut self,
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);
 
         self.implemented_traits
-            .get_methods_for_type_and_trait_name(engines, type_id, &trait_name)
+            .get_items_for_type_and_trait_name(engines, type_id, &trait_name)
     }
 }
 
