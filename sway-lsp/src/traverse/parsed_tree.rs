@@ -259,10 +259,7 @@ impl<'a> ParsedTree<'a> {
                 for ident in &impl_trait.trait_name.prefixes {
                     self.tokens.insert(
                         to_ident_key(ident),
-                        Token::from_parsed(
-                            AstToken::Declaration(declaration.clone()),
-                            SymbolKind::Module,
-                        ),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
                     );
                 }
 
@@ -335,7 +332,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens.insert(
                         to_ident_key(&supertrait.name.suffix),
                         Token::from_parsed(
-                            AstToken::Declaration(declaration.clone()),
+                            AstToken::Supertrait(supertrait.clone()),
                             SymbolKind::Trait,
                         ),
                     );
@@ -442,10 +439,7 @@ impl<'a> ParsedTree<'a> {
                     for ident in &call_path_binding.inner.prefixes {
                         self.tokens.insert(
                             to_ident_key(ident),
-                            Token::from_parsed(
-                                AstToken::Expression(expression.clone()),
-                                SymbolKind::Module,
-                            ),
+                            Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
                         );
                     }
 
@@ -510,10 +504,11 @@ impl<'a> ParsedTree<'a> {
                 }
 
                 if let Some(length_span) = &array_expression.length_span {
+                    let ident = Ident::new(length_span.clone());
                     self.tokens.insert(
-                        to_ident_key(&Ident::new(length_span.clone())),
+                        to_ident_key(&ident),
                         Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
+                            AstToken::Ident(ident.clone()),
                             SymbolKind::NumericLiteral,
                         ),
                     );
@@ -527,10 +522,7 @@ impl<'a> ParsedTree<'a> {
                 for ident in &call_path_binding.inner.prefixes {
                     self.tokens.insert(
                         to_ident_key(ident),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Struct,
-                        ),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
                     );
                 }
 
@@ -641,7 +633,7 @@ impl<'a> ParsedTree<'a> {
                     self.tokens.insert(
                         to_ident_key(&field.name),
                         Token::from_parsed(
-                            AstToken::Expression(field.value.clone()),
+                            AstToken::StructExpressionField(field.clone()),
                             SymbolKind::Field,
                         ),
                     );
@@ -673,10 +665,7 @@ impl<'a> ParsedTree<'a> {
                 {
                     self.tokens.insert(
                         to_ident_key(ident),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Enum,
-                        ),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
                     );
                 }
 
@@ -734,10 +723,7 @@ impl<'a> ParsedTree<'a> {
                 for ident in &abi_name.prefixes {
                     self.tokens.insert(
                         to_ident_key(ident),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Module,
-                        ),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
                     );
                 }
                 self.tokens.insert(
@@ -750,14 +736,11 @@ impl<'a> ParsedTree<'a> {
                 self.handle_expression(prefix);
                 self.handle_expression(index);
             }
-            ExpressionKind::StorageAccess(StorageAccessExpression { field_names, .. }) => {
+            ExpressionKind::StorageAccess(StorageAccessExpression { field_names }) => {
                 for field in field_names {
                     self.tokens.insert(
                         to_ident_key(field),
-                        Token::from_parsed(
-                            AstToken::Expression(expression.clone()),
-                            SymbolKind::Field,
-                        ),
+                        Token::from_parsed(AstToken::Ident(field.clone()), SymbolKind::Field),
                     );
                 }
             }
@@ -799,7 +782,7 @@ impl<'a> ParsedTree<'a> {
                             self.tokens.insert(
                                 to_ident_key(ident),
                                 Token::from_parsed(
-                                    AstToken::Reassignment(reassignment.clone()),
+                                    AstToken::Ident(ident.clone()),
                                     SymbolKind::Field,
                                 ),
                             );
@@ -893,10 +876,8 @@ impl<'a> ParsedTree<'a> {
                 ..
             } => {
                 for ident in &struct_name.prefixes {
-                    let token = Token::from_parsed(
-                        AstToken::Scrutinee(scrutinee.clone()),
-                        SymbolKind::Struct,
-                    );
+                    let token =
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct);
                     self.tokens.insert(to_ident_key(ident), token);
                 }
                 self.tokens.insert(
@@ -906,7 +887,7 @@ impl<'a> ParsedTree<'a> {
 
                 for field in fields {
                     let token = Token::from_parsed(
-                        AstToken::Scrutinee(scrutinee.clone()),
+                        AstToken::StructScrutineeField(field.clone()),
                         SymbolKind::Field,
                     );
                     if let StructScrutineeField::Field {
@@ -925,11 +906,10 @@ impl<'a> ParsedTree<'a> {
                 call_path, value, ..
             } => {
                 for ident in &call_path.prefixes {
-                    let token = Token::from_parsed(
-                        AstToken::Scrutinee(scrutinee.clone()),
-                        SymbolKind::Enum,
+                    self.tokens.insert(
+                        to_ident_key(ident),
+                        Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
                     );
-                    self.tokens.insert(to_ident_key(ident), token);
                 }
 
                 let token =
