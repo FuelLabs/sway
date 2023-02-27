@@ -593,33 +593,6 @@ fn type_check_trait_implementation(
         errors
     );
 
-    // Gather the supertrait "stub_method_refs" and "impld_method_refs".
-    let (supertrait_stub_method_refs, supertrait_impld_method_refs) = check!(
-        handle_supertraits(ctx.by_ref(), trait_supertraits),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // Insert the implemented methods for the supertraits into this namespace
-    // so that the methods defined in the impl block can use them.
-    //
-    // We purposefully do not check for errors here because this is a temporary
-    // namespace and not a real impl block defined by the user.
-    ctx.namespace.insert_trait_implementation(
-        trait_name.clone(),
-        trait_type_arguments.to_vec(),
-        self_type,
-        &supertrait_impld_method_refs
-            .values()
-            .cloned()
-            .map(TyImplItem::Fn)
-            .collect::<Vec<_>>(),
-        &trait_name.span(),
-        false,
-        engines,
-    );
-
     // This map keeps track of the remaining functions in the interface surface
     // that still need to be implemented for the trait to be fully implemented.
     let mut method_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
@@ -631,6 +604,44 @@ fn type_check_trait_implementation(
     // This map keeps track of the new declaration ids of the implemented
     // interface surface.
     let mut impld_method_refs: MethodMap = BTreeMap::new();
+
+    // This map keeps track of the stub declaration id's of the supertraits.
+    let mut supertrait_stub_method_refs: MethodMap = BTreeMap::new();
+
+    // This map keeps track of the new declaration ids of the supertraits.
+    let mut supertrait_impld_method_refs: MethodMap = BTreeMap::new();
+
+    // Insert the implemented methods for the supertraits into this namespace
+    // so that the methods defined in the impl block can use them.
+    //
+    // We purposefully do not check for errors here because this is a temporary
+    // namespace and not a real impl block defined by the user.
+    if !trait_supertraits.is_empty() {
+        // Gather the supertrait "stub_method_refs" and "impld_method_refs".
+        let (this_supertrait_stub_method_refs, this_supertrait_impld_method_refs) = check!(
+            handle_supertraits(ctx.by_ref(), trait_supertraits),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
+
+        ctx.namespace.insert_trait_implementation(
+            trait_name.clone(),
+            trait_type_arguments.to_vec(),
+            self_type,
+            &this_supertrait_impld_method_refs
+                .values()
+                .cloned()
+                .map(TyImplItem::Fn)
+                .collect::<Vec<_>>(),
+            &trait_name.span(),
+            false,
+            engines,
+        );
+
+        supertrait_stub_method_refs = this_supertrait_stub_method_refs;
+        supertrait_impld_method_refs = this_supertrait_impld_method_refs;
+    }
 
     for item in trait_interface_surface.iter() {
         match item {
