@@ -102,11 +102,9 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(typed_token);
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
-
-                eprintln!("var type ascription: {:#?}", &variable.type_ascription);
-                self.collect_type_argument(&variable.type_ascription);
-
-
+                if let Some(call_path_tree) = &variable.type_ascription.call_path_tree {
+                    self.collect_call_path_tree(call_path_tree, &variable.type_ascription);
+                }
                 self.handle_expression(&variable.body);
             }
             ty::TyDeclaration::ConstantDeclaration {
