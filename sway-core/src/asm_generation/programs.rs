@@ -69,4 +69,7 @@ pub(super) enum FinalProgram {
         ops: Vec<etk_asm::ops::AbstractOp>,
         abi: Vec<ethabi::operation::Operation>,
     },
+    MidenVM {
+        ops: Vec<crate::asm_generation::DirectOp>,
+    },
 }

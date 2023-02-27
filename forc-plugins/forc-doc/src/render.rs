@@ -332,6 +332,7 @@ impl Renderable for ItemHeader {
         let normalize = module_info.to_html_shorthand_path_string("assets/normalize.css");
         let swaydoc = module_info.to_html_shorthand_path_string("assets/swaydoc.css");
         let ayu = module_info.to_html_shorthand_path_string("assets/ayu.css");
+        let ayu_hjs = module_info.to_html_shorthand_path_string("assets/ayu.min.css");
 
         Ok(box_html! {
             head {
@@ -351,6 +352,7 @@ impl Renderable for ItemHeader {
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
+                link(rel="stylesheet", href=ayu_hjs);
                 // TODO: Add links for fonts
             }
         })
@@ -387,7 +389,7 @@ impl Renderable for ItemBody {
     fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
-            module_info: _,
+            module_info,
             ty_decl,
             item_name,
             code_str,
@@ -400,6 +402,7 @@ impl Renderable for ItemBody {
         let sidebar = sidebar.render(type_engine.clone())?;
         let item_context = (item_context.context_opt.is_some())
             .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(type_engine) });
+        let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
 
         Ok(box_html! {
             body(class=format!("swaydoc {decl_ty}")) {
@@ -464,6 +467,10 @@ impl Renderable for ItemBody {
                             }
                         }
                     }
+                }
+                script(src=sway_hjs);
+                script {
+                    : "hljs.highlightAll();";
                 }
             }
         })
@@ -1141,6 +1148,7 @@ impl Renderable for AllDocIndex {
                 link(rel="stylesheet", type="text/css", href="assets/normalize.css");
                 link(rel="stylesheet", type="text/css", href="assets/swaydoc.css", id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href="assets/ayu.css");
+                link(rel="stylesheet", href="assets/ayu.min.css");
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -1174,6 +1182,10 @@ impl Renderable for AllDocIndex {
                             : doc_links;
                         }
                     }
+                }
+                script(src="assets/highlight.js");
+                script {
+                    : "hljs.highlightAll();";
                 }
             }
         })
@@ -1224,6 +1236,12 @@ impl Renderable for ModuleIndex {
         let ayu = self
             .module_info
             .to_html_shorthand_path_string("assets/ayu.css");
+        let sway_hjs = self
+            .module_info
+            .to_html_shorthand_path_string("assets/highlight.js");
+        let ayu_hjs = self
+            .module_info
+            .to_html_shorthand_path_string("assets/ayu.min.css");
 
         Ok(box_html! {
             head {
@@ -1243,6 +1261,7 @@ impl Renderable for ModuleIndex {
                 link(rel="stylesheet", type="text/css", href=normalize);
                 link(rel="stylesheet", type="text/css", href=swaydoc, id="mainThemeStyle");
                 link(rel="stylesheet", type="text/css", href=ayu);
+                link(rel="stylesheet", href=ayu_hjs);
             }
             body(class="swaydoc mod") {
                 : sidebar;
@@ -1293,6 +1312,10 @@ impl Renderable for ModuleIndex {
                             : doc_links;
                         }
                     }
+                }
+                script(src=sway_hjs);
+                script {
+                    : "hljs.highlightAll();";
                 }
             }
         })
@@ -1430,7 +1453,6 @@ impl DocStrings for AttributesMap {
 
         let mut options = ComrakOptions::default();
         options.render.hardbreaks = true;
-        options.render.github_pre_lang = true;
         options.extension.strikethrough = true;
         options.extension.table = true;
         options.extension.autolink = true;

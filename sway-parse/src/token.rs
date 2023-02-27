@@ -159,7 +159,10 @@ pub fn lex_commented(
                         .count()
                         > 0;
 
-                    let comment_kind = if has_newline {
+                    // We found a comment at the start of file, which should be accounted for as a Newlined comment.
+                    let start_of_file_found = search_end == 0 && index == 0;
+
+                    let comment_kind = if has_newline || start_of_file_found {
                         CommentKind::Newlined
                     } else {
                         CommentKind::Trailing

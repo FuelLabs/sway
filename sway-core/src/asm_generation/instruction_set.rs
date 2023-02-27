@@ -4,8 +4,15 @@ use std::fmt;
 /// An [InstructionSet] is produced by allocating registers on an [AbstractInstructionSet].
 #[derive(Clone)]
 pub enum InstructionSet {
-    Fuel { ops: Vec<AllocatedOp> },
-    Evm { ops: Vec<etk_asm::ops::AbstractOp> },
+    Fuel {
+        ops: Vec<AllocatedOp>,
+    },
+    Evm {
+        ops: Vec<etk_asm::ops::AbstractOp>,
+    },
+    MidenVM {
+        ops: Vec<crate::asm_generation::DirectOp>,
+    },
 }
 
 impl fmt::Display for InstructionSet {
@@ -24,6 +31,12 @@ impl fmt::Display for InstructionSet {
                     .map(|x| format!("{x}"))
                     .collect::<Vec<_>>()
                     .join("\n"),
+                InstructionSet::MidenVM { ops } => {
+                    ops.iter()
+                        .map(|x| format!("{x}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                }
             }
         )
     }
