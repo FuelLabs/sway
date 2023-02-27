@@ -4,4 +4,5 @@ use super::EvmAbiResult;
 pub enum ProgramABI {
     Fuel(fuel_abi_types::program_abi::ProgramABI),
     Evm(EvmAbiResult),
+    MidenVM(()),
 }

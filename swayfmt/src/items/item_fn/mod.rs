@@ -38,6 +38,15 @@ impl Format for ItemFn {
                     Self::open_curly_brace(formatted_code, formatter)?;
                     formatter.shape.block_indent(&formatter.config);
                     body.format(formatted_code, formatter)?;
+
+                    if let Some(final_expr_opt) = body.final_expr_opt.as_ref() {
+                        write_comments(
+                            formatted_code,
+                            final_expr_opt.span().end()..self.span().end(),
+                            formatter,
+                        )?;
+                    }
+
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
@@ -46,6 +55,9 @@ impl Format for ItemFn {
                     if has_comments(comments) {
                         formatter.shape.block_indent(&formatter.config);
                         write_comments(formatted_code, range, formatter)?;
+                        if !formatted_code.ends_with('\n') {
+                            writeln!(formatted_code)?;
+                        }
                     }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }

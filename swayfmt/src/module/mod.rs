@@ -4,7 +4,7 @@ use crate::{
     utils::map::byte_span::{self, ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
-use sway_ast::{ItemKind, Module, ModuleKind};
+use sway_ast::{Item, ItemKind, Module, ModuleKind};
 use sway_types::Spanned;
 
 pub(crate) mod dependency;
@@ -30,13 +30,23 @@ impl Format for Module {
         }
 
         let iter = self.items.iter();
+        let mut prev_item: Option<&Item> = None;
         for item in iter.clone() {
+            if let Some(prev_item) = prev_item {
+                write_comments(
+                    formatted_code,
+                    prev_item.span().end()..item.span().start(),
+                    formatter,
+                )?;
+            }
             item.format(formatted_code, formatter)?;
             if let ItemKind::Dependency { .. } = item.value {
                 // Do not print a newline after a dependency
             } else {
                 writeln!(formatted_code)?;
             }
+
+            prev_item = Some(item);
         }
 
         Ok(())

@@ -24,6 +24,7 @@ hex = { version = "0.4", optional = true }
 im = "15.0"
 itertools = "0.10"
 lazy_static = "1.4"
+miden-core = "0.3.0"
 pest = "2.1.3"
 pest_derive = "2.1"
 petgraph = "0.6"
