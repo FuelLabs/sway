@@ -2101,7 +2101,7 @@ pub struct CompilePkgCtx<'a> {
     engines: Engines<'a>,
     target: &'a BuildTarget,
     /// Contains the bytecode of the current package compiled without tests. Since we are
-    /// compiling each contract without tests first, this will be only `Some(..)` in contract
+    /// compiling each contract without tests first, this will be only `Some(..)` for contract
     /// members.
     without_tests_bytecode: Option<BuiltPackageBytecode>,
 }
@@ -2188,7 +2188,6 @@ pub fn build(
             //   1. Interpreter deployment in `forc-test`.
             //   2. Contract ID injection in `forc-pkg` if this is a contract dependency to any
             //      other pkg, so that injected contract id is not effected by the tests.
-            //
             let profile = BuildProfile {
                 include_tests: false,
                 ..profile.clone()
