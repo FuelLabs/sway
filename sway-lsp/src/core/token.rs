@@ -69,6 +69,7 @@ pub enum TypedAstToken {
     TypedLibraryName(Ident),
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
+    Ident(Ident),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

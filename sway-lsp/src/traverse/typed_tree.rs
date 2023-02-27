@@ -93,13 +93,12 @@ impl<'a> TypedTree<'a> {
         let decl_engine = self.engines.de();
         match declaration {
             ty::TyDeclaration::VariableDeclaration(variable) => {
-                let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
                 if let Some(mut token) = self
                     .tokens
                     .try_get_mut(&to_ident_key(&variable.name))
                     .try_unwrap()
                 {
-                    token.typed = Some(typed_token);
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
                 if let Some(call_path_tree) = &variable.type_ascription.call_path_tree {
@@ -172,7 +171,7 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                                Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -199,7 +198,7 @@ impl<'a> TypedTree<'a> {
                             .try_unwrap()
                         {
                             token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                                Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -234,8 +233,7 @@ impl<'a> TypedTree<'a> {
                         if let Some(mut token) =
                             self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.typed = Some(TypedAstToken::Ident(ident.clone()));
                         }
                     }
 
