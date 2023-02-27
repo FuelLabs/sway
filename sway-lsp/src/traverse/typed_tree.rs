@@ -1,5 +1,4 @@
-// #![allow(dead_code)]
-
+#![allow(dead_code)]
 use crate::core::{
     token::{
         to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,

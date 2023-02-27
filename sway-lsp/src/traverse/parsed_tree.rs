@@ -84,7 +84,6 @@ impl<'a> ParsedTree<'a> {
                 to_ident_key(&Ident::new(dependency_path_span.clone())),
                 Token::from_parsed(AstToken::IncludeStatement, SymbolKind::Module),
             );
-
             self.tokens.insert(
                 to_ident_key(library_name),
                 Token::from_parsed(
@@ -92,7 +91,6 @@ impl<'a> ParsedTree<'a> {
                     SymbolKind::Module,
                 ),
             );
-
             self.collect_parse_module(module);
         }
     }
