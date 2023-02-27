@@ -39,7 +39,8 @@ pub enum AstToken {
     LibraryName(Ident),
     IncludeStatement,
     UseStatement(UseStatement),
-    // TypeArgument(TypeArgument),
+    TypeArgument(TypeArgument),
+    Ident(Ident),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
