@@ -1,7 +1,4 @@
-use crate::core::{
-    session::Session,
-    token::get_range_from_span,
-};
+use crate::core::{session::Session, token::get_range_from_span};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_types::Spanned;
