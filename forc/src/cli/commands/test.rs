@@ -85,10 +85,11 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> Res
             false => ("FAILED", Colour::Red),
         };
         info!(
-            "      test {} ... {} ({:?})",
+            "      test {} ... {} ({:?}, {} gas)",
             test.name,
             color.paint(state),
-            test.duration
+            test.duration,
+            test.gas_used
         );
 
         // If logs are enabled, print them.
