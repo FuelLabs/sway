@@ -26,4 +26,7 @@ pub(crate) use replace_decls::*;
 use sway_types::Ident;
 pub(crate) use wrapper::*;
 
-pub(crate) type MethodMap = BTreeMap<Ident, DeclRef>;
+use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+
+pub(crate) type InterfaceItemMap = BTreeMap<Ident, TyTraitInterfaceItem>;
+pub(crate) type ItemMap = BTreeMap<Ident, TyTraitItem>;

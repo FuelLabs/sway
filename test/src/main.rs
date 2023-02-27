@@ -81,6 +81,7 @@ async fn main() -> Result<()> {
         Some(target) => match target.to_lowercase().as_str() {
             "fuel" => BuildTarget::Fuel,
             "evm" => BuildTarget::EVM,
+            "miden" | "midenvm" => BuildTarget::MidenVM,
             _ => panic!("unexpected build target"),
         },
         None => BuildTarget::default(),
