@@ -1,4 +1,5 @@
 use super::instruction_set::InstructionSet;
+use super::ToMidenBytecode;
 use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
@@ -73,6 +74,14 @@ impl FinalizedAsm {
                     )
                 }
             }
+            InstructionSet::MidenVM { ops } => ok(
+                CompiledBytecode {
+                    bytecode: ops.to_bytecode().into(),
+                    config_const_offsets: Default::default(),
+                },
+                vec![],
+                vec![],
+            ),
         }
     }
 }
@@ -192,5 +201,6 @@ pub fn check_invalid_opcodes(asm: &FinalizedAsm) -> CompileResult<()> {
             ProgramKind::Predicate => checks::check_predicate_opcodes(&ops[..]),
         },
         InstructionSet::Evm { ops: _ } => ok((), vec![], vec![]),
+        InstructionSet::MidenVM { ops: _ } => ok((), vec![], vec![]),
     }
 }

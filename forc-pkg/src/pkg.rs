@@ -432,6 +432,8 @@ impl BuiltPackage {
                     res?
                 }
             }
+            // TODO?
+            ProgramABI::MidenVM(_) => (),
         }
 
         info!("      Bytecode size: {} bytes", self.bytecode.len());
@@ -1727,6 +1729,8 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
+
+        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res

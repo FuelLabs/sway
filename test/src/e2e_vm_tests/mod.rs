@@ -158,6 +158,13 @@ impl TestContext {
                             panic!("EVM exited with unhandled reason: {:?}", state.exit_reason);
                         }
                     },
+                    harness::VMExecutionResult::MidenVM(trace) => {
+                        let outputs = trace.program_outputs();
+                        let stack = outputs.stack();
+                        // for now, just test primitive u64s.
+                        // Later on, we can test stacks that have more elements in them.
+                        TestResult::Return(stack[0])
+                    }
                 };
 
                 if result != res {
@@ -677,6 +684,7 @@ fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
         Some(target) => match target {
             "fuel" => Ok(BuildTarget::Fuel),
             "evm" => Ok(BuildTarget::EVM),
+            "miden-vm" | "midenvm" => Ok(BuildTarget::MidenVM),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
         },
         None => Err(anyhow!("Invalid TOML value")),
