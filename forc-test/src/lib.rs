@@ -71,13 +71,12 @@ pub enum PackageTests {
 }
 
 /// A built contract ready for test execution.
-///
-/// `tests_included` is the built pkg with the `--test` flag, (i.e `forc build --tests`).
-/// `tests_excluded` is the built pkg without the `--test` flag (i.e `forc build`).
 #[derive(Debug)]
 pub struct ContractToTest {
-    pub tests_included: pkg::BuiltPackage,
-    pub tests_excluded: pkg::BuiltPackage,
+    /// Tests included contract.
+    pub pkg: pkg::BuiltPackage,
+    /// Bytecode of the contract without tests. 
+    pub without_tests_bytecode: pkg::BuiltPackageBytecode,
 }
 
 /// The set of options provided to the `test` function.
@@ -147,7 +146,7 @@ impl<'a> PackageTests {
     /// returned.
     pub(crate) fn built_pkg_with_tests(&'a self) -> &'a BuiltPackage {
         match self {
-            PackageTests::Contract(contract) => &contract.tests_included,
+            PackageTests::Contract(contract) => &contract.pkg,
             PackageTests::NonContract(non_contract) => non_contract,
         }
     }
@@ -155,13 +154,13 @@ impl<'a> PackageTests {
     /// Construct a `PackageTests` from `BuiltPackage`.
     ///
     /// If the `BuiltPackage` is a contract, match the contract with the contract's
-    fn from_built_pkg(built_pkg: (BuiltPackage, Option<BuiltPackage>)) -> PackageTests {
-        let (built_pkg, built_pkg_without_tests) = built_pkg;
-        match built_pkg_without_tests {
+    fn from_built_pkg(built_pkg: BuiltPackage) -> PackageTests {
+        let built_without_tests_bytecode = built_pkg.bytecode_without_tests.clone();
+        match built_without_tests_bytecode {
             Some(contract_without_tests) => {
                 let contract_to_test = ContractToTest {
-                    tests_included: built_pkg,
-                    tests_excluded: contract_without_tests,
+                    pkg: built_pkg,
+                    without_tests_bytecode: contract_without_tests,
                 };
                 PackageTests::Contract(contract_to_test)
             }
@@ -176,6 +175,7 @@ impl<'a> PackageTests {
         let pkg_with_tests = self.built_pkg_with_tests();
         // TODO: We can easily parallelise this, but let's wait until testing is stable first.
         let tests = pkg_with_tests
+            .bytecode
             .entries
             .iter()
             .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
@@ -186,7 +186,7 @@ impl<'a> PackageTests {
                 let name = entry.finalized.fn_name.clone();
                 let test_setup = self.setup()?;
                 let (state, duration, receipts) =
-                    exec_test(&pkg_with_tests.bytecode, offset, test_setup);
+                    exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
 
                 // Only retain `Log` and `LogData` receipts.
                 let logs = receipts
@@ -223,8 +223,9 @@ impl<'a> PackageTests {
     fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
-                let contract_pkg_without_tests = contract_to_test.tests_excluded.clone();
-                let test_setup = deploy_test_contract(contract_pkg_without_tests)?;
+                let contract_pkg = &contract_to_test.pkg;
+                let contract_pkg_without_tests = &contract_to_test.without_tests_bytecode;
+                let test_setup = deploy_test_contract(contract_pkg, contract_pkg_without_tests)?;
                 Ok(test_setup)
             }
             PackageTests::NonContract(_) => Ok(TestSetup {
@@ -320,6 +321,7 @@ impl BuiltTests {
         pkgs.iter()
             .map(|pkg| {
                 pkg.built_pkg_with_tests()
+                    .bytecode
                     .entries
                     .iter()
                     .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
@@ -344,11 +346,11 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
-fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
+fn deploy_test_contract(built_pkg: &pkg::BuiltPackage, without_tests_bytecode: &pkg::BuiltPackageBytecode) -> anyhow::Result<TestSetup> {
     // Obtain the contract id for deployment.
-    let mut storage_slots = built_pkg.storage_slots;
+    let mut storage_slots = built_pkg.storage_slots.clone();
     storage_slots.sort();
-    let bytecode = built_pkg.bytecode;
+    let bytecode = &without_tests_bytecode.bytes;
     let contract = tx::Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
@@ -373,7 +375,7 @@ fn deploy_test_contract(built_pkg: BuiltPackage) -> anyhow::Result<TestSetup> {
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1) as u64;
 
-    let tx = tx::TransactionBuilder::create(bytecode.into(), salt, storage_slots)
+    let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)

@@ -101,12 +101,24 @@ pub struct BuiltPackage {
     pub build_target: BuildTarget,
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
-    pub bytecode: Vec<u8>,
-    pub entries: Vec<PkgEntry>,
+    pub bytecode: BuiltPackageBytecode,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
     pub built_pkg_descriptor: BuiltPackageDescriptor,
+    /// `Some` for contract member builds where tests were included. This is
+    /// required so that we can deploy once instance of the contract (without
+    /// tests) with a valid contract ID before executing the tests as scripts.
+    ///
+    /// For non-contract members, this is always `None`.
+    pub bytecode_without_tests: Option<BuiltPackageBytecode>,
+}
+
+/// The bytecode associated with a built package along with its entry points.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageBytecode {
+    pub bytes: Vec<u8>,
+    pub entries: Vec<PkgEntry>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -150,15 +162,13 @@ pub struct PkgTestEntry {
 /// The result of successfully compiling a workspace.
 ///
 /// This is a map from each member package name to its associated built package.
-pub type BuiltWorkspace = HashMap<String, (BuiltPackage, Option<BuiltPackage>)>;
+pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
 
 #[derive(Debug)]
 pub enum Built {
-    /// Represents a standalone package build, containts the tests excluded version for contract
-    /// packages.
-    Package(Box<(BuiltPackage, Option<BuiltPackage>)>),
-    /// Represents a workspace build, contains each member's built package and the tests exluded
-    /// version for contract members.
+    /// Represents a standalone package build.
+    Package(Box<BuiltPackage>),
+    /// Represents a workspace build.
     Workspace(BuiltWorkspace),
 }
 
@@ -382,7 +392,7 @@ impl Edge {
 impl BuiltPackage {
     /// Writes bytecode of the BuiltPackage to the given `path`.
     pub fn write_bytecode(&self, path: &Path) -> Result<()> {
-        fs::write(path, &self.bytecode)?;
+        fs::write(path, &self.bytecode.bytes)?;
         Ok(())
     }
 
@@ -438,7 +448,7 @@ impl BuiltPackage {
             }
         }
 
-        info!("  Bytecode size is {} bytes.", self.bytecode.len());
+        info!("  Bytecode size is {} bytes.", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -458,7 +468,7 @@ impl BuiltPackage {
             }
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
-                let root = format!("0x{}", Contract::root_from_code(&self.bytecode));
+                let root = format!("0x{}", Contract::root_from_code(&self.bytecode.bytes));
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
@@ -466,7 +476,8 @@ impl BuiltPackage {
             }
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
-                let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode));
+                let bytecode_hash =
+                    format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode.bytes));
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
@@ -481,17 +492,17 @@ impl BuiltPackage {
 
 impl Built {
     /// Returns a map between package names and their corresponding built package.
-    pub fn into_members(self) -> Result<HashMap<String, BuildResult>> {
+    pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
         match self {
             Built::Package(built_pkg) => {
-                Ok(std::iter::once((built_pkg.0.pkg_name.clone(), *built_pkg)).collect())
+                Ok(std::iter::once((built_pkg.pkg_name.clone(), *built_pkg)).collect())
             }
             Built::Workspace(built_workspace) => Ok(built_workspace),
         }
     }
 
     /// Tries to retrieve the `Built` as a `BuiltPackage`.
-    pub fn expect_pkg(self) -> Result<BuildResult> {
+    pub fn expect_pkg(self) -> Result<BuiltPackage> {
         match self {
             Built::Package(built_pkg) => Ok(*built_pkg),
             Built::Workspace(_) => bail!("expected `Built` to be `Built::Package`"),
@@ -1640,16 +1651,21 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &PackageManifestFile,
-    build_target: BuildTarget,
-    build_profile: &BuildProfile,
+    compile_ctx: CompilePkgCtx,
     namespace: namespace::Module,
-    engines: Engines<'_>,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
+    let CompilePkgCtx {
+        profile,
+        engines,
+        target,
+        without_tests_bytecode,
+        ..
+    } = compile_ctx;
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
-            if build_profile.time_phases {
+            if profile.time_phases {
                 let expr_start = std::time::Instant::now();
                 let output = { $expression };
                 println!(
@@ -1667,9 +1683,9 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
+        sway_build_config(manifest.dir(), &entry_path, *target, profile)?
     );
-    let terse_mode = build_profile.terse;
+    let terse_mode = profile.terse;
     let fail = |warnings, errors| {
         print_on_failure(terse_mode, warnings, errors);
         bail!("Failed to compile {}", pkg.name);
@@ -1678,14 +1694,14 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, build_target, build_profile, namespace)?
+        compile_ast(engines, manifest, *target, profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
 
-    if build_profile.print_ast {
+    if profile.print_ast {
         tracing::info!("{:#?}", typed_program);
     }
 
@@ -1703,7 +1719,7 @@ pub fn compile(
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
 
-    let mut json_abi_program = match build_target {
+    let mut json_abi_program = match target {
         BuildTarget::Fuel => {
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
@@ -1753,7 +1769,7 @@ pub fn compile(
             bytecode: bytes,
             config_const_offsets: config_offsets,
         }) if bc_res.errors.is_empty()
-            && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
+            && (bc_res.warnings.is_empty() || !profile.error_on_warnings) =>
         {
             print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
@@ -1776,17 +1792,17 @@ pub fn compile(
                 manifest_file: manifest.clone(),
                 pinned: pkg.clone(),
             };
-            let bytecode = bytes;
+            let bytecode = BuiltPackageBytecode { bytes, entries };
             let built_package = BuiltPackage {
-                build_target,
+                build_target: *target,
                 json_abi_program,
                 storage_slots,
                 bytecode,
                 tree_type,
-                entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 built_pkg_descriptor,
+                bytecode_without_tests: without_tests_bytecode,
             };
             Ok((built_package, namespace))
         }
@@ -1990,7 +2006,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         const_inject_map,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
-    for (node_ix, (built_package, built_package_without_tests)) in built_packages.into_iter() {
+    for (node_ix, built_package) in built_packages.into_iter() {
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
@@ -2006,10 +2022,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             built_package.write_debug_info(outfile.as_ref())?;
         }
         built_package.write_output(minify.clone(), &pkg_manifest.project.name, &output_dir)?;
-        built_workspace.insert(
-            pinned.name.clone(),
-            (built_package, built_package_without_tests),
-        );
+        built_workspace.insert(pinned.name.clone(), built_package);
     }
 
     match curr_manifest {
@@ -2026,7 +2039,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 /// Returns the ContractId of a built_package contract with specified `salt`.
 pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
-    let contract = Contract::from(built_package.bytecode.clone());
+    let contract = Contract::from(built_package.bytecode.bytes.clone());
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -2058,15 +2071,7 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
     Ok(())
 }
 
-/// Represents the result of building a package.
-///
-/// For non-contract packages second element of the tuple will always be `None`.
-///
-/// For contract packages second element of the tuple will hold the contract re-compiled without
-/// thte tests included.
-type BuildResult = (BuiltPackage, Option<BuiltPackage>);
-
-struct CompilePkgCtx<'a> {
+pub struct CompilePkgCtx<'a> {
     lib_namespace_map: &'a HashMap<NodeIx, namespace::Module>,
     compiled_contract_deps: &'a HashMap<NodeIx, BuiltPackage>,
     constants: BTreeMap<String, ConfigTimeConstant>,
@@ -2074,6 +2079,10 @@ struct CompilePkgCtx<'a> {
     plan: &'a BuildPlan,
     engines: Engines<'a>,
     target: &'a BuildTarget,
+    /// Contains the bytecode of the current package compiled without tests. Since we are
+    /// compiling each contract without tests first, this will be only `Some(..)` in contract
+    /// members.
+    without_tests_bytecode: Option<BuiltPackageBytecode>,
 }
 
 /// Build an entire forc package and return the built_package output.
@@ -2087,7 +2096,7 @@ pub fn build(
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
-) -> anyhow::Result<Vec<(NodeIx, BuildResult)>> {
+) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     fn compile_pkg(
         node: NodeIx,
         source_map: &mut SourceMap,
@@ -2103,7 +2112,7 @@ pub fn build(
             compile_ctx.compiled_contract_deps,
             graph,
             node,
-            compile_ctx.constants,
+            compile_ctx.constants.clone(),
             compile_ctx.engines,
         ) {
             Ok(o) => o,
@@ -2112,15 +2121,7 @@ pub fn build(
                 bail!("Failed to compile {}", pkg.name);
             }
         };
-        compile(
-            pkg,
-            manifest,
-            *compile_ctx.target,
-            compile_ctx.profile,
-            dep_namespace,
-            compile_ctx.engines,
-            source_map,
-        )
+        compile(pkg, manifest, compile_ctx, dep_namespace, source_map)
     }
     let mut built_packages = Vec::new();
 
@@ -2147,8 +2148,8 @@ pub fn build(
         let manifest = &plan.manifest_map()[&pkg.id()];
         let is_contract_dependency = is_contract_dependency(plan.graph(), node);
         // If we are building a contract and tests are enabled or we are building a contract
-        // dependency, we need the tests exlcuded version.
-        let contract_without_tests = if (include_tests
+        // dependency, we need the tests exlcuded bytecode.
+        let without_tests_bytecode = if (include_tests
             && matches!(manifest.program_type(), Ok(TreeType::Contract)))
             || is_contract_dependency
         {
@@ -2171,6 +2172,7 @@ pub fn build(
                 plan,
                 engines,
                 target: &target,
+                without_tests_bytecode: None,
             };
             let (built_contract_without_tests, _) =
                 compile_pkg(node, &mut source_map, compile_pkg_context)?;
@@ -2192,7 +2194,7 @@ pub fn build(
                 let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
                 const_inject_map.insert(pkg.clone(), constant_declarations);
             }
-            Some(built_contract_without_tests)
+            Some(built_contract_without_tests.bytecode)
         } else {
             None
         };
@@ -2224,6 +2226,7 @@ pub fn build(
             plan,
             engines,
             target: &target,
+            without_tests_bytecode,
         };
         let (mut built_package, namespace) =
             compile_pkg(node, &mut source_map, compile_pkg_context)?;
@@ -2237,7 +2240,7 @@ pub fn build(
             standardize_json_abi_types(json_abi_program);
         }
         if outputs.contains(&node) {
-            built_packages.push((node, (built_package, contract_without_tests)));
+            built_packages.push((node, built_package));
         }
     }
 

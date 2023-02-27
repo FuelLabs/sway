@@ -123,7 +123,7 @@ impl TestContext {
 
                 let compiled = result?;
 
-                let (compiled, _) = match compiled {
+                let compiled = match compiled {
                     forc_pkg::Built::Package(built_pkg) => *built_pkg,
                     forc_pkg::Built::Workspace(_) => {
                         panic!("workspaces are not supported in the test suite yet")
@@ -195,7 +195,7 @@ impl TestContext {
                 check_file_checker(checker, &name, output)?;
 
                 if validate_abi {
-                    for (name, (built_pkg, _)) in &compiled_pkgs {
+                    for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_abi(name, built_pkg)
                         })
@@ -206,7 +206,7 @@ impl TestContext {
                 }
 
                 if validate_storage_slots {
-                    for (name, (built_pkg, _)) in &compiled_pkgs {
+                    for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_storage_slots(name, built_pkg)
                         })
