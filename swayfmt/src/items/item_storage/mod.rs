@@ -5,7 +5,10 @@ use crate::{
         *,
     },
     utils::{
-        map::byte_span::{ByteSpan, LeafSpans},
+        map::{
+            byte_span::{ByteSpan, LeafSpans},
+            comments::rewrite_with_comments,
+        },
         CurlyBrace,
     },
 };
@@ -27,6 +30,8 @@ impl Format for ItemStorage {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                let last = formatted_code.len();
+
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
                 let fields = self.fields.get();
@@ -110,8 +115,11 @@ impl Format for ItemStorage {
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
                 }
+
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
+
+                rewrite_with_comments::<ItemStorage>(formatter, self.span(), formatted_code, last)?;
 
                 Ok(())
             },

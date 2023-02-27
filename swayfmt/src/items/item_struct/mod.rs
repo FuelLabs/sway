@@ -6,7 +6,10 @@ use crate::{
         *,
     },
     utils::{
-        map::byte_span::{ByteSpan, LeafSpans},
+        map::{
+            byte_span::{ByteSpan, LeafSpans},
+            comments::rewrite_with_comments,
+        },
         CurlyBrace,
     },
 };
@@ -28,6 +31,7 @@ impl Format for ItemStruct {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                let last = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
                 if let Some(visibility) = &self.visibility {
                     write!(formatted_code, "{} ", visibility.span().as_str())?;
@@ -119,6 +123,7 @@ impl Format for ItemStruct {
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
 
+                rewrite_with_comments::<ItemStruct>(formatter, self.span(), formatted_code, last)?;
                 Ok(())
             },
         )?;

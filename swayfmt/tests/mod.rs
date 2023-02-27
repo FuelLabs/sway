@@ -504,24 +504,25 @@ pub struct Foo { // Here is a comment
              //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
              //                                                                                  \|_________|
 }
-// This is a comment
 "#,
         r#"contract;
 // This is a comment, for this one to be placed correctly we need to have Module visitor implemented
 pub struct Foo { // Here is a comment
+
+
+
     // Trying some ASCII art
     baz: u64,
     bazzz: u64,
-             //  ________ ___  ___  _______   ___               ___       ________  ________  ________
-             // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
-             // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
-             //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
-             //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
-             //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
-             //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
-             //                                                                                  \|_________|
+    //  ________ ___  ___  _______   ___               ___       ________  ________  ________
+    // |\  _____\\  \|\  \|\  ___ \ |\  \             |\  \     |\   __  \|\   __  \|\   ____\
+    // \ \  \__/\ \  \\\  \ \   __/|\ \  \            \ \  \    \ \  \|\  \ \  \|\ /\ \  \___|_
+    //  \ \   __\\ \  \\\  \ \  \_|/_\ \  \            \ \  \    \ \   __  \ \   __  \ \_____  \
+    //   \ \  \_| \ \  \\\  \ \  \_|\ \ \  \____        \ \  \____\ \  \ \  \ \  \|\  \|____|\  \
+    //    \ \__\   \ \_______\ \_______\ \_______\       \ \_______\ \__\ \__\ \_______\____\_\  \
+    //     \|__|    \|_______|\|_______|\|_______|        \|_______|\|__|\|__|\|_______|\_________\
+    //                                                                                  \|_________|
 }
-// This is a comment
 "#,
     );
 }
@@ -624,9 +625,9 @@ pub enum Bazz { // Here is a comment
 pub enum Bazz { // Here is a comment
     // Trying some ASCII art
     baz: (),
-    bazzz: (),//-----
-              //--D--
-              //-----
+    bazzz: (), //-----
+    //--D--
+    //-----
 }
 "#,
     );
@@ -646,6 +647,58 @@ fn hello_world( baz: /* this is a comment */ u64) { let x = 5; // This is a comm
 // This is another comment before a fn
 fn hello_world(baz: /* this is a comment */ u64) {
     let x = 5; // This is a comment inside the block
+}
+"#,
+    );
+}
+
+#[test]
+fn fn_comments_2() {
+    check(
+        r#"contract;
+
+fn returns_true() -> bool {
+    let x = 1;
+
+    // Comment
+}
+"#,
+        r#"contract;
+
+fn returns_true() -> bool {
+    let x = 1;
+
+    // Comment
+}
+"#,
+    );
+}
+
+#[test]
+fn abi_comments_2() {
+    check(
+        r#"contract;
+
+impl Empty for C {
+    #[storage(read)]
+    fn access_control_with_identity() {
+        // ANCHOR: access_control_with_identity
+        let sender = msg_sender().unwrap();
+        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
+        // ANCHOR_END: access_control_with_identity
+    }    
+}
+"#,
+        r#"contract;
+
+impl Empty for C {
+    #[storage(read)]
+    fn access_control_with_identity() {
+        // ANCHOR: access_control_with_identity
+        let sender = msg_sender().unwrap();
+        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
+        // ANCHOR_END: access_control_with_identity
+    }
 }
 "#,
     );

@@ -39,6 +39,7 @@ impl Format for Module {
                     formatter,
                 )?;
             }
+
             item.format(formatted_code, formatter)?;
             if let ItemKind::Dependency { .. } = item.value {
                 // Do not print a newline after a dependency
@@ -47,6 +48,14 @@ impl Format for Module {
             }
 
             prev_item = Some(item);
+        }
+
+        if let Some(prev_item) = prev_item {
+            write_comments(
+                formatted_code,
+                prev_item.span().end()..self.span().end(),
+                formatter,
+            )?;
         }
 
         Ok(())

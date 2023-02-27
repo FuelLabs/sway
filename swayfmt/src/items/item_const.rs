@@ -1,6 +1,9 @@
 use crate::{
     formatter::*,
-    utils::map::byte_span::{ByteSpan, LeafSpans},
+    utils::map::{
+        byte_span::{ByteSpan, LeafSpans},
+        comments::rewrite_with_comments,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemConst};
@@ -12,6 +15,8 @@ impl Format for ItemConst {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let last = formatted_code.len();
+
         // Check if visibility token exists if so add it.
         if let Some(visibility_token) = &self.visibility {
             write!(formatted_code, "{} ", visibility_token.span().as_str())?;
@@ -41,6 +46,8 @@ impl Format for ItemConst {
         }
 
         write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
+
+        rewrite_with_comments::<ItemConst>(formatter, self.span(), formatted_code, last)?;
         Ok(())
     }
 }

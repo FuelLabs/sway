@@ -57,6 +57,23 @@ fn write_trailing_comment(
     Ok(())
 }
 
+/// Writes an indentation if the given `predicate` evaluates to true.
+pub fn write_indent_if(
+    predicate: bool,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    if predicate {
+        write!(
+            formatted_code,
+            "{}",
+            &formatter.shape.indent.to_string(&formatter.config)?,
+        )?
+    };
+
+    Ok(())
+}
+
 /// Given a range, writes comments contained within the range. This function
 /// removes comments that are written here from the CommentMap for later use.
 ///
@@ -102,6 +119,12 @@ pub fn write_comments(
                 CommentKind::Trailing => {
                     write_trailing_comment(formatted_code, comment)?;
                 }
+                CommentKind::Inlined => {
+                    // To ensure consistency with
+                    formatted_code.truncate(formatted_code.trim_end().len());
+                    write!(formatted_code, " {} ", comment.span().as_str(),)?;
+                }
+                CommentKind::Multilined => {}
             }
         }
     }

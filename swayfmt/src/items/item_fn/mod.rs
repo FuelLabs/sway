@@ -1,16 +1,19 @@
 use crate::{
-    comments::{has_comments, write_comments},
+    comments::write_comments,
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
-        map::byte_span::{ByteSpan, LeafSpans},
+        map::{
+            byte_span::{ByteSpan, LeafSpans},
+            comments::rewrite_with_comments,
+        },
         {CurlyBrace, Parenthesis},
     },
 };
-use std::{fmt::Write, ops::Range};
+use std::fmt::Write;
 use sway_ast::{
     keywords::{MutToken, RefToken, SelfToken, Token},
     token::Delimiter,
@@ -27,6 +30,7 @@ impl Format for ItemFn {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let last = formatted_code.len();
         formatter.with_shape(
             formatter
                 .shape
@@ -50,17 +54,10 @@ impl Format for ItemFn {
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
-                    let range: Range<usize> = self.span().into();
-                    let comments = formatter.comments_context.map.comments_between(&range);
-                    if has_comments(comments) {
-                        formatter.shape.block_indent(&formatter.config);
-                        write_comments(formatted_code, range, formatter)?;
-                        if !formatted_code.ends_with('\n') {
-                            writeln!(formatted_code)?;
-                        }
-                    }
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
+
+                rewrite_with_comments::<ItemFn>(formatter, self.span(), formatted_code, last)?;
 
                 Ok(())
             },
@@ -308,6 +305,12 @@ impl Format for FnArg {
         self.pattern.format(formatted_code, formatter)?;
         // `: `
         write!(formatted_code, "{} ", self.colon_token.span().as_str())?;
+
+        write_comments(
+            formatted_code,
+            self.colon_token.span().end()..self.ty.span().start(),
+            formatter,
+        )?;
         // `Ty`
         self.ty.format(formatted_code, formatter)?;
 

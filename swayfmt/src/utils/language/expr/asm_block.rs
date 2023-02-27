@@ -1,7 +1,10 @@
 use crate::{
     formatter::{shape::LineStyle, *},
     utils::{
-        map::byte_span::{ByteSpan, LeafSpans},
+        map::{
+            byte_span::{ByteSpan, LeafSpans},
+            comments::rewrite_with_comments,
+        },
         CurlyBrace, Parenthesis,
     },
 };
@@ -19,6 +22,7 @@ impl Format for AsmBlock {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let last = formatted_code.len();
         formatter.with_shape(formatter.shape, |formatter| -> Result<(), FormatterError> {
             let contents = self.contents.get();
             if contents.instructions.is_empty() && contents.final_expr_opt.is_some() {
@@ -36,6 +40,7 @@ impl Format for AsmBlock {
 
             Ok(())
         })?;
+        rewrite_with_comments::<AsmBlock>(formatter, self.span(), formatted_code, last)?;
 
         Ok(())
     }
