@@ -602,12 +602,8 @@ impl<'a> ParsedTree<'a> {
                     call_path_binding, ..
                 } = &method_name_binding.inner
                 {
-                    let token = Token::from_parsed(
-                        AstToken::Expression(expression.clone()),
-                        SymbolKind::Struct,
-                    );
                     let (type_info, ident) = &call_path_binding.inner.suffix;
-                    self.collect_type_info_token(&token, type_info, Some(ident.span()), None);
+                    self.collect_type_info_token(type_info, Some(ident.span()));
                 }
 
                 for type_arg in &method_name_binding.type_arguments.to_vec() {
@@ -931,26 +927,20 @@ impl<'a> ParsedTree<'a> {
 
     fn collect_type_info_token(
         &self,
-        token: &Token,
         type_info: &TypeInfo,
         type_span: Option<Span>,
-        symbol_kind: Option<SymbolKind>,
     ) {
-        let mut token = token.clone();
-        match symbol_kind {
-            Some(kind) => token.kind = kind,
-            None => token.kind = type_info_to_symbol_kind(self.type_engine, type_info),
-        }
-
+        let symbol_kind = type_info_to_symbol_kind(self.type_engine, type_info);
         match type_info {
             TypeInfo::Str(length) => {
+                let ident = Ident::new(length.span());
                 self.tokens
-                    .insert(to_ident_key(&Ident::new(length.span())), token);
+                    .insert(to_ident_key(&ident), Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind));
             }
             TypeInfo::Array(type_arg, length) => {
-                token.kind = SymbolKind::NumericLiteral;
+                let ident = Ident::new(length.span());
                 self.tokens
-                    .insert(to_ident_key(&Ident::new(length.span())), token.clone());
+                    .insert(to_ident_key(&ident), Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::NumericLiteral));
                 self.collect_type_arg(type_arg);
             }
             TypeInfo::Tuple(type_arguments) => {
@@ -962,9 +952,11 @@ impl<'a> ParsedTree<'a> {
                 call_path,
                 type_arguments,
             } => {
-                token.type_def = Some(TypeDefinition::Ident(call_path.suffix.clone()));
+                let ident = call_path.suffix.clone();
+                let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
+                token.type_def = Some(TypeDefinition::Ident(ident.clone()));
                 self.tokens
-                    .insert(to_ident_key(&call_path.suffix), token.clone());
+                    .insert(to_ident_key(&ident), token.clone());
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
                         self.collect_type_arg(type_arg);
@@ -973,8 +965,9 @@ impl<'a> ParsedTree<'a> {
             }
             _ => {
                 if let Some(type_span) = type_span {
+                    let ident = Ident::new(type_span);
                     self.tokens
-                        .insert(to_ident_key(&Ident::new(type_span)), token);
+                        .insert(to_ident_key(&ident), Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind));
                 }
             }
         }
@@ -992,19 +985,16 @@ impl<'a> ParsedTree<'a> {
     }
 
     fn collect_trait_fn(&self, trait_fn: &TraitFn) {
-        let token = Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function);
         self.tokens
-            .insert(to_ident_key(&trait_fn.name), token.clone());
+            .insert(to_ident_key(&trait_fn.name), Token::from_parsed(AstToken::TraitFn(trait_fn.clone()), SymbolKind::Function));
 
         for parameter in &trait_fn.parameters {
             self.collect_function_parameter(parameter);
         }
 
         self.collect_type_info_token(
-            &token,
             &trait_fn.return_type,
-            Some(trait_fn.return_type_span.clone()),
-            None,
+            Some(trait_fn.return_type_span.clone())
         );
 
         trait_fn.attributes.parse(self.tokens);

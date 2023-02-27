@@ -1,6 +1,6 @@
 use crate::core::{
     session::Session,
-    token::{get_range_from_span, AstToken},
+    token::get_range_from_span,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
