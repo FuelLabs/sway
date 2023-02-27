@@ -2066,6 +2066,16 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
 /// thte tests included.
 type BuildResult = (BuiltPackage, Option<BuiltPackage>);
 
+struct CompilePkgCtx<'a> {
+    lib_namespace_map: &'a HashMap<NodeIx, namespace::Module>,
+    compiled_contract_deps: &'a HashMap<NodeIx, BuiltPackage>,
+    constants: BTreeMap<String, ConfigTimeConstant>,
+    profile: &'a BuildProfile,
+    plan: &'a BuildPlan,
+    engines: Engines<'a>,
+    target: &'a BuildTarget,
+}
+
 /// Build an entire forc package and return the built_package output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2078,43 +2088,37 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuildResult)>> {
-    #[allow(clippy::too_many_arguments)]
-    fn compile_util(
-        lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
-        compiled_contract_deps: &HashMap<NodeIx, BuiltPackage>,
-        profile: &BuildProfile,
-        plan: &BuildPlan,
+    fn compile_pkg(
         node: NodeIx,
-        constants: BTreeMap<String, ConfigTimeConstant>,
-        engines: Engines<'_>,
-        target: BuildTarget,
         source_map: &mut SourceMap,
+        compile_ctx: CompilePkgCtx,
     ) -> Result<(BuiltPackage, sway_core::namespace::Root)> {
+        let plan = compile_ctx.plan;
         let graph = plan.graph();
         let pkg = &graph[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
 
         let dep_namespace = match dependency_namespace(
-            lib_namespace_map,
-            compiled_contract_deps,
+            compile_ctx.lib_namespace_map,
+            compile_ctx.compiled_contract_deps,
             graph,
             node,
-            constants,
-            engines,
+            compile_ctx.constants,
+            compile_ctx.engines,
         ) {
             Ok(o) => o,
             Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs);
+                print_on_failure(compile_ctx.profile.terse, &[], &errs);
                 bail!("Failed to compile {}", pkg.name);
             }
         };
         compile(
             pkg,
             manifest,
-            target,
-            profile,
+            *compile_ctx.target,
+            compile_ctx.profile,
             dep_namespace,
-            engines,
+            compile_ctx.engines,
             source_map,
         )
     }
@@ -2159,17 +2163,17 @@ pub fn build(
                 include_tests: false,
                 ..profile.clone()
             };
-            let (built_contract_without_tests, _) = compile_util(
-                &lib_namespace_map,
-                &compiled_contract_deps,
-                &profile,
+            let compile_pkg_context = CompilePkgCtx {
+                lib_namespace_map: &lib_namespace_map,
+                compiled_contract_deps: &compiled_contract_deps,
+                constants: manifest.config_time_constants(),
+                profile: &profile,
                 plan,
-                node,
-                manifest.config_time_constants(),
                 engines,
-                target,
-                &mut source_map,
-            )?;
+                target: &target,
+            };
+            let (built_contract_without_tests, _) =
+                compile_pkg(node, &mut source_map, compile_pkg_context)?;
             // If this contract is built because tests are enabled we need to insert CONTRACT_ID
             // for the contract.
             if is_contract_dependency {
@@ -2212,17 +2216,17 @@ pub fn build(
         } else {
             profile.clone()
         };
-        let (mut built_package, namespace) = compile_util(
-            &lib_namespace_map,
-            &compiled_contract_deps,
-            &profile,
-            plan,
-            node,
+        let compile_pkg_context = CompilePkgCtx {
+            lib_namespace_map: &lib_namespace_map,
+            compiled_contract_deps: &compiled_contract_deps,
             constants,
+            profile: &profile,
+            plan,
             engines,
-            target,
-            &mut source_map,
-        )?;
+            target: &target,
+        };
+        let (mut built_package, namespace) =
+            compile_pkg(node, &mut source_map, compile_pkg_context)?;
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
             namespace.name = Some(name.clone());
