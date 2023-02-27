@@ -751,7 +751,7 @@ impl<'a> TypedTree<'a> {
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                        token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(field.clone()));
                     }
                 }
             }
@@ -827,6 +827,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::Return(exp) => self.handle_expression(exp),
         }
     }
+
     fn handle_scrutinee(&self, scrutinee: &ty::TyScrutinee) {
         use ty::TyScrutineeVariant::*;
         match &scrutinee.variant {
@@ -1233,7 +1234,9 @@ impl<'a> TypedTree<'a> {
             token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
         }
 
-        self.collect_type_argument(&const_decl.type_ascription);
+        if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree {
+            self.collect_call_path_tree(call_path_tree, &const_decl.type_ascription);
+        }
 
         if let Some(value) = &const_decl.value {
             self.handle_expression(value);
