@@ -88,6 +88,9 @@ fn main() -> bool {
     assert(not_3_0.upper == u64::max() - 3);
     assert(not_3_0.lower == u64::max());
 
+    assert(first <= second);
+    assert(second <= second);
+
     // test as_u64()
     let eleven = U128::from((0, 11));
     let unwrapped = eleven.as_u64().unwrap();

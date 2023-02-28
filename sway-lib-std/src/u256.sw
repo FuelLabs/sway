@@ -220,6 +220,24 @@ impl core::ops::Ord for U256 {
     }
 }
 
+// trait OrdEq {
+// } {
+//     fn ge(self, other: Self) -> bool {
+//         let gt = self.a > other.a || (self.a == other.a && self.b > other.b || (self.b == other.b && self.c > other.c || (self.c == other.c && self.d > other.d)));
+//         // eq is inlined to short-circut
+//         gt || (self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d)
+//     }
+
+//     fn le(self, other: Self) -> bool {
+//         let lt = self.a < other.a || (self.a == other.a && self.b < other.b || (self.b == other.b && self.c < other.c || (self.c == other.c && self.d < other.d)));
+//         // eq is inlined to short-circut
+//         gt || (self.a == other.a && self.b == other.b && self.c == other.c && self.d == other.d)
+//     }
+// }
+
+// impl OrdEq for U128 {
+// }
+
 impl core::ops::BitwiseAnd for U256 {
     fn binary_and(self, other: Self) -> Self {
         let (value_word_1, value_word_2, value_word_3, value_word_4) = self.decompose();

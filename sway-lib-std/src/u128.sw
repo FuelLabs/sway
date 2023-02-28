@@ -46,9 +46,20 @@ impl core::ops::Ord for U128 {
     }
 }
 
-// TODO this doesn't work?
-// impl core::ops::OrdEq for U128 {
+// trait OrdEq {
+// } {
+//     fn ge(self, other: Self) -> bool {
+//         self.gt(other) || self.eq(other)
+//     }
+
+//     fn le(self, other: Self) -> bool {
+//         self.lt(other) || self.eq(other)
+//     }
 // }
+
+impl core::ops::OrdEq for U128 {
+}
+
 impl u64 {
     pub fn overflowing_add(self, right: Self) -> U128 {
         disable_panic_on_overflow();

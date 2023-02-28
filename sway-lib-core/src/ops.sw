@@ -518,7 +518,7 @@ impl BitwiseXor for b256 {
     }
 }
 
-trait OrdEq: Ord + Eq {
+pub trait OrdEq: Ord + Eq {
 } {
     fn ge(self, other: Self) -> bool {
         self.gt(other) || self.eq(other)

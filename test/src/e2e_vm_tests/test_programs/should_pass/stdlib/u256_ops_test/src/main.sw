@@ -165,5 +165,8 @@ fn main() -> bool {
     assert(not_1_1_1_1.c == u64::max() - 1);
     assert(not_1_1_1_1.d == u64::max() - 1);
 
+    assert(first <= second);
+    assert(second <= second);
+
     true
 }
