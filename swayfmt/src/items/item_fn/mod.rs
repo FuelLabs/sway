@@ -54,6 +54,9 @@ impl Format for ItemFn {
                     Self::close_curly_brace(formatted_code, formatter)?;
                 } else {
                     Self::open_curly_brace(formatted_code, formatter)?;
+                    formatter.shape.block_indent(&formatter.config);
+                    write_comments(formatted_code, self.span().into(), formatter)?;
+                    formatter.shape.block_unindent(&formatter.config);
                     Self::close_curly_brace(formatted_code, formatter)?;
                 }
 
