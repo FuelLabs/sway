@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -49,5 +49,17 @@ impl HashWithEngines for TyConstantDeclaration {
         visibility.hash(state);
         type_ascription.hash(state, engines);
         is_configurable.hash(state);
+    }
+}
+
+impl Named for TyConstantDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+}
+
+impl Spanned for TyConstantDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
     }
 }

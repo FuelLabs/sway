@@ -10,17 +10,13 @@ use sway_core::{
 };
 
 trait RequiredMethods {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>>;
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
 }
-impl RequiredMethods for Vec<sway_core::decl_engine::DeclRef> {
-    fn to_methods(&self, decl_engine: &DeclEngine) -> Result<Vec<TyTraitFn>> {
+impl RequiredMethods for Vec<DeclRefTraitFn> {
+    fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|DeclRef { id, decl_span, .. }| {
-                decl_engine
-                    .get_trait_fn(id, decl_span)
-                    .map_err(|e| anyhow::anyhow!("{}", e))
-            })
-            .collect::<anyhow::Result<_>>()
+            .map(|DeclRef { id, .. }| decl_engine.get_trait_fn(id))
+            .collect()
     }
 }
 
@@ -43,10 +39,8 @@ impl Descriptor {
         use swayfmt::parse;
         use TyDeclaration::*;
         match ty_decl {
-            StructDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let struct_decl = decl_engine.get_struct(decl_id, decl_span)?;
+            StructDeclaration { decl_id, .. } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -77,10 +71,8 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let enum_decl = decl_engine.get_enum(decl_id, decl_span)?;
+            EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -111,10 +103,8 @@ impl Descriptor {
                     }))
                 }
             }
-            TraitDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let trait_decl = decl_engine.get_trait(decl_id, decl_span)?;
+            TraitDeclaration { decl_id, .. } => {
+                let trait_decl = decl_engine.get_trait(decl_id);
                 if !document_private_items && trait_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -130,7 +120,7 @@ impl Descriptor {
                                     TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
                                 })
                                 .collect::<Vec<_>>()
-                                .to_methods(decl_engine)?,
+                                .to_methods(decl_engine),
                         ),
                     );
 
@@ -155,10 +145,8 @@ impl Descriptor {
                     }))
                 }
             }
-            AbiDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let abi_decl = decl_engine.get_abi(decl_id, decl_span)?;
+            AbiDeclaration { decl_id, .. } => {
+                let abi_decl = decl_engine.get_abi(decl_id);
                 let item_name = abi_decl.name;
                 let attrs_opt =
                     (!abi_decl.attributes.is_empty()).then(|| abi_decl.attributes.to_html_string());
@@ -171,7 +159,7 @@ impl Descriptor {
                                 TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
                             })
                             .collect::<Vec<_>>()
-                            .to_methods(decl_engine)?,
+                            .to_methods(decl_engine),
                     ),
                 );
 
@@ -193,10 +181,8 @@ impl Descriptor {
                     raw_attributes: attrs_opt,
                 }))
             }
-            StorageDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let storage_decl = decl_engine.get_storage(decl_id, decl_span)?;
+            StorageDeclaration { decl_id, .. } => {
+                let storage_decl = decl_engine.get_storage(decl_id);
                 let item_name = sway_types::BaseIdent::new_no_trim(
                     sway_types::span::Span::from_string(CONTRACT_STORAGE.to_string()),
                 );
@@ -253,10 +239,8 @@ impl Descriptor {
             //         raw_attributes: None,
             //     }))
             // }
-            FunctionDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let fn_decl = decl_engine.get_function(decl_id, decl_span)?;
+            FunctionDeclaration { decl_id, .. } => {
+                let fn_decl = decl_engine.get_function(decl_id);
                 if !document_private_items && fn_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
@@ -285,10 +269,8 @@ impl Descriptor {
                     }))
                 }
             }
-            ConstantDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                let const_decl = decl_engine.get_constant(decl_id, decl_span)?;
+            ConstantDeclaration { decl_id, .. } => {
+                let const_decl = decl_engine.get_constant(decl_id);
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {

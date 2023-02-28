@@ -5,7 +5,7 @@ use super::{
     ProgramABI, ProgramKind,
 };
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
-use crate::decl_engine::DeclRef;
+use crate::decl_engine::DeclRefFunction;
 use crate::error::*;
 use crate::source_map::SourceMap;
 
@@ -37,7 +37,7 @@ pub struct FinalizedEntry {
     pub selector: Option<[u8; 4]>,
     /// If this entry is constructed from a test function contains the declaration id for that
     /// function, otherwise contains `None`.
-    pub test_decl_ref: Option<DeclRef>,
+    pub test_decl_ref: Option<DeclRefFunction>,
 }
 
 /// The bytecode for a sway program as well as the byte offsets of configuration-time constants in

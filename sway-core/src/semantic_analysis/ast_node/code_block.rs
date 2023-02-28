@@ -73,9 +73,8 @@ impl ty::TyCodeBlock {
                         ..
                     }) = never_decl_opt
                     {
-                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id, &span) {
-                            return never_decl.create_type_id(ctx.engines());
-                        }
+                        let never_decl = decl_engine.get_enum(never_decl_id);
+                        return never_decl.create_type_id(ctx.engines());
                     }
 
                     ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)
