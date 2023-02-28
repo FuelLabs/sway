@@ -963,7 +963,7 @@ impl<'a> ParsedTree<'a> {
                 let ident = call_path.suffix.clone();
                 let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
                 token.type_def = Some(TypeDefinition::Ident(ident.clone()));
-                self.tokens.insert(to_ident_key(&ident), token.clone());
+                self.tokens.insert(to_ident_key(&ident), token);
                 if let Some(type_arguments) = type_arguments {
                     for type_arg in type_arguments {
                         self.collect_type_arg(type_arg);
