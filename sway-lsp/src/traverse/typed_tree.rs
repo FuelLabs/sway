@@ -256,11 +256,7 @@ impl<'a> TypedTree<'a> {
                     }
 
                     for type_arg in trait_type_arguments {
-                        self.collect_type_id(
-                            type_arg.type_id,
-                            &TypedAstToken::TypedArgument(type_arg.clone()),
-                            type_arg.span().clone(),
-                        );
+                        self.collect_type_argument(&type_arg);
                     }
 
                     for item in items {
@@ -1128,11 +1124,7 @@ impl<'a> TypedTree<'a> {
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
         match &type_info {
             TypeInfo::Array(type_arg, ..) => {
-                self.collect_type_id(
-                    type_arg.type_id,
-                    &TypedAstToken::TypedArgument(type_arg.clone()),
-                    type_arg.span(),
-                );
+                self.collect_type_argument(type_arg);
             }
             TypeInfo::Tuple(type_arguments) => {
                 for type_arg in type_arguments {
