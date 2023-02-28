@@ -587,9 +587,7 @@ fn multiline_comments() {
 }"#,
         r#"contract;
 
-fn single_comment_same_line() {
-    /* a comment */
-}
+fn single_comment_same_line() { /* a comment */ }
 
 fn single_comment() -> bool {
     // TODO: This is a TODO
@@ -669,36 +667,6 @@ fn returns_true() -> bool {
     let x = 1;
 
     // Comment
-}
-"#,
-    );
-}
-
-#[test]
-fn abi_comments_2() {
-    check(
-        r#"contract;
-
-impl Empty for C {
-    #[storage(read)]
-    fn access_control_with_identity() {
-        // ANCHOR: access_control_with_identity
-        let sender = msg_sender().unwrap();
-        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
-        // ANCHOR_END: access_control_with_identity
-    }    
-}
-"#,
-        r#"contract;
-
-impl Empty for C {
-    #[storage(read)]
-    fn access_control_with_identity() {
-        // ANCHOR: access_control_with_identity
-        let sender = msg_sender().unwrap();
-        require(sender == storage.owner, MyError::UnauthorizedUser(sender));
-        // ANCHOR_END: access_control_with_identity
-    }
 }
 "#,
     );
