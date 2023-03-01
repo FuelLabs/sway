@@ -3,8 +3,8 @@ use sway_core::{
     language::{
         parsed::{
             ConstantDeclaration, Declaration, EnumVariant, Expression, FunctionDeclaration,
-            FunctionParameter, ReassignmentExpression, Scrutinee, StorageField,
-            StructExpressionField, StructField, Supertrait, TraitFn, TreeType, UseStatement,
+            FunctionParameter, Scrutinee, StorageField, StructExpressionField, StructField,
+            StructScrutineeField, Supertrait, TraitFn, UseStatement,
         },
         ty,
     },
@@ -24,21 +24,26 @@ pub enum AstToken {
     Declaration(Declaration),
     Expression(Expression),
     StructExpressionField(StructExpressionField),
+    StructScrutineeField(StructScrutineeField),
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
     StructField(StructField),
     EnumVariant(EnumVariant),
     TraitFn(TraitFn),
+    TraitConstraint(TraitConstraint),
     ConstantDeclaration(ConstantDeclaration),
-    Reassignment(ReassignmentExpression),
     StorageField(StorageField),
     Scrutinee(Scrutinee),
     Keyword(Ident),
     Intrinsic(Intrinsic),
     Attribute(Attribute),
-    TreeType(TreeType),
+    LibraryName(Ident),
     IncludeStatement,
     UseStatement(UseStatement),
+    TypeArgument(TypeArgument),
+    TypeParameter(TypeParameter),
+    Supertrait(Supertrait),
+    Ident(Ident),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -55,6 +60,7 @@ pub enum TypedAstToken {
     TypedTraitFn(ty::TyTraitFn),
     TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
+    TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
@@ -64,6 +70,7 @@ pub enum TypedAstToken {
     TypedLibraryName(Ident),
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
+    Ident(Ident),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

@@ -1,7 +1,4 @@
-use crate::core::{
-    session::Session,
-    token::{get_range_from_span, AstToken},
-};
+use crate::core::{session::Session, token::get_range_from_span};
 use std::collections::HashMap;
 use std::sync::Arc;
 use sway_types::Spanned;
@@ -37,12 +34,9 @@ pub fn prepare_rename(
     url: Url,
     position: Position,
 ) -> Option<PrepareRenameResponse> {
-    let (ident, token) = session.token_map().token_at_position(&url, position)?;
-    match token.parsed {
-        AstToken::Reassignment(_) => None,
-        _ => Some(PrepareRenameResponse::RangeWithPlaceholder {
-            range: get_range_from_span(&ident.span()),
-            placeholder: ident.as_str().to_string(),
-        }),
-    }
+    let (ident, ..) = session.token_map().token_at_position(&url, position)?;
+    Some(PrepareRenameResponse::RangeWithPlaceholder {
+        range: get_range_from_span(&ident.span()),
+        placeholder: ident.as_str().to_string(),
+    })
 }
