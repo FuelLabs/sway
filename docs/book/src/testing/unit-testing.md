@@ -91,4 +91,40 @@ fn test_fail() {
 }
 ```
 
+Contracts can call other contract's functions if they are declared unedr [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) table. An example for such calls can be seen below:
+
+```sway
+contract;
+
+abi MyContract {
+    fn test_true() -> bool;
+}
+
+impl MyContract for Contract {
+    fn test_true() -> bool {
+        true
+    }
+}
+
+abi MyContract2 {
+    fn test_false() -> bool;
+}
+
+#[test]
+fn test_contract_multi_call() {
+  let caller = abi(MyContract, CONTRACT_ID);
+
+  let contract2_id = 0xad4770679dec457bd9c0875d5ea52d75ac735ef28c0187d0bf7ee1dff5b9cee3;
+  let caller2 = abi(MyContract2, contract2_id);
+
+  let should_be_true  = caller.test_true {}();
+  let should_be_false = caller2.test_false {}();
+
+  assert(should_be_true == true);
+  assert(should_be_false == false);
+}
+```
+
+> **Note:** In order for this example to work, the package hosting this contract must declare the package implementing the `MyContract2` ABI as a contract dependency. When running the `forc test` command, the IDs of any contracts that are dependencies of the currently tested contract will be displayed. 
+
 > **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
