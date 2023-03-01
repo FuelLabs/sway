@@ -37,7 +37,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
         let type_of_output = output_type(index);
         if let Output::Message = type_of_output {
             asm(r1: recipient_and_msg_data_pointer, r2: size, r3: index, r4: coins) {
-                smo  r1 r2 r3 r4;
+                smo r1 r2 r3 r4;
             };
             return;
         }

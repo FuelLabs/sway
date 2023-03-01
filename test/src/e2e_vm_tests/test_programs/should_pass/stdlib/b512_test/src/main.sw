@@ -10,7 +10,7 @@ fn are_fields_contiguous(big_value: B512) -> bool {
         mcpi r3 r1 i64; // Copy 64 bytes *starting at* big_value.hi (includes big_value.lo)
         addi r4 r3 i32; // Point R4 at where we think big_value.lo was copied to.
         addi r5 zero i32; // Set r5 to 32.
-        meq  r6 r2 r4 r5; // Compare the known big_value.lo in R2 with our copied big_value.lo in r4.
+        meq r6 r2 r4 r5; // Compare the known big_value.lo in R2 with our copied big_value.lo in r4.
         cfsi i64; // Free the stack space.
         r6: bool
     }
