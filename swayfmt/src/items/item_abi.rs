@@ -17,7 +17,7 @@ impl Format for ItemAbi {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let last = formatted_code.len();
+        let start_len = formatted_code.len();
         // `abi name`
         write!(formatted_code, "{} ", self.abi_token.span().as_str())?;
         self.name.format(formatted_code, formatter)?;
@@ -80,7 +80,7 @@ impl Format for ItemAbi {
             self.span(),
             self.leaf_spans(),
             formatted_code,
-            last,
+            start_len,
         )?;
 
         Ok(())

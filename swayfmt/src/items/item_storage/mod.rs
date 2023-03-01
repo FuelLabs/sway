@@ -28,7 +28,8 @@ impl Format for ItemStorage {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
-                let last = formatted_code.len();
+                // Required for comment formatting
+                let start_len = formatted_code.len();
 
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
@@ -122,7 +123,7 @@ impl Format for ItemStorage {
                     self.span(),
                     self.leaf_spans(),
                     formatted_code,
-                    last,
+                    start_len,
                 )?;
 
                 Ok(())

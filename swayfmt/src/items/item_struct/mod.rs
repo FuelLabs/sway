@@ -28,7 +28,8 @@ impl Format for ItemStruct {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
-                let last = formatted_code.len();
+                // Required for comment formatting
+                let start_len = formatted_code.len();
                 // If there is a visibility token add it to the formatted_code with a ` ` after it.
                 if let Some(visibility) = &self.visibility {
                     write!(formatted_code, "{} ", visibility.span().as_str())?;
@@ -125,7 +126,7 @@ impl Format for ItemStruct {
                     self.span(),
                     self.leaf_spans(),
                     formatted_code,
-                    last,
+                    start_len,
                 )?;
                 Ok(())
             },

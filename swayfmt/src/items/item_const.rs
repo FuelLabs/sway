@@ -13,7 +13,8 @@ impl Format for ItemConst {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let last = formatted_code.len();
+        // Required for comment formatting
+        let start_len = formatted_code.len();
 
         // Check if visibility token exists if so add it.
         if let Some(visibility_token) = &self.visibility {
@@ -50,7 +51,7 @@ impl Format for ItemConst {
             self.span(),
             self.leaf_spans(),
             formatted_code,
-            last,
+            start_len,
         )?;
         Ok(())
     }

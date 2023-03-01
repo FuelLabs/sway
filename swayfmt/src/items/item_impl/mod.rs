@@ -20,7 +20,8 @@ impl Format for ItemImpl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let last = formatted_code.len();
+        // Required for comment formatting
+        let start_len = formatted_code.len();
 
         write!(formatted_code, "{}", self.impl_token.span().as_str())?;
         if let Some(generic_params) = &self.generic_params_opt {
@@ -55,7 +56,7 @@ impl Format for ItemImpl {
             self.span(),
             self.leaf_spans(),
             formatted_code,
-            last,
+            start_len,
         )?;
 
         Ok(())

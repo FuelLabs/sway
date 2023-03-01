@@ -20,7 +20,8 @@ impl Format for AsmBlock {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let last = formatted_code.len();
+        // Required for comment formatting
+        let start_len = formatted_code.len();
 
         formatter.with_shape(formatter.shape, |formatter| -> Result<(), FormatterError> {
             let contents = self.contents.get();
@@ -44,7 +45,7 @@ impl Format for AsmBlock {
             self.span(),
             self.leaf_spans(),
             formatted_code,
-            last,
+            start_len,
         )?;
 
         Ok(())

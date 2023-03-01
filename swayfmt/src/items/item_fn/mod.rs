@@ -27,7 +27,9 @@ impl Format for ItemFn {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let last = formatted_code.len();
+        // Required for comment formatting
+        let start_len = formatted_code.len();
+
         formatter.with_shape(
             formatter
                 .shape
@@ -62,7 +64,7 @@ impl Format for ItemFn {
                     self.span(),
                     self.leaf_spans(),
                     formatted_code,
-                    last,
+                    start_len,
                 )?;
 
                 Ok(())
