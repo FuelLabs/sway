@@ -59,7 +59,7 @@ pub enum ControlFlowGraphNode<'cfg> {
         parent_node: Option<NodeIndex>,
     },
     EnumVariant {
-        enum_decl_id: DeclId,
+        enum_decl_id: DeclId<ty::TyEnumDeclaration>,
         variant_name: Ident,
         is_public: bool,
     },
@@ -70,7 +70,7 @@ pub enum ControlFlowGraphNode<'cfg> {
         engines: Engines<'cfg>,
     },
     StructField {
-        struct_decl_id: DeclId,
+        struct_decl_id: DeclId<ty::TyStructDeclaration>,
         struct_field_name: Ident,
         attributes: transform::AttributesMap,
         span: Span,
@@ -206,7 +206,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
 impl<'cfg> ControlFlowGraphNode<'cfg> {
     pub(crate) fn from_enum_variant(
-        enum_decl_id: DeclId,
+        enum_decl_id: DeclId<ty::TyEnumDeclaration>,
         other_name: BaseIdent,
         is_public: bool,
     ) -> ControlFlowGraphNode<'cfg> {

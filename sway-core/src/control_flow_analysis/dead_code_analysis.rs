@@ -422,7 +422,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
 /// connect that field.
 fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     struct_decl: &ty::TyStructDeclaration,
-    struct_decl_id: DeclId,
+    struct_decl_id: DeclId<ty::TyStructDeclaration>,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
     tree_type: &TreeType,
@@ -668,7 +668,7 @@ fn get_struct_type_info_from_type_id(
 /// we can see clearly, and thusly warn, when individual variants are not ever constructed.
 fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
     enum_decl: &ty::TyEnumDeclaration,
-    enum_decl_id: DeclId,
+    enum_decl_id: DeclId<ty::TyEnumDeclaration>,
     graph: &mut ControlFlowGraph<'cfg>,
     entry_node: NodeIndex,
 ) {
@@ -1804,36 +1804,21 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
     match &node.content {
         ty::TyAstNodeContent::Declaration(decl) => match &decl {
             ty::TyDeclaration::VariableDeclaration(_) => false,
-            ty::TyDeclaration::ConstantDeclaration {
-                decl_id, decl_span, ..
-            } => match decl_engine.get_constant(decl_id, decl_span) {
-                Ok(const_decl) => allow_dead_code(const_decl.attributes),
-                _ => false,
-            },
-            ty::TyDeclaration::FunctionDeclaration {
-                decl_id, decl_span, ..
-            } => match decl_engine.get_function(decl_id, decl_span) {
-                Ok(func_decl) => allow_dead_code(func_decl.attributes),
-                _ => false,
-            },
-            ty::TyDeclaration::TraitDeclaration {
-                decl_id, decl_span, ..
-            } => match decl_engine.get_trait(decl_id, decl_span) {
-                Ok(trait_decl) => allow_dead_code(trait_decl.attributes),
-                _ => false,
-            },
-            ty::TyDeclaration::StructDeclaration {
-                decl_id, decl_span, ..
-            } => match decl_engine.get_struct(decl_id, decl_span) {
-                Ok(struct_decl) => allow_dead_code(struct_decl.attributes),
-                _ => false,
-            },
-            ty::TyDeclaration::EnumDeclaration {
-                decl_id, decl_span, ..
-            } => match decl_engine.get_enum(decl_id, decl_span) {
-                Ok(enum_decl) => allow_dead_code(enum_decl.attributes),
-                _ => false,
-            },
+            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_constant(decl_id).attributes)
+            }
+            ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_function(decl_id).attributes)
+            }
+            ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_trait(decl_id).attributes)
+            }
+            ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_struct(decl_id).attributes)
+            }
+            ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                allow_dead_code(decl_engine.get_enum(decl_id).attributes)
+            }
             ty::TyDeclaration::ImplTrait { .. } => false,
             ty::TyDeclaration::AbiDeclaration { .. } => false,
             ty::TyDeclaration::GenericTypeForFunctionScope { .. } => false,
@@ -1862,35 +1847,21 @@ fn allow_dead_code_node(
             }
             allow_dead_code_ast_node(decl_engine, node)
         }
-        ControlFlowGraphNode::EnumVariant {
-            enum_decl_id,
-            variant_name,
-            ..
-        } => match decl_engine.get_enum(enum_decl_id, &variant_name.span()) {
-            Ok(enum_decl) => allow_dead_code(enum_decl.attributes),
-            _ => false,
-        },
+        ControlFlowGraphNode::EnumVariant { enum_decl_id, .. } => {
+            allow_dead_code(decl_engine.get_enum(enum_decl_id).attributes)
+        }
         ControlFlowGraphNode::MethodDeclaration {
-            span,
-            method_decl_ref,
-            ..
-        } => match decl_engine.get_function(method_decl_ref, span) {
-            Ok(struct_decl) => allow_dead_code(struct_decl.attributes),
-            _ => false,
-        },
+            method_decl_ref, ..
+        } => allow_dead_code(decl_engine.get_function(method_decl_ref).attributes),
         ControlFlowGraphNode::StructField {
             struct_decl_id,
             attributes,
-            span,
             ..
         } => {
             if allow_dead_code(attributes.clone()) {
                 true
             } else {
-                match decl_engine.get_struct(struct_decl_id, span) {
-                    Ok(struct_decl) => allow_dead_code(struct_decl.attributes),
-                    _ => false,
-                }
+                allow_dead_code(decl_engine.get_struct(struct_decl_id).attributes)
             }
         }
         ControlFlowGraphNode::StorageField { .. } => false,
