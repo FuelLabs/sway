@@ -146,7 +146,7 @@ pub fn write_comments(
 pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     formatter: &mut Formatter,
     unformatted_span: Span,
-    unformatted_comment_spans: Vec<ByteSpan>,
+    unformatted_leaf_spans: Vec<ByteSpan>,
     formatted_code: &mut FormattedCode,
     last_formatted: usize,
 ) -> Result<(), FormatterError> {
@@ -155,24 +155,25 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut offset = 0;
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
-    let formatted_comment_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
+    let formatted_leaf_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
         .unwrap()
         .leaf_spans();
 
     // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
-    let mut previous_unformatted_comment_span = unformatted_comment_spans
+    let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()
         .ok_or(FormatterError::CommentError)?;
-    let mut previous_formatted_comment_span = formatted_comment_spans
+    let mut previous_formatted_leaf_span = formatted_leaf_spans
         .first()
         .ok_or(FormatterError::CommentError)?;
-    for (unformatted_comment_span, formatted_comment_span) in unformatted_comment_spans
+    for (unformatted_leaf_span, formatted_leaf_span) in unformatted_leaf_spans
         .iter()
-        .zip(formatted_comment_spans.iter())
+        .zip(formatted_leaf_spans.iter())
     {
-        let start = previous_unformatted_comment_span.end;
-        let end = unformatted_comment_span.start;
-        let range = std::ops::Range { start, end };
+        let range = std::ops::Range {
+            start: previous_unformatted_leaf_span.end,
+            end: unformatted_leaf_span.start,
+        };
         let iter = formatter.comments_context.map.comments_between(&range);
 
         let mut comments_found = vec![];
@@ -191,7 +192,7 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
             );
 
             offset += insert_after_span(
-                previous_formatted_comment_span,
+                previous_formatted_leaf_span,
                 comments_found.clone(),
                 offset,
                 &mut to_rewrite,
@@ -204,8 +205,8 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
                 .retain(|bs, _| !bs.contained_within(&range))
         }
 
-        previous_unformatted_comment_span = unformatted_comment_span;
-        previous_formatted_comment_span = formatted_comment_span;
+        previous_unformatted_leaf_span = unformatted_leaf_span;
+        previous_formatted_leaf_span = formatted_leaf_span;
     }
 
     formatted_code.truncate(last_formatted);
