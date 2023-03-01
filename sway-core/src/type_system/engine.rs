@@ -416,14 +416,7 @@ impl TypeEngine {
                         ..
                     }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(
-                                decl_engine.get_struct(&original_id, &call_path.span())
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_struct(&original_id);
 
                         // monomorphize the copy, in place
                         check!(
@@ -455,14 +448,7 @@ impl TypeEngine {
                         ..
                     }) => {
                         // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(
-                                decl_engine.get_enum(&original_id, &call_path.span())
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let mut new_copy = decl_engine.get_enum(&original_id);
 
                         // monomorphize the copy, in place
                         check!(

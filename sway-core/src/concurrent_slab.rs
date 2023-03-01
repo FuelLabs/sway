@@ -1,5 +1,7 @@
 use std::{fmt, sync::RwLock};
 
+use sway_types::{Named, Spanned};
+
 use crate::{decl_engine::*, engine_threading::*, type_system::TypeId, TypeInfo};
 
 #[derive(Debug)]
@@ -19,10 +21,7 @@ where
     }
 }
 
-impl<T> Default for ConcurrentSlab<T>
-where
-    T: Default,
-{
+impl<T> Default for ConcurrentSlab<T> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
@@ -106,10 +105,14 @@ impl ConcurrentSlab<TypeInfo> {
     }
 }
 
-impl ConcurrentSlab<DeclWrapper> {
-    pub fn replace(&self, index: DeclId, new_value: DeclWrapper) -> Option<DeclWrapper> {
+impl<T> ConcurrentSlab<T>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned,
+{
+    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
-        inner[*index] = new_value;
+        inner[index.inner()] = new_value;
         None
     }
 }

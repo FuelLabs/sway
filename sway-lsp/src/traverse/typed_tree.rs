@@ -7,6 +7,7 @@ use crate::core::{
 };
 use dashmap::mapref::one::RefMut;
 use sway_core::{
+    decl_engine::InterfaceDeclId,
     language::{
         parsed::{ImportType, Supertrait},
         ty::{self, GetDeclIdent, TyEnumVariant, TyModule, TyProgram, TyProgramKind, TySubmodule},
@@ -106,110 +107,92 @@ impl<'a> TypedTree<'a> {
                 }
                 self.handle_expression(&variable.body);
             }
-            ty::TyDeclaration::ConstantDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(const_decl) = decl_engine.get_constant(decl_id, decl_span) {
-                    self.collect_const_decl(&const_decl);
-                }
+            ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                let const_decl = decl_engine.get_constant(decl_id);
+                self.collect_const_decl(&const_decl);
             }
-            ty::TyDeclaration::FunctionDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(func_decl) = decl_engine.get_function(decl_id, decl_span) {
-                    self.collect_typed_fn_decl(&func_decl);
-                }
+            ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                let func_decl = decl_engine.get_function(decl_id);
+                self.collect_typed_fn_decl(&func_decl);
             }
-            ty::TyDeclaration::TraitDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(trait_decl) = decl_engine.get_trait(decl_id, decl_span) {
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&trait_decl.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
-                    }
+            ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                let trait_decl = decl_engine.get_trait(decl_id);
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&trait_decl.name))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
+                }
 
-                    for item in &trait_decl.interface_surface {
-                        match item {
-                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
-                                if let Ok(trait_fn) = decl_engine
-                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                                {
-                                    self.collect_typed_trait_fn_token(&trait_fn);
-                                }
-                            }
+                for item in &trait_decl.interface_surface {
+                    match item {
+                        ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                            let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
+                            self.collect_typed_trait_fn_token(&trait_fn);
                         }
                     }
-                    for supertrait in trait_decl.supertraits {
-                        self.collect_supertrait(&supertrait);
-                    }
+                }
+                for supertrait in trait_decl.supertraits {
+                    self.collect_supertrait(&supertrait);
                 }
             }
             ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-                if let Ok(struct_decl) = decl_engine.get_struct(decl_id, &declaration.span()) {
+                let struct_decl = decl_engine.get_struct(decl_id);
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix));
+                }
+
+                for field in &struct_decl.fields {
+                    self.collect_ty_struct_field(field);
+                }
+
+                for type_param in &struct_decl.type_parameters {
                     if let Some(mut token) = self
                         .tokens
-                        .try_get_mut(&to_ident_key(&struct_decl.call_path.suffix))
+                        .try_get_mut(&to_ident_key(&type_param.name_ident))
                         .try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(struct_decl.call_path.suffix));
-                    }
-
-                    for field in &struct_decl.fields {
-                        self.collect_ty_struct_field(field);
-                    }
-
-                    for type_param in &struct_decl.type_parameters {
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&type_param.name_ident))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-                        }
+                        token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
+                        token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                     }
                 }
             }
-            ty::TyDeclaration::EnumDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(enum_decl) = decl_engine.get_enum(decl_id, decl_span) {
+            ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
+                let enum_decl = decl_engine.get_enum(decl_id);
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def =
+                        Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
+                }
+
+                for type_param in &enum_decl.type_parameters {
                     if let Some(mut token) = self
                         .tokens
-                        .try_get_mut(&to_ident_key(&enum_decl.call_path.suffix))
+                        .try_get_mut(&to_ident_key(&type_param.name_ident))
                         .try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def =
-                            Some(TypeDefinition::Ident(enum_decl.call_path.suffix.clone()));
-                    }
-
-                    for type_param in &enum_decl.type_parameters {
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&type_param.name_ident))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
-                            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-                        }
-                    }
-
-                    for variant in &enum_decl.variants {
-                        self.collect_ty_enum_variant(variant);
+                        token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
+                        token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                     }
                 }
+
+                for variant in &enum_decl.variants {
+                    self.collect_ty_enum_variant(variant);
+                }
             }
-            ty::TyDeclaration::ImplTrait {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(ty::TyImplTrait {
+            ty::TyDeclaration::ImplTrait { decl_id, .. } => {
+                let ty::TyImplTrait {
                     impl_type_parameters,
                     trait_name,
                     trait_type_arguments,
@@ -217,102 +200,95 @@ impl<'a> TypedTree<'a> {
                     items,
                     implementing_for,
                     ..
-                }) = decl_engine.get_impl_trait(decl_id, decl_span)
-                {
-                    for param in impl_type_parameters {
-                        self.collect_type_id(
-                            param.type_id,
-                            &TypedAstToken::TypedParameter(param.clone()),
-                            param.name_ident.span().clone(),
-                        );
-                    }
-
-                    for ident in &trait_name.prefixes {
-                        if let Some(mut token) =
-                            self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::Ident(ident.clone()));
-                        }
-                    }
-
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&trait_name.suffix))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-
-                        token.type_def = if let Some(decl_ref) = &trait_decl_ref {
-                            if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, decl_span) {
-                                Some(TypeDefinition::Ident(trait_decl.name))
-                            } else if let Ok(abi_decl) = decl_engine.get_abi(decl_ref, decl_span) {
-                                Some(TypeDefinition::Ident(abi_decl.name))
-                            } else {
-                                Some(TypeDefinition::TypeId(implementing_for.type_id))
-                            }
-                        } else {
-                            Some(TypeDefinition::TypeId(implementing_for.type_id))
-                        };
-                    }
-
-                    for type_arg in trait_type_arguments {
-                        self.collect_type_argument(&type_arg);
-                    }
-
-                    for item in items {
-                        match item {
-                            ty::TyTraitItem::Fn(method_ref) => {
-                                if let Ok(method) = decl_engine.get_function(&method_ref, decl_span)
-                                {
-                                    self.collect_typed_fn_decl(&method);
-                                }
-                            }
-                        }
-                    }
-
-                    self.collect_type_argument(&implementing_for);
-
-                    // collect the root type argument again with declaration info this time so the
-                    // impl is registered
+                } = decl_engine.get_impl_trait(decl_id);
+                for param in impl_type_parameters {
                     self.collect_type_id(
-                        implementing_for.type_id,
-                        &TypedAstToken::TypedDeclaration(declaration.clone()),
-                        implementing_for
-                            .call_path_tree
-                            .as_ref()
-                            .map(|tree| tree.call_path.suffix.span())
-                            .unwrap_or(implementing_for.span()),
+                        param.type_id,
+                        &TypedAstToken::TypedParameter(param.clone()),
+                        param.name_ident.span().clone(),
                     );
                 }
-            }
-            ty::TyDeclaration::AbiDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(abi_decl) = decl_engine.get_abi(decl_id, decl_span) {
-                    if let Some(mut token) = self
-                        .tokens
-                        .try_get_mut(&to_ident_key(&abi_decl.name))
-                        .try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
-                    }
 
-                    for item in &abi_decl.interface_surface {
-                        match item {
-                            ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
-                                if let Ok(trait_fn) = decl_engine
-                                    .get_trait_fn(trait_fn_decl_ref, &trait_fn_decl_ref.span())
-                                {
-                                    self.collect_typed_trait_fn_token(&trait_fn);
-                                }
+                for ident in &trait_name.prefixes {
+                    if let Some(mut token) =
+                        self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
+                    }
+                }
+
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&trait_name.suffix))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+
+                    token.type_def = if let Some(decl_ref) = &trait_decl_ref {
+                        match &decl_ref.id {
+                            InterfaceDeclId::Abi(decl_id) => {
+                                let abi_decl = decl_engine.get_abi(decl_id);
+                                Some(TypeDefinition::Ident(abi_decl.name))
+                            }
+                            InterfaceDeclId::Trait(decl_id) => {
+                                let trait_decl = decl_engine.get_trait(decl_id);
+                                Some(TypeDefinition::Ident(trait_decl.name))
                             }
                         }
-                    }
+                    } else {
+                        Some(TypeDefinition::TypeId(implementing_for.type_id))
+                    };
+                }
 
-                    for supertrait in abi_decl.supertraits {
-                        self.collect_supertrait(&supertrait);
+                for type_arg in trait_type_arguments {
+                    self.collect_type_argument(&type_arg);
+                }
+
+                for item in items {
+                    match item {
+                        ty::TyTraitItem::Fn(method_ref) => {
+                            let method = decl_engine.get_function(&method_ref);
+                            self.collect_typed_fn_decl(&method);
+                        }
                     }
+                }
+
+                self.collect_type_argument(&implementing_for);
+
+                // collect the root type argument again with declaration info this time so the
+                // impl is registered
+                self.collect_type_id(
+                    implementing_for.type_id,
+                    &TypedAstToken::TypedDeclaration(declaration.clone()),
+                    implementing_for
+                        .call_path_tree
+                        .as_ref()
+                        .map(|tree| tree.call_path.suffix.span())
+                        .unwrap_or(implementing_for.span()),
+                );
+            }
+            ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                let abi_decl = decl_engine.get_abi(decl_id);
+                if let Some(mut token) = self
+                    .tokens
+                    .try_get_mut(&to_ident_key(&abi_decl.name))
+                    .try_unwrap()
+                {
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
+                }
+
+                for item in &abi_decl.interface_surface {
+                    match item {
+                        ty::TyTraitInterfaceItem::TraitFn(trait_fn_decl_ref) => {
+                            let trait_fn = decl_engine.get_trait_fn(trait_fn_decl_ref);
+                            self.collect_typed_trait_fn_token(&trait_fn);
+                        }
+                    }
+                }
+
+                for supertrait in abi_decl.supertraits {
+                    self.collect_supertrait(&supertrait);
                 }
             }
             ty::TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
@@ -322,24 +298,21 @@ impl<'a> TypedTree<'a> {
                 }
             }
             ty::TyDeclaration::ErrorRecovery(_) => {}
-            ty::TyDeclaration::StorageDeclaration {
-                decl_id, decl_span, ..
-            } => {
-                if let Ok(storage_decl) = decl_engine.get_storage(decl_id, decl_span) {
-                    for field in &storage_decl.fields {
-                        if let Some(mut token) = self
-                            .tokens
-                            .try_get_mut(&to_ident_key(&field.name))
-                            .try_unwrap()
-                        {
-                            token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
-                            token.type_def = Some(TypeDefinition::Ident(field.name.clone()));
-                        }
-
-                        self.collect_type_argument(&field.type_argument);
-
-                        self.handle_expression(&field.initializer);
+            ty::TyDeclaration::StorageDeclaration { decl_id, .. } => {
+                let storage_decl = decl_engine.get_storage(decl_id);
+                for field in &storage_decl.fields {
+                    if let Some(mut token) = self
+                        .tokens
+                        .try_get_mut(&to_ident_key(&field.name))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedStorageField(field.clone()));
+                        token.type_def = Some(TypeDefinition::Ident(field.name.clone()));
                     }
+
+                    self.collect_type_argument(&field.type_argument);
+
+                    self.handle_expression(&field.initializer);
                 }
             }
         }
@@ -467,9 +440,8 @@ impl<'a> TypedTree<'a> {
                 }
 
                 let implementing_type_name = decl_engine
-                    .get_function(function_decl_ref, &call_path.span())
-                    .ok()
-                    .and_then(|function_decl| function_decl.implementing_type)
+                    .get_function(function_decl_ref)
+                    .implementing_type
                     .and_then(|impl_type| impl_type.get_decl_ident());
 
                 let prefixes = if let Some(impl_type_name) = implementing_type_name {
@@ -496,11 +468,8 @@ impl<'a> TypedTree<'a> {
                     .try_unwrap()
                 {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    if let Ok(function_decl) =
-                        decl_engine.get_function(function_decl_ref, &call_path.span())
-                    {
-                        token.type_def = Some(TypeDefinition::Ident(function_decl.name));
-                    }
+                    let function_decl = decl_engine.get_function(function_decl_ref);
+                    token.type_def = Some(TypeDefinition::Ident(function_decl.name));
                 }
 
                 for exp in contract_call_params.values() {
@@ -516,12 +485,9 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(exp);
                 }
 
-                if let Ok(function_decl) =
-                    decl_engine.get_function(function_decl_ref, &call_path.span())
-                {
-                    for node in &function_decl.body.contents {
-                        self.traverse_node(node);
-                    }
+                let function_decl = decl_engine.get_function(function_decl_ref);
+                for node in &function_decl.body.contents {
+                    self.traverse_node(node);
                 }
             }
             ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
@@ -965,11 +931,8 @@ impl<'a> TypedTree<'a> {
             token.typed = Some(TypedAstToken::TypedSupertrait(supertrait.clone()));
             token.type_def = if let Some(decl_ref) = &supertrait.decl_ref {
                 let decl_engine = self.engines.de();
-                if let Ok(trait_decl) = decl_engine.get_trait(decl_ref, &decl_ref.span()) {
-                    Some(TypeDefinition::Ident(trait_decl.name))
-                } else {
-                    Some(TypeDefinition::Ident(supertrait.name.suffix.clone()))
-                }
+                let trait_decl = decl_engine.get_trait(decl_ref);
+                Some(TypeDefinition::Ident(trait_decl.name))
             } else {
                 Some(TypeDefinition::Ident(supertrait.name.suffix.clone()))
             }

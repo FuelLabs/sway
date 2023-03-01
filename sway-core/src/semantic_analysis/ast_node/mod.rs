@@ -134,8 +134,7 @@ pub(crate) fn reassign_storage_subfield(
     }
 
     let storage_fields = check!(
-        ctx.namespace
-            .get_storage_field_descriptors(decl_engine, &span),
+        ctx.namespace.get_storage_field_descriptors(decl_engine),
         return err(warnings, errors),
         warnings,
         errors

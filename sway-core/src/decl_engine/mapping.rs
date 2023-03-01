@@ -1,15 +1,15 @@
 use std::fmt;
 
-use crate::language::ty::{TyTraitInterfaceItem, TyTraitItem};
+use crate::language::ty::{TyFunctionDeclaration, TyTraitInterfaceItem, TyTraitItem};
 
-use super::{DeclId, InterfaceItemMap, ItemMap};
+use super::{DeclId, FunctionalDeclId, InterfaceItemMap, ItemMap};
 
-type SourceDecl = DeclId;
-type DestinationDecl = DeclId;
+type SourceDecl = FunctionalDeclId;
+type DestinationDecl = DeclId<TyFunctionDeclaration>;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
-pub(crate) struct DeclMapping {
+pub struct DeclMapping {
     mapping: Vec<(SourceDecl, DestinationDecl)>,
 }
 
@@ -21,7 +21,7 @@ impl fmt::Display for DeclMapping {
             self.mapping
                 .iter()
                 .map(|(source_type, dest_type)| {
-                    format!("{} -> {}", **source_type, **dest_type,)
+                    format!("{} -> {}", source_type, dest_type.inner(),)
                 })
                 .collect::<Vec<_>>()
                 .join(", ")
@@ -64,7 +64,7 @@ impl DeclMapping {
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref,
                 };
-                mapping.push(((&interface_decl_ref).into(), new_decl_ref.into()));
+                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.id));
             }
         }
         for (decl_name, item) in item_decl_refs.into_iter() {
@@ -77,19 +77,15 @@ impl DeclMapping {
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref,
                 };
-                mapping.push(((&interface_decl_ref).into(), new_decl_ref.into()));
+                mapping.push(((interface_decl_ref.id).into(), new_decl_ref.into()));
             }
         }
         DeclMapping { mapping }
     }
 
-    pub(crate) fn find_match<'a, T>(&self, decl_ref: &'a T) -> Option<DestinationDecl>
-    where
-        SourceDecl: From<&'a T>,
-    {
-        let decl_ref = SourceDecl::from(decl_ref);
+    pub(crate) fn find_match(&self, decl_ref: SourceDecl) -> Option<DestinationDecl> {
         for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
-            if **source_decl_ref == *decl_ref {
+            if *source_decl_ref == decl_ref {
                 return Some(*dest_decl_ref);
             }
         }

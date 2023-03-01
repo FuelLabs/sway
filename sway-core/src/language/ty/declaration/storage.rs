@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use sway_error::error::CompileError;
-use sway_types::{state::StateIndex, Ident, Span, Spanned};
+use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{engine_threading::*, error::*, language::ty::*, transform, type_system::*};
 
@@ -10,6 +10,13 @@ pub struct TyStorageDeclaration {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+    name: Ident,
+}
+
+impl Named for TyStorageDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
 }
 
 impl EqWithEngines for TyStorageDeclaration {}
@@ -27,6 +34,7 @@ impl HashWithEngines for TyStorageDeclaration {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
+            name: _,
         } = self;
         fields.hash(state, engines);
     }
@@ -45,6 +53,7 @@ impl TyStorageDeclaration {
         attributes: transform::AttributesMap,
     ) -> Self {
         TyStorageDeclaration {
+            name: Ident::new_with_override("storage", span.clone()),
             fields,
             span,
             attributes,
