@@ -101,12 +101,24 @@ pub struct BuiltPackage {
     pub build_target: BuildTarget,
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
-    pub bytecode: Vec<u8>,
-    pub entries: Vec<PkgEntry>,
+    pub bytecode: BuiltPackageBytecode,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
     pub built_pkg_descriptor: BuiltPackageDescriptor,
+    /// `Some` for contract member builds where tests were included. This is
+    /// required so that we can deploy once instance of the contract (without
+    /// tests) with a valid contract ID before executing the tests as scripts.
+    ///
+    /// For non-contract members, this is always `None`.
+    pub bytecode_without_tests: Option<BuiltPackageBytecode>,
+}
+
+/// The bytecode associated with a built package along with its entry points.
+#[derive(Debug, Clone)]
+pub struct BuiltPackageBytecode {
+    pub bytes: Vec<u8>,
+    pub entries: Vec<PkgEntry>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -154,7 +166,9 @@ pub type BuiltWorkspace = HashMap<String, BuiltPackage>;
 
 #[derive(Debug)]
 pub enum Built {
+    /// Represents a standalone package build.
     Package(Box<BuiltPackage>),
+    /// Represents a workspace build.
     Workspace(BuiltWorkspace),
 }
 
@@ -378,7 +392,7 @@ impl Edge {
 impl BuiltPackage {
     /// Writes bytecode of the BuiltPackage to the given `path`.
     pub fn write_bytecode(&self, path: &Path) -> Result<()> {
-        fs::write(path, &self.bytecode)?;
+        fs::write(path, &self.bytecode.bytes)?;
         Ok(())
     }
 
@@ -436,7 +450,7 @@ impl BuiltPackage {
             ProgramABI::MidenVM(_) => (),
         }
 
-        info!("      Bytecode size: {} bytes", self.bytecode.len());
+        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -456,7 +470,7 @@ impl BuiltPackage {
             }
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
-                let root = format!("0x{}", Contract::root_from_code(&self.bytecode));
+                let root = format!("0x{}", Contract::root_from_code(&self.bytecode.bytes));
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
@@ -464,7 +478,8 @@ impl BuiltPackage {
             }
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
-                let bytecode_hash = format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode));
+                let bytecode_hash =
+                    format!("0x{}", fuel_crypto::Hasher::hash(&self.bytecode.bytes));
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
@@ -478,7 +493,7 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between package names and their corresponding `BuiltPackage`.
+    /// Returns a map between package names and their corresponding built package.
     pub fn into_members(self) -> Result<HashMap<String, BuiltPackage>> {
         match self {
             Built::Package(built_pkg) => {
@@ -1638,16 +1653,21 @@ pub fn compile_ast(
 pub fn compile(
     pkg: &Pinned,
     manifest: &PackageManifestFile,
-    build_target: BuildTarget,
-    build_profile: &BuildProfile,
+    compile_ctx: CompilePkgCtx,
     namespace: namespace::Module,
-    engines: Engines<'_>,
     source_map: &mut SourceMap,
 ) -> Result<(BuiltPackage, namespace::Root)> {
+    let CompilePkgCtx {
+        profile,
+        engines,
+        target,
+        without_tests_bytecode,
+        ..
+    } = compile_ctx;
     // Time the given expression and print the result if `build_config.time_phases` is true.
     macro_rules! time_expr {
         ($description:expr, $expression:expr) => {{
-            if build_profile.time_phases {
+            if profile.time_phases {
                 let expr_start = std::time::Instant::now();
                 let output = { $expression };
                 println!(
@@ -1665,9 +1685,9 @@ pub fn compile(
     let entry_path = manifest.entry_path();
     let sway_build_config = time_expr!(
         "produce `sway_core::BuildConfig`",
-        sway_build_config(manifest.dir(), &entry_path, build_target, build_profile)?
+        sway_build_config(manifest.dir(), &entry_path, *target, profile)?
     );
-    let terse_mode = build_profile.terse;
+    let terse_mode = profile.terse;
     let fail = |warnings, errors| {
         print_on_failure(terse_mode, warnings, errors);
         bail!("Failed to compile {}", pkg.name);
@@ -1676,14 +1696,14 @@ pub fn compile(
     // First, compile to an AST. We'll update the namespace and check for JSON ABI output.
     let ast_res = time_expr!(
         "compile to ast",
-        compile_ast(engines, manifest, build_target, build_profile, namespace)?
+        compile_ast(engines, manifest, *target, profile, namespace)?
     );
     let typed_program = match ast_res.value.as_ref() {
         None => return fail(&ast_res.warnings, &ast_res.errors),
         Some(typed_program) => typed_program,
     };
 
-    if build_profile.print_ast {
+    if profile.print_ast {
         tracing::info!("{:#?}", typed_program);
     }
 
@@ -1701,7 +1721,7 @@ pub fn compile(
         sway_core::ast_to_asm(engines, &ast_res, &sway_build_config)
     );
 
-    let mut json_abi_program = match build_target {
+    let mut json_abi_program = match target {
         BuildTarget::Fuel => {
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
@@ -1753,7 +1773,7 @@ pub fn compile(
             bytecode: bytes,
             config_const_offsets: config_offsets,
         }) if bc_res.errors.is_empty()
-            && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
+            && (bc_res.warnings.is_empty() || !profile.error_on_warnings) =>
         {
             print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
@@ -1776,17 +1796,17 @@ pub fn compile(
                 manifest_file: manifest.clone(),
                 pinned: pkg.clone(),
             };
-            let bytecode = bytes;
+            let bytecode = BuiltPackageBytecode { bytes, entries };
             let built_package = BuiltPackage {
-                build_target,
+                build_target: *target,
                 json_abi_program,
                 storage_slots,
                 bytecode,
                 tree_type,
-                entries,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
                 built_pkg_descriptor,
+                bytecode_without_tests: without_tests_bytecode,
             };
             Ok((built_package, namespace))
         }
@@ -1927,6 +1947,13 @@ fn build_profile_from_opts(
     Ok((selected_build_profile.to_string(), profile))
 }
 
+/// Check if the given node is a contract dependency of any node in the graph.
+fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
+    graph
+        .edges_directed(node, Direction::Incoming)
+        .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
+}
+
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let BuildOpts {
@@ -2033,7 +2060,7 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
 /// Returns the ContractId of a built_package contract with specified `salt`.
 pub fn contract_id(built_package: &BuiltPackage, salt: &fuel_tx::Salt) -> ContractId {
     // Construct the contract ID
-    let contract = Contract::from(built_package.bytecode.clone());
+    let contract = Contract::from(built_package.bytecode.bytes.clone());
     let mut storage_slots = built_package.storage_slots.clone();
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -2065,6 +2092,20 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
     Ok(())
 }
 
+pub struct CompilePkgCtx<'a> {
+    lib_namespace_map: &'a HashMap<NodeIx, namespace::Module>,
+    compiled_contract_deps: &'a HashMap<NodeIx, BuiltPackage>,
+    constants: BTreeMap<String, ConfigTimeConstant>,
+    profile: &'a BuildProfile,
+    plan: &'a BuildPlan,
+    engines: Engines<'a>,
+    target: &'a BuildTarget,
+    /// Contains the bytecode of the current package compiled without tests. Since we are
+    /// compiling each contract without tests first, this will be only `Some(..)` for contract
+    /// members.
+    without_tests_bytecode: Option<BuiltPackageBytecode>,
+}
+
 /// Build an entire forc package and return the built_package output.
 ///
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
@@ -2077,6 +2118,32 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     const_inject_map: &ConstInjectionMap,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+    fn compile_pkg(
+        node: NodeIx,
+        source_map: &mut SourceMap,
+        compile_ctx: CompilePkgCtx,
+    ) -> Result<(BuiltPackage, sway_core::namespace::Root)> {
+        let plan = compile_ctx.plan;
+        let graph = plan.graph();
+        let pkg = &graph[node];
+        let manifest = &plan.manifest_map()[&pkg.id()];
+
+        let dep_namespace = match dependency_namespace(
+            compile_ctx.lib_namespace_map,
+            compile_ctx.compiled_contract_deps,
+            graph,
+            node,
+            compile_ctx.constants.clone(),
+            compile_ctx.engines,
+        ) {
+            Ok(o) => o,
+            Err(errs) => {
+                print_on_failure(compile_ctx.profile.terse, &[], &errs);
+                bail!("Failed to compile {}", pkg.name);
+            }
+        };
+        compile(pkg, manifest, compile_ctx, dep_namespace, source_map)
+    }
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2087,6 +2154,8 @@ pub fn build(
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
     let engines = Engines::new(&type_engine, &decl_engine);
+    let include_tests = profile.include_tests;
+    let mut const_inject_map = const_inject_map.clone();
 
     let mut lib_namespace_map = Default::default();
     let mut compiled_contract_deps = HashMap::new();
@@ -2106,6 +2175,58 @@ pub fn build(
             &pkg.source.display_compiling(manifest.dir()),
         );
 
+        let is_contract_dependency = is_contract_dependency(plan.graph(), node);
+        // If we are building a contract and tests are enabled or we are building a contract
+        // dependency, we need the tests exlcuded bytecode.
+        let without_tests_bytecode = if (include_tests
+            && matches!(manifest.program_type(), Ok(TreeType::Contract)))
+            || is_contract_dependency
+        {
+            // We will build a contract with tests enabled, we will also need the same contract with tests
+            // disabled for:
+            //
+            //   1. Interpreter deployment in `forc-test`.
+            //   2. Contract ID injection in `forc-pkg` if this is a contract dependency to any
+            //      other pkg, so that injected contract id is not effected by the tests.
+            let profile = BuildProfile {
+                include_tests: false,
+                ..profile.clone()
+            };
+            let compile_pkg_context = CompilePkgCtx {
+                lib_namespace_map: &lib_namespace_map,
+                compiled_contract_deps: &compiled_contract_deps,
+                constants: manifest.config_time_constants(),
+                profile: &profile,
+                plan,
+                engines,
+                target: &target,
+                without_tests_bytecode: None,
+            };
+            let (built_contract_without_tests, _) =
+                compile_pkg(node, &mut source_map, compile_pkg_context)?;
+            // If this contract is built because tests are enabled we need to insert CONTRACT_ID
+            // for the contract.
+            if is_contract_dependency {
+                compiled_contract_deps.insert(node, built_contract_without_tests.clone());
+            } else {
+                // `forc-test` interpreter deployments are done with zeroed salt.
+                let contract_id =
+                    contract_id(&built_contract_without_tests, &fuel_tx::Salt::zeroed());
+                let contract_id_constant_name = CONTRACT_ID_CONSTANT_NAME.to_string();
+                let contract_id_value = format!("0x{contract_id}");
+                let contract_id_constant = ConfigTimeConstant {
+                    r#type: "b256".to_string(),
+                    value: contract_id_value.clone(),
+                    public: true,
+                };
+                let constant_declarations = vec![(contract_id_constant_name, contract_id_constant)];
+                const_inject_map.insert(pkg.clone(), constant_declarations);
+            }
+            Some(built_contract_without_tests.bytecode)
+        } else {
+            None
+        };
+
         let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(
@@ -2117,38 +2238,27 @@ pub fn build(
         } else {
             manifest.config_time_constants()
         };
-        let dep_namespace = match dependency_namespace(
-            &lib_namespace_map,
-            &compiled_contract_deps,
-            &plan.graph,
-            node,
-            constants,
-            engines,
-        ) {
-            Ok(o) => o,
-            Err(errs) => {
-                print_on_failure(profile.terse, &[], &errs);
-                bail!("Failed to compile {}", pkg.name);
+        // Build all non member nodes with tests disabled by overriding the current profile.
+        let profile = if !plan.member_nodes().any(|member| member == node) {
+            BuildProfile {
+                include_tests: false,
+                ..profile.clone()
             }
+        } else {
+            profile.clone()
         };
-        let res = compile(
-            pkg,
-            manifest,
-            target,
-            profile,
-            dep_namespace,
+        let compile_pkg_context = CompilePkgCtx {
+            lib_namespace_map: &lib_namespace_map,
+            compiled_contract_deps: &compiled_contract_deps,
+            constants,
+            profile: &profile,
+            plan,
             engines,
-            &mut source_map,
-        )?;
-        let (mut built_package, namespace) = res;
-        // If the current node is a contract dependency, collect the contract_id
-        if plan
-            .graph()
-            .edges_directed(node, Direction::Incoming)
-            .any(|e| matches!(e.weight().kind, DepKind::Contract { .. }))
-        {
-            compiled_contract_deps.insert(node, built_package.clone());
-        }
+            target: &target,
+            without_tests_bytecode,
+        };
+        let (mut built_package, namespace) =
+            compile_pkg(node, &mut source_map, compile_pkg_context)?;
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
             namespace.name = Some(name.clone());
