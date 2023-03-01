@@ -130,7 +130,8 @@ pub enum CommentKind {
     /// ```
     Trailing,
 
-    /// An inlined comment is a block comment nested between 2 tokens without a newline after it. ///
+    /// An inlined comment is a block comment nested between 2 tokens without a newline after it.
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -138,7 +139,8 @@ pub enum CommentKind {
     /// ```
     Inlined,
 
-    /// A multiline comment is a block comment that may be nested between 2 tokens with 1 or more newlines within it. ///
+    /// A multiline comment is a block comment that may be nested between 2 tokens with 1 or more newlines within it.
+    ///
     /// # Examples
     ///
     /// ```sway
