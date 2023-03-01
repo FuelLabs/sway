@@ -1,3 +1,4 @@
 category = "compile"
 
 # check: $()Balance tree read after external contract interaction in function or method "deposit". Consider making all balance tree reads before calling another contract
+expected_warnings = 1
