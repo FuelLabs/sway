@@ -651,28 +651,6 @@ fn hello_world(baz: /* this is a comment */ u64) {
 }
 
 #[test]
-fn fn_comments_2() {
-    check(
-        r#"contract;
-
-fn returns_true() -> bool {
-    let x = 1;
-
-    // Comment
-}
-"#,
-        r#"contract;
-
-fn returns_true() -> bool {
-    let x = 1;
-
-    // Comment
-}
-"#,
-    );
-}
-
-#[test]
 fn abi_comments() {
     check(
         r#"contract;
