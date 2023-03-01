@@ -1569,3 +1569,8 @@ lsp_capability_test!(
     lsp::code_lens_request,
     runnables_test_dir().join("src/main.sw")
 );
+lsp_capability_test!(
+    completion,
+    lsp::completion_request,
+    test_fixtures_dir().join("completion/src/main.sw")
+);
