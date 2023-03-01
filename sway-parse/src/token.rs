@@ -434,6 +434,9 @@ fn lex_block_comment(l: &mut Lexer<'_>, index: usize) -> Option<CommentedTokenTr
             },
             Some((_, '\n')) => {
                 // If we find a newline character while lexing, this means that the block comment is multiline.
+                // Example:
+                // /* this is a
+                //    multilined block comment */
                 comment_kind = CommentKind::Multilined;
             }
             Some(_) => {}
