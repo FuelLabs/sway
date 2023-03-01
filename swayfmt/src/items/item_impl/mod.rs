@@ -2,7 +2,10 @@ use crate::{
     config::items::ItemBraceStyle,
     formatter::*,
     utils::{
-        map::byte_span::{ByteSpan, LeafSpans},
+        map::{
+            byte_span::{ByteSpan, LeafSpans},
+            comments::rewrite_with_comments,
+        },
         CurlyBrace,
     },
 };
@@ -19,6 +22,8 @@ impl Format for ItemImpl {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        let last = formatted_code.len();
+
         write!(formatted_code, "{}", self.impl_token.span().as_str())?;
         if let Some(generic_params) = &self.generic_params_opt {
             generic_params.format(formatted_code, formatter)?;
@@ -46,6 +51,8 @@ impl Format for ItemImpl {
             writeln!(formatted_code)?;
         }
         Self::close_curly_brace(formatted_code, formatter)?;
+
+        rewrite_with_comments::<ItemImpl>(formatter, self.span(), formatted_code, last)?;
 
         Ok(())
     }
