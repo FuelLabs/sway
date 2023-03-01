@@ -91,6 +91,8 @@ fn test_fail() {
 }
 ```
 
+> **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
+
 Contracts can call other contract's functions if they are declared unedr [`contract-dependencies`](../forc/manifest_reference.md#the-contract-dependencies-section) table. An example for such calls can be seen below:
 
 ```sway
@@ -125,6 +127,4 @@ fn test_contract_multi_call() {
 }
 ```
 
-> **Note:** In order for this example to work, the package hosting this contract must declare the package implementing the `MyContract2` ABI as a contract dependency. When running the `forc test` command, the IDs of any contracts that are dependencies of the currently tested contract will be displayed. 
-
-> **Note:** When running `forc test`, your contract will be built twice: first *without* unit tests in order to determine the contract's ID, then a second time *with* unit tests with the `CONTRACT_ID` provided to their namespace. This `CONTRACT_ID` can be used with the `abi` cast to enable contract calls within unit tests.
+> **Note:** In order for this example to work, the package hosting this contract must declare the package implementing the `MyContract2` ABI as a contract dependency. When running the `forc test` command, the IDs of any contracts that are dependencies of the currently tested contract will be displayed.
