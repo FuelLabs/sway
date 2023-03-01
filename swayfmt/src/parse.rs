@@ -43,10 +43,8 @@ pub fn parse_format<P: sway_parse::Parse + crate::Format>(input: &str) -> String
 pub fn parse_snippet<P: sway_parse::Parse + crate::Format>(
     input: &str,
 ) -> Result<P, ParseFileError> {
-    let parsed = with_handler(|handler| {
+    with_handler(|handler| {
         let token_stream = sway_parse::lex(handler, &input.into(), 0, input.len(), None)?;
         sway_parse::Parser::new(handler, &token_stream).parse::<P>()
-    });
-
-    parsed
+    })
 }

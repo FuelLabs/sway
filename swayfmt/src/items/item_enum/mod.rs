@@ -1,14 +1,12 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::{items::ItemBraceStyle, user_def::FieldAlignment},
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
-        map::{
-            byte_span::{ByteSpan, LeafSpans},
-            comments::rewrite_with_comments,
-        },
+        map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace,
     },
 };

@@ -1,9 +1,7 @@
 use crate::{
+    comments::rewrite_with_comments,
     formatter::*,
-    utils::map::{
-        byte_span::{ByteSpan, LeafSpans},
-        comments::rewrite_with_comments,
-    },
+    utils::map::byte_span::{ByteSpan, LeafSpans},
 };
 use std::fmt::Write;
 use sway_ast::{keywords::Token, ItemConst};

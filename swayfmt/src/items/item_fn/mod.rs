@@ -1,15 +1,12 @@
 use crate::{
-    comments::write_comments,
+    comments::{rewrite_with_comments, write_comments},
     config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
     },
     utils::{
-        map::{
-            byte_span::{ByteSpan, LeafSpans},
-            comments::rewrite_with_comments,
-        },
+        map::byte_span::{ByteSpan, LeafSpans},
         {CurlyBrace, Parenthesis},
     },
 };

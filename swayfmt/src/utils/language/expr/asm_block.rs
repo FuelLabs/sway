@@ -1,10 +1,8 @@
 use crate::{
+    comments::rewrite_with_comments,
     formatter::{shape::LineStyle, *},
     utils::{
-        map::{
-            byte_span::{ByteSpan, LeafSpans},
-            comments::rewrite_with_comments,
-        },
+        map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace, Parenthesis,
     },
 };
