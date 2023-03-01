@@ -120,7 +120,13 @@ impl Format for ItemStruct {
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
 
-                rewrite_with_comments::<ItemStruct>(formatter, self.span(), formatted_code, last)?;
+                rewrite_with_comments::<ItemStruct>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    last,
+                )?;
                 Ok(())
             },
         )?;

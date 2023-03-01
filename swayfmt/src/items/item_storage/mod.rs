@@ -117,7 +117,13 @@ impl Format for ItemStorage {
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
 
-                rewrite_with_comments::<ItemStorage>(formatter, self.span(), formatted_code, last)?;
+                rewrite_with_comments::<ItemStorage>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    last,
+                )?;
 
                 Ok(())
             },

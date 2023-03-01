@@ -75,7 +75,13 @@ impl Format for ItemAbi {
             Self::close_curly_brace(formatted_code, formatter)?;
         }
 
-        rewrite_with_comments::<ItemAbi>(formatter, self.span(), formatted_code, last)?;
+        rewrite_with_comments::<ItemAbi>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            last,
+        )?;
 
         Ok(())
     }

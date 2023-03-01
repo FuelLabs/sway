@@ -146,6 +146,7 @@ pub fn write_comments(
 pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     formatter: &mut Formatter,
     unformatted_span: Span,
+    unformatted_comment_spans: Vec<ByteSpan>,
     formatted_code: &mut FormattedCode,
     last_formatted: usize,
 ) -> Result<(), FormatterError> {
@@ -155,9 +156,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     let mut to_rewrite = formatted_code[last_formatted..].to_string();
 
     let formatted_comment_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
-        .unwrap()
-        .leaf_spans();
-    let unformatted_comment_spans = parse_snippet::<T>(unformatted_span.as_str())
         .unwrap()
         .leaf_spans();
 
@@ -172,8 +170,8 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
         .iter()
         .zip(formatted_comment_spans.iter())
     {
-        let start = previous_unformatted_comment_span.end + unformatted_span.start();
-        let end = unformatted_comment_span.start + unformatted_span.start();
+        let start = previous_unformatted_comment_span.end;
+        let end = unformatted_comment_span.start;
         let range = std::ops::Range { start, end };
         let iter = formatter.comments_context.map.comments_between(&range);
 

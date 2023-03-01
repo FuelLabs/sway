@@ -97,7 +97,13 @@ impl Format for ItemTrait {
             Self::close_curly_brace(formatted_code, formatter)?;
         };
 
-        rewrite_with_comments::<ItemTrait>(formatter, self.span(), formatted_code, last)?;
+        rewrite_with_comments::<ItemTrait>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            last,
+        )?;
 
         Ok(())
     }

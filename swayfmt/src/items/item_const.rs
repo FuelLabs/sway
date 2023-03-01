@@ -45,7 +45,13 @@ impl Format for ItemConst {
 
         write!(formatted_code, "{}", self.semicolon_token.ident().as_str())?;
 
-        rewrite_with_comments::<ItemConst>(formatter, self.span(), formatted_code, last)?;
+        rewrite_with_comments::<ItemConst>(
+            formatter,
+            self.span(),
+            self.leaf_spans(),
+            formatted_code,
+            last,
+        )?;
         Ok(())
     }
 }
