@@ -498,7 +498,7 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 10,
         req_char: 13,
-        def_line: 1,
+        def_line: 3,
         def_start_char: 8,
         def_end_char: 11,
         def_path: "sway-lib-std/src/lib.sw",
@@ -845,10 +845,10 @@ async fn go_to_definition_for_paths() {
         req_uri: &uri,
         req_line: 6,
         req_char: 39,
-        def_line: 6,
-        def_start_char: 38,
-        def_end_char: 42,
-        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/main.sw",
+        def_line: 2,
+        def_start_char: 7,
+        def_end_char: 15,
+        def_path: "sway-lsp/tests/fixtures/tokens/paths/src/deep_mod/deeper_mod.sw",
     };
     // dfun
     let _ = lsp::definition_check(&mut service, &go_to, &mut i).await;

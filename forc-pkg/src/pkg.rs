@@ -9,8 +9,8 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
-    default_output_directory, find_file_name, kebab_to_snake_case, print_on_failure,
-    print_on_success, user_forc_directory,
+    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
+    print_on_failure, print_warnings, user_forc_directory,
 };
 use fuel_abi_types::program_abi;
 use petgraph::{
@@ -257,6 +257,8 @@ pub struct BuildOpts {
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
+    /// Warnings must be treated as compiler errors.
+    pub error_on_warnings: bool,
     /// Include all test functions within the build.
     pub tests: bool,
     /// List of constants to inject for each package.
@@ -430,9 +432,11 @@ impl BuiltPackage {
                     res?
                 }
             }
+            // TODO?
+            ProgramABI::MidenVM(_) => (),
         }
 
-        info!("  Bytecode size is {} bytes.", self.bytecode.len());
+        info!("      Bytecode size: {} bytes", self.bytecode.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -456,7 +460,7 @@ impl BuiltPackage {
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
-                info!("  Predicate root: {}", root);
+                info!("      Predicate root: {}", root);
             }
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
@@ -464,7 +468,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("  Script bytecode hash: {}", bytecode_hash);
+                info!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -1725,6 +1729,8 @@ pub fn compile(
 
             ProgramABI::Evm(ops)
         }
+
+        BuildTarget::MidenVM => ProgramABI::MidenVM(()),
     };
 
     let entries = asm_res
@@ -1746,8 +1752,10 @@ pub fn compile(
         Some(CompiledBytecode {
             bytecode: bytes,
             config_const_offsets: config_offsets,
-        }) if bc_res.errors.is_empty() => {
-            print_on_success(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
+        }) if bc_res.errors.is_empty()
+            && (bc_res.warnings.is_empty() || !build_profile.error_on_warnings) =>
+        {
+            print_warnings(terse_mode, &pkg.name, &bc_res.warnings, &tree_type);
 
             if let ProgramABI::Fuel(ref mut json_abi_program) = json_abi_program {
                 if let Some(ref mut configurables) = json_abi_program.configurables {
@@ -1870,6 +1878,7 @@ fn build_profile_from_opts(
         release,
         time_phases,
         tests,
+        error_on_warnings,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -1913,6 +1922,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -1965,6 +1975,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
 
     // Build it!
     let mut built_workspace = HashMap::new();
+    let build_start = std::time::Instant::now();
     let built_packages = build(
         &build_plan,
         *build_target,
@@ -1973,7 +1984,11 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         const_inject_map,
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+
+    let finished = ansi_term::Colour::Green.bold().paint("Finished");
+    info!("  {finished} {profile_name} in {:?}", build_start.elapsed());
     for (node_ix, built_package) in built_packages.into_iter() {
+        print_pkg_summary_header(&built_package);
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
@@ -2001,6 +2016,18 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         }
         None => Ok(Built::Workspace(built_workspace)),
     }
+}
+
+fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
+    let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
+    // The ansi_term formatters ignore the `std::fmt` right-align
+    // formatter, so we manually calculate the padding to align the program
+    // type and name around the 10th column ourselves.
+    let padded_ty_str = format!("{prog_ty_str:>10}");
+    let padding = &padded_ty_str[..padded_ty_str.len() - prog_ty_str.len()];
+    let ty_ansi = ansi_term::Colour::Green.bold().paint(prog_ty_str);
+    let name_ansi = ansi_term::Style::new().bold().paint(&built_pkg.pkg_name);
+    info!("{padding}{ty_ansi} {name_ansi}");
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
@@ -2071,6 +2098,14 @@ pub fn build(
         let mut source_map = SourceMap::new();
         let pkg = &plan.graph()[node];
         let manifest = &plan.manifest_map()[&pkg.id()];
+        let program_ty = manifest.program_type().ok();
+
+        print_compiling(
+            program_ty.as_ref(),
+            &pkg.name,
+            &pkg.source.display_compiling(manifest.dir()),
+        );
+
         let constants = if let Some(injected_ctc) = const_inject_map.get(pkg) {
             let mut constants = manifest.config_time_constants();
             constants.extend(

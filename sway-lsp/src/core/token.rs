@@ -3,8 +3,8 @@ use sway_core::{
     language::{
         parsed::{
             ConstantDeclaration, Declaration, EnumVariant, Expression, FunctionDeclaration,
-            FunctionParameter, ReassignmentExpression, Scrutinee, StorageField,
-            StructExpressionField, StructField, Supertrait, TraitFn, TreeType, UseStatement,
+            FunctionParameter, Scrutinee, StorageField, StructExpressionField, StructField,
+            StructScrutineeField, Supertrait, TraitFn, UseStatement,
         },
         ty,
     },
@@ -21,25 +21,30 @@ use tower_lsp::lsp_types::{Position, Range};
 /// useful to the language server.
 #[derive(Debug, Clone)]
 pub enum AstToken {
+    Attribute(Attribute),
+    ConstantDeclaration(ConstantDeclaration),
     Declaration(Declaration),
+    EnumVariant(EnumVariant),
+    ErrorRecovery(Span),
     Expression(Expression),
-    StructExpressionField(StructExpressionField),
     FunctionDeclaration(FunctionDeclaration),
     FunctionParameter(FunctionParameter),
-    StructField(StructField),
-    EnumVariant(EnumVariant),
-    TraitFn(TraitFn),
-    ConstantDeclaration(ConstantDeclaration),
-    Reassignment(ReassignmentExpression),
-    StorageField(StorageField),
-    Scrutinee(Scrutinee),
-    Keyword(Ident),
-    Intrinsic(Intrinsic),
-    Attribute(Attribute),
-    TreeType(TreeType),
+    Ident(Ident),
     IncludeStatement,
+    Intrinsic(Intrinsic),
+    Keyword(Ident),
+    LibraryName(Ident),
+    Scrutinee(Scrutinee),
+    StorageField(StorageField),
+    StructExpressionField(StructExpressionField),
+    StructField(StructField),
+    StructScrutineeField(StructScrutineeField),
+    Supertrait(Supertrait),
+    TraitConstraint(TraitConstraint),
+    TraitFn(TraitFn),
+    TypeArgument(TypeArgument),
+    TypeParameter(TypeParameter),
     UseStatement(UseStatement),
-    ErrorRecovery(Span),
 }
 
 /// The `TypedAstToken` holds the types produced by the [sway_core::language::ty::TyProgram].
@@ -56,6 +61,7 @@ pub enum TypedAstToken {
     TypedTraitFn(ty::TyTraitFn),
     TypedSupertrait(Supertrait),
     TypedStorageField(ty::TyStorageField),
+    TyStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypeCheckedStorageReassignDescriptor(ty::TyStorageReassignDescriptor),
     TypedReassignment(ty::TyReassignment),
     TypedArgument(TypeArgument),
@@ -65,6 +71,7 @@ pub enum TypedAstToken {
     TypedLibraryName(Ident),
     TypedIncludeStatement,
     TypedUseStatement(ty::TyUseStatement),
+    Ident(Ident),
 }
 
 /// These variants are used to represent the semantic type of the [Token].

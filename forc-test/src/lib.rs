@@ -47,7 +47,7 @@ pub struct TestResult {
     pub name: String,
     /// The time taken for the test to execute.
     pub duration: std::time::Duration,
-    /// The span for the function declaring this tests.
+    /// The span for the function declaring this test.
     pub span: Span,
     /// The resulting state after executing the test function.
     pub state: vm::state::ProgramState,
@@ -55,6 +55,8 @@ pub struct TestResult {
     pub condition: pkg::TestPassCondition,
     /// Emitted `Recipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
+    /// Gas used while executing this test.
+    pub gas_used: u64,
 }
 
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
@@ -104,6 +106,8 @@ pub struct Opts {
     ///
     /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
     pub release: bool,
+    /// Should warnings be treated as errors?
+    pub error_on_warnings: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
 }
@@ -202,6 +206,16 @@ impl<'a> PackageTests {
                 let (state, duration, receipts) =
                     exec_test(&pkg_with_tests.bytecode, offset, test_setup);
 
+                let gas_used = *receipts
+                    .iter()
+                    .find_map(|receipt| match receipt {
+                        tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("missing used gas information from test execution")
+                    })?;
+
                 // Only retain `Log` and `LogData` receipts.
                 let logs = receipts
                     .into_iter()
@@ -220,6 +234,7 @@ impl<'a> PackageTests {
                     state,
                     condition,
                     logs,
+                    gas_used,
                 })
             })
             .collect::<anyhow::Result<_>>()?;
@@ -262,6 +277,7 @@ impl Opts {
             build_target: self.build_target,
             build_profile: self.build_profile,
             release: self.release,
+            error_on_warnings: self.error_on_warnings,
             time_phases: self.time_phases,
             tests: true,
             const_inject_map,

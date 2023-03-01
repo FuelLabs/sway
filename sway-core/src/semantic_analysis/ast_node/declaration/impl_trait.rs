@@ -9,7 +9,7 @@ use crate::{
     error::*,
     language::{
         parsed::*,
-        ty::{self, TyImplItem, TyTraitInterfaceItem},
+        ty::{self, TyImplItem, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
     semantic_analysis::{Mode, TypeCheckContext},
@@ -593,44 +593,54 @@ fn type_check_trait_implementation(
         errors
     );
 
-    // Gather the supertrait "stub_method_refs" and "impld_method_refs".
-    let (supertrait_stub_method_refs, supertrait_impld_method_refs) = check!(
-        handle_supertraits(ctx.by_ref(), trait_supertraits),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    // This map keeps track of the remaining functions in the interface surface
+    // that still need to be implemented for the trait to be fully implemented.
+    let mut method_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
+
+    // This map keeps track of the interface declaration id's of the trait
+    // definition.
+    let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
+
+    // This map keeps track of the new declaration ids of the implemented
+    // interface surface.
+    let mut impld_item_refs: ItemMap = BTreeMap::new();
+
+    // This map keeps track of the stub declaration id's of the supertraits.
+    let mut supertrait_interface_item_refs: InterfaceItemMap = BTreeMap::new();
+
+    // This map keeps track of the new declaration ids of the supertraits.
+    let mut supertrait_impld_item_refs: ItemMap = BTreeMap::new();
 
     // Insert the implemented methods for the supertraits into this namespace
     // so that the methods defined in the impl block can use them.
     //
     // We purposefully do not check for errors here because this is a temporary
     // namespace and not a real impl block defined by the user.
-    ctx.namespace.insert_trait_implementation(
-        trait_name.clone(),
-        trait_type_arguments.to_vec(),
-        self_type,
-        &supertrait_impld_method_refs
-            .values()
-            .cloned()
-            .map(TyImplItem::Fn)
-            .collect::<Vec<_>>(),
-        &trait_name.span(),
-        false,
-        engines,
-    );
+    if !trait_supertraits.is_empty() {
+        // Gather the supertrait "stub_method_refs" and "impld_method_refs".
+        let (this_supertrait_stub_method_refs, this_supertrait_impld_method_refs) = check!(
+            handle_supertraits(ctx.by_ref(), trait_supertraits),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
-    // This map keeps track of the remaining functions in the interface surface
-    // that still need to be implemented for the trait to be fully implemented.
-    let mut method_checklist: BTreeMap<Ident, ty::TyTraitFn> = BTreeMap::new();
+        ctx.namespace.insert_trait_implementation(
+            trait_name.clone(),
+            trait_type_arguments.to_vec(),
+            self_type,
+            &this_supertrait_impld_method_refs
+                .values()
+                .cloned()
+                .collect::<Vec<_>>(),
+            &trait_name.span(),
+            false,
+            engines,
+        );
 
-    // This map keeps track of the stub declaration id's of the trait
-    // definition.
-    let mut stub_method_refs: MethodMap = BTreeMap::new();
-
-    // This map keeps track of the new declaration ids of the implemented
-    // interface surface.
-    let mut impld_method_refs: MethodMap = BTreeMap::new();
+        supertrait_interface_item_refs = this_supertrait_stub_method_refs;
+        supertrait_impld_item_refs = this_supertrait_impld_method_refs;
+    }
 
     for item in trait_interface_surface.iter() {
         match item {
@@ -646,8 +656,8 @@ fn type_check_trait_implementation(
                 // Add this method to the checklist.
                 method_checklist.insert(name.clone(), method);
 
-                // Add this method to the "stub methods".
-                stub_method_refs.insert(name, decl_ref.clone());
+                // Add this method to the "interface items".
+                interface_item_refs.insert(name, item.clone());
             }
         }
     }
@@ -662,7 +672,7 @@ fn type_check_trait_implementation(
                         impl_method,
                         trait_name,
                         is_contract,
-                        &impld_method_refs,
+                        &impld_item_refs,
                         &method_checklist
                     ),
                     ty::TyFunctionDeclaration::error(impl_method.clone()),
@@ -674,17 +684,14 @@ fn type_check_trait_implementation(
                 let name = impl_method.name.clone();
                 method_checklist.remove(&name);
 
-                // Add this method to the "impld methods".
+                // Add this method to the "impld items".
                 let decl_ref = decl_engine.insert(impl_method);
-                impld_method_refs.insert(name, decl_ref);
+                impld_item_refs.insert(name, TyTraitItem::Fn(decl_ref));
             }
         }
     }
 
-    let mut all_items_refs: Vec<TyImplItem> = impld_method_refs
-        .values()
-        .map(|decl_ref| TyImplItem::Fn(decl_ref.clone()))
-        .collect();
+    let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
     // them into the correct typing for this impl block by using the type
@@ -702,10 +709,13 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    stub_method_refs.extend(supertrait_stub_method_refs);
-    impld_method_refs.extend(supertrait_impld_method_refs);
-    let decl_mapping =
-        DeclMapping::from_stub_and_impld_decl_refs(stub_method_refs, impld_method_refs);
+    interface_item_refs.extend(supertrait_interface_item_refs);
+    impld_item_refs.extend(supertrait_impld_item_refs);
+    let decl_mapping = DeclMapping::from_interface_and_item_and_impld_decl_refs(
+        interface_item_refs,
+        BTreeMap::new(),
+        impld_item_refs,
+    );
     for item in trait_items.iter() {
         match item {
             TyImplItem::Fn(decl_ref) => {
@@ -752,7 +762,7 @@ fn type_check_impl_method(
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
-    impld_method_refs: &MethodMap,
+    impld_item_refs: &ItemMap,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
 ) -> CompileResult<ty::TyFunctionDeclaration> {
     let mut warnings = vec![];
@@ -785,7 +795,7 @@ fn type_check_impl_method(
     );
 
     // Ensure that there aren't multiple definitions of this function impl'd
-    if impld_method_refs.contains_key(&impl_method.name.clone()) {
+    if impld_item_refs.contains_key(&impl_method.name.clone()) {
         errors.push(CompileError::MultipleDefinitionsOfFunction {
             name: impl_method.name.clone(),
             span: impl_method.name.span(),
@@ -1083,14 +1093,14 @@ fn check_for_unconstrained_type_parameters(
 fn handle_supertraits(
     mut ctx: TypeCheckContext,
     supertraits: &[Supertrait],
-) -> CompileResult<(MethodMap, MethodMap)> {
+) -> CompileResult<(InterfaceItemMap, ItemMap)> {
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
 
     let decl_engine = ctx.decl_engine;
 
-    let mut interface_surface_methods_ids: MethodMap = BTreeMap::new();
-    let mut impld_method_refs: MethodMap = BTreeMap::new();
+    let mut interface_surface_item_ids: InterfaceItemMap = BTreeMap::new();
+    let mut impld_item_refs: ItemMap = BTreeMap::new();
     let self_type = ctx.self_type();
 
     for supertrait in supertraits.iter() {
@@ -1132,25 +1142,25 @@ fn handle_supertraits(
 
                 // Retrieve the interface surface and implemented method ids for
                 // this trait.
-                let (trait_interface_surface_methods_ids, trait_impld_method_refs) = trait_decl
-                    .retrieve_interface_surface_and_implemented_methods_for_type(
+                let (trait_interface_surface_items_ids, trait_impld_item_refs) = trait_decl
+                    .retrieve_interface_surface_and_implemented_items_for_type(
                         ctx.by_ref(),
                         self_type,
                         &supertrait.name,
                     );
-                interface_surface_methods_ids.extend(trait_interface_surface_methods_ids);
-                impld_method_refs.extend(trait_impld_method_refs);
+                interface_surface_item_ids.extend(trait_interface_surface_items_ids);
+                impld_item_refs.extend(trait_impld_item_refs);
 
                 // Retrieve the interface surfaces and implemented methods for
                 // the supertraits of this type.
-                let (next_stub_supertrait_decl_refs, next_these_supertrait_decl_refs) = check!(
+                let (next_interface_supertrait_decl_refs, next_these_supertrait_decl_refs) = check!(
                     handle_supertraits(ctx.by_ref(), &trait_decl.supertraits),
                     continue,
                     warnings,
                     errors
                 );
-                interface_surface_methods_ids.extend(next_stub_supertrait_decl_refs);
-                impld_method_refs.extend(next_these_supertrait_decl_refs);
+                interface_surface_item_ids.extend(next_interface_supertrait_decl_refs);
+                impld_item_refs.extend(next_these_supertrait_decl_refs);
             }
             Some(ty::TyDeclaration::AbiDeclaration { .. }) => {
                 errors.push(CompileError::AbiAsSupertrait {
@@ -1166,7 +1176,7 @@ fn handle_supertraits(
 
     if errors.is_empty() {
         ok(
-            (interface_surface_methods_ids, impld_method_refs),
+            (interface_surface_item_ids, impld_item_refs),
             warnings,
             errors,
         )
