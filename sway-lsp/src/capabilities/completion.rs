@@ -18,11 +18,7 @@ pub(crate) fn to_completion_items(
     position: Position,
 ) -> Vec<CompletionItem> {
     type_id_of_raw_ident(engines, namespace, ident_to_complete, fn_decl)
-        .and_then(|type_id| {
-            Some(completion_items_for_type_id(
-                engines, namespace, type_id, position,
-            ))
-        })
+        .map(|type_id| completion_items_for_type_id(engines, namespace, type_id, position))
         .unwrap_or_default()
 }
 
@@ -55,11 +51,7 @@ fn completion_items_for_type_id(
         let params = parameters_of_fn(engines, &method);
 
         // Only show methods that take `self` as the first parameter.
-        if params
-            .first()
-            .and_then(|p| Some(p.is_self()))
-            .unwrap_or_default()
-        {
+        if params.first().map(|p| p.is_self()).unwrap_or(false) {
             let params_short = match params.is_empty() {
                 true => "()".to_string(),
                 false => "(…)".to_string(),
@@ -76,7 +68,7 @@ fn completion_items_for_type_id(
                 .join(", ");
             let decl_string = method.decl_span.clone().str();
             let signature = decl_string
-                .split_at(decl_string.find("{").unwrap())
+                .split_at(decl_string.find('{').unwrap())
                 .0
                 .split_at(decl_string.find("fn").unwrap())
                 .1
@@ -118,18 +110,18 @@ fn type_id_of_raw_ident(
     let full_ident = ident.as_str();
 
     // If this ident has no field accesses or chained methods, look for it in the local function scope.
-    if !full_ident.contains(".") {
+    if !full_ident.contains('.') {
         return type_id_of_local_ident(full_ident, fn_decl);
     }
 
     // Otherwise, start with the first part of the ident and follow the subsequent types.
-    let parts = full_ident.split(".").collect::<Vec<&str>>();
+    let parts = full_ident.split('.').collect::<Vec<&str>>();
     let mut curr_type_id = type_id_of_local_ident(parts[0], fn_decl);
     let mut i = 1;
 
     while (i < parts.len()) && curr_type_id.is_some() {
-        if parts[i].ends_with(")") {
-            let method_name = parts[i].split_at(parts[i].find("(").unwrap_or(0)).0;
+        if parts[i].ends_with(')') {
+            let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
                 .get_methods_for_type(engines, curr_type_id?)
                 .iter()
@@ -143,7 +135,7 @@ fn type_id_of_raw_ident(
             curr_type_id = fields
                 .iter()
                 .find(|field| field.name.to_string() == parts[i])
-                .and_then(|field| Some(field.type_argument.type_id));
+                .map(|field| field.type_argument.type_id);
         }
         i += 1;
     }
@@ -156,13 +148,14 @@ fn return_type_id_of_fn(engines: Engines, decl_ref: &DeclRef) -> Option<TypeId> 
         .de()
         .get_function(&decl_ref.id, &decl_ref.decl_span)
         .ok()
-        .and_then(|decl| Some(decl.return_type.type_id))
-        .or_else(|| {
+        .map(|decl| Some(decl.return_type.type_id))
+        .unwrap_or_else(|| {
             engines
                 .de()
                 .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
                 .ok()
-                .and_then(|decl| Some(decl.return_type))
+                .map(|decl| Some(decl.return_type))
+                .unwrap_or_default()
         });
 }
 
@@ -172,13 +165,14 @@ fn parameters_of_fn(engines: Engines, decl_ref: &DeclRef) -> Vec<TyFunctionParam
         .de()
         .get_function(&decl_ref.id, &decl_ref.decl_span)
         .ok()
-        .and_then(|decl| Some(decl.parameters))
-        .or_else(|| {
+        .map(|decl| Some(decl.parameters))
+        .unwrap_or_else(|| {
             engines
                 .de()
                 .get_trait_fn(&decl_ref.id, &decl_ref.decl_span)
                 .ok()
-                .and_then(|decl| Some(decl.parameters))
+                .map(|decl| Some(decl.parameters))
+                .unwrap_or(Some(vec![]))
         })
         .unwrap_or_default();
 }
@@ -204,7 +198,7 @@ fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDeclaration) -> 
                 )) = node.content.clone()
                 {
                     if variable_decl.name.as_str() == ident_name {
-                        return Some(variable_decl.return_type.clone());
+                        return Some(variable_decl.return_type);
                     }
                 }
                 None

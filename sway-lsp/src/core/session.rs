@@ -266,7 +266,7 @@ impl Session {
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             return Some(capabilities::completion::to_completion_items(
                 &compiled_program.typed.clone().unwrap().root.namespace,
-                Engines::new(&*self.type_engine.read(), &*self.decl_engine.read()),
+                Engines::new(&self.type_engine.read(), &self.decl_engine.read()),
                 &ident_to_complete,
                 &fn_decl,
                 position,
@@ -414,7 +414,7 @@ impl Session {
     /// Create runnables if the `TyProgramKind` of the `TyProgram` is a script.
     fn create_runnables(&self, typed_program: &ty::TyProgram) {
         // Insert runnable test functions.
-        let decl_engine = &*self.decl_engine.read();
+        let decl_engine = &self.decl_engine.read();
         for (decl, _) in typed_program.test_fns(decl_engine) {
             // Get the span of the first attribute if it exists, otherwise use the span of the function name.
             let span = decl

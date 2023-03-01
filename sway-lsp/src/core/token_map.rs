@@ -78,7 +78,7 @@ impl TokenMap {
         self.idents_at_position(position, tokens)
             .first()
             .and_then(|ident| {
-                self.try_get(&token::to_ident_key(&ident))
+                self.try_get(&token::to_ident_key(ident))
                     .try_unwrap()
                     .map(|item| {
                         let ((ident, _), token) = item.pair();
