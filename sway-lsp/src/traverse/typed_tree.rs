@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 use crate::core::{
     token::{
         to_ident_key, type_info_to_symbol_kind, SymbolKind, Token, TypeDefinition, TypedAstToken,
@@ -49,12 +48,18 @@ impl<'a> TypedTree<'a> {
         };
     }
 
+    /// Collects the library name and the module name from the dep statement
     pub fn collect_module_spans(&self, typed_program: &TyProgram) {
-        self.collect_program_kind(&typed_program.kind);
+        if let TyProgramKind::Library { name } = &typed_program.kind {
+            if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
+                token.typed = Some(TypedAstToken::TypedProgramKind(typed_program.kind.clone()));
+                token.type_def = Some(TypeDefinition::Ident(name.clone()));
+            }
+        }
         self.collect_module(&typed_program.root);
     }
 
-    pub fn collect_module(&self, typed_module: &TyModule) {
+    fn collect_module(&self, typed_module: &TyModule) {
         for (
             _,
             TySubmodule {
@@ -72,7 +77,6 @@ impl<'a> TypedTree<'a> {
                 token.typed = Some(TypedAstToken::TypedIncludeStatement);
                 token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
             }
-
             if let Some(mut token) = self
                 .tokens
                 .try_get_mut(&to_ident_key(library_name))
@@ -81,21 +85,7 @@ impl<'a> TypedTree<'a> {
                 token.typed = Some(TypedAstToken::TypedLibraryName(library_name.clone()));
                 token.type_def = Some(TypeDefinition::Ident(library_name.clone()));
             }
-
             self.collect_module(module);
-        }
-    }
-
-    fn collect_program_kind(&self, program_kind: &TyProgramKind) {
-        use TyProgramKind::*;
-        match program_kind {
-            Library { name } => {
-                if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(name)).try_unwrap() {
-                    token.typed = Some(TypedAstToken::TypedProgramKind(program_kind.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(name.clone()));
-                }
-            }
-            Script { .. } | Contract { .. } | Predicate { .. } => {}
         }
     }
 
@@ -103,18 +93,17 @@ impl<'a> TypedTree<'a> {
         let decl_engine = self.engines.de();
         match declaration {
             ty::TyDeclaration::VariableDeclaration(variable) => {
-                let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
                 if let Some(mut token) = self
                     .tokens
                     .try_get_mut(&to_ident_key(&variable.name))
                     .try_unwrap()
                 {
-                    token.typed = Some(typed_token);
+                    token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
                     token.type_def = Some(TypeDefinition::Ident(variable.name.clone()));
                 }
-
-                self.collect_type_argument(&variable.type_ascription);
-
+                if let Some(call_path_tree) = &variable.type_ascription.call_path_tree {
+                    self.collect_call_path_tree(call_path_tree, &variable.type_ascription);
+                }
                 self.handle_expression(&variable.body);
             }
             ty::TyDeclaration::ConstantDeclaration {
@@ -181,8 +170,7 @@ impl<'a> TypedTree<'a> {
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
                             .try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -208,8 +196,7 @@ impl<'a> TypedTree<'a> {
                             .try_get_mut(&to_ident_key(&type_param.name_ident))
                             .try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.typed = Some(TypedAstToken::TypedParameter(type_param.clone()));
                             token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
                         }
                     }
@@ -244,8 +231,7 @@ impl<'a> TypedTree<'a> {
                         if let Some(mut token) =
                             self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
                         {
-                            token.typed =
-                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.typed = Some(TypedAstToken::Ident(ident.clone()));
                         }
                     }
 
@@ -270,11 +256,7 @@ impl<'a> TypedTree<'a> {
                     }
 
                     for type_arg in trait_type_arguments {
-                        self.collect_type_id(
-                            type_arg.type_id,
-                            &TypedAstToken::TypedArgument(type_arg.clone()),
-                            type_arg.span().clone(),
-                        );
+                        self.collect_type_argument(&type_arg);
                     }
 
                     for item in items {
@@ -374,15 +356,6 @@ impl<'a> TypedTree<'a> {
                     is_absolute: _,
                 },
             ) => {
-                if let Some(alias) = alias {
-                    if let Some(mut token) =
-                        self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
-                    {
-                        token.typed = Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
-                        token.type_def = Some(TypeDefinition::Ident(alias.clone()));
-                    }
-                }
-
                 for (mod_path, ident) in iter_prefixes(call_path).zip(call_path) {
                     if let Some(mut token) =
                         self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
@@ -407,13 +380,38 @@ impl<'a> TypedTree<'a> {
                             token.typed =
                                 Some(TypedAstToken::TypedUseStatement(use_statement.clone()));
 
+                            let mut symbol_kind = SymbolKind::Unknown;
+                            let mut type_def = None;
+
                             if let Some(decl_ident) = self
                                 .namespace
                                 .submodule(call_path)
                                 .and_then(|module| module.symbols().get(item))
                                 .and_then(|decl| decl.get_decl_ident())
                             {
-                                token.type_def = Some(TypeDefinition::Ident(decl_ident));
+                                // Update the symbol kind to match the declarations symbol kind
+                                if let Some(decl) =
+                                    self.tokens.try_get(&to_ident_key(&decl_ident)).try_unwrap()
+                                {
+                                    symbol_kind = decl.value().kind.clone();
+                                }
+                                type_def = Some(TypeDefinition::Ident(decl_ident));
+                            }
+
+                            token.kind = symbol_kind.clone();
+                            token.type_def = type_def.clone();
+
+                            // the alias should take on the same symbol kind and type definition
+                            if let Some(alias) = alias {
+                                if let Some(mut token) =
+                                    self.tokens.try_get_mut(&to_ident_key(alias)).try_unwrap()
+                                {
+                                    token.typed = Some(TypedAstToken::TypedUseStatement(
+                                        use_statement.clone(),
+                                    ));
+                                    token.kind = symbol_kind;
+                                    token.type_def = type_def;
+                                }
                             }
                         }
                     }
@@ -480,7 +478,7 @@ impl<'a> TypedTree<'a> {
                         if let Some(mut token) =
                             self.tokens.try_get_mut(&to_ident_key(last)).try_unwrap()
                         {
-                            token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                            token.typed = Some(TypedAstToken::Ident(impl_type_name.clone()));
                             token.type_def = Some(TypeDefinition::Ident(impl_type_name));
                         }
                         prefixes
@@ -490,10 +488,7 @@ impl<'a> TypedTree<'a> {
                 } else {
                     &call_path.prefixes
                 };
-                self.collect_call_path_prefixes(
-                    prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -516,7 +511,7 @@ impl<'a> TypedTree<'a> {
                     if let Some(mut token) =
                         self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedExpression(exp.clone()));
+                        token.typed = Some(TypedAstToken::Ident(ident.clone()));
                     }
                     self.handle_expression(exp);
                 }
@@ -540,10 +535,7 @@ impl<'a> TypedTree<'a> {
                 ..
             } => {
                 if let Some(call_path) = call_path {
-                    self.collect_call_path_prefixes(
-                        &call_path.prefixes,
-                        TypedAstToken::TypedExpression(expression.clone()),
-                    );
+                    self.collect_call_path_prefixes(&call_path.prefixes);
                 }
 
                 let span = if let Some(call_path) = call_path {
@@ -593,10 +585,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_type_argument(type_arg);
                 }
 
-                self.collect_call_path_prefixes(
-                    &call_path_binding.inner.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
 
                 for field in fields {
                     if let Some(mut token) = self
@@ -711,10 +700,7 @@ impl<'a> TypedTree<'a> {
                     self.collect_type_argument(type_arg);
                 }
 
-                self.collect_call_path_prefixes(
-                    &call_path_binding.inner.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&call_path_binding.inner.prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -734,10 +720,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::AbiCast {
                 abi_name, address, ..
             } => {
-                self.collect_call_path_prefixes(
-                    &abi_name.prefixes,
-                    TypedAstToken::TypedExpression(expression.clone()),
-                );
+                self.collect_call_path_prefixes(&abi_name.prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -764,7 +747,7 @@ impl<'a> TypedTree<'a> {
                         .try_get_mut(&to_ident_key(&field.name))
                         .try_unwrap()
                     {
-                        token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+                        token.typed = Some(TypedAstToken::TyStorageAccessDescriptor(field.clone()));
                     }
                 }
             }
@@ -840,6 +823,7 @@ impl<'a> TypedTree<'a> {
             ty::TyExpressionVariant::Return(exp) => self.handle_expression(exp),
         }
     }
+
     fn handle_scrutinee(&self, scrutinee: &ty::TyScrutinee) {
         use ty::TyScrutineeVariant::*;
         match &scrutinee.variant {
@@ -912,10 +896,7 @@ impl<'a> TypedTree<'a> {
                 } else {
                     &call_path.prefixes
                 };
-                self.collect_call_path_prefixes(
-                    prefixes,
-                    TypedAstToken::TypedScrutinee(scrutinee.clone()),
-                );
+                self.collect_call_path_prefixes(prefixes);
 
                 if let Some(mut token) = self
                     .tokens
@@ -959,10 +940,10 @@ impl<'a> TypedTree<'a> {
         }
     }
 
-    fn collect_call_path_prefixes(&self, prefixes: &[Ident], typed: TypedAstToken) {
+    fn collect_call_path_prefixes(&self, prefixes: &[Ident]) {
         for (mod_path, ident) in iter_prefixes(prefixes).zip(prefixes) {
             if let Some(mut token) = self.tokens.try_get_mut(&to_ident_key(ident)).try_unwrap() {
-                token.typed = Some(typed.clone());
+                token.typed = Some(TypedAstToken::Ident(ident.clone()));
 
                 if let Some(name) = self
                     .namespace
@@ -1041,15 +1022,16 @@ impl<'a> TypedTree<'a> {
             type_arguments,
         }: &TraitConstraint,
     ) {
-        let typed = TypedAstToken::TypedTraitConstraint(trait_constraint.clone());
-        self.collect_call_path_prefixes(&trait_name.prefixes, typed.clone());
+        self.collect_call_path_prefixes(&trait_name.prefixes);
 
         if let Some(mut token) = self
             .tokens
             .try_get_mut(&to_ident_key(&trait_name.suffix))
             .try_unwrap()
         {
-            token.typed = Some(typed);
+            token.typed = Some(TypedAstToken::TypedTraitConstraint(
+                trait_constraint.clone(),
+            ));
             if let Some(trait_def_ident) = self
                 .namespace
                 .submodule(&trait_name.prefixes)
@@ -1081,10 +1063,7 @@ impl<'a> TypedTree<'a> {
         let type_engine = self.engines.te();
         let type_info = type_engine.get(type_arg.type_id);
 
-        self.collect_call_path_prefixes(
-            &tree.call_path.prefixes,
-            TypedAstToken::TypedArgument(type_arg.clone()),
-        );
+        self.collect_call_path_prefixes(&tree.call_path.prefixes);
         self.collect_type_id(
             type_arg.type_id,
             &TypedAstToken::TypedArgument(type_arg.clone()),
@@ -1117,10 +1096,7 @@ impl<'a> TypedTree<'a> {
                 if let Some(child_tree) = tree.children.first() {
                     let abi_call_path = &child_tree.call_path;
 
-                    self.collect_call_path_prefixes(
-                        &abi_call_path.prefixes,
-                        TypedAstToken::TypedArgument(type_arg.clone()),
-                    );
+                    self.collect_call_path_prefixes(&abi_call_path.prefixes);
                     if let Some(mut token) = self
                         .tokens
                         .try_get_mut(&to_ident_key(&abi_call_path.suffix))
@@ -1148,11 +1124,7 @@ impl<'a> TypedTree<'a> {
         let symbol_kind = type_info_to_symbol_kind(type_engine, &type_info);
         match &type_info {
             TypeInfo::Array(type_arg, ..) => {
-                self.collect_type_id(
-                    type_arg.type_id,
-                    &TypedAstToken::TypedArgument(type_arg.clone()),
-                    type_arg.span(),
-                );
+                self.collect_type_argument(type_arg);
             }
             TypeInfo::Tuple(type_arguments) => {
                 for type_arg in type_arguments {
@@ -1254,7 +1226,9 @@ impl<'a> TypedTree<'a> {
             token.type_def = Some(TypeDefinition::Ident(const_decl.name.clone()));
         }
 
-        self.collect_type_argument(&const_decl.type_ascription);
+        if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree {
+            self.collect_call_path_tree(call_path_tree, &const_decl.type_ascription);
+        }
 
         if let Some(value) = &const_decl.value {
             self.handle_expression(value);
