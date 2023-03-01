@@ -39,7 +39,9 @@ pub fn hover_data(
         });
     }
 
-    let (decl_ident, decl_token) = match token.declared_token_ident(&session.type_engine.read()) {
+    let (decl_ident, decl_token) = match token
+        .declared_token_ident(&session.type_engine.read(), &session.decl_engine.read())
+    {
         Some(decl_ident) => {
             let decl_token = session
                 .token_map()
@@ -139,8 +141,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
+                ty::TyDeclaration::StructDeclaration(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(decl_ref);
                     Some(format_visibility_hover(
                         struct_decl.visibility,
                         decl.friendly_type_name(),
@@ -155,8 +157,8 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
-                    let enum_decl = decl_engine.get_enum(decl_id);
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let enum_decl = decl_engine.get_enum(decl_ref);
                     Some(format_visibility_hover(
                         enum_decl.visibility,
                         decl.friendly_type_name(),
