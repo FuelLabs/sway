@@ -67,6 +67,9 @@ fn write_trailing_comment(
 /// Given a range, writes comments contained within the range. This function
 /// removes comments that are written here from the CommentMap for later use.
 ///
+/// Most comment formatting should be done using `rewrite_with_comments` in
+/// the context of the AST, but in some cases (eg. at the end of module) we require this function.
+///
 /// Returns:
 /// `Ok(true)` on successful execution with comments written,
 /// `Ok(false)` on successful execution and if there are no comments within the given range,
