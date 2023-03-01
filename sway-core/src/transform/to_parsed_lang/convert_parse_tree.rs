@@ -3740,6 +3740,45 @@ fn item_attrs_to_map(
             }
         }
     }
+
+    // Check attribute arguments
+    for (attribute_kind, attributes) in &attrs_map {
+        for attribute in attributes {
+            // check attribute arguments length
+            let (expected_min_len, expected_max_len) =
+                attribute_kind.clone().expected_args_len_min_max();
+            if attribute.args.len() < expected_min_len
+                || attribute.args.len() > expected_max_len.unwrap_or(usize::MAX)
+            {
+                handler.emit_warn(CompileWarning {
+                    span: attribute.name.span().clone(),
+                    warning_content: Warning::AttributeExpectedNumberOfArguments {
+                        attrib_name: attribute.name.clone(),
+                        received_args: attribute.args.len(),
+                        expected_min_len,
+                        expected_max_len,
+                    },
+                })
+            }
+
+            // check attribute argument value
+            for (index, arg) in attribute.args.iter().enumerate() {
+                let possible_values = attribute_kind.clone().expected_args_values(index);
+                if let Some(possible_values) = possible_values {
+                    if !possible_values.iter().any(|v| v == arg.as_str()) {
+                        handler.emit_warn(CompileWarning {
+                            span: attribute.name.span().clone(),
+                            warning_content: Warning::UnexpectedAttributeArgumentValue {
+                                attrib_name: attribute.name.clone(),
+                                received_value: arg.as_str().to_string(),
+                                expected_values: possible_values,
+                            },
+                        })
+                    }
+                }
+            }
+        }
+    }
     Ok(AttributesMap::new(Arc::new(attrs_map)))
 }
 
