@@ -192,7 +192,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
             }
 
             offset += insert_after_span_v2(
-                formatter,
                 previous_formatted_comment_span,
                 comments_found.clone(),
                 offset,
@@ -484,7 +483,6 @@ fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
 
 /// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
 fn insert_after_span_v2(
-    formatter: &mut Formatter,
     from: &ByteSpan,
     comments_to_insert: Vec<Comment>,
     offset: usize,
@@ -503,36 +501,18 @@ fn insert_after_span_v2(
 
     // There can be cases where comments are at the end.
     // If so, we try to search from before the end to find something to 'pin' to.
-
-    let mut last_comment: Option<Comment> = None;
-
-    if is_empty_block(formatted_code, from.end) {
-        for (comment, extra_newlines) in comments_to_insert.iter().zip(extra_newlines) {
-            for _ in 0..extra_newlines {
-                comment_str.push('\n');
-            }
-
-            write!(comment_str, "{}{}", indent, comment.span().as_str())?;
-
-            last_comment = Some(comment.clone());
-        }
-
-        if last_comment.is_some() {
-            if !comment_str.ends_with('\n') {
-                comment_str.push('\n');
-            }
-        }
-    } else {
+    if !is_empty_block(formatted_code, from.end) {
         if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
             // It could be possible that the first comment found here is a Trailing,
             // then a Newlined.
             // We want all subsequent newlined comments to follow the indentation of the
             // previous line that is NOT a comment.
+
             if let Some(_) = comments_to_insert
                 .iter()
                 .find(|c| c.comment_kind == CommentKind::Newlined)
             {
-                let prev_line = formatted_code[..from.end]
+                let prev_line = formatted_code[..from.end + offset]
                     .trim_end()
                     .chars()
                     .rev()
@@ -544,19 +524,34 @@ fn insert_after_span_v2(
                     .rev()
                     .take_while(|c| c.is_whitespace())
                     .collect();
-                comment_str.push('\n');
+                if let Some(comment) = comments_to_insert.first() {
+                    if comment.comment_kind != CommentKind::Trailing {
+                        comment_str.push('\n');
+                    }
+                }
             }
         }
+
         for (comment, extra_newlines) in comments_to_insert.iter().zip(extra_newlines) {
+            // Check for newlines to preserve.
             for _ in 0..extra_newlines {
                 comment_str.push('\n');
             }
+
             match comment.comment_kind {
                 CommentKind::Trailing => {
-                    write!(comment_str, " {}", comment.span().as_str())?;
+                    if comments_to_insert.len() > 1 && indent.starts_with('\n') {
+                        write!(comment_str, " {}", comment.span().as_str())?;
+                    } else {
+                        writeln!(comment_str, " {}", comment.span().as_str())?;
+                    }
                 }
                 CommentKind::Newlined => {
-                    write!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                    if comments_to_insert.len() > 1 && indent.starts_with('\n') {
+                        write!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                    } else {
+                        writeln!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                    }
                 }
                 CommentKind::Inlined => {
                     if !formatted_code[..from.end].ends_with(' ') {
@@ -580,6 +575,11 @@ fn insert_after_span_v2(
         offset += 1;
     }
 
+    if let Some(char) = src_rope.get_char(from.end + offset) {
+        if char == '\n' && comment_str.ends_with('\n') {
+            comment_str.pop();
+        }
+    };
     src_rope.insert(from.end + offset, &comment_str);
 
     formatted_code.clear();
