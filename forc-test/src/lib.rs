@@ -141,9 +141,10 @@ impl TestSetup {
 
     /// Return the root contract id if this is a contract setup.
     fn root_contract_id(&self) -> Option<tx::ContractId> {
-        match self {
-            TestSetup::ContractSetup(contract_setup) => Some(contract_setup.root_contract_id),
-            TestSetup::NonContractSetup(_) => None,
+        if let TestSetup::ContractSetup(contract_setup) = self {
+            Some(contract_setup.root_contract_id)
+        } else {
+            None
         }
     }
 
@@ -173,16 +174,19 @@ impl ContractToTest {
         let mut interpreter =
             vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
 
-        // Root contract is the contract we are currently deploying.
+        // Root contract is the contract that we are going to be running the tests of, after this
+        // deployment.
         let (root_contract_id, root_contract_tx) =
             deployment_transaction(&self.pkg, &self.without_tests_bytecode, params);
 
-        // Iterator over deployment setup of contract dependencies for the root contract.
+        // Iterate and create deployment transactions for contract dependencies of the root
+        // contract.
         let contract_dependency_setups = self
             .contract_dependencies
             .iter()
             .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
 
+        // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
@@ -191,7 +195,7 @@ impl ContractToTest {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        // Transact the deployment transaction for the root contract.
+        // Deploy the root contract.
         interpreter.transact(root_contract_tx)?;
         let storage = interpreter.as_ref().clone();
 
@@ -243,8 +247,6 @@ impl<'a> PackageTests {
     }
 
     /// Construct a `PackageTests` from `BuiltPackage`.
-    ///
-    /// If the `BuiltPackage` is a contract, match the contract with the contract's
     fn from_built_pkg(
         built_pkg: BuiltPackage,
         contract_dependencies: &HashMap<pkg::Pinned, Vec<pkg::BuiltPackage>>,
@@ -481,7 +483,6 @@ fn deployment_transaction(
     let contract = tx::Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
-    // TODO: use actual salt from build plan.
     let salt = tx::Salt::zeroed();
     let contract_id = contract.id(&salt, &root, &state_root);
 

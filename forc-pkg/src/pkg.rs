@@ -514,7 +514,7 @@ impl BuiltPackage {
 }
 
 impl Built {
-    /// Returns a map between package names and their corresponding built package.
+    /// Returns a map between pinned packages and their corresponding built package.
     pub fn into_members(self) -> Result<HashMap<Pinned, BuiltPackage>> {
         match self {
             Built::Package(built_pkg) => {
