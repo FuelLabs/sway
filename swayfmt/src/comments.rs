@@ -1,9 +1,16 @@
+use ropey::Rope;
 use std::{fmt::Write, ops::Range};
 use sway_ast::token::{Comment, CommentKind};
-use sway_types::Spanned;
+use sway_types::{Span, Spanned};
 
 use crate::{
-    formatter::FormattedCode, utils::map::comments::CommentMap, Formatter, FormatterError,
+    formatter::FormattedCode,
+    parse::parse_snippet,
+    utils::map::{
+        byte_span::{ByteSpan, LeafSpans},
+        comments::CommentMap,
+    },
+    Format, Formatter, FormatterError,
 };
 
 pub type UnformattedCode = String;
@@ -138,6 +145,235 @@ pub fn write_comments(
         .retain(|bs, _| !bs.contained_within(&range));
 
     Ok(true)
+}
+
+/// Adds the comments from comment_map to correct places in the formatted code. This requires us
+/// both the unformatted and formatted code's modules as they will have different spans for their
+/// visitable positions. While traversing the unformatted module, `add_comments` searches for comments. If there is a comment found
+/// places the comment to the correct place at formatted_code.
+///
+/// This requires both the unformatted_code itself and the parsed version of it, because
+/// unformatted_code is used for context lookups and unformatted_module is required for actual
+/// traversal. When `add_comments` is called we have already parsed the unformatted_code so there is no need
+/// to parse it again.
+pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
+    formatter: &mut Formatter,
+    unformatted_span: Span,
+    formatted_code: &mut FormattedCode,
+    last_formatted: usize,
+) -> Result<(), FormatterError> {
+    // Since we are adding comments into formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
+    // as the total length of comments we added in previous iterations.
+    let mut offset = 0;
+    let mut to_rewrite = formatted_code[last_formatted..].to_string();
+
+    let formatted_comment_spans = parse_snippet::<T>(&formatted_code[last_formatted..])
+        .unwrap()
+        .leaf_spans();
+    let unformatted_comment_spans = parse_snippet::<T>(unformatted_span.as_str())
+        .unwrap()
+        .leaf_spans();
+
+    // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
+    let mut previous_unformatted_comment_span = unformatted_comment_spans
+        .first()
+        .ok_or(FormatterError::CommentError)?;
+    let mut previous_formatted_comment_span = formatted_comment_spans
+        .first()
+        .ok_or(FormatterError::CommentError)?;
+    for (unformatted_comment_span, formatted_comment_span) in unformatted_comment_spans
+        .iter()
+        .zip(formatted_comment_spans.iter())
+    {
+        let start = previous_unformatted_comment_span.end + unformatted_span.start();
+        let end = unformatted_comment_span.start + unformatted_span.start();
+        let range = std::ops::Range { start, end };
+        let iter = formatter.comments_context.map.comments_between(&range);
+
+        let mut comments_found = vec![];
+        for i in iter {
+            comments_found.push(i.clone());
+        }
+
+        if !comments_found.is_empty() {
+            // Since we're collecting extra newlines _between_ comments,
+            // the first comment is always assumed to have 0 extra newlines.
+            let mut extra_newlines = vec![0];
+            collect_extra_newlines(
+                &mut extra_newlines,
+                unformatted_span.clone(),
+                &comments_found,
+            );
+
+            offset += insert_after_span(
+                previous_formatted_comment_span,
+                comments_found.clone(),
+                offset,
+                &mut to_rewrite,
+                extra_newlines,
+            )?;
+
+            formatter
+                .comments_context
+                .map
+                .retain(|bs, _| !bs.contained_within(&range))
+        }
+
+        previous_unformatted_comment_span = unformatted_comment_span;
+        previous_formatted_comment_span = formatted_comment_span;
+    }
+
+    formatted_code.truncate(last_formatted);
+    write!(formatted_code, "{to_rewrite}")?;
+    Ok(())
+}
+
+fn collect_extra_newlines(
+    extra_newlines: &mut Vec<usize>,
+    unformatted_span: Span,
+    comments_found: &Vec<Comment>,
+) {
+    // The first comment is always assumed to have no extra newlines.
+    let mut prev_comment: Option<&Comment> = None;
+    for comment in comments_found {
+        if let Some(prev_comment) = prev_comment {
+            let whitespace_between = unformatted_span.as_str()[prev_comment.span().end()
+                - unformatted_span.start()
+                ..comment.span().start() - unformatted_span.start()]
+                .to_string();
+
+            let mut extra_newlines_count =
+                whitespace_between.chars().filter(|&c| c == '\n').count();
+
+            if extra_newlines_count > 1 {
+                // If there is a bunch of newlines, we always want to collapse it to 1.
+                extra_newlines_count = 1;
+            } else {
+                extra_newlines_count = 0;
+            }
+            extra_newlines.push(extra_newlines_count);
+        }
+
+        prev_comment = Some(comment);
+    }
+}
+
+fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
+    let substring = formatted_code[end..]
+        .chars()
+        .take_while(|&c| !c.is_whitespace())
+        .count();
+
+    formatted_code.chars().nth(end - 1) == Some('{')
+        && (formatted_code.chars().nth(end) == Some('}')
+            || formatted_code.chars().nth(end + substring + 1) == Some('}'))
+}
+
+/// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
+fn insert_after_span(
+    from: &ByteSpan,
+    comments_to_insert: Vec<Comment>,
+    offset: usize,
+    formatted_code: &mut FormattedCode,
+    extra_newlines: Vec<usize>,
+) -> Result<usize, FormatterError> {
+    let mut offset = offset;
+    let mut comment_str = String::new();
+
+    // We want to anchor the comment to the next line, and here,
+    // we make the assumption here that comments will never be right before the final leaf span.
+    let mut indent = formatted_code[from.end + offset..]
+        .chars()
+        .take_while(|c| c.is_whitespace())
+        .collect::<String>();
+
+    // There can be cases where comments are at the end.
+    // If so, we try to search from before the end to find something to 'pin' to.
+    if !is_empty_block(formatted_code, from.end) {
+        if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
+            // It could be possible that the first comment found here is a Trailing,
+            // then a Newlined.
+            // We want all subsequent newlined comments to follow the indentation of the
+            // previous line that is NOT a comment.
+
+            if comments_to_insert
+                .iter()
+                .any(|c| c.comment_kind == CommentKind::Newlined)
+            {
+                let prev_line = formatted_code[..from.end + offset]
+                    .trim_end()
+                    .chars()
+                    .rev()
+                    .take_while(|&c| c != '\n')
+                    .collect::<String>();
+
+                indent = prev_line
+                    .chars()
+                    .rev()
+                    .take_while(|c| c.is_whitespace())
+                    .collect();
+                if let Some(comment) = comments_to_insert.first() {
+                    if comment.comment_kind != CommentKind::Trailing {
+                        comment_str.push('\n');
+                    }
+                }
+            }
+        }
+
+        for (comment, extra_newlines) in comments_to_insert.iter().zip(extra_newlines) {
+            // Check for newlines to preserve.
+            for _ in 0..extra_newlines {
+                comment_str.push('\n');
+            }
+
+            match comment.comment_kind {
+                CommentKind::Trailing => {
+                    if comments_to_insert.len() > 1 && indent.starts_with('\n') {
+                        write!(comment_str, " {}", comment.span().as_str())?;
+                    } else {
+                        writeln!(comment_str, " {}", comment.span().as_str())?;
+                    }
+                }
+                CommentKind::Newlined => {
+                    if comments_to_insert.len() > 1 && indent.starts_with('\n') {
+                        write!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                    } else {
+                        writeln!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                    }
+                }
+                CommentKind::Inlined => {
+                    if !formatted_code[..from.end].ends_with(' ') {
+                        write!(comment_str, " ")?;
+                    }
+                    write!(comment_str, "{}", comment.span().as_str())?;
+                    if !formatted_code[from.end + offset..].starts_with([' ', '\n']) {
+                        write!(comment_str, " ")?;
+                    }
+                }
+                CommentKind::Multilined => {
+                    write!(comment_str, "{}{}", indent, comment.span().as_str())?;
+                }
+            };
+        }
+    }
+
+    let mut src_rope = Rope::from_str(formatted_code);
+
+    if formatted_code.chars().nth(from.end + offset + 1) == Some('\n') {
+        offset += 1;
+    }
+
+    if let Some(char) = src_rope.get_char(from.end + offset) {
+        if char == '\n' && comment_str.ends_with('\n') {
+            comment_str.pop();
+        }
+    };
+    src_rope.insert(from.end + offset, &comment_str);
+
+    formatted_code.clear();
+    formatted_code.push_str(&src_rope.to_string());
+
+    Ok(comment_str.len())
 }
 
 #[cfg(test)]

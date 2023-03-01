@@ -2,9 +2,7 @@ use self::shape::Shape;
 use crate::comments::{write_comments, CommentsContext};
 use crate::parse::parse_file;
 use crate::utils::map::comments::CommentMap;
-use crate::utils::map::{
-    comments::handle_comments, newline::handle_newlines, newline_style::apply_newline_style,
-};
+use crate::utils::map::{newline::handle_newlines, newline_style::apply_newline_style};
 pub use crate::{
     config::manifest::Config,
     error::{ConfigError, FormatterError},
@@ -75,20 +73,13 @@ impl Formatter {
 
         let mut formatted_code = String::from(&raw_formatted_code);
 
+        // Write post-module comments
         write_comments(
             &mut formatted_code,
             module.span().end()..src.len() + 1,
             self,
         )?;
-        // Add comments
-        // handle_comments(
-        //     Arc::from(src),
-        //     &module,
-        //     Arc::from(formatted_code.clone()),
-        //     path.clone(),
-        //     &mut formatted_code,
-        //     &mut self.comments_context.map,
-        // )?;
+
         // Add newline sequences
         handle_newlines(
             Arc::from(src),
