@@ -134,15 +134,11 @@ pub fn write_comments(
     Ok(true)
 }
 
-/// Adds the comments from comment_map to correct places in the formatted code. This requires us
-/// both the unformatted and formatted code's modules as they will have different spans for their
-/// visitable positions. While traversing the unformatted module, `add_comments` searches for comments. If there is a comment found
-/// places the comment to the correct place at formatted_code.
+/// The main function that rewrites a piece of formatted code with comments found in its unformatted version.
 ///
-/// This requires both the unformatted_code itself and the parsed version of it, because
-/// unformatted_code is used for context lookups and unformatted_module is required for actual
-/// traversal. When `add_comments` is called we have already parsed the unformatted_code so there is no need
-/// to parse it again.
+/// This takes a given AST node's unformatted span, its leaf spans and its formatted code (a string) and
+/// parses the equivalent formatted version to get its leaf spans. We traverse the spaces between both
+/// formatted and unformatted leaf spans to find possible comments and inserts them between.
 pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     formatter: &mut Formatter,
     unformatted_span: Span,
@@ -159,7 +155,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
         .unwrap()
         .leaf_spans();
 
-    // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_leaf_span = unformatted_leaf_spans
         .first()
         .ok_or(FormatterError::CommentError)?;
@@ -170,6 +165,7 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
         .iter()
         .zip(formatted_leaf_spans.iter())
     {
+        // Search for comments between the previous leaf span's end and the next leaf span's start
         let range = std::ops::Range {
             start: previous_unformatted_leaf_span.end,
             end: unformatted_leaf_span.start,
@@ -184,12 +180,7 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
         if !comments_found.is_empty() {
             // Since we're collecting extra newlines _between_ comments,
             // the first comment is always assumed to have 0 extra newlines.
-            let mut extra_newlines = vec![0];
-            collect_extra_newlines(
-                &mut extra_newlines,
-                unformatted_span.clone(),
-                &comments_found,
-            );
+            let extra_newlines = collect_extra_newlines(unformatted_span.clone(), &comments_found);
 
             offset += insert_after_span(
                 previous_formatted_leaf_span,
@@ -214,25 +205,27 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
     Ok(())
 }
 
-fn collect_extra_newlines(
-    extra_newlines: &mut Vec<usize>,
-    unformatted_span: Span,
-    comments_found: &Vec<Comment>,
-) {
-    // The first comment is always assumed to have no extra newlines.
+/// Collect extra newline before comment(s). The main purpose of this function is to maintain
+/// newlines between comments when inserting multiple comments at once.
+fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>) -> Vec<usize> {
+    // The first comment is always assumed to have no extra newlines before itself.
+    let mut extra_newlines = vec![0];
+
     let mut prev_comment: Option<&Comment> = None;
     for comment in comments_found {
         if let Some(prev_comment) = prev_comment {
+            // Get whitespace between the end of the previous comment and the start of the next.
             let whitespace_between = unformatted_span.as_str()[prev_comment.span().end()
                 - unformatted_span.start()
                 ..comment.span().start() - unformatted_span.start()]
                 .to_string();
 
+            // Count the number of newline characters we found above.
             let mut extra_newlines_count =
                 whitespace_between.chars().filter(|&c| c == '\n').count();
 
             if extra_newlines_count > 1 {
-                // If there is a bunch of newlines, we always want to collapse it to 1.
+                // If there is a bunch of newlines, we just want to collapse it to 1.
                 extra_newlines_count = 1;
             } else {
                 extra_newlines_count = 0;
@@ -242,8 +235,11 @@ fn collect_extra_newlines(
 
         prev_comment = Some(comment);
     }
+
+    extra_newlines
 }
 
+/// Check if a block is empty (excluding comments).
 fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
     let substring = formatted_code[end..]
         .chars()
@@ -255,7 +251,17 @@ fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
             || formatted_code.chars().nth(end + substring + 1) == Some('}'))
 }
 
-/// Inserts after given span and returns the offset. While inserting comments this also inserts contexts of the comments so that the alignment whitespaces/newlines are intact
+/// Main driver of writing comments. This function is a no-op if the block of code is empty.
+///
+/// This iterates through comments inserts each of them after a given span and returns the offset.
+/// While inserting comments this also inserts whitespaces/newlines so that alignment is intact.
+/// To do the above, there are some whitespace heuristics we stick to:
+///
+/// 1) Assume comments are anchored to the line below, and follow its alignment.
+/// 2) In some cases the line below is the end of the function eg. it contains only a closing brace '}'.
+///    in such cases we then try to anchor the comment to the line above.
+/// 3) In the cases of entirely empty blocks we actually should prefer using `write_comments` over
+///    `rewrite_with_comments` since `write_comments` would have the formatter's indentation context.
 fn insert_after_span(
     from: &ByteSpan,
     comments_to_insert: Vec<Comment>,
@@ -263,7 +269,6 @@ fn insert_after_span(
     formatted_code: &mut FormattedCode,
     extra_newlines: Vec<usize>,
 ) -> Result<usize, FormatterError> {
-    let mut offset = offset;
     let mut comment_str = String::new();
 
     // We want to anchor the comment to the next line, and here,
@@ -273,15 +278,14 @@ fn insert_after_span(
         .take_while(|c| c.is_whitespace())
         .collect::<String>();
 
-    // There can be cases where comments are at the end.
-    // If so, we try to search from before the end to find something to 'pin' to.
     if !is_empty_block(formatted_code, from.end) {
+        // There can be cases where comments are at the end.
+        // If so, we try to search from before the end to find something to 'pin' to.
         if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
             // It could be possible that the first comment found here is a Trailing,
             // then a Newlined.
             // We want all subsequent newlined comments to follow the indentation of the
             // previous line that is NOT a comment.
-
             if comments_to_insert
                 .iter()
                 .any(|c| c.comment_kind == CommentKind::Newlined)
@@ -341,23 +345,23 @@ fn insert_after_span(
                 }
             };
         }
+
+        let mut src_rope = Rope::from_str(formatted_code);
+
+        // We do a sanity check here to ensure that we don't insert an extra newline
+        // if the place at which we're going to insert comments already ends with '\n'.
+        if let Some(char) = src_rope.get_char(from.end + offset) {
+            if char == '\n' && comment_str.ends_with('\n') {
+                comment_str.pop();
+            }
+        };
+
+        // Insert the actual comment(s).
+        src_rope.insert(from.end + offset, &comment_str);
+
+        formatted_code.clear();
+        formatted_code.push_str(&src_rope.to_string());
     }
-
-    let mut src_rope = Rope::from_str(formatted_code);
-
-    if formatted_code.chars().nth(from.end + offset + 1) == Some('\n') {
-        offset += 1;
-    }
-
-    if let Some(char) = src_rope.get_char(from.end + offset) {
-        if char == '\n' && comment_str.ends_with('\n') {
-            comment_str.pop();
-        }
-    };
-    src_rope.insert(from.end + offset, &comment_str);
-
-    formatted_code.clear();
-    formatted_code.push_str(&src_rope.to_string());
 
     Ok(comment_str.len())
 }
