@@ -219,6 +219,8 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
+    /// Outputs json abi with callpath instead of struct and enum names.
+    pub json_abi_with_callpaths: bool,
 }
 
 #[derive(Default, Clone)]
@@ -1731,7 +1733,8 @@ pub fn compile(
                 "generate JSON ABI program",
                 fuel_json_abi::generate_json_abi_program(
                     &mut JsonAbiContext {
-                        program: typed_program
+                        program: typed_program,
+                        json_abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
                     engines.te(),
                     &mut types
@@ -1951,6 +1954,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))

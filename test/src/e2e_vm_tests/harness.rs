@@ -225,6 +225,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             )),
             locked: run_config.locked,
             terse: false,
+            json_abi_with_callpaths: true,
             ..Default::default()
         },
         ..Default::default()

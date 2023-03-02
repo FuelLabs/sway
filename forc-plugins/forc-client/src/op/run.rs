@@ -152,6 +152,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
+            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,

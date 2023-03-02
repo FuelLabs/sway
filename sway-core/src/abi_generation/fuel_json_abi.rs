@@ -12,6 +12,7 @@ use crate::{
 
 pub struct JsonAbiContext<'a> {
     pub program: &'a TyProgram,
+    pub json_abi_with_callpaths: bool,
 }
 
 pub fn generate_json_abi_program(
@@ -670,6 +671,9 @@ impl TypeInfo {
 }
 
 fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
+    if !ctx.json_abi_with_callpaths {
+        return call_path.suffix.as_str().to_string();
+    }
     let mut buf = String::new();
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
