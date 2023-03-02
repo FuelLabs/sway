@@ -1,3 +1,4 @@
 category = "run"
 expected_result = { action = "revert", value = -65532 } # 0xffffffffffff0004 as i64
 validate_abi = false
+expected_warnings = 1

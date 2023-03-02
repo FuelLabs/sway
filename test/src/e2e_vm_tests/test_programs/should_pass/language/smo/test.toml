@@ -1,2 +1,3 @@
 category = "compile"
 validate_abi = true
+expected_warnings = 1
