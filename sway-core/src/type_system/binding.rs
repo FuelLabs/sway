@@ -254,12 +254,7 @@ impl TypeBinding<CallPath> {
                 decl_span,
             } => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_function(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_function(&original_id);
 
                 // monomorphize the copy, in place
                 if let TypeArgs::Regular(_) = self.type_arguments {
@@ -282,7 +277,7 @@ impl TypeBinding<CallPath> {
                 } = ctx
                     .decl_engine
                     .insert(new_copy)
-                    .with_parent(ctx.decl_engine, &original_id);
+                    .with_parent(ctx.decl_engine, original_id.into());
 
                 ty::TyDeclaration::FunctionDeclaration {
                     name,
@@ -296,12 +291,7 @@ impl TypeBinding<CallPath> {
                 decl_span,
             } => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_enum(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_enum(&original_id);
 
                 // monomorphize the copy, in place
                 check!(
@@ -339,12 +329,7 @@ impl TypeBinding<CallPath> {
                 decl_span,
             } => {
                 // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_struct(&original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut new_copy = decl_engine.get_struct(&original_id);
 
                 // monomorphize the copy, in place
                 check!(
