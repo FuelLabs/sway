@@ -9,6 +9,8 @@ impl ty::TyCodeBlock {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
+        println!("ty::TyCodeBlock type_check");
+
         let decl_engine = ctx.decl_engine;
 
         // Create a temp namespace for checking within the code block scope.

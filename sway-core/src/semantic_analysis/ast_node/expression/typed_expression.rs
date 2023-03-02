@@ -530,6 +530,8 @@ impl ty::TyExpression {
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
 
+        println!("type_check_code_block {:?}", span);
+
         let (typed_block, block_return_type) = check!(
             ty::TyCodeBlock::type_check(ctx.by_ref(), contents),
             (

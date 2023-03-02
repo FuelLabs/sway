@@ -909,6 +909,103 @@ impl ReplaceDecls for TyExpressionVariant {
     }
 }
 
+impl UpdateConstantExpression for TyExpressionVariant {
+    fn update_constant_expression(
+        &mut self,
+        engines: Engines<'_>,
+        implementing_type: &TyDeclaration,
+    ) {
+        use TyExpressionVariant::*;
+        match self {
+            Literal(..) => (),
+            FunctionApplication { .. } => (),
+            LazyOperator { lhs, rhs, .. } => {
+                (*lhs).update_constant_expression(engines, implementing_type);
+                (*rhs).update_constant_expression(engines, implementing_type);
+            }
+            ConstantExpression {
+                ref mut const_decl, ..
+            } => {
+                println!("update_constant_expression");
+                println!("implementing_type: {:?}", implementing_type);
+                // look for the correct constant decl
+            }
+            VariableExpression { .. } => (),
+            Tuple { fields } => fields
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            Array { contents } => contents
+                .iter_mut()
+                .for_each(|x| x.update_constant_expression(engines, implementing_type)),
+            ArrayIndex { prefix, index } => {
+                (*prefix).update_constant_expression(engines, implementing_type);
+                (*index).update_constant_expression(engines, implementing_type);
+            }
+            StructExpression { fields, .. } => fields.iter_mut().for_each(|x| todo!()), // x.update_constant_expression(engines, implementing_type)),
+            CodeBlock(block) => {
+                block.update_constant_expression(engines, implementing_type);
+            }
+            FunctionParameter => (),
+            MatchExp { desugared, .. } => {
+                desugared.update_constant_expression(engines, implementing_type)
+            }
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                then.update_constant_expression(engines, implementing_type);
+                if let Some(ref mut r#else) = r#else {
+                    r#else.update_constant_expression(engines, implementing_type);
+                }
+            }
+            AsmExpression { .. } => {}
+            StructFieldAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            TupleElemAccess { prefix, .. } => {
+                prefix.update_constant_expression(engines, implementing_type);
+            }
+            EnumInstantiation {
+                enum_decl: _,
+                contents,
+                ..
+            } => {
+                if let Some(ref mut contents) = contents {
+                    contents.update_constant_expression(engines, implementing_type);
+                };
+            }
+            AbiCast { address, .. } => {
+                address.update_constant_expression(engines, implementing_type)
+            }
+            StorageAccess { .. } => (),
+            IntrinsicFunction(_) => {}
+            EnumTag { exp } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            UnsafeDowncast { exp, .. } => {
+                exp.update_constant_expression(engines, implementing_type);
+            }
+            AbiName(_) => (),
+            WhileLoop {
+                ref mut condition,
+                ref mut body,
+            } => {
+                condition.update_constant_expression(engines, implementing_type);
+                body.update_constant_expression(engines, implementing_type);
+            }
+            Break => (),
+            Continue => (),
+            Reassignment(reassignment) => {
+                reassignment.update_constant_expression(engines, implementing_type)
+            }
+            StorageReassignment(..) => (),
+            Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
+        }
+    }
+}
+
 impl DisplayWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {

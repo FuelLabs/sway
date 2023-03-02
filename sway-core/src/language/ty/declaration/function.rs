@@ -110,6 +110,7 @@ impl ReplaceSelfType for TyFunctionDeclaration {
 
 impl ReplaceDecls for TyFunctionDeclaration {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
+        println!("replace_decls_inner");
         self.body.replace_decls(decl_mapping, engines);
     }
 }

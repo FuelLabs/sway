@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineIndex, DeclRefFunction},
+    decl_engine::{DeclEngineIndex, DeclRefFunction, UpdateConstantExpression},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -26,6 +26,8 @@ pub(crate) fn type_check_method_application(
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
+
+    println!("type_check_method_application");
 
     // type check the function arguments
     let mut args_buf = VecDeque::new();
@@ -412,6 +414,8 @@ pub(crate) fn resolve_method_name(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    println!("resolve_method_name {:?}", method_name);
+
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
@@ -523,6 +527,12 @@ pub(crate) fn resolve_method_name(
         warnings,
         errors
     );
+
+    if let Some(implementing_type) = &func_decl.implementing_type {
+        func_decl
+            .body
+            .update_constant_expression(engines, implementing_type);
+    }
 
     let decl_ref = ctx
         .decl_engine

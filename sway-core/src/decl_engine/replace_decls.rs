@@ -1,4 +1,7 @@
-use crate::{engine_threading::Engines, language::ty};
+use crate::{
+    engine_threading::Engines,
+    language::ty::{self, TyDeclaration},
+};
 
 use super::DeclMapping;
 
@@ -17,5 +20,13 @@ pub(crate) trait ReplaceFunctionImplementingType {
         &mut self,
         engines: Engines<'_>,
         implementing_type: ty::TyDeclaration,
+    );
+}
+
+pub(crate) trait UpdateConstantExpression {
+    fn update_constant_expression(
+        &mut self,
+        engines: Engines<'_>,
+        implementing_type: &TyDeclaration,
     );
 }
