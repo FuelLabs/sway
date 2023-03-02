@@ -223,10 +223,9 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
                 .to_string();
 
             // Count the number of newline characters we found above.
+            // By default, we want 0 extra newlines, but if there are more than 1 extra newline, we want to squash it to 1.
             let mut extra_newlines_count = 0;
-
             if whitespace_between.chars().filter(|&c| c == '\n').count() > 1 {
-                // If there are more than 1 extra newline, we want to squash it to 1.
                 extra_newlines_count = 1;
             };
 
@@ -239,7 +238,7 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
     extra_newlines
 }
 
-/// Check if a block is empty (excluding comments).
+/// Check if a block is empty. When formatted without comments, empty code blocks are formatted into "{}", which is what this check is for.
 fn is_empty_block(formatted_code: &FormattedCode, end: usize) -> bool {
     formatted_code.chars().nth(end - 1) == Some('{') && formatted_code.chars().nth(end) == Some('}')
 }
@@ -272,9 +271,11 @@ fn insert_after_span(
         .collect::<String>();
 
     // In the case of empty blocks, we do not know the indentation of comments at that time.
+    // Writing comments in empty blocks has to be deferred to `write_comments` instead, which will
+    // contain the Formatter's indentation context.
     if !is_empty_block(formatted_code, from.end) {
         // There can be cases where comments are at the end.
-        // If so, we try to search from before the end to find something to 'pin' to.
+        // If so, we try to 'pin' our comment's indentation to the previous line instead.
         if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
             // It could be possible that the first comment found here is a Trailing,
             // then a Newlined.
@@ -284,13 +285,14 @@ fn insert_after_span(
                 .iter()
                 .any(|c| c.comment_kind == CommentKind::Newlined)
             {
+
+                // Find and assign the indentation of the previous line to `indent`.
                 let prev_line = formatted_code[..from.end + offset]
                     .trim_end()
                     .chars()
                     .rev()
                     .take_while(|&c| c != '\n')
                     .collect::<String>();
-
                 indent = prev_line
                     .chars()
                     .rev()
