@@ -160,6 +160,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
             output_directory: cmd.build.pkg.output_directory,
+            json_abi_with_callpaths: cmd.build.pkg.json_abi_with_callpaths,
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,

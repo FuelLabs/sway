@@ -213,6 +213,7 @@ pub struct BuildProfile {
     pub terse: bool,
     pub time_phases: bool,
     pub include_tests: bool,
+    pub json_abi_with_callpaths: bool,
     pub error_on_warnings: bool,
 }
 
@@ -605,6 +606,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            json_abi_with_callpaths: false,
             error_on_warnings: false,
         }
     }
@@ -619,6 +621,7 @@ impl BuildProfile {
             terse: false,
             time_phases: false,
             include_tests: false,
+            json_abi_with_callpaths: false,
             error_on_warnings: false,
         }
     }
