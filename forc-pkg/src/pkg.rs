@@ -45,7 +45,7 @@ use sway_core::{
     transform::AttributeKind,
     BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
@@ -102,6 +102,7 @@ pub struct BuiltPackage {
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
+    pub warnings: Vec<CompileWarning>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
@@ -1802,6 +1803,7 @@ pub fn compile(
                 json_abi_program,
                 storage_slots,
                 bytecode,
+                warnings: bc_res.warnings,
                 tree_type,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
