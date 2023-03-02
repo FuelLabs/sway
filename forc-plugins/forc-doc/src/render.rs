@@ -1100,7 +1100,7 @@ impl Renderable for ModuleIndex {
                                 h1(class="fqn") {
                                     span(class="in-band") {
                                         : title_prefix;
-                                        a(class="module", href=IDENTITY) {
+                                        a(class="mod", href=IDENTITY) {
                                             : self.module_info.location();
                                         }
                                     }
@@ -1165,12 +1165,13 @@ impl Renderable for Sidebar {
                 self.module_info.location()
             ),
         };
-        let (logo_path_to_parent, path_to_parent_or_self) = match &self.style {
-            DocStyle::AllDoc(_) | DocStyle::Item => {
-                (self.href_path.clone(), self.href_path.clone())
-            }
+        let root_path = self
+            .module_info
+            .to_html_shorthand_path_string(INDEX_FILENAME);
+        let (logo_path_to_root, path_to_parent_or_self) = match &self.style {
+            DocStyle::AllDoc(_) | DocStyle::Item => (root_path, self.href_path.clone()),
             DocStyle::ProjectIndex(_) => (IDENTITY.to_owned(), IDENTITY.to_owned()),
-            DocStyle::ModuleIndex => (format!("../{INDEX_FILENAME}"), IDENTITY.to_owned()),
+            DocStyle::ModuleIndex => (root_path, IDENTITY.to_owned()),
         };
         // Unfortunately, match arms that return a closure, even if they are the same
         // type, are incompatible. The work around is to return a String instead,
@@ -1236,7 +1237,7 @@ impl Renderable for Sidebar {
         };
         Ok(box_html! {
             nav(class="sidebar") {
-                a(class="sidebar-logo", href=&logo_path_to_parent) {
+                a(class="sidebar-logo", href=&logo_path_to_root) {
                     div(class="logo-container") {
                         img(class="sway-logo", src=path_to_logo, alt="logo");
                     }
