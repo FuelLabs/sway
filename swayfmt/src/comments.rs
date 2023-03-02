@@ -272,7 +272,7 @@ fn insert_after_span(
         .collect::<String>();
 
     // In the case of empty blocks, we do not know the indentation of comments at that time.
-    if !is_empty_block(&formatted_code, from.end) {
+    if !is_empty_block(formatted_code, from.end) {
         // There can be cases where comments are at the end.
         // If so, we try to search from before the end to find something to 'pin' to.
         if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
