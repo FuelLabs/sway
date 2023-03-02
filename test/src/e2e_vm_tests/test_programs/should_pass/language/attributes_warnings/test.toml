@@ -1,4 +1,5 @@
 category = "compile"
+expected_warnings = 3
 
 # check: #[allow(foo)]
 # nextln: $()Unexpected attribute value: "foo" for attribute: "allow" expected value "dead_code"
