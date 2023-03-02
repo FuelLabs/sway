@@ -209,6 +209,10 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
     // The first comment is always assumed to have no extra newlines before itself.
     let mut extra_newlines = vec![0];
 
+    if comments_found.len() == 1 {
+        return extra_newlines;
+    }
+
     let mut prev_comment: Option<&Comment> = None;
     for comment in comments_found {
         if let Some(prev_comment) = prev_comment {
@@ -219,15 +223,13 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
                 .to_string();
 
             // Count the number of newline characters we found above.
-            let mut extra_newlines_count =
-                whitespace_between.chars().filter(|&c| c == '\n').count();
+            let mut extra_newlines_count = 0;
 
-            if extra_newlines_count > 1 {
-                // If there is a bunch of newlines, we just want to collapse it to 1.
+            if whitespace_between.chars().filter(|&c| c == '\n').count() > 1 {
+                // If there are more than 1 extra newline, we want to squash it to 1.
                 extra_newlines_count = 1;
-            } else {
-                extra_newlines_count = 0;
-            }
+            };
+
             extra_newlines.push(extra_newlines_count);
         }
 
