@@ -12,6 +12,8 @@ The `#[doc(..)]` attribute specifies documentation.
 
 Line doc comments beginning with exactly three slashes `///`, are interpreted as a special syntax for doc attributes. That is, they are equivalent to writing `#[doc("...")]` around the body of the comment, i.e., `/// Foo` turns into `#[doc("Foo")]`
 
+Line comments beginning with `//!` are doc comments that apply to the module of the source file they are in. That is, they are equivalent to writing `#![doc("...")]` around the body of the comment. `//!` module level doc comments should be at the top of Sway files.
+
 Documentation can be generated from doc attributes using `forc doc`.
 
 ## Inline
