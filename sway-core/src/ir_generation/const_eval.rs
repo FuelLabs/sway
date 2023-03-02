@@ -1,6 +1,10 @@
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty, metadata::MetadataManager,
-    semantic_analysis::*, TypeEngine,
+    decl_engine::DeclEngine,
+    engine_threading::*,
+    language::ty::{self, TyIntrinsicFunctionKind},
+    metadata::MetadataManager,
+    semantic_analysis::*,
+    TypeEngine,
 };
 
 use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
@@ -426,8 +430,10 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared)?
         }
+        ty::TyExpressionVariant::IntrinsicFunction(kind) => {
+            const_eval_intrinsic(lookup, known_consts, kind)?
+        }
         ty::TyExpressionVariant::ArrayIndex { .. }
-        | ty::TyExpressionVariant::IntrinsicFunction(_)
         | ty::TyExpressionVariant::CodeBlock(_)
         | ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::StorageReassignment(_)
@@ -444,6 +450,63 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::Continue
         | ty::TyExpressionVariant::WhileLoop { .. } => None,
     })
+}
+
+fn const_eval_intrinsic(
+    lookup: &mut LookupEnv,
+    known_consts: &mut MappedStack<Ident, Constant>,
+    intrinsic: &TyIntrinsicFunctionKind,
+) -> Result<Option<Constant>, CompileError> {
+    let args = intrinsic
+        .arguments
+        .iter()
+        .filter_map(|arg| const_eval_typed_expr(lookup, known_consts, arg).transpose())
+        .collect::<Result<Vec<_>, CompileError>>()?;
+
+    if args.len() != intrinsic.arguments.len() {
+        // We couldn't const-eval all arguments.
+        return Ok(None);
+    }
+    match intrinsic.kind {
+        sway_ast::Intrinsic::Add => {
+            let ty = args[0].ty;
+            assert!(
+                args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
+            );
+            let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
+            else {
+                panic!("Type checker allowed incorrect args to _add");
+            };
+            // All arithmetic is done as if it were u64
+            match arg1.checked_add(*arg2) {
+                Some(sum) => Ok(Some(Constant {
+                    ty,
+                    value: ConstantValue::Uint(sum),
+                })),
+                None => Ok(None),
+            }
+        }
+        sway_ast::Intrinsic::Sub => Ok(None),
+        sway_ast::Intrinsic::Mul => Ok(None),
+        sway_ast::Intrinsic::Div => Ok(None),
+        sway_ast::Intrinsic::SizeOfType => Ok(None),
+        sway_ast::Intrinsic::SizeOfVal => Ok(None),
+        sway_ast::Intrinsic::Eq => Ok(None),
+        sway_ast::Intrinsic::AddrOf => Ok(None),
+        sway_ast::Intrinsic::PtrAdd => Ok(None),
+        sway_ast::Intrinsic::PtrSub => Ok(None),
+        sway_ast::Intrinsic::GetStorageKey
+        | sway_ast::Intrinsic::IsReferenceType
+        | sway_ast::Intrinsic::Gtf
+        | sway_ast::Intrinsic::StateClear
+        | sway_ast::Intrinsic::StateLoadWord
+        | sway_ast::Intrinsic::StateStoreWord
+        | sway_ast::Intrinsic::StateLoadQuad
+        | sway_ast::Intrinsic::StateStoreQuad
+        | sway_ast::Intrinsic::Log
+        | sway_ast::Intrinsic::Revert
+        | sway_ast::Intrinsic::Smo => Ok(None),
+    }
 }
 
 fn const_eval_typed_ast_node(
