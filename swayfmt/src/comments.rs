@@ -285,7 +285,6 @@ fn insert_after_span(
                 .iter()
                 .any(|c| c.comment_kind == CommentKind::Newlined)
             {
-
                 // Find and assign the indentation of the previous line to `indent`.
                 let prev_line = formatted_code[..from.end + offset]
                     .trim_end()
