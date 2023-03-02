@@ -1,102 +1,117 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    fmt,
     sync::RwLock,
 };
 
-use sway_error::error::CompileError;
-use sway_types::{Ident, Span};
+use sway_types::{Named, Spanned};
 
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     engine_threading::*,
-    language::ty,
+    language::ty::{
+        self, TyAbiDeclaration, TyConstantDeclaration, TyEnumDeclaration, TyFunctionDeclaration,
+        TyImplTrait, TyStorageDeclaration, TyStructDeclaration, TyTraitDeclaration, TyTraitFn,
+    },
 };
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
-    slab: ConcurrentSlab<DeclWrapper>,
-    parents: RwLock<HashMap<DeclId, Vec<DeclId>>>,
+    function_slab: ConcurrentSlab<TyFunctionDeclaration>,
+    trait_slab: ConcurrentSlab<TyTraitDeclaration>,
+    trait_fn_slab: ConcurrentSlab<TyTraitFn>,
+    impl_trait_slab: ConcurrentSlab<TyImplTrait>,
+    struct_slab: ConcurrentSlab<TyStructDeclaration>,
+    storage_slab: ConcurrentSlab<TyStorageDeclaration>,
+    abi_slab: ConcurrentSlab<TyAbiDeclaration>,
+    constant_slab: ConcurrentSlab<TyConstantDeclaration>,
+    enum_slab: ConcurrentSlab<TyEnumDeclaration>,
+
+    parents: RwLock<HashMap<FunctionalDeclId, Vec<FunctionalDeclId>>>,
 }
 
-impl fmt::Display for DeclEngine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.slab.with_slice(|elems| {
-            let list = ListDisplay { list: elems.iter() };
-            write!(f, "DeclarationEngine {{\n{list}\n}}")
-        })
-    }
+pub trait DeclEngineIndex<T>
+where
+    T: Named + Spanned,
+{
+    fn get(&self, index: DeclId<T>) -> T;
+    fn replace(&self, index: DeclId<T>, decl: T);
+    fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
 }
+
+macro_rules! decl_engine_index {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineIndex<$decl> for DeclEngine {
+            fn get(&self, index: DeclId<$decl>) -> $decl {
+                self.$slab.get(index.inner())
+            }
+
+            fn replace(&self, index: DeclId<$decl>, decl: $decl) {
+                self.$slab.replace(index, decl);
+            }
+
+            fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
+                let span = decl.span();
+                DeclRef {
+                    name: decl.name().clone(),
+                    id: DeclId::new(self.$slab.insert(decl)),
+                    decl_span: span,
+                }
+            }
+        }
+    };
+}
+decl_engine_index!(function_slab, ty::TyFunctionDeclaration);
+decl_engine_index!(trait_slab, ty::TyTraitDeclaration);
+decl_engine_index!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_index!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_index!(struct_slab, ty::TyStructDeclaration);
+decl_engine_index!(storage_slab, ty::TyStorageDeclaration);
+decl_engine_index!(abi_slab, ty::TyAbiDeclaration);
+decl_engine_index!(constant_slab, ty::TyConstantDeclaration);
+decl_engine_index!(enum_slab, ty::TyEnumDeclaration);
 
 impl DeclEngine {
-    pub(crate) fn get<'a, T>(&self, index: &'a T) -> DeclWrapper
-    where
-        DeclId: From<&'a T>,
-    {
-        self.slab.get(*DeclId::from(index))
-    }
-
-    /// This method was added as a weird workaround for a potential Rust
-    /// compiler bug where it is unable to resolve the trait constraints on the
-    /// `get` method above (???)
-    fn get_from_decl_id(&self, index: DeclId) -> DeclWrapper {
-        self.slab.get(*index)
-    }
-
-    pub(super) fn replace<'a, T>(&self, index: &'a T, wrapper: DeclWrapper)
-    where
-        DeclId: From<&'a T>,
-    {
-        self.slab.replace(DeclId::from(index), wrapper);
-    }
-
-    pub(crate) fn insert<T>(&self, decl: T) -> DeclRef
-    where
-        T: Into<(Ident, DeclWrapper, Span)>,
-    {
-        let (ident, decl_wrapper, span) = decl.into();
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), span)
-    }
-
-    pub(crate) fn insert_wrapper(
-        &self,
-        ident: Ident,
-        decl_wrapper: DeclWrapper,
-        span: Span,
-    ) -> DeclRef {
-        DeclRef::new(ident, self.slab.insert(decl_wrapper), span)
-    }
-
     /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
     /// recursive parents of those parents, and so on. Does not perform
     /// duplicated computation---if the parents of a [DeclRef] have already been
     /// found, we do not find them again.
     #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents<'a, T>(&self, engines: Engines<'_>, index: &'a T) -> Vec<DeclId>
+    pub(crate) fn find_all_parents<'a, T>(
+        &self,
+        engines: Engines<'_>,
+        index: &'a T,
+    ) -> Vec<FunctionalDeclId>
     where
-        DeclId: From<&'a T>,
+        FunctionalDeclId: From<&'a T>,
     {
-        let index: DeclId = DeclId::from(index);
+        let index: FunctionalDeclId = FunctionalDeclId::from(index);
         let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<DeclId, DeclId> = HashMap::new();
-        let mut already_checked: HashSet<DeclId> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([index]);
+        let mut acc_parents: HashMap<FunctionalDeclId, FunctionalDeclId> = HashMap::new();
+        let mut already_checked: HashSet<FunctionalDeclId> = HashSet::new();
+        let mut left_to_check: VecDeque<FunctionalDeclId> = VecDeque::from([index]);
         while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(curr) {
+            if !already_checked.insert(curr.clone()) {
                 continue;
             }
             if let Some(curr_parents) = parents.get(&curr) {
                 for curr_parent in curr_parents.iter() {
                     if !acc_parents.contains_key(curr_parent) {
-                        acc_parents.insert(*curr_parent, *curr_parent);
+                        acc_parents.insert(curr_parent.clone(), curr_parent.clone());
                     }
-                    if !left_to_check.iter().any(|x| {
-                        self.get_from_decl_id(*x)
-                            .eq(&self.get_from_decl_id(*curr_parent), engines)
+                    if !left_to_check.iter().any(|x| match (x, curr_parent) {
+                        (
+                            FunctionalDeclId::TraitFn(x_id),
+                            FunctionalDeclId::TraitFn(curr_parent_id),
+                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
+                        (
+                            FunctionalDeclId::Function(x_id),
+                            FunctionalDeclId::Function(curr_parent_id),
+                        ) => self.get(*x_id).eq(&self.get(*curr_parent_id), engines),
+                        _ => false,
                     }) {
-                        left_to_check.push_back(*curr_parent);
+                        left_to_check.push_back(curr_parent.clone());
                     }
                 }
             }
@@ -104,115 +119,77 @@ impl DeclEngine {
         acc_parents.values().cloned().collect()
     }
 
-    pub(crate) fn register_parent<'a, T>(&self, index: &DeclRef, parent: &'a T)
+    pub(crate) fn register_parent<I>(&self, index: FunctionalDeclId, parent: FunctionalDeclId)
     where
-        DeclId: From<&'a T>,
+        FunctionalDeclId: From<DeclId<I>>,
     {
-        let index: DeclId = index.into();
-        let parent: DeclId = DeclId::from(parent);
         let mut parents = self.parents.write().unwrap();
         parents
             .entry(index)
-            .and_modify(|e| e.push(parent))
+            .and_modify(|e| e.push(parent.clone()))
             .or_insert_with(|| vec![parent]);
     }
 
-    pub fn get_function<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyFunctionDeclaration, CompileError>
+    pub fn get_function<'a, T, I>(&self, index: &'a T) -> ty::TyFunctionDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_function(span)
+        self.function_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_trait<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyTraitDeclaration, CompileError>
+    pub fn get_trait<'a, T, I>(&self, index: &'a T) -> ty::TyTraitDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_trait(span)
+        self.trait_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_trait_fn<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyTraitFn, CompileError>
+    pub fn get_trait_fn<'a, T, I>(&self, index: &'a T) -> ty::TyTraitFn
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_trait_fn(span)
+        self.trait_fn_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_impl_trait<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyImplTrait, CompileError>
+    pub fn get_impl_trait<'a, T, I>(&self, index: &'a T) -> ty::TyImplTrait
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_impl_trait(span)
+        self.impl_trait_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_struct<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyStructDeclaration, CompileError>
+    pub fn get_struct<'a, T, I>(&self, index: &'a T) -> ty::TyStructDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_struct(span)
+        self.struct_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_storage<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyStorageDeclaration, CompileError>
+    pub fn get_storage<'a, T, I>(&self, index: &'a T) -> ty::TyStorageDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_storage(span)
+        self.storage_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_abi<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyAbiDeclaration, CompileError>
+    pub fn get_abi<'a, T, I>(&self, index: &'a T) -> ty::TyAbiDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_abi(span)
+        self.abi_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_constant<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyConstantDeclaration, CompileError>
+    pub fn get_constant<'a, T, I>(&self, index: &'a T) -> ty::TyConstantDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_constant(span)
+        self.constant_slab.get(DeclId::from(index).inner())
     }
 
-    pub fn get_enum<'a, T>(
-        &self,
-        index: &'a T,
-        span: &Span,
-    ) -> Result<ty::TyEnumDeclaration, CompileError>
+    pub fn get_enum<'a, T, I>(&self, index: &'a T) -> ty::TyEnumDeclaration
     where
-        DeclId: From<&'a T>,
+        DeclId<I>: From<&'a T>,
     {
-        self.slab.get(*DeclId::from(index)).expect_enum(span)
+        self.enum_slab.get(DeclId::from(index).inner())
     }
 }

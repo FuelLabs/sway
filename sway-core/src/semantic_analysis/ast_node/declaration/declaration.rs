@@ -2,7 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::{DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclEngineIndex, DeclRef, ReplaceFunctionImplementingType},
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -234,7 +234,7 @@ impl ty::TyDeclaration {
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
-                                    *supertrait_decl_id,
+                                    supertrait_decl_id,
                                     supertrait_decl_span,
                                 ));
                             }
@@ -378,7 +378,7 @@ impl ty::TyDeclaration {
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
-                                    *supertrait_decl_id,
+                                    supertrait_decl_id,
                                     supertrait_decl_span,
                                 ));
                             }

@@ -37,7 +37,7 @@ pub struct Items {
     /// alias for `bar`.
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
-    pub(crate) declared_storage: Option<DeclRef>,
+    pub(crate) declared_storage: Option<DeclRefStorage>,
 }
 
 impl Items {
@@ -51,20 +51,14 @@ impl Items {
         engines: Engines<'_>,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
-        access_span: &Span,
     ) -> CompileResult<(ty::TyStorageAccess, TypeId)> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let storage = decl_engine.get_storage(&decl_ref.id);
                 storage.apply_storage_load(type_engine, fields, storage_fields)
             }
             None => {
@@ -76,7 +70,7 @@ impl Items {
         }
     }
 
-    pub fn set_storage_declaration(&mut self, decl_ref: DeclRef) -> CompileResult<()> {
+    pub fn set_storage_declaration(&mut self, decl_ref: DeclRefStorage) -> CompileResult<()> {
         if self.declared_storage.is_some() {
             return err(
                 vec![],
@@ -166,7 +160,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<DeclRefFunction> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }
@@ -178,18 +172,12 @@ impl Items {
     pub(crate) fn get_storage_field_descriptors(
         &self,
         decl_engine: &DeclEngine,
-        access_span: &Span,
     ) -> CompileResult<Vec<ty::TyStorageField>> {
-        let mut warnings = vec![];
+        let warnings = vec![];
         let mut errors = vec![];
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = check!(
-                    CompileResult::from(decl_engine.get_storage(decl_ref, access_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let storage = decl_engine.get_storage(decl_ref);
                 ok(storage.fields, warnings, errors)
             }
             None => {
@@ -225,7 +213,7 @@ impl Items {
             }
         };
         let mut symbol = check!(
-            symbol.return_type(engines, &base_name.span()),
+            symbol.return_type(engines),
             return err(warnings, errors),
             warnings,
             errors
