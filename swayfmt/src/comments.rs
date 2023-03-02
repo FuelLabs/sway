@@ -241,14 +241,7 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
 
 /// Check if a block is empty (excluding comments).
 fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
-    let substring = formatted_code[end..]
-        .chars()
-        .take_while(|&c| !c.is_whitespace())
-        .count();
-
-    formatted_code.chars().nth(end - 1) == Some('{')
-        && (formatted_code.chars().nth(end) == Some('}')
-            || formatted_code.chars().nth(end + substring + 1) == Some('}'))
+    formatted_code.chars().nth(end - 1) == Some('{') && formatted_code.chars().nth(end) == Some('}')
 }
 
 /// Main driver of writing comments. This function is a no-op if the block of code is empty.
