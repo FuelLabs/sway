@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclEngineIndex, DeclRefFunction},
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -49,12 +49,7 @@ pub(crate) fn type_check_method_application(
         warnings,
         errors
     );
-    let method = check!(
-        CompileResult::from(decl_engine.get_function(&decl_ref, &method_name_binding.span())),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let method = decl_engine.get_function(&decl_ref);
 
     // check the method visibility
     if span.path() != method.span.path() && method.visibility.is_private() {
@@ -167,8 +162,7 @@ pub(crate) fn type_check_method_application(
     let mut self_state_idx = None;
     if ctx.namespace.has_storage_declared() {
         let storage_fields = check!(
-            ctx.namespace
-                .get_storage_field_descriptors(decl_engine, &span),
+            ctx.namespace.get_storage_field_descriptors(decl_engine),
             return err(warnings, errors),
             warnings,
             errors
@@ -414,7 +408,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclRef> {
+) -> CompileResult<DeclRefFunction> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -514,12 +508,7 @@ pub(crate) fn resolve_method_name(
         }
     };
 
-    let mut func_decl = check!(
-        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
+    let mut func_decl = decl_engine.get_function(&decl_ref);
 
     // monomorphize the function declaration
     let method_name_span = method_name.span();
@@ -538,7 +527,7 @@ pub(crate) fn resolve_method_name(
     let decl_ref = ctx
         .decl_engine
         .insert(func_decl)
-        .with_parent(ctx.decl_engine, &decl_ref);
+        .with_parent(ctx.decl_engine, decl_ref.id.into());
 
     ok(decl_ref, warnings, errors)
 }

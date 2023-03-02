@@ -568,7 +568,7 @@ fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr>
                     parsed,
                     ty_opt,
                 } = lit_int;
-                if let Some((_, _span)) = ty_opt {
+                if ty_opt.is_some() {
                     return Err(
                         parser.emit_error_with_span(ParseErrorKind::IntFieldWithTypeSuffix, span)
                     );

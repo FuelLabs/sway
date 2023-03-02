@@ -2624,7 +2624,7 @@ fn literal_to_literal(
                         }
                     }
                 }
-                Some((lit_int_type, _span)) => match lit_int_type {
+                Some((lit_int_type, _)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,

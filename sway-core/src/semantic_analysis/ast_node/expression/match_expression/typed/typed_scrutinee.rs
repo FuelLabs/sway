@@ -62,7 +62,7 @@ fn type_check_variable(
     name: Ident,
     span: Span,
 ) -> CompileResult<ty::TyScrutinee> {
-    let mut warnings = vec![];
+    let warnings = vec![];
     let mut errors = vec![];
 
     let type_engine = ctx.type_engine;
@@ -71,12 +71,7 @@ fn type_check_variable(
     let typed_scrutinee = match ctx.namespace.resolve_symbol(&name).value {
         // If this variable is a constant, then we turn it into a [TyScrutinee::Constant](ty::TyScrutinee::Constant).
         Some(ty::TyDeclaration::ConstantDeclaration { decl_id, .. }) => {
-            let constant_decl = check!(
-                CompileResult::from(decl_engine.get_constant(decl_id, &span)),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let constant_decl = decl_engine.get_constant(decl_id);
             let value = match constant_decl.value {
                 Some(ref value) => value,
                 None => {
@@ -133,7 +128,7 @@ fn type_check_struct(
         errors
     );
     let mut struct_decl = check!(
-        unknown_decl.expect_struct(decl_engine, &span),
+        unknown_decl.expect_struct(decl_engine),
         return err(warnings, errors),
         warnings,
         errors
@@ -256,7 +251,7 @@ fn type_check_enum(
         errors
     );
     let mut enum_decl = check!(
-        unknown_decl.expect_enum(decl_engine, &enum_callpath.span()),
+        unknown_decl.expect_enum(decl_engine),
         return err(warnings, errors),
         warnings,
         errors

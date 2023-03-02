@@ -62,7 +62,7 @@ pub enum ControlFlowGraphNode<'cfg> {
     MethodDeclaration {
         span: Span,
         method_name: Ident,
-        method_decl_ref: DeclRef,
+        method_decl_ref: DeclRefFunction,
         engines: Engines<'cfg>,
     },
     StructField {
@@ -140,9 +140,7 @@ impl<'cfg> std::fmt::Debug for ControlFlowGraphNode<'cfg> {
                 ..
             } => {
                 let decl_engines = engines.de();
-                let method = decl_engines
-                    .get_function(method_decl_ref, &Span::dummy())
-                    .unwrap();
+                let method = decl_engines.get_function(method_decl_ref);
                 if let Some(implementing_type) = method.implementing_type {
                     format!(
                         "Method {}.{}",

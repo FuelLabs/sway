@@ -97,7 +97,7 @@ pub(crate) fn compile_const_decl(
                         value,
                         is_configurable,
                         ..
-                    } = env.decl_engine.get_constant(decl_id, &name.span())?;
+                    } = env.decl_engine.get_constant(decl_id);
                     Some((name, value, is_configurable))
                 }
                 _otherwise => None,
@@ -241,9 +241,7 @@ fn const_eval_typed_expr(
             }
 
             // TODO: Handle more than one statement in the block.
-            let function_decl = lookup
-                .decl_engine
-                .get_function(function_decl_ref, &expr.span)?;
+            let function_decl = lookup.decl_engine.get_function(function_decl_ref);
             if function_decl.body.contents.len() > 1 {
                 return Ok(None);
             }
