@@ -670,6 +670,8 @@ impl TypeInfo {
     }
 }
 
+/// `call_path_display`  returns the provided `call_path` without the first prefix in case it is equal to the program name.
+/// If the program name is `my_program` and the `call_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
 fn call_path_display(ctx: &mut JsonAbiContext, call_path: &CallPath) -> String {
     if !ctx.json_abi_with_callpaths {
         return call_path.suffix.as_str().to_string();
