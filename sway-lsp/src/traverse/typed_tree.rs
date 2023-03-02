@@ -506,6 +506,9 @@ impl<'a> TypedTree<'a> {
                 self.handle_expression(lhs);
                 self.handle_expression(rhs);
             }
+            ty::TyExpressionVariant::ConstantExpression { ref const_decl } => {
+                self.collect_const_decl(const_decl)
+            }
             ty::TyExpressionVariant::VariableExpression {
                 ref name,
                 ref span,

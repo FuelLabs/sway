@@ -256,6 +256,20 @@ fn const_eval_typed_expr(
             }
             res
         }
+        ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+            let name = &const_decl.name;
+            match known_consts.get(name) {
+                // 1. Check if name is in known_consts.
+                Some(cvs) => Some(cvs.clone()),
+                None => {
+                    // 2. Check if name is a global constant.
+                    (lookup.lookup)(lookup, name)
+                        .ok()
+                        .flatten()
+                        .and_then(|v| v.get_constant(lookup.context).cloned())
+                }
+            }
+        }
         ty::TyExpressionVariant::VariableExpression { name, .. } => match known_consts.get(name) {
             // 1. Check if name is in known_consts.
             Some(cvs) => Some(cvs.clone()),

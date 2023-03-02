@@ -10,7 +10,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind},
+        ty::{self, ProjectionKind, TyConstantDeclaration},
         *,
     },
     metadata::MetadataManager,
@@ -141,7 +141,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let tcd = self.decl_engine.get_constant(decl_id);
-                    self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
+                    self.compile_const_decl(context, md_mgr, &tcd, span_md_idx)?;
                     Ok(None)
                 }
                 ty::TyDeclaration::FunctionDeclaration { .. } => {
@@ -269,6 +269,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
+            }
+            ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
                 self.compile_var_expr(context, name.as_str(), span_md_idx)
@@ -1601,6 +1604,23 @@ impl<'eng> FnCompiler<'eng> {
         self.function.get_arg(context, name)
     }
 
+    fn compile_const_expr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        const_decl: &TyConstantDeclaration,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<Value, CompileError> {
+        let name = const_decl.name.as_str();
+        if let Some(const_val) = self.module.get_global_constant(context, name) {
+            Ok(const_val)
+        } else if let Some(config_val) = self.module.get_global_configurable(context, name) {
+            Ok(config_val)
+        } else {
+            self.compile_const_decl(context, md_mgr, const_decl, span_md_idx)
+        }
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -1726,9 +1746,9 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_const_decl: ty::TyConstantDeclaration,
+        ast_const_decl: &ty::TyConstantDeclaration,
         span_md_idx: Option<MetadataIndex>,
-    ) -> Result<(), CompileError> {
+    ) -> Result<Value, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         // `is_configurable` should be `false` here.
@@ -1746,9 +1766,9 @@ impl<'eng> FnCompiler<'eng> {
                 self.module,
                 None,
                 Some(self),
-                &name,
-                &value,
-                is_configurable,
+                name,
+                value,
+                *is_configurable,
             )?;
             let local_name = self.lexical_map.insert(name.as_str().to_owned());
             let return_type = convert_resolved_typeid(
@@ -1774,7 +1794,7 @@ impl<'eng> FnCompiler<'eng> {
             // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
             // otherwise use a store.
             let var_ty = local_var.get_type(context);
-            if ir_type_size_in_bytes(context, &var_ty) > 0 {
+            Ok(if ir_type_size_in_bytes(context, &var_ty) > 0 {
                 let local_val = self
                     .current_block
                     .ins(context)
@@ -1783,10 +1803,13 @@ impl<'eng> FnCompiler<'eng> {
                 self.current_block
                     .ins(context)
                     .store(local_val, const_expr_val)
-                    .add_metadatum(context, span_md_idx);
-            }
+                    .add_metadatum(context, span_md_idx)
+            } else {
+                const_expr_val
+            })
+        } else {
+            unreachable!("cannot compile const declaration without an expression")
         }
-        Ok(())
     }
 
     fn compile_reassignment(

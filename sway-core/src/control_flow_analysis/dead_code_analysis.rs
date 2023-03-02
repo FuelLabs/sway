@@ -349,7 +349,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ConstantDeclaration { decl_id, .. } => {
             let ty::TyConstantDeclaration { name, value, .. } = decl_engine.get_constant(decl_id);
-            graph.namespace.insert_constant(name, entry_node);
+            graph.namespace.insert_global_constant(name, entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -1034,19 +1034,21 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![node])
         }
-        VariableExpression { name, .. } => {
+        VariableExpression { .. } => Ok(leaves.to_vec()),
+        ConstantExpression { const_decl, .. } => {
             // Variables may refer to global const declarations.
-            Ok(graph
-                .namespace
-                .get_constant(name)
-                .cloned()
-                .map(|node| {
-                    for leaf in leaves {
-                        graph.add_edge(*leaf, node, "".into());
-                    }
-                    vec![node]
-                })
-                .unwrap_or_else(|| leaves.to_vec()))
+            let node = if let Some(node) = graph.namespace.get_global_constant(&const_decl.name) {
+                *node
+            } else if let Some(node) = graph.namespace.get_constant(const_decl) {
+                *node
+            } else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+            Ok(vec![node])
         }
         EnumInstantiation {
             enum_decl,

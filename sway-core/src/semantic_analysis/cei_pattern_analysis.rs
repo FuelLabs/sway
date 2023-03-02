@@ -212,6 +212,7 @@ fn analyze_expression(
     match &expr.expression {
         // base cases: no warnings can be emitted
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)
@@ -504,6 +505,7 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
     let decl_engine = engines.de();
     match &expr.expression {
         Literal(_)
+        | ConstantExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | Break

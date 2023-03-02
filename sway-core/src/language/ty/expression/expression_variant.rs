@@ -33,6 +33,9 @@ pub enum TyExpressionVariant {
         lhs: Box<TyExpression>,
         rhs: Box<TyExpression>,
     },
+    ConstantExpression {
+        const_decl: Box<TyConstantDeclaration>,
+    },
     VariableExpression {
         name: Ident,
         span: Span,
@@ -408,6 +411,9 @@ impl HashWithEngines for TyExpressionVariant {
                 lhs.hash(state, engines);
                 rhs.hash(state, engines);
             }
+            Self::ConstantExpression { const_decl } => {
+                const_decl.hash(state, engines);
+            }
             Self::VariableExpression {
                 name,
                 mutability,
@@ -585,6 +591,9 @@ impl SubstTypes for TyExpressionVariant {
                 (*lhs).subst(type_mapping, engines);
                 (*rhs).subst(type_mapping, engines);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.subst(type_mapping, engines);
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -705,6 +714,9 @@ impl ReplaceSelfType for TyExpressionVariant {
                 (*lhs).replace_self_type(engines, self_type);
                 (*rhs).replace_self_type(engines, self_type);
             }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_self_type(engines, self_type)
+            }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
                 .iter_mut()
@@ -819,6 +831,9 @@ impl ReplaceDecls for TyExpressionVariant {
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).replace_decls(decl_mapping, engines);
                 (*rhs).replace_decls(decl_mapping, engines);
+            }
+            ConstantExpression { const_decl, .. } => {
+                const_decl.replace_decls(decl_mapping, engines)
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
@@ -950,6 +965,9 @@ impl DisplayWithEngines for TyExpressionVariant {
                     engines.help_out(*resolved_type_of_parent),
                     elem_to_access_num
                 )
+            }
+            TyExpressionVariant::ConstantExpression { const_decl } => {
+                format!("\"{}\" constant exp", const_decl.name.as_str())
             }
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
@@ -1135,6 +1153,7 @@ impl TyExpressionVariant {
             TyExpressionVariant::Literal(_)
             | TyExpressionVariant::FunctionParameter { .. }
             | TyExpressionVariant::AsmExpression { .. }
+            | TyExpressionVariant::ConstantExpression { .. }
             | TyExpressionVariant::VariableExpression { .. }
             | TyExpressionVariant::AbiName(_)
             | TyExpressionVariant::StorageAccess { .. }

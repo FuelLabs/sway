@@ -374,6 +374,7 @@ impl CollectTypesMetadata for TyExpression {
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
+            | ConstantExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)
@@ -452,6 +453,7 @@ impl DeterministicallyAborts for TyExpression {
             | Literal(_)
             | StorageAccess { .. }
             | VariableExpression { .. }
+            | ConstantExpression { .. }
             | FunctionParameter
             | TupleElemAccess { .. } => false,
             IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),

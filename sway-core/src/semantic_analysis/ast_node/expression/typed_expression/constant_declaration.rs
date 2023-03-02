@@ -17,11 +17,8 @@ pub(crate) fn instantiate_constant_decl(
         ty::TyExpression {
             return_type: const_decl.type_ascription.type_id,
             span: call_path_binding.span(),
-            expression: ty::TyExpressionVariant::VariableExpression {
-                name: const_decl.name.clone(),
-                span: const_decl.name.span(),
-                mutability: ty::VariableMutability::Immutable,
-                call_path: Some(call_path_binding.inner),
+            expression: ty::TyExpressionVariant::ConstantExpression {
+                const_decl: Box::new(const_decl),
             },
         },
         vec![],
