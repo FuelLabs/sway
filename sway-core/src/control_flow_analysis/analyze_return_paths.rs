@@ -78,7 +78,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
             let mut last_discovered_span;
             for rover in rovers {
                 last_discovered_span = match &self.graph[rover] {
-                    ControlFlowGraphNode::ProgramNode(node) => Some(node.span.clone()),
+                    ControlFlowGraphNode::ProgramNode { node, .. } => Some(node.span.clone()),
                     ControlFlowGraphNode::MethodDeclaration { span, .. } => Some(span.clone()),
                     _ => None,
                 };
@@ -137,7 +137,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             ..
         })
         | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
-            let this_index = graph.add_node(node.into());
+            let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
             }
@@ -150,14 +150,14 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             // An abridged version of the dead code analysis for a while loop
             // since we don't really care about what the loop body contains when detecting
             // divergent paths
-            let node = graph.add_node(node.into());
+            let node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "while loop entry".into());
             }
             Ok(NodeConnection::NextStep(vec![node]))
         }
         ty::TyAstNodeContent::Expression(ty::TyExpression { .. }) => {
-            let entry = graph.add_node(node.into());
+            let entry = graph.add_node(ControlFlowGraphNode::from_node(node));
             // insert organizational dominator node
             // connected to all current leaves
             for leaf in leaves {
@@ -189,7 +189,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | StorageDeclaration { .. }
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
         VariableDeclaration(_) | ConstantDeclaration { .. } => {
-            let entry_node = graph.add_node(node.into());
+            let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
@@ -197,7 +197,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         FunctionDeclaration { decl_id, .. } => {
             let fn_decl = decl_engine.get_function(decl_id);
-            let entry_node = graph.add_node(node.into());
+            let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
@@ -208,7 +208,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             let ty::TyImplTrait {
                 trait_name, items, ..
             } = decl_engine.get_impl_trait(decl_id);
-            let entry_node = graph.add_node(node.into());
+            let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
