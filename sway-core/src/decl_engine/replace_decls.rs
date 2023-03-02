@@ -2,7 +2,7 @@ use crate::{engine_threading::Engines, language::ty};
 
 use super::DeclMapping;
 
-pub(crate) trait ReplaceDecls {
+pub trait ReplaceDecls {
     fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>);
 
     fn replace_decls(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {

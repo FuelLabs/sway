@@ -20,10 +20,6 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-pub trait GetDeclRef {
-    fn get_decl_ref(&self) -> Option<DeclRef>;
-}
-
 #[derive(Clone, Debug)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
@@ -171,12 +167,10 @@ impl TyAstNode {
     }
 
     /// Check to see if this node is a function declaration with generic type parameters.
-    pub(crate) fn is_generic_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn is_generic_function(&self, decl_engine: &DeclEngine) -> bool {
         match &self {
             TyAstNode {
-                span,
+                span: _,
                 content:
                     TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                         decl_id, ..
@@ -185,44 +179,28 @@ impl TyAstNode {
             } => {
                 let TyFunctionDeclaration {
                     type_parameters, ..
-                } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(!type_parameters.is_empty(), warnings, errors)
+                } = decl_engine.get_function(decl_id);
+                !type_parameters.is_empty()
             }
-            _ => ok(false, warnings, errors),
+            _ => false,
         }
     }
 
     /// Check to see if this node is a function declaration of a function annotated as test.
-    pub(crate) fn is_test_function(&self, decl_engine: &DeclEngine) -> CompileResult<bool> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
+    pub(crate) fn is_test_function(&self, decl_engine: &DeclEngine) -> bool {
         match &self {
             TyAstNode {
-                span,
+                span: _,
                 content:
                     TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                         decl_id, ..
                     }),
                 ..
             } => {
-                let TyFunctionDeclaration { attributes, .. } = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id, span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(
-                    attributes.contains_key(&AttributeKind::Test),
-                    warnings,
-                    errors,
-                )
+                let TyFunctionDeclaration { attributes, .. } = decl_engine.get_function(decl_id);
+                attributes.contains_key(&AttributeKind::Test)
             }
-            _ => ok(false, warnings, errors),
+            _ => false,
         }
     }
 
@@ -236,7 +214,7 @@ impl TyAstNode {
                 // Predicates and scripts have main and test functions as entry points.
                 match self {
                     TyAstNode {
-                        span,
+                        span: _,
                         content:
                             TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                                 decl_id,
@@ -244,7 +222,7 @@ impl TyAstNode {
                             }),
                         ..
                     } => {
-                        let decl = decl_engine.get_function(decl_id, span)?;
+                        let decl = decl_engine.get_function(decl_id);
                         Ok(decl.is_entry())
                     }
                     _ => Ok(false),
@@ -255,36 +233,33 @@ impl TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
                 } => {
-                    let decl = decl_engine.get_function(decl_id, decl_span)?;
+                    let decl = decl_engine.get_function(decl_id);
                     Ok(decl.visibility == Visibility::Public || decl.is_test())
                 }
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::TraitDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
-                } => Ok(decl_engine
-                    .get_trait(decl_id, decl_span)?
-                    .visibility
-                    .is_public()),
+                } => Ok(decl_engine.get_trait(decl_id).visibility.is_public()),
                 TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::StructDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
                 } => {
-                    let struct_decl = decl_engine.get_struct(decl_id, decl_span)?;
+                    let struct_decl = decl_engine.get_struct(decl_id);
                     Ok(struct_decl.visibility == Visibility::Public)
                 }
                 TyAstNode {
@@ -295,12 +270,12 @@ impl TyAstNode {
                     content:
                         TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
                             decl_id,
-                            decl_span,
+                            decl_span: _,
                             ..
                         }),
                     ..
                 } => {
-                    let decl = decl_engine.get_constant(decl_id, decl_span)?;
+                    let decl = decl_engine.get_constant(decl_id);
                     Ok(decl.visibility.is_public())
                 }
                 _ => Ok(false),

@@ -70,12 +70,7 @@ impl TyProgram {
                     decl_id,
                     decl_span,
                 }) => {
-                    let func = check!(
-                        CompileResult::from(decl_engine.get_function(decl_id, &node.span)),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let func = decl_engine.get_function(decl_id);
 
                     if func.name.as_str() == "main" {
                         mains.push(func.clone());
@@ -97,12 +92,12 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration {
                     decl_id,
                     ..
-                }) => match decl_engine.get_constant(decl_id, &node.span) {
-                    Ok(config_decl) if config_decl.is_configurable => {
-                        configurables.push(config_decl)
+                }) => {
+                    let config_decl = decl_engine.get_constant(decl_id);
+                    if config_decl.is_configurable {
+                        configurables.push(config_decl);
                     }
-                    _ => {}
-                },
+                }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
@@ -110,27 +105,20 @@ impl TyProgram {
                     let TyImplTrait {
                         items,
                         implementing_for,
-                        span,
+
                         trait_decl_ref,
                         ..
-                    } = check!(
-                        CompileResult::from(decl_engine.get_impl_trait(decl_id, &node.span)),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    } = decl_engine.get_impl_trait(decl_id);
                     if matches!(ty_engine.get(implementing_for.type_id), TypeInfo::Contract) {
                         // add methods to the ABI only if they come from an ABI implementation
                         // and not a (super)trait implementation for Contract
                         if let Some(trait_decl_ref) = trait_decl_ref {
-                            if decl_engine.get_abi(&trait_decl_ref, &span).is_ok() {
+                            if matches!(trait_decl_ref.id, InterfaceDeclId::Abi(_)) {
                                 for item in items {
                                     match item {
                                         TyImplItem::Fn(method_ref) => {
-                                            match decl_engine.get_function(&method_ref, &span) {
-                                                Ok(method) => abi_entries.push(method),
-                                                Err(err) => errors.push(err),
-                                            }
+                                            let method = decl_engine.get_function(&method_ref);
+                                            abi_entries.push(method);
                                         }
                                     }
                                 }
@@ -187,25 +175,28 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDeclaration::StorageDeclaration { decl_id, decl_span } = decl {
-                        if let Ok(storage_decl) = decl_engine.get_storage(decl_id, decl_span) {
-                            for field in storage_decl.fields.iter() {
-                                let type_info = ty_engine.get(field.type_argument.type_id);
-                                let type_info_str = engines.help_out(&type_info).to_string();
-                                let raw_ptr_type = type_info
-                                    .extract_nested_types(ty_engine, &field.span)
-                                    .value
-                                    .and_then(|value| {
-                                        value
-                                            .into_iter()
-                                            .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
-                                    });
-                                if raw_ptr_type.is_some() {
-                                    errors.push(CompileError::TypeNotAllowedInContractStorage {
-                                        ty: type_info_str,
-                                        span: field.span.clone(),
-                                    });
-                                }
+                    if let TyDeclaration::StorageDeclaration {
+                        decl_id,
+                        decl_span: _,
+                    } = decl
+                    {
+                        let storage_decl = decl_engine.get_storage(decl_id);
+                        for field in storage_decl.fields.iter() {
+                            let type_info = ty_engine.get(field.type_argument.type_id);
+                            let type_info_str = engines.help_out(&type_info).to_string();
+                            let raw_ptr_type = type_info
+                                .extract_nested_types(ty_engine, &field.span)
+                                .value
+                                .and_then(|value| {
+                                    value
+                                        .into_iter()
+                                        .find(|ty| matches!(ty, TypeInfo::RawUntypedPtr))
+                                });
+                            if raw_ptr_type.is_some() {
+                                errors.push(CompileError::TypeNotAllowedInContractStorage {
+                                    ty: type_info_str,
+                                    span: field.span.clone(),
+                                });
                             }
                         }
                     }
@@ -317,7 +308,7 @@ impl TyProgram {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRef)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRefFunction)> {
         self.root
             .submodules_recursive()
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
@@ -378,12 +369,7 @@ impl CollectTypesMetadata for TyProgram {
                             warnings,
                             errors
                         );
-                        let is_generic_function = check!(
-                            node.is_generic_function(decl_engine),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
+                        let is_generic_function = node.is_generic_function(decl_engine);
                         if is_public {
                             let node_metadata = check!(
                                 node.collect_types_metadata(ctx),
@@ -418,13 +404,7 @@ impl CollectTypesMetadata for TyProgram {
                 .map(|(_, submod)| &submod.module),
         ) {
             for node in module.all_nodes.iter() {
-                let is_test_function = check!(
-                    node.is_test_function(decl_engine),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                if is_test_function {
+                if node.is_test_function(decl_engine) {
                     metadata.append(&mut check!(
                         node.collect_types_metadata(ctx),
                         return err(warnings, errors),
@@ -490,13 +470,7 @@ fn disallow_impure_functions(
         .iter()
         .filter_map(|decl| match decl {
             TyDeclaration::FunctionDeclaration { decl_id, .. } => {
-                match decl_engine.get_function(decl_id, &decl.span()) {
-                    Ok(fn_decl) => Some(fn_decl),
-                    Err(err) => {
-                        errs.push(err);
-                        None
-                    }
-                }
+                Some(decl_engine.get_function(decl_id))
             }
             _ => None,
         })

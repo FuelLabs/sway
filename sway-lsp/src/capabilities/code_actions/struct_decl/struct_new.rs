@@ -24,11 +24,10 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
             .find_map(|(_, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
                     decl_id,
-                    decl_span,
                     ..
                 })) = token.typed
                 {
-                    ctx.engines.de().get_impl_trait(&decl_id, &decl_span).ok()
+                    Some(ctx.engines.de().get_impl_trait(&decl_id))
                 } else {
                     None
                 }
