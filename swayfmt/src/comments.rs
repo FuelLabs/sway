@@ -178,8 +178,6 @@ pub fn rewrite_with_comments<T: sway_parse::Parse + Format + LeafSpans>(
         }
 
         if !comments_found.is_empty() {
-            // Since we're collecting extra newlines _between_ comments,
-            // the first comment is always assumed to have 0 extra newlines.
             let extra_newlines = collect_extra_newlines(unformatted_span.clone(), &comments_found);
 
             offset += insert_after_span(
