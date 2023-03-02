@@ -240,7 +240,7 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
 }
 
 /// Check if a block is empty (excluding comments).
-fn is_empty_block(formatted_code: &mut FormattedCode, end: usize) -> bool {
+fn is_empty_block(formatted_code: &FormattedCode, end: usize) -> bool {
     formatted_code.chars().nth(end - 1) == Some('{') && formatted_code.chars().nth(end) == Some('}')
 }
 
@@ -271,7 +271,8 @@ fn insert_after_span(
         .take_while(|c| c.is_whitespace())
         .collect::<String>();
 
-    if !is_empty_block(formatted_code, from.end) {
+    // In the case of empty blocks, we do not know the indentation of comments at that time.
+    if !is_empty_block(&formatted_code, from.end) {
         // There can be cases where comments are at the end.
         // If so, we try to search from before the end to find something to 'pin' to.
         if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
