@@ -34,7 +34,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Inner",
+      "type": "struct nested_struct_args_abi::Inner",
       "typeId": 0,
       "typeParameters": null
     },
@@ -46,7 +46,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct StructOne",
+      "type": "struct nested_struct_args_abi::StructOne",
       "typeId": 1,
       "typeParameters": null
     },
@@ -58,7 +58,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct StructTwo",
+      "type": "struct nested_struct_args_abi::StructTwo",
       "typeId": 2,
       "typeParameters": null
     },

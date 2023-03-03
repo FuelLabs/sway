@@ -77,6 +77,7 @@ impl<'a> ParsedTree<'a> {
                 library_name,
                 module,
                 dependency_path_span,
+                ..
             },
         ) in &parse_module.submodules
         {

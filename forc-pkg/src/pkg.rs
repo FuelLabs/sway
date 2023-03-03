@@ -28,7 +28,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    abi_generation::{evm_json_abi, fuel_json_abi},
+    abi_generation::{
+        evm_json_abi,
+        fuel_json_abi::{self, JsonAbiContext},
+    },
     asm_generation::ProgramABI,
     decl_engine::{DeclEngine, DeclRefFunction},
     fuel_prelude::{
@@ -45,7 +48,7 @@ use sway_core::{
     transform::AttributeKind,
     BuildTarget, CompileResult, CompiledBytecode, Engines, FinalizedEntry, TypeEngine,
 };
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, warning::CompileWarning};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::constants;
 use tracing::{info, warn};
@@ -102,6 +105,7 @@ pub struct BuiltPackage {
     pub json_abi_program: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
+    pub warnings: Vec<CompileWarning>,
     pub tree_type: TreeType,
     source_map: SourceMap,
     pub pkg_name: String,
@@ -216,6 +220,8 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
+    /// Outputs json abi with callpath instead of struct and enum names.
+    pub json_abi_with_callpaths: bool,
 }
 
 #[derive(Default, Clone)]
@@ -1726,7 +1732,14 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                fuel_json_abi::generate_json_abi_program(typed_program, engines.te(), &mut types)
+                fuel_json_abi::generate_json_abi_program(
+                    &mut JsonAbiContext {
+                        program: typed_program,
+                        json_abi_with_callpaths: profile.json_abi_with_callpaths,
+                    },
+                    engines.te(),
+                    &mut types
+                )
             ))
         }
         BuildTarget::EVM => {
@@ -1802,6 +1815,7 @@ pub fn compile(
                 json_abi_program,
                 storage_slots,
                 bytecode,
+                warnings: bc_res.warnings,
                 tree_type,
                 source_map: source_map.to_owned(),
                 pkg_name: pkg.name.clone(),
@@ -1942,6 +1956,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))

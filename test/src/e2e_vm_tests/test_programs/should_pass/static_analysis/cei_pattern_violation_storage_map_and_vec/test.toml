@@ -3,3 +3,4 @@ category = "compile"
 # check: $()Storage write after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
 # check: $()Storage write after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
 # not: $()Storage read after external contract interaction in function or method
+expected_warnings = 2
