@@ -7,7 +7,7 @@ use crate::{
     type_system::{
         EnforceTypeArguments, MonomorphizeHelper, SubstTypes, TypeArgument, TypeId, TypeInfo,
     },
-    CompileResult, CompileWarning, TypeEngine,
+    BuildTarget, CompileResult, CompileWarning, TypeEngine,
 };
 use sway_error::error::CompileError;
 use sway_types::{span::Span, Ident};
@@ -62,6 +62,9 @@ pub struct TypeCheckContext<'a> {
     /// disallowing functions from being defined inside of another function
     /// body).
     disallow_functions: bool,
+
+    /// The target architecture we are building for
+    build_target: BuildTarget,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -73,11 +76,22 @@ impl<'a> TypeCheckContext<'a> {
     /// - mode: NoneAbi
     /// - help_text: ""
     /// - purity: Pure
-    pub fn from_root(root_namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
-        Self::from_module_namespace(root_namespace, engines)
+    pub fn from_root(
+        root_namespace: &'a mut Namespace,
+        engines: Engines<'a>,
+        build_target: BuildTarget,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, engines, build_target)
+    }
+    pub fn build_target(&self) -> BuildTarget {
+        self.build_target
     }
 
-    fn from_module_namespace(namespace: &'a mut Namespace, engines: Engines<'a>) -> Self {
+    fn from_module_namespace(
+        namespace: &'a mut Namespace,
+        engines: Engines<'a>,
+        build_target: BuildTarget,
+    ) -> Self {
         let (type_engine, decl_engine) = engines.unwrap();
         Self {
             namespace,
@@ -91,6 +105,7 @@ impl<'a> TypeCheckContext<'a> {
             purity: Purity::default(),
             kind: TreeType::Contract,
             disallow_functions: false,
+            build_target,
         }
     }
 
@@ -114,6 +129,7 @@ impl<'a> TypeCheckContext<'a> {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
+            build_target: self.build_target,
         }
     }
 
@@ -130,6 +146,7 @@ impl<'a> TypeCheckContext<'a> {
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
             disallow_functions: self.disallow_functions,
+            build_target: self.build_target,
         }
     }
 
@@ -150,6 +167,7 @@ impl<'a> TypeCheckContext<'a> {
         let submod_ctx = TypeCheckContext::from_module_namespace(
             &mut submod_ns,
             Engines::new(self.type_engine, self.decl_engine),
+            self.build_target,
         );
         with_submod_ctx(submod_ctx)
     }

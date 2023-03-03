@@ -631,6 +631,8 @@ impl TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                // Usize is u64 for fuel
+                IntegerBits::Usize => "u64",
             }
             .into(),
             Boolean => "bool".into(),

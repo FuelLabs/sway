@@ -724,6 +724,7 @@ fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
         "u16" => LitIntType::U16,
         "u32" => LitIntType::U32,
         "u64" => LitIntType::U64,
+        "usize" => LitIntType::Usize,
         "i8" => LitIntType::I8,
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,

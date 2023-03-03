@@ -1,3 +1,5 @@
+use crate::BuildTarget;
+
 #[derive(Default)]
 pub struct Context {
     /// Indicates whether the module being parsed has a `configurable` block
@@ -11,6 +13,9 @@ pub struct Context {
 
     /// Unique suffix used to generate unique names for vars returned from `match` expressions
     match_expression_return_var_unique_suffix: usize,
+
+    /// The build target for this compilation.
+    target: BuildTarget,
 }
 
 impl Context {
@@ -41,5 +46,9 @@ impl Context {
     pub fn next_match_expression_return_var_unique_suffix(&mut self) -> usize {
         self.match_expression_return_var_unique_suffix += 1;
         self.match_expression_return_var_unique_suffix
+    }
+
+    pub fn target(&self) -> BuildTarget {
+        self.target
     }
 }

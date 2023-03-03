@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-79182115A7B30E62'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-79182115A7B30E62'
+dependencies = ['core']
+
+[[package]]
+name = 'usize_type'
+source = 'member'
+dependencies = ['std']

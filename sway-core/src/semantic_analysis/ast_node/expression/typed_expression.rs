@@ -28,7 +28,7 @@ use crate::{
     semantic_analysis::*,
     transform::to_parsed_lang::type_name_to_type_info_opt,
     type_system::*,
-    Engines,
+    BuildTarget, Engines,
 };
 
 use sway_ast::intrinsics::Intrinsic;
@@ -1808,6 +1808,22 @@ impl ty::TyExpression {
                         }),
                         new_type,
                     ),
+                    IntegerBits::Usize => {
+                        let ty = match ctx.build_target() {
+                            BuildTarget::EVM => todo!(),
+                            BuildTarget::MidenVM => {
+                                TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+                            }
+                            BuildTarget::Fuel => TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                        };
+
+                        (
+                            num.to_string().parse().map(Literal::U64).map_err(|e| {
+                                Literal::handle_parse_int_error(engines, e, ty, span.clone())
+                            }),
+                            new_type,
+                        )
+                    }
                 },
                 TypeInfo::Numeric => (
                     num.to_string().parse().map(Literal::U64).map_err(|e| {
@@ -1858,7 +1874,7 @@ mod tests {
         type_annotation: TypeId,
     ) -> CompileResult<ty::TyExpression> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines, BuildTarget::Fuel)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(ctx, expr)
     }

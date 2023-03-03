@@ -426,6 +426,7 @@ impl DisplayWithEngines for TypeInfo {
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
+                IntegerBits::Usize => "usize",
             }
             .into(),
             Boolean => "bool".into(),
@@ -639,6 +640,7 @@ impl TypeInfo {
                     Sixteen => "u16",
                     ThirtyTwo => "u32",
                     SixtyFour => "u64",
+                    Usize => "usize",
                 }
                 .into()
             }

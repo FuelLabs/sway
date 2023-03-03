@@ -299,7 +299,12 @@ pub fn parsed_to_ast(
         value: typed_program_opt,
         mut warnings,
         mut errors,
-    } = ty::TyProgram::type_check(engines, parse_program, initial_namespace);
+    } = ty::TyProgram::type_check(
+        engines,
+        parse_program,
+        initial_namespace,
+        build_config.map(|x| x.build_target).unwrap_or_default(),
+    );
     let mut typed_program = match typed_program_opt {
         Some(typed_program) => typed_program,
         None => return err(warnings, errors),

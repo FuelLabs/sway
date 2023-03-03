@@ -4,7 +4,7 @@ use crate::{
     language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace,
+    BuildTarget, Ident, Namespace,
 };
 
 use super::{
@@ -50,21 +50,25 @@ impl Module {
     pub fn default_with_constants(
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        build_target: BuildTarget,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_constants_inner(&handler, engines, constants).map_err(|_| {
-            let (errors, warnings) = handler.consume();
-            assert!(warnings.is_empty());
+        Module::default_with_constants_inner(&handler, engines, constants, build_target).map_err(
+            |_| {
+                let (errors, warnings) = handler.consume();
+                assert!(warnings.is_empty());
 
-            // Invariant: `.value == None` => `!errors.is_empty()`.
-            vec1::Vec1::try_from_vec(errors).unwrap()
-        })
+                // Invariant: `.value == None` => `!errors.is_empty()`.
+                vec1::Vec1::try_from_vec(errors).unwrap()
+            },
+        )
     }
 
     fn default_with_constants_inner(
         handler: &Handler,
         engines: Engines<'_>,
         constants: BTreeMap<String, ConfigTimeConstant>,
+        build_target: BuildTarget,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
@@ -127,7 +131,7 @@ impl Module {
                 span: const_item_span.clone(),
             };
             let mut ns = Namespace::init_root(Default::default());
-            let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
+            let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines, build_target);
             let typed_node = ty::TyAstNode::type_check(type_check_ctx, ast_node)
                 .unwrap(&mut vec![], &mut vec![]);
             // get the decl out of the typed node:

@@ -29,6 +29,7 @@ pub enum LitIntType {
     I16,
     I32,
     I64,
+    Usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]

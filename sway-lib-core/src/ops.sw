@@ -6,6 +6,12 @@ pub trait Add {
     fn add(self, other: Self) -> Self;
 }
 
+impl Add for usize {
+    fn add(self, other: Self) -> Self {
+        __add(self, other)
+    }
+}
+
 impl Add for u64 {
     fn add(self, other: Self) -> Self {
         __add(self, other)
@@ -32,6 +38,12 @@ impl Add for u8 {
 
 pub trait Subtract {
     fn subtract(self, other: Self) -> Self;
+}
+
+impl Subtract for usize {
+    fn subtract(self, other: Self) -> Self {
+        __sub(self, other)
+    }
 }
 
 impl Subtract for u64 {
@@ -62,6 +74,12 @@ pub trait Multiply {
     fn multiply(self, other: Self) -> Self;
 }
 
+impl Multiply for usize {
+    fn multiply(self, other: Self) -> Self {
+        __mul(self, other)
+    }
+}
+
 impl Multiply for u64 {
     fn multiply(self, other: Self) -> Self {
         __mul(self, other)
@@ -90,6 +108,12 @@ pub trait Divide {
     fn divide(self, other: Self) -> Self;
 }
 
+impl Divide for usize {
+    fn divide(self, other: Self) -> Self {
+        __div(self, other)
+    }
+}
+
 impl Divide for u64 {
     fn divide(self, other: Self) -> Self {
         __div(self, other)
@@ -116,6 +140,15 @@ impl Divide for u8 {
 
 pub trait Mod {
     fn modulo(self, other: Self) -> Self;
+}
+
+impl Mod for usize {
+    fn modulo(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            mod r3 r1 r2;
+            r3: u64
+        }
+    }
 }
 
 impl Mod for u64 {
@@ -178,6 +211,12 @@ impl Eq for bool {
     }
 }
 
+impl Eq for usize {
+    fn eq(self, other: Self) -> bool {
+        __eq(self, other)
+    }
+}
+
 impl Eq for u64 {
     fn eq(self, other: Self) -> bool {
         __eq(self, other)
@@ -222,6 +261,21 @@ impl Eq for raw_ptr {
 pub trait Ord {
     fn gt(self, other: Self) -> bool;
     fn lt(self, other: Self) -> bool;
+}
+
+impl Ord for usize {
+    fn gt(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            gt r3 r1 r2;
+            r3: bool
+        }
+    }
+    fn lt(self, other: Self) -> bool {
+        asm(r1: self, r2: other, r3) {
+            lt r3 r1 r2;
+            r3: bool
+        }
+    }
 }
 
 impl Ord for u64 {
@@ -324,6 +378,15 @@ pub trait BitwiseAnd {
     fn binary_and(self, other: Self) -> Self;
 }
 
+impl BitwiseAnd for usize {
+    fn binary_and(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            and r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
 impl BitwiseAnd for u64 {
     fn binary_and(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -362,6 +425,15 @@ impl BitwiseAnd for u8 {
 
 pub trait BitwiseOr {
     fn binary_or(self, other: Self) -> Self;
+}
+
+impl BitwiseOr for usize {
+    fn binary_or(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            or r3 r1 r2;
+            r3: u64
+        }
+    }
 }
 
 impl BitwiseOr for u64 {
@@ -404,6 +476,15 @@ pub trait BitwiseXor {
     fn binary_xor(self, other: Self) -> Self;
 }
 
+impl BitwiseXor for usize {
+    fn binary_xor(self, other: Self) -> Self {
+        asm(r1: self, r2: other, r3) {
+            xor r3 r1 r2;
+            r3: u64
+        }
+    }
+}
+
 impl BitwiseXor for u64 {
     fn binary_xor(self, other: Self) -> Self {
         asm(r1: self, r2: other, r3) {
@@ -436,6 +517,15 @@ impl BitwiseXor for u8 {
         asm(r1: self, r2: other, r3) {
             xor r3 r1 r2;
             r3: u8
+        }
+    }
+}
+
+impl Not for usize {
+    fn not(self) -> Self {
+        asm(r1: self, r2) {
+            not r2 r1;
+            r2: u64
         }
     }
 }
@@ -527,6 +617,8 @@ trait OrdEq: Ord + Eq {
     }
 }
 
+impl OrdEq for usize {
+}
 impl OrdEq for u64 {
 }
 impl OrdEq for u32 {
@@ -541,6 +633,21 @@ impl OrdEq for b256 {
 pub trait Shift {
     fn lsh(self, other: u64) -> Self;
     fn rsh(self, other: u64) -> Self;
+}
+
+impl Shift for usize {
+    fn lsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            sll r3 r1 r2;
+            r3: u64
+        }
+    }
+    fn rsh(self, other: u64) -> Self {
+        asm(r1: self, r2: other, r3) {
+            srl r3 r1 r2;
+            r3: u64
+        }
+    }
 }
 
 impl Shift for u64 {

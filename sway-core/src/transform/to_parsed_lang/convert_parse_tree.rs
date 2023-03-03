@@ -2,7 +2,7 @@ use crate::{
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
-    Engines,
+    BuildTarget, Engines,
 };
 
 use sway_ast::{
@@ -1100,6 +1100,7 @@ pub(crate) fn type_name_to_type_info_opt(name: &Ident) -> Option<TypeInfo> {
         "u16" => Some(TypeInfo::UnsignedInteger(IntegerBits::Sixteen)),
         "u32" => Some(TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)),
         "u64" => Some(TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
+        "usize" => Some(TypeInfo::UnsignedInteger(IntegerBits::Usize)),
         "bool" => Some(TypeInfo::Boolean),
         "unit" => Some(TypeInfo::Tuple(Vec::new())),
         "b256" => Some(TypeInfo::B256),
@@ -2552,7 +2553,7 @@ fn path_root_opt_to_bool(
 }
 
 fn literal_to_literal(
-    _context: &mut Context,
+    context: &mut Context,
     handler: &Handler,
     literal: sway_ast::Literal,
 ) -> Result<Literal, ErrorEmitted> {
@@ -2624,7 +2625,7 @@ fn literal_to_literal(
                         }
                     }
                 }
-                Some((lit_int_type, _)) => match lit_int_type {
+                Some((ref lit_int_type, ref ty_span)) => match lit_int_type {
                     LitIntType::U8 => {
                         let value = match u8::try_from(parsed) {
                             Ok(value) => value,
@@ -2665,6 +2666,27 @@ fn literal_to_literal(
                         };
                         Literal::U64(value)
                     }
+                    LitIntType::Usize => match context.target() {
+                        BuildTarget::EVM => todo!(),
+                        BuildTarget::MidenVM => literal_to_literal(
+                            context,
+                            handler,
+                            sway_ast::Literal::Int(LitInt {
+                                span,
+                                parsed,
+                                ty_opt: Some((LitIntType::U32, ty_span.clone())),
+                            }),
+                        )?,
+                        BuildTarget::Fuel => literal_to_literal(
+                            context,
+                            handler,
+                            sway_ast::Literal::Int(LitInt {
+                                span,
+                                parsed,
+                                ty_opt: Some((LitIntType::U64, ty_span.clone())),
+                            }),
+                        )?,
+                    },
                     LitIntType::I8 | LitIntType::I16 | LitIntType::I32 | LitIntType::I64 => {
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));

@@ -6,7 +6,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines,
+    BuildTarget, Engines,
 };
 use sway_ir::{Context, Module};
 
@@ -19,10 +19,11 @@ impl ty::TyProgram {
         engines: Engines<'_>,
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
+        build_target: BuildTarget,
     ) -> CompileResult<Self> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let ctx = TypeCheckContext::from_root(&mut namespace, engines, build_target)
+            .with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
         let mod_res = ty::TyModule::type_check(ctx, root);

@@ -1504,8 +1504,10 @@ pub fn dependency_namespace(
     node: NodeIx,
     constants: BTreeMap<String, ConfigTimeConstant>,
     engines: Engines<'_>,
+    build_target: BuildTarget,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
-    let mut namespace = namespace::Module::default_with_constants(engines, constants)?;
+    let mut namespace =
+        namespace::Module::default_with_constants(engines, constants, build_target)?;
 
     let node_idx = &graph[node];
     namespace.name = Some(Ident::new_no_span(Box::leak(
@@ -1540,7 +1542,7 @@ pub fn dependency_namespace(
                     public: true,
                 };
                 constants.insert(CONTRACT_ID_CONSTANT_NAME.to_string(), contract_id_constant);
-                namespace::Module::default_with_constants(engines, constants)?
+                namespace::Module::default_with_constants(engines, constants, build_target)?
             }
         };
         namespace.insert_submodule(dep_name, dep_namespace);
@@ -2137,6 +2139,7 @@ pub fn build(
         node: NodeIx,
         source_map: &mut SourceMap,
         compile_ctx: CompilePkgCtx,
+        target: BuildTarget,
     ) -> Result<(BuiltPackage, sway_core::namespace::Root)> {
         let plan = compile_ctx.plan;
         let graph = plan.graph();
@@ -2150,6 +2153,7 @@ pub fn build(
             node,
             compile_ctx.constants.clone(),
             compile_ctx.engines,
+            target,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2218,7 +2222,7 @@ pub fn build(
                 without_tests_bytecode: None,
             };
             let (built_contract_without_tests, _) =
-                compile_pkg(node, &mut source_map, compile_pkg_context)?;
+                compile_pkg(node, &mut source_map, compile_pkg_context, target)?;
             // If this contract is built because tests are enabled we need to insert CONTRACT_ID
             // for the contract.
             if is_contract_dependency {
@@ -2273,7 +2277,7 @@ pub fn build(
             without_tests_bytecode,
         };
         let (mut built_package, namespace) =
-            compile_pkg(node, &mut source_map, compile_pkg_context)?;
+            compile_pkg(node, &mut source_map, compile_pkg_context, target)?;
         if let TreeType::Library { ref name } = built_package.tree_type {
             let mut namespace = namespace::Module::from(namespace);
             namespace.name = Some(name.clone());
@@ -2448,6 +2452,7 @@ pub fn check(
             node,
             constants,
             engines,
+            build_target,
         )
         .expect("failed to create dependency namespace");
 
