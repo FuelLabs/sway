@@ -14,10 +14,11 @@ pub fn rename(
     let mut edits = Vec::new();
 
     // todo: currently only supports single file rename
-    for (ident, _) in session
-        .token_map()
-        .all_references_of_token(&token, &session.type_engine.read())
-    {
+    for (ident, _) in session.token_map().all_references_of_token(
+        &token,
+        &session.type_engine.read(),
+        &session.decl_engine.read(),
+    ) {
         let range = get_range_from_span(&ident.span());
         edits.push(TextEdit::new(range, new_name.clone()));
     }

@@ -3,7 +3,10 @@ use std::hash::{Hash, Hasher};
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, error::*, language::ty::*, transform, type_system::*};
+use crate::{
+    decl_engine::DeclEngine, engine_threading::*, error::*, language::ty::*, transform,
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyStorageDeclaration {
@@ -65,6 +68,7 @@ impl TyStorageDeclaration {
     pub fn apply_storage_load(
         &self,
         type_engine: &TypeEngine,
+        decl_engine: &DeclEngine,
         fields: Vec<Ident>,
         storage_fields: &[TyStorageField],
     ) -> CompileResult<(TyStorageAccess, TypeId)> {
@@ -99,7 +103,7 @@ impl TyStorageDeclaration {
         });
 
         let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-            TypeInfo::Struct { fields, .. } => fields,
+            TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
             _ => vec![],
         };
 
