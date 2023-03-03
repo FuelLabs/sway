@@ -28,7 +28,10 @@ use std::{
     str::FromStr,
 };
 use sway_core::{
-    abi_generation::{evm_json_abi, fuel_json_abi},
+    abi_generation::{
+        evm_json_abi,
+        fuel_json_abi::{self, JsonAbiContext},
+    },
     asm_generation::ProgramABI,
     decl_engine::{DeclEngine, DeclRefFunction},
     fuel_prelude::{
@@ -217,6 +220,8 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
+    /// Outputs json abi with callpath instead of struct and enum names.
+    pub json_abi_with_callpaths: bool,
 }
 
 #[derive(Default, Clone)]
@@ -1727,7 +1732,14 @@ pub fn compile(
             let mut types = vec![];
             ProgramABI::Fuel(time_expr!(
                 "generate JSON ABI program",
-                fuel_json_abi::generate_json_abi_program(typed_program, engines.te(), &mut types)
+                fuel_json_abi::generate_json_abi_program(
+                    &mut JsonAbiContext {
+                        program: typed_program,
+                        json_abi_with_callpaths: profile.json_abi_with_callpaths,
+                    },
+                    engines.te(),
+                    &mut types
+                )
             ))
         }
         BuildTarget::EVM => {
@@ -1944,6 +1956,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     profile.include_tests |= tests;
+    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
 
     Ok((selected_build_profile.to_string(), profile))
