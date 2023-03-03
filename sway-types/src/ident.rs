@@ -6,6 +6,10 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+pub trait Named {
+    fn name(&self) -> &BaseIdent;
+}
+
 #[derive(Debug, Clone)]
 pub struct BaseIdent {
     name_override_opt: Option<&'static str>,

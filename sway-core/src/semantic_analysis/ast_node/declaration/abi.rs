@@ -2,6 +2,7 @@ use sway_error::error::CompileError;
 use sway_types::Spanned;
 
 use crate::{
+    decl_engine::DeclEngineIndex,
     error::*,
     language::{
         parsed::*,

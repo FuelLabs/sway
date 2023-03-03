@@ -1,9 +1,9 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclRefFunction, DeclRefTraitFn, ReplaceFunctionImplementingType},
     engine_threading::*,
     language::{parsed, Visibility},
     transform,
@@ -26,12 +26,24 @@ pub struct TyTraitDeclaration {
 
 #[derive(Clone, Debug)]
 pub enum TyTraitInterfaceItem {
-    TraitFn(DeclRef),
+    TraitFn(DeclRefTraitFn),
 }
 
 #[derive(Clone, Debug)]
 pub enum TyTraitItem {
-    Fn(DeclRef),
+    Fn(DeclRefFunction),
+}
+
+impl Named for TyTraitDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+}
+
+impl Spanned for TyTraitDeclaration {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
 }
 
 impl EqWithEngines for TyTraitDeclaration {}
@@ -133,20 +145,6 @@ impl SubstTypes for TyTraitItem {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
-        }
-    }
-}
-
-impl ReplaceFunctionImplementingType for TyTraitInterfaceItem {
-    fn replace_implementing_type(
-        &mut self,
-        engines: Engines<'_>,
-        implementing_type: TyDeclaration,
-    ) {
-        match self {
-            TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                decl_ref.replace_implementing_type(engines, implementing_type)
-            }
         }
     }
 }

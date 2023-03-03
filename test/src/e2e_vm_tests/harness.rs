@@ -149,7 +149,7 @@ pub(crate) fn runs_in_vm(
                 ..ConsensusParameters::DEFAULT
             };
 
-            let tx = TransactionBuilder::script(script.bytecode, script_data)
+            let tx = TransactionBuilder::script(script.bytecode.bytes, script_data)
                 .add_unsigned_coin_input(rng.gen(), rng.gen(), 1, Default::default(), rng.gen(), 0)
                 .gas_limit(fuel_tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
                 .maturity(maturity)
@@ -169,7 +169,7 @@ pub(crate) fn runs_in_vm(
 
             // Transaction to create the smart contract
             evm.env.tx.transact_to = revm::TransactTo::create();
-            evm.env.tx.data = bytes::Bytes::from(script.bytecode.into_boxed_slice());
+            evm.env.tx.data = bytes::Bytes::from(script.bytecode.bytes.into_boxed_slice());
             let result = evm.transact_commit();
 
             match result.out {
@@ -196,7 +196,7 @@ pub(crate) fn runs_in_vm(
             // instantiate the assembler
             let assembler = Assembler::default();
 
-            let bytecode_str = std::str::from_utf8(&script.bytecode)?;
+            let bytecode_str = std::str::from_utf8(&script.bytecode.bytes)?;
 
             // compile Miden assembly source code into a program
             let program = assembler.compile(bytecode_str).unwrap();
@@ -225,6 +225,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             )),
             locked: run_config.locked,
             terse: false,
+            json_abi_with_callpaths: true,
             ..Default::default()
         },
         ..Default::default()

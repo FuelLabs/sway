@@ -87,7 +87,7 @@
       "logId": 8,
       "loggedType": {
         "name": "",
-        "type": 5,
+        "type": 4,
         "typeArguments": []
       }
     },
@@ -95,7 +95,7 @@
       "logId": 9,
       "loggedType": {
         "name": "",
-        "type": 4,
+        "type": 5,
         "typeArguments": [
           {
             "name": "",
@@ -147,25 +147,6 @@
     {
       "components": [
         {
-          "name": "None",
-          "type": 0,
-          "typeArguments": null
-        },
-        {
-          "name": "Some",
-          "type": 6,
-          "typeArguments": null
-        }
-      ],
-      "type": "enum Option",
-      "typeId": 4,
-      "typeParameters": [
-        6
-      ]
-    },
-    {
-      "components": [
-        {
           "name": "VariantOne",
           "type": 0,
           "typeArguments": null
@@ -177,8 +158,27 @@
         }
       ],
       "type": "enum TestEnum",
-      "typeId": 5,
+      "typeId": 4,
       "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "Some",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum std::option::Option",
+      "typeId": 5,
+      "typeParameters": [
+        6
+      ]
     },
     {
       "components": null,

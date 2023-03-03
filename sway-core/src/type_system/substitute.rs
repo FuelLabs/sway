@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fmt};
 use super::*;
 use crate::engine_threading::*;
 
-pub(crate) trait SubstTypes {
+pub trait SubstTypes {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
 
     fn subst(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
@@ -18,7 +18,7 @@ type DestinationType = TypeId;
 
 /// The [TypeSubstMap] is used to create a mapping between a [SourceType] (LHS)
 /// and a [DestinationType] (RHS).
-pub(crate) struct TypeSubstMap {
+pub struct TypeSubstMap {
     mapping: BTreeMap<SourceType, DestinationType>,
 }
 

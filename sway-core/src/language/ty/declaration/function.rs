@@ -13,7 +13,7 @@ use crate::{
 
 use sway_types::{
     constants::{INLINE_ALWAYS_NAME, INLINE_NEVER_NAME},
-    Ident, Span, Spanned,
+    Ident, Named, Span, Spanned,
 };
 
 #[derive(Clone, Debug)]
@@ -31,6 +31,12 @@ pub struct TyFunctionDeclaration {
     pub is_contract_call: bool,
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+}
+
+impl Named for TyFunctionDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
 }
 
 impl EqWithEngines for TyFunctionDeclaration {}

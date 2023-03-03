@@ -20,7 +20,7 @@ pub enum TyExpressionVariant {
         call_path: CallPath,
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
-        function_decl_ref: DeclRef,
+        function_decl_ref: DeclRefFunction,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -152,12 +152,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                let l_function_decl = decl_engine
-                    .get_function(l_function_decl_ref, &Span::dummy())
-                    .unwrap();
-                let r_function_decl = decl_engine
-                    .get_function(r_function_decl_ref, &Span::dummy())
-                    .unwrap();
+                let l_function_decl = decl_engine.get_function(l_function_decl_ref);
+                let r_function_decl = decl_engine.get_function(r_function_decl_ref);
                 l_name == r_name
                     && l_arguments.len() == r_arguments.len()
                     && l_arguments

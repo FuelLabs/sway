@@ -7,7 +7,7 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclEngineIndex, DeclRefFunction},
     engine_threading::*,
     error::*,
     language::{
@@ -598,11 +598,11 @@ impl TraitMap {
                             let decl_ref = match &item {
                                 ty::TyTraitItem::Fn(decl_ref) => decl_ref,
                             };
-                            let mut decl = decl_engine.get(decl_ref);
+                            let mut decl = decl_engine.get(decl_ref.id);
                             decl.subst(&type_mapping, engines);
                             let new_ref = decl_engine
-                                .insert_wrapper(decl_ref.name.clone(), decl, decl_ref.span())
-                                .with_parent(decl_engine, decl_ref);
+                                .insert(decl)
+                                .with_parent(decl_engine, decl_ref.id.into());
                             let item = match item {
                                 ty::TyTraitItem::Fn(_) => TyImplItem::Fn(new_ref),
                             };
@@ -629,7 +629,7 @@ impl TraitMap {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclRef> {
+    ) -> Vec<DeclRefFunction> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case

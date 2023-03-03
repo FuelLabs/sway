@@ -139,12 +139,7 @@ impl ty::TyImplTrait {
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Monomorphize the trait declaration.
                 check!(
@@ -202,7 +197,7 @@ impl ty::TyImplTrait {
                     trait_type_arguments,
                     trait_decl_ref: Some(DeclRef::new(
                         trait_decl.name.clone(),
-                        *decl_id,
+                        decl_id.into(),
                         trait_decl.span.clone(),
                     )),
                     span: block_span,
@@ -216,12 +211,7 @@ impl ty::TyImplTrait {
                 // in contract ABIs yet (or ever?) due to the complexity of communicating
                 // the ABI layout in the descriptor file.
 
-                let mut abi = check!(
-                    CompileResult::from(decl_engine.get_abi(&decl_id, &trait_name.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut abi = decl_engine.get_abi(&decl_id);
 
                 if !type_engine
                     .get(implementing_for.type_id)
@@ -281,7 +271,7 @@ impl ty::TyImplTrait {
                     impl_type_parameters: TypeParameters::new(), // this is empty because abi definitions don't support generics
                     trait_name,
                     trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), *decl_id, abi.span)),
+                    trait_decl_ref: Some(DeclRef::new(abi.name.clone(), decl_id.into(), abi.span)),
                     span: block_span,
                     items: new_items,
                     implementing_for,
@@ -446,8 +436,7 @@ impl ty::TyImplTrait {
                 }
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
                     let ty::TyConstantDeclaration { value: expr, .. } =
-                        decl_engine.get_constant(decl_id, access_span)?;
-                    decl_engine.get_constant(decl_id, access_span)?;
+                        decl_engine.get_constant(decl_id);
                     match expr {
                         Some(expr) => {
                             expr_contains_get_storage_index(decl_engine, &expr, access_span)
@@ -493,7 +482,7 @@ impl ty::TyImplTrait {
         for item in items.iter() {
             let contains_get_storage_index = match item {
                 ty::TyTraitItem::Fn(fn_decl) => {
-                    let method = decl_engine.get_function(fn_decl, &fn_decl.span())?;
+                    let method = decl_engine.get_function(fn_decl);
                     codeblock_contains_get_storage_index(decl_engine, &method.body, access_span)?
                 }
             };
@@ -750,12 +739,7 @@ fn type_check_trait_implementation(
     for item in trait_interface_surface.iter() {
         match item {
             TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                let method = check!(
-                    CompileResult::from(decl_engine.get_trait_fn(decl_ref, block_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let method = decl_engine.get_trait_fn(decl_ref);
                 let name = method.name.clone();
 
                 // Add this method to the checklist.
@@ -825,18 +809,13 @@ fn type_check_trait_implementation(
     for item in trait_items.iter() {
         match item {
             TyImplItem::Fn(decl_ref) => {
-                let mut method = check!(
-                    CompileResult::from(decl_engine.get_function(decl_ref, block_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut method = decl_engine.get_function(decl_ref);
                 method.replace_decls(&decl_mapping, engines);
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
                     decl_engine
                         .insert(method)
-                        .with_parent(decl_engine, decl_ref),
+                        .with_parent(decl_engine, decl_ref.id.into()),
                 ));
             }
         }
@@ -1229,12 +1208,7 @@ fn handle_supertraits(
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &supertrait.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Right now we don't parse type arguments for supertraits, so
                 // we should give this error message to users.

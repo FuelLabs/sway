@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::DeclRefFunction,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},
@@ -141,7 +141,7 @@ impl Namespace {
         method_name: &Ident,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclRef> {
+    ) -> CompileResult<DeclRefFunction> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -180,7 +180,7 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        let mut matching_method_decl_refs: Vec<DeclRef> = vec![];
+        let mut matching_method_decl_refs: Vec<DeclRefFunction> = vec![];
 
         for decl_ref in methods.into_iter() {
             if &decl_ref.name == method_name {
@@ -194,14 +194,9 @@ impl Namespace {
                 // Case where multiple methods exist with the same name
                 // This is the case of https://github.com/FuelLabs/sway/issues/3633
                 // where multiple generic trait impls use the same method name but with different parameter types
-                let mut maybe_method_decl_ref: Option<DeclRef> = Option::None;
+                let mut maybe_method_decl_ref: Option<DeclRefFunction> = None;
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
-                    let method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_ref, &decl_ref.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let method = decl_engine.get_function(&decl_ref);
                     if method.parameters.len() == args_buf.len()
                         && !method.parameters.iter().zip(args_buf.iter()).any(|(p, a)| {
                             !are_equal_minus_dynamic_types(

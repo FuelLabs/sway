@@ -92,7 +92,7 @@ impl ty::TyTraitDeclaration {
                     dummy_interface_surface.push(ty::TyImplItem::Fn(
                         decl_engine
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(decl_engine, &decl_ref),
+                            .with_parent(decl_engine, decl_ref.id.into()),
                     ));
                     new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(decl_ref));
                     method.name.clone()
@@ -205,10 +205,7 @@ impl ty::TyTraitDeclaration {
         type_id: TypeId,
         call_path: &CallPath,
         type_arguments: &[TypeArgument],
-    ) -> CompileResult<(InterfaceItemMap, ItemMap, ItemMap)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut item_refs: ItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
@@ -259,30 +256,21 @@ impl ty::TyTraitDeclaration {
         {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = check!(
-                        CompileResult::from(decl_engine.get_function(&decl_ref, &call_path.span())),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                    let mut method = decl_engine.get_function(&decl_ref);
                     method.subst(&type_mapping, engines);
                     impld_item_refs.insert(
                         method.name.clone(),
                         TyTraitItem::Fn(
                             decl_engine
                                 .insert(method)
-                                .with_parent(decl_engine, &decl_ref),
+                                .with_parent(decl_engine, decl_ref.id.into()),
                         ),
                     );
                 }
             }
         }
 
-        ok(
-            (interface_surface_item_refs, item_refs, impld_item_refs),
-            warnings,
-            errors,
-        )
+        (interface_surface_item_refs, item_refs, impld_item_refs)
     }
 
     pub(crate) fn insert_interface_surface_and_items_into_namespace(
@@ -291,10 +279,7 @@ impl ty::TyTraitDeclaration {
         trait_name: &CallPath,
         type_arguments: &[TypeArgument],
         type_id: TypeId,
-    ) -> CompileResult<()> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
+    ) {
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
@@ -324,17 +309,12 @@ impl ty::TyTraitDeclaration {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let mut method = check!(
-                        CompileResult::from(decl_engine.get_trait_fn(decl_ref, &trait_name.span())),
-                        continue,
-                        warnings,
-                        errors
-                    );
+                    let mut method = decl_engine.get_trait_fn(decl_ref);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine
                             .insert(method.to_dummy_func(Mode::NonAbi))
-                            .with_parent(ctx.decl_engine, decl_ref),
+                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
                     ));
                 }
             }
@@ -342,17 +322,12 @@ impl ty::TyTraitDeclaration {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = check!(
-                        CompileResult::from(decl_engine.get_function(decl_ref, &trait_name.span())),
-                        continue,
-                        warnings,
-                        errors
-                    );
+                    let mut method = decl_engine.get_function(decl_ref);
                     method.subst(&type_mapping, engines);
                     all_items.push(TyImplItem::Fn(
                         ctx.decl_engine
                             .insert(method)
-                            .with_parent(ctx.decl_engine, decl_ref),
+                            .with_parent(ctx.decl_engine, decl_ref.id.into()),
                     ));
                 }
             }
@@ -371,11 +346,5 @@ impl ty::TyTraitDeclaration {
             false,
             engines,
         );
-
-        if errors.is_empty() {
-            ok((), warnings, errors)
-        } else {
-            err(warnings, errors)
-        }
     }
 }

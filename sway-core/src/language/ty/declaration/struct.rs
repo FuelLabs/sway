@@ -4,7 +4,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -22,6 +22,12 @@ pub struct TyStructDeclaration {
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl Named for TyStructDeclaration {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
 }
 
 impl EqWithEngines for TyStructDeclaration {}

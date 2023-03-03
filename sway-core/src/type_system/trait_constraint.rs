@@ -186,12 +186,7 @@ impl TraitConstraint {
             .cloned()
         {
             Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-                let mut trait_decl = check!(
-                    CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+                let mut trait_decl = decl_engine.get_trait(&decl_id);
 
                 // Monomorphize the trait declaration.
                 check!(
@@ -208,16 +203,11 @@ impl TraitConstraint {
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
-                check!(
-                    trait_decl.insert_interface_surface_and_items_into_namespace(
-                        ctx.by_ref(),
-                        trait_name,
-                        &type_arguments,
-                        type_id
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
+                trait_decl.insert_interface_surface_and_items_into_namespace(
+                    ctx.by_ref(),
+                    trait_name,
+                    &type_arguments,
+                    type_id,
                 );
 
                 // Recursively make the interface surfaces and methods of the

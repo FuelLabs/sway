@@ -305,24 +305,15 @@ fn handle_trait(
         .cloned()
     {
         Some(ty::TyDeclaration::TraitDeclaration { decl_id, .. }) => {
-            let trait_decl = check!(
-                CompileResult::from(decl_engine.get_trait(&decl_id, &trait_name.suffix.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+            let trait_decl = decl_engine.get_trait(&decl_id);
 
-            let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = check!(
-                trait_decl.retrieve_interface_surface_and_items_and_implemented_items_for_type(
+            let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) = trait_decl
+                .retrieve_interface_surface_and_items_and_implemented_items_for_type(
                     ctx.by_ref(),
                     type_id,
                     trait_name,
-                    type_arguments
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
+                    type_arguments,
+                );
             interface_item_refs.extend(trait_interface_item_refs);
             item_refs.extend(trait_item_refs);
             impld_item_refs.extend(trait_impld_item_refs);

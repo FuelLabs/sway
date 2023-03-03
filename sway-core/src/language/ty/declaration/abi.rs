@@ -1,7 +1,7 @@
 use crate::{engine_threading::*, language::parsed, transform, type_system::*};
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use super::{TyTraitInterfaceItem, TyTraitItem};
 
@@ -97,5 +97,11 @@ impl SubstTypes for TyAbiDeclaration {
                 decl_ref.replace_id((&new_decl_ref).into());
             }
         });
+    }
+}
+
+impl Named for TyAbiDeclaration {
+    fn name(&self) -> &Ident {
+        &self.name
     }
 }

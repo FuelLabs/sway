@@ -4,7 +4,7 @@ use std::{
 };
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -22,6 +22,12 @@ pub struct TyEnumDeclaration {
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
+}
+
+impl Named for TyEnumDeclaration {
+    fn name(&self) -> &Ident {
+        &self.call_path.suffix
+    }
 }
 
 impl EqWithEngines for TyEnumDeclaration {}
