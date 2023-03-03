@@ -20,7 +20,7 @@ impl<'a> CodeAction<'a, TyStructDeclaration> for StructNewCodeAction<'a> {
         // First, find the first impl block for this struct if it exists.
         let existing_impl_decl = ctx
             .tokens
-            .all_references_of_token(ctx.token, ctx.engines.te())
+            .all_references_of_token(ctx.token, ctx.engines.te(), ctx.engines.de())
             .find_map(|(_, token)| {
                 if let Some(TypedAstToken::TypedDeclaration(TyDeclaration::ImplTrait {
                     decl_id,

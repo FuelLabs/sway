@@ -157,7 +157,7 @@ fn check_type(
         errors
     );
     let nested_types = check!(
-        type_info.clone().extract_nested_types(ty_engine, &span),
+        type_info.clone().extract_nested_types(engines, &span),
         vec![],
         warnings,
         errors
@@ -224,8 +224,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 }
             }
         }
-        ty::TyDeclaration::StructDeclaration { decl_id, .. } => {
-            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_id);
+        ty::TyDeclaration::StructDeclaration(decl_ref) => {
+            let ty::TyStructDeclaration { fields, .. } = decl_engine.get_struct(decl_ref);
             for field in fields {
                 check!(
                     check_type(
@@ -240,8 +240,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
-            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_id);
+        ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+            let ty::TyEnumDeclaration { variants, .. } = decl_engine.get_enum(decl_ref);
             for variant in variants {
                 check!(
                     check_type(

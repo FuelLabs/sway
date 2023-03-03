@@ -103,7 +103,8 @@ impl ty::TyAstNode {
                 r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
-                node.type_info(type_engine).can_safely_ignore(type_engine),
+                node.type_info(type_engine)
+                    .can_safely_ignore(type_engine, decl_engine),
                 warnings,
                 node.span.clone(),
                 warning
@@ -167,7 +168,7 @@ pub(crate) fn reassign_storage_subfield(
     });
 
     let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-        TypeInfo::Struct { fields, .. } => fields,
+        TypeInfo::Struct(decl_ref) => decl_engine.get_struct(&decl_ref).fields,
         _ => vec![],
     };
     let mut curr_type = initial_field_type;
