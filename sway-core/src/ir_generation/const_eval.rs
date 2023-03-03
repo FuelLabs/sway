@@ -1,4 +1,5 @@
 use crate::{
+    asm_generation::from_ir::ir_type_size_in_bytes,
     decl_engine::DeclEngine,
     engine_threading::*,
     language::ty::{self, TyIntrinsicFunctionKind},
@@ -7,7 +8,11 @@ use crate::{
     TypeEngine,
 };
 
-use super::{convert::convert_literal_to_constant, function::FnCompiler, types::*};
+use super::{
+    convert::{convert_literal_to_constant, convert_resolved_typeid},
+    function::FnCompiler,
+    types::*,
+};
 
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -16,7 +21,7 @@ use sway_ir::{
     metadata::combine as md_combine,
     module::Module,
     value::Value,
-    Instruction,
+    Instruction, Type,
 };
 use sway_types::{
     ident::{BaseIdent, Ident},
@@ -494,8 +499,29 @@ fn const_eval_intrinsic(
                 None => Ok(None),
             }
         }
-        sway_ast::Intrinsic::SizeOfType => Ok(None),
-        sway_ast::Intrinsic::SizeOfVal => Ok(None),
+        sway_ast::Intrinsic::SizeOfType => {
+            let targ = &intrinsic.type_arguments[0];
+            let ir_type = convert_resolved_typeid(
+                lookup.type_engine,
+                lookup.context,
+                &targ.type_id,
+                &targ.span,
+            )?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
+        sway_ast::Intrinsic::SizeOfVal => {
+            let val = &intrinsic.arguments[0];
+            let type_id = val.return_type;
+            let ir_type =
+                convert_resolved_typeid(lookup.type_engine, lookup.context, &type_id, &val.span)?;
+            Ok(Some(Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(ir_type_size_in_bytes(lookup.context, &ir_type)),
+            }))
+        }
         sway_ast::Intrinsic::Eq => Ok(None),
         sway_ast::Intrinsic::AddrOf => Ok(None),
         sway_ast::Intrinsic::PtrAdd => Ok(None),

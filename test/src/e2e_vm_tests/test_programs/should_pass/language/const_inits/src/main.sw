@@ -30,6 +30,9 @@ const Y_SIZE: u64 = 2;
 const XPY = ((X_SIZE + Y_SIZE - 1) * 2) / 5;
 const EN0a = En1::Int(XPY);
 
+const SO = __size_of::<u64>();
+const SOV = __size_of_val("hello");
+
 const EN1a = En1::Int(101);
 const EN1b = En1::Arr(ARR2);
 const EN1c = En1::NoVal;
@@ -102,6 +105,8 @@ fn main() -> u64 {
     assert(ETH_ID0.value == ETH_ID0_VALUE);
     assert(TUP1_idx2 == TUP1.2);
     assert(XPY == 2);
+    assert(SO == __size_of::<u64>());
+    assert(SOV == __size_of_val("hello"));
 
     1
 }
