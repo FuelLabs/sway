@@ -105,49 +105,52 @@ impl<'a> Unifier<'a> {
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
                 self.unify_arrays(received, expected, span, re.type_id, ee.type_id)
             }
-            (
-                Struct {
-                    call_path: rn,
-                    type_parameters: rpts,
-                    fields: rfs,
-                },
-                Struct {
-                    call_path: en,
-                    type_parameters: etps,
-                    fields: efs,
-                },
-            ) => self.unify_structs(
-                received,
-                expected,
-                span,
-                (rn.suffix, rpts, rfs),
-                (en.suffix, etps, efs),
-            ),
+            (Struct(r_decl_ref), Struct(e_decl_ref)) => {
+                let r_decl = self.engines.de().get_struct(&r_decl_ref);
+                let e_decl = self.engines.de().get_struct(&e_decl_ref);
+
+                self.unify_structs(
+                    received,
+                    expected,
+                    span,
+                    (
+                        r_decl.call_path.suffix,
+                        r_decl.type_parameters,
+                        r_decl.fields,
+                    ),
+                    (
+                        e_decl.call_path.suffix,
+                        e_decl.type_parameters,
+                        e_decl.fields,
+                    ),
+                )
+            }
             // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (
-                Enum {
-                    variant_types: rvs, ..
-                },
-                _,
-            ) if rvs.is_empty() => (vec![], vec![]),
-            (
-                Enum {
-                    call_path: rn,
-                    type_parameters: rtps,
-                    variant_types: rvs,
-                },
-                Enum {
-                    call_path: en,
-                    type_parameters: etps,
-                    variant_types: evs,
-                },
-            ) => self.unify_enums(
-                received,
-                expected,
-                span,
-                (rn.suffix, rtps, rvs),
-                (en.suffix, etps, evs),
-            ),
+            (Enum(r_decl_ref), _)
+                if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() =>
+            {
+                (vec![], vec![])
+            }
+            (Enum(r_decl_ref), Enum(e_decl_ref)) => {
+                let r_decl = self.engines.de().get_enum(&r_decl_ref);
+                let e_decl = self.engines.de().get_enum(&e_decl_ref);
+
+                self.unify_enums(
+                    received,
+                    expected,
+                    span,
+                    (
+                        r_decl.call_path.suffix,
+                        r_decl.type_parameters,
+                        r_decl.variants,
+                    ),
+                    (
+                        e_decl.call_path.suffix,
+                        e_decl.type_parameters,
+                        e_decl.variants,
+                    ),
+                )
+            }
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
