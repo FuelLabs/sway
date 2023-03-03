@@ -1,0 +1,11 @@
+category = "compile"
+expected_warnings = 3
+
+# check: #[allow(foo)]
+# nextln: $()Unexpected attribute value: "foo" for attribute: "allow" expected value "dead_code"
+
+# check: #[allow]
+# nextln: $()Attribute: "allow" expected exactly 1 argument(s) received 0.
+
+# check: #[allow(dead_code, dead_code)]
+# nextln: $()Attribute: "allow" expected exactly 1 argument(s) received 2.

@@ -5,3 +5,4 @@ category = "compile"
 
 # check: $()impl Get2 for Data2 {
 # check: $()This method is never called.
+expected_warnings = 2

@@ -83,7 +83,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct ContractId",
+      "type": "struct std::contract_id::ContractId",
       "typeId": 2,
       "typeParameters": null
     },

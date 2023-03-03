@@ -61,6 +61,7 @@ struct TestDescription {
     category: TestCategory,
     script_data: Option<Vec<u8>>,
     expected_result: Option<TestResult>,
+    expected_warnings: u32,
     contract_paths: Vec<String>,
     validate_abi: bool,
     validate_storage_slots: bool,
@@ -95,6 +96,7 @@ impl TestContext {
             category,
             script_data,
             expected_result,
+            expected_warnings,
             contract_paths,
             validate_abi,
             validate_storage_slots,
@@ -129,6 +131,13 @@ impl TestContext {
                         panic!("workspaces are not supported in the test suite yet")
                     }
                 };
+
+                if compiled.warnings.len() > expected_warnings as usize {
+                    return Err(anyhow::Error::msg(format!(
+                        "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
+                        compiled.warnings.len()
+                    )));
+                }
 
                 let result = harness::runs_in_vm(compiled.clone(), script_data)?;
                 let result = match result {
@@ -192,7 +201,15 @@ impl TestContext {
                 *output = out;
 
                 let compiled_pkgs = match result? {
-                    forc_pkg::Built::Package(built_pkg) => vec![(name.clone(), *built_pkg)],
+                    forc_pkg::Built::Package(built_pkg) => {
+                        if built_pkg.warnings.len() > expected_warnings as usize {
+                            return Err(anyhow::Error::msg(format!(
+                                "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
+                                built_pkg.warnings.len()
+                            )));
+                        }
+                        vec![(name.clone(), *built_pkg)]
+                    }
                     forc_pkg::Built::Workspace(built_workspace) => built_workspace
                         .iter()
                         .map(|(n, b)| (n.clone(), b.clone()))
@@ -629,6 +646,14 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
+    let expected_warnings = u32::try_from(
+        toml_content
+            .get("expected_warnings")
+            .map(|v| v.as_integer().unwrap_or(0))
+            .unwrap_or(0),
+    )
+    .unwrap_or(0u32);
+
     let validate_storage_slots = toml_content
         .get("validate_storage_slots")
         .map(|v| v.as_bool().unwrap_or(false))
@@ -671,6 +696,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         category,
         script_data,
         expected_result,
+        expected_warnings,
         contract_paths,
         validate_abi,
         validate_storage_slots,
