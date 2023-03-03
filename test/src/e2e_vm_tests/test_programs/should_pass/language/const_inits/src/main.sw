@@ -28,7 +28,7 @@ enum En1 {
 const X_SIZE: u64 = 4;
 const Y_SIZE: u64 = 2;
 const XPY = ((X_SIZE + Y_SIZE - 1) * 2) / 5;
-const EN0a = En1::Int(XPY);
+const EN0A = En1::Int(XPY);
 
 const SO = __size_of::<u64>();
 const SOV = __size_of_val("hello");
@@ -78,7 +78,7 @@ fn main() -> u64 {
     );
 
     // enum
-    match EN0a {
+    match EN0A {
         En1::Int(i) => assert(i == 2),
         En1::Arr(_) => assert(false),
         En1::NoVal => assert(false),
