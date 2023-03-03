@@ -466,17 +466,27 @@ fn const_eval_intrinsic(
         return Ok(None);
     }
     match intrinsic.kind {
-        sway_ast::Intrinsic::Add => {
+        sway_ast::Intrinsic::Add
+        | sway_ast::Intrinsic::Sub
+        | sway_ast::Intrinsic::Mul
+        | sway_ast::Intrinsic::Div => {
             let ty = args[0].ty;
             assert!(
                 args.len() == 2 && ty.is_uint(lookup.context) && ty.eq(lookup.context, &args[1].ty)
             );
             let (ConstantValue::Uint(arg1), ConstantValue::Uint(ref arg2)) = (&args[0].value, &args[1].value)
             else {
-                panic!("Type checker allowed incorrect args to _add");
+                panic!("Type checker allowed incorrect args to binary op");
             };
             // All arithmetic is done as if it were u64
-            match arg1.checked_add(*arg2) {
+            let result = match intrinsic.kind {
+                sway_ast::Intrinsic::Add => arg1.checked_add(*arg2),
+                sway_ast::Intrinsic::Sub => arg1.checked_sub(*arg2),
+                sway_ast::Intrinsic::Mul => arg1.checked_mul(*arg2),
+                sway_ast::Intrinsic::Div => arg1.checked_div(*arg2),
+                _ => unreachable!(),
+            };
+            match result {
                 Some(sum) => Ok(Some(Constant {
                     ty,
                     value: ConstantValue::Uint(sum),
@@ -484,9 +494,6 @@ fn const_eval_intrinsic(
                 None => Ok(None),
             }
         }
-        sway_ast::Intrinsic::Sub => Ok(None),
-        sway_ast::Intrinsic::Mul => Ok(None),
-        sway_ast::Intrinsic::Div => Ok(None),
         sway_ast::Intrinsic::SizeOfType => Ok(None),
         sway_ast::Intrinsic::SizeOfVal => Ok(None),
         sway_ast::Intrinsic::Eq => Ok(None),
