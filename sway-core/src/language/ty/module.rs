@@ -1,7 +1,7 @@
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::{DeclEngine, DeclRef},
+    decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
     language::ty::*,
     language::DepName,
     semantic_analysis::namespace,
@@ -47,7 +47,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRef)> {
+    ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration {
                 decl_id,
@@ -55,13 +55,11 @@ impl TyModule {
                 decl_span,
             }) = &node.content
             {
-                let fn_decl = decl_engine
-                    .get_function(decl_id, &node.span)
-                    .expect("no function declaration for ID");
+                let fn_decl = decl_engine.get_function(decl_id);
                 if fn_decl.is_test() {
                     return Some((
                         fn_decl,
-                        DeclRef::new(name.clone(), **decl_id, decl_span.clone()),
+                        DeclRef::new(name.clone(), *decl_id, decl_span.clone()),
                     ));
                 }
             }

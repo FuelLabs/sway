@@ -69,46 +69,32 @@ pub(crate) fn print_decl_engine_types(
         .iter()
         .map(|n| match &n.content {
             ty::TyAstNodeContent::Declaration(declaration) => match declaration {
-                ty::TyDeclaration::ConstantDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let const_decl = decl_engine.get_constant(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
+                    let const_decl = decl_engine.get_constant(decl_id);
                     format!("{const_decl:#?}")
                 }
-                ty::TyDeclaration::FunctionDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let func_decl = decl_engine.get_function(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::FunctionDeclaration { decl_id, .. } => {
+                    let func_decl = decl_engine.get_function(decl_id);
                     format!("{func_decl:#?}")
                 }
-                ty::TyDeclaration::TraitDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let trait_decl = decl_engine.get_trait(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::TraitDeclaration { decl_id, .. } => {
+                    let trait_decl = decl_engine.get_trait(decl_id);
                     format!("{trait_decl:#?}")
                 }
-                ty::TyDeclaration::StructDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let struct_decl = decl_engine.get_struct(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::StructDeclaration(decl_ref) => {
+                    let struct_decl = decl_engine.get_struct(decl_ref);
                     format!("{struct_decl:#?}")
                 }
-                ty::TyDeclaration::EnumDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let enum_decl = decl_engine.get_enum(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let enum_decl = decl_engine.get_enum(decl_ref);
                     format!("{enum_decl:#?}")
                 }
-                ty::TyDeclaration::AbiDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let abi_decl = decl_engine.get_abi(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::AbiDeclaration { decl_id, .. } => {
+                    let abi_decl = decl_engine.get_abi(decl_id);
                     format!("{abi_decl:#?}")
                 }
-                ty::TyDeclaration::StorageDeclaration {
-                    decl_id, decl_span, ..
-                } => {
-                    let storage_decl = decl_engine.get_storage(decl_id, decl_span).unwrap();
+                ty::TyDeclaration::StorageDeclaration { decl_id, .. } => {
+                    let storage_decl = decl_engine.get_storage(decl_id);
                     format!("{storage_decl:#?}")
                 }
                 _ => format!("{declaration:#?}"),

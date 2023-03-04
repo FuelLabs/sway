@@ -21,6 +21,27 @@ use std::{
 };
 use sway_core::{decl_engine::DeclEngine, BuildTarget, Engines, TypeEngine};
 
+/// Information passed to the render phase to get TypeInfo, CallPath or visibility for type anchors.
+#[derive(Clone)]
+struct RenderPlan {
+    document_private_items: bool,
+    type_engine: Arc<TypeEngine>,
+    decl_engine: Arc<DeclEngine>,
+}
+impl RenderPlan {
+    fn new(
+        document_private_items: bool,
+        type_engine: Arc<TypeEngine>,
+        decl_engine: Arc<DeclEngine>,
+    ) -> RenderPlan {
+        Self {
+            document_private_items,
+            type_engine,
+            decl_engine,
+        }
+    }
+}
+
 /// Main method for `forc doc`.
 pub fn main() -> Result<()> {
     let Command {
@@ -94,7 +115,11 @@ pub fn main() -> Result<()> {
         .map(|ver| format!("{}.{}.{}", ver.major, ver.minor, ver.patch));
     let rendered_docs = RenderedDocumentation::from(
         raw_docs,
-        Arc::from(type_engine),
+        RenderPlan::new(
+            document_private_items,
+            Arc::from(type_engine),
+            Arc::from(decl_engine),
+        ),
         root_attributes,
         program_kind,
         forc_version,

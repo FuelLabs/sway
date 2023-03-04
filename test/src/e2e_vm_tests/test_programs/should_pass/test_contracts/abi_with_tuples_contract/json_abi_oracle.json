@@ -91,7 +91,7 @@
           "typeArguments": null
         }
       ],
-      "type": "enum Location",
+      "type": "enum abi_with_tuples::Location",
       "typeId": 4,
       "typeParameters": null
     },
@@ -103,7 +103,7 @@
           "typeArguments": null
         }
       ],
-      "type": "struct Person",
+      "type": "struct abi_with_tuples::Person",
       "typeId": 5,
       "typeParameters": null
     },

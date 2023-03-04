@@ -2,7 +2,7 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::{DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{DeclEngineIndex, DeclRef, ReplaceFunctionImplementingType},
     error::*,
     language::{parsed, ty},
     semantic_analysis::TypeCheckContext,
@@ -176,12 +176,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = enum_decl.call_path.clone();
-                let decl_ref = decl_engine.insert(enum_decl);
-                let decl = ty::TyDeclaration::EnumDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
-                    decl_span: decl_ref.decl_span,
-                };
+                let decl = ty::TyDeclaration::EnumDeclaration(decl_engine.insert(enum_decl));
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
                     return err(warnings, errors),
@@ -234,7 +229,7 @@ impl ty::TyDeclaration {
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
-                                    *supertrait_decl_id,
+                                    supertrait_decl_id,
                                     supertrait_decl_span,
                                 ));
                             }
@@ -339,12 +334,7 @@ impl ty::TyDeclaration {
                     errors
                 );
                 let call_path = decl.call_path.clone();
-                let decl_ref = decl_engine.insert(decl);
-                let decl = ty::TyDeclaration::StructDeclaration {
-                    name: decl_ref.name,
-                    decl_id: decl_ref.id,
-                    decl_span: decl_ref.decl_span,
-                };
+                let decl = ty::TyDeclaration::StructDeclaration(decl_engine.insert(decl));
                 // insert the struct decl into namespace
                 check!(
                     ctx.namespace.insert_symbol(call_path.suffix, decl.clone()),
@@ -378,7 +368,7 @@ impl ty::TyDeclaration {
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
                                     supertrait_name,
-                                    *supertrait_decl_id,
+                                    supertrait_decl_id,
                                     supertrait_decl_span,
                                 ));
                             }

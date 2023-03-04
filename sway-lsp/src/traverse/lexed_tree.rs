@@ -10,8 +10,9 @@ use sway_ast::{
     ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField, Expr,
     ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
     IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind, Pattern,
-    PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField, UseTree,
+    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemUse, MatchBranchKind,
+    ModuleKind, Pattern, PatternStructField, Statement, StatementLet, StorageField, Ty, TypeField,
+    UseTree,
 };
 use sway_core::language::lexed::LexedProgram;
 use sway_types::{Ident, Span, Spanned};
@@ -26,16 +27,33 @@ impl<'a> LexedTree<'a> {
     }
 
     pub fn parse(&self, lexed_program: &LexedProgram) {
-        insert_keyword(self.tokens, lexed_program.root.tree.kind.span());
+        insert_module_kind(self.tokens, &lexed_program.root.tree.kind);
         for item in &lexed_program.root.tree.items {
             item.value.parse(self.tokens);
         }
 
         for (.., dep) in &lexed_program.root.submodules {
-            insert_keyword(self.tokens, dep.module.tree.kind.span());
+            insert_module_kind(self.tokens, &dep.module.tree.kind);
             for item in &dep.module.tree.items {
                 item.value.parse(self.tokens);
             }
+        }
+    }
+}
+
+fn insert_module_kind(tokens: &TokenMap, kind: &ModuleKind) {
+    match kind {
+        ModuleKind::Script { script_token } => {
+            insert_keyword(tokens, script_token.span());
+        }
+        ModuleKind::Contract { contract_token } => {
+            insert_keyword(tokens, contract_token.span());
+        }
+        ModuleKind::Predicate { predicate_token } => {
+            insert_keyword(tokens, predicate_token.span());
+        }
+        ModuleKind::Library { library_token, .. } => {
+            insert_keyword(tokens, library_token.span());
         }
     }
 }

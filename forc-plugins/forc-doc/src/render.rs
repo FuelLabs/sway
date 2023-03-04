@@ -1,15 +1,18 @@
-use crate::doc::{Documentation, ModuleInfo, ModulePrefix};
+use crate::{
+    doc::{Documentation, ModuleInfo, ModulePrefix},
+    RenderPlan,
+};
 use anyhow::{anyhow, Result};
 use comrak::{markdown_to_html, ComrakOptions};
 use horrorshow::{box_html, helper::doctype, html, prelude::*, Raw};
-use std::{collections::BTreeMap, fmt::Write, sync::Arc};
+use std::{collections::BTreeMap, fmt::Write};
 use sway_core::{
     language::ty::{
         TyDeclaration::{self, *},
         TyEnumVariant, TyProgramKind, TyStorageField, TyStructField, TyTraitFn,
     },
     transform::{AttributeKind, AttributesMap},
-    AbiName, TypeEngine, TypeInfo,
+    AbiName, TypeInfo,
 };
 use sway_lsp::utils::markdown::format_docs;
 use sway_types::{BaseIdent, Spanned};
@@ -19,7 +22,7 @@ pub(crate) const INDEX_FILENAME: &str = "index.html";
 pub(crate) const IDENTITY: &str = "#";
 
 pub(crate) trait Renderable {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>>;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>>;
 }
 /// A [Document] rendered to HTML.
 pub(crate) struct RenderedDocument {
@@ -34,7 +37,7 @@ impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
     pub fn from(
         raw: Documentation,
-        type_engine: Arc<TypeEngine>,
+        render_plan: RenderPlan,
         root_attributes: Option<AttributesMap>,
         program_kind: TyProgramKind,
         forc_version: Option<String>,
@@ -57,7 +60,7 @@ impl RenderedDocumentation {
             rendered_docs.0.push(RenderedDocument {
                 module_info: doc.module_info.clone(),
                 html_filename: doc.html_filename(),
-                file_contents: HTMLString::from(doc.clone().render(type_engine.clone())?),
+                file_contents: HTMLString::from(doc.clone().render(render_plan.clone())?),
             });
             // Here we gather all of the `doc_links` based on which module they belong to.
             let location = doc.module_info.location().to_string();
@@ -243,7 +246,7 @@ impl RenderedDocumentation {
                             links: doc_links.to_owned(),
                         },
                     }
-                    .render(type_engine.clone())?,
+                    .render(render_plan.clone())?,
                 ),
             }),
             None => panic!("Project does not contain a root module."),
@@ -273,7 +276,7 @@ impl RenderedDocumentation {
                                     links: doc_links.to_owned(),
                                 },
                             }
-                            .render(type_engine.clone())?,
+                            .render(render_plan.clone())?,
                         ),
                     })
                 }
@@ -288,7 +291,7 @@ impl RenderedDocumentation {
                     project_name: root_module,
                     all_docs,
                 }
-                .render(type_engine)?,
+                .render(render_plan)?,
             ),
         });
 
@@ -321,7 +324,7 @@ pub(crate) struct ItemHeader {
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
-    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let ItemHeader {
             module_info,
             friendly_name,
@@ -386,7 +389,7 @@ impl SidebarNav for ItemBody {
 }
 impl Renderable for ItemBody {
     /// HTML body component
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info,
@@ -399,9 +402,9 @@ impl Renderable for ItemBody {
 
         let decl_ty = ty_decl.doc_name();
         let friendly_name = ty_decl.friendly_type_name();
-        let sidebar = sidebar.render(type_engine.clone())?;
+        let sidebar = sidebar.render(render_plan.clone())?;
         let item_context = (item_context.context_opt.is_some())
-            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(type_engine) });
+            .then(|| -> Result<Box<dyn RenderBox>> { item_context.render(render_plan) });
         let sway_hjs = module_info.to_html_shorthand_path_string("assets/highlight.js");
 
         Ok(box_html! {
@@ -529,15 +532,15 @@ impl Context {
     }
 }
 impl Renderable for Context {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut rendered_list: Vec<String> = Vec::new();
         match self.context_type {
             ContextType::StructFields(fields) => {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(field.type_argument.type_id),
-                        &type_engine,
+                        render_plan.type_engine.get(field.type_argument.type_id),
+                        &render_plan,
                         &self.module_info,
                     );
                     rendered_list.push(box_html! {
@@ -565,8 +568,8 @@ impl Renderable for Context {
                 for field in fields {
                     let storage_field_id = format!("storagefield.{}", field.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(field.type_argument.type_id),
-                        &type_engine,
+                        render_plan.type_engine.get(field.type_argument.type_id),
+                        &render_plan,
                         &self.module_info,
                     );
                     rendered_list.push(box_html! {
@@ -594,8 +597,8 @@ impl Renderable for Context {
                 for variant in variants {
                     let enum_variant_id = format!("variant.{}", variant.name.as_str());
                     let type_anchor = render_type_anchor(
-                        type_engine.get(variant.type_argument.type_id),
-                        &type_engine,
+                        render_plan.type_engine.get(variant.type_argument.type_id),
+                        &render_plan,
                         &self.module_info,
                     );
                     rendered_list.push(box_html! {
@@ -796,11 +799,11 @@ impl ItemContext {
     }
 }
 impl Renderable for ItemContext {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let (title, rendered_list) = match self.context_opt {
             Some(context) => {
                 let title = context.context_type.as_block_title();
-                let rendered_list = context.render(type_engine)?;
+                let rendered_list = context.render(render_plan)?;
                 Ok((title, rendered_list))
             }
             None => Err(anyhow!(
@@ -829,14 +832,14 @@ impl Renderable for ItemContext {
 // TODO: Add checks for multiline types
 fn render_type_anchor(
     type_info: TypeInfo,
-    type_engine: &Arc<TypeEngine>,
+    render_plan: &RenderPlan,
     current_module_info: &ModuleInfo,
 ) -> Result<Box<dyn RenderBox>> {
     match type_info {
         TypeInfo::Array(ty_arg, len) => {
             let inner = render_type_anchor(
-                type_engine.get(ty_arg.type_id),
-                type_engine,
+                render_plan.type_engine.get(ty_arg.type_id),
+                render_plan,
                 current_module_info,
             )?;
             Ok(box_html! {
@@ -849,8 +852,8 @@ fn render_type_anchor(
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
                 rendered_args.push(render_type_anchor(
-                    type_engine.get(ty_arg.type_id),
-                    type_engine,
+                    render_plan.type_engine.get(ty_arg.type_id),
+                    render_plan,
                     current_module_info,
                 )?)
             }
@@ -862,39 +865,39 @@ fn render_type_anchor(
                 : ")";
             })
         }
-        TypeInfo::Enum { call_path, .. } => {
-            let module_info = ModuleInfo::from_ty_module(
-                call_path
-                    .prefixes
-                    .iter()
-                    .map(|p| p.as_str().to_string())
-                    .collect::<Vec<String>>(),
-                None,
-            );
-            let file_name = format!("enum.{}.html", call_path.suffix.as_str());
-            let href = module_info.file_path_from_location(&file_name, current_module_info)?;
-            Ok(box_html! {
-                a(class="enum", href=href) {
-                    : call_path.suffix.as_str();
-                }
-            })
+        TypeInfo::Enum(decl_ref) => {
+            let enum_decl = render_plan.decl_engine.get_enum(&decl_ref);
+            if !render_plan.document_private_items && enum_decl.visibility.is_private() {
+                Ok(box_html! {
+                    : decl_ref.name.as_str();
+                })
+            } else {
+                let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
+                let file_name = format!("enum.{}.html", decl_ref.name.as_str());
+                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                Ok(box_html! {
+                    a(class="enum", href=href) {
+                        : decl_ref.name.as_str();
+                    }
+                })
+            }
         }
-        TypeInfo::Struct { call_path, .. } => {
-            let module_info = ModuleInfo::from_ty_module(
-                call_path
-                    .prefixes
-                    .iter()
-                    .map(|p| p.as_str().to_string())
-                    .collect::<Vec<String>>(),
-                None,
-            );
-            let file_name = format!("struct.{}.html", call_path.suffix.as_str());
-            let href = module_info.file_path_from_location(&file_name, current_module_info)?;
-            Ok(box_html! {
-                a(class="struct", href=href) {
-                    : call_path.suffix.as_str();
-                }
-            })
+        TypeInfo::Struct(decl_ref) => {
+            let struct_decl = render_plan.decl_engine.get_struct(&decl_ref);
+            if !render_plan.document_private_items && struct_decl.visibility.is_private() {
+                Ok(box_html! {
+                    : decl_ref.name.as_str();
+                })
+            } else {
+                let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
+                let file_name = format!("struct.{}.html", decl_ref.name.as_str());
+                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                Ok(box_html! {
+                    a(class="struct", href=href) {
+                        : decl_ref.name.as_str();
+                    }
+                })
+            }
         }
         TypeInfo::UnknownGeneric { name, .. } => Ok(box_html! {
             : name.as_str();
@@ -955,7 +958,7 @@ struct DocLinks {
     links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
-    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let doc_links = match self.style {
             DocStyle::AllDoc(_) => box_html! {
                 @ for (title, list_items) in self.links {
@@ -1130,9 +1133,9 @@ impl SidebarNav for AllDocIndex {
     }
 }
 impl Renderable for AllDocIndex {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.all_docs.clone().render(type_engine.clone())?;
-        let sidebar = self.sidebar().render(type_engine)?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.all_docs.clone().render(render_plan.clone())?;
+        let sidebar = self.sidebar().render(render_plan)?;
         Ok(box_html! {
             head {
                 meta(charset="utf-8");
@@ -1215,9 +1218,9 @@ impl SidebarNav for ModuleIndex {
     }
 }
 impl Renderable for ModuleIndex {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let doc_links = self.module_docs.clone().render(type_engine.clone())?;
-        let sidebar = self.sidebar().render(type_engine)?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let doc_links = self.module_docs.clone().render(render_plan.clone())?;
+        let sidebar = self.sidebar().render(render_plan)?;
         let title_prefix = match self.module_docs.style {
             DocStyle::ProjectIndex(ref program_type) => format!("{program_type} "),
             DocStyle::ModuleIndex => "Module ".to_string(),
@@ -1344,7 +1347,7 @@ struct Sidebar {
     nav: DocLinks,
 }
 impl Renderable for Sidebar {
-    fn render(self, _type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
+    fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let path_to_logo = self
             .module_info
             .to_html_shorthand_path_string("assets/sway-logo.svg");

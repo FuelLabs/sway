@@ -373,7 +373,7 @@ impl Module {
                     });
                 }
 
-                let type_id = decl.return_type(engines, &item.span()).value;
+                let type_id = decl.return_type(engines).value;
                 //  if this is an enum or struct or function, import its implementations
                 if let Some(type_id) = type_id {
                     impls_to_insert.extend(

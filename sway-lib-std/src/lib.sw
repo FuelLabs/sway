@@ -1,4 +1,6 @@
 //! The official standard library for the Sway smart contract language.
+//!
+//! Source: https://github.com/FuelLabs/sway/tree/master/sway-lib-std
 library std;
 
 dep error_signals;

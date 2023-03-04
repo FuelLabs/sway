@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -17,6 +17,18 @@ pub struct TyTraitFn {
     pub return_type: TypeId,
     pub return_type_span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl Named for TyTraitFn {
+    fn name(&self) -> &Ident {
+        &self.name
+    }
+}
+
+impl Spanned for TyTraitFn {
+    fn span(&self) -> Span {
+        self.name.span()
+    }
 }
 
 impl EqWithEngines for TyTraitFn {}

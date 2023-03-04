@@ -140,7 +140,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_var_decl(context, md_mgr, tvd, span_md_idx)
                 }
                 ty::TyDeclaration::ConstantDeclaration { decl_id, .. } => {
-                    let tcd = self.decl_engine.get_constant(decl_id, &ast_node.span)?;
+                    let tcd = self.decl_engine.get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
@@ -162,9 +162,15 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration { decl_id, .. } => {
-                    let ted = self.decl_engine.get_enum(decl_id, &ast_node.span)?;
-                    create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
+                ty::TyDeclaration::EnumDeclaration(decl_ref) => {
+                    let ted = self.decl_engine.get_enum(decl_ref);
+                    create_enum_aggregate(
+                        self.type_engine,
+                        self.decl_engine,
+                        context,
+                        &ted.variants,
+                    )
+                    .map(|_| ())?;
                     Ok(None)
                 }
                 ty::TyDeclaration::ImplTrait { .. } => {
@@ -250,9 +256,7 @@ impl<'eng> FnCompiler<'eng> {
                         span_md_idx,
                     )
                 } else {
-                    let function_decl = self
-                        .decl_engine
-                        .get_function(function_decl_ref, &ast_expr.span)?;
+                    let function_decl = self.decl_engine.get_function(function_decl_ref);
                     self.compile_fn_call(
                         context,
                         md_mgr,
@@ -487,6 +491,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_typeid(
                     self.type_engine,
+                    self.decl_engine,
                     context,
                     &exp.return_type,
                     &exp.span,
@@ -500,8 +505,13 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type =
-                    convert_resolved_typeid(self.type_engine, context, &targ.type_id, &targ.span)?;
+                let ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    self.decl_engine,
+                    context,
+                    &targ.type_id,
+                    &targ.span,
+                )?;
                 Ok(Constant::get_uint(
                     context,
                     64,
@@ -561,6 +571,7 @@ impl<'eng> FnCompiler<'eng> {
                 let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_typeid(
                     self.type_engine,
+                    self.decl_engine,
                     context,
                     &target_type.type_id,
                     &target_type.span,
@@ -754,8 +765,13 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type =
-                    convert_resolved_typeid(self.type_engine, context, &len.type_id, &len.span)?;
+                let ir_type = convert_resolved_typeid(
+                    self.type_engine,
+                    self.decl_engine,
+                    context,
+                    &len.type_id,
+                    &len.span,
+                )?;
                 let len_value =
                     Constant::get_uint(context, 64, ir_type_size_in_bytes(context, &ir_type));
 
@@ -1209,7 +1225,12 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx),
         };
 
-        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &return_type,
+        )?;
 
         // Insert the contract_call instruction
         Ok(self
@@ -1396,8 +1417,13 @@ impl<'eng> FnCompiler<'eng> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)
-            .unwrap_or_else(|_| Type::get_unit(context));
+        let return_type = convert_resolved_typeid_no_span(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &return_type,
+        )
+        .unwrap_or_else(|_| Type::get_unit(context));
         let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument
@@ -1427,6 +1453,7 @@ impl<'eng> FnCompiler<'eng> {
         // retrieve the aggregate info for the enum
         let enum_aggregate = match convert_resolved_typeid(
             self.type_engine,
+            self.decl_engine,
             context,
             &exp.return_type,
             &exp.span,
@@ -1458,6 +1485,7 @@ impl<'eng> FnCompiler<'eng> {
         let tag_span_md_idx = md_mgr.span_to_md(context, &exp.span);
         let enum_aggregate = match convert_resolved_typeid(
             self.type_engine,
+            self.decl_engine,
             context,
             &exp.return_type,
             &exp.span,
@@ -1656,8 +1684,13 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         // Grab these before we move body into compilation.
-        let return_type =
-            convert_resolved_typeid(self.type_engine, context, &body.return_type, &body.span)?;
+        let return_type = convert_resolved_typeid(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &body.return_type,
+            &body.span,
+        )?;
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
@@ -1720,6 +1753,7 @@ impl<'eng> FnCompiler<'eng> {
             let local_name = self.lexical_map.insert(name.as_str().to_owned());
             let return_type = convert_resolved_typeid(
                 self.type_engine,
+                self.decl_engine,
                 context,
                 &value.return_type,
                 &value.span,
@@ -1851,6 +1885,7 @@ impl<'eng> FnCompiler<'eng> {
             // field type for the current iteration.
             let field_idcs = get_indices_for_struct_access(
                 self.type_engine,
+                self.decl_engine,
                 ast_reassignment.lhs_type,
                 &ast_reassignment.lhs_indices,
             )?;
@@ -1898,6 +1933,7 @@ impl<'eng> FnCompiler<'eng> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
             self.type_engine,
+            self.decl_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -1905,7 +1941,12 @@ impl<'eng> FnCompiler<'eng> {
         // Get the list of indices used to access the storage field. This will be empty
         // if the storage field type is not a struct.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(
+            self.type_engine,
+            self.decl_engine,
+            base_type,
+            &fields[1..],
+        )?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to store each primitive type in the storage field in its own storage slot.
@@ -1934,7 +1975,12 @@ impl<'eng> FnCompiler<'eng> {
             // we'll just use Unit.
             Type::get_unit(context)
         } else {
-            convert_resolved_typeid_no_span(self.type_engine, context, &contents[0].return_type)?
+            convert_resolved_typeid_no_span(
+                self.type_engine,
+                self.decl_engine,
+                context,
+                &contents[0].return_type,
+            )?
         };
         let aggregate = Type::new_array(context, elem_type, contents.len() as u64);
 
@@ -2077,7 +2123,8 @@ impl<'eng> FnCompiler<'eng> {
         }
 
         // Start with a temporary empty struct and then fill in the values.
-        let aggregate = get_aggregate_for_types(self.type_engine, context, &field_types)?;
+        let aggregate =
+            get_aggregate_for_types(self.type_engine, self.decl_engine, context, &field_types)?;
         let temp_name = self.lexical_map.insert_anon();
         let struct_var = self
             .function
@@ -2144,6 +2191,7 @@ impl<'eng> FnCompiler<'eng> {
         };
         let field_idx = match get_struct_name_field_index_and_type(
             self.type_engine,
+            self.decl_engine,
             struct_type_id,
             field_kind,
         ) {
@@ -2185,7 +2233,12 @@ impl<'eng> FnCompiler<'eng> {
         // we could potentially use the wrong aggregate with the same name, different module...
         // dunno.
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
-        let aggregate = create_enum_aggregate(self.type_engine, context, &enum_decl.variants)?;
+        let aggregate = create_enum_aggregate(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &enum_decl.variants,
+        )?;
         let tag_value =
             Constant::get_uint(context, 64, tag as u64).add_metadatum(context, span_md_idx);
 
@@ -2244,6 +2297,7 @@ impl<'eng> FnCompiler<'eng> {
             for field_expr in fields {
                 let init_type = convert_resolved_typeid_no_span(
                     self.type_engine,
+                    self.decl_engine,
                     context,
                     &field_expr.return_type,
                 )?;
@@ -2291,7 +2345,13 @@ impl<'eng> FnCompiler<'eng> {
         span: Span,
     ) -> Result<Value, CompileError> {
         let tuple_value = self.compile_expression(context, md_mgr, tuple)?;
-        let ty = convert_resolved_typeid(self.type_engine, context, &tuple_type, &span)?;
+        let ty = convert_resolved_typeid(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &tuple_type,
+            &span,
+        )?;
         if ty.is_struct(context) {
             let span_md_idx = md_mgr.span_to_md(context, &span);
             Ok(self
@@ -2318,6 +2378,7 @@ impl<'eng> FnCompiler<'eng> {
         // Get the type of the access which can be a subfield
         let access_type = convert_resolved_typeid_no_span(
             self.type_engine,
+            self.decl_engine,
             context,
             &fields.last().expect("guaranteed by grammar").type_id,
         )?;
@@ -2326,7 +2387,12 @@ impl<'eng> FnCompiler<'eng> {
         // if the storage field type is not a struct.
         // FIXME: shouldn't have to extract the first field like this.
         let base_type = fields[0].type_id;
-        let field_idcs = get_indices_for_struct_access(self.type_engine, base_type, &fields[1..])?;
+        let field_idcs = get_indices_for_struct_access(
+            self.type_engine,
+            self.decl_engine,
+            base_type,
+            &fields[1..],
+        )?;
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
@@ -2382,7 +2448,12 @@ impl<'eng> FnCompiler<'eng> {
         let returns = returns
             .as_ref()
             .map(|(_, asm_reg_span)| Ident::new(asm_reg_span.clone()));
-        let return_type = convert_resolved_typeid_no_span(self.type_engine, context, &return_type)?;
+        let return_type = convert_resolved_typeid_no_span(
+            self.type_engine,
+            self.decl_engine,
+            context,
+            &return_type,
+        )?;
         Ok(self
             .current_block
             .ins(context)

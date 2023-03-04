@@ -4,7 +4,7 @@ Similar to Rust, Sway comes with its own standard library.
 
 The Sway Standard Library is the foundation of portable Sway software, a set of minimal shared abstractions for the broader Sway ecosystem. It offers core types, like `Result<T, E>` and `Option<T>`, library-defined operations on language primitives, native asset management, blockchain contextual operations, access control, storage management, and support for types from other VMs, among many other things.
 
-The entire Sway standard library is a Forc project called `std`, and is available directly here: <https://github.com/FuelLabs/sway/tree/master/sway-lib-std> (navigate to the appropriate tagged release if the latest `master` is not compatible).
+The entire Sway standard library is a Forc project called `std`, and is available directly here: <https://github.com/FuelLabs/sway/tree/master/sway-lib-std> (navigate to the appropriate tagged release if the latest `master` is not compatible). For the latest `std` documentation see: <https://fuellabs.github.io/sway/master/std/>.
 
 ## Using the Standard Library
 

@@ -1,14 +1,17 @@
 use crate::{
     descriptor::Descriptor,
     render::{split_at_markdown_header, DocLink, DocStrings, ItemBody, ItemHeader, Renderable},
+    RenderPlan,
 };
 use anyhow::Result;
 use horrorshow::{box_html, RenderBox};
-use std::{fmt::Write, option::Option, path::PathBuf, sync::Arc};
+use std::{fmt::Write, option::Option, path::PathBuf};
 use sway_core::{
     decl_engine::DeclEngine,
-    language::ty::{TyAstNodeContent, TyProgram, TySubmodule},
-    TypeEngine,
+    language::{
+        ty::{TyAstNodeContent, TyProgram, TySubmodule},
+        CallPath,
+    },
 };
 
 pub(crate) type Documentation = Vec<Document>;
@@ -136,9 +139,9 @@ impl Document {
     }
 }
 impl Renderable for Document {
-    fn render(self, type_engine: Arc<TypeEngine>) -> Result<Box<dyn RenderBox>> {
-        let header = self.item_header.render(type_engine.clone())?;
-        let body = self.item_body.render(type_engine)?;
+    fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
+        let header = self.item_header.render(render_plan.clone())?;
+        let body = self.item_body.render(render_plan)?;
         Ok(box_html! {
             : header;
             : body;
@@ -283,11 +286,23 @@ impl ModuleInfo {
     pub(crate) fn depth(&self) -> usize {
         self.module_prefixes.len()
     }
-    /// Create a new [ModuleInfo] from a vec.
+    /// Create a new [ModuleInfo] from a `TyModule`.
     pub(crate) fn from_ty_module(module_prefixes: Vec<String>, attributes: Option<String>) -> Self {
         Self {
             module_prefixes,
             attributes,
+        }
+    }
+    /// Create a new [ModuleInfo] from a `CallPath`.
+    pub(crate) fn from_call_path(call_path: CallPath) -> Self {
+        let module_prefixes = call_path
+            .prefixes
+            .iter()
+            .map(|p| p.as_str().to_string())
+            .collect::<Vec<String>>();
+        Self {
+            module_prefixes,
+            attributes: None,
         }
     }
     pub(crate) fn preview_opt(&self) -> Option<String> {

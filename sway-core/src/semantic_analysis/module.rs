@@ -30,6 +30,7 @@ impl ty::TyModule {
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(
             ctx.type_engine,
+            ctx.decl_engine,
             tree.root_nodes.clone(),
         );
 
